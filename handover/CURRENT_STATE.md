@@ -22,13 +22,18 @@ Phase 1 foundation:
 - project registry added;
 - `list_projects` added;
 - `project_status` added;
-- append-oriented audit logging added.
+- append-oriented audit logging added;
+- per-request IDs added;
+- bounded in-memory rate limiting added;
+- health endpoint exempted from operator rate limiting;
+- unauthenticated MCP requests verified to fail closed.
 
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 5 tests green;
+- pytest: 7 tests green;
+- HTTP auth/rate-limit tests: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -44,6 +49,6 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Finish Phase 1 request identification and basic rate limiting, strengthen HTTP auth tests, then review the bootstrap pull request.
+Review the bootstrap pull request, add any remaining Phase 1 configuration validation, then begin Phase 2 safe project-file access behind explicit path and secret-deny policies.
 
 Do not add real environment values to this repository.

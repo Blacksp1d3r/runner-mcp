@@ -20,6 +20,7 @@ from starlette.routing import Mount, Route
 
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .config import ProjectRegistry, load_project_registry
+from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 
 
@@ -100,6 +101,7 @@ def build_mcp(settings: Settings, registry: ProjectRegistry, audit: AuditLogger)
             validate_token_resource=True,
         ),
     )
+    files = FileAccessService(registry)
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:
@@ -142,6 +144,76 @@ def build_mcp(settings: Settings, registry: ProjectRegistry, audit: AuditLogger)
             )
         )
         return result
+
+    def _run_file_tool(
+        tool_name: str,
+        project: str,
+        operation,
+    ):
+        request_id = current_request_id()
+        try:
+            result = operation()
+        except FileAccessError as exc:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    tool_name,
+                    project,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+
+        audit.append(
+            AuditEvent(
+                request_id,
+                tool_name,
+                project,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def read_project_file(
+        project: str,
+        path: str,
+        offset: int = 0,
+        length: int = 200,
+    ) -> dict:
+        """Read a bounded page from an allowed UTF-8 project text file."""
+        return _run_file_tool(
+            "read_project_file",
+            project,
+            lambda: files.read_file(project, path, offset=offset, length=length),
+        )
+
+    @mcp.tool()
+    def list_project_files(
+        project: str,
+        path: str = "",
+        offset: int = 0,
+        limit: int = 100,
+    ) -> dict:
+        """List one allowed project directory without recursive traversal."""
+        return _run_file_tool(
+            "list_project_files",
+            project,
+            lambda: files.list_files(project, path, offset=offset, limit=limit),
+        )
+
+    @mcp.tool()
+    def file_metadata(project: str, path: str) -> dict:
+        """Return safe metadata for an allowed project file or directory."""
+        return _run_file_tool(
+            "file_metadata",
+            project,
+            lambda: files.file_metadata(project, path),
+        )
 
     return mcp
 

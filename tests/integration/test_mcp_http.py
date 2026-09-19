@@ -49,6 +49,11 @@ def initialize_message() -> dict:
 
 
 def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "hello.txt").write_text("hello runner\n", encoding="utf-8")
+    (project_root / ".env").write_text("DO_NOT_EXPOSE=this-value\n", encoding="utf-8")
+
     app = build_test_app(tmp_path)
     headers = auth_headers()
 
@@ -77,8 +82,64 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
         )
         assert listed.status_code == 200
-        assert "list_projects" in listed.text
-        assert "project_status" in listed.text
+        for tool_name in (
+            "list_projects",
+            "project_status",
+            "read_project_file",
+            "list_project_files",
+            "file_metadata",
+        ):
+            assert tool_name in listed.text
+
+        allowed = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "read_project_file",
+                    "arguments": {
+                        "project": "demo",
+                        "path": "hello.txt",
+                        "offset": 0,
+                        "length": 20,
+                    },
+                },
+            },
+        )
+        assert allowed.status_code == 200
+        assert "hello runner" in allowed.text
+        assert str(project_root) not in allowed.text
+
+        blocked = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 4,
+                "method": "tools/call",
+                "params": {
+                    "name": "read_project_file",
+                    "arguments": {
+                        "project": "demo",
+                        "path": ".env",
+                    },
+                },
+            },
+        )
+        assert blocked.status_code == 200
+        assert '"isError":true' in blocked.text
+        assert "Error executing tool read_project_file" in blocked.text
+        assert "blocked by policy" not in blocked.text
+        assert "this-value" not in blocked.text
+
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "read_project_file" in audit_text
+    assert str(project_root) not in audit_text
+    assert "hello runner" not in audit_text
+    assert "this-value" not in audit_text
 
 
 def test_authenticated_request_with_unexpected_host_is_rejected(tmp_path: Path) -> None:

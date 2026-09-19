@@ -1,0 +1,10 @@
+projects:
+  example:
+    display_name: Example Project
+    repository: example-org/example-repository
+    environment: staging
+    root: "${RUNNER_MCP_EXAMPLE_ROOT}"
+    health_url: "${RUNNER_MCP_EXAMPLE_HEALTH_URL}"
+    allowed_services:
+      - "${RUNNER_MCP_EXAMPLE_STAGING_SERVICE}"
+    database_alias: "${RUNNER_MCP_EXAMPLE_DATABASE}"

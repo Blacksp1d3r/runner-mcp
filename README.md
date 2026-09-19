@@ -13,7 +13,8 @@ It is intentionally not a general remote shell. The service exposes a limited se
 - strict path validation;
 - auditable actions;
 - least-privilege runtime permissions;
-- explicit risk classes for operational tools.
+- explicit risk classes for operational tools;
+- DNS-rebinding protection tied to the runtime MCP resource URL.
 
 ## Public repository rule
 

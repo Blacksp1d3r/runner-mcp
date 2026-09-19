@@ -5,10 +5,12 @@ import secrets
 from contextlib import asynccontextmanager
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from mcp.server import MCPServer
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
+from mcp.server.transport_security import TransportSecuritySettings
 from pydantic import AnyHttpUrl
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
@@ -55,6 +57,21 @@ class Settings:
             audit_log=Path(os.getenv("RUNNER_MCP_AUDIT_LOG", "var/audit.jsonl")),
             rate_limit_per_minute=rate_limit,
         )
+
+
+def transport_security_for(resource_url: str) -> TransportSecuritySettings:
+    parsed = urlsplit(resource_url)
+    if parsed.scheme not in {"http", "https"} or not parsed.netloc:
+        raise RuntimeError("RUNNER_MCP_RESOURCE_URL must be an absolute HTTP(S) URL")
+    if parsed.username or parsed.password:
+        raise RuntimeError("RUNNER_MCP_RESOURCE_URL must not contain credentials")
+
+    origin = f"{parsed.scheme}://{parsed.netloc}"
+    return TransportSecuritySettings(
+        enable_dns_rebinding_protection=True,
+        allowed_hosts=[parsed.netloc],
+        allowed_origins=[origin],
+    )
 
 
 class StaticBearerVerifier(TokenVerifier):
@@ -141,6 +158,7 @@ def create_app(
     registry = registry or load_project_registry(settings.projects_config)
     audit = AuditLogger(settings.audit_log)
     mcp = build_mcp(settings, registry, audit)
+    transport_security = transport_security_for(settings.resource_url)
 
     @asynccontextmanager
     async def lifespan(_: Starlette):
@@ -149,7 +167,12 @@ def create_app(
     return Starlette(
         routes=[
             Route("/healthz", health, methods=["GET"]),
-            Mount("/", app=mcp.streamable_http_app()),
+            Mount(
+                "/",
+                app=mcp.streamable_http_app(
+                    transport_security=transport_security,
+                ),
+            ),
         ],
         middleware=[
             Middleware(RequestIdMiddleware),

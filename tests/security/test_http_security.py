@@ -61,7 +61,7 @@ def test_mcp_requires_authentication(tmp_path: Path) -> None:
             "demo": ProjectConfig(
                 display_name="Demo",
                 repository="example/demo",
-                root="runtime-root",
+                root=tmp_path / "project",
             )
         }
     )

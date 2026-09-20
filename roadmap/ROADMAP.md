@@ -30,7 +30,20 @@ Before enabling mutating tools:
 
 ## Phase 3 — controlled test runner
 
-Add predefined test profiles, bounded execution, timeouts, process cleanup, server-side logs, safe-stop observation, and concise result summaries.
+Implemented design:
+
+- predefined test profiles only;
+- absolute executable paths and argument arrays with `shell=False`;
+- project-relative working directories;
+- bounded concurrency, timeout and log size;
+- asynchronous jobs with status and paged logs;
+- explicit cancellation;
+- external operator-stop observation;
+- process-group cleanup;
+- scrubbed secrets and private paths in logs;
+- persisted safe job metadata and interrupted-job recovery;
+- restricted environment passthrough;
+- no automatic execution of untrusted public-fork code without stronger sandboxing.
 
 ## Phase 4 — staging service management
 

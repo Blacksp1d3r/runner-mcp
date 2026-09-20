@@ -61,8 +61,9 @@ def test_ledger_stores_only_safe_request_metadata(tmp_path) -> None:
     ledger.claim(request)
     stored = json.loads(path.read_text(encoding="utf-8"))
 
-    assert set(stored["req-204"]) == {"fingerprint", "action", "seen_at"}
+    assert set(stored["req-204"]) == {"fingerprint", "action", "seen_at", "state"}
     assert stored["req-204"]["action"] == "run_tests"
+    assert stored["req-204"]["state"] == "claimed"
     assert "demo" not in path.read_text(encoding="utf-8")
     assert "unit" not in path.read_text(encoding="utf-8")
 
@@ -154,3 +155,45 @@ def test_ledger_rejects_tampered_entry(tmp_path) -> None:
 
     with pytest.raises(BridgeReplayError, match="invalid entry"):
         BridgeReplayLedger(path).claim(request)
+
+
+def test_mark_completed_is_idempotent_and_persists_safe_state(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-213","action":"project_status","project":"demo"}'
+    )
+    path = tmp_path / "replay.json"
+    ledger = BridgeReplayLedger(path)
+
+    ledger.claim(request)
+    ledger.mark_completed(request)
+    ledger.mark_completed(request)
+
+    stored = json.loads(path.read_text(encoding="utf-8"))["req-213"]
+    assert stored["state"] == "completed"
+    assert "completed_at" in stored
+    assert "demo" not in path.read_text(encoding="utf-8")
+    assert ledger.claim(request).completed is True
+
+
+def test_legacy_claimed_entry_remains_backward_compatible(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-214","action":"list_projects"}'
+    )
+    path = tmp_path / "replay.json"
+    fingerprint = bridge_request_fingerprint(request)
+    path.write_text(
+        json.dumps(
+            {
+                "req-214": {
+                    "fingerprint": fingerprint,
+                    "action": "list_projects",
+                    "seen_at": "2026-09-20T00:00:00+00:00",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    claim = BridgeReplayLedger(path).claim(request)
+    assert claim.decision == ReplayDecision.DUPLICATE
+    assert claim.completed is False

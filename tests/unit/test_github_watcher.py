@@ -1,5 +1,4 @@
 import json
-import os
 from pathlib import Path
 
 import pytest
@@ -9,6 +8,7 @@ from runner_mcp.bridge_protocol import (
     BridgeAction,
     BridgeResult,
     BridgeResultState,
+    parse_bridge_request,
     parse_bridge_result,
 )
 from runner_mcp.bridge_replay import (
@@ -317,10 +317,7 @@ def test_fresh_request_executes_once_and_advances_cursor(tmp_path) -> None:
     request = parse_bridge_result(transport.persisted_json["req-703"])
     assert request.state == BridgeResultState.COMPLETED
 
-    replay_request = __import__(
-        "runner_mcp.bridge_protocol",
-        fromlist=["parse_bridge_request"],
-    ).parse_bridge_request(transport.requests["req-703"])
+    replay_request = parse_bridge_request(transport.requests["req-703"])
     record = ledger.inspect(replay_request)
     assert record is not None
     assert record.state == ReplayState.COMPLETED
@@ -344,10 +341,7 @@ def test_existing_result_is_reconciled_without_execution(tmp_path) -> None:
     assert executor.calls == []
     assert cursor.read() == transport.head
 
-    replay_request = __import__(
-        "runner_mcp.bridge_protocol",
-        fromlist=["parse_bridge_request"],
-    ).parse_bridge_request(transport.requests["req-704"])
+    replay_request = parse_bridge_request(transport.requests["req-704"])
     record = ledger.inspect(replay_request)
     assert record is not None
     assert record.state == ReplayState.COMPLETED
@@ -378,10 +372,7 @@ def test_claimed_request_without_result_is_never_reexecuted(tmp_path) -> None:
     transport.changed_ids = ["req-706"]
     transport.requests["req-706"] = _request("req-706")
 
-    replay_request = __import__(
-        "runner_mcp.bridge_protocol",
-        fromlist=["parse_bridge_request"],
-    ).parse_bridge_request(transport.requests["req-706"])
+    replay_request = parse_bridge_request(transport.requests["req-706"])
     ledger.claim(replay_request)
 
     outcome = watcher.run_cycle()
@@ -398,10 +389,7 @@ def test_completed_request_without_result_is_never_reexecuted(tmp_path) -> None:
     transport.changed_ids = ["req-707"]
     transport.requests["req-707"] = _request("req-707")
 
-    replay_request = __import__(
-        "runner_mcp.bridge_protocol",
-        fromlist=["parse_bridge_request"],
-    ).parse_bridge_request(transport.requests["req-707"])
+    replay_request = parse_bridge_request(transport.requests["req-707"])
     ledger.claim(replay_request)
     ledger.complete(replay_request)
 
@@ -428,10 +416,7 @@ def test_result_persistence_failure_does_not_reexecute(tmp_path) -> None:
     assert executor.calls == [("list_projects", ())]
     assert cursor.read() == "a" * 40
 
-    replay_request = __import__(
-        "runner_mcp.bridge_protocol",
-        fromlist=["parse_bridge_request"],
-    ).parse_bridge_request(transport.requests["req-708"])
+    replay_request = parse_bridge_request(transport.requests["req-708"])
     record = ledger.inspect(replay_request)
     assert record is not None
     assert record.state == ReplayState.CLAIMED

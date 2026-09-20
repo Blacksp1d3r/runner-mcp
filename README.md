@@ -60,7 +60,7 @@ The wrapper keeps the private configuration with the service account and delegat
 
 For a user-to-developer path, see [docs/USING_AND_EXTENDING.md](docs/USING_AND_EXTENDING.md). Contributors can start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
-For the zero-additional-service-cost GitHub mailbox transport pattern, see [docs/GITHUB_MAILBOX_BRIDGE.md](docs/GITHUB_MAILBOX_BRIDGE.md). For safe task-completion signals and notification deduplication, see [docs/COMPLETION_FEEDBACK.md](docs/COMPLETION_FEEDBACK.md).
+For the zero-additional-service-cost GitHub mailbox transport pattern, see [docs/GITHUB_MAILBOX_BRIDGE.md](docs/GITHUB_MAILBOX_BRIDGE.md). For safe task-completion signals and notification deduplication, see [docs/COMPLETION_FEEDBACK.md](docs/COMPLETION_FEEDBACK.md). For heartbeat and restart recovery, see [docs/WATCHER_RESILIENCE.md](docs/WATCHER_RESILIENCE.md).
 
 Runner MCP is developed as a [Fools2Tools project](docs/FOOLS2TOOLS.md). Public launch readiness is tracked in [docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md). See also the [changelog](CHANGELOG.md), [release checklist](docs/RELEASE_CHECKLIST.md) and prepared [launch copy](docs/LAUNCH_COPY.md).
 
@@ -232,4 +232,4 @@ The current implementation state is tracked in:
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
 
-Runner MCP is under active development. The current focus is completing public launch readiness, migrating the private mailbox watcher to the shared protocol implementation, and improving service/tunnel onboarding without weakening the safety model.
+Runner MCP is under active development. The current focus is migrating the private mailbox watcher to the shared protocol/replay lifecycle, proving restart recovery and completion feedback end to end, and improving service/tunnel onboarding without weakening the safety model.

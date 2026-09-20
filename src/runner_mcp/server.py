@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import secrets
+from collections.abc import Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from pathlib import Path
@@ -46,39 +47,39 @@ class Settings:
     max_test_jobs: int = 2
 
     @classmethod
-    def from_env(cls) -> Settings:
-        token = os.getenv("RUNNER_MCP_BEARER_TOKEN", "")
+    def from_mapping(cls, values: Mapping[str, str]) -> Settings:
+        token = values.get("RUNNER_MCP_BEARER_TOKEN", "")
         if len(token) < 32:
             raise RuntimeError("RUNNER_MCP_BEARER_TOKEN must contain at least 32 characters")
-        issuer = os.getenv("RUNNER_MCP_AUTH_ISSUER", "")
-        resource = os.getenv("RUNNER_MCP_RESOURCE_URL", "")
+        issuer = values.get("RUNNER_MCP_AUTH_ISSUER", "")
+        resource = values.get("RUNNER_MCP_RESOURCE_URL", "")
         if not issuer or not resource:
             raise RuntimeError("Authentication issuer and MCP resource URL are required")
 
         try:
-            rate_limit = int(os.getenv("RUNNER_MCP_RATE_LIMIT_PER_MINUTE", "60"))
+            rate_limit = int(values.get("RUNNER_MCP_RATE_LIMIT_PER_MINUTE", "60"))
         except ValueError as exc:
             raise RuntimeError("RUNNER_MCP_RATE_LIMIT_PER_MINUTE must be an integer") from exc
         if not 1 <= rate_limit <= 6000:
             raise RuntimeError("RUNNER_MCP_RATE_LIMIT_PER_MINUTE must be between 1 and 6000")
 
-        stop_file_raw = os.getenv("RUNNER_MCP_OPERATOR_STOP_FILE", "").strip()
+        stop_file_raw = values.get("RUNNER_MCP_OPERATOR_STOP_FILE", "").strip()
         if stop_file_raw and not Path(stop_file_raw).is_absolute():
             raise RuntimeError("RUNNER_MCP_OPERATOR_STOP_FILE must be an absolute path")
 
-        retention_confirmed_raw = os.getenv(
+        retention_confirmed_raw = values.get(
             "RUNNER_MCP_RETENTION_CONFIRMED",
             "false",
         ).strip().lower()
         if retention_confirmed_raw not in {"true", "false"}:
             raise RuntimeError("RUNNER_MCP_RETENTION_CONFIRMED must be true or false")
 
-        test_jobs_root_raw = os.getenv("RUNNER_MCP_TEST_JOBS_ROOT", "").strip()
+        test_jobs_root_raw = values.get("RUNNER_MCP_TEST_JOBS_ROOT", "").strip()
         if test_jobs_root_raw and not Path(test_jobs_root_raw).is_absolute():
             raise RuntimeError("RUNNER_MCP_TEST_JOBS_ROOT must be an absolute path")
 
         try:
-            max_test_jobs = int(os.getenv("RUNNER_MCP_MAX_TEST_JOBS", "2"))
+            max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "2"))
         except ValueError as exc:
             raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be an integer") from exc
         if not 1 <= max_test_jobs <= 16:
@@ -88,15 +89,21 @@ class Settings:
             bearer_token=token,
             auth_issuer=issuer,
             resource_url=resource,
-            projects_config=Path(os.getenv("RUNNER_MCP_PROJECTS_CONFIG", "config/projects.yml")),
-            audit_log=Path(os.getenv("RUNNER_MCP_AUDIT_LOG", "var/audit.jsonl")),
+            projects_config=Path(
+                values.get("RUNNER_MCP_PROJECTS_CONFIG", "config/projects.yml")
+            ),
+            audit_log=Path(values.get("RUNNER_MCP_AUDIT_LOG", "var/audit.jsonl")),
             rate_limit_per_minute=rate_limit,
-            retention_policy=RetentionPolicy.from_env(),
+            retention_policy=RetentionPolicy.from_mapping(values),
             operator_stop_file=Path(stop_file_raw) if stop_file_raw else None,
             retention_confirmed=retention_confirmed_raw == "true",
             test_jobs_root=Path(test_jobs_root_raw) if test_jobs_root_raw else None,
             max_test_jobs=max_test_jobs,
         )
+
+    @classmethod
+    def from_env(cls) -> Settings:
+        return cls.from_mapping(os.environ)
 
 
 def transport_security_for(resource_url: str) -> TransportSecuritySettings:

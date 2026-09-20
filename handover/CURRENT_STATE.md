@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5 operator-safety guards and Phase 3 controlled test execution are complete on the current review branch.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5 operator-safety guards, Phase 3 controlled test execution and Phase 3.5 onboarding are complete on the current review branch.
 
 Phase 0:
 - repository structure defined;
@@ -70,11 +70,26 @@ Phase 3 controlled test execution:
 - MCP lifecycle from `run_tests` through `test_status` and `get_test_log` is tested end-to-end;
 - test-code trust boundary is documented; untrusted public-fork code remains excluded until stronger isolation exists.
 
+Phase 3.5 onboarding:
+- installable `runner-mcp` console command added;
+- non-root `install.sh` added;
+- interactive setup supports safe local mode and explicit public mode;
+- generated private config uses restrictive filesystem permissions;
+- inherited shell variables do not override setup-managed private runtime config;
+- setup overwrite preserves the existing bearer credential unless `--rotate-token` is explicit;
+- `status`, `doctor`, `emergency-stop` and `serve` commands added;
+- project add/list/remove commands added without manual YAML editing;
+- test-profile add/list/remove commands added;
+- pytest and Ruff presets auto-detect project virtual environments;
+- custom executable and project paths reject symlink components;
+- project config updates are lock-protected and atomic;
+- user-first README and QUICKSTART added.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 64 tests green;
+- pytest: 98 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -87,6 +102,9 @@ Local trusted-runner validation is green:
 - MCP test-job lifecycle integration test: green;
 - test-profile schema and startup fail-closed tests: green;
 - dependency check: green;
+- non-root installer integration test: green;
+- installed console command version/help smoke test: green;
+- onboarding/project/test-profile CLI tests: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -100,7 +118,7 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Review and merge the combined Phase 2.5/Phase 3 branch, then begin Phase 4 allow-listed staging service management. Before activating real project test profiles, create the private runtime configuration and verify the Linux-account trust boundary on the actual host.
+Review and merge the combined Phase 2.5/Phase 3/Phase 3.5 branch, then begin Phase 4 allow-listed staging service management. Before activating real project test profiles, create the private runtime configuration and verify the Linux-account trust boundary on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

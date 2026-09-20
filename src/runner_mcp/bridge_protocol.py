@@ -221,9 +221,7 @@ def _looks_like_private_location(value: str) -> bool:
         return True
     if _WINDOWS_ABSOLUTE_PATH_RE.match(stripped):
         return True
-    if "://" in stripped:
-        return True
-    return False
+    return "://" in stripped
 
 
 def sanitize_bridge_result_data(data: dict[str, Any]) -> dict[str, Any]:

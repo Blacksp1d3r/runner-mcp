@@ -98,8 +98,43 @@ Formalize the proven GitHub to Runner MCP transport without turning it into a re
 Next:
 
 - migrate the private watcher to the shared protocol validator;
-- define a scrubbed result envelope and replay ledger;
 - package a generic watcher only when it can be done without exposing credentials or infrastructure details.
+
+## Phase 3.8 — bridge result envelope and replay protection
+
+Harden the GitHub mailbox transport in both directions:
+
+- strict, versioned result envelope;
+- bounded result size, nesting, collection count and string length;
+- fail-closed unknown fields and duplicate JSON keys;
+- conservative redaction of credentials, environment metadata, paths, hosts, URLs, executables, commands and service-unit details;
+- safe error codes instead of raw exception/process output;
+- canonical SHA-256 request fingerprints;
+- local replay ledger that stores no project/profile/path/credential/result content;
+- duplicate request IDs never execute twice;
+- request-ID reuse with changed content fails closed;
+- corrupt, oversized, capacity-exhausted or symlinked replay ledgers fail closed;
+- ledger file permissions restricted to the service account.
+
+Next:
+
+- migrate the private watcher from its pilot request/result shape to the shared validator, result envelope and replay ledger;
+- add watcher-level integration tests using only generic placeholder configuration.
+
+## Phase 3.9 — public launch readiness
+
+Prepare Runner MCP for free, responsible discovery without changing its security boundaries:
+
+- keep Runner MCP as the product identity under the Fools2Tools umbrella;
+- make the problem/solution understandable from the top of README;
+- keep Quickstart and doctor output usable without source-code knowledge;
+- create a reproducible placeholder-only demo;
+- prepare release notes and upgrade guidance;
+- define a no-telemetry-by-default discovery strategy;
+- prepare reusable launch copy for GitHub, MCP ecosystem discovery and developer communities;
+- do not add paid advertising, hosted CI or hosted infrastructure as a hidden dependency.
+
+External posts remain a separate human-controlled action.
 
 ## Phase 4 — staging service management
 

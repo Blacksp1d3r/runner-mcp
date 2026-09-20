@@ -381,21 +381,21 @@ class GitHubMailboxTransport:
             raise BridgeProtocolError("result request_id does not match mailbox path")
 
         path = f"{RESULTS_PATH}/{request_id}.json"
-        existing = self._fetch_file(
-            path,
-            ref=self._config.result_ref,
-            max_bytes=MAX_BRIDGE_RESULT_BYTES,
-            allow_not_found=True,
-        )
-        if existing is not None:
-            if existing.content == encoded:
-                return
-            raise GitHubMailboxTransportError(
-                "result already exists with different content",
-                kind=TransportFailureKind.INVALID_RESPONSE,
-            )
-
         try:
+            existing = self._fetch_file(
+                path,
+                ref=self._config.result_ref,
+                max_bytes=MAX_BRIDGE_RESULT_BYTES,
+                allow_not_found=True,
+            )
+            if existing is not None:
+                if existing.content == encoded:
+                    return
+                raise GitHubMailboxTransportError(
+                    "result already exists with different content",
+                    kind=TransportFailureKind.INVALID_RESPONSE,
+                )
+
             self._session.put_json(
                 self._contents_path(path),
                 payload={

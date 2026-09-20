@@ -45,6 +45,24 @@ Implemented design:
 - restricted environment passthrough;
 - no automatic execution of untrusted public-fork code without stronger sandboxing.
 
+## Phase 3.5 — packaging and onboarding
+
+Make the safe core usable without reading or editing source code:
+
+- `runner-mcp setup` interactive private configuration;
+- local/public setup modes with safe local defaults;
+- explicit retention confirmation;
+- `status`, `doctor` and emergency-stop commands;
+- project add/list/remove commands;
+- test-profile add/list/remove commands;
+- pytest and Ruff profile presets;
+- explicit token rotation only;
+- non-root `install.sh`;
+- user-first README and Quickstart;
+- private config permission checks and atomic project-config updates.
+
+Still planned for onboarding: service auto-start packaging, guided TLS/reverse-proxy setup and optional graphical administration.
+
 ## Phase 4 — staging service management
 
 Add allow-listed service status, start, stop, restart, and health checks. No arbitrary service names.

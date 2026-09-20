@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -55,9 +56,9 @@ class RetentionPolicy(BaseModel):
         return value
 
     @classmethod
-    def from_env(cls) -> RetentionPolicy:
+    def from_mapping(cls, values: Mapping[str, str]) -> RetentionPolicy:
         def integer(name: str, default: int) -> int:
-            raw = os.getenv(name, str(default))
+            raw = values.get(name, str(default))
             try:
                 return int(raw)
             except ValueError as exc:
@@ -72,6 +73,10 @@ class RetentionPolicy(BaseModel):
                 180,
             ),
         )
+
+    @classmethod
+    def from_env(cls) -> RetentionPolicy:
+        return cls.from_mapping(os.environ)
 
     def release_is_deletable(
         self,

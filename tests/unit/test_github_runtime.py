@@ -2,6 +2,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp.bridge_resilience import WatcherHeartbeat, WatcherState
 from runner_mcp.config_manager import configure_github_mailbox
 from runner_mcp.github_runtime import (
     GitHubWatcherRuntime,
@@ -16,7 +17,6 @@ from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
 )
-from runner_mcp.bridge_resilience import WatcherHeartbeat, WatcherState
 
 
 class FakeWatcher:

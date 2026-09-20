@@ -19,6 +19,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - short-lived local human approval gates for higher-risk staging actions;
 - GitHub mailbox bridge protocol with a strict allow-list;
 - bounded bridge result envelopes and replay protection;
+- strict terminal task-completion events with deterministic notification IDs;
 - interactive setup, doctor, guide and configuration-management CLI;
 - public CI for this public repository;
 - Fools2Tools project identity;
@@ -31,6 +32,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - bridge requests/results reject duplicate keys and non-standard JSON constants;
 - bridge results are bounded and conservatively scrubbed;
 - duplicate mailbox request IDs cannot be silently re-executed;
+- notification delivery is separated from task execution so a delivery retry cannot rerun the task;
 - production mutations remain disabled;
 - database restore remains unimplemented rather than being automated unsafely.
 

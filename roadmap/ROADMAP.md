@@ -244,6 +244,36 @@ Next:
 - migrate the private pilot watcher to that thin adapter;
 - prove restart recovery and exactly-once completion feedback on the migrated watcher.
 
+## Phase 3.8.5 — incremental watcher coordinator
+
+Combine the public GitHub transport, bridge processor, replay lifecycle and heartbeat contract into a restart-safe watcher loop.
+
+Implemented foundation:
+
+- transient GitHub transport retries are bounded to 2 and 5 seconds after the original attempt;
+- authorization and invalid-response failures are never automatically retried;
+- request discovery uses a strict fast-forward compare from a private local cursor instead of rescanning historical mailbox contents;
+- compare input is limited to validated 40-hex commit SHAs;
+- request-file deletes, renames, nested paths, malformed IDs and oversized compare sets fail closed;
+- first use is explicitly uninitialized and executes nothing;
+- explicit bootstrap records the current request head and deliberately skips historical requests;
+- local cursor uses restrictive permissions, file locking, symlink refusal and optimistic expected-SHA advancement;
+- an existing durable result is reconciled into the replay ledger without executing the action;
+- claimed requests without a result are never automatically rerun;
+- completed requests with a missing result are never automatically rerun;
+- persistence/finalization failures keep the cursor behind so the next cycle reconciles safely;
+- malformed requests block cursor advancement instead of being silently skipped;
+- heartbeat publication stays independent from operational task success;
+- heartbeat delivery failure never rewinds an already-advanced cursor or reruns an action;
+- non-request commits can advance the cursor without executing work.
+
+Next:
+
+- migrate the private pilot watcher to this public coordinator with private runtime configuration only;
+- prove the migrated watcher against one fresh request plus a restart/recovery cycle;
+- keep completion-notification delivery independent and idempotent;
+- then move back to clean-environment launch verification and service/tunnel onboarding.
+
 ## Phase 3.9 — public launch readiness
 
 Prepare Runner MCP for free, responsible discovery without changing its security boundaries.

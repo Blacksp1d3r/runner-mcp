@@ -276,3 +276,20 @@ Result publication implements the public `BridgeResultSink` boundary. GitHub rea
 Heartbeat publication uses only the bounded public watcher-heartbeat schema.
 
 Repository names, refs, credentials and supervisor/service configuration remain deployment-specific private configuration. The public package contains no real installation values.
+
+
+## Incremental request discovery
+
+The GitHub transport exposes the current request-ref commit SHA and a bounded fast-forward compare operation.
+
+The watcher stores the last safely handled request-ref SHA locally. On each cycle it compares that SHA with the current request head and considers only added or modified direct JSON request files below the fixed request mailbox.
+
+The compare fails closed when:
+
+- the request ref is not a strict fast-forward from the cursor;
+- the compare response may be truncated;
+- a request file is deleted or renamed;
+- a nested or malformed request path appears;
+- a request ID is malformed or duplicated.
+
+This avoids repeatedly scanning historical mailbox contents and reduces GitHub API load without weakening replay protection.

@@ -27,6 +27,7 @@ from runner_mcp.bridge_resilience import (
 from runner_mcp.github_mailbox import (
     GITHUB_API_BASE,
     HEARTBEAT_PATH,
+    MAX_COMPARE_FILES,
     REQUESTS_PATH,
     RESULTS_PATH,
     GitHubApiSession,
@@ -313,6 +314,11 @@ def test_api_session_classifies_http_failures(
     error,
     expected: TransportFailureKind,
 ) -> None:
+    monkeypatch.setattr(
+        "runner_mcp.github_mailbox.time.sleep",
+        lambda _seconds: None,
+    )
+
     def fail(request, timeout):
         raise error
 
@@ -357,6 +363,11 @@ def test_api_session_classifies_network_failures(
     error,
     expected: TransportFailureKind,
 ) -> None:
+    monkeypatch.setattr(
+        "runner_mcp.github_mailbox.time.sleep",
+        lambda _seconds: None,
+    )
+
     def fail(request, timeout):
         raise error
 
@@ -592,3 +603,297 @@ def test_bridge_processor_maps_transport_failure_to_recovery_state(tmp_path) -> 
     record = ledger.inspect(request)
     assert record is not None
     assert record.state == ReplayState.CLAIMED
+
+
+def test_api_session_retries_transient_failure_then_succeeds(monkeypatch) -> None:
+    attempts = 0
+    sleeps: list[int] = []
+
+    def fake_urlopen(request, timeout):
+        nonlocal attempts
+        attempts += 1
+        if attempts == 1:
+            raise _http_error(503)
+        return FakeResponse(b'{"ok":true}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        "runner_mcp.github_mailbox.time.sleep",
+        sleeps.append,
+    )
+    session = GitHubApiSession(token="safe-token")
+
+    assert session.get_json("/repos/example/repo/contents/file.json") == {"ok": True}
+    assert attempts == 2
+    assert sleeps == [2]
+
+
+def test_api_session_stops_after_bounded_transient_retries(monkeypatch) -> None:
+    attempts = 0
+    sleeps: list[int] = []
+
+    def fake_urlopen(request, timeout):
+        nonlocal attempts
+        attempts += 1
+        raise _http_error(503)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        "runner_mcp.github_mailbox.time.sleep",
+        sleeps.append,
+    )
+    session = GitHubApiSession(token="safe-token")
+
+    with pytest.raises(GitHubMailboxTransportError) as caught:
+        session.get_json("/repos/example/repo/contents/file.json")
+
+    assert caught.value.kind == TransportFailureKind.UNAVAILABLE
+    assert attempts == 3
+    assert sleeps == [2, 5]
+
+
+def test_api_session_does_not_retry_authorization_failure(monkeypatch) -> None:
+    attempts = 0
+    sleeps: list[int] = []
+
+    def fake_urlopen(request, timeout):
+        nonlocal attempts
+        attempts += 1
+        raise _http_error(401)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr(
+        "runner_mcp.github_mailbox.time.sleep",
+        sleeps.append,
+    )
+    session = GitHubApiSession(token="safe-token")
+
+    with pytest.raises(GitHubMailboxTransportError) as caught:
+        session.get_json("/repos/example/repo/contents/file.json")
+
+    assert caught.value.kind == TransportFailureKind.AUTHORIZATION
+    assert attempts == 1
+    assert sleeps == []
+
+
+def test_request_head_sha_reads_only_configured_request_ref() -> None:
+    session = FakeSession()
+    session.get_responses.append(
+        {"object": {"type": "commit", "sha": "a" * 40}}
+    )
+
+    sha = _transport(session).request_head_sha()
+
+    assert sha == "a" * 40
+    path, query, allow_not_found = session.get_calls[0]
+    assert path.endswith("/git/ref/heads/runner-control")
+    assert query is None
+    assert allow_not_found is False
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        None,
+        [],
+        {},
+        {"object": []},
+        {"object": {"type": "tag", "sha": "a" * 40}},
+        {"object": {"type": "commit", "sha": "not-a-sha"}},
+    ],
+)
+def test_request_head_sha_rejects_invalid_ref_response(response) -> None:
+    session = FakeSession()
+    session.get_responses.append(response)
+
+    with pytest.raises(GitHubMailboxTransportError) as caught:
+        _transport(session).request_head_sha()
+
+    assert caught.value.kind == TransportFailureKind.INVALID_RESPONSE
+
+
+def test_changed_request_ids_uses_strict_fast_forward_compare() -> None:
+    session = FakeSession()
+    session.get_responses.append(
+        {
+            "status": "ahead",
+            "files": [
+                {
+                    "filename": ".runner-control/requests/req-602.json",
+                    "status": "modified",
+                },
+                {
+                    "filename": "README.md",
+                    "status": "modified",
+                },
+                {
+                    "filename": ".runner-control/requests/req-601.json",
+                    "status": "added",
+                },
+            ],
+        }
+    )
+    transport = _transport(session)
+
+    changed = transport.changed_request_ids(
+        base_sha="a" * 40,
+        head_sha="b" * 40,
+    )
+
+    assert changed == ["req-601", "req-602"]
+    path, query, allow_not_found = session.get_calls[0]
+    assert path.endswith(f"/compare/{'a' * 40}...{'b' * 40}")
+    assert query is None
+    assert allow_not_found is False
+
+
+def test_changed_request_ids_short_circuits_identical_sha() -> None:
+    session = FakeSession()
+
+    assert (
+        _transport(session).changed_request_ids(
+            base_sha="a" * 40,
+            head_sha="a" * 40,
+        )
+        == []
+    )
+    assert session.get_calls == []
+
+
+@pytest.mark.parametrize("value", ["", "A" * 40, "a" * 39, "g" * 40])
+def test_changed_request_ids_requires_lowercase_commit_sha(value: str) -> None:
+    with pytest.raises(ValueError, match="commit SHA"):
+        _transport().changed_request_ids(
+            base_sha=value,
+            head_sha="b" * 40,
+        )
+
+
+@pytest.mark.parametrize(
+    "response",
+    [
+        {"status": "diverged", "files": []},
+        {"status": "behind", "files": []},
+        {"status": "ahead", "files": "not-a-list"},
+        {
+            "status": "ahead",
+            "files": [
+                {
+                    "filename": ".runner-control/requests/req-603.json",
+                    "status": "removed",
+                }
+            ],
+        },
+        {
+            "status": "ahead",
+            "files": [
+                {
+                    "filename": ".runner-control/requests/nested/req-603.json",
+                    "status": "added",
+                }
+            ],
+        },
+        {
+            "status": "ahead",
+            "files": [
+                {
+                    "filename": ".runner-control/requests/not-json.txt",
+                    "status": "added",
+                }
+            ],
+        },
+        {
+            "status": "ahead",
+            "files": [
+                {
+                    "filename": ".runner-control/requests/bad id.json",
+                    "status": "added",
+                }
+            ],
+        },
+        {
+            "status": "ahead",
+            "files": [
+                {
+                    "filename": ".runner-control/requests/req-604.json",
+                    "status": "added",
+                },
+                {
+                    "filename": ".runner-control/requests/req-604.json",
+                    "status": "modified",
+                },
+            ],
+        },
+    ],
+)
+def test_changed_request_ids_fails_closed_on_unsafe_compare(response: dict) -> None:
+    session = FakeSession()
+    session.get_responses.append(response)
+
+    with pytest.raises(GitHubMailboxTransportError) as caught:
+        _transport(session).changed_request_ids(
+            base_sha="a" * 40,
+            head_sha="b" * 40,
+        )
+
+    assert caught.value.kind == TransportFailureKind.INVALID_RESPONSE
+
+
+def test_changed_request_ids_rejects_possible_truncated_compare() -> None:
+    session = FakeSession()
+    session.get_responses.append(
+        {
+            "status": "ahead",
+            "files": [
+                {"filename": f"docs/file-{index}.txt", "status": "modified"}
+                for index in range(MAX_COMPARE_FILES)
+            ],
+        }
+    )
+
+    with pytest.raises(GitHubMailboxTransportError, match="too many"):
+        _transport(session).changed_request_ids(
+            base_sha="a" * 40,
+            head_sha="b" * 40,
+        )
+
+
+def test_fetch_result_validates_filename_identity() -> None:
+    result_json = _completed_result("req-605")
+    session = FakeSession()
+    session.get_responses.append(_file_record(result_json.encode()))
+
+    result = _transport(session).fetch_result("req-605")
+
+    assert result is not None
+    assert result.request_id == "req-605"
+    assert result.action == BridgeAction.LIST_PROJECTS
+
+
+def test_fetch_result_returns_none_when_missing() -> None:
+    session = FakeSession()
+    session.get_responses.append(None)
+
+    assert _transport(session).fetch_result("req-606") is None
+
+
+def test_fetch_result_rejects_filename_payload_mismatch() -> None:
+    session = FakeSession()
+    session.get_responses.append(
+        _file_record(_completed_result("req-other").encode())
+    )
+
+    with pytest.raises(GitHubMailboxTransportError) as caught:
+        _transport(session).fetch_result("req-607")
+
+    assert caught.value.kind == TransportFailureKind.INVALID_RESPONSE
+
+
+def test_fetch_result_requires_utf8() -> None:
+    session = FakeSession()
+    session.get_responses.append(_file_record(b"\xff"))
+
+    with pytest.raises(GitHubMailboxTransportError) as caught:
+        _transport(session).fetch_result("req-608")
+
+    assert caught.value.kind == TransportFailureKind.INVALID_RESPONSE

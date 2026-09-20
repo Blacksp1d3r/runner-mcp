@@ -1,0 +1,57 @@
+name: Feature request
+description: Suggest a concrete Runner MCP capability without weakening the safety model.
+title: "[Feature] "
+labels: ["enhancement"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Runner MCP prefers configuration and allow-listed adapters over general command execution.
+
+        Please describe the real use case, not only a proposed implementation. Do not include private infrastructure values.
+
+  - type: textarea
+    id: problem
+    attributes:
+      label: Problem to solve
+      description: What task is difficult or impossible today?
+    validations:
+      required: true
+
+  - type: textarea
+    id: workflow
+    attributes:
+      label: Desired workflow
+      description: Describe the user/operator workflow with generic placeholders.
+    validations:
+      required: true
+
+  - type: dropdown
+    id: risk
+    attributes:
+      label: Expected risk class
+      description: Choose the closest category. Maintainers may reclassify it.
+      options:
+        - Read-only inspection
+        - Predefined test execution
+        - Staging mutation
+        - High-risk staging action requiring approval
+        - Unsure
+    validations:
+      required: true
+
+  - type: textarea
+    id: safer
+    attributes:
+      label: Can configuration or an existing adapter solve it?
+      description: Explain why a new core capability is needed, if applicable.
+
+  - type: checkboxes
+    id: boundaries
+    attributes:
+      label: Safety boundaries
+      options:
+        - label: The request does not require arbitrary shell input from an AI client.
+          required: true
+        - label: The example contains no credentials, private infrastructure values or customer data.
+          required: true

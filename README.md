@@ -85,6 +85,8 @@ runner-mcp database-config add PROJECT
 runner-mcp migration-config add PROJECT --preset alembic
 runner-mcp deployment-config list
 runner-mcp deployment-config add PROJECT --release-root PATH --service ALIAS
+runner-mcp github-mailbox status
+runner-mcp github-watcher once
 runner-mcp serve
 ```
 
@@ -232,4 +234,4 @@ The current implementation state is tracked in:
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
 
-Runner MCP is under active development. The public GitHub mailbox stack now includes protocol, replay lifecycle, fixed-host transport, an incremental restart-safe watcher and a loopback-only MCP executor. The current focus is migrating the private pilot to that public stack, proving restart recovery plus completion feedback end to end, and then continuing clean-environment/service/tunnel onboarding.
+Runner MCP is under active development. The public GitHub mailbox stack now includes protocol, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor and a private-config runtime/CLI. The current focus is migrating the existing private pilot to that runtime, proving restart recovery plus completion feedback end to end, and then continuing clean-environment/service/tunnel onboarding.

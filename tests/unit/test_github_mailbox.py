@@ -15,6 +15,7 @@ from runner_mcp.bridge_protocol import (
     BridgeAction,
     BridgeResult,
     BridgeResultState,
+    parse_bridge_request,
     serialize_bridge_result,
 )
 from runner_mcp.bridge_replay import BridgeReplayLedger, ReplayState
@@ -589,10 +590,7 @@ def test_bridge_processor_maps_transport_failure_to_recovery_state(tmp_path) -> 
     assert outcome.serialized_result is not None
     assert executor.calls == 1
 
-    request = __import__(
-        "runner_mcp.bridge_protocol",
-        fromlist=["parse_bridge_request"],
-    ).parse_bridge_request(payload)
+    request = parse_bridge_request(payload)
     record = ledger.inspect(request)
     assert record is not None
     assert record.state == ReplayState.CLAIMED

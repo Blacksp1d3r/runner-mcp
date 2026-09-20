@@ -64,7 +64,7 @@ def _config(**overrides) -> LocalMCPConfig:
         "",
         "ftp://127.0.0.1/mcp",
         "http://example.com/mcp",
-        "http://10.0.0.1/mcp",
+        "http://example.invalid/mcp",
         "http://user:pass@127.0.0.1/mcp",
         "http://127.0.0.1/other",
         "http://127.0.0.1/mcp?x=1",
@@ -291,7 +291,7 @@ def test_client_rejects_tool_error_without_leaking_text(monkeypatch) -> None:
         FakeResponse(b""),
         FakeResponse(
             b'{"jsonrpc":"2.0","id":2,"result":{"isError":true,'
-            b'"content":[{"type":"text","text":"private /srv/value"}]}}'
+            b'"content":[{"type":"text","text":"private detail"}]}}'
         ),
     ]
     monkeypatch.setattr(
@@ -304,7 +304,7 @@ def test_client_rejects_tool_error_without_leaking_text(monkeypatch) -> None:
     with pytest.raises(BridgeExecutionAdapterError) as caught:
         client._call_tool("list_projects", {})
 
-    assert "private /srv/value" not in str(caught.value)
+    assert "private detail" not in str(caught.value)
 
 
 @pytest.mark.parametrize(

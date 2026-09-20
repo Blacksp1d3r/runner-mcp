@@ -1,7 +1,5 @@
 import base64
 import email.message
-import json
-import socket
 import urllib.error
 import urllib.request
 
@@ -347,7 +345,7 @@ def test_api_session_allows_explicit_not_found(monkeypatch) -> None:
 @pytest.mark.parametrize(
     ("error", "expected"),
     [
-        (socket.timeout(), TransportFailureKind.TIMEOUT),
+        (TimeoutError(), TransportFailureKind.TIMEOUT),
         (
             urllib.error.URLError("offline"),
             TransportFailureKind.UNAVAILABLE,

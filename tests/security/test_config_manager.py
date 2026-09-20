@@ -493,7 +493,7 @@ def test_github_mailbox_config_stays_private(tmp_path: Path) -> None:
     from runner_mcp.onboarding import load_env_file
 
     paths, _ = installed(tmp_path)
-    token = "private-mailbox-token-value-1234567890"
+    token = "example-token-placeholder"
     repository = "example/private-mailbox"
 
     result = configure_github_mailbox(
@@ -530,7 +530,7 @@ def test_github_mailbox_config_removal_removes_all_mailbox_values(
         repository="example/private-mailbox",
         request_ref="runner-control",
         result_ref="runner-results",
-        token="private-mailbox-token-value-1234567890",
+        token="example-token-placeholder",
     )
 
     remove_github_mailbox(paths.config_dir)
@@ -556,7 +556,7 @@ def test_github_mailbox_status_fails_closed_on_partial_config(
 @pytest.mark.parametrize(
     ("repository", "token"),
     [
-        ("not-a-repository", "private-mailbox-token-value-1234567890"),
+        ("not-a-repository", "example-token-placeholder"),
         ("example/private-mailbox", "bad token"),
     ],
 )

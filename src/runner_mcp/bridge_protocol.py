@@ -18,24 +18,29 @@ REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
 RESULT_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 ERROR_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 _WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
-_SENSITIVE_RESULT_KEY_PARTS = {
+_SENSITIVE_RESULT_KEY_TOKENS = {
     "authorization",
     "command",
     "cookie",
     "credential",
+    "credentials",
     "dsn",
     "endpoint",
     "env",
+    "environment",
     "executable",
     "host",
     "hostname",
     "password",
     "path",
-    "private_key",
     "secret",
     "token",
     "unit",
     "url",
+}
+_SENSITIVE_RESULT_KEY_NAMES = {
+    "private_key",
+    "privatekey",
 }
 
 
@@ -195,7 +200,10 @@ def parse_bridge_request(payload: str | bytes) -> BridgeRequest:
 
 def _is_sensitive_result_key(key: str) -> bool:
     normalized = key.lower().replace("-", "_").replace(".", "_")
-    return any(part in normalized for part in _SENSITIVE_RESULT_KEY_PARTS)
+    if normalized in _SENSITIVE_RESULT_KEY_NAMES:
+        return True
+    tokens = {token for token in normalized.split("_") if token}
+    return bool(tokens & _SENSITIVE_RESULT_KEY_TOKENS)
 
 
 def _looks_like_private_location(value: str) -> bool:

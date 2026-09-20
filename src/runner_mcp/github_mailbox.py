@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -23,6 +24,7 @@ from .bridge_resilience import (
     BridgeResilienceError,
     TransportFailureKind,
     parse_watcher_heartbeat,
+    transport_retry_delays,
 )
 
 GITHUB_API_BASE = "https://api.github.com"
@@ -216,27 +218,45 @@ class GitHubApiSession:
             method=method,
         )
 
-        try:
-            with urllib.request.urlopen(
-                request,
-                timeout=self._timeout_seconds,
-            ) as response:
-                raw = response.read(MAX_GITHUB_RESPONSE_BYTES + 1)
-        except urllib.error.HTTPError as exc:
-            if allow_not_found and exc.code == 404:
-                return None
-            raise _http_error(exc) from None
-        except TimeoutError as exc:
-            raise GitHubMailboxTransportError(
-                "GitHub mailbox transport timed out",
-                kind=TransportFailureKind.TIMEOUT,
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise GitHubMailboxTransportError(
-                "GitHub mailbox transport is unavailable",
-                kind=TransportFailureKind.UNAVAILABLE,
-            ) from exc
+        raw: bytes | None = None
+        delay_before_attempt = 0
+        while True:
+            if delay_before_attempt:
+                time.sleep(delay_before_attempt)
+            try:
+                with urllib.request.urlopen(
+                    request,
+                    timeout=self._timeout_seconds,
+                ) as response:
+                    raw = response.read(MAX_GITHUB_RESPONSE_BYTES + 1)
+                break
+            except urllib.error.HTTPError as exc:
+                if allow_not_found and exc.code == 404:
+                    return None
+                error = _http_error(exc)
+            except TimeoutError:
+                error = GitHubMailboxTransportError(
+                    "GitHub mailbox transport timed out",
+                    kind=TransportFailureKind.TIMEOUT,
+                )
+            except urllib.error.URLError:
+                error = GitHubMailboxTransportError(
+                    "GitHub mailbox transport is unavailable",
+                    kind=TransportFailureKind.UNAVAILABLE,
+                )
 
+            delays = transport_retry_delays(error.kind)
+            if not delays:
+                raise error from None
+            if delay_before_attempt == 0:
+                delay_before_attempt = delays[0]
+                continue
+            if len(delays) > 1 and delay_before_attempt == delays[0]:
+                delay_before_attempt = delays[1]
+                continue
+            raise error from None
+
+        assert raw is not None
         if len(raw) > MAX_GITHUB_RESPONSE_BYTES:
             raise GitHubMailboxTransportError(
                 "GitHub mailbox response exceeds size limit",

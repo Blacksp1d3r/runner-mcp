@@ -58,7 +58,7 @@ from runner_mcp.bridge_protocol import (
                 "project": "demo",
                 "profile": "unit",
             },
-            ("run_tests", {"project": "demo", "profile": "unit"}),
+            ("run_tests", {"project": "demo", "suite": "unit"}),
         ),
     ],
 )
@@ -269,3 +269,15 @@ def test_non_standard_json_numbers_are_rejected(constant: str) -> None:
 def test_result_sanitizer_rejects_non_finite_numbers(value: float) -> None:
     with pytest.raises(BridgeProtocolError, match="non-finite number"):
         sanitize_bridge_result_data({"value": value})
+
+
+def test_run_tests_bridge_translates_public_profile_to_runner_suite() -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-suite-map","action":"run_tests","project":"demo","profile":"unit"}'
+    )
+
+    tool_name, arguments = bridge_tool_call(request)
+
+    assert tool_name == "run_tests"
+    assert arguments == {"project": "demo", "suite": "unit"}
+    assert "profile" not in arguments

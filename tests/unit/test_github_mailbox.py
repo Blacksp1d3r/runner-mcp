@@ -6,8 +6,8 @@ import urllib.request
 import pytest
 
 from runner_mcp.bridge_processor import (
-    BridgeProcessState,
     BridgeProcessor,
+    BridgeProcessState,
 )
 from runner_mcp.bridge_protocol import (
     BridgeAction,

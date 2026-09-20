@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phases 0 through 9 are merged to main. The current follow-up work is Phase 3.6 community usability: preserving the safe core while making installation, day-to-day use and extension clearer for other users.
+Runner MCP Phases 0 through 9 are merged to main. Phase 3.7 now formalizes the proven GitHub mailbox transport: GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary for allow-listed status and predefined test actions.
 
 Phase 0:
 - repository structure defined;
@@ -85,6 +85,16 @@ Phase 3.5 onboarding:
 - project config updates are lock-protected and atomic;
 - user-first README and QUICKSTART added.
 
+
+Phase 3.7 GitHub mailbox bridge protocol:
+- public infrastructure-neutral architecture and usage guidance added;
+- versioned JSON requests are size-bounded and reject duplicate keys;
+- request fields are strict and unknown fields fail closed;
+- only list_projects, safety_status, project_status, project_capabilities, list_test_profiles and run_tests are allow-listed;
+- no shell, executable, filesystem path, environment, service or arbitrary MCP tool may be supplied through the protocol;
+- migration, deployment, rollback and restore remain outside the mailbox bridge and keep their existing approval boundaries;
+- reusable public protocol logic is separated from private watcher credentials and infrastructure configuration.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;
@@ -164,7 +174,7 @@ Phase 9 human approval gates:
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 203 tests green;
+- pytest: 223 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -180,6 +190,7 @@ Local trusted-runner validation is green:
 - non-root installer integration test: green;
 - installed console command version/help smoke test: green;
 - project-aware guide smoke test: green;
+- GitHub mailbox bridge protocol validation tests: green;
 - operator-wrapper installer tests: green;
 - onboarding/project/test-profile CLI tests: green;
 - service manager permission/emergency-stop/subprocess tests: green;
@@ -222,7 +233,7 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Finish Phase 3.6 usability documentation and the safe project-aware guide command, then focus on pilot activation, service auto-start packaging and private tunnel connectivity. Phase 10 restricted command templates should be added only when a concrete missing use case cannot be solved through configuration or a built-in adapter.
+Migrate the private GitHub mailbox watcher to the shared Phase 3.7 protocol validator, then add a scrubbed result envelope and replay protection. After that, continue with service auto-start packaging and private tunnel connectivity. Phase 10 restricted command templates should be added only when a concrete missing use case cannot be solved through configuration or a built-in adapter.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

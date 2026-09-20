@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phase 3.8.1 now adds a strict public task-completion event contract with deterministic notification IDs. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
+Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phase 3.8.1 adds a strict public task-completion event contract with deterministic notification IDs. Phase 3.8.2 adds watcher heartbeat and restart-recovery semantics on the current feature branch. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
 
 Phase 0:
 - repository structure defined;
@@ -138,6 +138,20 @@ Phase 3.8.1 task-completion feedback:
 - public completion contract is transport-neutral; private destinations remain private configuration;
 - existing private mailbox notification workflow is currently blocked by unavailable repository-specific Actions capacity and has not yet completed an end-to-end delivery proof.
 
+Phase 3.8.2 watcher resilience and restart recovery:
+- replay entries now carry an explicit claimed/completed lifecycle;
+- legacy replay entries without state are treated conservatively as claimed;
+- completion is recorded only after a safe result is durable;
+- restart classification distinguishes process, result-exists, ambiguous-claim and result-missing states;
+- ambiguous or missing-result work is never automatically re-executed;
+- public heartbeat exposes only healthy/backlog/degraded plus bounded counts and oldest-pending age;
+- request IDs and infrastructure metadata are excluded from heartbeat output;
+- stale thresholds and observation counts are bounded;
+- duplicate pending observations fail closed;
+- transient transport retries are bounded and limited to timeout/rate-limit/unavailable failures;
+- authorization and invalid-response failures are not automatically retried;
+- watcher resilience and task-completion notification remain separate concerns.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;
@@ -215,10 +229,10 @@ Phase 9 human approval gates:
 
 ## Validation
 
-Phase 3.8.1 branch validation is green:
+Phase 3.8.2 watcher-resilience validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 270 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 308 tests green, with one third-party Starlette/AnyIO deprecation warning;
 - git diff whitespace check: green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
@@ -281,7 +295,7 @@ Phase 3.8.1 branch validation is green:
 
 ## Next steps
 
-Merge the completion-feedback contract, then make the private mailbox notifier idempotent with deterministic completion-event IDs and prove one fresh run_tests result produces exactly one user-facing notification. Keep watcher heartbeat/stale-request recovery separate. After that, migrate the private watcher to the shared request/result protocol, verify the five-minute demo from a clean Linux environment, and continue service/tunnel onboarding.
+Validate and merge the watcher-resilience branch, then migrate the private mailbox watcher to the shared request/result/replay lifecycle and publish the sanitized heartbeat. Prove restart recovery against a fresh backlog without replaying completed work. Keep the idempotent completion-notification path separate. After that, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

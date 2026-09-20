@@ -11,8 +11,9 @@ from urllib.parse import urlsplit
 from mcp.server import MCPServer
 from mcp.server.auth.provider import AccessToken, TokenVerifier
 from mcp.server.auth.settings import AuthSettings
+from mcp.server.mcpserver.utilities.func_metadata import ArgModelBase
 from mcp.server.transport_security import TransportSecuritySettings
-from pydantic import AnyHttpUrl
+from pydantic import AnyHttpUrl, ConfigDict
 from starlette.applications import Starlette
 from starlette.middleware import Middleware
 from starlette.requests import Request
@@ -164,6 +165,14 @@ class StaticBearerVerifier(TokenVerifier):
         )
 
 
+def harden_mcp_argument_validation() -> None:
+    """Reject unknown MCP tool arguments instead of silently ignoring them."""
+    ArgModelBase.model_config = ConfigDict(
+        arbitrary_types_allowed=True,
+        extra="forbid",
+    )
+
+
 def build_mcp(
     settings: Settings,
     registry: ProjectRegistry,
@@ -171,6 +180,7 @@ def build_mcp(
     safety_guard: OperatorSafetyGuard | None = None,
     secret_values: Mapping[str, str] | None = None,
 ) -> MCPServer:
+    harden_mcp_argument_validation()
     mcp = MCPServer(
         "Runner MCP",
         token_verifier=StaticBearerVerifier(settings.bearer_token, settings.resource_url),
@@ -734,6 +744,87 @@ def build_mcp(
             raise ValueError(str(exc)) from None
         _audit_deploy_result(
             tool_name="deployment_status",
+            project=result.get("project"),
+            result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def list_releases(project: str, limit: int = 100) -> list[dict]:
+        """List safe staging release metadata and retention/rollback state."""
+        try:
+            result = deployment_manager.list_releases(project, limit=limit)
+        except DeploymentError as exc:
+            _audit_deploy_result(
+                tool_name="list_releases",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_deploy_result(tool_name="list_releases", project=project, result="ok")
+        return result
+
+    @mcp.tool()
+    def rollback_plan(project: str) -> dict:
+        """Return the one-step rollback target and database-boundary safety state."""
+        try:
+            result = deployment_manager.rollback_plan(project)
+        except DeploymentError as exc:
+            _audit_deploy_result(
+                tool_name="rollback_plan",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_deploy_result(tool_name="rollback_plan", project=project, result="ok")
+        return result
+
+    @mcp.tool()
+    def rollback_release(project: str) -> dict:
+        """Start one asynchronous rollback to the direct previous release."""
+        try:
+            result = _require_deployment_jobs().start_rollback(project)
+        except (
+            DeploymentJobError,
+            DeploymentError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+            ValueError,
+        ) as exc:
+            _audit_deploy_result(
+                tool_name="rollback_release",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_deploy_result(
+            tool_name="rollback_release",
+            project=project,
+            result="started",
+        )
+        return result
+
+    @mcp.tool()
+    def rollback_status(job_id: str) -> dict:
+        """Return safe status for an asynchronous rollback job."""
+        try:
+            result = _require_deployment_jobs().status(job_id)
+        except (DeploymentJobError, ValueError) as exc:
+            _audit_deploy_result(
+                tool_name="rollback_status",
+                project=None,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        if result.get("operation") != "rollback":
+            _audit_deploy_result(
+                tool_name="rollback_status",
+                project=result.get("project"),
+                result="denied",
+            )
+            raise ValueError("Job is not a rollback job")
+        _audit_deploy_result(
+            tool_name="rollback_status",
             project=result.get("project"),
             result="ok",
         )

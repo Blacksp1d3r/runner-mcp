@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phases 4, 5 and 6 are complete on stacked follow-up branches.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phases 4, 5, 6 and 7 are complete on stacked follow-up branches.
 
 Phase 0:
 - repository structure defined;
@@ -127,11 +127,23 @@ Phase 6 staging deployment:
 - MCP plan/start/status lifecycle is integration tested;
 - deployment config is manageable by CLI without exposing release paths.
 
+Phase 7 controlled rollback:
+- release history exposes safe metadata, retention protection and rollback eligibility;
+- retention protection uses both minimum count and minimum age;
+- release metadata identity/commit/timestamp/environment/permissions are fail-closed validated;
+- rollback target is always the direct previous release from trusted metadata;
+- unknown MCP tool arguments are globally rejected;
+- current releases that applied DB migrations block code rollback;
+- rollback runs as a persisted async job sharing the per-project deploy/rollback exclusion;
+- successful rollback restarts and health-checks the configured service;
+- failed rollback health reactivates the original current release when the stop is not active;
+- no database restore, arbitrary target, production rollback or automatic cascade.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 161 tests green;
+- pytest: 171 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -158,6 +170,9 @@ Local trusted-runner validation is green:
 - deployment job persistence/interruption/error-sanitization tests: green;
 - deployment-config storage/validation/CLI tests: green;
 - MCP asynchronous deployment plan/start/status/emergency-stop test: green;
+- release listing/metadata-tamper/migration-boundary rollback tests: green;
+- rollback job persistence/blocking tests: green;
+- MCP one-step rollback/list/plan/status and arbitrary-target rejection test: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -169,12 +184,14 @@ Local trusted-runner validation is green:
 - PostgreSQL WAL/PITR orchestration;
 - automated backup-retention pruning;
 - production deployment;
-- manual historical rollback selection;
-- automatic database restore.
+- production rollback;
+- arbitrary/multi-step automatic rollback target selection;
+- automatic database restore;
+- automatic release pruning.
 
 ## Next steps
 
-Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4, Phase 5 and Phase 6 follow-up branches in order. Next development phase is Phase 7 controlled release rollback. Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
+Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4, Phase 5, Phase 6 and Phase 7 follow-up branches in order. Next development phase is Phase 8 multi-project adapters. Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

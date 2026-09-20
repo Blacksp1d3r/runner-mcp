@@ -530,6 +530,243 @@ class DeploymentManager:
             time.sleep(self.poll_interval_seconds)
         return False, last
 
+    def _read_release_metadata(
+        self,
+        releases: Path,
+        release_id: str,
+    ) -> dict:
+        self._validate_release_id(release_id)
+        release_dir = releases / release_id
+        if not release_dir.exists() or release_dir.is_symlink() or not release_dir.is_dir():
+            raise DeploymentError("Release metadata target is unavailable")
+        try:
+            release_dir.resolve(strict=True).relative_to(releases)
+        except (OSError, ValueError) as exc:
+            raise DeploymentError("Release metadata target is unsafe") from exc
+
+        path = release_dir / ".runner-mcp-release.json"
+        if not path.exists() or path.is_symlink() or not path.is_file():
+            raise DeploymentError("Release metadata is unavailable")
+        if stat.S_IMODE(path.stat().st_mode) != 0o600:
+            raise DeploymentError("Release metadata permissions are unsafe")
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, TypeError, json.JSONDecodeError) as exc:
+            raise DeploymentError("Release metadata is invalid") from exc
+
+        if payload.get("release_id") != release_id:
+            raise DeploymentError("Release metadata identity mismatch")
+        commit = payload.get("commit")
+        if (
+            not isinstance(commit, str)
+            or len(commit) != 40
+            or any(char not in "0123456789abcdefABCDEF" for char in commit)
+        ):
+            raise DeploymentError("Release metadata commit is invalid")
+        created_at = payload.get("created_at")
+        try:
+            created = datetime.fromisoformat(str(created_at))
+        except ValueError as exc:
+            raise DeploymentError("Release metadata timestamp is invalid") from exc
+        if created.tzinfo is None:
+            raise DeploymentError("Release metadata timestamp must include a timezone")
+        if payload.get("environment") != "staging":
+            raise DeploymentError("Release metadata environment is invalid")
+        previous = payload.get("previous_release")
+        if previous is not None:
+            if not isinstance(previous, str):
+                raise DeploymentError("Release metadata previous-release value is invalid")
+            self._validate_release_id(previous)
+        migrations_applied = payload.get("migrations_applied")
+        if not isinstance(migrations_applied, bool):
+            raise DeploymentError("Release metadata migration state is invalid")
+        backup_id = payload.get("pre_migration_backup_id")
+        if backup_id is not None and not isinstance(backup_id, str):
+            raise DeploymentError("Release metadata backup reference is invalid")
+
+        return {
+            "release_id": release_id,
+            "commit": commit.lower(),
+            "created_at": created.isoformat(),
+            "created_at_value": created,
+            "previous_release": previous,
+            "migrations_applied": migrations_applied,
+            "pre_migration_backup_id": backup_id,
+        }
+
+    def list_releases(self, project: str, *, limit: int = 100) -> list[dict]:
+        if limit < 1 or limit > 500:
+            raise DeploymentError("Release list limit must be between 1 and 500")
+        config, deployment = self._project(project)
+        self._validate_configuration(project, config, deployment)
+        release_root, releases = self._prepare_release_root(
+            deployment,
+            create=False,
+        )
+        current = self._current_release_id(release_root, releases)
+        directories = sorted(
+            (
+                entry
+                for entry in releases.iterdir()
+                if entry.is_dir() and not entry.is_symlink()
+            ),
+            key=lambda entry: entry.name,
+            reverse=True,
+        )
+
+        result: list[dict] = []
+        for rank, entry in enumerate(directories):
+            metadata = self._read_release_metadata(releases, entry.name)
+            protected = not self.safety.retention.release_is_deletable(
+                release_rank_from_newest=rank,
+                deployed_at=metadata["created_at_value"],
+            )
+            is_current = entry.name == current
+            rollback_eligible = (
+                is_current
+                and metadata["previous_release"] is not None
+                and not metadata["migrations_applied"]
+            )
+            result.append(
+                {
+                    "release_id": metadata["release_id"],
+                    "commit": metadata["commit"],
+                    "created_at": metadata["created_at"],
+                    "previous_release": metadata["previous_release"],
+                    "current": is_current,
+                    "migrations_applied": metadata["migrations_applied"],
+                    "pre_migration_backup_id": metadata["pre_migration_backup_id"],
+                    "retention_protected": protected,
+                    "rollback_eligible": rollback_eligible,
+                }
+            )
+            if len(result) >= limit:
+                break
+        return result
+
+    def rollback_plan(self, project: str) -> dict:
+        config, deployment = self._project(project)
+        self._validate_configuration(project, config, deployment)
+        release_root, releases = self._prepare_release_root(
+            deployment,
+            create=False,
+        )
+        current = self._current_release_id(release_root, releases)
+        if current is None:
+            raise DeploymentError("No active release is available for rollback")
+        current_metadata = self._read_release_metadata(releases, current)
+        target = current_metadata["previous_release"]
+        if target is None:
+            raise DeploymentError("The active release has no previous release")
+        target_metadata = self._read_release_metadata(releases, target)
+        blocked = current_metadata["migrations_applied"]
+        return {
+            "project": project,
+            "current_release": current,
+            "current_commit": current_metadata["commit"],
+            "target_release": target,
+            "target_commit": target_metadata["commit"],
+            "one_step_only": True,
+            "blocked_by_database_migration": blocked,
+            "allowed": not blocked,
+            "database_restore_performed": False,
+        }
+
+    def rollback_one(self, project: str) -> dict:
+        self.safety.assert_action_allowed(ActionClass.CODE_ROLLBACK)
+        self.safety.assert_code_rollback_steps(1)
+        lock = self._lock_for(project)
+        if not lock.acquire(blocking=False):
+            raise DeploymentError("Another deployment or rollback is already in progress")
+        try:
+            plan = self.rollback_plan(project)
+            if not plan["allowed"]:
+                raise DeploymentError(
+                    "Code rollback is blocked across a database migration boundary"
+                )
+            _, deployment = self._project(project)
+            release_root, releases = self._prepare_release_root(
+                deployment,
+                create=False,
+            )
+            current = plan["current_release"]
+            target = plan["target_release"]
+
+            self.safety.assert_action_allowed(ActionClass.CODE_ROLLBACK)
+            self._activate_release(release_root, releases, target)
+            try:
+                self.services.action(project, deployment.service, "restart")
+            except (ServiceManagerError, OperatorStopActive):
+                if self.safety.status().stop_active:
+                    return {
+                        **plan,
+                        "status": "rollback_failed_operator_stop_active",
+                        "current_release": target,
+                    }
+                self._activate_release(release_root, releases, current)
+                try:
+                    self.services.action(project, deployment.service, "restart")
+                except (ServiceManagerError, OperatorStopActive):
+                    return {
+                        **plan,
+                        "status": "rollback_failed_reactivation_restart",
+                        "current_release": current,
+                    }
+                return {
+                    **plan,
+                    "status": "rollback_failed_reactivated_current",
+                    "current_release": current,
+                }
+
+            healthy, health = self._wait_healthy(
+                project,
+                deployment.service,
+                timeout_seconds=deployment.activation_timeout_seconds,
+            )
+            if healthy:
+                return {
+                    **plan,
+                    "status": "rolled_back",
+                    "current_release": target,
+                    "health": health,
+                }
+
+            if self.safety.status().stop_active:
+                return {
+                    **plan,
+                    "status": "rollback_failed_operator_stop_active",
+                    "current_release": target,
+                    "health": health,
+                }
+
+            self._activate_release(release_root, releases, current)
+            try:
+                self.services.action(project, deployment.service, "restart")
+            except (ServiceManagerError, OperatorStopActive):
+                return {
+                    **plan,
+                    "status": "rollback_failed_reactivation_restart",
+                    "current_release": current,
+                    "health": health,
+                }
+            recovered, recovered_health = self._wait_healthy(
+                project,
+                deployment.service,
+                timeout_seconds=deployment.activation_timeout_seconds,
+            )
+            return {
+                **plan,
+                "status": (
+                    "rollback_failed_reactivated_current"
+                    if recovered
+                    else "rollback_failed_current_unhealthy"
+                ),
+                "current_release": current,
+                "health": recovered_health,
+            }
+        finally:
+            lock.release()
+
     def deploy(self, project: str) -> dict:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
         lock = self._lock_for(project)

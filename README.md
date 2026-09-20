@@ -64,6 +64,8 @@ Current implemented foundations include:
 - controlled migration status/apply with mandatory pre-migration backup;
 - staging-only release planning and asynchronous deployment jobs;
 - clean-Git release archives, atomic activation and health-gated rollback;
+- safe release history plus one-step asynchronous staging rollback;
+- strict MCP tool arguments: unknown fields are rejected rather than ignored;
 - predefined test profiles only;
 - test timeout, cancellation and process-group cleanup;
 - scrubbed, bounded test logs;

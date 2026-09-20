@@ -485,3 +485,133 @@ def test_current_symlink_escape_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(DeploymentError, match="escapes"):
         deployer.plan("demo")
+
+
+def test_release_list_marks_current_and_one_step_rollback_eligibility(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    first = deployer.deploy("demo")
+    commit_text(root, "v2\n", "second")
+    second = deployer.deploy("demo")
+
+    releases = deployer.list_releases("demo")
+
+    assert len(releases) == 2
+    current = next(item for item in releases if item["current"])
+    previous = next(item for item in releases if not item["current"])
+    assert current["release_id"] == second["release_id"]
+    assert current["previous_release"] == first["release_id"]
+    assert current["rollback_eligible"] is True
+    assert current["retention_protected"] is True
+    assert previous["rollback_eligible"] is False
+    assert str(tmp_path) not in repr(releases)
+
+
+def test_rollback_plan_targets_only_direct_previous_release(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    first = deployer.deploy("demo")
+    commit_text(root, "v2\n", "second")
+    second = deployer.deploy("demo")
+
+    plan = deployer.rollback_plan("demo")
+
+    assert plan["current_release"] == second["release_id"]
+    assert plan["target_release"] == first["release_id"]
+    assert plan["one_step_only"] is True
+    assert plan["allowed"] is True
+    assert plan["database_restore_performed"] is False
+
+
+def test_successful_manual_rollback_moves_exactly_one_release(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    services = FakeServices(healthy=True)
+    deployer = manager(tmp_path, root, services=services)
+    first = deployer.deploy("demo")
+    commit_text(root, "v2\n", "second")
+    second = deployer.deploy("demo")
+
+    result = deployer.rollback_one("demo")
+
+    assert result["status"] == "rolled_back"
+    assert result["target_release"] == first["release_id"]
+    assert result["current_release"] == first["release_id"]
+    assert result["current_release"] != second["release_id"]
+    assert result["database_restore_performed"] is False
+    assert current_release(tmp_path / "staging") == first["release_id"]
+
+
+def test_rollback_is_blocked_across_database_migration_boundary(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    first_deployer = manager(tmp_path, root)
+    first = first_deployer.deploy("demo")
+
+    commit_text(root, "v2\n", "migration release")
+    migrated = manager(
+        tmp_path,
+        root,
+        run_migrations=True,
+        database=FakeDatabase(status="applied"),
+    )
+    second = migrated.deploy("demo")
+    assert second["status"] == "deployed"
+
+    plan = migrated.rollback_plan("demo")
+    assert plan["target_release"] == first["release_id"]
+    assert plan["blocked_by_database_migration"] is True
+    assert plan["allowed"] is False
+
+    with pytest.raises(DeploymentError, match="database migration boundary"):
+        migrated.rollback_one("demo")
+
+    assert current_release(tmp_path / "staging") == second["release_id"]
+
+
+def test_failed_rollback_health_reactivates_original_current(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    deployer.deploy("demo")
+    commit_text(root, "v2\n", "second")
+    second = deployer.deploy("demo")
+    outcomes = iter(
+        [
+            (False, {"active_state": "active", "health": "unhealthy"}),
+            (True, {"active_state": "active", "health": "healthy"}),
+        ]
+    )
+    monkeypatch.setattr(deployer, "_wait_healthy", lambda *args, **kwargs: next(outcomes))
+
+    result = deployer.rollback_one("demo")
+
+    assert result["status"] == "rollback_failed_reactivated_current"
+    assert result["current_release"] == second["release_id"]
+    assert current_release(tmp_path / "staging") == second["release_id"]
+
+
+def test_rollback_requires_previous_release(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    deployer.deploy("demo")
+
+    with pytest.raises(DeploymentError, match="no previous release"):
+        deployer.rollback_plan("demo")
+
+
+def test_release_metadata_permission_tampering_fails_closed(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    deployed = deployer.deploy("demo")
+    metadata = (
+        tmp_path
+        / "staging"
+        / "releases"
+        / deployed["release_id"]
+        / ".runner-mcp-release.json"
+    )
+    metadata.chmod(0o644)
+
+    with pytest.raises(DeploymentError, match="permissions"):
+        deployer.list_releases("demo")

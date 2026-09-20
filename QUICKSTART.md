@@ -196,6 +196,21 @@ Deployment itself is exposed through MCP as a short asynchronous workflow:
 
 Runner MCP deploys only a clean Git HEAD. It does not accept an arbitrary branch/ref or shell command from the MCP client. If health fails after a deployment without migrations, one automatic code rollback may occur. After database migrations, health failure requires manual recovery and never triggers automatic database restore.
 
+### Inspect and roll back releases
+
+Release history is available through MCP with safe metadata only:
+
+- `list_releases(project)` shows current/history/retention state;
+- `rollback_plan(project)` resolves the direct previous release;
+- `rollback_release(project)` starts one asynchronous rollback;
+- `rollback_status(job_id)` reports its persisted result.
+
+The client cannot choose a target release. One action moves at most one release back. A second step requires a new plan and a new action after health verification.
+
+If the active release applied database migrations, code rollback is blocked. Runner MCP never automatically restores the database.
+
+Retention protection combines minimum release count and minimum age. Automatic release deletion is not enabled yet.
+
 ## 6. Verify the installation
 
 Run:

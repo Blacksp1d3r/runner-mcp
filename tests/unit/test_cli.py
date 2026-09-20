@@ -280,3 +280,32 @@ def test_service_config_cli_hides_private_unit(
     assert result == 0
     assert "web: restart" in captured.out
     assert "private-web.service" not in captured.out
+
+
+def test_database_config_cli_uses_hidden_prompt_and_does_not_print_secret(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    secret = "postgresql://user:hidden-secret@example.invalid/app"
+    monkeypatch.setattr("runner_mcp.cli.getpass.getpass", lambda _: secret)
+
+    result = main([
+        "--config-dir", str(paths.config_dir),
+        "database-config", "add", "demo",
+    ])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert secret not in captured.out
+    assert secret not in captured.err
+
+    result = main([
+        "--config-dir", str(paths.config_dir),
+        "database-config", "list",
+    ])
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "demo: configured, postgresql" in captured.out
+    assert secret not in captured.out

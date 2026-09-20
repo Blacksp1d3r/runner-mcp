@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import fcntl
+import hashlib
 import os
+import shlex
 import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -10,8 +12,20 @@ from typing import Any
 
 import yaml
 
-from .config import ProjectConfig, ProjectRegistry, ServiceConfig, TestProfile
-from .onboarding import OnboardingError, PrivatePaths, read_private_runtime
+from .config import (
+    DatabaseConfig,
+    MigrationConfig,
+    ProjectConfig,
+    ProjectRegistry,
+    ServiceConfig,
+    TestProfile,
+)
+from .onboarding import (
+    OnboardingError,
+    PrivatePaths,
+    load_env_file,
+    read_private_runtime,
+)
 
 
 class ConfigManagerError(RuntimeError):
@@ -488,3 +502,233 @@ def remove_service_config(
         project_file=project_file,
         registry=updated,
     )
+
+
+def _database_env_name(project: str) -> str:
+    safe = project.upper().replace("-", "_")
+    digest = hashlib.sha256(project.encode("utf-8")).hexdigest()[:8].upper()
+    return f"RUNNER_MCP_DB_{safe}_{digest}"
+
+
+def _write_private_environment(paths: PrivatePaths, values: dict[str, str]) -> None:
+    for key, value in values.items():
+        if not key or "\n" in key or "=" in key:
+            raise ConfigManagerError("Invalid private environment key")
+        if "\n" in value or "\r" in value or "\x00" in value:
+            raise ConfigManagerError("Private environment values must be single-line text")
+
+    lines = [
+        "# Private Runner MCP runtime configuration.",
+        "# Never commit this file to a repository.",
+    ]
+    lines.extend(f"{key}={shlex.quote(value)}" for key, value in sorted(values.items()))
+    _atomic_write_private(paths.env_file, "\n".join(lines) + "\n")
+
+
+def list_database_configs(config_dir: Path) -> list[dict[str, Any]]:
+    _, _, registry = _load_for_edit(config_dir)
+    result: list[dict[str, Any]] = []
+    for code, project in sorted(registry.projects.items()):
+        database = project.database
+        result.append(
+            {
+                "project": code,
+                "configured": database is not None,
+                "engine": database.engine if database is not None else None,
+                "migrations_configured": (
+                    database is not None and database.migrations is not None
+                ),
+            }
+        )
+    return result
+
+
+def add_database_config(
+    config_dir: Path,
+    *,
+    project: str,
+    dsn: str,
+) -> dict[str, Any]:
+    if not dsn or len(dsn) > 32768 or any(char in dsn for char in "\r\n\x00"):
+        raise ConfigManagerError("PostgreSQL connection string has an invalid format")
+
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if cfg.database is not None:
+        raise ConfigManagerError("Project database is already configured")
+
+    env_name = _database_env_name(project)
+    for other in registry.projects.values():
+        if other.database is not None and other.database.dsn_env == env_name:
+            raise ConfigManagerError("Database secret name collides with another project")
+
+    try:
+        database = DatabaseConfig(dsn_env=env_name)
+        updated_project = cfg.model_copy(update={"database": database})
+        updated_project = ProjectConfig.model_validate(updated_project.model_dump())
+        updated = ProjectRegistry(
+            projects={
+                **registry.projects,
+                project: updated_project,
+            }
+        )
+        updated.validate_codes()
+    except ValueError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+
+    # Write the secret first. If project config persistence fails, the secret is
+    # orphaned but inactive; the inverse ordering could activate a config with no secret.
+    env_values = load_env_file(paths.env_file)
+    env_values[env_name] = dsn
+    with _configuration_lock(paths):
+        _write_private_environment(paths, env_values)
+        _atomic_write_private(project_file, _serialize_registry(updated))
+
+    return {
+        "project": project,
+        "configured": True,
+        "engine": database.engine,
+        "migrations_configured": False,
+    }
+
+
+def remove_database_config(config_dir: Path, *, project: str) -> None:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if cfg.database is None:
+        raise ConfigManagerError("Project database is not configured")
+
+    env_name = cfg.database.dsn_env
+    updated_project = cfg.model_copy(update={"database": None})
+    updated = ProjectRegistry(
+        projects={
+            **registry.projects,
+            project: updated_project,
+        }
+    )
+    env_values = load_env_file(paths.env_file)
+    env_values.pop(env_name, None)
+
+    with _configuration_lock(paths):
+        # Disable use of the secret in project config first. An unused secret is
+        # safer than an active DB config with a missing credential.
+        _atomic_write_private(project_file, _serialize_registry(updated))
+        _write_private_environment(paths, env_values)
+
+
+def _detect_alembic(project_root: Path) -> Path:
+    for candidate in (
+        project_root / ".venv" / "bin" / "alembic",
+        project_root / "venv" / "bin" / "alembic",
+    ):
+        if (
+            candidate.exists()
+            and candidate.is_file()
+            and not candidate.is_symlink()
+            and os.access(candidate, os.X_OK)
+        ):
+            return candidate.resolve()
+    raise ConfigManagerError("Could not find Alembic in .venv/bin or venv/bin")
+
+
+def add_migration_config(
+    config_dir: Path,
+    *,
+    project: str,
+    preset: str,
+    dsn_target_env: str = "DATABASE_URL",
+    status_executable: Path | None = None,
+    status_arguments: list[str] | None = None,
+    apply_executable: Path | None = None,
+    apply_arguments: list[str] | None = None,
+    cwd: str = ".",
+    timeout_seconds: int = 600,
+) -> dict[str, Any]:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if cfg.database is None:
+        raise ConfigManagerError("Configure the project database first")
+    if cfg.database.migrations is not None:
+        raise ConfigManagerError("Migration profile is already configured")
+
+    if preset == "alembic":
+        executable = _detect_alembic(cfg.root)
+        status_argv = [str(executable), "current"]
+        apply_argv = [str(executable), "upgrade", "head"]
+    elif preset == "custom":
+        if status_executable is None or apply_executable is None:
+            raise ConfigManagerError(
+                "Custom migration profiles require status and apply executables"
+            )
+        status_resolved = _absolute_without_symlinks(
+            status_executable,
+            label="Migration status executable",
+        )
+        apply_resolved = _absolute_without_symlinks(
+            apply_executable,
+            label="Migration apply executable",
+        )
+        for label, executable in (
+            ("Migration status executable", status_resolved),
+            ("Migration apply executable", apply_resolved),
+        ):
+            if not executable.is_file() or not os.access(executable, os.X_OK):
+                raise ConfigManagerError(f"{label} is unavailable or unsafe")
+        status_argv = [str(status_resolved), *(status_arguments or [])]
+        apply_argv = [str(apply_resolved), *(apply_arguments or [])]
+    else:
+        raise ConfigManagerError("Unknown migration preset")
+
+    try:
+        migrations = MigrationConfig(
+            status_argv=status_argv,
+            apply_argv=apply_argv,
+            cwd=cwd,
+            dsn_target_env=dsn_target_env,
+            timeout_seconds=timeout_seconds,
+        )
+        database = cfg.database.model_copy(update={"migrations": migrations})
+        updated_project = cfg.model_copy(update={"database": database})
+        updated_project = ProjectConfig.model_validate(updated_project.model_dump())
+        updated = ProjectRegistry(
+            projects={
+                **registry.projects,
+                project: updated_project,
+            }
+        )
+        updated.validate_codes()
+    except ValueError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+
+    _save_registry(paths=paths, project_file=project_file, registry=updated)
+    return {
+        "project": project,
+        "preset": preset,
+        "configured": True,
+        "timeout_seconds": migrations.timeout_seconds,
+    }
+
+
+def remove_migration_config(config_dir: Path, *, project: str) -> None:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if cfg.database is None or cfg.database.migrations is None:
+        raise ConfigManagerError("Migration profile is not configured")
+
+    database = cfg.database.model_copy(update={"migrations": None})
+    updated_project = cfg.model_copy(update={"database": database})
+    updated = ProjectRegistry(
+        projects={
+            **registry.projects,
+            project: updated_project,
+        }
+    )
+    _save_registry(paths=paths, project_file=project_file, registry=updated)

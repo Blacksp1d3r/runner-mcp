@@ -21,6 +21,7 @@ from starlette.routing import Mount, Route
 
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .config import ProjectRegistry, load_project_registry
+from .database_manager import DatabaseManager, DatabaseManagerError
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 from .operational_safety import (
@@ -46,6 +47,7 @@ class Settings:
     retention_confirmed: bool = True
     test_jobs_root: Path | None = None
     max_test_jobs: int = 2
+    database_backup_root: Path | None = None
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, str]) -> Settings:
@@ -79,6 +81,15 @@ class Settings:
         if test_jobs_root_raw and not Path(test_jobs_root_raw).is_absolute():
             raise RuntimeError("RUNNER_MCP_TEST_JOBS_ROOT must be an absolute path")
 
+        database_backup_root_raw = values.get(
+            "RUNNER_MCP_DATABASE_BACKUP_ROOT",
+            "",
+        ).strip()
+        if database_backup_root_raw and not Path(database_backup_root_raw).is_absolute():
+            raise RuntimeError(
+                "RUNNER_MCP_DATABASE_BACKUP_ROOT must be an absolute path"
+            )
+
         try:
             max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "2"))
         except ValueError as exc:
@@ -100,6 +111,9 @@ class Settings:
             retention_confirmed=retention_confirmed_raw == "true",
             test_jobs_root=Path(test_jobs_root_raw) if test_jobs_root_raw else None,
             max_test_jobs=max_test_jobs,
+            database_backup_root=(
+                Path(database_backup_root_raw) if database_backup_root_raw else None
+            ),
         )
 
     @classmethod
@@ -142,6 +156,7 @@ def build_mcp(
     registry: ProjectRegistry,
     audit: AuditLogger,
     safety_guard: OperatorSafetyGuard | None = None,
+    secret_values: Mapping[str, str] | None = None,
 ) -> MCPServer:
     mcp = MCPServer(
         "Runner MCP",
@@ -172,6 +187,12 @@ def build_mcp(
     service_manager = ServiceManager(
         registry=registry,
         safety=safety,
+    )
+    database_manager = DatabaseManager(
+        registry=registry,
+        safety=safety,
+        backup_root=settings.database_backup_root,
+        secret_values=secret_values or os.environ,
     )
 
     @mcp.tool()
@@ -511,6 +532,103 @@ def build_mcp(
         """Restart one explicitly allow-listed service alias."""
         return _service_action(project, service, "restart")
 
+    def _audit_database_result(
+        *,
+        tool_name: str,
+        project: str,
+        result: str,
+    ) -> None:
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                tool_name,
+                project,
+                "authenticated-client",
+                result,
+                utc_timestamp(),
+            )
+        )
+
+    @mcp.tool()
+    def list_backups(project: str, limit: int = 100) -> list[dict]:
+        """List safe database-backup metadata without paths or credentials."""
+        try:
+            result = database_manager.list_backups(project, limit=limit)
+        except DatabaseManagerError as exc:
+            _audit_database_result(
+                tool_name="list_backups",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_database_result(tool_name="list_backups", project=project, result="ok")
+        return result
+
+    @mcp.tool()
+    def backup_database(project: str) -> dict:
+        """Create a private PostgreSQL backup for one configured project."""
+        try:
+            result = database_manager.backup_database(project)
+        except (
+            DatabaseManagerError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_database_result(
+                tool_name="backup_database",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_database_result(
+            tool_name="backup_database",
+            project=project,
+            result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def migration_status(project: str) -> dict:
+        """Run the configured read-only migration status command."""
+        try:
+            result = database_manager.migration_status(project)
+        except DatabaseManagerError as exc:
+            _audit_database_result(
+                tool_name="migration_status",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_database_result(
+            tool_name="migration_status",
+            project=project,
+            result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def apply_migrations(project: str) -> dict:
+        """Create a pre-migration backup, then run the configured migration command."""
+        try:
+            result = database_manager.apply_migrations(project)
+        except (
+            DatabaseManagerError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_database_result(
+                tool_name="apply_migrations",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_database_result(
+            tool_name="apply_migrations",
+            project=project,
+            result=str(result.get("status", "unknown")),
+        )
+        return result
+
     return mcp
 
 
@@ -521,6 +639,7 @@ async def health(_: Request) -> JSONResponse:
 def create_app(
     settings: Settings | None = None,
     registry: ProjectRegistry | None = None,
+    secret_values: Mapping[str, str] | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
@@ -530,7 +649,13 @@ def create_app(
         retention=settings.retention_policy,
         retention_confirmed=settings.retention_confirmed,
     )
-    mcp = build_mcp(settings, registry, audit, safety_guard=safety_guard)
+    mcp = build_mcp(
+        settings,
+        registry,
+        audit,
+        safety_guard=safety_guard,
+        secret_values=secret_values,
+    )
     transport_security = transport_security_for(settings.resource_url)
 
     @asynccontextmanager

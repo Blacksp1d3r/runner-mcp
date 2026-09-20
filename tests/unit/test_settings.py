@@ -78,3 +78,21 @@ def test_operator_paths_must_be_absolute(
 
     with pytest.raises(RuntimeError, match="absolute path"):
         Settings.from_env()
+
+
+def test_database_backup_root_defaults_to_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.delenv("RUNNER_MCP_DATABASE_BACKUP_ROOT", raising=False)
+    settings = Settings.from_env()
+    assert settings.database_backup_root is None
+
+
+def test_database_backup_root_must_be_absolute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_DATABASE_BACKUP_ROOT", "relative/backups")
+    with pytest.raises(RuntimeError, match="DATABASE_BACKUP_ROOT.*absolute"):
+        Settings.from_env()

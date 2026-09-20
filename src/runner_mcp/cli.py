@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import getpass
 import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
@@ -10,12 +11,17 @@ import uvicorn
 
 from .config_manager import (
     ConfigManagerError,
+    add_database_config,
+    add_migration_config,
     add_project,
     add_service_config,
     add_test_profile,
+    list_database_configs,
     list_projects,
     list_service_configs,
     list_test_profiles,
+    remove_database_config,
+    remove_migration_config,
     remove_project,
     remove_service_config,
     remove_test_profile,
@@ -26,6 +32,7 @@ from .onboarding import (
     disable_operator_stop,
     enable_operator_stop,
     install_private_configuration,
+    load_env_file,
     operator_stop_status,
     prompt_setup_answers,
     read_private_runtime,
@@ -312,9 +319,86 @@ def cmd_service_config(args: argparse.Namespace) -> int:
     raise ConfigManagerError("Unknown service-config action")
 
 
+def cmd_database_config(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.database_action == "list":
+        rows = list_database_configs(config_dir)
+        for row in rows:
+            state = "configured" if row["configured"] else "not-configured"
+            migrations = (
+                "migrations" if row["migrations_configured"] else "no-migrations"
+            )
+            engine = row["engine"] or "-"
+            print(f"{row['project']}: {state}, {engine}, {migrations}")
+        return 0
+
+    if args.database_action == "add":
+        dsn = getpass.getpass("PostgreSQL connection string (hidden): ").strip()
+        result = add_database_config(
+            config_dir,
+            project=args.project,
+            dsn=dsn,
+        )
+        print(f"Database configured for {result['project']}; credential stored privately.")
+        return 0
+
+    if args.database_action == "remove":
+        expected = f"REMOVE DATABASE {args.project}"
+        confirmation = input(f"Type {expected} to continue: ").strip()
+        if confirmation != expected:
+            raise ConfigManagerError("Database removal cancelled")
+        remove_database_config(config_dir, project=args.project)
+        print(f"Database configuration removed: {args.project}")
+        return 0
+
+    raise ConfigManagerError("Unknown database-config action")
+
+
+def cmd_migration_config(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.migration_action == "add":
+        status_executable = (
+            Path(args.status_executable) if args.status_executable else None
+        )
+        apply_executable = (
+            Path(args.apply_executable) if args.apply_executable else None
+        )
+        result = add_migration_config(
+            config_dir,
+            project=args.project,
+            preset=args.preset,
+            dsn_target_env=args.dsn_target_env,
+            status_executable=status_executable,
+            status_arguments=args.status_arg,
+            apply_executable=apply_executable,
+            apply_arguments=args.apply_arg,
+            cwd=args.cwd,
+            timeout_seconds=args.timeout,
+        )
+        print(
+            f"Migration profile configured for {result['project']} "
+            f"({result['preset']})."
+        )
+        return 0
+
+    if args.migration_action == "remove":
+        expected = f"REMOVE MIGRATIONS {args.project}"
+        confirmation = input(f"Type {expected} to continue: ").strip()
+        if confirmation != expected:
+            raise ConfigManagerError("Migration-profile removal cancelled")
+        remove_migration_config(config_dir, project=args.project)
+        print(f"Migration profile removed: {args.project}")
+        return 0
+
+    raise ConfigManagerError("Unknown migration-config action")
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
-    _, settings, registry = read_private_runtime(config_dir)
+    paths, settings, registry = read_private_runtime(config_dir)
+    secret_values = load_env_file(paths.env_file)
 
     bind_host = args.host
     if bind_host not in {"127.0.0.1", "::1", "localhost"} and not args.allow_public_bind:
@@ -322,7 +406,11 @@ def cmd_serve(args: argparse.Namespace) -> int:
             "Non-loopback bind requires --allow-public-bind; prefer a TLS reverse proxy"
         )
 
-    app = create_app(settings=settings, registry=registry)
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values=secret_values,
+    )
     uvicorn.run(
         app,
         host=bind_host,
@@ -479,6 +567,40 @@ def build_parser() -> argparse.ArgumentParser:
     service_remove.add_argument("project")
     service_remove.add_argument("name")
     service_remove.set_defaults(func=cmd_service_config)
+
+    database = subparsers.add_parser(
+        "database-config",
+        help="Configure private PostgreSQL credentials without editing YAML.",
+    )
+    database_sub = database.add_subparsers(dest="database_action", required=True)
+    database_list = database_sub.add_parser("list", help="List safe database summaries.")
+    database_list.set_defaults(func=cmd_database_config)
+    database_add = database_sub.add_parser("add", help="Add a private PostgreSQL connection.")
+    database_add.add_argument("project")
+    database_add.set_defaults(func=cmd_database_config)
+    database_remove = database_sub.add_parser("remove", help="Remove a database configuration.")
+    database_remove.add_argument("project")
+    database_remove.set_defaults(func=cmd_database_config)
+
+    migration = subparsers.add_parser(
+        "migration-config",
+        help="Configure fixed migration status/apply commands.",
+    )
+    migration_sub = migration.add_subparsers(dest="migration_action", required=True)
+    migration_add = migration_sub.add_parser("add", help="Add a migration profile.")
+    migration_add.add_argument("project")
+    migration_add.add_argument("--preset", choices=("alembic", "custom"), default="alembic")
+    migration_add.add_argument("--dsn-target-env", default="DATABASE_URL")
+    migration_add.add_argument("--status-executable")
+    migration_add.add_argument("--status-arg", action="append", default=[])
+    migration_add.add_argument("--apply-executable")
+    migration_add.add_argument("--apply-arg", action="append", default=[])
+    migration_add.add_argument("--cwd", default=".")
+    migration_add.add_argument("--timeout", type=int, default=600)
+    migration_add.set_defaults(func=cmd_migration_config)
+    migration_remove = migration_sub.add_parser("remove", help="Remove a migration profile.")
+    migration_remove.add_argument("project")
+    migration_remove.set_defaults(func=cmd_migration_config)
 
     serve = subparsers.add_parser(
         "serve",

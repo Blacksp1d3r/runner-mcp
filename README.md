@@ -34,6 +34,9 @@ runner-mcp test-profile list PROJECT
 runner-mcp test-profile add PROJECT NAME --preset pytest
 runner-mcp service-config list PROJECT
 runner-mcp service-config add PROJECT ALIAS --unit UNIT
+runner-mcp database-config list
+runner-mcp database-config add PROJECT
+runner-mcp migration-config add PROJECT --preset alembic
 runner-mcp serve
 ```
 
@@ -55,6 +58,8 @@ Current implemented foundations include:
 - controlled asynchronous test jobs;
 - allow-listed systemd-user staging service status/start/stop/restart;
 - optional private service health checks;
+- private PostgreSQL backups with safe metadata listing;
+- controlled migration status/apply with mandatory pre-migration backup;
 - predefined test profiles only;
 - test timeout, cancellation and process-group cleanup;
 - scrubbed, bounded test logs;
@@ -71,6 +76,7 @@ Runner MCP is not intended to provide:
 - a general remote shell;
 - arbitrary commands supplied by an AI client;
 - automatic production database restore;
+- any database restore in the current implementation;
 - automatic multi-release rollback cascades;
 - unrestricted service control;
 - untrusted public-fork execution on a privileged persistent runner.

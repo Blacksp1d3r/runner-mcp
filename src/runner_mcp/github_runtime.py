@@ -8,6 +8,11 @@ from .bridge_mcp_executor import LocalMCPBridgeExecutor, LocalMCPConfig
 from .bridge_replay import BridgeReplayLedger
 from .bridge_resilience import serialize_watcher_heartbeat
 from .github_mailbox import (
+    GITHUB_MAILBOX_ENV_KEYS,
+    GITHUB_REPOSITORY_ENV,
+    GITHUB_REQUEST_REF_ENV,
+    GITHUB_RESULT_REF_ENV,
+    GITHUB_TOKEN_ENV,
     GitHubApiSession,
     GitHubMailboxConfig,
     GitHubMailboxTransport,
@@ -20,19 +25,6 @@ from .github_watcher import (
     GitHubWatcherCycleState,
 )
 from .onboarding import OnboardingError, load_env_file, read_private_runtime
-
-GITHUB_REPOSITORY_ENV = "RUNNER_MCP_GITHUB_REPOSITORY"
-GITHUB_REQUEST_REF_ENV = "RUNNER_MCP_GITHUB_REQUEST_REF"
-GITHUB_RESULT_REF_ENV = "RUNNER_MCP_GITHUB_RESULT_REF"
-GITHUB_TOKEN_ENV = "RUNNER_MCP_GITHUB_TOKEN"
-GITHUB_MAILBOX_ENV_KEYS = frozenset(
-    {
-        GITHUB_REPOSITORY_ENV,
-        GITHUB_REQUEST_REF_ENV,
-        GITHUB_RESULT_REF_ENV,
-        GITHUB_TOKEN_ENV,
-    }
-)
 
 DEFAULT_REQUEST_REF = "runner-control"
 DEFAULT_RESULT_REF = "runner-results"

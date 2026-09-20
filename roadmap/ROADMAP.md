@@ -125,28 +125,33 @@ Next:
 
 Make asynchronous work observable to the operator without expanding execution authority.
 
-Current state:
+Implemented public contract:
 
-- a project-local CI completion notification pattern is proven in a pilot project: pull-request validation can report success, failure or cancellation back through GitHub after the validation job finishes;
-- a private mailbox notification workflow exists for completed `run_tests` results and reports only a small safe summary such as project, predefined test profile/suite and final status;
-- the central mailbox completion notification still needs an end-to-end proof with a newly produced result after deployment;
-- completion notifications do not add commands, change the mailbox allow-list or grant new Runner MCP permissions.
+- strict terminal completion events: succeeded, failed or cancelled;
+- deterministic event IDs derived from a private source identifier, giving transports a stable deduplication key without exposing the source identifier itself;
+- fail-closed source/operation binding for test, migration, deployment and rollback job classes;
+- test completion requires a predefined profile; unrelated job classes cannot attach one;
+- project/profile/event identifiers use safe bounded shapes;
+- attention state is derived from terminal status rather than trusted from a sender;
+- duplicate JSON keys, unknown fields, non-standard JSON constants and oversized events fail closed;
+- completion payloads contain no paths, hosts, URLs, credentials, service names, environment values or raw logs;
+- notification delivery is explicitly separate from task execution: delivery retries may never rerun the operational action;
+- mailbox permissions and action allow-lists are unchanged.
 
-Target contract:
+Pilot transport state:
 
-- every long-running Runner MCP action should have an explicit terminal state such as completed, failed or cancelled;
-- a transport may emit a user-facing completion signal only after the bounded/scrubbed result has been persisted;
-- notifications must contain safe identifiers/status only and must not expose paths, hosts, URLs, credentials, environment values, raw logs or service names;
-- duplicate/replayed result records must not create duplicate action execution; notification delivery may be retried independently of action execution;
-- notification failure must never turn a successful Runner MCP action into an operational failure;
-- heartbeat/stale-request recovery remains a separate resilience concern from user-facing completion feedback;
-- the public core should define generic completion-event semantics while deployment-specific notification destinations remain private configuration.
+- project-local CI completion notifications are proven for success, failure and cancellation;
+- a private mailbox notification workflow exists for completed `run_tests` results;
+- the private mailbox notifier currently depends on a repository-specific self-hosted Actions runner, so delivery jobs queue when that runner is unavailable;
+- the central completion path therefore still needs a fresh end-to-end proof after the notification transport is activated.
 
 Next:
 
-- prove the central `run_tests` completion signal end-to-end with a fresh mailbox result;
-- add regression coverage for duplicate result notifications and notification failure isolation;
-- define the same generic completion-event shape for other asynchronous Runner MCP job types before enabling additional mailbox actions.
+- make the private notifier use the deterministic event ID as an idempotency marker;
+- activate a notification transport that does not require widening Runner MCP execution authority;
+- prove that one fresh `run_tests` result produces exactly one user-facing completion notification;
+- keep heartbeat/stale-request recovery as a separate resilience concern;
+- map other existing asynchronous Runner MCP jobs to the same completion-event contract before adding any new mailbox actions.
 
 ## Phase 3.9 — public launch readiness
 

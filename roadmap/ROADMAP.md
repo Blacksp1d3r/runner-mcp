@@ -83,6 +83,24 @@ Still planned:
 - optional graphical administration;
 - framework adapters only when concrete reusable use cases justify them.
 
+## Phase 3.7 — GitHub mailbox bridge protocol
+
+Formalize the proven GitHub to Runner MCP transport without turning it into a remote shell:
+
+- public, infrastructure-neutral mailbox protocol documentation;
+- strict versioned JSON request model;
+- fixed allow-list for project inspection and predefined test execution;
+- unknown fields, duplicate keys and oversized requests fail closed;
+- no client-supplied shell, executable, path, environment, service or arbitrary MCP tool name;
+- migration, deployment, rollback and restore remain outside the mailbox allow-list;
+- watcher implementation stays private until deployment-specific parts are separated from reusable protocol logic.
+
+Next:
+
+- migrate the private watcher to the shared protocol validator;
+- define a scrubbed result envelope and replay ledger;
+- package a generic watcher only when it can be done without exposing credentials or infrastructure details.
+
 ## Phase 4 — staging service management
 
 Implemented core design:

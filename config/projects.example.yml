@@ -8,3 +8,13 @@ projects:
     allowed_services:
       - "${RUNNER_MCP_EXAMPLE_STAGING_SERVICE}"
     database_alias: "${RUNNER_MCP_EXAMPLE_DATABASE}"
+    test_profiles:
+      lint:
+        argv:
+          - "${RUNNER_MCP_EXAMPLE_LINT_EXECUTABLE}"
+          - "check"
+          - "."
+        cwd: "."
+        timeout_seconds: 300
+        max_log_bytes: 2000000
+        env_passthrough: []

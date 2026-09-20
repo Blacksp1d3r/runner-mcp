@@ -22,7 +22,13 @@ from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .config import ProjectRegistry, load_project_registry
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
-from .operational_safety import OperatorSafetyGuard, RetentionPolicy
+from .operational_safety import (
+    OperatorSafetyGuard,
+    OperatorStopActive,
+    RetentionPolicy,
+    SafetyConfigurationError,
+)
+from .test_runner import TestRunner, TestRunnerError
 
 
 @dataclass(frozen=True)
@@ -36,6 +42,8 @@ class Settings:
     retention_policy: RetentionPolicy = field(default_factory=RetentionPolicy)
     operator_stop_file: Path | None = None
     retention_confirmed: bool = True
+    test_jobs_root: Path | None = None
+    max_test_jobs: int = 2
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -55,12 +63,26 @@ class Settings:
             raise RuntimeError("RUNNER_MCP_RATE_LIMIT_PER_MINUTE must be between 1 and 6000")
 
         stop_file_raw = os.getenv("RUNNER_MCP_OPERATOR_STOP_FILE", "").strip()
+        if stop_file_raw and not Path(stop_file_raw).is_absolute():
+            raise RuntimeError("RUNNER_MCP_OPERATOR_STOP_FILE must be an absolute path")
+
         retention_confirmed_raw = os.getenv(
             "RUNNER_MCP_RETENTION_CONFIRMED",
             "false",
         ).strip().lower()
         if retention_confirmed_raw not in {"true", "false"}:
             raise RuntimeError("RUNNER_MCP_RETENTION_CONFIRMED must be true or false")
+
+        test_jobs_root_raw = os.getenv("RUNNER_MCP_TEST_JOBS_ROOT", "").strip()
+        if test_jobs_root_raw and not Path(test_jobs_root_raw).is_absolute():
+            raise RuntimeError("RUNNER_MCP_TEST_JOBS_ROOT must be an absolute path")
+
+        try:
+            max_test_jobs = int(os.getenv("RUNNER_MCP_MAX_TEST_JOBS", "2"))
+        except ValueError as exc:
+            raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be an integer") from exc
+        if not 1 <= max_test_jobs <= 16:
+            raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be between 1 and 16")
 
         return cls(
             bearer_token=token,
@@ -72,6 +94,8 @@ class Settings:
             retention_policy=RetentionPolicy.from_env(),
             operator_stop_file=Path(stop_file_raw) if stop_file_raw else None,
             retention_confirmed=retention_confirmed_raw == "true",
+            test_jobs_root=Path(test_jobs_root_raw) if test_jobs_root_raw else None,
+            max_test_jobs=max_test_jobs,
         )
 
 
@@ -126,6 +150,16 @@ def build_mcp(
         stop_file=settings.operator_stop_file,
         retention=settings.retention_policy,
         retention_confirmed=settings.retention_confirmed,
+    )
+    tests = (
+        TestRunner(
+            registry=registry,
+            safety=safety,
+            jobs_root=settings.test_jobs_root,
+            max_concurrent_jobs=settings.max_test_jobs,
+        )
+        if settings.test_jobs_root is not None
+        else None
     )
 
     @mcp.tool()
@@ -275,6 +309,115 @@ def build_mcp(
             project,
             lambda: files.file_metadata(project, path),
         )
+
+    def _require_test_runner() -> TestRunner:
+        if tests is None:
+            raise ValueError("Test execution is not configured")
+        return tests
+
+    def _audit_test_result(
+        *,
+        tool_name: str,
+        project: str | None,
+        result: str,
+    ) -> None:
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                tool_name,
+                project,
+                "authenticated-client",
+                result,
+                utc_timestamp(),
+            )
+        )
+
+    @mcp.tool()
+    def list_test_profiles(project: str) -> list[dict]:
+        """List configured test profiles without exposing executable paths or arguments."""
+        cfg = registry.projects.get(project)
+        if cfg is None:
+            _audit_test_result(
+                tool_name="list_test_profiles",
+                project=project,
+                result="denied",
+            )
+            raise ValueError("Unknown or disabled project")
+        result = [
+            {
+                "name": name,
+                "timeout_seconds": profile.timeout_seconds,
+                "max_log_bytes": profile.max_log_bytes,
+            }
+            for name, profile in sorted(cfg.test_profiles.items())
+        ]
+        _audit_test_result(
+            tool_name="list_test_profiles",
+            project=project,
+            result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def run_tests(project: str, suite: str) -> dict:
+        """Start one predefined test profile and return a job identifier."""
+        try:
+            result = _require_test_runner().start_test(project, suite)
+        except (
+            TestRunnerError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+            ValueError,
+        ) as exc:
+            _audit_test_result(tool_name="run_tests", project=project, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(tool_name="run_tests", project=project, result="started")
+        return result
+
+    @mcp.tool()
+    def test_status(job_id: str) -> dict:
+        """Return safe metadata for a test job."""
+        try:
+            result = _require_test_runner().status(job_id)
+        except TestRunnerError as exc:
+            _audit_test_result(tool_name="test_status", project=None, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(
+            tool_name="test_status",
+            project=result.get("project"),
+            result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def get_test_log(job_id: str, offset: int = 0, length: int = 200) -> dict:
+        """Return a bounded page from a scrubbed test-job log."""
+        try:
+            result = _require_test_runner().get_log(
+                job_id,
+                offset=offset,
+                length=length,
+            )
+        except TestRunnerError as exc:
+            _audit_test_result(tool_name="get_test_log", project=None, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(tool_name="get_test_log", project=None, result="ok")
+        return result
+
+    @mcp.tool()
+    def cancel_test(job_id: str) -> dict:
+        """Request cancellation of one running test job."""
+        try:
+            result = _require_test_runner().cancel(job_id)
+        except TestRunnerError as exc:
+            _audit_test_result(tool_name="cancel_test", project=None, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(
+            tool_name="cancel_test",
+            project=result.get("project"),
+            result="requested",
+        )
+        return result
 
     return mcp
 

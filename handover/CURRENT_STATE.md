@@ -1,10 +1,10 @@
 # Current state
 
-Date: 2026-09-19
+Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5 operator-safety and rollback-retention guards are ready locally for review.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5 operator-safety guards and Phase 3 controlled test execution are complete on the current review branch.
 
 Phase 0:
 - repository structure defined;
@@ -55,11 +55,26 @@ Phase 2.5 operator safety:
 - automatic production database restore is prohibited;
 - operator-safety rules documented for later test/deploy/migration phases.
 
+Phase 3 controlled test execution:
+- private predefined test-profile schema added;
+- MCP clients select only project and profile name, never a command string;
+- executables must be absolute and are launched with `shell=False`;
+- unsafe working-directory traversal and process-control environment variables are blocked;
+- asynchronous jobs expose safe status, cancellation and paged scrubbed logs;
+- per-project and global concurrency are bounded;
+- test timeout and log-size limits are enforced;
+- external operator stop terminates running test process groups;
+- unfinished jobs are marked interrupted after Runner MCP restart;
+- job metadata/logs use restrictive permissions;
+- environment secrets, project paths and absolute command paths are scrubbed from logs;
+- MCP lifecycle from `run_tests` through `test_status` and `get_test_log` is tested end-to-end;
+- test-code trust boundary is documented; untrusted public-fork code remains excluded until stronger isolation exists.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 36 tests green;
+- pytest: 64 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -68,6 +83,10 @@ Local trusted-runner validation is green:
 - operator-stop/retention/rollback guard tests: green;
 - startup fail-closed retention-confirmation tests: green;
 - MCP safety-status integration test: green;
+- controlled test-runner timeout/cancel/stop/concurrency/log-redaction tests: green;
+- MCP test-job lifecycle integration test: green;
+- test-profile schema and startup fail-closed tests: green;
+- dependency check: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -75,14 +94,13 @@ Local trusted-runner validation is green:
 
 - arbitrary shell;
 - production actions;
-- test execution tools;
 - service control;
 - database operations;
 - deployment or rollback.
 
 ## Next steps
 
-Review and merge the Phase 2.5 safety-guard changes, then begin Phase 3 controlled test execution with predefined project test profiles, timeouts, process cleanup, stop-flag observation and bounded output.
+Review and merge the combined Phase 2.5/Phase 3 branch, then begin Phase 4 allow-listed staging service management. Before activating real project test profiles, create the private runtime configuration and verify the Linux-account trust boundary on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

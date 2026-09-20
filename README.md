@@ -26,9 +26,11 @@ Public examples use placeholders only. Real values belong in private server-side
 
 ## Initial scope
 
-Phase 0 and Phase 1 establish the repository, security baseline, threat model, project registry, MCP server skeleton, authentication hook, health endpoint, audit logging, `list_projects`, and `project_status`.
+Implemented capabilities now include the secure MCP foundation, safe project-file access, operator-stop and rollback-retention policy, and controlled asynchronous test jobs.
 
-Later phases add safe file access, controlled tests, service management, backups, migrations, staging deploys, rollbacks, and project adapters.
+Current test tools are `list_test_profiles`, `run_tests`, `test_status`, `get_test_log`, and `cancel_test`. Test commands come only from private predefined profiles; MCP clients cannot submit arbitrary shell commands.
+
+Later phases add staging service management, backups, migrations, staging deploys, rollbacks, and project adapters.
 
 ## Development
 
@@ -39,6 +41,8 @@ The implementation follows the official MCP Python SDK v2 line and Streamable HT
 Do not connect a privileged self-hosted runner to untrusted public pull-request code. See `security/SECURITY_BASELINE.md`.
 
 Operator-stop, retention and rollback rules are documented in `security/OPERATOR_SAFETY.md`.
+
+Controlled test execution and its trust boundary are documented in `security/TEST_EXECUTION.md`.
 
 ## Status
 

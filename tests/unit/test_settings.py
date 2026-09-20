@@ -34,3 +34,47 @@ def test_invalid_retention_confirmation_fails_startup(
 
     with pytest.raises(RuntimeError, match="must be true or false"):
         Settings.from_env()
+
+
+def test_runtime_defaults_keep_test_execution_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.delenv("RUNNER_MCP_TEST_JOBS_ROOT", raising=False)
+    monkeypatch.delenv("RUNNER_MCP_MAX_TEST_JOBS", raising=False)
+
+    settings = Settings.from_env()
+
+    assert settings.test_jobs_root is None
+    assert settings.max_test_jobs == 2
+
+
+@pytest.mark.parametrize("value", ["0", "17", "not-an-integer"])
+def test_invalid_max_test_jobs_fails_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_MAX_TEST_JOBS", value)
+
+    with pytest.raises(RuntimeError, match="RUNNER_MCP_MAX_TEST_JOBS"):
+        Settings.from_env()
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("RUNNER_MCP_OPERATOR_STOP_FILE", "relative/stop"),
+        ("RUNNER_MCP_TEST_JOBS_ROOT", "relative/jobs"),
+    ],
+)
+def test_operator_paths_must_be_absolute(
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    value: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv(name, value)
+
+    with pytest.raises(RuntimeError, match="absolute path"):
+        Settings.from_env()

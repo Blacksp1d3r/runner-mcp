@@ -33,10 +33,26 @@ class ReplayDecision(StrEnum):
     DUPLICATE = "duplicate"
 
 
+class ReplayState(StrEnum):
+    CLAIMED = "claimed"
+    COMPLETED = "completed"
+
+
 @dataclass(frozen=True)
 class ReplayClaim:
     decision: ReplayDecision
     fingerprint: str
+    state: ReplayState
+
+
+@dataclass(frozen=True)
+class ReplayRecord:
+    request_id: str
+    fingerprint: str
+    action: BridgeAction
+    state: ReplayState
+    seen_at: str
+    completed_at: str | None = None
 
 
 def bridge_request_fingerprint(request: BridgeRequest) -> str:
@@ -50,7 +66,7 @@ def bridge_request_fingerprint(request: BridgeRequest) -> str:
 
 
 class BridgeReplayLedger:
-    """Small local ledger that prevents request-id replay or mutation."""
+    """Local request lifecycle ledger used to prevent unsafe replay."""
 
     def __init__(
         self,
@@ -73,13 +89,15 @@ class BridgeReplayLedger:
                 existing = entries.get(request.request_id)
 
                 if existing is not None:
-                    if existing.get("fingerprint") != fingerprint:
-                        raise BridgeReplayError(
-                            "request_id was already used for a different request"
-                        )
+                    self._validate_request_match(
+                        request=request,
+                        fingerprint=fingerprint,
+                        entry=existing,
+                    )
                     return ReplayClaim(
                         decision=ReplayDecision.DUPLICATE,
                         fingerprint=fingerprint,
+                        state=ReplayState(existing["state"]),
                     )
 
                 if len(entries) >= self._max_entries:
@@ -88,15 +106,91 @@ class BridgeReplayLedger:
                 entries[request.request_id] = {
                     "fingerprint": fingerprint,
                     "action": request.action.value,
+                    "state": ReplayState.CLAIMED.value,
                     "seen_at": datetime.now(UTC).isoformat(),
                 }
                 self._store(handle, entries)
                 return ReplayClaim(
                     decision=ReplayDecision.NEW,
                     fingerprint=fingerprint,
+                    state=ReplayState.CLAIMED,
                 )
         except OSError as exc:
             raise BridgeReplayError("replay ledger operation failed") from exc
+
+    def complete(self, request: BridgeRequest) -> ReplayRecord:
+        """Mark a previously claimed request completed after its result is durable."""
+        fingerprint = bridge_request_fingerprint(request)
+        fd = self._open_ledger()
+        try:
+            with os.fdopen(fd, "r+", encoding="utf-8", closefd=True) as handle:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+                entries = self._load(handle)
+                existing = entries.get(request.request_id)
+                if existing is None:
+                    raise BridgeReplayError(
+                        "request must be claimed before it can be completed"
+                    )
+
+                self._validate_request_match(
+                    request=request,
+                    fingerprint=fingerprint,
+                    entry=existing,
+                )
+
+                if existing["state"] == ReplayState.CLAIMED.value:
+                    existing["state"] = ReplayState.COMPLETED.value
+                    existing["completed_at"] = datetime.now(UTC).isoformat()
+                    self._store(handle, entries)
+
+                return self._record(request.request_id, existing)
+        except OSError as exc:
+            raise BridgeReplayError("replay ledger operation failed") from exc
+
+    def inspect(self, request: BridgeRequest) -> ReplayRecord | None:
+        """Return safe lifecycle metadata without mutating the ledger."""
+        fingerprint = bridge_request_fingerprint(request)
+        fd = self._open_ledger()
+        try:
+            with os.fdopen(fd, "r", encoding="utf-8", closefd=True) as handle:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
+                entries = self._load(handle)
+                existing = entries.get(request.request_id)
+                if existing is None:
+                    return None
+                self._validate_request_match(
+                    request=request,
+                    fingerprint=fingerprint,
+                    entry=existing,
+                )
+                return self._record(request.request_id, existing)
+        except OSError as exc:
+            raise BridgeReplayError("replay ledger operation failed") from exc
+
+    def _validate_request_match(
+        self,
+        *,
+        request: BridgeRequest,
+        fingerprint: str,
+        entry: dict[str, str],
+    ) -> None:
+        if (
+            entry["fingerprint"] != fingerprint
+            or entry["action"] != request.action.value
+        ):
+            raise BridgeReplayError(
+                "request_id was already used for a different request"
+            )
+
+    def _record(self, request_id: str, entry: dict[str, str]) -> ReplayRecord:
+        return ReplayRecord(
+            request_id=request_id,
+            fingerprint=entry["fingerprint"],
+            action=BridgeAction(entry["action"]),
+            state=ReplayState(entry["state"]),
+            seen_at=entry["seen_at"],
+            completed_at=entry.get("completed_at"),
+        )
 
     def _open_ledger(self) -> int:
         parent = self._path.parent
@@ -138,6 +232,7 @@ class BridgeReplayLedger:
 
         entries: dict[str, dict[str, str]] = {}
         allowed_actions = {action.value for action in BridgeAction}
+        allowed_states = {state.value for state in ReplayState}
         for request_id, entry in raw.items():
             if (
                 not isinstance(request_id, str)
@@ -149,27 +244,50 @@ class BridgeReplayLedger:
             fingerprint = entry.get("fingerprint")
             action = entry.get("action")
             seen_at = entry.get("seen_at")
+            state = entry.get("state", ReplayState.CLAIMED.value)
+            completed_at = entry.get("completed_at")
             if (
                 not isinstance(fingerprint, str)
                 or not _SHA256_RE.fullmatch(fingerprint)
                 or not isinstance(action, str)
                 or action not in allowed_actions
                 or not isinstance(seen_at, str)
+                or not isinstance(state, str)
+                or state not in allowed_states
             ):
                 raise BridgeReplayError("replay ledger has invalid entry")
 
-            try:
-                datetime.fromisoformat(seen_at)
-            except ValueError as exc:
-                raise BridgeReplayError("replay ledger has invalid entry") from exc
+            self._parse_timestamp(seen_at)
 
-            entries[request_id] = {
+            normalized: dict[str, str] = {
                 "fingerprint": fingerprint,
                 "action": action,
+                "state": state,
                 "seen_at": seen_at,
             }
 
+            if state == ReplayState.COMPLETED.value:
+                if not isinstance(completed_at, str):
+                    raise BridgeReplayError("completed replay entry lacks timestamp")
+                self._parse_timestamp(completed_at)
+                normalized["completed_at"] = completed_at
+            elif completed_at is not None:
+                raise BridgeReplayError(
+                    "claimed replay entry must not have completed_at"
+                )
+
+            entries[request_id] = normalized
+
         return entries
+
+    def _parse_timestamp(self, value: str) -> datetime:
+        try:
+            parsed = datetime.fromisoformat(value)
+        except ValueError as exc:
+            raise BridgeReplayError("replay ledger has invalid timestamp") from exc
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise BridgeReplayError("replay ledger timestamp must include timezone")
+        return parsed
 
     def _store(self, handle: Any, entries: dict[str, dict[str, str]]) -> None:
         encoded = json.dumps(

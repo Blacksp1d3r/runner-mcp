@@ -3,7 +3,6 @@ from __future__ import annotations
 import base64
 import json
 import re
-import socket
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -93,11 +92,10 @@ def _validate_ref(ref: str) -> None:
         raise ValueError("mailbox ref contains unsupported characters")
     if (
         ref.startswith(("/", "."))
-        or ref.endswith(("/", "."))
+        or ref.endswith(("/", ".", ".lock"))
         or "//" in ref
         or ".." in ref
         or "@{" in ref
-        or ref.endswith(".lock")
     ):
         raise ValueError("mailbox ref has an unsafe shape")
 
@@ -228,7 +226,7 @@ class GitHubApiSession:
             if allow_not_found and exc.code == 404:
                 return None
             raise _http_error(exc) from None
-        except (TimeoutError, socket.timeout) as exc:
+        except TimeoutError as exc:
             raise GitHubMailboxTransportError(
                 "GitHub mailbox transport timed out",
                 kind=TransportFailureKind.TIMEOUT,

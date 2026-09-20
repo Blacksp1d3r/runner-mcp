@@ -113,6 +113,74 @@ Rules:
 
 The public implementation is in `runner_mcp.bridge_protocol`.
 
+## Result shape
+
+Protocol version 1 also defines a strict result envelope. Results are UTF-8 JSON, size-bounded and tied to the original `request_id` and action.
+
+A successful result has this general shape:
+
+```json
+{
+  "protocol_version": 1,
+  "request_id": "req-001",
+  "action": "project_status",
+  "state": "completed",
+  "data": {
+    "project": "demo",
+    "healthy": true
+  }
+}
+```
+
+A failed result uses a small safe error code instead of raw exception or process output:
+
+```json
+{
+  "protocol_version": 1,
+  "request_id": "req-002",
+  "action": "run_tests",
+  "state": "failed",
+  "error_code": "TEST_FAILED",
+  "summary": "The predefined test profile did not complete successfully"
+}
+```
+
+Result rules:
+
+- unknown fields and duplicate keys fail closed;
+- failed results cannot carry arbitrary data payloads;
+- result collections, nesting and string sizes are bounded;
+- keys associated with credentials, environment values, commands, executable paths, service units, hosts, URLs and similar private metadata are redacted;
+- absolute filesystem locations and URLs found in result values are redacted;
+- unsupported result value types are rejected;
+- serialization is capped before anything is written to the mailbox.
+
+The bridge result scrubber is a second boundary, not a replacement for safe Runner MCP tool output.
+
+## Replay protection
+
+The public package includes a small local replay ledger in `runner_mcp.bridge_replay`.
+
+For each accepted request it stores only:
+
+- the request ID;
+- a SHA-256 fingerprint of the canonical validated request;
+- the allow-listed action name;
+- the first-seen timestamp.
+
+Project names, profile names, paths, credentials and result data are not stored in the replay ledger.
+
+Behavior is fail-closed:
+
+- a new request ID is claimed once;
+- the same ID with the same fingerprint is reported as a duplicate and must not be re-executed;
+- the same ID with changed content is rejected;
+- corrupt or oversized ledger data is rejected;
+- the ledger file is restricted to the service account and symlink targets are refused;
+- capacity exhaustion blocks new execution rather than silently forgetting earlier request IDs.
+
+The private watcher should claim a request before invoking Runner MCP and should reuse the already-published result for a duplicate request rather than running it again.
+
 ## When to use the bridge
 
 Use the GitHub mailbox bridge for ordinary project inspection and predefined test execution when the AI client can work with GitHub but cannot directly reach the private Runner MCP service.
@@ -132,9 +200,11 @@ A compatible private watcher should:
 3. map the action through the fixed allow-list;
 4. invoke Runner MCP without constructing a shell command;
 5. write only sanitized result data to the result mailbox;
-6. record request IDs so the same request cannot be executed twice accidentally;
-7. never copy private paths, credentials, environment values or raw unsafe logs into GitHub;
-8. stop mutating work when Runner MCP's operator emergency stop is active.
+6. claim the request ID through replay protection before execution;
+7. never execute a duplicate request again;
+8. serialize only the bounded, scrubbed result envelope;
+9. never copy private paths, credentials, environment values or raw unsafe logs into GitHub;
+10. stop mutating work when Runner MCP's operator emergency stop is active.
 
 The watcher is not yet part of the public package. The public protocol is intentionally separated first so an existing private pilot can migrate to shared, tested validation without weakening its current safety boundary.
 

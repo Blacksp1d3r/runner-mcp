@@ -313,3 +313,19 @@ runner-mcp emergency-stop on
 ```
 
 You do not need to inspect the source code to use either command.
+
+## Project adapters
+
+List built-in adapters:
+
+```bash
+runner-mcp adapter list
+```
+
+Inspect safe capabilities for a project:
+
+```bash
+runner-mcp adapter inspect myproject
+```
+
+A Python project can be added with `--adapter python`. Then `--preset auto` may select only an existing allow-listed preset such as pytest or Alembic when safe project-local tooling is detected. The generic adapter never guesses commands.

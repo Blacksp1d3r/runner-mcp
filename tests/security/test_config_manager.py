@@ -386,3 +386,101 @@ def test_deployment_config_requires_restartable_health_checked_service(tmp_path:
             release_root=tmp_path / "staging-releases",
             service="web",
         )
+
+
+def test_project_adapter_is_allow_listed_and_path_safe(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+    second_root = tmp_path / "python-project"
+    second_root.mkdir()
+    added = add_project(
+        paths.config_dir,
+        code="python-project",
+        display_name="Python Project",
+        repository="example/python-project",
+        root=second_root,
+        adapter="python",
+    )
+    listed = list_projects(paths.config_dir)
+    assert added["adapter"] == "python"
+    assert next(row for row in listed if row["code"] == "python-project")["adapter"] == "python"
+    assert str(second_root) not in repr(listed)
+
+
+def test_unknown_project_adapter_is_rejected(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+    second_root = tmp_path / "second"
+    second_root.mkdir()
+    with pytest.raises(ConfigManagerError, match="Unknown or disabled"):
+        add_project(
+            paths.config_dir,
+            code="bad-adapter",
+            display_name="Bad Adapter",
+            repository="example/bad",
+            root=second_root,
+            adapter="arbitrary.module",
+        )
+
+
+def test_python_adapter_auto_test_profile_selects_pytest(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+    root = tmp_path / "python-project"
+    root.mkdir()
+    make_executable(root / ".venv" / "bin" / "python")
+    make_executable(root / ".venv" / "bin" / "pytest")
+    add_project(
+        paths.config_dir,
+        code="python-project",
+        display_name="Python Project",
+        repository="example/python-project",
+        root=root,
+        adapter="python",
+    )
+    result = add_test_profile(
+        paths.config_dir,
+        project="python-project",
+        name="auto-tests",
+        preset="auto",
+    )
+    assert result["name"] == "auto-tests"
+    _, _, registry = read_private_runtime(paths.config_dir)
+    argv = registry.projects["python-project"].test_profiles["auto-tests"].argv
+    assert argv[1:4] == ["-m", "pytest", "-q"]
+
+
+def test_generic_adapter_auto_test_profile_fails_closed(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+    with pytest.raises(ConfigManagerError, match="no automatic test preset"):
+        add_test_profile(
+            paths.config_dir,
+            project="first",
+            name="auto-tests",
+            preset="auto",
+        )
+
+
+def test_python_adapter_auto_migration_selects_alembic(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import add_database_config, add_migration_config
+
+    paths, _ = installed(tmp_path)
+    root = tmp_path / "python-db-project"
+    root.mkdir()
+    make_executable(root / ".venv" / "bin" / "alembic")
+    add_project(
+        paths.config_dir,
+        code="python-db",
+        display_name="Python DB",
+        repository="example/python-db",
+        root=root,
+        adapter="python",
+    )
+    add_database_config(
+        paths.config_dir,
+        project="python-db",
+        dsn="postgresql://user:secret@example.invalid/app",
+    )
+    result = add_migration_config(
+        paths.config_dir,
+        project="python-db",
+        preset="auto",
+    )
+    assert result["preset"] == "alembic"

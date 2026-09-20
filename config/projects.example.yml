@@ -3,6 +3,7 @@ projects:
     display_name: Example Project
     repository: example-org/example-repository
     environment: staging
+    adapter: python
     root: "${RUNNER_MCP_EXAMPLE_ROOT}"
     health_url: "${RUNNER_MCP_EXAMPLE_HEALTH_URL}"
     services:

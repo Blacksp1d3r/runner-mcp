@@ -8,6 +8,8 @@ from typing import Any
 import yaml
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator
 
+from .adapters import AdapterError, get_adapter
+
 PROJECT_CODE_RE = re.compile(r"^[a-z0-9][a-z0-9_-]*$")
 REPOSITORY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+$")
 SERVICE_RE = re.compile(r"^[A-Za-z0-9_.@-]+$")
@@ -209,6 +211,7 @@ class ProjectConfig(BaseModel):
     display_name: str = Field(min_length=1, max_length=120)
     repository: str = Field(min_length=3, max_length=200)
     environment: str = Field(default="staging", min_length=1, max_length=40)
+    adapter: str = "generic"
     root: Path
     health_url: AnyHttpUrl | None = None
     allowed_services: list[str] = Field(default_factory=list)
@@ -237,6 +240,15 @@ class ProjectConfig(BaseModel):
         if any(not PROJECT_CODE_RE.fullmatch(name) for name in values):
             raise ValueError("service alias contains unsupported characters")
         return values
+
+    @field_validator("adapter")
+    @classmethod
+    def validate_adapter(cls, value: str) -> str:
+        try:
+            get_adapter(value)
+        except AdapterError as exc:
+            raise ValueError(str(exc)) from exc
+        return value
 
     @field_validator("repository")
     @classmethod
@@ -281,6 +293,7 @@ class ProjectConfig(BaseModel):
             "name": self.display_name,
             "repository": self.repository,
             "environment": self.environment,
+            "adapter": self.adapter,
         }
 
 

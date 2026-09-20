@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phases 4, 5, 6 and 7 are complete on stacked follow-up branches.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phases 4 through 8 are complete on stacked follow-up branches.
 
 Phase 0:
 - repository structure defined;
@@ -139,11 +139,20 @@ Phase 7 controlled rollback:
 - failed rollback health reactivates the original current release when the stop is not active;
 - no database restore, arbitrary target, production rollback or automatic cascade.
 
+Phase 8 adapter foundation:
+- built-in allow-listed adapter registry with no dynamic imports from config;
+- generic adapter never guesses commands or automatic presets;
+- Python adapter inspects safe local markers/tooling without returning paths;
+- project adapter IDs are validated fail-closed;
+- CLI and MCP can list adapters and inspect safe project capabilities;
+- `auto` resolves only to existing allow-listed test/migration presets;
+- named private/company project adapters remain outside the public repository.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 171 tests green;
+- pytest: 183 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -173,6 +182,9 @@ Local trusted-runner validation is green:
 - release listing/metadata-tamper/migration-boundary rollback tests: green;
 - rollback job persistence/blocking tests: green;
 - MCP one-step rollback/list/plan/status and arbitrary-target rejection test: green;
+- adapter registry/inspection/symlink-safety tests: green;
+- adapter auto-preset/config validation tests: green;
+- CLI and MCP adapter capability tests: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -191,7 +203,7 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4, Phase 5, Phase 6 and Phase 7 follow-up branches in order. Next development phase is Phase 8 multi-project adapters. Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
+Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4 through Phase 8 follow-up branches in order. Next development phase is Phase 9 approvals and higher-risk gates. Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

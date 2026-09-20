@@ -20,6 +20,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
+from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
@@ -241,6 +242,77 @@ def build_mcp(
         result = [cfg.public_summary(code) for code, cfg in sorted(registry.projects.items())]
         audit.append(
             AuditEvent(request_id, "list_projects", None, "authenticated-client", "ok", utc_timestamp())
+        )
+        return result
+
+    @mcp.tool()
+    def list_project_adapters() -> list[dict]:
+        """List built-in, allow-listed project adapters."""
+        request_id = current_request_id()
+        result = list_adapters()
+        audit.append(
+            AuditEvent(
+                request_id,
+                "list_project_adapters",
+                None,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def project_capabilities(project: str) -> dict:
+        """Inspect safe adapter capabilities without exposing the project path."""
+        request_id = current_request_id()
+        cfg = registry.projects.get(project)
+        if cfg is None:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    "project_capabilities",
+                    project,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError("Unknown or disabled project")
+        try:
+            adapter = get_adapter(cfg.adapter)
+            inspection = inspect_project(cfg.adapter, cfg.root)
+        except AdapterError as exc:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    "project_capabilities",
+                    project,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        result = {
+            "project": project,
+            "adapter": adapter.info.adapter_id,
+            "adapter_name": adapter.info.display_name,
+            "test_presets": list(adapter.info.test_presets),
+            "migration_presets": list(adapter.info.migration_presets),
+            "supports_services": adapter.info.supports_services,
+            "supports_deployment": adapter.info.supports_deployment,
+            "inspection": inspection,
+        }
+        audit.append(
+            AuditEvent(
+                request_id,
+                "project_capabilities",
+                project,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
         )
         return result
 

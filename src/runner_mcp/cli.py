@@ -19,9 +19,11 @@ from .config_manager import (
     add_test_profile,
     list_database_configs,
     list_deployment_configs,
+    list_project_adapters,
     list_projects,
     list_service_configs,
     list_test_profiles,
+    project_capabilities,
     remove_database_config,
     remove_deployment_config,
     remove_migration_config,
@@ -186,7 +188,11 @@ def cmd_project(args: argparse.Namespace) -> int:
     if args.project_action == "list":
         projects = list_projects(config_dir)
         for project in projects:
-            print(f"{project['code']}: {project['name']} ({project['repository']})")
+            adapter = project.get("adapter", "generic")
+            print(
+                f"{project['code']}: {project['name']} "
+                f"({project['repository']}), adapter={adapter}"
+            )
         return 0
 
     if args.project_action == "add":
@@ -202,6 +208,7 @@ def cmd_project(args: argparse.Namespace) -> int:
             display_name=display_name,
             repository=repository,
             root=Path(root_value),
+            adapter=args.adapter,
         )
         print(f"Project added: {result['code']} ({result['name']})")
         return 0
@@ -216,6 +223,34 @@ def cmd_project(args: argparse.Namespace) -> int:
         return 0
 
     raise ConfigManagerError("Unknown project action")
+
+
+def cmd_adapter(args: argparse.Namespace) -> int:
+    if args.adapter_action == "list":
+        for adapter in list_project_adapters():
+            tests = ",".join(adapter["test_presets"]) or "none"
+            migrations = ",".join(adapter["migration_presets"]) or "none"
+            print(
+                f"{adapter['id']}: {adapter['name']}; "
+                f"tests={tests}; migrations={migrations}"
+            )
+        return 0
+
+    if args.adapter_action == "inspect":
+        result = project_capabilities(
+            _config_dir(args.config_dir),
+            project=args.project,
+        )
+        print(f"Project: {result['project']}")
+        print(f"Adapter: {result['adapter']} ({result['adapter_name']})")
+        print("Test presets: " + ", ".join(result["test_presets"]))
+        print("Migration presets: " + ", ".join(result["migration_presets"]))
+        inspection = result["inspection"]
+        for key in sorted(inspection):
+            print(f"{key}: {inspection[key]}")
+        return 0
+
+    raise ConfigManagerError("Unknown adapter action")
 
 
 def cmd_test_profile(args: argparse.Namespace) -> int:
@@ -537,6 +572,11 @@ def build_parser() -> argparse.ArgumentParser:
     project_add.add_argument("--name")
     project_add.add_argument("--repository")
     project_add.add_argument("--root")
+    project_add.add_argument(
+        "--adapter",
+        choices=("generic", "python"),
+        default="generic",
+    )
     project_add.set_defaults(func=cmd_project)
 
     project_remove = project_sub.add_parser("remove", help="Remove a project.")
@@ -558,7 +598,7 @@ def build_parser() -> argparse.ArgumentParser:
     profile_add.add_argument("name")
     profile_add.add_argument(
         "--preset",
-        choices=("pytest", "ruff", "custom"),
+        choices=("auto", "pytest", "ruff", "custom"),
         default="pytest",
     )
     profile_add.add_argument("--executable")
@@ -633,7 +673,7 @@ def build_parser() -> argparse.ArgumentParser:
     migration_sub = migration.add_subparsers(dest="migration_action", required=True)
     migration_add = migration_sub.add_parser("add", help="Add a migration profile.")
     migration_add.add_argument("project")
-    migration_add.add_argument("--preset", choices=("alembic", "custom"), default="alembic")
+    migration_add.add_argument("--preset", choices=("auto", "alembic", "custom"), default="auto")
     migration_add.add_argument("--dsn-target-env", default="DATABASE_URL")
     migration_add.add_argument("--status-executable")
     migration_add.add_argument("--status-arg", action="append", default=[])
@@ -676,6 +716,20 @@ def build_parser() -> argparse.ArgumentParser:
     )
     deployment_remove.add_argument("project")
     deployment_remove.set_defaults(func=cmd_deployment_config)
+
+    adapter = subparsers.add_parser(
+        "adapter",
+        help="List built-in project adapters or inspect project capabilities.",
+    )
+    adapter_sub = adapter.add_subparsers(dest="adapter_action", required=True)
+    adapter_list = adapter_sub.add_parser("list", help="List built-in adapters.")
+    adapter_list.set_defaults(func=cmd_adapter)
+    adapter_inspect = adapter_sub.add_parser(
+        "inspect",
+        help="Inspect safe adapter capabilities for one project.",
+    )
+    adapter_inspect.add_argument("project")
+    adapter_inspect.set_defaults(func=cmd_adapter)
 
     serve = subparsers.add_parser(
         "serve",

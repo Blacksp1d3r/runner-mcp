@@ -4,6 +4,14 @@ Runner MCP is a security-first, self-hosted Model Context Protocol service for c
 
 It lets an AI client inspect configured projects, read safe project files, run predefined test profiles and eventually manage staging services, backups, migrations, deployments and rollbacks — without exposing a general-purpose remote shell.
 
+## Why Runner MCP exists
+
+Runner MCP was started as a self-hosted replacement for the day-to-day runtime and staging work previously handled through Desktop Commander Remote.
+
+The practical trigger was the introduction of monthly usage limits and a paid option for that remote connector. Rather than depending on a general remote-control service for routine development operations, Runner MCP is designed to provide a narrow, auditable and deny-by-default interface that can run on infrastructure you control.
+
+Desktop Commander can still be useful as a fallback during migration, but Runner MCP's goal is to remove the daily dependency on it for tests, staging services, database backups/migrations, deployments and rollbacks.
+
 ## I just want to use it
 
 You do not need to understand the Python source code for the basic workflow.
@@ -65,6 +73,7 @@ Current implemented foundations include:
 - staging-only release planning and asynchronous deployment jobs;
 - clean-Git release archives, atomic activation and health-gated rollback;
 - safe release history plus one-step asynchronous staging rollback;
+- built-in allow-listed project adapters with safe capability inspection;
 - strict MCP tool arguments: unknown fields are rejected rather than ignored;
 - predefined test profiles only;
 - test timeout, cancellation and process-group cleanup;

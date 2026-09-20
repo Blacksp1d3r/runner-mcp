@@ -12,6 +12,7 @@ from typing import Any
 
 import yaml
 
+from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .config import (
     DatabaseConfig,
     DeploymentConfig,
@@ -140,9 +141,35 @@ def _save_registry(
 def list_projects(config_dir: Path) -> list[dict[str, str]]:
     _, _, registry = _load_for_edit(config_dir)
     return [
-        project.public_summary(code)
+        {**project.public_summary(code), "adapter": project.adapter}
         for code, project in sorted(registry.projects.items())
     ]
+
+
+def list_project_adapters() -> list[dict[str, object]]:
+    return list_adapters()
+
+
+def project_capabilities(config_dir: Path, *, project: str) -> dict[str, object]:
+    _, _, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    try:
+        adapter = get_adapter(cfg.adapter)
+        inspection = inspect_project(cfg.adapter, cfg.root)
+    except AdapterError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+    return {
+        "project": project,
+        "adapter": adapter.info.adapter_id,
+        "adapter_name": adapter.info.display_name,
+        "test_presets": list(adapter.info.test_presets),
+        "migration_presets": list(adapter.info.migration_presets),
+        "supports_services": adapter.info.supports_services,
+        "supports_deployment": adapter.info.supports_deployment,
+        "inspection": inspection,
+    }
 
 
 def add_project(
@@ -152,6 +179,7 @@ def add_project(
     display_name: str,
     repository: str,
     root: Path,
+    adapter: str = "generic",
 ) -> dict[str, str]:
     paths, project_file, registry = _load_for_edit(config_dir)
     if code in registry.projects:
@@ -166,6 +194,7 @@ def add_project(
             display_name=display_name,
             repository=repository,
             environment="staging",
+            adapter=adapter,
             root=resolved_root,
         )
         updated = ProjectRegistry(
@@ -321,6 +350,15 @@ def add_test_profile(
         raise ConfigManagerError("Unknown project")
     if name in cfg.test_profiles:
         raise ConfigManagerError("Test profile is already configured")
+
+    if preset == "auto":
+        try:
+            automatic = get_adapter(cfg.adapter).default_test_preset(cfg.root)
+        except AdapterError as exc:
+            raise ConfigManagerError(str(exc)) from exc
+        if automatic is None:
+            raise ConfigManagerError("Project adapter has no automatic test preset")
+        preset = automatic
 
     profile = build_test_profile(
         project_root=cfg.root,
@@ -657,6 +695,15 @@ def add_migration_config(
         raise ConfigManagerError("Configure the project database first")
     if cfg.database.migrations is not None:
         raise ConfigManagerError("Migration profile is already configured")
+
+    if preset == "auto":
+        try:
+            automatic = get_adapter(cfg.adapter).default_migration_preset(cfg.root)
+        except AdapterError as exc:
+            raise ConfigManagerError(str(exc)) from exc
+        if automatic is None:
+            raise ConfigManagerError("Project adapter has no automatic migration preset")
+        preset = automatic
 
     if preset == "alembic":
         executable = _detect_alembic(cfg.root)

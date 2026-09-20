@@ -341,3 +341,19 @@ def test_deployment_config_cli_hides_release_root(
     captured = capsys.readouterr()
     assert "demo: configured, service=web" in captured.out
     assert str(release_root) not in captured.out
+
+
+def test_adapter_cli_lists_and_inspects_without_private_root(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, project_root = install_config(tmp_path)
+    assert main(["--config-dir", str(paths.config_dir), "adapter", "list"]) == 0
+    listed = capsys.readouterr()
+    assert "generic: Generic project" in listed.out
+    assert "python: Python project" in listed.out
+
+    assert main(["--config-dir", str(paths.config_dir), "adapter", "inspect", "demo"]) == 0
+    inspected = capsys.readouterr()
+    assert "Adapter: generic" in inspected.out
+    assert str(project_root) not in inspected.out

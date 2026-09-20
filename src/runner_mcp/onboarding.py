@@ -29,6 +29,7 @@ class PrivatePaths:
     stop_file: Path
     jobs_dir: Path
     database_backups_dir: Path
+    deployment_jobs_dir: Path
     audit_log: Path
 
     @classmethod
@@ -41,6 +42,7 @@ class PrivatePaths:
             stop_file=root / "operator.stop",
             jobs_dir=root / "jobs",
             database_backups_dir=root / "database-backups",
+            deployment_jobs_dir=root / "deployment-jobs",
             audit_log=root / "audit.jsonl",
         )
 
@@ -171,6 +173,7 @@ def render_env_file(
         "RUNNER_MCP_TEST_JOBS_ROOT": str(paths.jobs_dir),
         "RUNNER_MCP_MAX_TEST_JOBS": str(answers.max_test_jobs),
         "RUNNER_MCP_DATABASE_BACKUP_ROOT": str(paths.database_backups_dir),
+        "RUNNER_MCP_DEPLOY_JOBS_ROOT": str(paths.deployment_jobs_dir),
     }
     for key, value in sorted((extra_values or {}).items()):
         if key.startswith("RUNNER_MCP_DB_"):
@@ -243,6 +246,11 @@ def install_private_configuration(
     if paths.database_backups_dir.is_symlink():
         raise OnboardingError("Database backup directory must not be a symlink")
     os.chmod(paths.database_backups_dir, 0o700)
+
+    paths.deployment_jobs_dir.mkdir(parents=True, exist_ok=True)
+    if paths.deployment_jobs_dir.is_symlink():
+        raise OnboardingError("Deployment jobs directory must not be a symlink")
+    os.chmod(paths.deployment_jobs_dir, 0o700)
 
     token: str | None = None
     existing_database_values: dict[str, str] = {}
@@ -495,6 +503,29 @@ def run_doctor(config_dir: Path) -> list[DoctorCheck]:
                 "test job storage",
                 "PASS" if jobs_ok else "FAIL",
                 "available" if jobs_ok else "unavailable or unsafe",
+            )
+        )
+
+    if settings.deployment_jobs_root is None:
+        checks.append(
+            DoctorCheck(
+                "deployment job storage",
+                "WARN",
+                "staging deployment jobs are not configured",
+            )
+        )
+    else:
+        deployment_jobs_ok = (
+            settings.deployment_jobs_root.exists()
+            and settings.deployment_jobs_root.is_dir()
+            and not settings.deployment_jobs_root.is_symlink()
+            and os.access(settings.deployment_jobs_root, os.W_OK | os.X_OK)
+        )
+        checks.append(
+            DoctorCheck(
+                "deployment job storage",
+                "PASS" if deployment_jobs_ok else "FAIL",
+                "available" if deployment_jobs_ok else "unavailable or unsafe",
             )
         )
 

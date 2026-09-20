@@ -169,6 +169,40 @@ class ServiceConfig(BaseModel):
         return value
 
 
+class DeploymentConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    release_root: Path
+    service: str
+    required_tests: list[str] = Field(default_factory=list, max_length=20)
+    run_migrations: bool = False
+    activation_timeout_seconds: int = Field(default=60, ge=5, le=600)
+    keep_failed_release: bool = True
+
+    @field_validator("release_root")
+    @classmethod
+    def validate_release_root(cls, value: Path) -> Path:
+        if not value.is_absolute():
+            raise ValueError("deployment release root must be absolute")
+        return value
+
+    @field_validator("service")
+    @classmethod
+    def validate_service(cls, value: str) -> str:
+        if not PROJECT_CODE_RE.fullmatch(value):
+            raise ValueError("deployment service alias contains unsupported characters")
+        return value
+
+    @field_validator("required_tests")
+    @classmethod
+    def validate_required_tests(cls, values: list[str]) -> list[str]:
+        if len(values) != len(set(values)):
+            raise ValueError("deployment required_tests contains duplicates")
+        if any(not PROJECT_CODE_RE.fullmatch(value) for value in values):
+            raise ValueError("deployment test profile name contains unsupported characters")
+        return values
+
+
 class ProjectConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -182,6 +216,7 @@ class ProjectConfig(BaseModel):
     database: DatabaseConfig | None = None
     test_profiles: dict[str, TestProfile] = Field(default_factory=dict)
     services: dict[str, ServiceConfig] = Field(default_factory=dict)
+    deployment: DeploymentConfig | None = None
 
     @field_validator("test_profiles")
     @classmethod

@@ -681,3 +681,166 @@ def test_mcp_database_backup_and_migration_flow(
     assert str(tmp_path) not in audit_text
     assert "backup_database" in audit_text
     assert "apply_migrations" in audit_text
+
+
+def test_mcp_async_staging_deployment_flow(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeDeploymentManager:
+        def __init__(self, **kwargs) -> None:
+            self.plans: list[str] = []
+            self.deploys: list[str] = []
+
+        def plan(self, project: str) -> dict:
+            self.plans.append(project)
+            return {
+                "project": project,
+                "environment": "staging",
+                "commit": "a" * 40,
+                "short_commit": "a" * 12,
+                "current_release": None,
+                "service": "web",
+                "required_tests": [],
+                "run_migrations": False,
+                "automatic_code_rollback": True,
+            }
+
+        def deploy(self, project: str) -> dict:
+            self.deploys.append(project)
+            return {
+                "project": project,
+                "status": "deployed",
+                "release_id": "safe-release-id",
+                "commit": "a" * 40,
+                "previous_release": None,
+                "tests": [],
+                "migration": None,
+                "health": {"active_state": "active", "health": "healthy"},
+                "automatic_code_rollback_performed": False,
+            }
+
+    monkeypatch.setattr("runner_mcp.server.DeploymentManager", FakeDeploymentManager)
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    stop_file = tmp_path / "operator.stop"
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        operator_stop_file=stop_file,
+        retention_confirmed=True,
+        deployment_jobs_root=tmp_path / "deployment-jobs",
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                environment="staging",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        plan = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 70,
+                "method": "tools/call",
+                "params": {
+                    "name": "plan_deploy",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        plan_payload = parse_tool_json(plan)
+        assert plan_payload["environment"] == "staging"
+        assert plan_payload["automatic_code_rollback"] is True
+        assert str(tmp_path) not in plan.text
+
+        started = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 71,
+                "method": "tools/call",
+                "params": {
+                    "name": "deploy_staging",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        started_payload = parse_tool_json(started)
+        job_id = started_payload["job_id"]
+        assert started_payload["project"] == "demo"
+
+        deadline = time.monotonic() + 3
+        deployment_payload = None
+        request_id = 72
+        while time.monotonic() < deadline:
+            status = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "deployment_status",
+                        "arguments": {"job_id": job_id},
+                    },
+                },
+            )
+            deployment_payload = parse_tool_json(status)
+            if deployment_payload["state"] not in {"queued", "running"}:
+                break
+            request_id += 1
+            time.sleep(0.01)
+
+        assert deployment_payload is not None
+        assert deployment_payload["state"] == "completed"
+        assert deployment_payload["result"]["status"] == "deployed"
+        assert str(tmp_path) not in repr(deployment_payload)
+
+        stop_file.write_text("stop\n", encoding="utf-8")
+        blocked = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 90,
+                "method": "tools/call",
+                "params": {
+                    "name": "deploy_staging",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        assert '"isError":true' in blocked.text
+
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "plan_deploy" in audit_text
+    assert "deploy_staging" in audit_text
+    assert "deployment_status" in audit_text
+    assert str(tmp_path) not in audit_text

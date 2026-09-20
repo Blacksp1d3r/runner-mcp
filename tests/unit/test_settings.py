@@ -96,3 +96,20 @@ def test_database_backup_root_must_be_absolute(
     monkeypatch.setenv("RUNNER_MCP_DATABASE_BACKUP_ROOT", "relative/backups")
     with pytest.raises(RuntimeError, match="DATABASE_BACKUP_ROOT.*absolute"):
         Settings.from_env()
+
+
+def test_deployment_jobs_root_defaults_to_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.delenv("RUNNER_MCP_DEPLOY_JOBS_ROOT", raising=False)
+    assert Settings.from_env().deployment_jobs_root is None
+
+
+def test_deployment_jobs_root_must_be_absolute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_DEPLOY_JOBS_ROOT", "relative/deploy-jobs")
+    with pytest.raises(RuntimeError, match="DEPLOY_JOBS_ROOT.*absolute"):
+        Settings.from_env()

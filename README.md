@@ -37,6 +37,8 @@ runner-mcp service-config add PROJECT ALIAS --unit UNIT
 runner-mcp database-config list
 runner-mcp database-config add PROJECT
 runner-mcp migration-config add PROJECT --preset alembic
+runner-mcp deployment-config list
+runner-mcp deployment-config add PROJECT --release-root PATH --service ALIAS
 runner-mcp serve
 ```
 
@@ -60,6 +62,8 @@ Current implemented foundations include:
 - optional private service health checks;
 - private PostgreSQL backups with safe metadata listing;
 - controlled migration status/apply with mandatory pre-migration backup;
+- staging-only release planning and asynchronous deployment jobs;
+- clean-Git release archives, atomic activation and health-gated rollback;
 - predefined test profiles only;
 - test timeout, cancellation and process-group cleanup;
 - scrubbed, bounded test logs;

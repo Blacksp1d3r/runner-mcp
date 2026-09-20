@@ -14,6 +14,7 @@ import yaml
 
 from .config import (
     DatabaseConfig,
+    DeploymentConfig,
     MigrationConfig,
     ProjectConfig,
     ProjectRegistry,
@@ -731,4 +732,135 @@ def remove_migration_config(config_dir: Path, *, project: str) -> None:
             project: updated_project,
         }
     )
+    _save_registry(paths=paths, project_file=project_file, registry=updated)
+
+
+def list_deployment_configs(config_dir: Path) -> list[dict[str, Any]]:
+    _, _, registry = _load_for_edit(config_dir)
+    result: list[dict[str, Any]] = []
+    for code, project in sorted(registry.projects.items()):
+        deployment = project.deployment
+        result.append(
+            {
+                "project": code,
+                "configured": deployment is not None,
+                "service": deployment.service if deployment is not None else None,
+                "required_tests": (
+                    list(deployment.required_tests) if deployment is not None else []
+                ),
+                "run_migrations": (
+                    deployment.run_migrations if deployment is not None else False
+                ),
+            }
+        )
+    return result
+
+
+def _prepare_deployment_storage(path: Path) -> Path:
+    if not path.is_absolute():
+        raise ConfigManagerError("Deployment release root must be absolute")
+    parent = _absolute_without_symlinks(path.parent, label="Deployment release-root parent")
+    target = parent / path.name
+    if target.exists() and target.is_symlink():
+        raise ConfigManagerError("Deployment release root must not be a symlink")
+    target.mkdir(mode=0o700, exist_ok=True)
+    os.chmod(target, 0o700)
+
+    for name in ("releases", ".runtime-home"):
+        child = target / name
+        if child.exists() and child.is_symlink():
+            raise ConfigManagerError(f"Deployment {name} directory is unsafe")
+        child.mkdir(mode=0o700, exist_ok=True)
+        os.chmod(child, 0o700)
+    return target.resolve(strict=True)
+
+
+def add_deployment_config(
+    config_dir: Path,
+    *,
+    project: str,
+    release_root: Path,
+    service: str,
+    required_tests: list[str] | None = None,
+    run_migrations: bool = False,
+    activation_timeout_seconds: int = 60,
+) -> dict[str, Any]:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if cfg.environment != "staging":
+        raise ConfigManagerError("Deployment configuration is allowed only for staging")
+    if cfg.deployment is not None:
+        raise ConfigManagerError("Deployment is already configured")
+
+    service_cfg = cfg.services.get(service)
+    if service_cfg is None:
+        raise ConfigManagerError("Deployment service alias is not configured")
+    if not service_cfg.allow_restart:
+        raise ConfigManagerError("Deployment service must explicitly allow restart")
+    if service_cfg.health_url is None:
+        raise ConfigManagerError("Deployment service must have a health check")
+
+    tests = list(required_tests or [])
+    missing = [name for name in tests if name not in cfg.test_profiles]
+    if missing:
+        raise ConfigManagerError(
+            "Unknown required test profile(s): " + ", ".join(sorted(missing))
+        )
+    if run_migrations and (
+        cfg.database is None or cfg.database.migrations is None
+    ):
+        raise ConfigManagerError(
+            "Database and migration configuration are required before deploy migrations"
+        )
+
+    prepared_root = _prepare_deployment_storage(release_root)
+    try:
+        deployment = DeploymentConfig(
+            release_root=prepared_root,
+            service=service,
+            required_tests=tests,
+            run_migrations=run_migrations,
+            activation_timeout_seconds=activation_timeout_seconds,
+        )
+        updated_project = cfg.model_copy(update={"deployment": deployment})
+        updated_project = ProjectConfig.model_validate(updated_project.model_dump())
+        updated = ProjectRegistry(
+            projects={
+                **registry.projects,
+                project: updated_project,
+            }
+        )
+        updated.validate_codes()
+    except ValueError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+
+    _save_registry(paths=paths, project_file=project_file, registry=updated)
+    return {
+        "project": project,
+        "configured": True,
+        "service": service,
+        "required_tests": tests,
+        "run_migrations": run_migrations,
+    }
+
+
+def remove_deployment_config(config_dir: Path, *, project: str) -> None:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if cfg.deployment is None:
+        raise ConfigManagerError("Deployment is not configured")
+
+    updated_project = cfg.model_copy(update={"deployment": None})
+    updated = ProjectRegistry(
+        projects={
+            **registry.projects,
+            project: updated_project,
+        }
+    )
+    # Release data is deliberately left untouched. Removing configuration must
+    # never silently delete rollback material.
     _save_registry(paths=paths, project_file=project_file, registry=updated)

@@ -103,7 +103,31 @@ Not implemented yet:
 
 ## Phase 6 — staging release engine
 
-Add immutable releases, preflight checks, required tests, backups where needed, migration orchestration, activation, health checks, metadata, and automatic code rollback on failed activation.
+Implemented core design:
+
+- staging-only deployment configuration;
+- clean Git HEAD as the only deploy source;
+- no client-supplied branch/ref/commit or arbitrary build shell;
+- fixed Git argv with hooks/fsmonitor disabled;
+- safe Git archive extraction with repository symlinks rejected;
+- private release root, releases directory and runtime HOME;
+- required test profiles before release creation;
+- source HEAD/cleanliness rechecked after tests and before migrations;
+- optional Phase 5 migration orchestration;
+- atomic `current` symlink activation;
+- configured service restart plus mandatory health check;
+- one automatic code rollback after failed activation only when no migration was applied;
+- no automatic rollback after database migration;
+- persisted asynchronous deployment jobs and restart-interruption handling;
+- MCP `plan_deploy`, `deploy_staging`, and `deployment_status`;
+- CLI deployment configuration without manual YAML editing.
+
+Still deferred:
+
+- production deployment;
+- framework-specific build/adapters;
+- release pruning;
+- manual historical rollback selection (Phase 7).
 
 ## Phase 7 — rollback engine
 

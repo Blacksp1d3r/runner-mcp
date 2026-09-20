@@ -309,3 +309,35 @@ def test_database_config_cli_uses_hidden_prompt_and_does_not_print_secret(
     assert result == 0
     assert "demo: configured, postgresql" in captured.out
     assert secret not in captured.out
+
+
+def test_deployment_config_cli_hides_release_root(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    assert main([
+        "--config-dir", str(paths.config_dir),
+        "service-config", "add", "demo", "web",
+        "--unit", "private-web.service",
+        "--health-url", "http://127.0.0.1:9999/health",
+        "--allow-restart",
+    ]) == 0
+    capsys.readouterr()
+    release_root = tmp_path / "staging-releases"
+    assert main([
+        "--config-dir", str(paths.config_dir),
+        "deployment-config", "add", "demo",
+        "--release-root", str(release_root),
+        "--service", "web",
+    ]) == 0
+    captured = capsys.readouterr()
+    assert str(release_root) not in captured.out
+
+    assert main([
+        "--config-dir", str(paths.config_dir),
+        "deployment-config", "list",
+    ]) == 0
+    captured = capsys.readouterr()
+    assert "demo: configured, service=web" in captured.out
+    assert str(release_root) not in captured.out

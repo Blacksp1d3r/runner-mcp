@@ -22,6 +22,8 @@ from starlette.routing import Mount, Route
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
+from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
+from .deployment_manager import DeploymentError, DeploymentManager
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 from .operational_safety import (
@@ -48,6 +50,7 @@ class Settings:
     test_jobs_root: Path | None = None
     max_test_jobs: int = 2
     database_backup_root: Path | None = None
+    deployment_jobs_root: Path | None = None
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, str]) -> Settings:
@@ -90,6 +93,13 @@ class Settings:
                 "RUNNER_MCP_DATABASE_BACKUP_ROOT must be an absolute path"
             )
 
+        deployment_jobs_root_raw = values.get(
+            "RUNNER_MCP_DEPLOY_JOBS_ROOT",
+            "",
+        ).strip()
+        if deployment_jobs_root_raw and not Path(deployment_jobs_root_raw).is_absolute():
+            raise RuntimeError("RUNNER_MCP_DEPLOY_JOBS_ROOT must be an absolute path")
+
         try:
             max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "2"))
         except ValueError as exc:
@@ -113,6 +123,9 @@ class Settings:
             max_test_jobs=max_test_jobs,
             database_backup_root=(
                 Path(database_backup_root_raw) if database_backup_root_raw else None
+            ),
+            deployment_jobs_root=(
+                Path(deployment_jobs_root_raw) if deployment_jobs_root_raw else None
             ),
         )
 
@@ -193,6 +206,22 @@ def build_mcp(
         safety=safety,
         backup_root=settings.database_backup_root,
         secret_values=secret_values or os.environ,
+    )
+    deployment_manager = DeploymentManager(
+        registry=registry,
+        safety=safety,
+        services=service_manager,
+        tests=tests,
+        database=database_manager,
+    )
+    deployment_jobs = (
+        DeploymentJobRunner(
+            manager=deployment_manager,
+            safety=safety,
+            jobs_root=settings.deployment_jobs_root,
+        )
+        if settings.deployment_jobs_root is not None
+        else None
     )
 
     @mcp.tool()
@@ -626,6 +655,87 @@ def build_mcp(
             tool_name="apply_migrations",
             project=project,
             result=str(result.get("status", "unknown")),
+        )
+        return result
+
+    def _audit_deploy_result(
+        *,
+        tool_name: str,
+        project: str | None,
+        result: str,
+    ) -> None:
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                tool_name,
+                project,
+                "authenticated-client",
+                result,
+                utc_timestamp(),
+            )
+        )
+
+    @mcp.tool()
+    def plan_deploy(project: str) -> dict:
+        """Return a safe read-only staging deployment plan."""
+        try:
+            result = deployment_manager.plan(project)
+        except DeploymentError as exc:
+            _audit_deploy_result(
+                tool_name="plan_deploy",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_deploy_result(tool_name="plan_deploy", project=project, result="ok")
+        return result
+
+    def _require_deployment_jobs() -> DeploymentJobRunner:
+        if deployment_jobs is None:
+            raise ValueError("Deployment jobs are not configured")
+        return deployment_jobs
+
+    @mcp.tool()
+    def deploy_staging(project: str) -> dict:
+        """Start an asynchronous staging deployment job after read-only preflight."""
+        try:
+            result = _require_deployment_jobs().start(project)
+        except (
+            DeploymentJobError,
+            DeploymentError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+            ValueError,
+        ) as exc:
+            _audit_deploy_result(
+                tool_name="deploy_staging",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_deploy_result(
+            tool_name="deploy_staging",
+            project=project,
+            result="started",
+        )
+        return result
+
+    @mcp.tool()
+    def deployment_status(job_id: str) -> dict:
+        """Return safe persisted status for one deployment job."""
+        try:
+            result = _require_deployment_jobs().status(job_id)
+        except (DeploymentJobError, ValueError) as exc:
+            _audit_deploy_result(
+                tool_name="deployment_status",
+                project=None,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_deploy_result(
+            tool_name="deployment_status",
+            project=result.get("project"),
+            result="ok",
         )
         return result
 

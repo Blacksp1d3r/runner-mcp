@@ -21,6 +21,14 @@ from .bridge_replay import (
 )
 
 
+class BridgeExecutionAdapterError(RuntimeError):
+    """Safe adapter boundary error; message is never published."""
+
+
+class BridgeResultSinkError(RuntimeError):
+    """Safe durable-result transport boundary error; message is never published."""
+
+
 class BridgeExecutor(Protocol):
     """Explicit allow-listed execution surface for the mailbox processor."""
 
@@ -102,7 +110,7 @@ class BridgeProcessor:
 
         try:
             self._result_sink.persist_result(request.request_id, result_json)
-        except Exception:
+        except BridgeResultSinkError:
             return BridgeProcessOutcome(
                 request_id=request.request_id,
                 action=request.action,
@@ -130,7 +138,7 @@ class BridgeProcessor:
     def _execute_to_safe_result(self, request: BridgeRequest) -> str:
         try:
             raw_result = self._execute(request)
-        except Exception:
+        except BridgeExecutionAdapterError:
             return self._serialize_failure(
                 request,
                 error_code="EXECUTION_FAILED",

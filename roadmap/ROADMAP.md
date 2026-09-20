@@ -269,10 +269,37 @@ Implemented foundation:
 
 Next:
 
-- migrate the private pilot watcher to this public coordinator with private runtime configuration only;
+- combine the watcher coordinator with the loopback MCP bridge executor;
+- migrate the private pilot watcher with private runtime configuration only;
 - prove the migrated watcher against one fresh request plus a restart/recovery cycle;
-- keep completion-notification delivery independent and idempotent;
-- then move back to clean-environment launch verification and service/tunnel onboarding.
+- keep completion-notification delivery independent and idempotent.
+
+## Phase 3.8.6 — loopback MCP bridge executor
+
+Move the remaining pilot-specific MCP handshake and test polling into reusable public code without exposing a generic remote-control interface.
+
+Implemented foundation:
+
+- local MCP endpoint is restricted to HTTP(S) loopback hosts and the exact `/mcp` path;
+- credentials in endpoint URLs, query strings and fragments are rejected;
+- bearer token, session ID and test job ID shapes are bounded and validated;
+- MCP response bytes are bounded;
+- JSON and SSE payloads reject duplicate keys, non-standard constants, malformed UTF-8 and ambiguous multi-event responses;
+- transport, JSON-RPC and tool failures become generic `BridgeExecutionAdapterError` values without raw server details;
+- the public executor exposes exactly the six bridge operations;
+- generic MCP tool dispatch stays private and internally allow-listed;
+- internal `test_status` polling is used only to finish a previously allow-listed `run_tests` request;
+- test logs are never fetched by the bridge executor;
+- terminal test output is reduced to project, suite and status;
+- polling interval and overall wait time are bounded.
+
+Next:
+
+- add the private runtime bootstrap that wires GitHub transport, replay ledger, cursor store and this local executor together;
+- migrate the existing private pilot watcher to that bootstrap;
+- prove one fresh request and one restart/reconciliation cycle end to end;
+- keep completion notification independent and idempotent;
+- then return to clean-environment launch verification and service/tunnel onboarding.
 
 ## Phase 3.9 — public launch readiness
 

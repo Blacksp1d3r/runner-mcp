@@ -23,12 +23,20 @@ CONFIG_DIR="${RUNNER_MCP_SERVICE_CONFIG_DIR:-$SERVICE_HOME/.config/runner-mcp}"
 BIN_DIR="${RUNNER_MCP_OPERATOR_BIN_DIR:-$HOME/.local/bin}"
 WRAPPER="$BIN_DIR/runner-mcp"
 
-if [[ ! -x "$RUNNER_BIN" ]]; then
+service_test() {
+  if [[ "$(id -un)" == "$SERVICE_USER" ]]; then
+    test "$@"
+  else
+    sudo -u "$SERVICE_USER" -- test "$@"
+  fi
+}
+
+if ! service_test -x "$RUNNER_BIN"; then
   echo "Error: Runner MCP executable was not found for the service user." >&2
   exit 2
 fi
 
-if [[ ! -d "$CONFIG_DIR" ]]; then
+if ! service_test -d "$CONFIG_DIR"; then
   echo "Error: Runner MCP private configuration was not found for the service user." >&2
   exit 2
 fi

@@ -177,6 +177,20 @@ class OperatorSafetyGuard:
         if status.stop_active:
             raise OperatorStopActive("Operator emergency stop is active")
 
+    def assert_project_action_allowed(
+        self,
+        action: ActionClass,
+        *,
+        environment: str,
+    ) -> None:
+        self.assert_action_allowed(action)
+        if action in {ActionClass.READ_ONLY, ActionClass.CANCEL}:
+            return
+        if environment != "staging":
+            raise SafetyConfigurationError(
+                "Mutating project actions are enabled only for staging environments"
+            )
+
     def assert_code_rollback_steps(self, steps: int) -> None:
         if steps != 1:
             raise SafetyConfigurationError(

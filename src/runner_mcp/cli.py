@@ -9,6 +9,7 @@ from pathlib import Path
 
 import uvicorn
 
+from .approval_manager import ApprovalError, ApprovalManager
 from .config_manager import (
     ConfigManagerError,
     add_database_config,
@@ -474,6 +475,65 @@ def cmd_deployment_config(args: argparse.Namespace) -> int:
     raise ConfigManagerError("Unknown deployment-config action")
 
 
+def _approval_manager(config_dir: Path) -> ApprovalManager:
+    _, settings, _ = read_private_runtime(config_dir)
+    if settings.approval_root is None:
+        raise ApprovalError("Human approval storage is not configured")
+    return ApprovalManager(
+        root=settings.approval_root,
+        ttl_seconds=settings.approval_ttl_seconds,
+    )
+
+
+def _print_approval(plan: dict) -> None:
+    print(f"Approval: {plan['approval_id']}")
+    print(f"Action: {plan['action']}")
+    print(f"Project: {plan['project']}")
+    print(f"State: {plan['state']}")
+    print(f"Expires: {plan['expires_at']}")
+    summary = plan.get("summary") or {}
+    if summary:
+        print("Summary:")
+        for key in sorted(summary):
+            print(f"  {key}: {summary[key]}")
+
+
+def cmd_approval(args: argparse.Namespace) -> int:
+    approvals = _approval_manager(_config_dir(args.config_dir))
+
+    if args.approval_action == "list":
+        plans = approvals.list_recent(limit=args.limit)
+        if not plans:
+            print("No approval plans found.")
+            return 0
+        for plan in plans:
+            print(
+                f"{plan['approval_id']}  {plan['state']}  "
+                f"{plan['action']}  {plan['project']}  expires={plan['expires_at']}"
+            )
+        return 0
+
+    if args.approval_action == "status":
+        _print_approval(approvals.status(args.approval_id))
+        return 0
+
+    if args.approval_action == "approve":
+        plan = approvals.status(args.approval_id)
+        if plan["state"] != "pending":
+            raise ApprovalError("Approval is not pending")
+        _print_approval(plan)
+        phrase = f"APPROVE {args.approval_id[:8]}"
+        print()
+        confirmation = input(f"Type {phrase} to approve this one action: ").strip()
+        if confirmation != phrase:
+            raise ApprovalError("Approval cancelled")
+        approved = approvals.approve(args.approval_id)
+        print(f"Approved until {approved['expires_at']}. This approval is single-use.")
+        return 0
+
+    raise ApprovalError("Unknown approval action")
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     paths, settings, registry = read_private_runtime(config_dir)
@@ -730,6 +790,24 @@ def build_parser() -> argparse.ArgumentParser:
     )
     adapter_inspect.add_argument("project")
     adapter_inspect.set_defaults(func=cmd_adapter)
+
+    approval = subparsers.add_parser(
+        "approval",
+        help="List, inspect or locally approve short-lived high-risk action plans.",
+    )
+    approval_sub = approval.add_subparsers(dest="approval_action", required=True)
+    approval_list = approval_sub.add_parser("list", help="List recent approval plans.")
+    approval_list.add_argument("--limit", type=int, default=20)
+    approval_list.set_defaults(func=cmd_approval)
+    approval_status = approval_sub.add_parser("status", help="Inspect one approval plan.")
+    approval_status.add_argument("approval_id")
+    approval_status.set_defaults(func=cmd_approval)
+    approval_approve = approval_sub.add_parser(
+        "approve",
+        help="Approve one pending plan locally after explicit confirmation.",
+    )
+    approval_approve.add_argument("approval_id")
+    approval_approve.set_defaults(func=cmd_approval)
 
     serve = subparsers.add_parser(
         "serve",

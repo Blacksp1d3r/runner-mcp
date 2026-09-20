@@ -672,7 +672,13 @@ class DeploymentManager:
             "database_restore_performed": False,
         }
 
-    def rollback_one(self, project: str) -> dict:
+    def rollback_one(
+        self,
+        project: str,
+        *,
+        expected_current_release: str | None = None,
+        expected_target_release: str | None = None,
+    ) -> dict:
         self.safety.assert_action_allowed(ActionClass.CODE_ROLLBACK)
         self.safety.assert_code_rollback_steps(1)
         lock = self._lock_for(project)
@@ -680,6 +686,16 @@ class DeploymentManager:
             raise DeploymentError("Another deployment or rollback is already in progress")
         try:
             plan = self.rollback_plan(project)
+            if (
+                expected_current_release is not None
+                and plan["current_release"] != expected_current_release
+            ):
+                raise DeploymentError("Rollback current release changed after approval")
+            if (
+                expected_target_release is not None
+                and plan["target_release"] != expected_target_release
+            ):
+                raise DeploymentError("Rollback target changed after approval")
             if not plan["allowed"]:
                 raise DeploymentError(
                     "Code rollback is blocked across a database migration boundary"
@@ -767,7 +783,12 @@ class DeploymentManager:
         finally:
             lock.release()
 
-    def deploy(self, project: str) -> dict:
+    def deploy(
+        self,
+        project: str,
+        *,
+        expected_commit: str | None = None,
+    ) -> dict:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
         lock = self._lock_for(project)
         if not lock.acquire(blocking=False):
@@ -780,6 +801,8 @@ class DeploymentManager:
                 create=True,
             )
             commit, short_commit = self._source_state(config.root, release_root)
+            if expected_commit is not None and commit != expected_commit:
+                raise DeploymentError("Deployment commit changed after approval")
             previous_release = self._current_release_id(release_root, releases)
 
             tests = self._run_required_tests(project, deployment)

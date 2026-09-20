@@ -33,7 +33,13 @@ class FakeManager:
             "database_restore_performed": False,
         }
 
-    def rollback_one(self, project: str) -> dict:
+    def rollback_one(
+        self,
+        project: str,
+        *,
+        expected_current_release: str | None = None,
+        expected_target_release: str | None = None,
+    ) -> dict:
         return {
             "project": project,
             "status": "rolled_back",
@@ -42,7 +48,7 @@ class FakeManager:
             "database_restore_performed": False,
         }
 
-    def deploy(self, project: str) -> dict:
+    def deploy(self, project: str, *, expected_commit: str | None = None) -> dict:
         self.deploys.append(project)
         if self.block is not None:
             self.block.wait(timeout=3)

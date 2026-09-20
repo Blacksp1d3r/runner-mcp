@@ -30,6 +30,7 @@ class PrivatePaths:
     jobs_dir: Path
     database_backups_dir: Path
     deployment_jobs_dir: Path
+    approvals_dir: Path
     audit_log: Path
 
     @classmethod
@@ -43,6 +44,7 @@ class PrivatePaths:
             jobs_dir=root / "jobs",
             database_backups_dir=root / "database-backups",
             deployment_jobs_dir=root / "deployment-jobs",
+            approvals_dir=root / "approvals",
             audit_log=root / "audit.jsonl",
         )
 
@@ -174,6 +176,8 @@ def render_env_file(
         "RUNNER_MCP_MAX_TEST_JOBS": str(answers.max_test_jobs),
         "RUNNER_MCP_DATABASE_BACKUP_ROOT": str(paths.database_backups_dir),
         "RUNNER_MCP_DEPLOY_JOBS_ROOT": str(paths.deployment_jobs_dir),
+        "RUNNER_MCP_APPROVAL_ROOT": str(paths.approvals_dir),
+        "RUNNER_MCP_APPROVAL_TTL_SECONDS": "600",
     }
     for key, value in sorted((extra_values or {}).items()):
         if key.startswith("RUNNER_MCP_DB_"):
@@ -251,6 +255,11 @@ def install_private_configuration(
     if paths.deployment_jobs_dir.is_symlink():
         raise OnboardingError("Deployment jobs directory must not be a symlink")
     os.chmod(paths.deployment_jobs_dir, 0o700)
+
+    paths.approvals_dir.mkdir(parents=True, exist_ok=True)
+    if paths.approvals_dir.is_symlink():
+        raise OnboardingError("Approval directory must not be a symlink")
+    os.chmod(paths.approvals_dir, 0o700)
 
     token: str | None = None
     existing_database_values: dict[str, str] = {}

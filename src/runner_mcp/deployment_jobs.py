@@ -59,6 +59,9 @@ class DeploymentJob:
     finished_at: datetime | None = None
     result: dict[str, Any] | None = None
     error_category: str | None = None
+    expected_commit: str | None = None
+    expected_current_release: str | None = None
+    expected_target_release: str | None = None
 
     def public_dict(self) -> dict[str, Any]:
         return {
@@ -159,7 +162,15 @@ class DeploymentJobRunner:
             for job in self._jobs.values()
         )
 
-    def _enqueue(self, project: str, operation: str) -> dict[str, Any]:
+    def _enqueue(
+        self,
+        project: str,
+        operation: str,
+        *,
+        expected_commit: str | None = None,
+        expected_current_release: str | None = None,
+        expected_target_release: str | None = None,
+    ) -> dict[str, Any]:
         with self._lock:
             if self._project_has_active_job(project):
                 raise DeploymentJobError(
@@ -173,6 +184,9 @@ class DeploymentJobRunner:
                 operation=operation,
                 state=DeploymentJobState.QUEUED,
                 created_at=utc_now(),
+                expected_commit=expected_commit,
+                expected_current_release=expected_current_release,
+                expected_target_release=expected_target_release,
             )
             self._jobs[job_id] = job
             self._persist(job)
@@ -186,12 +200,29 @@ class DeploymentJobRunner:
         worker.start()
         return job.public_dict()
 
-    def start(self, project: str) -> dict[str, Any]:
+    def start(
+        self,
+        project: str,
+        *,
+        expected_commit: str | None = None,
+    ) -> dict[str, Any]:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
-        self.manager.plan(project)
-        return self._enqueue(project, "deploy")
+        plan = self.manager.plan(project)
+        if expected_commit is not None and plan.get("commit") != expected_commit:
+            raise DeploymentJobError("Deployment plan changed after approval")
+        return self._enqueue(
+            project,
+            "deploy",
+            expected_commit=expected_commit,
+        )
 
-    def start_rollback(self, project: str) -> dict[str, Any]:
+    def start_rollback(
+        self,
+        project: str,
+        *,
+        expected_current_release: str | None = None,
+        expected_target_release: str | None = None,
+    ) -> dict[str, Any]:
         self.safety.assert_action_allowed(ActionClass.CODE_ROLLBACK)
         self.safety.assert_code_rollback_steps(1)
         plan = self.manager.rollback_plan(project)
@@ -199,7 +230,22 @@ class DeploymentJobRunner:
             raise DeploymentJobError(
                 "Code rollback is blocked across a database migration boundary"
             )
-        return self._enqueue(project, "rollback")
+        if (
+            expected_current_release is not None
+            and plan.get("current_release") != expected_current_release
+        ):
+            raise DeploymentJobError("Rollback current release changed after approval")
+        if (
+            expected_target_release is not None
+            and plan.get("target_release") != expected_target_release
+        ):
+            raise DeploymentJobError("Rollback target changed after approval")
+        return self._enqueue(
+            project,
+            "rollback",
+            expected_current_release=expected_current_release,
+            expected_target_release=expected_target_release,
+        )
 
     def _set_job(
         self,
@@ -233,14 +279,22 @@ class DeploymentJobRunner:
             started_at=utc_now(),
         )
         with self._lock:
-            project = self._jobs[job_id].project
-            operation = self._jobs[job_id].operation
+            job = self._jobs[job_id]
+            project = job.project
+            operation = job.operation
+            expected_commit = job.expected_commit
+            expected_current_release = job.expected_current_release
+            expected_target_release = job.expected_target_release
 
         try:
             result = (
-                self.manager.deploy(project)
+                self.manager.deploy(project, expected_commit=expected_commit)
                 if operation == "deploy"
-                else self.manager.rollback_one(project)
+                else self.manager.rollback_one(
+                    project,
+                    expected_current_release=expected_current_release,
+                    expected_target_release=expected_target_release,
+                )
             )
             self._set_job(
                 job_id,

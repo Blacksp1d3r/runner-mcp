@@ -292,12 +292,21 @@ class DatabaseManager:
         return self._public_backup_metadata(payload, available=True)
 
     def backup_database(self, project: str) -> dict[str, Any]:
-        self.safety.assert_action_allowed(ActionClass.BACKUP)
+        project_config = self.registry.projects.get(project)
+        if project_config is None:
+            raise DatabaseManagerError("Unknown or disabled project")
+        self.safety.assert_project_action_allowed(
+            ActionClass.BACKUP,
+            environment=project_config.environment,
+        )
         lock = self._lock_for(project)
         if not lock.acquire(blocking=False):
             raise DatabaseManagerError("Another database operation is already in progress")
         try:
-            self.safety.assert_action_allowed(ActionClass.BACKUP)
+            self.safety.assert_project_action_allowed(
+                ActionClass.BACKUP,
+                environment=project_config.environment,
+            )
             return self._backup_database_locked(project, kind="manual")
         finally:
             lock.release()
@@ -542,7 +551,13 @@ class DatabaseManager:
         }
 
     def apply_migrations(self, project: str) -> dict[str, Any]:
-        self.safety.assert_action_allowed(ActionClass.MIGRATION)
+        project_config = self.registry.projects.get(project)
+        if project_config is None:
+            raise DatabaseManagerError("Unknown or disabled project")
+        self.safety.assert_project_action_allowed(
+            ActionClass.MIGRATION,
+            environment=project_config.environment,
+        )
         lock = self._lock_for(project)
         if not lock.acquire(blocking=False):
             raise DatabaseManagerError("Another database operation is already in progress")
@@ -552,11 +567,17 @@ class DatabaseManager:
             if profile is None:
                 raise DatabaseManagerError("Migration profile is not configured")
 
-            self.safety.assert_action_allowed(ActionClass.MIGRATION)
+            self.safety.assert_project_action_allowed(
+                ActionClass.MIGRATION,
+                environment=project_config.environment,
+            )
             backup = self._backup_database_locked(project, kind="pre_migration")
 
             # A stop may have been activated while the backup was running.
-            self.safety.assert_action_allowed(ActionClass.MIGRATION)
+            self.safety.assert_project_action_allowed(
+                ActionClass.MIGRATION,
+                environment=project_config.environment,
+            )
             result = self._run_migration_command(
                 root=root,
                 database=database,

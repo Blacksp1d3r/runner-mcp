@@ -21,6 +21,7 @@ from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
+from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
@@ -35,6 +36,7 @@ from .operational_safety import (
     SafetyConfigurationError,
 )
 from .service_manager import ServiceManager, ServiceManagerError
+from .source_control import SourceControlError, clean_head
 from .test_runner import TestRunner, TestRunnerError
 
 
@@ -53,6 +55,8 @@ class Settings:
     max_test_jobs: int = 2
     database_backup_root: Path | None = None
     deployment_jobs_root: Path | None = None
+    approval_root: Path | None = None
+    approval_ttl_seconds: int = 600
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, str]) -> Settings:
@@ -102,10 +106,27 @@ class Settings:
         if deployment_jobs_root_raw and not Path(deployment_jobs_root_raw).is_absolute():
             raise RuntimeError("RUNNER_MCP_DEPLOY_JOBS_ROOT must be an absolute path")
 
+        approval_root_raw = values.get("RUNNER_MCP_APPROVAL_ROOT", "").strip()
+        if approval_root_raw and not Path(approval_root_raw).is_absolute():
+            raise RuntimeError("RUNNER_MCP_APPROVAL_ROOT must be an absolute path")
+
         try:
             max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "2"))
         except ValueError as exc:
             raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be an integer") from exc
+
+        try:
+            approval_ttl_seconds = int(
+                values.get("RUNNER_MCP_APPROVAL_TTL_SECONDS", "600")
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                "RUNNER_MCP_APPROVAL_TTL_SECONDS must be an integer"
+            ) from exc
+        if approval_ttl_seconds < 60 or approval_ttl_seconds > 1800:
+            raise RuntimeError(
+                "RUNNER_MCP_APPROVAL_TTL_SECONDS must be between 60 and 1800"
+            )
         if not 1 <= max_test_jobs <= 16:
             raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be between 1 and 16")
 
@@ -129,6 +150,8 @@ class Settings:
             deployment_jobs_root=(
                 Path(deployment_jobs_root_raw) if deployment_jobs_root_raw else None
             ),
+            approval_root=Path(approval_root_raw) if approval_root_raw else None,
+            approval_ttl_seconds=approval_ttl_seconds,
         )
 
     @classmethod
@@ -232,6 +255,15 @@ def build_mcp(
             jobs_root=settings.deployment_jobs_root,
         )
         if settings.deployment_jobs_root is not None
+        else None
+    )
+
+    approval_manager = (
+        ApprovalManager(
+            root=settings.approval_root,
+            ttl_seconds=settings.approval_ttl_seconds,
+        )
+        if settings.approval_root is not None
         else None
     )
 
@@ -698,6 +730,134 @@ def build_mcp(
         )
         return result
 
+    def _require_approval_manager() -> ApprovalManager:
+        if approval_manager is None:
+            raise ValueError("Human approval storage is not configured")
+        return approval_manager
+
+    def _migration_approval_material(project: str) -> tuple[dict, dict]:
+        cfg = registry.projects.get(project)
+        if cfg is None:
+            raise ValueError("Unknown or disabled project")
+        if cfg.environment != "staging":
+            raise ValueError("Mutating project actions are enabled only for staging environments")
+        if cfg.database is None or cfg.database.migrations is None:
+            raise ValueError("Migration profile is not configured")
+        source = clean_head(cfg.root)
+        binding = {
+            "environment": cfg.environment,
+            "repository": cfg.repository,
+            "database": cfg.database.model_dump(mode="json"),
+            "source": source,
+        }
+        summary = {
+            "action": "migration",
+            "environment": cfg.environment,
+            "commit": source["commit"],
+            "pre_migration_backup_required": True,
+            "automatic_database_restore": False,
+        }
+        return binding, summary
+
+    def _deploy_approval_material(project: str) -> tuple[dict, dict]:
+        plan = deployment_manager.plan(project)
+        cfg = registry.projects.get(project)
+        if cfg is None or cfg.deployment is None:
+            raise ValueError("Staging deployment is not configured")
+        service = cfg.services.get(cfg.deployment.service)
+        if service is None:
+            raise ValueError("Deployment service alias is not configured")
+        binding = {
+            "plan": plan,
+            "deployment": cfg.deployment.model_dump(mode="json"),
+            "service": service.model_dump(mode="json"),
+            "database": (
+                cfg.database.model_dump(mode="json")
+                if cfg.deployment.run_migrations and cfg.database is not None
+                else None
+            ),
+        }
+        summary = {"action": "deploy", **plan}
+        return binding, summary
+
+    def _rollback_approval_material(project: str) -> tuple[dict, dict]:
+        plan = deployment_manager.rollback_plan(project)
+        if not plan.get("allowed", False):
+            raise ValueError("Code rollback is blocked across a database migration boundary")
+        binding = {"plan": plan}
+        summary = {"action": "code_rollback", **plan}
+        return binding, summary
+
+    def _approval_material(project: str, action: str) -> tuple[dict, dict]:
+        if action == "migration":
+            return _migration_approval_material(project)
+        if action == "deploy":
+            return _deploy_approval_material(project)
+        if action == "code_rollback":
+            return _rollback_approval_material(project)
+        raise ValueError("Unsupported approval action")
+
+    def _audit_approval_result(
+        *,
+        tool_name: str,
+        project: str | None,
+        result: str,
+    ) -> None:
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                tool_name,
+                project,
+                "authenticated-client",
+                result,
+                utc_timestamp(),
+            )
+        )
+
+    @mcp.tool()
+    def request_action_approval(project: str, action: str) -> dict:
+        """Create a short-lived human approval plan for migration, deploy or rollback."""
+        try:
+            binding, summary = _approval_material(project, action)
+            result = _require_approval_manager().request(
+                action=action,
+                project=project,
+                binding=binding,
+                summary=summary,
+            )
+        except (ApprovalError, DeploymentError, SourceControlError, ValueError) as exc:
+            _audit_approval_result(
+                tool_name="request_action_approval",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_approval_result(
+            tool_name="request_action_approval",
+            project=project,
+            result="pending",
+        )
+        return result
+
+    @mcp.tool()
+    def approval_status(approval_id: str) -> dict:
+        """Return safe status for a short-lived human approval plan."""
+        try:
+            result = _require_approval_manager().status(approval_id)
+        except (ApprovalError, ValueError) as exc:
+            _audit_approval_result(
+                tool_name="approval_status",
+                project=None,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_approval_result(
+            tool_name="approval_status",
+            project=result.get("project"),
+            result=str(result.get("state", "unknown")),
+        )
+        return result
+
     @mcp.tool()
     def migration_status(project: str) -> dict:
         """Run the configured read-only migration status command."""
@@ -718,14 +878,24 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def apply_migrations(project: str) -> dict:
-        """Create a pre-migration backup, then run the configured migration command."""
+    def apply_migrations(project: str, approval_id: str) -> dict:
+        """Apply migrations only after consuming a matching human approval."""
         try:
+            binding, _ = _migration_approval_material(project)
+            _require_approval_manager().consume(
+                approval_id,
+                action="migration",
+                project=project,
+                binding=binding,
+            )
             result = database_manager.apply_migrations(project)
         except (
+            ApprovalError,
             DatabaseManagerError,
+            SourceControlError,
             OperatorStopActive,
             SafetyConfigurationError,
+            ValueError,
         ) as exc:
             _audit_database_result(
                 tool_name="apply_migrations",
@@ -778,11 +948,23 @@ def build_mcp(
         return deployment_jobs
 
     @mcp.tool()
-    def deploy_staging(project: str) -> dict:
-        """Start an asynchronous staging deployment job after read-only preflight."""
+    def deploy_staging(project: str, approval_id: str) -> dict:
+        """Start a staging deploy only after consuming a matching human approval."""
         try:
-            result = _require_deployment_jobs().start(project)
+            jobs = _require_deployment_jobs()
+            binding, summary = _deploy_approval_material(project)
+            _require_approval_manager().consume(
+                approval_id,
+                action="deploy",
+                project=project,
+                binding=binding,
+            )
+            result = jobs.start(
+                project,
+                expected_commit=str(summary["commit"]),
+            )
         except (
+            ApprovalError,
             DeploymentJobError,
             DeploymentError,
             OperatorStopActive,
@@ -852,11 +1034,24 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def rollback_release(project: str) -> dict:
-        """Start one asynchronous rollback to the direct previous release."""
+    def rollback_release(project: str, approval_id: str) -> dict:
+        """Start one rollback only after consuming a matching human approval."""
         try:
-            result = _require_deployment_jobs().start_rollback(project)
+            jobs = _require_deployment_jobs()
+            binding, summary = _rollback_approval_material(project)
+            _require_approval_manager().consume(
+                approval_id,
+                action="code_rollback",
+                project=project,
+                binding=binding,
+            )
+            result = jobs.start_rollback(
+                project,
+                expected_current_release=str(summary["current_release"]),
+                expected_target_release=str(summary["target_release"]),
+            )
         except (
+            ApprovalError,
             DeploymentJobError,
             DeploymentError,
             OperatorStopActive,

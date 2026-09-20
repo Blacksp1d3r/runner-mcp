@@ -171,8 +171,20 @@ def test_client_initializes_session_and_sends_authenticated_tool_call(
         ),
         FakeResponse(b""),
         FakeResponse(
-            b'{"jsonrpc":"2.0","id":2,"result":{"content":'
-            b'[{"type":"text","text":"[{\"code\":\"demo\"}]"}]}}'
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps([{"code": "demo"}]),
+                            }
+                        ]
+                    },
+                }
+            ).encode()
         ),
     ]
 

@@ -394,8 +394,9 @@ class GitHubMailboxTransport:
         ):
             raise self._invalid_response("mailbox file metadata is invalid")
 
+        compact_content = "".join(content.split())
         try:
-            decoded = base64.b64decode(content, validate=True)
+            decoded = base64.b64decode(compact_content, validate=True)
         except (ValueError, TypeError) as exc:
             raise self._invalid_response("mailbox file base64 is invalid") from exc
 

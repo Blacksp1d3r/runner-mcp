@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import math
 import re
 from enum import StrEnum
 from typing import Any, Literal
@@ -143,6 +144,10 @@ class BridgeResult(BaseModel):
         raise ValueError("unsupported bridge result state")
 
 
+def _reject_nonstandard_json_constant(value: str) -> None:
+    raise BridgeProtocolError(f"bridge payload contains non-standard JSON constant: {value}")
+
+
 def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
     result: dict[str, Any] = {}
     for key, value in pairs:
@@ -175,7 +180,11 @@ def _decode_json_payload(
             raise BridgeProtocolError(f"{description} exceeds size limit")
 
     try:
-        return json.loads(text, object_pairs_hook=_reject_duplicate_keys)
+        return json.loads(
+            text,
+            object_pairs_hook=_reject_duplicate_keys,
+            parse_constant=_reject_nonstandard_json_constant,
+        )
     except BridgeProtocolError:
         raise
     except (json.JSONDecodeError, TypeError) as exc:
@@ -226,7 +235,12 @@ def sanitize_bridge_result_data(data: dict[str, Any]) -> dict[str, Any]:
         if depth > MAX_RESULT_DEPTH:
             raise BridgeProtocolError("bridge result exceeds nesting limit")
 
-        if value is None or isinstance(value, (bool, int, float)):
+        if value is None or isinstance(value, (bool, int)):
+            return value
+
+        if isinstance(value, float):
+            if not math.isfinite(value):
+                raise BridgeProtocolError("bridge result contains non-finite number")
             return value
 
         if isinstance(value, str):
@@ -272,6 +286,7 @@ def serialize_bridge_result(result: BridgeResult) -> str:
         ensure_ascii=False,
         separators=(",", ":"),
         sort_keys=True,
+        allow_nan=False,
     ).encode("utf-8")
     if len(encoded) > MAX_BRIDGE_RESULT_BYTES:
         raise BridgeProtocolError("bridge result exceeds size limit")

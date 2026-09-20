@@ -4,8 +4,8 @@ import pytest
 
 from runner_mcp.bridge_protocol import (
     MAX_BRIDGE_REQUEST_BYTES,
-    BridgeAction,
     MAX_BRIDGE_RESULT_BYTES,
+    BridgeAction,
     BridgeProtocolError,
     BridgeRequest,
     BridgeResult,

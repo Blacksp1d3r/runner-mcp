@@ -295,10 +295,37 @@ Implemented foundation:
 
 Next:
 
-- add the private runtime bootstrap that wires GitHub transport, replay ledger, cursor store and this local executor together;
-- migrate the existing private pilot watcher to that bootstrap;
+- use the private-config runtime and CLI to migrate the existing pilot watcher;
 - prove one fresh request and one restart/reconciliation cycle end to end;
 - keep completion notification independent and idempotent;
+- then return to clean-environment launch verification and service/tunnel onboarding.
+
+## Phase 3.8.7 — private-config watcher runtime and CLI
+
+Wire the public GitHub transport, replay ledger, cursor, watcher and loopback MCP executor together without putting deployment-specific values into the repository.
+
+Implemented foundation:
+
+- GitHub repository, request ref, result ref and token live only in the private 0600 runtime environment;
+- mailbox configuration is validated before atomic persistence;
+- mailbox status reveals only configured/not-configured state;
+- the GitHub token is entered through a hidden prompt and is not accepted as a CLI argument;
+- mailbox removal deletes only the four mailbox environment values;
+- setup overwrite preserves database and mailbox secrets even when rotating the Runner MCP bearer token;
+- replay ledger and cursor files are derived inside the private configuration directory;
+- `github-watcher bootstrap` explicitly starts at the current request head and skips historical requests;
+- `github-watcher once` processes one bounded incremental cycle and prints only safe counts/state;
+- `github-watcher run` provides continuous polling with bounded intervals;
+- request polling and heartbeat publication have separate cadences;
+- heartbeat defaults to a slower cadence and is also published on watcher-state transitions;
+- heartbeat delivery remains independent from operational task execution.
+
+Next:
+
+- migrate the private pilot watcher to `runner-mcp github-watcher run`;
+- initialize it with an explicit bootstrap before enabling continuous polling;
+- prove one fresh test request, result publication, completion notification and restart/reconciliation cycle;
+- remove obsolete private pilot execution logic after the migrated path is proven;
 - then return to clean-environment launch verification and service/tunnel onboarding.
 
 ## Phase 3.9 — public launch readiness

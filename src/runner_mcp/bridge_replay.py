@@ -3,6 +3,8 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import re
+import stat
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -11,10 +13,16 @@ from typing import Any
 
 import fcntl
 
-from .bridge_protocol import BridgeProtocolError, BridgeRequest
+from .bridge_protocol import (
+    REQUEST_ID_RE,
+    BridgeAction,
+    BridgeProtocolError,
+    BridgeRequest,
+)
 
 MAX_REPLAY_LEDGER_BYTES = 1_048_576
 DEFAULT_MAX_REPLAY_ENTRIES = 5_000
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 
 
 class BridgeReplayError(BridgeProtocolError):
@@ -97,11 +105,14 @@ class BridgeReplayLedger:
             raise BridgeReplayError("replay ledger parent directory is unavailable")
 
         try:
-            fd = os.open(
-                self._path,
-                os.O_RDWR | os.O_CREAT,
-                0o600,
-            )
+            flags = os.O_RDWR | os.O_CREAT
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(self._path, flags, 0o600)
+            metadata = os.fstat(fd)
+            if not stat.S_ISREG(metadata.st_mode):
+                os.close(fd)
+                raise BridgeReplayError("replay ledger must be a regular file")
             os.fchmod(fd, 0o600)
             return fd
         except OSError as exc:
@@ -127,8 +138,13 @@ class BridgeReplayLedger:
             raise BridgeReplayError("replay ledger has invalid structure")
 
         entries: dict[str, dict[str, str]] = {}
+        allowed_actions = {action.value for action in BridgeAction}
         for request_id, entry in raw.items():
-            if not isinstance(request_id, str) or not isinstance(entry, dict):
+            if (
+                not isinstance(request_id, str)
+                or not REQUEST_ID_RE.fullmatch(request_id)
+                or not isinstance(entry, dict)
+            ):
                 raise BridgeReplayError("replay ledger has invalid structure")
 
             fingerprint = entry.get("fingerprint")
@@ -136,11 +152,17 @@ class BridgeReplayLedger:
             seen_at = entry.get("seen_at")
             if (
                 not isinstance(fingerprint, str)
-                or len(fingerprint) != 64
+                or not _SHA256_RE.fullmatch(fingerprint)
                 or not isinstance(action, str)
+                or action not in allowed_actions
                 or not isinstance(seen_at, str)
             ):
                 raise BridgeReplayError("replay ledger has invalid entry")
+
+            try:
+                datetime.fromisoformat(seen_at)
+            except ValueError as exc:
+                raise BridgeReplayError("replay ledger has invalid entry") from exc
 
             entries[request_id] = {
                 "fingerprint": fingerprint,

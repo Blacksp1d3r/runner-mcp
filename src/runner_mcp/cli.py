@@ -155,6 +155,89 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_guide(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    _, _, registry = read_private_runtime(config_dir)
+    _, guard = operator_stop_status(config_dir)
+    stop_active = guard.status().stop_active
+
+    databases = {row["project"]: row for row in list_database_configs(config_dir)}
+    deployments = {row["project"]: row for row in list_deployment_configs(config_dir)}
+
+    print("Runner MCP guide")
+    print()
+    if stop_active:
+        print("Emergency stop is ACTIVE; mutating actions are currently blocked.")
+        print()
+
+    print("Configured projects:")
+    for code in sorted(registry.projects):
+        project = registry.projects[code]
+        profiles = list_test_profiles(config_dir, project=code)
+        services = list_service_configs(config_dir, project=code)
+        database = databases.get(code, {})
+        deployment = deployments.get(code, {})
+
+        print(f"- {code}: {project.display_name}")
+        print(f"  adapter: {project.adapter}")
+
+        if profiles:
+            names = ", ".join(profile["name"] for profile in profiles)
+            print(f"  test profiles: {names}")
+        elif project.adapter == "python":
+            print("  test profiles: not configured")
+            print(f"    next: runner-mcp test-profile add {code} unit --preset auto")
+        else:
+            print("  test profiles: not configured")
+            print(
+                "    next: runner-mcp test-profile add "
+                f"{code} NAME --preset custom --executable /absolute/path/to/tool"
+            )
+
+        if services:
+            aliases = ", ".join(service["name"] for service in services)
+            print(f"  staging services: {aliases}")
+        else:
+            print("  staging services: not configured (optional)")
+            print(
+                "    next: runner-mcp service-config add "
+                f"{code} ALIAS --unit USER.service"
+            )
+
+        if database.get("configured"):
+            migration_state = (
+                "configured"
+                if database.get("migrations_configured")
+                else "not configured"
+            )
+            print(f"  PostgreSQL: configured; migrations: {migration_state}")
+        else:
+            print("  PostgreSQL: not configured (optional)")
+            print(f"    next: runner-mcp database-config add {code}")
+
+        if deployment.get("configured"):
+            print("  staging deployment: configured")
+        elif services:
+            service_alias = services[0]["name"]
+            print("  staging deployment: not configured (optional)")
+            print(
+                "    next: runner-mcp deployment-config add "
+                f"{code} --release-root /private/path --service {service_alias}"
+            )
+        else:
+            print("  staging deployment: not configured (optional)")
+
+    print()
+    print("Before serving: runner-mcp doctor")
+    print("Start locally: runner-mcp serve")
+    print(
+        "High-risk migration/deploy/rollback actions require a short-lived "
+        "approval that is approved locally."
+    )
+    print("More help: QUICKSTART.md and docs/USING_AND_EXTENDING.md")
+    return 0
+
+
 def cmd_emergency_stop(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
 
@@ -610,6 +693,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate private configuration, permissions, projects and safety settings.",
     )
     doctor.set_defaults(func=cmd_doctor)
+
+    guide = subparsers.add_parser(
+        "guide",
+        help="Show safe, project-aware next steps without exposing private values.",
+    )
+    guide.set_defaults(func=cmd_guide)
 
     stop = subparsers.add_parser(
         "emergency-stop",

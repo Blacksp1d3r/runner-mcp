@@ -229,6 +229,8 @@ runner-mcp status
 
 The status output intentionally does not print private project paths or credentials.
 
+For project-aware next steps, run runner-mcp guide. It reports only safe configuration summaries and suggested commands; it does not print private paths, service unit names or credentials.
+
 ## 7. Test the emergency stop
 
 Activate it:
@@ -286,17 +288,17 @@ Do not run untrusted public-fork code on a privileged persistent runner. Running
 
 ## What is not one-click yet
 
-The following areas are still being built:
+The safe staging core now includes service aliases, PostgreSQL backups/migrations, staging deployment, one-step rollback and local approval gates.
 
-- service installation and automatic startup;
-- staging service management;
-- database backup and migration workflows;
-- staging deploys;
-- release rollback;
-- a guided public HTTPS/reverse-proxy setup;
-- optional graphical administration.
+The remaining onboarding gaps are mainly:
 
-Until those phases are complete, Runner MCP should be considered an actively developed staging/development operations tool rather than a finished production appliance.
+- service installation and automatic startup packaging;
+- guided private-tunnel and HTTPS/reverse-proxy setup;
+- optional graphical administration;
+- stronger isolation for untrusted public-fork code;
+- database restore/PITR orchestration and retention pruning.
+
+Runner MCP remains a staging/development operations tool; production mutations are deliberately disabled.
 
 ## Where to look when something is wrong
 
@@ -354,3 +356,9 @@ Production environments remain read-only.
 For supported OpenAI products, prefer OpenAI Secure MCP Tunnel instead of exposing Runner MCP directly to the public internet. Run Runner MCP on loopback/private networking and run the tunnel client inside the network that can reach it. The tunnel is outbound HTTPS only.
 
 A future public one-click hosted relay is optional and outside the current MVP.
+
+## Extending Runner MCP
+
+Most new projects should be added through configuration or a built-in adapter rather than by weakening the core safety model.
+
+See docs/USING_AND_EXTENDING.md for the supported extension path and CONTRIBUTING.md for development and review rules.

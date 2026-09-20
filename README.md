@@ -22,16 +22,20 @@ cd runner-mcp
 ./install.sh
 runner-mcp setup
 runner-mcp doctor
+runner-mcp guide
 runner-mcp status
 ```
 
 Start with [QUICKSTART.md](QUICKSTART.md) for the guided installation.
+
+For a user-to-developer path, see [docs/USING_AND_EXTENDING.md](docs/USING_AND_EXTENDING.md). Contributors can start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Useful commands:
 
 ```text
 runner-mcp setup
 runner-mcp doctor
+runner-mcp guide
 runner-mcp status
 runner-mcp emergency-stop on
 runner-mcp emergency-stop status

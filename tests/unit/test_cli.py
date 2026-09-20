@@ -391,3 +391,24 @@ def test_local_approval_cli_requires_explicit_phrase(
     approved = capsys.readouterr()
     assert "single-use" in approved.out
     assert ApprovalManager(root=paths.approvals_dir).status(approval_id)["state"] == "approved"
+
+def test_guide_command_is_path_safe_and_actionable(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, project_root = install_config(tmp_path)
+    token = load_env_file(paths.env_file)["RUNNER_MCP_BEARER_TOKEN"]
+
+    result = main(["--config-dir", str(paths.config_dir), "guide"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "Runner MCP guide" in captured.out
+    assert "- demo: Demo" in captured.out
+    assert "test profiles: not configured" in captured.out
+    assert "runner-mcp test-profile add demo" in captured.out
+    assert "runner-mcp doctor" in captured.out
+    assert str(project_root) not in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert token not in captured.out
+    assert token not in captured.err

@@ -268,6 +268,10 @@ class GitHubMailboxWatcher:
             try:
                 request_bytes = self._transport.fetch_request(request_id)
                 request = parse_bridge_request(request_bytes)
+                if request.request_id != request_id:
+                    raise BridgeProtocolError(
+                        "request filename and payload ID do not match"
+                    )
                 result = self._transport.fetch_result(request_id)
                 record = self._ledger.inspect(request)
             except (

@@ -242,10 +242,10 @@ Phase 9 human approval gates:
 
 ## Validation
 
-Phase 3.8.2 watcher-resilience validation is green:
+Phase 3.8.3 bridge-processor validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 308 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 320 tests green, with one third-party Starlette/AnyIO deprecation warning;
 - git diff whitespace check: green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;

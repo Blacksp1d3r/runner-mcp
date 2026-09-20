@@ -164,7 +164,7 @@ Phase 9 human approval gates:
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 201 tests green;
+- pytest: 203 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -180,6 +180,7 @@ Local trusted-runner validation is green:
 - non-root installer integration test: green;
 - installed console command version/help smoke test: green;
 - project-aware guide smoke test: green;
+- operator-wrapper installer tests: green;
 - onboarding/project/test-profile CLI tests: green;
 - service manager permission/emergency-stop/subprocess tests: green;
 - MCP service alias/status/restart integration test: green;

@@ -28,6 +28,15 @@ runner-mcp status
 
 Start with [QUICKSTART.md](QUICKSTART.md) for the guided installation.
 
+If Runner MCP runs under a dedicated service account while you log in with a separate operator account, install a local operator wrapper:
+
+```bash
+./install-operator.sh SERVICE_USER
+runner-mcp guide
+```
+
+The wrapper keeps the private configuration with the service account and delegates through `sudo`; it does not copy credentials into the operator account.
+
 For a user-to-developer path, see [docs/USING_AND_EXTENDING.md](docs/USING_AND_EXTENDING.md). Contributors can start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
 Useful commands:

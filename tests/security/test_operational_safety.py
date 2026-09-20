@@ -122,3 +122,29 @@ def test_unconfirmed_retention_keeps_operator_actions_read_only(tmp_path: Path) 
 
     with pytest.raises(SafetyConfigurationError, match="explicitly confirmed"):
         guard.assert_action_allowed(ActionClass.TEST)
+
+
+def test_mutating_project_actions_are_staging_only(tmp_path: Path) -> None:
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "operator.stop",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+    guard.assert_project_action_allowed(
+        ActionClass.TEST,
+        environment="staging",
+    )
+    guard.assert_project_action_allowed(
+        ActionClass.READ_ONLY,
+        environment="production",
+    )
+    with pytest.raises(SafetyConfigurationError, match="only for staging"):
+        guard.assert_project_action_allowed(
+            ActionClass.BACKUP,
+            environment="production",
+        )
+    with pytest.raises(SafetyConfigurationError, match="only for staging"):
+        guard.assert_project_action_allowed(
+            ActionClass.SERVICE,
+            environment="production",
+        )

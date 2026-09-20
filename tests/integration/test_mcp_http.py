@@ -5,8 +5,10 @@ from pathlib import Path
 
 from starlette.testclient import TestClient
 
+from runner_mcp.approval_manager import ApprovalManager
 from runner_mcp.config import (
     DatabaseConfig,
+    DeploymentConfig,
     MigrationConfig,
     ProjectConfig,
     ProjectRegistry,
@@ -503,6 +505,11 @@ def test_mcp_database_backup_and_migration_flow(
 ) -> None:
     import subprocess
 
+    monkeypatch.setattr(
+        "runner_mcp.server.clean_head",
+        lambda root: {"commit": "c" * 40, "clean": True},
+    )
+
     secret = "postgresql://user:mcp-private@example.invalid/app"
     project_root = tmp_path / "project"
     project_root.mkdir()
@@ -547,6 +554,7 @@ def test_mcp_database_backup_and_migration_flow(
         operator_stop_file=stop_file,
         retention_confirmed=True,
         database_backup_root=tmp_path / "backups",
+        approval_root=tmp_path / "approvals",
     )
     registry = ProjectRegistry(
         projects={
@@ -623,7 +631,7 @@ def test_mcp_database_backup_and_migration_flow(
         assert secret not in status_payload["output"]
         assert "[REDACTED]" in status_payload["output"]
 
-        applied = client.post(
+        approval_request = client.post(
             "/mcp",
             headers=headers,
             json={
@@ -631,8 +639,24 @@ def test_mcp_database_backup_and_migration_flow(
                 "id": 62,
                 "method": "tools/call",
                 "params": {
+                    "name": "request_action_approval",
+                    "arguments": {"project": "demo", "action": "migration"},
+                },
+            },
+        )
+        approval_id = parse_tool_json(approval_request)["approval_id"]
+        ApprovalManager(root=settings.approval_root).approve(approval_id)
+
+        applied = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 63,
+                "method": "tools/call",
+                "params": {
                     "name": "apply_migrations",
-                    "arguments": {"project": "demo"},
+                    "arguments": {"project": "demo", "approval_id": approval_id},
                 },
             },
         )
@@ -706,7 +730,13 @@ def test_mcp_async_staging_deployment_flow(
                 "automatic_code_rollback": True,
             }
 
-        def deploy(self, project: str) -> dict:
+        def deploy(
+            self,
+            project: str,
+            *,
+            expected_commit: str | None = None,
+        ) -> dict:
+            assert expected_commit in {None, "a" * 40}
             self.deploys.append(project)
             return {
                 "project": project,
@@ -733,6 +763,7 @@ def test_mcp_async_staging_deployment_flow(
         operator_stop_file=stop_file,
         retention_confirmed=True,
         deployment_jobs_root=tmp_path / "deployment-jobs",
+        approval_root=tmp_path / "approvals",
     )
     registry = ProjectRegistry(
         projects={
@@ -741,6 +772,17 @@ def test_mcp_async_staging_deployment_flow(
                 repository="example/demo",
                 environment="staging",
                 root=project_root,
+                services={
+                    "web": ServiceConfig(
+                        unit="private-web.service",
+                        health_url="http://127.0.0.1:9999/health",
+                        allow_restart=True,
+                    )
+                },
+                deployment=DeploymentConfig(
+                    release_root=tmp_path / "staging",
+                    service="web",
+                ),
             )
         }
     )
@@ -778,7 +820,7 @@ def test_mcp_async_staging_deployment_flow(
         assert plan_payload["automatic_code_rollback"] is True
         assert str(tmp_path) not in plan.text
 
-        started = client.post(
+        approval_request = client.post(
             "/mcp",
             headers=headers,
             json={
@@ -786,8 +828,24 @@ def test_mcp_async_staging_deployment_flow(
                 "id": 71,
                 "method": "tools/call",
                 "params": {
+                    "name": "request_action_approval",
+                    "arguments": {"project": "demo", "action": "deploy"},
+                },
+            },
+        )
+        approval_id = parse_tool_json(approval_request)["approval_id"]
+        ApprovalManager(root=settings.approval_root).approve(approval_id)
+
+        started = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 72,
+                "method": "tools/call",
+                "params": {
                     "name": "deploy_staging",
-                    "arguments": {"project": "demo"},
+                    "arguments": {"project": "demo", "approval_id": approval_id},
                 },
             },
         )
@@ -899,7 +957,15 @@ def test_mcp_one_step_rollback_flow(
                 "database_restore_performed": False,
             }
 
-        def rollback_one(self, project: str) -> dict:
+        def rollback_one(
+            self,
+            project: str,
+            *,
+            expected_current_release: str | None = None,
+            expected_target_release: str | None = None,
+        ) -> dict:
+            assert expected_current_release in {None, "new-release"}
+            assert expected_target_release in {None, "old-release"}
             return {
                 **self.rollback_plan(project),
                 "status": "rolled_back",
@@ -919,6 +985,7 @@ def test_mcp_one_step_rollback_flow(
         operator_stop_file=tmp_path / "operator.stop",
         retention_confirmed=True,
         deployment_jobs_root=tmp_path / "deployment-jobs",
+        approval_root=tmp_path / "approvals",
     )
     registry = ProjectRegistry(
         projects={
@@ -1000,7 +1067,7 @@ def test_mcp_one_step_rollback_flow(
         )
         assert '"isError":true' in arbitrary_target.text
 
-        started = client.post(
+        approval_request = client.post(
             "/mcp",
             headers=headers,
             json={
@@ -1008,8 +1075,24 @@ def test_mcp_one_step_rollback_flow(
                 "id": 103,
                 "method": "tools/call",
                 "params": {
+                    "name": "request_action_approval",
+                    "arguments": {"project": "demo", "action": "code_rollback"},
+                },
+            },
+        )
+        approval_id = parse_tool_json(approval_request)["approval_id"]
+        ApprovalManager(root=settings.approval_root).approve(approval_id)
+
+        started = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 104,
+                "method": "tools/call",
+                "params": {
                     "name": "rollback_release",
-                    "arguments": {"project": "demo"},
+                    "arguments": {"project": "demo", "approval_id": approval_id},
                 },
             },
         )

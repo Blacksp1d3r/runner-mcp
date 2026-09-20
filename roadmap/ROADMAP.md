@@ -157,7 +157,26 @@ Move project-specific behavior behind a common adapter interface. New projects s
 
 ## Phase 9 — approval and risk gates
 
-Add two-step plans, short-lived approvals, environment-specific permissions, and stronger safeguards before any production capability is considered.
+Implemented:
+
+- short-lived persisted approval plans for migration, deploy and rollback;
+- approval request/status available through MCP, but approval itself only through local CLI;
+- explicit local confirmation phrase;
+- approval bound to action, project and cryptographic plan fingerprint;
+- single-use consumption and replay prevention;
+- default ten-minute TTL with strict 60–1800 second bounds;
+- deployment approval pinned to clean Git commit;
+- migration approval requires and binds a clean Git HEAD;
+- rollback approval pinned to current and direct previous release;
+- runtime race checks reject changed deploy/rollback targets;
+- mutating project actions restricted to `staging`;
+- production remains read-only.
+
+Connectivity decision:
+
+- prefer OpenAI Secure MCP Tunnel for private ChatGPT/OpenAI connectivity where supported;
+- keep Runner MCP private/loopback and use outbound HTTPS rather than opening inbound firewall ports;
+- a hosted multi-user relay comparable to commercial remote MCP services is optional future infrastructure, not part of the MVP.
 
 ## Phase 10 — optional restricted command templates
 

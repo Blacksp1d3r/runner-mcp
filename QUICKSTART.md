@@ -329,3 +329,28 @@ runner-mcp adapter inspect myproject
 ```
 
 A Python project can be added with `--adapter python`. Then `--preset auto` may select only an existing allow-listed preset such as pytest or Alembic when safe project-local tooling is detected. The generic adapter never guesses commands.
+
+## Human approval for high-risk actions
+
+Migration apply, staging deploy and code rollback use a two-step flow.
+
+First request an approval plan through MCP with `request_action_approval(project, action)`. The action is one of `migration`, `deploy`, or `code_rollback`.
+
+Then approve it locally on the controlled host:
+
+```bash
+runner-mcp approval status APPROVAL_ID
+runner-mcp approval approve APPROVAL_ID
+```
+
+The local CLI shows the safe plan and asks for an explicit confirmation phrase. The MCP client has no tool that can approve its own request.
+
+Finally call the corresponding MCP action with the approved `approval_id`. The approval is short-lived and single-use. Changes to the approved commit/rollback target invalidate the plan.
+
+Production environments remain read-only.
+
+## Private ChatGPT connection
+
+For supported OpenAI products, prefer OpenAI Secure MCP Tunnel instead of exposing Runner MCP directly to the public internet. Run Runner MCP on loopback/private networking and run the tunnel client inside the network that can reach it. The tunnel is outbound HTTPS only.
+
+A future public one-click hosted relay is optional and outside the current MVP.

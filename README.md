@@ -75,6 +75,9 @@ Current implemented foundations include:
 - safe release history plus one-step asynchronous staging rollback;
 - built-in allow-listed project adapters with safe capability inspection;
 - strict MCP tool arguments: unknown fields are rejected rather than ignored;
+- short-lived human approval gates for migration, deploy and rollback;
+- staging-only mutation policy; production remains read-only;
+- private ChatGPT connectivity can use OpenAI Secure MCP Tunnel without an inbound public port;
 - predefined test profiles only;
 - test timeout, cancellation and process-group cleanup;
 - scrubbed, bounded test logs;

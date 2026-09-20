@@ -113,3 +113,34 @@ def test_deployment_jobs_root_must_be_absolute(
     monkeypatch.setenv("RUNNER_MCP_DEPLOY_JOBS_ROOT", "relative/deploy-jobs")
     with pytest.raises(RuntimeError, match="DEPLOY_JOBS_ROOT.*absolute"):
         Settings.from_env()
+
+
+def test_approval_root_defaults_to_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.delenv("RUNNER_MCP_APPROVAL_ROOT", raising=False)
+    monkeypatch.delenv("RUNNER_MCP_APPROVAL_TTL_SECONDS", raising=False)
+    settings = Settings.from_env()
+    assert settings.approval_root is None
+    assert settings.approval_ttl_seconds == 600
+
+
+def test_approval_root_must_be_absolute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_APPROVAL_ROOT", "relative/approvals")
+    with pytest.raises(RuntimeError, match="APPROVAL_ROOT.*absolute"):
+        Settings.from_env()
+
+
+@pytest.mark.parametrize("value", ["59", "1801", "not-an-integer"])
+def test_invalid_approval_ttl_fails_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_APPROVAL_TTL_SECONDS", value)
+    with pytest.raises(RuntimeError, match="APPROVAL_TTL_SECONDS"):
+        Settings.from_env()

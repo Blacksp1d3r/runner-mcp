@@ -235,14 +235,23 @@ class ServiceManager:
         if not self._action_allowed(service, action):
             raise ServiceManagerError("Service action is not allowed")
 
-        self.safety.assert_action_allowed(ActionClass.SERVICE)
+        project_config = self.registry.projects.get(project)
+        if project_config is None:
+            raise ServiceManagerError("Unknown or disabled project")
+        self.safety.assert_project_action_allowed(
+            ActionClass.SERVICE,
+            environment=project_config.environment,
+        )
 
         lock = self._lock_for(project, alias)
         if not lock.acquire(blocking=False):
             raise ServiceManagerError("Another service action is already in progress")
         try:
             # Re-check immediately before the mutating call.
-            self.safety.assert_action_allowed(ActionClass.SERVICE)
+            self.safety.assert_project_action_allowed(
+                ActionClass.SERVICE,
+                environment=project_config.environment,
+            )
             backend = self._backend()
             backend.action(service.unit, action)
             state = backend.status(service.unit)

@@ -273,7 +273,13 @@ class TestRunner:
         )
 
     def start_test(self, project: str, suite: str) -> dict[str, Any]:
-        self.safety.assert_action_allowed(ActionClass.TEST)
+        project_config = self.registry.projects.get(project)
+        if project_config is None:
+            raise TestRunnerError("Unknown or disabled project")
+        self.safety.assert_project_action_allowed(
+            ActionClass.TEST,
+            environment=project_config.environment,
+        )
         self._lookup_profile(project, suite)
 
         with self._lock:
@@ -479,7 +485,13 @@ class TestRunner:
                 project = job.project
                 suite = job.suite
 
-            self.safety.assert_action_allowed(ActionClass.TEST)
+            project_config = self.registry.projects.get(job.project)
+            if project_config is None:
+                raise TestRunnerError("Unknown or disabled project")
+            self.safety.assert_project_action_allowed(
+                ActionClass.TEST,
+                environment=project_config.environment,
+            )
             root, profile = self._lookup_profile(project, suite)
             cwd = self._safe_cwd(root, profile.cwd)
             executable = self._resolve_executable(profile)

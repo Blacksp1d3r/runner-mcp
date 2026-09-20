@@ -357,3 +357,37 @@ def test_adapter_cli_lists_and_inspects_without_private_root(
     inspected = capsys.readouterr()
     assert "Adapter: generic" in inspected.out
     assert str(project_root) not in inspected.out
+
+
+def test_local_approval_cli_requires_explicit_phrase(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.approval_manager import ApprovalManager
+
+    paths, _ = install_config(tmp_path)
+    plan = ApprovalManager(root=paths.approvals_dir).request(
+        action="deploy",
+        project="demo",
+        binding={"commit": "a" * 40},
+        summary={"commit": "a" * 40, "environment": "staging"},
+    )
+    approval_id = plan["approval_id"]
+
+    monkeypatch.setattr("builtins.input", lambda _: "no")
+    assert main([
+        "--config-dir", str(paths.config_dir),
+        "approval", "approve", approval_id,
+    ]) == 2
+    denied = capsys.readouterr()
+    assert "Approval cancelled" in denied.err
+
+    monkeypatch.setattr("builtins.input", lambda _: f"APPROVE {approval_id[:8]}")
+    assert main([
+        "--config-dir", str(paths.config_dir),
+        "approval", "approve", approval_id,
+    ]) == 0
+    approved = capsys.readouterr()
+    assert "single-use" in approved.out
+    assert ApprovalManager(root=paths.approvals_dir).status(approval_id)["state"] == "approved"

@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phases 4 through 8 are complete on stacked follow-up branches.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phases 4 through 9 are complete on stacked follow-up branches.
 
 Phase 0:
 - repository structure defined;
@@ -148,11 +148,23 @@ Phase 8 adapter foundation:
 - `auto` resolves only to existing allow-listed test/migration presets;
 - named private/company project adapters remain outside the public repository.
 
+
+Phase 9 human approval gates:
+- migration, deployment and rollback require short-lived human approvals;
+- MCP can request/inspect plans but cannot approve them;
+- approval is local CLI only with explicit confirmation phrase;
+- approvals are action/project/plan-bound, short-lived and single-use;
+- migration approval binds a clean Git HEAD;
+- deployment and rollback jobs are pinned to their approved commit/release targets;
+- production project mutations are blocked; staging remains the only mutable environment;
+- OpenAI Secure MCP Tunnel is the preferred future private ChatGPT connectivity path;
+- a hosted public relay remains optional and outside the MVP.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 183 tests green;
+- pytest: 200 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -185,6 +197,11 @@ Local trusted-runner validation is green:
 - adapter registry/inspection/symlink-safety tests: green;
 - adapter auto-preset/config validation tests: green;
 - CLI and MCP adapter capability tests: green;
+- approval expiry/replay/action/project/fingerprint/permission tests: green;
+- clean-Git high-risk source binding tests: green;
+- production mutation gate tests: green;
+- local approval CLI explicit-confirmation test: green;
+- MCP approval request/consume migration/deploy/rollback flows: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -203,7 +220,7 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4 through Phase 8 follow-up branches in order. Next development phase is Phase 9 approvals and higher-risk gates. Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
+Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4 through Phase 8 follow-up branches in order. Next development phase is Phase 10 only if a concrete missing use case justifies restricted command templates; otherwise focus on installation, private tunnel connectivity and pilot activation. Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

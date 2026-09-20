@@ -206,3 +206,8 @@ def test_setup_overwrite_preserves_private_database_secret(tmp_path: Path) -> No
 def test_generated_deployment_job_directory_is_private(tmp_path: Path) -> None:
     paths, _ = installed(tmp_path)
     assert file_mode(paths.deployment_jobs_dir) == 0o700
+
+
+def test_generated_approval_directory_is_private(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+    assert file_mode(paths.approvals_dir) == 0o700

@@ -1,0 +1,86 @@
+name: Bug report
+description: Report reproducible Runner MCP behavior that does not match the documentation.
+title: "[Bug] "
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for helping improve Runner MCP.
+
+        Do not paste credentials, tokens, private keys, real IP addresses/hostnames, internal domains, database endpoints, private service names, absolute deployment paths or customer data into a public issue.
+
+        If this may be a vulnerability, stop here and read SECURITY.md first.
+
+  - type: input
+    id: version
+    attributes:
+      label: Runner MCP version or commit
+      description: Use a public version/tag/commit only.
+      placeholder: v0.x.y or commit SHA
+    validations:
+      required: true
+
+  - type: dropdown
+    id: area
+    attributes:
+      label: Area
+      options:
+        - Setup / doctor / guide
+        - MCP server
+        - Safe file access
+        - Test profiles / test runner
+        - Staging services
+        - Database backup / migrations
+        - Deployment / rollback
+        - Approval gates
+        - GitHub mailbox bridge
+        - Documentation
+        - Other
+    validations:
+      required: true
+
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behavior
+      description: What did you expect Runner MCP to do?
+    validations:
+      required: true
+
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behavior
+      description: Describe the observed behavior using sanitized values only.
+    validations:
+      required: true
+
+  - type: textarea
+    id: reproduce
+    attributes:
+      label: Minimal reproduction
+      description: Prefer placeholder or demo configuration. Remove all installation-specific values.
+      placeholder: |
+        1. ...
+        2. ...
+        3. ...
+    validations:
+      required: true
+
+  - type: textarea
+    id: checks
+    attributes:
+      label: Relevant safe diagnostics
+      description: Share only non-sensitive doctor/status summaries. Do not paste raw private logs.
+      placeholder: runner-mcp doctor: ...
+
+  - type: checkboxes
+    id: hygiene
+    attributes:
+      label: Public-data check
+      options:
+        - label: I removed credentials, private infrastructure values, customer data and real absolute deployment paths.
+          required: true
+        - label: This report does not contain undisclosed exploit details that should use the security-reporting process.
+          required: true

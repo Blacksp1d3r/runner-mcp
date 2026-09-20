@@ -13,8 +13,8 @@ from typing import Any
 
 from .bridge_processor import (
     BridgeExecutor,
-    BridgeProcessState,
     BridgeProcessor,
+    BridgeProcessState,
 )
 from .bridge_protocol import (
     BridgeProtocolError,

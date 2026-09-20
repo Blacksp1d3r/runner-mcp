@@ -33,10 +33,16 @@ class ReplayDecision(StrEnum):
     DUPLICATE = "duplicate"
 
 
+class ReplayEntryState(StrEnum):
+    CLAIMED = "claimed"
+    COMPLETED = "completed"
+
+
 @dataclass(frozen=True)
 class ReplayClaim:
     decision: ReplayDecision
     fingerprint: str
+    completed: bool = False
 
 
 def bridge_request_fingerprint(request: BridgeRequest) -> str:
@@ -80,6 +86,8 @@ class BridgeReplayLedger:
                     return ReplayClaim(
                         decision=ReplayDecision.DUPLICATE,
                         fingerprint=fingerprint,
+                        completed=existing.get("state", ReplayEntryState.CLAIMED.value)
+                        == ReplayEntryState.COMPLETED.value,
                     )
 
                 if len(entries) >= self._max_entries:
@@ -89,12 +97,37 @@ class BridgeReplayLedger:
                     "fingerprint": fingerprint,
                     "action": request.action.value,
                     "seen_at": datetime.now(UTC).isoformat(),
+                    "state": ReplayEntryState.CLAIMED.value,
                 }
                 self._store(handle, entries)
                 return ReplayClaim(
                     decision=ReplayDecision.NEW,
                     fingerprint=fingerprint,
                 )
+        except OSError as exc:
+            raise BridgeReplayError("replay ledger operation failed") from exc
+
+    def mark_completed(self, request: BridgeRequest) -> None:
+        """Mark a claimed request completed after its sanitized result is durably published."""
+        fingerprint = bridge_request_fingerprint(request)
+        fd = self._open_ledger()
+        try:
+            with os.fdopen(fd, "r+", encoding="utf-8", closefd=True) as handle:
+                fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+                entries = self._load(handle)
+                existing = entries.get(request.request_id)
+                if existing is None:
+                    raise BridgeReplayError("request_id has not been claimed")
+                if existing.get("fingerprint") != fingerprint:
+                    raise BridgeReplayError(
+                        "request_id was already used for a different request"
+                    )
+                if existing.get("state") == ReplayEntryState.COMPLETED.value:
+                    return
+
+                existing["state"] = ReplayEntryState.COMPLETED.value
+                existing["completed_at"] = datetime.now(UTC).isoformat()
+                self._store(handle, entries)
         except OSError as exc:
             raise BridgeReplayError("replay ledger operation failed") from exc
 
@@ -149,17 +182,30 @@ class BridgeReplayLedger:
             fingerprint = entry.get("fingerprint")
             action = entry.get("action")
             seen_at = entry.get("seen_at")
+            state_value = entry.get("state", ReplayEntryState.CLAIMED.value)
+            completed_at = entry.get("completed_at")
             if (
                 not isinstance(fingerprint, str)
                 or not _SHA256_RE.fullmatch(fingerprint)
                 or not isinstance(action, str)
                 or action not in allowed_actions
                 or not isinstance(seen_at, str)
+                or state_value not in {state.value for state in ReplayEntryState}
+                or (
+                    state_value == ReplayEntryState.COMPLETED.value
+                    and not isinstance(completed_at, str)
+                )
+                or (
+                    state_value == ReplayEntryState.CLAIMED.value
+                    and completed_at is not None
+                )
             ):
                 raise BridgeReplayError("replay ledger has invalid entry")
 
             try:
                 datetime.fromisoformat(seen_at)
+                if completed_at is not None:
+                    datetime.fromisoformat(completed_at)
             except ValueError as exc:
                 raise BridgeReplayError("replay ledger has invalid entry") from exc
 
@@ -167,7 +213,10 @@ class BridgeReplayLedger:
                 "fingerprint": fingerprint,
                 "action": action,
                 "seen_at": seen_at,
+                "state": state_value,
             }
+            if completed_at is not None:
+                entries[request_id]["completed_at"] = completed_at
 
         return entries
 

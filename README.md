@@ -103,6 +103,8 @@ Current implemented foundations include:
 - test timeout, cancellation and process-group cleanup;
 - scrubbed, bounded test logs;
 - recovery of interrupted test-job metadata after restart;
+- mailbox liveness heartbeat with healthy/backlog/degraded states;
+- conservative mailbox restart recovery with completed-request replay protection;
 - interactive setup, status and doctor commands;
 - CLI project management without manual YAML editing;
 - CLI test-profile management with pytest, Ruff and custom presets;

@@ -212,9 +212,37 @@ Still transport-specific/private:
 
 Next:
 
-- build a thin private adapter around the public processor and result sink contract;
+- combine the public processor with the fixed-host GitHub mailbox transport;
 - migrate the pilot watcher to the public request/replay/result lifecycle;
 - prove fresh request processing, restart recovery, heartbeat and completion feedback end to end.
+
+## Phase 3.8.4 — hardened GitHub mailbox transport
+
+Provide a reusable GitHub transport without putting deployment-specific credentials or infrastructure details in the public repository.
+
+Implemented foundation:
+
+- fixed GitHub API host; callers cannot supply an arbitrary endpoint;
+- repository and branch/ref identifiers are strictly validated;
+- request, result and heartbeat locations are fixed below the mailbox root;
+- GitHub credentials remain runtime-only and are never serialized into mailbox data;
+- API responses are size-bounded;
+- duplicate JSON keys and non-standard JSON constants from GitHub fail closed;
+- wrapped GitHub base64 content is accepted only after strict validation;
+- request payload identity must match its mailbox filename;
+- result publication is create-once and idempotent only when existing content is identical;
+- conflicting existing result content fails closed;
+- result transport failures map into the BridgeProcessor persistence-recovery boundary;
+- heartbeat create/update uses bounded validated public heartbeat JSON only;
+- HTTP authorization, rate-limit, timeout, conflict and availability failures are classified without returning raw GitHub response content;
+- no GitHub SDK or paid external service is required.
+
+Next:
+
+- add a generic watcher/coordinator loop around the public transport, processor, replay lifecycle and heartbeat contract;
+- keep credentials, repository/ref selection and supervisor configuration private;
+- migrate the private pilot watcher to that thin adapter;
+- prove restart recovery and exactly-once completion feedback on the migrated watcher.
 
 ## Phase 3.9 — public launch readiness
 

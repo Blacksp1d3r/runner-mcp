@@ -60,7 +60,7 @@ The wrapper keeps the private configuration with the service account and delegat
 
 For a user-to-developer path, see [docs/USING_AND_EXTENDING.md](docs/USING_AND_EXTENDING.md). Contributors can start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
-For the zero-additional-service-cost GitHub mailbox transport pattern, see [docs/GITHUB_MAILBOX_BRIDGE.md](docs/GITHUB_MAILBOX_BRIDGE.md).
+For the zero-additional-service-cost GitHub mailbox transport pattern, see [docs/GITHUB_MAILBOX_BRIDGE.md](docs/GITHUB_MAILBOX_BRIDGE.md). For safe task-completion signals and notification deduplication, see [docs/COMPLETION_FEEDBACK.md](docs/COMPLETION_FEEDBACK.md).
 
 Runner MCP is developed as a [Fools2Tools project](docs/FOOLS2TOOLS.md). Public launch readiness is tracked in [docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md). See also the [changelog](CHANGELOG.md), [release checklist](docs/RELEASE_CHECKLIST.md) and prepared [launch copy](docs/LAUNCH_COPY.md).
 

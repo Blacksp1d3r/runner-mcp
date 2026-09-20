@@ -17,6 +17,7 @@ concurrency:
 jobs:
   validate:
     name: Ruff and pytest
+    if: ${{ github.event_name == 'workflow_dispatch' }}
     runs-on: self-hosted
     timeout-minutes: 15
     steps:

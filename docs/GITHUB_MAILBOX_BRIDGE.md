@@ -313,3 +313,34 @@ For a test run, the executor returns only the configured project, suite and term
 MCP JSON/SSE parsing is strict and bounded. Invalid session/job identifiers or transport/server/tool failures become generic adapter errors; raw response bodies and exception details are not propagated into the bridge result.
 
 This executor lets a private watcher become a thin bootstrap over public Runner MCP components rather than maintaining its own duplicate request validator, MCP handshake or test polling logic.
+
+
+## Private-config runtime and CLI
+
+The reusable runtime is implemented in `runner_mcp.github_runtime` and is exposed through the normal `runner-mcp` CLI.
+
+Private mailbox configuration is managed with:
+
+```text
+runner-mcp github-mailbox configure
+runner-mcp github-mailbox status
+runner-mcp github-mailbox remove
+```
+
+The repository identifier and refs are stored with the GitHub token in the existing private runtime environment. The token is entered through a hidden prompt and there is deliberately no `--token` argument. The status command reports only whether the mailbox is configured.
+
+Watcher lifecycle is managed with:
+
+```text
+runner-mcp github-watcher bootstrap
+runner-mcp github-watcher once
+runner-mcp github-watcher run
+```
+
+Bootstrap is explicit. It records the current request-ref head and does not replay historical mailbox requests.
+
+Continuous mode separates request polling from heartbeat publication. Request polling can therefore remain responsive without creating a heartbeat commit on every cycle. Heartbeat intervals are bounded, and state changes can trigger an immediate heartbeat refresh.
+
+The runtime derives its replay ledger and cursor locations inside the private configuration directory. It reuses the existing private Runner MCP bearer credential for loopback MCP access and never prints either credential.
+
+Setup overwrite preserves already-configured mailbox and database secrets. Explicit Runner MCP bearer-token rotation rotates only that bearer credential and does not erase unrelated private secrets.

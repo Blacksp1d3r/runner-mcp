@@ -4,7 +4,7 @@ Date: 2026-09-19
 
 ## Status
 
-Runner MCP Phase 0/1 is merged to main. Phase 2 safe project-file access is in progress on a separate branch.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5 operator-safety and rollback-retention guards are ready locally for review.
 
 Phase 0:
 - repository structure defined;
@@ -42,16 +42,32 @@ Phase 2 safe file access:
 - file-size, line-count and directory-entry limits enforced;
 - MCP-level allowed/denied file reads and audit behavior tested end-to-end.
 
+Phase 2.5 operator safety:
+- external operator-stop file policy added;
+- future operator actions fail closed until stop mechanism is configured;
+- future operator actions remain read-only until retention values are explicitly confirmed;
+- `safety_status` exposes safety state without returning private paths;
+- code-release cleanup requires both count and age thresholds;
+- default proposal is 20 releases and 90 days;
+- PITR and pre-migration backup retention are separate controls;
+- one approved code rollback may move back exactly one release;
+- database restore always requires explicit approval;
+- automatic production database restore is prohibited;
+- operator-safety rules documented for later test/deploy/migration phases.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 25 tests green;
+- pytest: 36 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
 - traversal/symlink/secret/binary/size/pagination file tests: green;
 - MCP file-read allow/deny integration test: green;
+- operator-stop/retention/rollback guard tests: green;
+- startup fail-closed retention-confirmation tests: green;
+- MCP safety-status integration test: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -66,7 +82,7 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Review and merge the Phase 2 pull request, then begin Phase 3 controlled test execution with predefined project test profiles, timeouts, process cleanup and bounded output.
+Review and merge the Phase 2.5 safety-guard changes, then begin Phase 3 controlled test execution with predefined project test profiles, timeouts, process cleanup, stop-flag observation and bounded output.
 
 Repository license remains intentionally undecided pending owner choice.
 

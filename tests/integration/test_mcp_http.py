@@ -1,3 +1,4 @@
+import json
 from pathlib import Path
 
 from starlette.testclient import TestClient
@@ -84,12 +85,37 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         assert listed.status_code == 200
         for tool_name in (
             "list_projects",
+            "safety_status",
             "project_status",
             "read_project_file",
             "list_project_files",
             "file_metadata",
         ):
             assert tool_name in listed.text
+
+        safety = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 30,
+                "method": "tools/call",
+                "params": {
+                    "name": "safety_status",
+                    "arguments": {},
+                },
+            },
+        )
+        assert safety.status_code == 200
+        event_line = next(
+            line for line in safety.text.splitlines() if line.startswith("data: ")
+        )
+        event = json.loads(event_line.removeprefix("data: "))
+        safety_payload = json.loads(event["result"]["content"][0]["text"])
+        assert safety_payload["retention_confirmed"] is True
+        assert safety_payload["max_automatic_code_rollback_steps"] == 1
+        assert "operator.stop" not in safety.text
+        assert str(tmp_path) not in safety.text
 
         allowed = client.post(
             "/mcp",

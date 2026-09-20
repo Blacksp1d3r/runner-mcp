@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import secrets
 from contextlib import asynccontextmanager
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -22,6 +22,7 @@ from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .config import ProjectRegistry, load_project_registry
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
+from .operational_safety import OperatorSafetyGuard, RetentionPolicy
 
 
 @dataclass(frozen=True)
@@ -32,6 +33,9 @@ class Settings:
     projects_config: Path
     audit_log: Path
     rate_limit_per_minute: int = 60
+    retention_policy: RetentionPolicy = field(default_factory=RetentionPolicy)
+    operator_stop_file: Path | None = None
+    retention_confirmed: bool = True
 
     @classmethod
     def from_env(cls) -> Settings:
@@ -50,6 +54,14 @@ class Settings:
         if not 1 <= rate_limit <= 6000:
             raise RuntimeError("RUNNER_MCP_RATE_LIMIT_PER_MINUTE must be between 1 and 6000")
 
+        stop_file_raw = os.getenv("RUNNER_MCP_OPERATOR_STOP_FILE", "").strip()
+        retention_confirmed_raw = os.getenv(
+            "RUNNER_MCP_RETENTION_CONFIRMED",
+            "false",
+        ).strip().lower()
+        if retention_confirmed_raw not in {"true", "false"}:
+            raise RuntimeError("RUNNER_MCP_RETENTION_CONFIRMED must be true or false")
+
         return cls(
             bearer_token=token,
             auth_issuer=issuer,
@@ -57,6 +69,9 @@ class Settings:
             projects_config=Path(os.getenv("RUNNER_MCP_PROJECTS_CONFIG", "config/projects.yml")),
             audit_log=Path(os.getenv("RUNNER_MCP_AUDIT_LOG", "var/audit.jsonl")),
             rate_limit_per_minute=rate_limit,
+            retention_policy=RetentionPolicy.from_env(),
+            operator_stop_file=Path(stop_file_raw) if stop_file_raw else None,
+            retention_confirmed=retention_confirmed_raw == "true",
         )
 
 
@@ -90,7 +105,12 @@ class StaticBearerVerifier(TokenVerifier):
         )
 
 
-def build_mcp(settings: Settings, registry: ProjectRegistry, audit: AuditLogger) -> MCPServer:
+def build_mcp(
+    settings: Settings,
+    registry: ProjectRegistry,
+    audit: AuditLogger,
+    safety_guard: OperatorSafetyGuard | None = None,
+) -> MCPServer:
     mcp = MCPServer(
         "Runner MCP",
         token_verifier=StaticBearerVerifier(settings.bearer_token, settings.resource_url),
@@ -102,6 +122,11 @@ def build_mcp(settings: Settings, registry: ProjectRegistry, audit: AuditLogger)
         ),
     )
     files = FileAccessService(registry)
+    safety = safety_guard or OperatorSafetyGuard(
+        stop_file=settings.operator_stop_file,
+        retention=settings.retention_policy,
+        retention_confirmed=settings.retention_confirmed,
+    )
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:
@@ -110,6 +135,42 @@ def build_mcp(settings: Settings, registry: ProjectRegistry, audit: AuditLogger)
         result = [cfg.public_summary(code) for code, cfg in sorted(registry.projects.items())]
         audit.append(
             AuditEvent(request_id, "list_projects", None, "authenticated-client", "ok", utc_timestamp())
+        )
+        return result
+
+    @mcp.tool()
+    def safety_status() -> dict:
+        """Return operator-stop and rollback-retention safety status without private paths."""
+        request_id = current_request_id()
+        status = safety.status()
+        result = {
+            "operator_stop_configured": status.configured,
+            "operator_stop_active": status.stop_active,
+            "retention_confirmed": safety.retention_confirmed,
+            "mode": status.mode,
+            "min_releases_to_keep": safety.retention.min_releases_to_keep,
+            "min_release_age_days": safety.retention.min_release_age_days,
+            "pitr_retention_days": safety.retention.pitr_retention_days,
+            "pre_migration_backup_days": safety.retention.pre_migration_backup_days,
+            "max_automatic_code_rollback_steps": (
+                safety.retention.max_automatic_code_rollback_steps
+            ),
+            "database_restore_requires_explicit_approval": (
+                safety.retention.database_restore_requires_explicit_approval
+            ),
+            "automatic_production_database_restore": (
+                safety.retention.automatic_production_database_restore
+            ),
+        }
+        audit.append(
+            AuditEvent(
+                request_id,
+                "safety_status",
+                None,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
         )
         return result
 
@@ -229,7 +290,12 @@ def create_app(
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
     audit = AuditLogger(settings.audit_log)
-    mcp = build_mcp(settings, registry, audit)
+    safety_guard = OperatorSafetyGuard(
+        stop_file=settings.operator_stop_file,
+        retention=settings.retention_policy,
+        retention_confirmed=settings.retention_confirmed,
+    )
+    mcp = build_mcp(settings, registry, audit, safety_guard=safety_guard)
     transport_security = transport_security_for(settings.resource_url)
 
     @asynccontextmanager

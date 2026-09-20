@@ -123,18 +123,28 @@ Next:
 
 ## Phase 3.9 — public launch readiness
 
-Prepare Runner MCP for free, responsible discovery without changing its security boundaries:
+Prepare Runner MCP for free, responsible discovery without changing its security boundaries.
 
-- keep Runner MCP as the product identity under the Fools2Tools umbrella;
-- make the problem/solution understandable from the top of README;
-- keep Quickstart and doctor output usable without source-code knowledge;
-- create a reproducible placeholder-only demo;
-- prepare release notes and upgrade guidance;
-- define a no-telemetry-by-default discovery strategy;
-- prepare reusable launch copy for GitHub, MCP ecosystem discovery and developer communities;
-- do not add paid advertising, paid hosted CI or paid hosted infrastructure as a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
+Implemented launch-readiness foundation:
 
-External posts remain a separate human-controlled action.
+- Runner MCP remains the product identity under the Fools2Tools umbrella;
+- README leads with the problem, safety boundary and architecture;
+- Quickstart remains the full guided path while a separate five-minute local demo provides a shorter evaluation path;
+- root security-reporting policy added;
+- public changelog and release checklist added;
+- reusable factual launch copy prepared for GitHub and developer communities;
+- privacy-safe GitHub bug/feature forms and a security-focused pull-request template added;
+- package metadata improved for future distribution;
+- discovery metrics remain platform-level; no application marketing telemetry is added;
+- no paid advertising, paid hosted CI or paid hosted infrastructure is a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
+
+Remaining before a broader launch:
+
+- verify the five-minute demo from a clean supported Linux environment;
+- create the first tagged alpha release with exact release notes;
+- set the public GitHub description/topics to the prepared values;
+- prepare an MCP ecosystem/registry submission only when packaging requirements are met;
+- publish external community posts only as a separate human-controlled action.
 
 ## Phase 4 — staging service management
 

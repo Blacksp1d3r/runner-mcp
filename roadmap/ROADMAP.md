@@ -132,7 +132,7 @@ Prepare Runner MCP for free, responsible discovery without changing its security
 - prepare release notes and upgrade guidance;
 - define a no-telemetry-by-default discovery strategy;
 - prepare reusable launch copy for GitHub, MCP ecosystem discovery and developer communities;
-- do not add paid advertising, hosted CI or hosted infrastructure as a hidden dependency.
+- do not add paid advertising, paid hosted CI or paid hosted infrastructure as a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
 
 External posts remain a separate human-controlled action.
 

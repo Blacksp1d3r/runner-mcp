@@ -10,6 +10,7 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from .bridge_processor import BridgeResultSinkError
 from .bridge_protocol import (
     MAX_BRIDGE_REQUEST_BYTES,
     MAX_BRIDGE_RESULT_BYTES,
@@ -43,6 +44,19 @@ _SHA_RE = re.compile(r"^[0-9a-f]{40}$")
 
 class GitHubMailboxTransportError(BridgeResilienceError):
     """Safe GitHub mailbox transport failure without private response details."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        kind: TransportFailureKind,
+    ) -> None:
+        super().__init__(message)
+        self.kind = kind
+
+
+class GitHubMailboxResultSinkError(BridgeResultSinkError):
+    """Safe durable-result failure compatible with BridgeProcessor."""
 
     def __init__(
         self,
@@ -91,8 +105,31 @@ def _validate_ref(ref: str) -> None:
 def _validate_token(token: str) -> None:
     if not token or len(token) > 4_096:
         raise ValueError("GitHub token is missing or unreasonably large")
+    if not token.isascii():
+        raise ValueError("GitHub token must use ASCII characters")
     if any(ord(char) < 33 or ord(char) == 127 for char in token):
         raise ValueError("GitHub token contains unsupported characters")
+
+
+def _reject_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+    result: dict[str, Any] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate JSON key")
+        result[key] = value
+    return result
+
+
+def _reject_nonstandard_json_constant(value: str) -> None:
+    raise ValueError(f"non-standard JSON constant: {value}")
+
+
+def _load_strict_json(raw: bytes) -> Any:
+    return json.loads(
+        raw,
+        object_pairs_hook=_reject_duplicate_keys,
+        parse_constant=_reject_nonstandard_json_constant,
+    )
 
 
 class GitHubApiSession:
@@ -148,7 +185,11 @@ class GitHubApiSession:
     ) -> Any | None:
         if method not in {"GET", "PUT"}:
             raise ValueError("unsupported GitHub API method")
-        if not api_path.startswith("/repos/") or "://" in api_path:
+        if (
+            not api_path.startswith("/repos/")
+            or "://" in api_path
+            or any(char in api_path for char in "\r\n?#\\")
+        ):
             raise ValueError("GitHub API path must stay repository-scoped")
 
         url = f"{GITHUB_API_BASE}{api_path}"
@@ -186,7 +227,7 @@ class GitHubApiSession:
         except urllib.error.HTTPError as exc:
             if allow_not_found and exc.code == 404:
                 return None
-            raise _http_error(exc.code) from None
+            raise _http_error(exc) from None
         except (TimeoutError, socket.timeout) as exc:
             raise GitHubMailboxTransportError(
                 "GitHub mailbox transport timed out",
@@ -205,26 +246,49 @@ class GitHubApiSession:
             )
 
         try:
-            return json.loads(raw)
-        except (UnicodeDecodeError, json.JSONDecodeError, TypeError) as exc:
+            return _load_strict_json(raw)
+        except (
+            UnicodeDecodeError,
+            json.JSONDecodeError,
+            TypeError,
+            ValueError,
+        ) as exc:
             raise GitHubMailboxTransportError(
                 "GitHub mailbox returned invalid JSON",
                 kind=TransportFailureKind.INVALID_RESPONSE,
             ) from exc
 
 
-def _http_error(status: int) -> GitHubMailboxTransportError:
-    if status in {401, 403}:
+def _http_error(exc: urllib.error.HTTPError) -> GitHubMailboxTransportError:
+    status = exc.code
+    if status == 401:
         return GitHubMailboxTransportError(
             "GitHub mailbox authorization failed",
             kind=TransportFailureKind.AUTHORIZATION,
+        )
+    if status == 403:
+        retry_after = exc.headers.get("Retry-After")
+        rate_remaining = exc.headers.get("X-RateLimit-Remaining")
+        if retry_after is not None or rate_remaining == "0":
+            return GitHubMailboxTransportError(
+                "GitHub mailbox is rate limited",
+                kind=TransportFailureKind.RATE_LIMITED,
+            )
+        return GitHubMailboxTransportError(
+            "GitHub mailbox authorization failed",
+            kind=TransportFailureKind.AUTHORIZATION,
+        )
+    if status == 408:
+        return GitHubMailboxTransportError(
+            "GitHub mailbox transport timed out",
+            kind=TransportFailureKind.TIMEOUT,
         )
     if status == 429:
         return GitHubMailboxTransportError(
             "GitHub mailbox is rate limited",
             kind=TransportFailureKind.RATE_LIMITED,
         )
-    if 500 <= status <= 599:
+    if status == 409 or 500 <= status <= 599:
         return GitHubMailboxTransportError(
             "GitHub mailbox transport is unavailable",
             kind=TransportFailureKind.UNAVAILABLE,
@@ -331,14 +395,20 @@ class GitHubMailboxTransport:
                 kind=TransportFailureKind.INVALID_RESPONSE,
             )
 
-        self._session.put_json(
-            self._contents_path(path),
-            payload={
-                "message": "runner: publish bridge result",
-                "content": base64.b64encode(encoded).decode("ascii"),
-                "branch": self._config.result_ref,
-            },
-        )
+        try:
+            self._session.put_json(
+                self._contents_path(path),
+                payload={
+                    "message": "runner: publish bridge result",
+                    "content": base64.b64encode(encoded).decode("ascii"),
+                    "branch": self._config.result_ref,
+                },
+            )
+        except GitHubMailboxTransportError as exc:
+            raise GitHubMailboxResultSinkError(
+                "GitHub mailbox result persistence failed",
+                kind=exc.kind,
+            ) from exc
 
     def publish_heartbeat(self, heartbeat_json: str) -> None:
         encoded = heartbeat_json.encode("utf-8")

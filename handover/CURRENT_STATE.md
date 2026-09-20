@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phases 0 through 9 are merged to main. Phase 3.7 now formalizes the proven GitHub mailbox transport: GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary for allow-listed status and predefined test actions.
+Runner MCP Phases 0 through 9 are merged to main. Phase 3.7 formalizes the proven GitHub mailbox transport. Phase 3.8 is in development on a dedicated branch and adds a bounded result envelope plus replay protection. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary for allow-listed status and predefined test actions.
 
 Phase 0:
 - repository structure defined;
@@ -95,6 +95,22 @@ Phase 3.7 GitHub mailbox bridge protocol:
 - migration, deployment, rollback and restore remain outside the mailbox bridge and keep their existing approval boundaries;
 - reusable public protocol logic is separated from private watcher credentials and infrastructure configuration.
 
+
+Phase 3.8 bridge result envelope and replay protection:
+- strict protocol-v1 result envelopes added for completed and failed operations;
+- result payload size, nesting, collection count and string length are bounded;
+- unknown result fields and duplicate JSON keys fail closed;
+- sensitive result keys and absolute locations/URLs are conservatively redacted;
+- failed results use bounded safe error codes instead of arbitrary raw process or exception output;
+- canonical SHA-256 request fingerprints added;
+- local replay ledger stores only request ID, fingerprint, allow-listed action and first-seen timestamp;
+- duplicate identical requests are detected and must not execute again;
+- reusing an existing request ID with changed content fails closed;
+- corrupt, oversized, capacity-exhausted and symlinked replay-ledger states fail closed;
+- replay ledger files are restricted to the service account;
+- Fools2Tools project identity and a free public-launch-readiness plan were added without changing Runner MCP's product identity or security boundaries;
+- trusted self-hosted branch validation is defined as an explicit manual workflow and does not consume GitHub-hosted Actions minutes.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;
@@ -172,7 +188,7 @@ Phase 9 human approval gates:
 
 ## Validation
 
-Local trusted-runner validation is green:
+Last complete trusted validation on main is green:
 - Ruff: green;
 - pytest: 223 tests green;
 - HTTP auth/rate-limit tests: green;
@@ -190,7 +206,10 @@ Local trusted-runner validation is green:
 - non-root installer integration test: green;
 - installed console command version/help smoke test: green;
 - project-aware guide smoke test: green;
-- GitHub mailbox bridge protocol validation tests: green;
+- GitHub mailbox bridge protocol validation tests on merged Phase 3.7: green;
+- live private mailbox probe for the configured runner-mcp test-profile listing: green;
+- isolated Phase 3.8 result-envelope/replay logic checks: green;
+- full Phase 3.8 branch Ruff/pytest validation: pending because no self-hosted Actions runner is currently available to this repository; GitHub-hosted minutes are intentionally not used;
 - operator-wrapper installer tests: green;
 - onboarding/project/test-profile CLI tests: green;
 - service manager permission/emergency-stop/subprocess tests: green;
@@ -233,7 +252,7 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Migrate the private GitHub mailbox watcher to the shared Phase 3.7 protocol validator, then add a scrubbed result envelope and replay protection. After that, continue with service auto-start packaging and private tunnel connectivity. Phase 10 restricted command templates should be added only when a concrete missing use case cannot be solved through configuration or a built-in adapter.
+Run the full Phase 3.8 Ruff/pytest suite on an available trusted self-hosted runner, then merge Phase 3.8. After merge, migrate the private GitHub mailbox watcher from its pilot request/result shape to the shared validator, bounded result envelope and replay ledger. Then continue with service auto-start packaging, private tunnel connectivity and the reproducible public demo/release work from Phase 3.9. Phase 10 restricted command templates should be added only when a concrete missing use case cannot be solved through configuration or a built-in adapter.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

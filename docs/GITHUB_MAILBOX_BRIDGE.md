@@ -245,3 +245,34 @@ Processing order is fixed:
 6. mark replay lifecycle completed.
 
 If step 5 fails, step 6 does not happen and the action is never automatically rerun. If step 6 fails after a durable result exists, restart recovery sees the transport result and must not rerun the action.
+
+
+## Fixed-host GitHub transport
+
+The reusable GitHub transport is implemented in `runner_mcp.github_mailbox`.
+
+It deliberately accepts configuration for only:
+
+- a validated `owner/repository` identifier;
+- a validated request ref;
+- a validated result ref;
+- a runtime GitHub token;
+- a bounded HTTP timeout.
+
+The API origin is fixed to GitHub. Request/result/heartbeat paths are generated internally below the mailbox root. A caller cannot supply an arbitrary URL, filesystem path, executable, service name or shell command.
+
+GitHub response handling is fail-closed:
+
+- API responses are size-bounded;
+- duplicate JSON keys are rejected;
+- `NaN` and other non-standard JSON constants are rejected;
+- file SHA and base64 metadata are validated;
+- normal GitHub line-wrapped base64 is accepted after whitespace removal and strict decode validation;
+- request payload ID must match the request filename;
+- conflicting pre-existing result content is never overwritten.
+
+Result publication implements the public `BridgeResultSink` boundary. GitHub read/write transport failures during result persistence become a safe persistence-recovery outcome in `BridgeProcessor`; they do not authorize action replay.
+
+Heartbeat publication uses only the bounded public watcher-heartbeat schema.
+
+Repository names, refs, credentials and supervisor/service configuration remain deployment-specific private configuration. The public package contains no real installation values.

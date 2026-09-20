@@ -12,15 +12,18 @@ import uvicorn
 from .config_manager import (
     ConfigManagerError,
     add_database_config,
+    add_deployment_config,
     add_migration_config,
     add_project,
     add_service_config,
     add_test_profile,
     list_database_configs,
+    list_deployment_configs,
     list_projects,
     list_service_configs,
     list_test_profiles,
     remove_database_config,
+    remove_deployment_config,
     remove_migration_config,
     remove_project,
     remove_service_config,
@@ -395,6 +398,47 @@ def cmd_migration_config(args: argparse.Namespace) -> int:
     raise ConfigManagerError("Unknown migration-config action")
 
 
+def cmd_deployment_config(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.deployment_action == "list":
+        rows = list_deployment_configs(config_dir)
+        for row in rows:
+            state = "configured" if row["configured"] else "not-configured"
+            tests = ",".join(row["required_tests"]) or "no-required-tests"
+            migrations = "migrations" if row["run_migrations"] else "no-migrations"
+            service = row["service"] or "-"
+            print(f"{row['project']}: {state}, service={service}, {tests}, {migrations}")
+        return 0
+
+    if args.deployment_action == "add":
+        result = add_deployment_config(
+            config_dir,
+            project=args.project,
+            release_root=Path(args.release_root),
+            service=args.service,
+            required_tests=args.require_test,
+            run_migrations=args.run_migrations,
+            activation_timeout_seconds=args.activation_timeout,
+        )
+        print(f"Staging deployment configured for {result['project']}.")
+        return 0
+
+    if args.deployment_action == "remove":
+        expected = f"REMOVE DEPLOYMENT {args.project}"
+        confirmation = input(f"Type {expected} to continue: ").strip()
+        if confirmation != expected:
+            raise ConfigManagerError("Deployment configuration removal cancelled")
+        remove_deployment_config(config_dir, project=args.project)
+        print(
+            f"Deployment configuration removed: {args.project}. "
+            "Existing release data was preserved."
+        )
+        return 0
+
+    raise ConfigManagerError("Unknown deployment-config action")
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     paths, settings, registry = read_private_runtime(config_dir)
@@ -601,6 +645,37 @@ def build_parser() -> argparse.ArgumentParser:
     migration_remove = migration_sub.add_parser("remove", help="Remove a migration profile.")
     migration_remove.add_argument("project")
     migration_remove.set_defaults(func=cmd_migration_config)
+
+    deployment = subparsers.add_parser(
+        "deployment-config",
+        help="Configure staging releases without editing YAML.",
+    )
+    deployment_sub = deployment.add_subparsers(
+        dest="deployment_action",
+        required=True,
+    )
+    deployment_list = deployment_sub.add_parser(
+        "list",
+        help="List safe staging deployment summaries.",
+    )
+    deployment_list.set_defaults(func=cmd_deployment_config)
+    deployment_add = deployment_sub.add_parser(
+        "add",
+        help="Add a staging deployment configuration.",
+    )
+    deployment_add.add_argument("project")
+    deployment_add.add_argument("--release-root", required=True)
+    deployment_add.add_argument("--service", required=True)
+    deployment_add.add_argument("--require-test", action="append", default=[])
+    deployment_add.add_argument("--run-migrations", action="store_true")
+    deployment_add.add_argument("--activation-timeout", type=int, default=60)
+    deployment_add.set_defaults(func=cmd_deployment_config)
+    deployment_remove = deployment_sub.add_parser(
+        "remove",
+        help="Remove deployment configuration without deleting releases.",
+    )
+    deployment_remove.add_argument("project")
+    deployment_remove.set_defaults(func=cmd_deployment_config)
 
     serve = subparsers.add_parser(
         "serve",

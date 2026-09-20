@@ -301,3 +301,88 @@ def test_custom_migration_config_uses_literal_argv(tmp_path: Path) -> None:
     migration = registry.projects["first"].database.migrations
     assert migration is not None
     assert migration.status_argv[1] == "literal;not-shell"
+
+
+def test_deployment_config_creates_private_storage_and_hides_path(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import (
+        add_deployment_config,
+        add_service_config,
+        list_deployment_configs,
+    )
+
+    paths, _ = installed(tmp_path)
+    add_service_config(
+        paths.config_dir,
+        project="first",
+        name="web",
+        unit="private-web.service",
+        health_url="http://127.0.0.1:9999/health",
+        allow_restart=True,
+    )
+    release_root = tmp_path / "staging-releases"
+    result = add_deployment_config(
+        paths.config_dir,
+        project="first",
+        release_root=release_root,
+        service="web",
+    )
+    listed = list_deployment_configs(paths.config_dir)
+
+    assert result["configured"] is True
+    assert str(release_root) not in repr(result)
+    assert str(release_root) not in repr(listed)
+    assert stat.S_IMODE(release_root.stat().st_mode) == 0o700
+    assert stat.S_IMODE((release_root / "releases").stat().st_mode) == 0o700
+    assert stat.S_IMODE((release_root / ".runtime-home").stat().st_mode) == 0o700
+
+
+def test_removing_deployment_config_preserves_release_data(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import (
+        add_deployment_config,
+        add_service_config,
+        remove_deployment_config,
+    )
+
+    paths, _ = installed(tmp_path)
+    add_service_config(
+        paths.config_dir,
+        project="first",
+        name="web",
+        unit="private-web.service",
+        health_url="http://127.0.0.1:9999/health",
+        allow_restart=True,
+    )
+    release_root = tmp_path / "staging-releases"
+    add_deployment_config(
+        paths.config_dir,
+        project="first",
+        release_root=release_root,
+        service="web",
+    )
+    marker = release_root / "releases" / "keep-me"
+    marker.mkdir()
+
+    remove_deployment_config(paths.config_dir, project="first")
+
+    assert marker.exists()
+    _, _, registry = read_private_runtime(paths.config_dir)
+    assert registry.projects["first"].deployment is None
+
+
+def test_deployment_config_requires_restartable_health_checked_service(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import add_deployment_config, add_service_config
+
+    paths, _ = installed(tmp_path)
+    add_service_config(
+        paths.config_dir,
+        project="first",
+        name="web",
+        unit="private-web.service",
+    )
+    with pytest.raises(ConfigManagerError, match="allow restart"):
+        add_deployment_config(
+            paths.config_dir,
+            project="first",
+            release_root=tmp_path / "staging-releases",
+            service="web",
+        )

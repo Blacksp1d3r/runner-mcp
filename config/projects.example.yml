@@ -15,6 +15,11 @@ projects:
     database:
       engine: postgresql
       dsn_env: RUNNER_MCP_DB_EXAMPLE
+    deployment:
+      release_root: "${RUNNER_MCP_EXAMPLE_RELEASE_ROOT}"
+      service: example-service
+      required_tests: []
+      run_migrations: false
     test_profiles:
       lint:
         argv:

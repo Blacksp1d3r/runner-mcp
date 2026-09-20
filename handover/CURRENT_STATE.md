@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phase 4 and Phase 5 are complete on stacked follow-up branches.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phases 4, 5 and 6 are complete on stacked follow-up branches.
 
 Phase 0:
 - repository structure defined;
@@ -111,11 +111,27 @@ Phase 5 PostgreSQL backup and migrations:
 - migration failure keeps the backup and never performs automatic restore;
 - database restore, PITR/WAL orchestration and retention pruning remain intentionally unimplemented.
 
+Phase 6 staging deployment:
+- staging-only deployment config with private release storage;
+- clean Git HEAD is the only deployment source;
+- client cannot supply arbitrary Git ref or build shell;
+- Git hooks/fsmonitor disabled during preflight/archive operations;
+- required tests run before release creation and source cleanliness is rechecked;
+- repository symlinks are rejected from release archives;
+- optional database migrations use the Phase 5 pre-migration backup flow;
+- current-release activation uses an atomic symlink replacement;
+- service restart requires a configured health check;
+- activation failure auto-rolls code back one release only when no DB migration ran;
+- post-migration activation failure requires manual recovery and never auto-restores DB;
+- deployment jobs are asynchronous, private, persisted, and marked interrupted after restart;
+- MCP plan/start/status lifecycle is integration tested;
+- deployment config is manageable by CLI without exposing release paths.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 135 tests green;
+- pytest: 161 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -138,6 +154,10 @@ Local trusted-runner validation is green:
 - migration timeout/failure/pre-backup/redaction tests: green;
 - MCP database backup/migration/emergency-stop lifecycle test: green;
 - database-config and hidden-prompt CLI tests: green;
+- staging release/git cleanliness/symlink/test/migration/health rollback tests: green;
+- deployment job persistence/interruption/error-sanitization tests: green;
+- deployment-config storage/validation/CLI tests: green;
+- MCP asynchronous deployment plan/start/status/emergency-stop test: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -148,11 +168,13 @@ Local trusted-runner validation is green:
 - database restore;
 - PostgreSQL WAL/PITR orchestration;
 - automated backup-retention pruning;
-- deployment or rollback.
+- production deployment;
+- manual historical rollback selection;
+- automatic database restore.
 
 ## Next steps
 
-Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4 and Phase 5 follow-up branches in order. Next development phase is Phase 6 staging deployment. Before activating real project test/service/database profiles, create the private runtime configuration and verify the Linux-account and PostgreSQL recovery boundaries on the actual host.
+Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4, Phase 5 and Phase 6 follow-up branches in order. Next development phase is Phase 7 controlled release rollback. Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

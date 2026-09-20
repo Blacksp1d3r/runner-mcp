@@ -173,6 +173,29 @@ Before Runner MCP applies a migration, it creates a PostgreSQL pre-migration bac
 
 Database restore and PostgreSQL PITR/WAL orchestration are not implemented yet.
 
+### Configure staging deployment
+
+Runner MCP deploys only projects marked as `staging`. First configure a restartable service alias with a health check, then create a private release location:
+
+```bash
+runner-mcp deployment-config add myproject \
+  --release-root /path/to/private/staging \
+  --service web \
+  --require-test unit
+```
+
+Add `--run-migrations` only when the project already has database and migration configuration.
+
+The release path remains private and is not shown by normal list/MCP output.
+
+Deployment itself is exposed through MCP as a short asynchronous workflow:
+
+- `plan_deploy(project)` performs read-only preflight;
+- `deploy_staging(project)` starts a background deployment job;
+- `deployment_status(job_id)` returns safe persisted status/result.
+
+Runner MCP deploys only a clean Git HEAD. It does not accept an arbitrary branch/ref or shell command from the MCP client. If health fails after a deployment without migrations, one automatic code rollback may occur. After database migrations, health failure requires manual recovery and never triggers automatic database restore.
+
 ## 6. Verify the installation
 
 Run:

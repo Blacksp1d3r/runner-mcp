@@ -293,3 +293,23 @@ The compare fails closed when:
 - a request ID is malformed or duplicated.
 
 This avoids repeatedly scanning historical mailbox contents and reduces GitHub API load without weakening replay protection.
+
+
+## Loopback MCP executor
+
+The reusable local executor is implemented in `runner_mcp.bridge_mcp_executor`.
+
+It is intentionally narrower than a general MCP client:
+
+- the endpoint must be loopback-only and use the `/mcp` path;
+- bearer credentials are supplied separately and never embedded in the URL;
+- only the six bridge operations are exposed by the executor;
+- internal tool dispatch is private and allow-listed;
+- `test_status` is used only as an implementation detail for an already-authorized `run_tests` request;
+- `get_test_log` is not called by the bridge executor.
+
+For a test run, the executor returns only the configured project, suite and terminal status. Raw logs, local paths, commands and private runtime details are not added to the mailbox result.
+
+MCP JSON/SSE parsing is strict and bounded. Invalid session/job identifiers or transport/server/tool failures become generic adapter errors; raw response bodies and exception details are not propagated into the bridge result.
+
+This executor lets a private watcher become a thin bootstrap over public Runner MCP components rather than maintaining its own duplicate request validator, MCP handshake or test polling logic.

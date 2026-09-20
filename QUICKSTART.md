@@ -123,6 +123,24 @@ runner-mcp test-profile list myproject
 
 Executable paths and argument arrays remain private and are not shown in the normal list output. Custom profiles are available for advanced setups.
 
+### Add a staging service alias
+
+Runner MCP currently supports allow-listed `systemd --user` services. System-level services and generic sudo execution are deliberately not enabled.
+
+Add a read-only alias first:
+
+```bash
+runner-mcp service-config add myproject web --unit my-staging.service
+```
+
+To allow only restart:
+
+```bash
+runner-mcp service-config add myproject web --unit my-staging.service --allow-restart
+```
+
+`start`, `stop` and `restart` permissions are separate and default to off. Normal list and MCP output show only the alias, never the private unit name.
+
 ## 6. Verify the installation
 
 Run:

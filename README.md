@@ -32,6 +32,8 @@ runner-mcp project list
 runner-mcp project add ...
 runner-mcp test-profile list PROJECT
 runner-mcp test-profile add PROJECT NAME --preset pytest
+runner-mcp service-config list PROJECT
+runner-mcp service-config add PROJECT ALIAS --unit UNIT
 runner-mcp serve
 ```
 
@@ -51,6 +53,8 @@ Current implemented foundations include:
 - rollback-retention policy using both minimum count and minimum age;
 - explicit separation between code rollback and database restore;
 - controlled asynchronous test jobs;
+- allow-listed systemd-user staging service status/start/stop/restart;
+- optional private service health checks;
 - predefined test profiles only;
 - test timeout, cancellation and process-group cleanup;
 - scrubbed, bounded test logs;

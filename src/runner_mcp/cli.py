@@ -11,10 +11,13 @@ import uvicorn
 from .config_manager import (
     ConfigManagerError,
     add_project,
+    add_service_config,
     add_test_profile,
     list_projects,
+    list_service_configs,
     list_test_profiles,
     remove_project,
+    remove_service_config,
     remove_test_profile,
 )
 from .onboarding import (
@@ -256,6 +259,59 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
     raise ConfigManagerError("Unknown test-profile action")
 
 
+def cmd_service_config(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.service_config_action == "list":
+        services = list_service_configs(config_dir, project=args.project)
+        if not services:
+            print("No services configured.")
+            return 0
+        for service in services:
+            allowed = [
+                action
+                for action, enabled in (
+                    ("start", service["can_start"]),
+                    ("stop", service["can_stop"]),
+                    ("restart", service["can_restart"]),
+                )
+                if enabled
+            ]
+            actions = ",".join(allowed) if allowed else "read-only"
+            health = "health-check" if service["health_check"] else "no-health-check"
+            print(f"{service['name']}: {actions}, {health}")
+        return 0
+
+    if args.service_config_action == "add":
+        result = add_service_config(
+            config_dir,
+            project=args.project,
+            name=args.name,
+            unit=args.unit,
+            health_url=args.health_url,
+            allow_start=args.allow_start,
+            allow_stop=args.allow_stop,
+            allow_restart=args.allow_restart,
+        )
+        print(f"Service alias added: {result['name']}")
+        return 0
+
+    if args.service_config_action == "remove":
+        expected = f"REMOVE {args.name}"
+        confirmation = input(f"Type {expected} to continue: ").strip()
+        if confirmation != expected:
+            raise ConfigManagerError("Service removal cancelled")
+        remove_service_config(
+            config_dir,
+            project=args.project,
+            name=args.name,
+        )
+        print(f"Service alias removed: {args.name}")
+        return 0
+
+    raise ConfigManagerError("Unknown service-config action")
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     _, settings, registry = read_private_runtime(config_dir)
@@ -395,6 +451,34 @@ def build_parser() -> argparse.ArgumentParser:
     profile_remove.add_argument("project")
     profile_remove.add_argument("name")
     profile_remove.set_defaults(func=cmd_test_profile)
+
+    service_config = subparsers.add_parser(
+        "service-config",
+        help="List, add or remove private service aliases.",
+    )
+    service_sub = service_config.add_subparsers(
+        dest="service_config_action",
+        required=True,
+    )
+
+    service_list = service_sub.add_parser("list", help="List safe service summaries.")
+    service_list.add_argument("project")
+    service_list.set_defaults(func=cmd_service_config)
+
+    service_add = service_sub.add_parser("add", help="Add a private service alias.")
+    service_add.add_argument("project")
+    service_add.add_argument("name")
+    service_add.add_argument("--unit", required=True)
+    service_add.add_argument("--health-url")
+    service_add.add_argument("--allow-start", action="store_true")
+    service_add.add_argument("--allow-stop", action="store_true")
+    service_add.add_argument("--allow-restart", action="store_true")
+    service_add.set_defaults(func=cmd_service_config)
+
+    service_remove = service_sub.add_parser("remove", help="Remove a service alias.")
+    service_remove.add_argument("project")
+    service_remove.add_argument("name")
+    service_remove.set_defaults(func=cmd_service_config)
 
     serve = subparsers.add_parser(
         "serve",

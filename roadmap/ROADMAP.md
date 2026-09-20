@@ -65,7 +65,19 @@ Still planned for onboarding: service auto-start packaging, guided TLS/reverse-p
 
 ## Phase 4 — staging service management
 
-Add allow-listed service status, start, stop, restart, and health checks. No arbitrary service names.
+Implemented core design:
+
+- private service aliases mapped to systemd-user units;
+- no arbitrary unit names supplied by MCP clients;
+- safe alias listing without unit/health-URL disclosure;
+- status and optional HTTP health checks;
+- independent opt-in for start, stop and restart;
+- all mutating actions pass the operator safety guard;
+- emergency stop leaves status available but blocks service mutations;
+- subprocess execution uses a fixed systemctl argument array with `shell=False`;
+- no sudo or generic system-service control.
+
+Journal/log access remains a later bounded addition.
 
 ## Phase 5 — backups and migrations
 

@@ -255,3 +255,28 @@ def test_test_profile_cli_custom_add_and_list_hides_executable(
     assert result == 0
     assert "checks: timeout=300s" in captured.out
     assert str(executable) not in captured.out
+
+
+def test_service_config_cli_hides_private_unit(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    result = main([
+        "--config-dir", str(paths.config_dir),
+        "service-config", "add", "demo", "web",
+        "--unit", "private-web.service",
+        "--allow-restart",
+    ])
+    assert result == 0
+    capsys.readouterr()
+
+    result = main([
+        "--config-dir", str(paths.config_dir),
+        "service-config", "list", "demo",
+    ])
+    captured = capsys.readouterr()
+    assert result == 0
+    assert "web: restart" in captured.out
+    assert "private-web.service" not in captured.out

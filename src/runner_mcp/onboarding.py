@@ -184,7 +184,7 @@ def render_projects_file(answers: SetupAnswers) -> str:
                 "repository": answers.repository,
                 "environment": "staging",
                 "root": str(answers.project_root),
-                "allowed_services": [],
+                "services": {},
                 "test_profiles": {},
             }
         }

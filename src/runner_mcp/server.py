@@ -29,6 +29,7 @@ from .operational_safety import (
     RetentionPolicy,
     SafetyConfigurationError,
 )
+from .service_manager import ServiceManager, ServiceManagerError
 from .test_runner import TestRunner, TestRunnerError
 
 
@@ -167,6 +168,10 @@ def build_mcp(
         )
         if settings.test_jobs_root is not None
         else None
+    )
+    service_manager = ServiceManager(
+        registry=registry,
+        safety=safety,
     )
 
     @mcp.tool()
@@ -425,6 +430,86 @@ def build_mcp(
             result="requested",
         )
         return result
+
+    def _audit_service_result(
+        *,
+        tool_name: str,
+        project: str,
+        result: str,
+    ) -> None:
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                tool_name,
+                project,
+                "authenticated-client",
+                result,
+                utc_timestamp(),
+            )
+        )
+
+    @mcp.tool()
+    def list_services(project: str) -> list[dict]:
+        """List configured service aliases and allowed actions without private unit names."""
+        try:
+            result = service_manager.list_services(project)
+        except ServiceManagerError as exc:
+            _audit_service_result(
+                tool_name="list_services",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_service_result(tool_name="list_services", project=project, result="ok")
+        return result
+
+    @mcp.tool()
+    def service_status(project: str, service: str) -> dict:
+        """Return safe status and health information for one service alias."""
+        try:
+            result = service_manager.status(project, service)
+        except ServiceManagerError as exc:
+            _audit_service_result(
+                tool_name="service_status",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_service_result(tool_name="service_status", project=project, result="ok")
+        return result
+
+    def _service_action(project: str, service: str, action: str) -> dict:
+        tool_name = f"{action}_service"
+        try:
+            result = service_manager.action(project, service, action)
+        except (
+            ServiceManagerError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_service_result(
+                tool_name=tool_name,
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_service_result(tool_name=tool_name, project=project, result="ok")
+        return result
+
+    @mcp.tool()
+    def start_service(project: str, service: str) -> dict:
+        """Start one explicitly allow-listed service alias."""
+        return _service_action(project, service, "start")
+
+    @mcp.tool()
+    def stop_service(project: str, service: str) -> dict:
+        """Stop one explicitly allow-listed service alias."""
+        return _service_action(project, service, "stop")
+
+    @mcp.tool()
+    def restart_service(project: str, service: str) -> dict:
+        """Restart one explicitly allow-listed service alias."""
+        return _service_action(project, service, "restart")
 
     return mcp
 

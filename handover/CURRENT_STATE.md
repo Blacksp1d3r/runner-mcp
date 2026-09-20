@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5 operator-safety guards, Phase 3 controlled test execution and Phase 3.5 onboarding are complete on the current review branch.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phase 4 staging service management is complete on a separate follow-up branch.
 
 Phase 0:
 - repository structure defined;
@@ -85,11 +85,24 @@ Phase 3.5 onboarding:
 - project config updates are lock-protected and atomic;
 - user-first README and QUICKSTART added.
 
+Phase 4 staging service management:
+- private service aliases map to systemd-user units;
+- service aliases default to read-only;
+- start, stop and restart permissions are independently opt-in;
+- MCP list/status output never exposes private unit names or health URLs;
+- optional HTTP health checks return only safe health state;
+- operator emergency stop blocks mutating service actions while status stays available;
+- systemctl invocation uses fixed argument arrays with `shell=False`;
+- raw systemctl failure output is not returned to MCP;
+- no sudo or generic system-service control;
+- CLI service-config add/list/remove avoids manual YAML editing;
+- MCP list/status/restart/emergency-stop flow is integration tested.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 98 tests green;
+- pytest: 114 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -105,6 +118,9 @@ Local trusted-runner validation is green:
 - non-root installer integration test: green;
 - installed console command version/help smoke test: green;
 - onboarding/project/test-profile CLI tests: green;
+- service manager permission/emergency-stop/subprocess tests: green;
+- MCP service alias/status/restart integration test: green;
+- service-config CLI/config-manager tests: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -118,7 +134,7 @@ Local trusted-runner validation is green:
 
 ## Next steps
 
-Review and merge the combined Phase 2.5/Phase 3/Phase 3.5 branch, then begin Phase 4 allow-listed staging service management. Before activating real project test profiles, create the private runtime configuration and verify the Linux-account trust boundary on the actual host.
+Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4 follow-up branch. Next development phase is Phase 5 controlled database backups and migrations. Before activating real project test/service profiles, create the private runtime configuration and verify the Linux-account trust boundary on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

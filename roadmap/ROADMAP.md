@@ -181,6 +181,41 @@ Next:
 - prove restart recovery against a fresh backlog without replaying completed work;
 - keep notification delivery and heartbeat/stale recovery independent.
 
+## Phase 3.8.3 — transport-neutral bridge processor
+
+Move reusable watcher orchestration into the public package without publishing deployment-specific transport details.
+
+Implemented foundation:
+
+- strict request parsing happens before replay claim or execution;
+- replay claim happens before any Runner MCP action;
+- duplicate completed requests return without execution;
+- duplicate claimed requests become an ambiguous recovery state and are not executed;
+- executor interface contains only the six mailbox-allow-listed actions;
+- no arbitrary MCP tool name, shell, executable, path, environment or service name is accepted by the processor;
+- `run_tests` uses an explicit `run_tests_to_completion(project, suite)` executor method;
+- executor exceptions become generic safe failure envelopes without raw exception text;
+- unsupported/unsafe executor output becomes a bounded `UNSAFE_RESULT` failure;
+- results are scrubbed/serialized before the transport-specific result sink sees them;
+- durable result persistence happens before replay lifecycle completion;
+- result-persistence failure leaves the request claimed and returns safe recovery material rather than rerunning the task;
+- replay-finalization failure after durable persistence is reported as recovery-required rather than triggering execution again.
+
+Still transport-specific/private:
+
+- mailbox repository/branch selection;
+- credentials;
+- polling/webhook mechanics;
+- result-file naming/location;
+- notification destination;
+- supervisor/service configuration.
+
+Next:
+
+- build a thin private adapter around the public processor and result sink contract;
+- migrate the pilot watcher to the public request/replay/result lifecycle;
+- prove fresh request processing, restart recovery, heartbeat and completion feedback end to end.
+
 ## Phase 3.9 — public launch readiness
 
 Prepare Runner MCP for free, responsible discovery without changing its security boundaries.

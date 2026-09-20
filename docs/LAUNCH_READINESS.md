@@ -62,4 +62,4 @@ Do not add application telemetry solely for marketing.
 
 ## Cost rule
 
-The default launch path must remain usable without buying advertising, hosted CI minutes or a new hosted service. Any future paid promotion or infrastructure requires an explicit decision rather than becoming a hidden dependency.
+The default launch path must remain usable without buying advertising, paid hosted CI minutes or a new hosted service. Standard GitHub-hosted CI may be used for this public repository while GitHub provides it free of charge and no private secrets are exposed. Any future paid promotion or infrastructure requires an explicit decision rather than becoming a hidden dependency.

@@ -153,6 +153,34 @@ Next:
 - keep heartbeat/stale-request recovery as a separate resilience concern;
 - map other existing asynchronous Runner MCP jobs to the same completion-event contract before adding any new mailbox actions.
 
+## Phase 3.8.2 — watcher resilience and restart recovery
+
+Make the private mailbox transport observable and restart-safe without widening the mailbox action allow-list.
+
+Implemented public foundation:
+
+- replay ledger lifecycle now distinguishes `claimed` from `completed`;
+- legacy replay entries without a lifecycle state are treated conservatively as `claimed`;
+- a request is marked completed only after its safe result is durable;
+- restart recovery distinguishes processable, already-resulted, ambiguous-claim and missing-result states;
+- ambiguous claimed work is never rerun automatically;
+- a completed ledger entry with a missing transport result is never rerun automatically;
+- sanitized heartbeat states are limited to `healthy`, `backlog` and `degraded`;
+- heartbeat output exposes only bounded counts and oldest-pending age, never request contents or infrastructure metadata;
+- stale/backlog thresholds are bounded;
+- duplicate heartbeat observations fail closed;
+- transient transport retry is bounded to timeout/rate-limit/unavailable failures;
+- authorization and invalid-response failures are not automatically retried;
+- transport retry policy never authorizes operational action replay.
+
+Next:
+
+- migrate the private watcher to claim -> execute -> persist safe result -> mark completed;
+- publish the sanitized heartbeat through the private transport;
+- add watcher-level integration tests using placeholder-only configuration;
+- prove restart recovery against a fresh backlog without replaying completed work;
+- keep notification delivery and heartbeat/stale recovery independent.
+
 ## Phase 3.9 — public launch readiness
 
 Prepare Runner MCP for free, responsible discovery without changing its security boundaries.

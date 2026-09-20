@@ -21,6 +21,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - bounded bridge result envelopes and replay protection;
 - strict terminal task-completion events with deterministic notification IDs;
 - watcher heartbeat, replay lifecycle and fail-closed restart-recovery primitives;
+- transport-neutral bridge processor with explicit allow-listed executor and durable-result ordering;
 - interactive setup, doctor, guide and configuration-management CLI;
 - public CI for this public repository;
 - Fools2Tools project identity;
@@ -35,6 +36,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - duplicate mailbox request IDs cannot be silently re-executed;
 - notification delivery is separated from task execution so a delivery retry cannot rerun the task;
 - ambiguous or missing-result watcher recovery states do not automatically re-execute operational actions;
+- result persistence/finalization failures do not authorize bridge action replay;
 - production mutations remain disabled;
 - database restore remains unimplemented rather than being automated unsafely.
 

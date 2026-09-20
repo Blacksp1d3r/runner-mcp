@@ -128,3 +128,37 @@ A private watcher should not duplicate that orchestration. Its remaining respons
 - deliver completion notifications independently.
 
 This keeps restart/replay semantics in tested public code while deployment-specific credentials and mailbox locations remain private.
+
+
+## Incremental GitHub watcher
+
+The public `runner_mcp.github_watcher` module combines the GitHub mailbox transport, bridge processor, replay ledger and heartbeat contract.
+
+It uses a local request-branch cursor rather than rescanning all historical requests.
+
+First start is deliberately fail-closed:
+
+1. without a cursor, the watcher reports `uninitialized` and executes nothing;
+2. the operator explicitly bootstraps the cursor at the current request-branch head;
+3. historical requests before that point are not replayed;
+4. later cycles compare only fast-forward changes since the cursor.
+
+The cursor is private local state. It is stored with restrictive permissions, file locking, symlink refusal and an expected-previous-SHA check to detect concurrent watcher instances.
+
+A durable existing result is reconciled into replay state without action execution. A claimed request with no result and a completed request with a missing result both require recovery attention and are never blindly rerun.
+
+## External supervisor restart contract
+
+A deployment-specific supervisor may restart the watcher process after a crash or host restart.
+
+The supervisor should only restart the process. It must not:
+
+- delete or reset the replay ledger;
+- delete or reset the watcher cursor;
+- rewrite request/result mailbox content;
+- treat heartbeat failure as permission to rerun an action;
+- automatically bootstrap a missing cursor over an unknown backlog.
+
+After restart, the watcher reuses the persisted cursor and replay lifecycle. If the cursor cannot be read, the request branch is no longer a strict fast-forward, or replay/result state is ambiguous, the watcher remains degraded and requires operator recovery.
+
+Supervisor unit names, filesystem locations, credentials and repository/ref values remain private deployment configuration and are intentionally excluded from this public repository.

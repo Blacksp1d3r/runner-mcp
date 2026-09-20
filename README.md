@@ -6,15 +6,32 @@ Runner MCP is a security-first, self-hosted Model Context Protocol service for c
 
 In one sentence: Runner MCP gives AI clients a narrow, auditable path to self-hosted development and staging work without exposing a general-purpose remote shell.
 
-It lets an AI client inspect configured projects, read safe project files, run predefined test profiles and eventually manage staging services, backups, migrations, deployments and rollbacks — without exposing a general-purpose remote shell.
+[Five-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security policy](SECURITY.md) · [Threat model](security/THREAT_MODEL.md) · [Roadmap](roadmap/ROADMAP.md)
 
 ## Why Runner MCP exists
 
-Runner MCP was started as a self-hosted replacement for the day-to-day runtime and staging work previously handled through Desktop Commander Remote.
+AI-assisted development becomes much more useful when the assistant can verify changes against real projects. But routine tasks such as reading a safe file, running a known test suite or checking a staging service do not require the authority of a general-purpose remote shell.
 
-The practical trigger was the introduction of monthly usage limits and a paid option for that remote connector. Rather than depending on a general remote-control service for routine development operations, Runner MCP is designed to provide a narrow, auditable and deny-by-default interface that can run on infrastructure you control.
+Runner MCP turns those routine operations into explicit capabilities. The operator configures projects and named actions locally; the AI client selects from those capabilities instead of supplying arbitrary commands, executable paths or private infrastructure values.
 
-Desktop Commander can still be useful as a fallback during migration, but Runner MCP's goal is to remove the daily dependency on it for tests, staging services, database backups/migrations, deployments and rollbacks.
+The original motivation was practical: reduce the day-to-day dependency on broad remote-control tooling while keeping useful development and staging automation.
+
+## How it works
+
+```mermaid
+flowchart LR
+    A[AI client] -->|private MCP transport| R[Runner MCP]
+    A -->|optional bounded requests| G[GitHub mailbox]
+    G -->|strict allow-listed bridge| R
+    H[Human operator] -->|approval / emergency stop| R
+    R --> P[Configured projects]
+    R --> T[Predefined test profiles]
+    R --> O[Controlled staging operations]
+```
+
+Runner MCP is the local safety boundary. GitHub can be used for source collaboration and, optionally, as a bounded mailbox transport; it is not turned into a mechanism for sending arbitrary shell commands.
+
+The normal authority model is deliberately asymmetric: read-only inspection is easier, mutating staging actions are narrower, higher-risk actions require short-lived local approval, and production mutations remain disabled.
 
 ## I just want to use it
 

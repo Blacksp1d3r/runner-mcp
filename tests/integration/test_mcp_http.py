@@ -844,3 +844,211 @@ def test_mcp_async_staging_deployment_flow(
     assert "deploy_staging" in audit_text
     assert "deployment_status" in audit_text
     assert str(tmp_path) not in audit_text
+
+
+def test_mcp_one_step_rollback_flow(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeRollbackManager:
+        def __init__(self, **kwargs) -> None:
+            pass
+
+        def plan(self, project: str) -> dict:
+            return {"project": project, "environment": "staging", "commit": "b" * 40}
+
+        def deploy(self, project: str) -> dict:
+            return {"project": project, "status": "deployed"}
+
+        def list_releases(self, project: str, *, limit: int = 100) -> list[dict]:
+            return [
+                {
+                    "release_id": "new-release",
+                    "commit": "b" * 40,
+                    "created_at": "2026-09-20T08:00:00+00:00",
+                    "previous_release": "old-release",
+                    "current": True,
+                    "migrations_applied": False,
+                    "pre_migration_backup_id": None,
+                    "retention_protected": True,
+                    "rollback_eligible": True,
+                },
+                {
+                    "release_id": "old-release",
+                    "commit": "a" * 40,
+                    "created_at": "2026-09-19T08:00:00+00:00",
+                    "previous_release": None,
+                    "current": False,
+                    "migrations_applied": False,
+                    "pre_migration_backup_id": None,
+                    "retention_protected": True,
+                    "rollback_eligible": False,
+                },
+            ][:limit]
+
+        def rollback_plan(self, project: str) -> dict:
+            return {
+                "project": project,
+                "current_release": "new-release",
+                "current_commit": "b" * 40,
+                "target_release": "old-release",
+                "target_commit": "a" * 40,
+                "one_step_only": True,
+                "blocked_by_database_migration": False,
+                "allowed": True,
+                "database_restore_performed": False,
+            }
+
+        def rollback_one(self, project: str) -> dict:
+            return {
+                **self.rollback_plan(project),
+                "status": "rolled_back",
+                "current_release": "old-release",
+                "health": {"active_state": "active", "health": "healthy"},
+            }
+
+    monkeypatch.setattr("runner_mcp.server.DeploymentManager", FakeRollbackManager)
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        operator_stop_file=tmp_path / "operator.stop",
+        retention_confirmed=True,
+        deployment_jobs_root=tmp_path / "deployment-jobs",
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                environment="staging",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        releases = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 100,
+                "method": "tools/call",
+                "params": {
+                    "name": "list_releases",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        release_payload = parse_tool_json(releases)
+        assert release_payload[0]["current"] is True
+        assert release_payload[0]["rollback_eligible"] is True
+        assert str(tmp_path) not in releases.text
+
+        plan = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 101,
+                "method": "tools/call",
+                "params": {
+                    "name": "rollback_plan",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        plan_payload = parse_tool_json(plan)
+        assert plan_payload["target_release"] == "old-release"
+        assert plan_payload["one_step_only"] is True
+        assert plan_payload["database_restore_performed"] is False
+
+        arbitrary_target = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 102,
+                "method": "tools/call",
+                "params": {
+                    "name": "rollback_release",
+                    "arguments": {
+                        "project": "demo",
+                        "target_release": "attacker-selected-release",
+                    },
+                },
+            },
+        )
+        assert '"isError":true' in arbitrary_target.text
+
+        started = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 103,
+                "method": "tools/call",
+                "params": {
+                    "name": "rollback_release",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        started_payload = parse_tool_json(started)
+        assert started_payload["operation"] == "rollback"
+        job_id = started_payload["job_id"]
+
+        deadline = time.monotonic() + 3
+        rollback_payload = None
+        request_id = 103
+        while time.monotonic() < deadline:
+            status = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": request_id,
+                    "method": "tools/call",
+                    "params": {
+                        "name": "rollback_status",
+                        "arguments": {"job_id": job_id},
+                    },
+                },
+            )
+            rollback_payload = parse_tool_json(status)
+            if rollback_payload["state"] not in {"queued", "running"}:
+                break
+            request_id += 1
+            time.sleep(0.01)
+
+        assert rollback_payload is not None
+        assert rollback_payload["state"] == "completed"
+        assert rollback_payload["operation"] == "rollback"
+        assert rollback_payload["result"]["status"] == "rolled_back"
+        assert rollback_payload["result"]["current_release"] == "old-release"
+
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "list_releases" in audit_text
+    assert "rollback_plan" in audit_text
+    assert "rollback_release" in audit_text
+    assert "rollback_status" in audit_text
+    assert str(tmp_path) not in audit_text

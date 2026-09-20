@@ -32,3 +32,7 @@ The MCP process should bind only where required and sit behind a hardened TLS re
 ## High-risk actions
 
 Deploys, migrations, restores, rollbacks, privilege changes, and production actions require additional safeguards. Production support is explicitly excluded from the MVP.
+
+## Strict MCP tool inputs
+
+Unknown MCP tool arguments are rejected globally. This prevents clients from attaching misleading control fields that the underlying SDK would otherwise ignore by default.

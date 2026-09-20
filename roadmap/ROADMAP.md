@@ -131,7 +131,25 @@ Still deferred:
 
 ## Phase 7 — rollback engine
 
-Add release listing and controlled rollback. Database restoration remains a separately protected operation.
+Implemented core design:
+
+- safe release metadata listing with current/previous/commit/timestamp state;
+- retention-protection reporting using both minimum count and minimum age;
+- fail-closed release metadata validation and permission checks;
+- direct previous release is the only rollback target;
+- global strict MCP input validation rejects unknown arguments;
+- rollback blocked when current release crossed a database migration boundary;
+- asynchronous persisted rollback jobs;
+- deploy and rollback jobs mutually exclude each other per project;
+- atomic one-step release switch plus service restart and health verification;
+- failed rollback health reactivates the original current release when safe;
+- no database restore and no automatic multi-step cascade.
+
+Still deferred:
+
+- automatic release pruning;
+- production rollback;
+- database restore/recovery workflow.
 
 ## Phase 8 — multi-project adapters
 

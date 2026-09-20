@@ -22,6 +22,26 @@ class FakeManager:
         self.plans.append(project)
         return {"project": project, "environment": "staging", "commit": "a" * 40}
 
+    def rollback_plan(self, project: str) -> dict:
+        return {
+            "project": project,
+            "current_release": "new",
+            "target_release": "old",
+            "allowed": True,
+            "one_step_only": True,
+            "blocked_by_database_migration": False,
+            "database_restore_performed": False,
+        }
+
+    def rollback_one(self, project: str) -> dict:
+        return {
+            "project": project,
+            "status": "rolled_back",
+            "current_release": "old",
+            "target_release": "old",
+            "database_restore_performed": False,
+        }
+
     def deploy(self, project: str) -> dict:
         self.deploys.append(project)
         if self.block is not None:
@@ -136,3 +156,34 @@ def test_running_job_is_marked_interrupted_after_restart(tmp_path: Path) -> None
     status = runner.status(job_id)
     assert status["state"] == "interrupted"
     assert status["error_category"] == "runner_restart"
+
+
+def test_rollback_job_uses_same_persisted_job_model(tmp_path: Path) -> None:
+    runner = DeploymentJobRunner(
+        manager=FakeManager(),
+        safety=guard(tmp_path),
+        jobs_root=tmp_path / "jobs",
+    )
+
+    started = runner.start_rollback("demo")
+    finished = wait_terminal(runner, started["job_id"])
+
+    assert started["operation"] == "rollback"
+    assert finished["operation"] == "rollback"
+    assert finished["state"] == "completed"
+    assert finished["result"]["status"] == "rolled_back"
+
+
+def test_rollback_job_is_blocked_when_plan_crosses_migration_boundary(tmp_path: Path) -> None:
+    class BlockedManager(FakeManager):
+        def rollback_plan(self, project: str) -> dict:
+            return {"project": project, "allowed": False}
+
+    runner = DeploymentJobRunner(
+        manager=BlockedManager(),
+        safety=guard(tmp_path),
+        jobs_root=tmp_path / "jobs",
+    )
+
+    with pytest.raises(Exception, match="database migration boundary"):
+        runner.start_rollback("demo")

@@ -52,6 +52,7 @@ def iso_or_none(value: datetime | None) -> str | None:
 class DeploymentJob:
     job_id: str
     project: str
+    operation: str
     state: DeploymentJobState
     created_at: datetime
     started_at: datetime | None = None
@@ -63,6 +64,7 @@ class DeploymentJob:
         return {
             "job_id": self.job_id,
             "project": self.project,
+            "operation": self.operation,
             "state": self.state.value,
             "created_at": iso_or_none(self.created_at),
             "started_at": iso_or_none(self.started_at),
@@ -129,6 +131,7 @@ class DeploymentJobRunner:
                 job = DeploymentJob(
                     job_id=job_id,
                     project=str(raw["project"]),
+                    operation=str(raw.get("operation", "deploy")),
                     state=DeploymentJobState(raw["state"]),
                     created_at=self._parse_datetime(raw["created_at"]) or utc_now(),
                     started_at=self._parse_datetime(raw.get("started_at")),
@@ -139,6 +142,8 @@ class DeploymentJobRunner:
             except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
                 continue
 
+            if job.operation not in {"deploy", "rollback"}:
+                continue
             if job.state in {DeploymentJobState.QUEUED, DeploymentJobState.RUNNING}:
                 job.state = DeploymentJobState.INTERRUPTED
                 job.finished_at = utc_now()
@@ -154,20 +159,18 @@ class DeploymentJobRunner:
             for job in self._jobs.values()
         )
 
-    def start(self, project: str) -> dict[str, Any]:
-        self.safety.assert_action_allowed(ActionClass.DEPLOY)
-        # Preflight now, before the background thread is accepted. This is
-        # read-only and catches invalid deployment configuration immediately.
-        self.manager.plan(project)
-
+    def _enqueue(self, project: str, operation: str) -> dict[str, Any]:
         with self._lock:
             if self._project_has_active_job(project):
-                raise DeploymentJobError("A deployment job is already active for this project")
+                raise DeploymentJobError(
+                    "A deployment or rollback job is already active for this project"
+                )
 
             job_id = uuid4().hex
             job = DeploymentJob(
                 job_id=job_id,
                 project=project,
+                operation=operation,
                 state=DeploymentJobState.QUEUED,
                 created_at=utc_now(),
             )
@@ -177,11 +180,26 @@ class DeploymentJobRunner:
         worker = threading.Thread(
             target=self._run_job,
             args=(job_id,),
-            name=f"runner-mcp-deploy-{job_id[:8]}",
+            name=f"runner-mcp-{operation}-{job_id[:8]}",
             daemon=True,
         )
         worker.start()
         return job.public_dict()
+
+    def start(self, project: str) -> dict[str, Any]:
+        self.safety.assert_action_allowed(ActionClass.DEPLOY)
+        self.manager.plan(project)
+        return self._enqueue(project, "deploy")
+
+    def start_rollback(self, project: str) -> dict[str, Any]:
+        self.safety.assert_action_allowed(ActionClass.CODE_ROLLBACK)
+        self.safety.assert_code_rollback_steps(1)
+        plan = self.manager.rollback_plan(project)
+        if not plan.get("allowed", False):
+            raise DeploymentJobError(
+                "Code rollback is blocked across a database migration boundary"
+            )
+        return self._enqueue(project, "rollback")
 
     def _set_job(
         self,
@@ -216,9 +234,14 @@ class DeploymentJobRunner:
         )
         with self._lock:
             project = self._jobs[job_id].project
+            operation = self._jobs[job_id].operation
 
         try:
-            result = self.manager.deploy(project)
+            result = (
+                self.manager.deploy(project)
+                if operation == "deploy"
+                else self.manager.rollback_one(project)
+            )
             self._set_job(
                 job_id,
                 state=DeploymentJobState.COMPLETED,
@@ -244,7 +267,9 @@ class DeploymentJobRunner:
                 job_id,
                 state=DeploymentJobState.ERROR,
                 finished_at=utc_now(),
-                error_category="deployment_error",
+                error_category=(
+                    "deployment_error" if operation == "deploy" else "rollback_error"
+                ),
             )
         except Exception:  # noqa: BLE001 - background jobs must fail closed
             self._set_job(

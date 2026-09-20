@@ -137,6 +137,11 @@ def assess_watcher_health(
         raise BridgeResilienceError("stale threshold is outside the supported range")
     if len(observations) > MAX_PENDING_OBSERVATIONS:
         raise BridgeResilienceError("too many pending observations")
+    if any(not isinstance(item, RecoveryObservation) for item in observations):
+        raise BridgeResilienceError("invalid pending observation")
+    request_ids = [item.request_id for item in observations]
+    if len(request_ids) != len(set(request_ids)):
+        raise BridgeResilienceError("duplicate pending observation")
 
     pending = [
         item
@@ -178,6 +183,8 @@ def assess_watcher_health(
 def transport_retry_delays(
     failure: TransportFailureKind,
 ) -> tuple[int, ...]:
+    if not isinstance(failure, TransportFailureKind):
+        raise BridgeResilienceError("unsupported transport failure kind")
     if failure in {
         TransportFailureKind.TIMEOUT,
         TransportFailureKind.RATE_LIMITED,

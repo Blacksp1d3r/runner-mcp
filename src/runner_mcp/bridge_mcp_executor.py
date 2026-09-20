@@ -194,7 +194,7 @@ class LocalMCPClient:
         )
         self._initialized = True
 
-    def call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
+    def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
         if name not in {
             "list_projects",
             "safety_status",
@@ -326,31 +326,31 @@ class LocalMCPBridgeExecutor:
         self._client = LocalMCPClient(config)
 
     def list_projects(self) -> Any:
-        return self._client.call_tool("list_projects", {})
+        return self._client._call_tool("list_projects", {})
 
     def safety_status(self) -> Any:
-        return self._client.call_tool("safety_status", {})
+        return self._client._call_tool("safety_status", {})
 
     def project_status(self, project: str) -> Any:
-        return self._client.call_tool(
+        return self._client._call_tool(
             "project_status",
             {"project": project},
         )
 
     def project_capabilities(self, project: str) -> Any:
-        return self._client.call_tool(
+        return self._client._call_tool(
             "project_capabilities",
             {"project": project},
         )
 
     def list_test_profiles(self, project: str) -> Any:
-        return self._client.call_tool(
+        return self._client._call_tool(
             "list_test_profiles",
             {"project": project},
         )
 
     def run_tests_to_completion(self, project: str, suite: str) -> Any:
-        started = self._client.call_tool(
+        started = self._client._call_tool(
             "run_tests",
             {"project": project, "suite": suite},
         )
@@ -370,7 +370,7 @@ class LocalMCPBridgeExecutor:
 
         deadline = time.monotonic() + self._config.test_wait_timeout_seconds
         while True:
-            status_payload = self._client.call_tool(
+            status_payload = self._client._call_tool(
                 "test_status",
                 {"job_id": job_id},
             )

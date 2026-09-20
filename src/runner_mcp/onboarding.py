@@ -13,6 +13,7 @@ from urllib.parse import urlsplit
 import yaml
 
 from .config import ProjectConfig, ProjectRegistry
+from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .operational_safety import OperatorSafetyGuard
 from .server import Settings
 
@@ -180,7 +181,7 @@ def render_env_file(
         "RUNNER_MCP_APPROVAL_TTL_SECONDS": "600",
     }
     for key, value in sorted((extra_values or {}).items()):
-        if key.startswith("RUNNER_MCP_DB_"):
+        if key.startswith("RUNNER_MCP_DB_") or key in GITHUB_MAILBOX_ENV_KEYS:
             values[key] = value
     lines = [
         "# Private Runner MCP runtime configuration.",
@@ -262,29 +263,31 @@ def install_private_configuration(
     os.chmod(paths.approvals_dir, 0o700)
 
     token: str | None = None
-    existing_database_values: dict[str, str] = {}
-    if overwrite and not rotate_token and paths.env_file.exists():
+    existing_private_values: dict[str, str] = {}
+    if overwrite and paths.env_file.exists():
         _require_private_mode(
             paths.env_file,
             0o600,
             label="Existing private environment file",
         )
         existing = load_env_file(paths.env_file)
-        existing_database_values = {
+        existing_private_values = {
             key: value
             for key, value in existing.items()
             if key.startswith("RUNNER_MCP_DB_")
+            or key in GITHUB_MAILBOX_ENV_KEYS
         }
-        candidate = existing.get("RUNNER_MCP_BEARER_TOKEN", "")
-        if len(candidate) >= 32:
-            token = candidate
+        if not rotate_token:
+            candidate = existing.get("RUNNER_MCP_BEARER_TOKEN", "")
+            if len(candidate) >= 32:
+                token = candidate
 
     token = token or secrets.token_urlsafe(48)
     env_content = render_env_file(
         paths=paths,
         answers=validated,
         bearer_token=token,
-        extra_values=existing_database_values,
+        extra_values=existing_private_values,
     )
     projects_content = render_projects_file(validated)
 

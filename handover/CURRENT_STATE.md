@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phase 3.8.1 adds a strict public task-completion event contract with deterministic notification IDs. Phase 3.8.2 adds watcher heartbeat and restart-recovery semantics on the current feature branch. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
+Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phase 3.8.1 adds a strict public task-completion event contract with deterministic notification IDs. Phase 3.8.2 adds watcher heartbeat and restart-recovery semantics. Phase 3.8.3 now adds a transport-neutral bridge processor on the current feature branch. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
 
 Phase 0:
 - repository structure defined;
@@ -152,6 +152,19 @@ Phase 3.8.2 watcher resilience and restart recovery:
 - authorization and invalid-response failures are not automatically retried;
 - watcher resilience and task-completion notification remain separate concerns.
 
+Phase 3.8.3 transport-neutral bridge processor:
+- request parsing and replay claim are enforced before execution;
+- completed duplicate requests never execute again;
+- claimed duplicates become an ambiguous recovery state;
+- executor interface exposes only the six mailbox-allow-listed actions;
+- run_tests is represented as an explicit run_tests_to_completion(project, suite) operation;
+- executor exceptions are converted to generic safe failure envelopes;
+- unsafe executor output fails closed as UNSAFE_RESULT;
+- only scrubbed/bounded serialized results reach the transport sink;
+- durable result persistence precedes replay lifecycle completion;
+- persistence/finalization failures require recovery and never authorize action replay;
+- GitHub credentials, branches, endpoints and supervisor configuration remain outside the public processor.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;
@@ -295,7 +308,7 @@ Phase 3.8.2 watcher-resilience validation is green:
 
 ## Next steps
 
-Validate and merge the watcher-resilience branch, then migrate the private mailbox watcher to the shared request/result/replay lifecycle and publish the sanitized heartbeat. Prove restart recovery against a fresh backlog without replaying completed work. Keep the idempotent completion-notification path separate. After that, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
+Validate and merge the transport-neutral bridge processor, then wrap the existing private mailbox transport around that public processor and result-sink contract. Prove a fresh request, durable result, restart recovery, heartbeat and exactly-once completion notification end to end. After that, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

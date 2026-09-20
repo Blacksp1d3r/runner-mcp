@@ -39,6 +39,8 @@ The wrapper keeps the private configuration with the service account and delegat
 
 For a user-to-developer path, see [docs/USING_AND_EXTENDING.md](docs/USING_AND_EXTENDING.md). Contributors can start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
+For the zero-additional-service-cost GitHub mailbox transport pattern, see [docs/GITHUB_MAILBOX_BRIDGE.md](docs/GITHUB_MAILBOX_BRIDGE.md).
+
 Useful commands:
 
 ```text

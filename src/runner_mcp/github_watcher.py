@@ -24,7 +24,6 @@ from .bridge_replay import (
     BridgeReplayError,
     BridgeReplayLedger,
     ReplayRecord,
-    ReplayState,
 )
 from .bridge_resilience import (
     MAX_PENDING_AGE_SECONDS,
@@ -32,7 +31,6 @@ from .bridge_resilience import (
     RecoveryDisposition,
     RecoveryObservation,
     WatcherHeartbeat,
-    WatcherState,
     assess_watcher_health,
     recovery_disposition,
     serialize_watcher_heartbeat,

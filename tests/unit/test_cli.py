@@ -420,7 +420,7 @@ def test_github_mailbox_cli_configure_uses_hidden_token(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     paths, _ = install_config(tmp_path)
-    token = "private-mailbox-token-value-1234567890"
+    token = "example-token-placeholder"
     repository = "example/private-mailbox"
     monkeypatch.setattr("runner_mcp.cli.getpass.getpass", lambda _: token)
 
@@ -465,7 +465,7 @@ def test_github_mailbox_cli_remove_requires_explicit_confirmation(
     paths, _ = install_config(tmp_path)
     monkeypatch.setattr(
         "runner_mcp.cli.getpass.getpass",
-        lambda _: "private-mailbox-token-value-1234567890",
+        lambda _: "example-token-placeholder",
     )
     assert main(
         [

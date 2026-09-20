@@ -5,9 +5,10 @@ from pathlib import Path
 
 from starlette.testclient import TestClient
 
-from runner_mcp.config import ProjectConfig, ProjectRegistry
+from runner_mcp.config import ProjectConfig, ProjectRegistry, ServiceConfig
 from runner_mcp.config import TestProfile as RunnerTestProfile
 from runner_mcp.server import Settings, create_app
+from runner_mcp.service_manager import ServiceState
 
 
 def build_test_app(tmp_path: Path):
@@ -350,3 +351,141 @@ def test_mcp_controlled_test_job_lifecycle(tmp_path: Path) -> None:
     assert "phase3-ok" not in audit_text
     assert sys.executable not in audit_text
     assert str(project_root) not in audit_text
+
+
+def test_mcp_service_alias_status_restart_and_emergency_stop(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    stop_file = tmp_path / "operator.stop"
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        operator_stop_file=stop_file,
+        retention_confirmed=True,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+                services={
+                    "web": ServiceConfig(
+                        unit="private-web.service",
+                        allow_restart=True,
+                    )
+                },
+            )
+        }
+    )
+
+    class FakeSystemd:
+        def __init__(self) -> None:
+            self.actions = []
+
+        def status(self, unit: str) -> ServiceState:
+            assert unit == "private-web.service"
+            return ServiceState("loaded", "active", "running")
+
+        def action(self, unit: str, action: str) -> None:
+            self.actions.append((unit, action))
+
+    fake = FakeSystemd()
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.SystemdUserBackend",
+        lambda: fake,
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        listed = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 50,
+                "method": "tools/call",
+                "params": {
+                    "name": "list_services",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        listed_payload = parse_tool_json(listed)
+        assert listed_payload[0]["name"] == "web"
+        assert "private-web.service" not in listed.text
+
+        status = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 51,
+                "method": "tools/call",
+                "params": {
+                    "name": "service_status",
+                    "arguments": {"project": "demo", "service": "web"},
+                },
+            },
+        )
+        status_payload = parse_tool_json(status)
+        assert status_payload["active_state"] == "active"
+        assert "private-web.service" not in status.text
+
+        restarted = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 52,
+                "method": "tools/call",
+                "params": {
+                    "name": "restart_service",
+                    "arguments": {"project": "demo", "service": "web"},
+                },
+            },
+        )
+        restart_payload = parse_tool_json(restarted)
+        assert restart_payload["action"] == "restart"
+        assert fake.actions == [("private-web.service", "restart")]
+        assert "private-web.service" not in restarted.text
+
+        stop_file.write_text("stop\n", encoding="utf-8")
+        blocked = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 53,
+                "method": "tools/call",
+                "params": {
+                    "name": "restart_service",
+                    "arguments": {"project": "demo", "service": "web"},
+                },
+            },
+        )
+        assert '"isError":true' in blocked.text
+        assert fake.actions == [("private-web.service", "restart")]
+
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "restart_service" in audit_text
+    assert "private-web.service" not in audit_text

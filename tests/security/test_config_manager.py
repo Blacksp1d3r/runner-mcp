@@ -7,10 +7,13 @@ import pytest
 from runner_mcp.config_manager import (
     ConfigManagerError,
     add_project,
+    add_service_config,
     add_test_profile,
     list_projects,
+    list_service_configs,
     list_test_profiles,
     remove_project,
+    remove_service_config,
     remove_test_profile,
 )
 from runner_mcp.onboarding import SetupAnswers, install_private_configuration, read_private_runtime
@@ -199,3 +202,41 @@ def test_project_add_rejects_symlink_root(tmp_path: Path) -> None:
             repository="example/linked",
             root=link,
         )
+
+
+def test_service_config_add_list_and_remove_hides_private_unit(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+
+    added = add_service_config(
+        paths.config_dir,
+        project="first",
+        name="web",
+        unit="private-web.service",
+        health_url="http://127.0.0.1:9999/health",
+        allow_restart=True,
+    )
+    listed = list_service_configs(paths.config_dir, project="first")
+
+    assert added["name"] == "web"
+    assert added["can_restart"] is True
+    assert listed == [added]
+    assert "private-web.service" not in repr(listed)
+    assert "127.0.0.1" not in repr(listed)
+
+    remove_service_config(paths.config_dir, project="first", name="web")
+    assert list_service_configs(paths.config_dir, project="first") == []
+
+
+def test_service_config_is_read_only_by_default(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+
+    added = add_service_config(
+        paths.config_dir,
+        project="first",
+        name="web",
+        unit="private-web.service",
+    )
+
+    assert added["can_start"] is False
+    assert added["can_stop"] is False
+    assert added["can_restart"] is False

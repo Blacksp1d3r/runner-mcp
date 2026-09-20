@@ -10,7 +10,7 @@ from typing import Any
 
 import yaml
 
-from .config import ProjectConfig, ProjectRegistry, TestProfile
+from .config import ProjectConfig, ProjectRegistry, ServiceConfig, TestProfile
 from .onboarding import OnboardingError, PrivatePaths, read_private_runtime
 
 
@@ -367,6 +367,116 @@ def remove_test_profile(
         if key != name
     }
     updated_project = cfg.model_copy(update={"test_profiles": profiles})
+    updated = ProjectRegistry(
+        projects={
+            **registry.projects,
+            project: updated_project,
+        }
+    )
+    _save_registry(
+        paths=paths,
+        project_file=project_file,
+        registry=updated,
+    )
+
+
+def list_service_configs(
+    config_dir: Path,
+    *,
+    project: str,
+) -> list[dict[str, Any]]:
+    _, _, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+
+    return [
+        {
+            "name": name,
+            "can_start": service.allow_start,
+            "can_stop": service.allow_stop,
+            "can_restart": service.allow_restart,
+            "health_check": service.health_url is not None,
+        }
+        for name, service in sorted(cfg.services.items())
+    ]
+
+
+def add_service_config(
+    config_dir: Path,
+    *,
+    project: str,
+    name: str,
+    unit: str,
+    health_url: str | None = None,
+    allow_start: bool = False,
+    allow_stop: bool = False,
+    allow_restart: bool = False,
+) -> dict[str, Any]:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if name in cfg.services:
+        raise ConfigManagerError("Service alias is already configured")
+
+    try:
+        service = ServiceConfig(
+            unit=unit,
+            health_url=health_url,
+            allow_start=allow_start,
+            allow_stop=allow_stop,
+            allow_restart=allow_restart,
+        )
+        services = {
+            **cfg.services,
+            name: service,
+        }
+        updated_project = cfg.model_copy(update={"services": services})
+        updated_project = ProjectConfig.model_validate(updated_project.model_dump())
+        updated = ProjectRegistry(
+            projects={
+                **registry.projects,
+                project: updated_project,
+            }
+        )
+        updated.validate_codes()
+    except ValueError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+
+    _save_registry(
+        paths=paths,
+        project_file=project_file,
+        registry=updated,
+    )
+    return {
+        "name": name,
+        "can_start": service.allow_start,
+        "can_stop": service.allow_stop,
+        "can_restart": service.allow_restart,
+        "health_check": service.health_url is not None,
+    }
+
+
+def remove_service_config(
+    config_dir: Path,
+    *,
+    project: str,
+    name: str,
+) -> None:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(project)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    if name not in cfg.services:
+        raise ConfigManagerError("Unknown service alias")
+
+    services = {
+        key: value
+        for key, value in cfg.services.items()
+        if key != name
+    }
+    updated_project = cfg.model_copy(update={"services": services})
     updated = ProjectRegistry(
         projects={
             **registry.projects,

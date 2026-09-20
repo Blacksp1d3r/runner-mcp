@@ -73,6 +73,36 @@ class TestProfile(BaseModel):
         return values
 
 
+class ServiceConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    unit: str = Field(min_length=1, max_length=160)
+    health_url: AnyHttpUrl | None = None
+    health_expected_status: int = Field(default=200, ge=100, le=599)
+    health_timeout_seconds: float = Field(default=5.0, gt=0, le=30)
+    allow_start: bool = False
+    allow_stop: bool = False
+    allow_restart: bool = False
+
+    @field_validator("unit")
+    @classmethod
+    def validate_unit(cls, value: str) -> str:
+        if not SERVICE_RE.fullmatch(value):
+            raise ValueError("service unit contains unsupported characters")
+        return value
+
+    @field_validator("health_url")
+    @classmethod
+    def validate_health_url(cls, value: AnyHttpUrl | None) -> AnyHttpUrl | None:
+        if value is None:
+            return None
+        if value.scheme not in {"http", "https"}:
+            raise ValueError("service health URL must use HTTP or HTTPS")
+        if value.username or value.password:
+            raise ValueError("service health URL must not contain credentials")
+        return value
+
+
 class ProjectConfig(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
@@ -84,6 +114,7 @@ class ProjectConfig(BaseModel):
     allowed_services: list[str] = Field(default_factory=list)
     database_alias: str | None = None
     test_profiles: dict[str, TestProfile] = Field(default_factory=dict)
+    services: dict[str, ServiceConfig] = Field(default_factory=dict)
 
     @field_validator("test_profiles")
     @classmethod
@@ -93,6 +124,16 @@ class ProjectConfig(BaseModel):
     ) -> dict[str, TestProfile]:
         if any(not PROJECT_CODE_RE.fullmatch(name) for name in values):
             raise ValueError("test profile name contains unsupported characters")
+        return values
+
+    @field_validator("services")
+    @classmethod
+    def validate_service_aliases(
+        cls,
+        values: dict[str, ServiceConfig],
+    ) -> dict[str, ServiceConfig]:
+        if any(not PROJECT_CODE_RE.fullmatch(name) for name in values):
+            raise ValueError("service alias contains unsupported characters")
         return values
 
     @field_validator("repository")

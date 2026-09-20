@@ -5,8 +5,12 @@ projects:
     environment: staging
     root: "${RUNNER_MCP_EXAMPLE_ROOT}"
     health_url: "${RUNNER_MCP_EXAMPLE_HEALTH_URL}"
-    allowed_services:
-      - "${RUNNER_MCP_EXAMPLE_STAGING_SERVICE}"
+    services:
+      example-service:
+        unit: "${RUNNER_MCP_EXAMPLE_STAGING_SERVICE}"
+        allow_start: false
+        allow_stop: false
+        allow_restart: false
     database_alias: "${RUNNER_MCP_EXAMPLE_DATABASE}"
     test_profiles:
       lint:

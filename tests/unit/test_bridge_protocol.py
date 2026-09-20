@@ -281,3 +281,17 @@ def test_run_tests_bridge_translates_public_profile_to_runner_suite() -> None:
     assert tool_name == "run_tests"
     assert arguments == {"project": "demo", "suite": "unit"}
     assert "profile" not in arguments
+
+
+def test_bridge_result_serialization_normalizes_unknown_types() -> None:
+    result = BridgeResult.model_construct(
+        request_id="req-serialization",
+        action=BridgeAction.LIST_PROJECTS,
+        state=BridgeResultState.COMPLETED,
+        data={"result": object()},
+        error_code=None,
+        summary=None,
+    )
+
+    with pytest.raises(BridgeProtocolError, match="unsupported value type"):
+        serialize_bridge_result(result)

@@ -121,6 +121,33 @@ Next:
 - migrate the private watcher from its pilot request/result shape to the shared validator, result envelope and replay ledger;
 - add watcher-level integration tests using only generic placeholder configuration.
 
+## Phase 3.8.1 — task-completion feedback
+
+Make asynchronous work observable to the operator without expanding execution authority.
+
+Current state:
+
+- a project-local CI completion notification pattern is proven in a pilot project: pull-request validation can report success, failure or cancellation back through GitHub after the validation job finishes;
+- a private mailbox notification workflow exists for completed `run_tests` results and reports only a small safe summary such as project, predefined test profile/suite and final status;
+- the central mailbox completion notification still needs an end-to-end proof with a newly produced result after deployment;
+- completion notifications do not add commands, change the mailbox allow-list or grant new Runner MCP permissions.
+
+Target contract:
+
+- every long-running Runner MCP action should have an explicit terminal state such as completed, failed or cancelled;
+- a transport may emit a user-facing completion signal only after the bounded/scrubbed result has been persisted;
+- notifications must contain safe identifiers/status only and must not expose paths, hosts, URLs, credentials, environment values, raw logs or service names;
+- duplicate/replayed result records must not create duplicate action execution; notification delivery may be retried independently of action execution;
+- notification failure must never turn a successful Runner MCP action into an operational failure;
+- heartbeat/stale-request recovery remains a separate resilience concern from user-facing completion feedback;
+- the public core should define generic completion-event semantics while deployment-specific notification destinations remain private configuration.
+
+Next:
+
+- prove the central `run_tests` completion signal end-to-end with a fresh mailbox result;
+- add regression coverage for duplicate result notifications and notification failure isolation;
+- define the same generic completion-event shape for other asynchronous Runner MCP job types before enabling additional mailbox actions.
+
 ## Phase 3.9 — public launch readiness
 
 Prepare Runner MCP for free, responsible discovery without changing its security boundaries.

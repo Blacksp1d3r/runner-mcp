@@ -127,7 +127,7 @@ def test_runtime_builds_from_private_config_without_network(tmp_path: Path) -> N
         repository="example/private-mailbox",
         request_ref="runner-control",
         result_ref="runner-results",
-        token="private-mailbox-token-value-1234567890",
+        token="example-token-placeholder",
     )
 
     runtime = GitHubWatcherRuntime.from_private_config(paths.config_dir)
@@ -155,7 +155,7 @@ def test_runtime_rejects_non_loopback_runner_endpoint_safely(
         repository="example/private-mailbox",
         request_ref="runner-control",
         result_ref="runner-results",
-        token="private-mailbox-token-value-1234567890",
+        token="example-token-placeholder",
     )
 
     with pytest.raises(

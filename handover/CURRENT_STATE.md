@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phases 0 through 9 are merged to main. Phase 3.7 formalizes the proven GitHub mailbox transport. Phase 3.8 implements a bounded result envelope plus replay protection and has completed full branch validation. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary for allow-listed status and predefined test actions.
+Runner MCP Phases 0 through 9 are merged to main. Phase 3.7 formalizes the proven GitHub mailbox transport. Phase 3.8 is merged and adds a bounded result envelope, replay protection and free public CI. Phase 3.9 launch-readiness work is in progress on a dedicated branch. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary for allow-listed status and predefined test actions.
 
 Phase 0:
 - repository structure defined;
@@ -111,6 +111,20 @@ Phase 3.8 bridge result envelope and replay protection:
 - Fools2Tools project identity and a free public-launch-readiness plan were added without changing Runner MCP's product identity or security boundaries;
 - public CI validates pull requests and main on a fresh standard GitHub-hosted runner with read-only repository permissions, pinned official actions and no private secrets; standard runners are free for this public repository.
 
+
+Phase 3.9 public launch readiness:
+- README now leads with a concise problem statement, architecture and safety boundary;
+- Fools2Tools remains a light umbrella identity; Runner MCP retains its own product/package identity;
+- five-minute local evaluation demo added alongside the full Quickstart;
+- root security-reporting policy added;
+- public changelog and release checklist added;
+- factual launch copy prepared without publishing external posts;
+- privacy-safe bug and feature request forms added;
+- pull-request template reinforces security invariants and public-repository hygiene;
+- package metadata expanded for future public distribution;
+- launch-readiness gate explicitly tracks what is complete and what still needs clean-environment/release verification;
+- no marketing telemetry or paid runtime dependency added.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;
@@ -188,7 +202,7 @@ Phase 9 human approval gates:
 
 ## Validation
 
-Complete Phase 3.8 branch validation is green:
+Phase 3.8 post-merge main validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
 - pytest: 248 tests green, with one third-party Starlette/AnyIO deprecation warning;
@@ -254,7 +268,7 @@ Complete Phase 3.8 branch validation is green:
 
 ## Next steps
 
-Merge Phase 3.8, then migrate the private GitHub mailbox watcher from its pilot request/result shape to the shared validator, bounded result envelope and replay ledger. After that, continue with service auto-start packaging, private tunnel connectivity and the reproducible public demo/release work from Phase 3.9. Phase 10 restricted command templates should be added only when a concrete missing use case cannot be solved through configuration or a built-in adapter.
+Validate and merge Phase 3.9 launch-readiness changes. Then migrate the private GitHub mailbox watcher from its pilot request/result shape to the shared validator, bounded result envelope and replay ledger. Verify the five-minute demo from a clean supported Linux environment before creating the first tagged alpha release. Continue with service auto-start packaging and private-tunnel onboarding. Phase 10 restricted command templates should be added only when a concrete missing use case cannot be solved through configuration or a built-in adapter.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

@@ -329,7 +329,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
         assert request.profile is not None
         return request.action.value, {
             "project": request.project,
-            "profile": request.profile,
+            "suite": request.profile,
         }
 
     raise BridgeProtocolError("unsupported bridge action")

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -15,6 +16,7 @@ from .bridge_protocol import (
     MAX_BRIDGE_RESULT_BYTES,
     REQUEST_ID_RE,
     BridgeProtocolError,
+    BridgeResult,
     parse_bridge_request,
     parse_bridge_result,
 )
@@ -23,11 +25,13 @@ from .bridge_resilience import (
     BridgeResilienceError,
     TransportFailureKind,
     parse_watcher_heartbeat,
+    transport_retry_delays,
 )
 
 GITHUB_API_BASE = "https://api.github.com"
 MAX_GITHUB_RESPONSE_BYTES = 1_048_576
 MAX_MAILBOX_ENTRIES = 1_000
+MAX_COMPARE_FILES = 300
 MAILBOX_ROOT = ".runner-control"
 REQUESTS_PATH = f"{MAILBOX_ROOT}/requests"
 RESULTS_PATH = f"{MAILBOX_ROOT}/results"
@@ -216,27 +220,45 @@ class GitHubApiSession:
             method=method,
         )
 
-        try:
-            with urllib.request.urlopen(
-                request,
-                timeout=self._timeout_seconds,
-            ) as response:
-                raw = response.read(MAX_GITHUB_RESPONSE_BYTES + 1)
-        except urllib.error.HTTPError as exc:
-            if allow_not_found and exc.code == 404:
-                return None
-            raise _http_error(exc) from None
-        except TimeoutError as exc:
-            raise GitHubMailboxTransportError(
-                "GitHub mailbox transport timed out",
-                kind=TransportFailureKind.TIMEOUT,
-            ) from exc
-        except urllib.error.URLError as exc:
-            raise GitHubMailboxTransportError(
-                "GitHub mailbox transport is unavailable",
-                kind=TransportFailureKind.UNAVAILABLE,
-            ) from exc
+        raw: bytes | None = None
+        delay_before_attempt = 0
+        while True:
+            if delay_before_attempt:
+                time.sleep(delay_before_attempt)
+            try:
+                with urllib.request.urlopen(
+                    request,
+                    timeout=self._timeout_seconds,
+                ) as response:
+                    raw = response.read(MAX_GITHUB_RESPONSE_BYTES + 1)
+                break
+            except urllib.error.HTTPError as exc:
+                if allow_not_found and exc.code == 404:
+                    return None
+                error = _http_error(exc)
+            except TimeoutError:
+                error = GitHubMailboxTransportError(
+                    "GitHub mailbox transport timed out",
+                    kind=TransportFailureKind.TIMEOUT,
+                )
+            except urllib.error.URLError:
+                error = GitHubMailboxTransportError(
+                    "GitHub mailbox transport is unavailable",
+                    kind=TransportFailureKind.UNAVAILABLE,
+                )
 
+            delays = transport_retry_delays(error.kind)
+            if not delays:
+                raise error from None
+            if delay_before_attempt == 0:
+                delay_before_attempt = delays[0]
+                continue
+            if len(delays) > 1 and delay_before_attempt == delays[0]:
+                delay_before_attempt = delays[1]
+                continue
+            raise error from None
+
+        assert raw is not None
         if len(raw) > MAX_GITHUB_RESPONSE_BYTES:
             raise GitHubMailboxTransportError(
                 "GitHub mailbox response exceeds size limit",
@@ -340,6 +362,86 @@ class GitHubMailboxTransport:
             raise self._invalid_response("request mailbox contains duplicate request IDs")
         return sorted(request_ids)
 
+    def request_head_sha(self) -> str:
+        raw = self._session.get_json(
+            self._request_ref_path(),
+            allow_not_found=False,
+        )
+        if not isinstance(raw, dict):
+            raise self._invalid_response("request ref response is invalid")
+        target = raw.get("object")
+        if not isinstance(target, dict):
+            raise self._invalid_response("request ref target is invalid")
+        sha = target.get("sha")
+        object_type = target.get("type")
+        if (
+            not isinstance(sha, str)
+            or not _SHA_RE.fullmatch(sha)
+            or object_type != "commit"
+        ):
+            raise self._invalid_response("request ref target is invalid")
+        return sha
+
+    def changed_request_ids(
+        self,
+        *,
+        base_sha: str,
+        head_sha: str,
+    ) -> list[str]:
+        _validate_commit_sha(base_sha)
+        _validate_commit_sha(head_sha)
+        if base_sha == head_sha:
+            return []
+
+        raw = self._session.get_json(
+            self._compare_path(base_sha, head_sha),
+            allow_not_found=False,
+        )
+        if not isinstance(raw, dict):
+            raise self._invalid_response("request compare response is invalid")
+        if raw.get("status") != "ahead":
+            raise self._invalid_response(
+                "request ref is not a strict fast-forward from the cursor"
+            )
+
+        files = raw.get("files")
+        if not isinstance(files, list):
+            raise self._invalid_response("request compare files are invalid")
+        if len(files) >= MAX_COMPARE_FILES:
+            raise self._invalid_response("request compare contains too many files")
+
+        prefix = f"{REQUESTS_PATH}/"
+        request_ids: list[str] = []
+        for entry in files:
+            if not isinstance(entry, dict):
+                raise self._invalid_response("request compare entry is invalid")
+            filename = entry.get("filename")
+            if not isinstance(filename, str) or not filename.startswith(prefix):
+                continue
+
+            relative = filename[len(prefix) :]
+            if "/" in relative or not relative.endswith(".json"):
+                raise self._invalid_response(
+                    "request compare contains an invalid mailbox path"
+                )
+            if entry.get("status") not in {"added", "modified"}:
+                raise self._invalid_response(
+                    "request compare contains an unsafe request mutation"
+                )
+
+            request_id = relative[:-5]
+            if not REQUEST_ID_RE.fullmatch(request_id):
+                raise self._invalid_response(
+                    "request compare contains an invalid request ID"
+                )
+            request_ids.append(request_id)
+
+        if len(request_ids) != len(set(request_ids)):
+            raise self._invalid_response(
+                "request compare contains duplicate request IDs"
+            )
+        return sorted(request_ids)
+
     def fetch_request(self, request_id: str) -> bytes:
         _validate_request_id(request_id)
         mailbox_file = self._fetch_file(
@@ -368,6 +470,28 @@ class GitHubMailboxTransport:
             )
             is not None
         )
+
+    def fetch_result(self, request_id: str) -> BridgeResult | None:
+        _validate_request_id(request_id)
+        mailbox_file = self._fetch_file(
+            f"{RESULTS_PATH}/{request_id}.json",
+            ref=self._config.result_ref,
+            max_bytes=MAX_BRIDGE_RESULT_BYTES,
+            allow_not_found=True,
+        )
+        if mailbox_file is None:
+            return None
+        try:
+            text = mailbox_file.content.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise self._invalid_response("mailbox result must be UTF-8") from exc
+
+        result = parse_bridge_result(text)
+        if result.request_id != request_id:
+            raise self._invalid_response(
+                "result filename and payload ID do not match"
+            )
+        return result
 
     def persist_result(self, request_id: str, result_json: str) -> None:
         _validate_request_id(request_id)
@@ -481,6 +605,18 @@ class GitHubMailboxTransport:
         )
         return f"/repos/{owner}/{repo}/contents/{safe_path}"
 
+    def _request_ref_path(self) -> str:
+        owner, repo = self._config.repository.split("/", 1)
+        safe_ref = "/".join(
+            urllib.parse.quote(segment, safe="")
+            for segment in self._config.request_ref.split("/")
+        )
+        return f"/repos/{owner}/{repo}/git/ref/heads/{safe_ref}"
+
+    def _compare_path(self, base_sha: str, head_sha: str) -> str:
+        owner, repo = self._config.repository.split("/", 1)
+        return f"/repos/{owner}/{repo}/compare/{base_sha}...{head_sha}"
+
     def _invalid_response(self, message: str) -> GitHubMailboxTransportError:
         return GitHubMailboxTransportError(
             message,
@@ -491,3 +627,8 @@ class GitHubMailboxTransport:
 def _validate_request_id(request_id: str) -> None:
     if not REQUEST_ID_RE.fullmatch(request_id):
         raise ValueError("request_id contains unsupported characters")
+
+
+def _validate_commit_sha(value: str) -> None:
+    if not _SHA_RE.fullmatch(value):
+        raise ValueError("commit SHA must be exactly 40 lowercase hex characters")

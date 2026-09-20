@@ -179,6 +179,7 @@ Local trusted-runner validation is green:
 - dependency check: green;
 - non-root installer integration test: green;
 - installed console command version/help smoke test: green;
+- project-aware guide smoke test: green;
 - onboarding/project/test-profile CLI tests: green;
 - service manager permission/emergency-stop/subprocess tests: green;
 - MCP service alias/status/restart integration test: green;

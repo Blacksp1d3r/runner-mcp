@@ -117,3 +117,40 @@ def test_ledger_capacity_fails_closed(tmp_path) -> None:
 def test_invalid_max_entries_is_rejected(tmp_path) -> None:
     with pytest.raises(ValueError, match="positive"):
         BridgeReplayLedger(tmp_path / "replay.json", max_entries=0)
+
+
+def test_ledger_symlink_is_rejected(tmp_path) -> None:
+    target = tmp_path / "target.json"
+    target.write_text("{}", encoding="utf-8")
+    path = tmp_path / "replay.json"
+    path.symlink_to(target)
+    request = parse_bridge_request(
+        '{"request_id":"req-210","action":"list_projects"}'
+    )
+
+    with pytest.raises(BridgeReplayError, match="could not be opened"):
+        BridgeReplayLedger(path).claim(request)
+
+    assert target.read_text(encoding="utf-8") == "{}"
+
+
+def test_ledger_rejects_tampered_entry(tmp_path) -> None:
+    path = tmp_path / "replay.json"
+    path.write_text(
+        json.dumps(
+            {
+                "req-211": {
+                    "fingerprint": "not-a-sha256",
+                    "action": "list_projects",
+                    "seen_at": "2026-09-20T00:00:00+00:00",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+    request = parse_bridge_request(
+        '{"request_id":"req-212","action":"list_projects"}'
+    )
+
+    with pytest.raises(BridgeReplayError, match="invalid entry"):
+        BridgeReplayLedger(path).claim(request)

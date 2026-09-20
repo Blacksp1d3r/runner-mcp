@@ -7,6 +7,7 @@ from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, Field, ValidationError, model_validator
+from pydantic_core import PydanticSerializationError
 
 from .config import PROJECT_CODE_RE
 
@@ -275,7 +276,12 @@ def sanitize_bridge_result_data(data: dict[str, Any]) -> dict[str, Any]:
 
 
 def serialize_bridge_result(result: BridgeResult) -> str:
-    raw = result.model_dump(mode="json", exclude_none=True)
+    try:
+        raw = result.model_dump(mode="json", exclude_none=True)
+    except PydanticSerializationError as exc:
+        raise BridgeProtocolError(
+            "bridge result contains unsupported value type"
+        ) from exc
     if result.data is not None:
         raw["data"] = sanitize_bridge_result_data(result.data)
 

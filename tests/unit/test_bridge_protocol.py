@@ -254,3 +254,18 @@ def test_result_summary_rejects_control_characters() -> None:
                 "summary": "line one\nline two",
             }
         )
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_non_standard_json_numbers_are_rejected(constant: str) -> None:
+    with pytest.raises(BridgeProtocolError, match="non-standard JSON constant"):
+        parse_bridge_result(
+            '{"request_id":"req-107","action":"list_projects",'
+            '"state":"completed","data":{"value":' + constant + '}}'
+        )
+
+
+@pytest.mark.parametrize("value", [float("nan"), float("inf"), float("-inf")])
+def test_result_sanitizer_rejects_non_finite_numbers(value: float) -> None:
+    with pytest.raises(BridgeProtocolError, match="non-finite number"):
+        sanitize_bridge_result_data({"value": value})

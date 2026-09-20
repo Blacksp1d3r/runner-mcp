@@ -208,6 +208,7 @@ def test_result_data_redacts_sensitive_keys_and_private_locations() -> None:
                 "endpoint": "https://private.example.invalid/api",
                 "details": "/private/location",
                 "repository": "owner/project",
+                "community": "self-hosted",
             },
         }
     )
@@ -219,6 +220,7 @@ def test_result_data_redacts_sensitive_keys_and_private_locations() -> None:
             "endpoint": "[redacted]",
             "details": "[redacted]",
             "repository": "owner/project",
+            "community": "self-hosted",
         },
     }
 

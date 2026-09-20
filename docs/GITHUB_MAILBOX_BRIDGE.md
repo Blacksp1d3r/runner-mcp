@@ -166,7 +166,9 @@ For each accepted request it stores only:
 - the request ID;
 - a SHA-256 fingerprint of the canonical validated request;
 - the allow-listed action name;
-- the first-seen timestamp.
+- lifecycle state: `claimed` or `completed`;
+- the first-seen timestamp;
+- a completion timestamp only after the safe result is durable.
 
 Project names, profile names, paths, credentials and result data are not stored in the replay ledger.
 
@@ -179,7 +181,11 @@ Behavior is fail-closed:
 - the ledger file is restricted to the service account and symlink targets are refused;
 - capacity exhaustion blocks new execution rather than silently forgetting earlier request IDs.
 
-The private watcher should claim a request before invoking Runner MCP and should reuse the already-published result for a duplicate request rather than running it again.
+The private watcher should claim a request before invoking Runner MCP, persist the bounded safe result, then mark the request completed. A duplicate completed request must never run again.
+
+A claimed request with no result after watcher restart is treated as ambiguous and is not automatically re-executed. A completed request with a missing transport result is also not re-executed; the watcher may republish a previously persisted safe result if one exists.
+
+See [WATCHER_RESILIENCE.md](WATCHER_RESILIENCE.md) for heartbeat, stale-request classification and restart recovery.
 
 ## When to use the bridge
 
@@ -204,7 +210,11 @@ A compatible private watcher should:
 7. never execute a duplicate request again;
 8. serialize only the bounded, scrubbed result envelope;
 9. never copy private paths, credentials, environment values or raw unsafe logs into GitHub;
-10. stop mutating work when Runner MCP's operator emergency stop is active.
+10. mark replay lifecycle completed only after the safe result is durable;
+11. classify ambiguous or missing-result restart states without blind re-execution;
+12. publish only the sanitized heartbeat contract for watcher liveness;
+13. retry only transient transport operations, never the Runner MCP action itself;
+14. stop mutating work when Runner MCP's operator emergency stop is active.
 
 The watcher is not yet part of the public package. The public protocol is intentionally separated first so an existing private pilot can migrate to shared, tested validation without weakening its current safety boundary.
 

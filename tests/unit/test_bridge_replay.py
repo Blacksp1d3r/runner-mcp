@@ -8,6 +8,7 @@ from runner_mcp.bridge_replay import (
     BridgeReplayError,
     BridgeReplayLedger,
     ReplayDecision,
+    ReplayState,
     bridge_request_fingerprint,
 )
 
@@ -22,7 +23,9 @@ def test_new_request_is_claimed_once(tmp_path) -> None:
     second = ledger.claim(request)
 
     assert first.decision == ReplayDecision.NEW
+    assert first.state == ReplayState.CLAIMED
     assert second.decision == ReplayDecision.DUPLICATE
+    assert second.state == ReplayState.CLAIMED
     assert first.fingerprint == second.fingerprint
 
 
@@ -61,8 +64,9 @@ def test_ledger_stores_only_safe_request_metadata(tmp_path) -> None:
     ledger.claim(request)
     stored = json.loads(path.read_text(encoding="utf-8"))
 
-    assert set(stored["req-204"]) == {"fingerprint", "action", "seen_at"}
+    assert set(stored["req-204"]) == {"fingerprint", "action", "state", "seen_at"}
     assert stored["req-204"]["action"] == "run_tests"
+    assert stored["req-204"]["state"] == "claimed"
     assert "demo" not in path.read_text(encoding="utf-8")
     assert "unit" not in path.read_text(encoding="utf-8")
 
@@ -154,3 +158,133 @@ def test_ledger_rejects_tampered_entry(tmp_path) -> None:
 
     with pytest.raises(BridgeReplayError, match="invalid entry"):
         BridgeReplayLedger(path).claim(request)
+
+
+def test_claim_complete_and_duplicate_preserve_completed_state(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-213","action":"run_tests","project":"demo","profile":"unit"}'
+    )
+    ledger = BridgeReplayLedger(tmp_path / "replay.json")
+
+    claim = ledger.claim(request)
+    completed = ledger.complete(request)
+    duplicate = ledger.claim(request)
+
+    assert claim.state == ReplayState.CLAIMED
+    assert completed.state == ReplayState.COMPLETED
+    assert completed.completed_at is not None
+    assert duplicate.decision == ReplayDecision.DUPLICATE
+    assert duplicate.state == ReplayState.COMPLETED
+
+
+def test_complete_is_idempotent_without_changing_timestamp(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-214","action":"list_projects"}'
+    )
+    ledger = BridgeReplayLedger(tmp_path / "replay.json")
+
+    ledger.claim(request)
+    first = ledger.complete(request)
+    second = ledger.complete(request)
+
+    assert first == second
+
+
+def test_complete_requires_prior_claim(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-215","action":"list_projects"}'
+    )
+
+    with pytest.raises(BridgeReplayError, match="must be claimed"):
+        BridgeReplayLedger(tmp_path / "replay.json").complete(request)
+
+
+def test_inspect_reports_lifecycle_without_mutation(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-216","action":"project_status","project":"demo"}'
+    )
+    ledger = BridgeReplayLedger(tmp_path / "replay.json")
+
+    assert ledger.inspect(request) is None
+    ledger.claim(request)
+    claimed = ledger.inspect(request)
+    assert claimed is not None
+    assert claimed.state == ReplayState.CLAIMED
+    assert claimed.completed_at is None
+
+    ledger.complete(request)
+    completed = ledger.inspect(request)
+    assert completed is not None
+    assert completed.state == ReplayState.COMPLETED
+    assert completed.completed_at is not None
+
+
+def test_legacy_entry_without_state_is_treated_as_claimed(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-217","action":"list_projects"}'
+    )
+    path = tmp_path / "replay.json"
+    path.write_text(
+        json.dumps(
+            {
+                "req-217": {
+                    "fingerprint": bridge_request_fingerprint(request),
+                    "action": "list_projects",
+                    "seen_at": "2026-09-20T00:00:00+00:00",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    record = BridgeReplayLedger(path).inspect(request)
+
+    assert record is not None
+    assert record.state == ReplayState.CLAIMED
+    assert record.completed_at is None
+
+
+def test_completed_entry_requires_completed_timestamp(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-218","action":"list_projects"}'
+    )
+    path = tmp_path / "replay.json"
+    path.write_text(
+        json.dumps(
+            {
+                "req-218": {
+                    "fingerprint": bridge_request_fingerprint(request),
+                    "action": "list_projects",
+                    "state": "completed",
+                    "seen_at": "2026-09-20T00:00:00+00:00",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(BridgeReplayError, match="lacks timestamp"):
+        BridgeReplayLedger(path).inspect(request)
+
+
+def test_replay_timestamps_must_include_timezone(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-219","action":"list_projects"}'
+    )
+    path = tmp_path / "replay.json"
+    path.write_text(
+        json.dumps(
+            {
+                "req-219": {
+                    "fingerprint": bridge_request_fingerprint(request),
+                    "action": "list_projects",
+                    "state": "claimed",
+                    "seen_at": "2026-09-20T00:00:00",
+                }
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    with pytest.raises(BridgeReplayError, match="timezone"):
+        BridgeReplayLedger(path).inspect(request)

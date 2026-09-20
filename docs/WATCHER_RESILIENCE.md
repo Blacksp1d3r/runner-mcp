@@ -1,0 +1,115 @@
+# GitHub mailbox watcher resilience
+
+Runner MCP treats mailbox execution, result publication, liveness and notification delivery as separate concerns.
+
+The public resilience contract is infrastructure-neutral. It does not contain repository names, hostnames, paths, service names, credentials or transport endpoints.
+
+## Request lifecycle
+
+The replay ledger now tracks two lifecycle states:
+
+- `claimed`: the watcher accepted the request ID and reserved it for execution;
+- `completed`: the watcher finished the request and the authoritative result is durable.
+
+The watcher must claim before execution and mark the request completed only after its bounded result has been safely persisted.
+
+An existing completed request ID is never executed again.
+
+## Restart recovery
+
+After a watcher restart, a request/result pair is classified as follows:
+
+| Result exists | Replay state | Recovery disposition | Execute? |
+| --- | --- | --- | --- |
+| yes | any/none | `result_exists` | no |
+| no | none | `process` | yes, after a normal replay claim |
+| no | `claimed` | `ambiguous_claim` | no automatic retry |
+| no | `completed` | `result_missing` | no automatic retry |
+
+`ambiguous_claim` means the watcher cannot prove whether execution had already begun or completed before interruption.
+
+`result_missing` means the ledger says execution completed but the transport-visible result is missing.
+
+Both conditions are fail-closed and require recovery attention. The watcher must never resolve either state by blindly rerunning the operational action.
+
+For `result_missing`, a transport may republish a previously persisted safe result if it has one. Republishing a result is not task execution.
+
+## Backlog and stale requests
+
+The public heartbeat exposes only:
+
+- `state`: `healthy`, `backlog` or `degraded`;
+- pending request count;
+- stale request count;
+- recovery-attention count;
+- age in seconds of the oldest pending request.
+
+It intentionally exposes no request IDs or infrastructure metadata.
+
+A fresh unclaimed request produces `backlog`.
+
+The watcher becomes `degraded` when:
+
+- transport health is degraded;
+- a pending request exceeds the configured stale threshold;
+- an ambiguous claimed request exists;
+- a completed request is missing its result.
+
+The stale threshold is bounded to 30 seconds through 24 hours in the reusable public contract.
+
+Heartbeat freshness itself should be established by the transport metadata that publishes the heartbeat, such as the modification time of the heartbeat record. The payload therefore does not need to disclose a local clock, host identity or process identity.
+
+## Transport retry policy
+
+Only transient transport failures may be retried automatically.
+
+The generic retryable categories are:
+
+- timeout;
+- rate limited;
+- transport unavailable.
+
+The default public retry delays are bounded to 2 seconds and 5 seconds after the original attempt.
+
+Authorization failures and invalid responses are not automatically retried.
+
+Most importantly, transport retry policy applies only to:
+
+- reading/writing mailbox transport records;
+- publishing a heartbeat;
+- publishing a result already produced;
+- delivering a notification already derived from a completed result.
+
+It does not authorize re-execution of `run_tests` or any other Runner MCP action.
+
+## Relationship to completion feedback
+
+The sequence is:
+
+1. validate request;
+2. claim request ID;
+3. execute the allow-listed Runner MCP action;
+4. persist the bounded/scrubbed result;
+5. mark replay lifecycle `completed`;
+6. derive a completion event;
+7. deliver the notification independently.
+
+If steps 6 or 7 fail, the operational action remains completed and is not repeated.
+
+See [COMPLETION_FEEDBACK.md](COMPLETION_FEEDBACK.md).
+
+## Private watcher migration
+
+A private watcher adopting this contract should:
+
+- use the shared strict request parser;
+- use the shared replay ledger;
+- refuse changed content under an existing request ID;
+- mark lifecycle completion only after durable safe result publication;
+- scan backlog after restart;
+- classify ambiguous/missing-result states rather than rerunning them;
+- publish a sanitized heartbeat;
+- retry only transient transport operations;
+- keep notification delivery idempotent.
+
+Deployment-specific supervisor configuration remains private and is not part of this public repository.

@@ -96,7 +96,7 @@ def completion_event_id(
 ) -> str:
     if not COMPLETION_IDENTIFIER_RE.fullmatch(source_id):
         raise CompletionFeedbackError("completion source_id has an unsafe shape")
-    canonical = f"runner-mcp-completion:v1:{source.value}:{source_id}".encode("utf-8")
+    canonical = f"runner-mcp-completion:v1:{source.value}:{source_id}".encode()
     return hashlib.sha256(canonical).hexdigest()[:32]
 
 

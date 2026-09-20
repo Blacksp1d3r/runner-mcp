@@ -63,6 +63,25 @@ Make the safe core usable without reading or editing source code:
 
 Still planned for onboarding: service auto-start packaging, guided TLS/reverse-proxy setup and optional graphical administration.
 
+## Phase 3.6 — community usability and extension path
+
+Make the existing safe core easier to adopt, understand and extend without changing its trust boundaries:
+
+- project-aware runner-mcp guide command with safe next-step suggestions;
+- dedicated user-to-developer extension guide;
+- contribution rules that preserve deny-by-default behavior;
+- configuration-first extension model;
+- built-in adapter extension path before core changes;
+- documentation must use placeholders and stay free of real infrastructure values;
+- onboarding documents must stay synchronized with implemented features.
+
+Still planned:
+
+- service auto-start packaging;
+- guided private-tunnel/TLS setup;
+- optional graphical administration;
+- framework adapters only when concrete reusable use cases justify them.
+
 ## Phase 4 — staging service management
 
 Implemented core design:

@@ -81,7 +81,25 @@ Journal/log access remains a later bounded addition.
 
 ## Phase 5 — backups and migrations
 
-Add controlled database backups, backup metadata, migration status, migration execution, retention policy, and fail-closed behavior.
+Implemented core design:
+
+- PostgreSQL-only database configuration with private `RUNNER_MCP_DB_*` credentials;
+- DSN entered through hidden CLI prompt and kept out of project YAML;
+- private backup root/project directories and 0600 dump/metadata files;
+- `pg_dump` custom-format backups with DSN in child environment, never argv;
+- safe backup metadata listing without dump paths or contents;
+- predefined migration status/apply profiles with `shell=False`;
+- bounded and scrubbed migration output;
+- pre-migration backup required before migration apply;
+- safety guard rechecked after backup and before migration;
+- failed migration keeps the recovery point and never auto-restores;
+- CLI database and migration configuration without manual YAML editing.
+
+Not implemented yet:
+
+- database restore;
+- WAL archiving/PITR orchestration and verification;
+- automated retention pruning.
 
 ## Phase 6 — staging release engine
 

@@ -240,3 +240,64 @@ def test_service_config_is_read_only_by_default(tmp_path: Path) -> None:
     assert added["can_start"] is False
     assert added["can_stop"] is False
     assert added["can_restart"] is False
+
+
+def test_database_config_secret_stays_out_of_project_yaml(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import add_database_config, list_database_configs
+    from runner_mcp.onboarding import load_env_file
+
+    paths, _ = installed(tmp_path)
+    secret = "postgresql://user:very-private@example.invalid/app"
+    result = add_database_config(paths.config_dir, project="first", dsn=secret)
+    listed = list_database_configs(paths.config_dir)
+
+    assert result["configured"] is True
+    assert listed[0]["configured"] is True
+    assert secret not in paths.projects_file.read_text(encoding="utf-8")
+    assert secret in load_env_file(paths.env_file).values()
+    assert secret not in repr(result)
+    assert secret not in repr(listed)
+
+
+def test_database_config_removal_removes_private_secret(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import add_database_config, remove_database_config
+    from runner_mcp.onboarding import load_env_file
+
+    paths, _ = installed(tmp_path)
+    secret = "postgresql://user:remove-me@example.invalid/app"
+    add_database_config(paths.config_dir, project="first", dsn=secret)
+    remove_database_config(paths.config_dir, project="first")
+
+    assert secret not in load_env_file(paths.env_file).values()
+    _, _, registry = read_private_runtime(paths.config_dir)
+    assert registry.projects["first"].database is None
+
+
+def test_custom_migration_config_uses_literal_argv(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import add_database_config, add_migration_config
+
+    paths, root = installed(tmp_path)
+    add_database_config(
+        paths.config_dir,
+        project="first",
+        dsn="postgresql://user:secret@example.invalid/app",
+    )
+    status = root / "migration-status"
+    apply = root / "migration-apply"
+    make_executable(status)
+    make_executable(apply)
+
+    add_migration_config(
+        paths.config_dir,
+        project="first",
+        preset="custom",
+        status_executable=status,
+        status_arguments=["literal;not-shell"],
+        apply_executable=apply,
+        apply_arguments=["upgrade", "head"],
+    )
+
+    _, _, registry = read_private_runtime(paths.config_dir)
+    migration = registry.projects["first"].database.migrations
+    assert migration is not None
+    assert migration.status_argv[1] == "literal;not-shell"

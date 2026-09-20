@@ -244,3 +244,4 @@ config/projects.local.yml
 .vscode/
 .DS_Store
 Thumbs.db
+database-backups/

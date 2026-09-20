@@ -5,7 +5,13 @@ from pathlib import Path
 
 from starlette.testclient import TestClient
 
-from runner_mcp.config import ProjectConfig, ProjectRegistry, ServiceConfig
+from runner_mcp.config import (
+    DatabaseConfig,
+    MigrationConfig,
+    ProjectConfig,
+    ProjectRegistry,
+    ServiceConfig,
+)
 from runner_mcp.config import TestProfile as RunnerTestProfile
 from runner_mcp.server import Settings, create_app
 from runner_mcp.service_manager import ServiceState
@@ -489,3 +495,189 @@ def test_mcp_service_alias_status_restart_and_emergency_stop(
     audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "restart_service" in audit_text
     assert "private-web.service" not in audit_text
+
+
+def test_mcp_database_backup_and_migration_flow(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import subprocess
+
+    secret = "postgresql://user:mcp-private@example.invalid/app"
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    status_script = tmp_path / "migration-status"
+    apply_script = tmp_path / "migration-apply"
+    status_script.write_text(
+        '#!/bin/sh\nprintf "%s\n" "$DATABASE_URL"\n',
+        encoding="utf-8",
+    )
+    apply_script.write_text(
+        '#!/bin/sh\nprintf "migration-applied\n"\n',
+        encoding="utf-8",
+    )
+    status_script.chmod(0o755)
+    apply_script.chmod(0o755)
+    fake_pg_dump = tmp_path / "pg_dump"
+    fake_pg_dump.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    fake_pg_dump.chmod(0o755)
+
+    def fake_dump_run(arguments, **kwargs):
+        assert secret not in " ".join(arguments)
+        assert kwargs["env"]["PGDATABASE"] == secret
+        kwargs["stdout"].write(b"mcp-backup")
+        return subprocess.CompletedProcess(arguments, 0)
+
+    monkeypatch.setattr(
+        "runner_mcp.database_manager._known_executable",
+        lambda names: fake_pg_dump,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.database_manager.subprocess.run",
+        fake_dump_run,
+    )
+
+    stop_file = tmp_path / "operator.stop"
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        operator_stop_file=stop_file,
+        retention_confirmed=True,
+        database_backup_root=tmp_path / "backups",
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+                database=DatabaseConfig(
+                    dsn_env="RUNNER_MCP_DB_DEMO",
+                    migrations=MigrationConfig(
+                        status_argv=[str(status_script)],
+                        apply_argv=[str(apply_script)],
+                        dsn_target_env="DATABASE_URL",
+                        timeout_seconds=5,
+                        max_output_bytes=4096,
+                    ),
+                ),
+            )
+        }
+    )
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values={"RUNNER_MCP_DB_DEMO": secret},
+    )
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        backup = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 60,
+                "method": "tools/call",
+                "params": {
+                    "name": "backup_database",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        backup_payload = parse_tool_json(backup)
+        assert backup_payload["kind"] == "manual"
+        assert secret not in backup.text
+        assert str(tmp_path) not in backup.text
+
+        status = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 61,
+                "method": "tools/call",
+                "params": {
+                    "name": "migration_status",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        status_payload = parse_tool_json(status)
+        assert status_payload["status"] == "ok"
+        assert secret not in status_payload["output"]
+        assert "[REDACTED]" in status_payload["output"]
+
+        applied = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 62,
+                "method": "tools/call",
+                "params": {
+                    "name": "apply_migrations",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        applied_payload = parse_tool_json(applied)
+        assert applied_payload["status"] == "applied"
+        assert applied_payload["pre_migration_backup"]["kind"] == "pre_migration"
+        assert applied_payload["database_restore_performed"] is False
+        assert secret not in applied.text
+
+        listed = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 63,
+                "method": "tools/call",
+                "params": {
+                    "name": "list_backups",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        listed_payload = parse_tool_json(listed)
+        assert len(listed_payload) == 2
+        assert secret not in listed.text
+        assert str(tmp_path) not in listed.text
+
+        stop_file.write_text("stop\n", encoding="utf-8")
+        blocked = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 64,
+                "method": "tools/call",
+                "params": {
+                    "name": "apply_migrations",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        assert '"isError":true' in blocked.text
+
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert secret not in audit_text
+    assert str(tmp_path) not in audit_text
+    assert "backup_database" in audit_text
+    assert "apply_migrations" in audit_text

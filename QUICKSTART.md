@@ -141,6 +141,38 @@ runner-mcp service-config add myproject web --unit my-staging.service --allow-re
 
 `start`, `stop` and `restart` permissions are separate and default to off. Normal list and MCP output show only the alias, never the private unit name.
 
+### Configure a PostgreSQL database
+
+List database configuration status:
+
+```bash
+runner-mcp database-config list
+```
+
+Add the PostgreSQL connection for a project:
+
+```bash
+runner-mcp database-config add myproject
+```
+
+Runner MCP asks for the connection string using a hidden prompt. Do not put a database password on the command line. The credential is stored only in the private runtime file and is not written to project YAML.
+
+The setup-created database-backup directory is private. Backups themselves are never returned through MCP; only safe metadata is returned.
+
+### Configure migrations
+
+For an Alembic project with a project-local `.venv/bin/alembic` or `venv/bin/alembic`:
+
+```bash
+runner-mcp migration-config add myproject --preset alembic
+```
+
+A custom profile is also possible, but it still uses fixed executables and literal argument arrays rather than a shell command string.
+
+Before Runner MCP applies a migration, it creates a PostgreSQL pre-migration backup and checks the emergency stop again. A failed migration does not trigger an automatic database restore.
+
+Database restore and PostgreSQL PITR/WAL orchestration are not implemented yet.
+
 ## 6. Verify the installation
 
 Run:

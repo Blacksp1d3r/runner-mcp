@@ -12,6 +12,9 @@ projects:
         allow_stop: false
         allow_restart: false
     database_alias: "${RUNNER_MCP_EXAMPLE_DATABASE}"
+    database:
+      engine: postgresql
+      dsn_env: RUNNER_MCP_DB_EXAMPLE
     test_profiles:
       lint:
         argv:

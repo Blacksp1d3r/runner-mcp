@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phase 4 staging service management is complete on a separate follow-up branch.
+Runner MCP Phase 0/1 and Phase 2 are merged to main. Phase 2.5, Phase 3 and Phase 3.5 are on the open review branch. Phase 4 and Phase 5 are complete on stacked follow-up branches.
 
 Phase 0:
 - repository structure defined;
@@ -98,11 +98,24 @@ Phase 4 staging service management:
 - CLI service-config add/list/remove avoids manual YAML editing;
 - MCP list/status/restart/emergency-stop flow is integration tested.
 
+Phase 5 PostgreSQL backup and migrations:
+- private DB connection strings use dedicated `RUNNER_MCP_DB_*` variables;
+- CLI database connection input is hidden and never echoed;
+- setup overwrite preserves existing DB secrets;
+- backup root/project directories and dump/metadata files have restrictive permissions;
+- pg_dump receives the DSN via child environment and not command-line arguments;
+- MCP exposes backup metadata only, never dump contents or private paths;
+- migration status/apply use predefined argv arrays and `shell=False`;
+- migration output is bounded and scrubbed for DSN/private paths/secrets;
+- apply always creates a pre-migration backup and rechecks operator stop afterwards;
+- migration failure keeps the backup and never performs automatic restore;
+- database restore, PITR/WAL orchestration and retention pruning remain intentionally unimplemented.
+
 ## Validation
 
 Local trusted-runner validation is green:
 - Ruff: green;
-- pytest: 114 tests green;
+- pytest: 135 tests green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
 - unexpected Host rejection test: green;
@@ -121,6 +134,10 @@ Local trusted-runner validation is green:
 - service manager permission/emergency-stop/subprocess tests: green;
 - MCP service alias/status/restart integration test: green;
 - service-config CLI/config-manager tests: green;
+- PostgreSQL backup/metadata/permissions/secret-isolation tests: green;
+- migration timeout/failure/pre-backup/redaction tests: green;
+- MCP database backup/migration/emergency-stop lifecycle test: green;
+- database-config and hidden-prompt CLI tests: green;
 - git diff whitespace check: green;
 - private-address/path scan: clean.
 
@@ -128,13 +145,14 @@ Local trusted-runner validation is green:
 
 - arbitrary shell;
 - production actions;
-- service control;
-- database operations;
+- database restore;
+- PostgreSQL WAL/PITR orchestration;
+- automated backup-retention pruning;
 - deployment or rollback.
 
 ## Next steps
 
-Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4 follow-up branch. Next development phase is Phase 5 controlled database backups and migrations. Before activating real project test/service profiles, create the private runtime configuration and verify the Linux-account trust boundary on the actual host.
+Merge the Phase 2.5/Phase 3/Phase 3.5 review branch, then rebase/open the Phase 4 and Phase 5 follow-up branches in order. Next development phase is Phase 6 staging deployment. Before activating real project test/service/database profiles, create the private runtime configuration and verify the Linux-account and PostgreSQL recovery boundaries on the actual host.
 
 Repository license remains intentionally undecided pending owner choice.
 

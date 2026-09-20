@@ -73,6 +73,72 @@ class TestProfile(BaseModel):
         return values
 
 
+class MigrationConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    status_argv: list[str] = Field(min_length=1, max_length=64)
+    apply_argv: list[str] = Field(min_length=1, max_length=64)
+    cwd: str = "."
+    dsn_target_env: str | None = None
+    timeout_seconds: int = Field(default=600, ge=1, le=3600)
+    max_output_bytes: int = Field(default=100_000, ge=4096, le=2_000_000)
+
+    @field_validator("status_argv", "apply_argv")
+    @classmethod
+    def validate_argv(cls, values: list[str]) -> list[str]:
+        if not values or not Path(values[0]).is_absolute():
+            raise ValueError("migration executable must be an absolute path")
+        if any(
+            not value or len(value) > 2048 or "\x00" in value or "\n" in value
+            for value in values
+        ):
+            raise ValueError("migration argv contains an invalid argument")
+        return values
+
+    @field_validator("cwd")
+    @classmethod
+    def validate_cwd(cls, value: str) -> str:
+        path = Path(value)
+        if path.is_absolute() or ".." in path.parts or "\\" in value:
+            raise ValueError("migration cwd must be a project-relative path")
+        return value
+
+    @field_validator("dsn_target_env")
+    @classmethod
+    def validate_target_env(cls, value: str | None) -> str | None:
+        if value is None:
+            return None
+        if not ENV_NAME_RE.fullmatch(value):
+            raise ValueError("migration DSN target environment name is invalid")
+        if value in BLOCKED_TEST_ENV_NAMES:
+            raise ValueError("migration DSN target environment name is blocked")
+        return value
+
+
+class DatabaseConfig(BaseModel):
+    model_config = ConfigDict(extra="forbid", frozen=True)
+
+    engine: str = "postgresql"
+    dsn_env: str
+    migrations: MigrationConfig | None = None
+
+    @field_validator("engine")
+    @classmethod
+    def validate_engine(cls, value: str) -> str:
+        if value != "postgresql":
+            raise ValueError("only PostgreSQL is currently supported")
+        return value
+
+    @field_validator("dsn_env")
+    @classmethod
+    def validate_dsn_env(cls, value: str) -> str:
+        if not ENV_NAME_RE.fullmatch(value):
+            raise ValueError("database DSN environment name is invalid")
+        if not value.startswith("RUNNER_MCP_DB_"):
+            raise ValueError("database DSN environment name must start with RUNNER_MCP_DB_")
+        return value
+
+
 class ServiceConfig(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
@@ -113,6 +179,7 @@ class ProjectConfig(BaseModel):
     health_url: AnyHttpUrl | None = None
     allowed_services: list[str] = Field(default_factory=list)
     database_alias: str | None = None
+    database: DatabaseConfig | None = None
     test_profiles: dict[str, TestProfile] = Field(default_factory=dict)
     services: dict[str, ServiceConfig] = Field(default_factory=dict)
 

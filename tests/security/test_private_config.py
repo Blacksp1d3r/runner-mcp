@@ -179,3 +179,25 @@ def test_explicit_rotation_replaces_bearer_credential(tmp_path: Path) -> None:
     after = load_env_file(paths.env_file)["RUNNER_MCP_BEARER_TOKEN"]
 
     assert after != before
+
+
+def test_generated_database_backup_directory_is_private(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+    assert file_mode(paths.database_backups_dir) == 0o700
+
+
+def test_setup_overwrite_preserves_private_database_secret(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import add_database_config
+
+    paths, project_root = installed(tmp_path)
+    secret = "postgresql://user:private-value@example.invalid/app"
+    add_database_config(paths.config_dir, project="demo", dsn=secret)
+
+    install_private_configuration(
+        config_dir=paths.config_dir,
+        answers=answers_for(project_root),
+        overwrite=True,
+    )
+
+    values = load_env_file(paths.env_file)
+    assert secret in values.values()

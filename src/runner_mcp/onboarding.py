@@ -28,6 +28,7 @@ class PrivatePaths:
     projects_file: Path
     stop_file: Path
     jobs_dir: Path
+    database_backups_dir: Path
     audit_log: Path
 
     @classmethod
@@ -39,6 +40,7 @@ class PrivatePaths:
             projects_file=root / "projects.yml",
             stop_file=root / "operator.stop",
             jobs_dir=root / "jobs",
+            database_backups_dir=root / "database-backups",
             audit_log=root / "audit.jsonl",
         )
 
@@ -149,6 +151,7 @@ def render_env_file(
     paths: PrivatePaths,
     answers: SetupAnswers,
     bearer_token: str,
+    extra_values: dict[str, str] | None = None,
 ) -> str:
     values = {
         "RUNNER_MCP_BEARER_TOKEN": bearer_token,
@@ -167,7 +170,11 @@ def render_env_file(
         ),
         "RUNNER_MCP_TEST_JOBS_ROOT": str(paths.jobs_dir),
         "RUNNER_MCP_MAX_TEST_JOBS": str(answers.max_test_jobs),
+        "RUNNER_MCP_DATABASE_BACKUP_ROOT": str(paths.database_backups_dir),
     }
+    for key, value in sorted((extra_values or {}).items()):
+        if key.startswith("RUNNER_MCP_DB_"):
+            values[key] = value
     lines = [
         "# Private Runner MCP runtime configuration.",
         "# Never commit this file to a repository.",
@@ -232,7 +239,13 @@ def install_private_configuration(
         raise OnboardingError("Test jobs directory must not be a symlink")
     os.chmod(paths.jobs_dir, 0o700)
 
+    paths.database_backups_dir.mkdir(parents=True, exist_ok=True)
+    if paths.database_backups_dir.is_symlink():
+        raise OnboardingError("Database backup directory must not be a symlink")
+    os.chmod(paths.database_backups_dir, 0o700)
+
     token: str | None = None
+    existing_database_values: dict[str, str] = {}
     if overwrite and not rotate_token and paths.env_file.exists():
         _require_private_mode(
             paths.env_file,
@@ -240,12 +253,22 @@ def install_private_configuration(
             label="Existing private environment file",
         )
         existing = load_env_file(paths.env_file)
+        existing_database_values = {
+            key: value
+            for key, value in existing.items()
+            if key.startswith("RUNNER_MCP_DB_")
+        }
         candidate = existing.get("RUNNER_MCP_BEARER_TOKEN", "")
         if len(candidate) >= 32:
             token = candidate
 
     token = token or secrets.token_urlsafe(48)
-    env_content = render_env_file(paths=paths, answers=validated, bearer_token=token)
+    env_content = render_env_file(
+        paths=paths,
+        answers=validated,
+        bearer_token=token,
+        extra_values=existing_database_values,
+    )
     projects_content = render_projects_file(validated)
 
     # Validate both complete documents before writing either one.
@@ -472,6 +495,29 @@ def run_doctor(config_dir: Path) -> list[DoctorCheck]:
                 "test job storage",
                 "PASS" if jobs_ok else "FAIL",
                 "available" if jobs_ok else "unavailable or unsafe",
+            )
+        )
+
+    if settings.database_backup_root is None:
+        checks.append(
+            DoctorCheck(
+                "database backup storage",
+                "WARN",
+                "database backups are not configured",
+            )
+        )
+    else:
+        backup_ok = (
+            settings.database_backup_root.exists()
+            and settings.database_backup_root.is_dir()
+            and not settings.database_backup_root.is_symlink()
+            and os.access(settings.database_backup_root, os.W_OK | os.X_OK)
+        )
+        checks.append(
+            DoctorCheck(
+                "database backup storage",
+                "PASS" if backup_ok else "FAIL",
+                "available" if backup_ok else "unavailable or unsafe",
             )
         )
 

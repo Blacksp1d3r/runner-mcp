@@ -22,6 +22,15 @@ from .config import (
     ServiceConfig,
     TestProfile,
 )
+from .github_mailbox import (
+    GITHUB_MAILBOX_ENV_KEYS,
+    GITHUB_REPOSITORY_ENV,
+    GITHUB_REQUEST_REF_ENV,
+    GITHUB_RESULT_REF_ENV,
+    GITHUB_TOKEN_ENV,
+    GitHubApiSession,
+    GitHubMailboxConfig,
+)
 from .onboarding import (
     OnboardingError,
     PrivatePaths,
@@ -562,6 +571,71 @@ def _write_private_environment(paths: PrivatePaths, values: dict[str, str]) -> N
     ]
     lines.extend(f"{key}={shlex.quote(value)}" for key, value in sorted(values.items()))
     _atomic_write_private(paths.env_file, "\n".join(lines) + "\n")
+
+
+def github_mailbox_config_status(config_dir: Path) -> dict[str, bool]:
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    present = {
+        key: bool(values.get(key, "").strip())
+        for key in GITHUB_MAILBOX_ENV_KEYS
+    }
+    if not any(present.values()):
+        return {"configured": False}
+    if not all(present.values()):
+        raise ConfigManagerError("GitHub mailbox private configuration is incomplete")
+
+    try:
+        GitHubMailboxConfig(
+            repository=values[GITHUB_REPOSITORY_ENV],
+            request_ref=values[GITHUB_REQUEST_REF_ENV],
+            result_ref=values[GITHUB_RESULT_REF_ENV],
+        )
+        GitHubApiSession(token=values[GITHUB_TOKEN_ENV])
+    except ValueError as exc:
+        raise ConfigManagerError(
+            "GitHub mailbox private configuration is invalid"
+        ) from exc
+    return {"configured": True}
+
+
+def configure_github_mailbox(
+    config_dir: Path,
+    *,
+    repository: str,
+    request_ref: str,
+    result_ref: str,
+    token: str,
+) -> dict[str, bool]:
+    try:
+        GitHubMailboxConfig(
+            repository=repository,
+            request_ref=request_ref,
+            result_ref=result_ref,
+        )
+        GitHubApiSession(token=token)
+    except ValueError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    values[GITHUB_REPOSITORY_ENV] = repository
+    values[GITHUB_REQUEST_REF_ENV] = request_ref
+    values[GITHUB_RESULT_REF_ENV] = result_ref
+    values[GITHUB_TOKEN_ENV] = token
+
+    with _configuration_lock(paths):
+        _write_private_environment(paths, values)
+    return {"configured": True}
+
+
+def remove_github_mailbox(config_dir: Path) -> None:
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    for key in GITHUB_MAILBOX_ENV_KEYS:
+        values.pop(key, None)
+    with _configuration_lock(paths):
+        _write_private_environment(paths, values)
 
 
 def list_database_configs(config_dir: Path) -> list[dict[str, Any]]:

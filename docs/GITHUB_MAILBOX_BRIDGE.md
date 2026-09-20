@@ -216,8 +216,32 @@ A compatible private watcher should:
 13. retry only transient transport operations, never the Runner MCP action itself;
 14. stop mutating work when Runner MCP's operator emergency stop is active.
 
-The watcher is not yet part of the public package. The public protocol is intentionally separated first so an existing private pilot can migrate to shared, tested validation without weakening its current safety boundary.
+The reusable processing core is now transport-neutral in `runner_mcp.bridge_processor`. It enforces request parsing, replay lifecycle, explicit allow-listed execution, result scrubbing, durable result persistence ordering and fail-closed recovery states. GitHub polling, credentials, branch names, result locations and supervisor configuration remain private transport concerns.
 
 ## Proven operating pattern
 
 On 2026-09-20 the private mailbox pattern was successfully piloted as the standard development transport across multiple configured projects. The public repository records only the generic architecture and guarantees; private branch/repository names, host details and operational credentials remain outside the public codebase.
+
+
+## Transport-neutral processor
+
+`BridgeProcessor` accepts three local components:
+
+- a shared `BridgeReplayLedger`;
+- an explicit `BridgeExecutor` with exactly the six mailbox-allow-listed operations;
+- a `BridgeResultSink` that receives only request ID plus the already-scrubbed serialized result.
+
+The executor interface deliberately does not expose a generic `invoke(tool_name, args)` method.
+
+For `run_tests`, the executor method is `run_tests_to_completion(project, suite)`. A private adapter may implement this by starting the configured Runner MCP test profile and polling its existing bounded job-status API until terminal state. The mailbox itself does not gain `test_status` or log-fetch actions.
+
+Processing order is fixed:
+
+1. parse strict request;
+2. claim replay ID;
+3. execute one explicit allow-listed operation;
+4. build and scrub the result envelope;
+5. persist the safe result through the transport sink;
+6. mark replay lifecycle completed.
+
+If step 5 fails, step 6 does not happen and the action is never automatically rerun. If step 6 fails after a durable result exists, restart recovery sees the transport result and must not rerun the action.

@@ -1052,3 +1052,72 @@ def test_mcp_one_step_rollback_flow(
     assert "rollback_release" in audit_text
     assert "rollback_status" in audit_text
     assert str(tmp_path) not in audit_text
+
+
+def test_mcp_adapter_capabilities_are_path_safe(tmp_path: Path) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    (project_root / "pyproject.toml").write_text("[project]\nname='demo'\n", encoding="utf-8")
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        retention_confirmed=True,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                adapter="python",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        )
+        adapters = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 120,
+                "method": "tools/call",
+                "params": {"name": "list_project_adapters", "arguments": {}},
+            },
+        )
+        assert [item["id"] for item in parse_tool_json(adapters)] == ["generic", "python"]
+
+        capabilities = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 121,
+                "method": "tools/call",
+                "params": {
+                    "name": "project_capabilities",
+                    "arguments": {"project": "demo"},
+                },
+            },
+        )
+        payload = parse_tool_json(capabilities)
+        assert payload["adapter"] == "python"
+        assert payload["inspection"]["pyproject_present"] is True
+        assert str(project_root) not in capabilities.text
+
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "list_project_adapters" in audit_text
+    assert "project_capabilities" in audit_text
+    assert str(project_root) not in audit_text

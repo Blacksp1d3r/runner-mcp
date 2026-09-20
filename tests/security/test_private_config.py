@@ -211,3 +211,65 @@ def test_generated_deployment_job_directory_is_private(tmp_path: Path) -> None:
 def test_generated_approval_directory_is_private(tmp_path: Path) -> None:
     paths, _ = installed(tmp_path)
     assert file_mode(paths.approvals_dir) == 0o700
+
+
+def test_setup_overwrite_preserves_github_mailbox_values(tmp_path: Path) -> None:
+    from runner_mcp.config_manager import configure_github_mailbox
+    from runner_mcp.github_mailbox import GITHUB_MAILBOX_ENV_KEYS
+
+    paths, project_root = installed(tmp_path)
+    configure_github_mailbox(
+        paths.config_dir,
+        repository="example/private-mailbox",
+        request_ref="runner-control",
+        result_ref="runner-results",
+        token="private-mailbox-token-value-1234567890",
+    )
+    before = load_env_file(paths.env_file)
+    expected = {key: before[key] for key in GITHUB_MAILBOX_ENV_KEYS}
+
+    install_private_configuration(
+        config_dir=paths.config_dir,
+        answers=answers_for(project_root),
+        overwrite=True,
+    )
+
+    after = load_env_file(paths.env_file)
+    assert {key: after[key] for key in GITHUB_MAILBOX_ENV_KEYS} == expected
+
+
+def test_setup_token_rotation_preserves_github_mailbox_and_database_secrets(
+    tmp_path: Path,
+) -> None:
+    from runner_mcp.config_manager import add_database_config, configure_github_mailbox
+    from runner_mcp.github_mailbox import GITHUB_MAILBOX_ENV_KEYS
+
+    paths, project_root = installed(tmp_path)
+    database_secret = "postgresql://user:private-value@example.invalid/app"
+    add_database_config(
+        paths.config_dir,
+        project="demo",
+        dsn=database_secret,
+    )
+    configure_github_mailbox(
+        paths.config_dir,
+        repository="example/private-mailbox",
+        request_ref="runner-control",
+        result_ref="runner-results",
+        token="private-mailbox-token-value-1234567890",
+    )
+    before = load_env_file(paths.env_file)
+    old_bearer = before["RUNNER_MCP_BEARER_TOKEN"]
+    mailbox_values = {key: before[key] for key in GITHUB_MAILBOX_ENV_KEYS}
+
+    install_private_configuration(
+        config_dir=paths.config_dir,
+        answers=answers_for(project_root),
+        overwrite=True,
+        rotate_token=True,
+    )
+
+    after = load_env_file(paths.env_file)
+    assert after["RUNNER_MCP_BEARER_TOKEN"] != old_bearer
+    assert database_secret in after.values()
+    assert {key: after[key] for key in GITHUB_MAILBOX_ENV_KEYS} == mailbox_values

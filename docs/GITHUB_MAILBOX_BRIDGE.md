@@ -211,3 +211,55 @@ The watcher is not yet part of the public package. The public protocol is intent
 ## Proven operating pattern
 
 On 2026-09-20 the private mailbox pattern was successfully piloted as the standard development transport across multiple configured projects. The public repository records only the generic architecture and guarantees; private branch/repository names, host details and operational credentials remain outside the public codebase.
+
+
+## Liveness and restart recovery
+
+The public package also defines an infrastructure-neutral liveness and recovery
+contract in `runner_mcp.bridge_liveness`.
+
+A watcher heartbeat may expose only:
+
+- `state`: `healthy`, `backlog` or `degraded`;
+- observation timestamp;
+- pending request count;
+- stale request count;
+- age in seconds of the oldest pending request.
+
+It must not expose hostnames, paths, service names, endpoints, credentials,
+repository URLs or other installation details.
+
+Recommended behavior:
+
+1. `healthy`: no pending requests and transport is healthy;
+2. `backlog`: pending requests exist but none exceeded the configured stale age;
+3. `degraded`: at least one request is stale or the mailbox transport is degraded.
+
+Transport retries use bounded exponential backoff and apply only to transport
+failures. A watcher must never convert an action failure into an automatic
+action retry.
+
+### Restart handling
+
+Replay protection now distinguishes `claimed` from `completed`.
+
+The watcher should:
+
+1. claim the request before invoking Runner MCP;
+2. publish the sanitized result durably;
+3. only then mark the replay entry completed.
+
+After a restart:
+
+- a completed duplicate is skipped and its existing published result is reused;
+- an unfinished duplicate status/read request may be safely repeated;
+- an unfinished `run_tests` request must be reconciled with Runner MCP job
+  state before doing anything else and must never be blindly relaunched.
+
+Legacy replay-ledger entries without an explicit state are interpreted as
+`claimed`, not completed. This is intentionally conservative.
+
+An external supervisor may restart the private watcher when its own local
+health policy requires it. The public repository documents only this generic
+contract; supervisor names, local units, hosts, paths and credentials remain
+private installation details.

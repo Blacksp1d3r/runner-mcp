@@ -113,3 +113,18 @@ A private watcher adopting this contract should:
 - keep notification delivery idempotent.
 
 Deployment-specific supervisor configuration remains private and is not part of this public repository.
+
+
+## Processor integration
+
+The transport-neutral processor in `runner_mcp.bridge_processor` implements the lifecycle ordering described here.
+
+A private watcher should not duplicate that orchestration. Its remaining responsibilities are transport-only:
+
+- discover request records;
+- provide an explicit allow-listed executor adapter;
+- persist already-scrubbed results;
+- publish heartbeat state;
+- deliver completion notifications independently.
+
+This keeps restart/replay semantics in tested public code while deployment-specific credentials and mailbox locations remain private.

@@ -1,8 +1,10 @@
 import json
 
 from runner_mcp.bridge_processor import (
-    BridgeProcessState,
+    BridgeExecutionAdapterError,
     BridgeProcessor,
+    BridgeProcessState,
+    BridgeResultSinkError,
 )
 from runner_mcp.bridge_protocol import parse_bridge_request, parse_bridge_result
 from runner_mcp.bridge_replay import (
@@ -21,7 +23,7 @@ class FakeExecutor:
     def _result(self, action: str, *args: str):
         self.calls.append((action, args))
         if self.raise_on == action:
-            raise RuntimeError("private exception detail /srv/secret")
+            raise BridgeExecutionAdapterError("private exception detail /srv/secret")
         if self.unsafe_result:
             return object()
         return {"action": action, "args": list(args)}
@@ -52,7 +54,7 @@ class FakeSink:
 
     def persist_result(self, request_id: str, result_json: str) -> None:
         if self.fail:
-            raise OSError("transport unavailable at private endpoint")
+            raise BridgeResultSinkError("transport unavailable at private endpoint")
         self.records.append((request_id, result_json))
 
 

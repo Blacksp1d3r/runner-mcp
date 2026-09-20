@@ -24,6 +24,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - transport-neutral bridge processor with explicit allow-listed executor and durable-result ordering;
 - fixed-host GitHub mailbox transport with strict JSON/base64 validation and create-once results;
 - incremental GitHub mailbox watcher with explicit bootstrap and restart-safe cursor reconciliation;
+- loopback-only MCP bridge executor with strict JSON/SSE parsing and bounded test polling;
 - interactive setup, doctor, guide and configuration-management CLI;
 - public CI for this public repository;
 - Fools2Tools project identity;
@@ -41,6 +42,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - result persistence/finalization failures do not authorize bridge action replay;
 - GitHub mailbox transport failures are classified and kept inside the persistence/recovery boundary;
 - watcher restarts reuse cursor/replay state and never treat process restart as permission to replay actions;
+- bridge execution cannot target a non-loopback MCP endpoint and never fetches test logs;
 - production mutations remain disabled;
 - database restore remains unimplemented rather than being automated unsafely.
 

@@ -232,4 +232,4 @@ The current implementation state is tracked in:
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
 
-Runner MCP is under active development. The public GitHub mailbox stack now includes protocol, replay lifecycle, fixed-host transport and an incremental restart-safe watcher. The current focus is migrating the private pilot to that public stack, proving restart recovery plus completion feedback end to end, and then continuing clean-environment/service/tunnel onboarding.
+Runner MCP is under active development. The public GitHub mailbox stack now includes protocol, replay lifecycle, fixed-host transport, an incremental restart-safe watcher and a loopback-only MCP executor. The current focus is migrating the private pilot to that public stack, proving restart recovery plus completion feedback end to end, and then continuing clean-environment/service/tunnel onboarding.

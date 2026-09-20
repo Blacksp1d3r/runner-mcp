@@ -68,6 +68,7 @@ Still planned for onboarding: service auto-start packaging, guided TLS/reverse-p
 Make the existing safe core easier to adopt, understand and extend without changing its trust boundaries:
 
 - project-aware runner-mcp guide command with safe next-step suggestions;
+- separate operator/service-account wrapper without secret duplication;
 - dedicated user-to-developer extension guide;
 - contribution rules that preserve deny-by-default behavior;
 - configuration-first extension model;

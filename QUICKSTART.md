@@ -35,6 +35,21 @@ The installer uses a private Python virtual environment under your user account.
 
 If your shell cannot find `runner-mcp` afterwards, add your user-local bin directory to `PATH`.
 
+## 2.5. Separate operator and service accounts
+
+If Runner MCP is installed under a dedicated service account but you normally log in with another account, the per-user install is intentional: the operator account will not automatically see the service account's `runner-mcp` command or private configuration.
+
+From a local clone of this repository, run:
+
+```bash
+./install-operator.sh SERVICE_USER
+runner-mcp guide
+```
+
+The generated operator command lives under your own `~/.local/bin` and delegates to the service account using `sudo`. It does not duplicate the bearer token, project configuration or database credentials.
+
+Your operator account must be allowed to use `sudo -u SERVICE_USER`. Do not relax private configuration permissions just to make the CLI visible to another account.
+
 ## 3. Run the setup wizard
 
 Run:

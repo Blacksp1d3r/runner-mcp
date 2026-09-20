@@ -223,7 +223,7 @@ def test_setup_overwrite_preserves_github_mailbox_values(tmp_path: Path) -> None
         repository="example/private-mailbox",
         request_ref="runner-control",
         result_ref="runner-results",
-        token="private-mailbox-token-value-1234567890",
+        token="example-token-placeholder",
     )
     before = load_env_file(paths.env_file)
     expected = {key: before[key] for key in GITHUB_MAILBOX_ENV_KEYS}
@@ -256,7 +256,7 @@ def test_setup_token_rotation_preserves_github_mailbox_and_database_secrets(
         repository="example/private-mailbox",
         request_ref="runner-control",
         result_ref="runner-results",
-        token="private-mailbox-token-value-1234567890",
+        token="example-token-placeholder",
     )
     before = load_env_file(paths.env_file)
     old_bearer = before["RUNNER_MCP_BEARER_TOKEN"]

@@ -1,0 +1,45 @@
+name: Trusted self-hosted validation
+
+on:
+  push:
+    branches:
+      - main
+      - "phase-*"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-mcp-self-hosted-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  validate:
+    name: Ruff and pytest
+    runs-on: self-hosted
+    timeout-minutes: 15
+    steps:
+      - name: Check out trusted repository revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Create isolated validation environment
+        run: |
+          rm -rf .ci-venv
+          python3 -m venv .ci-venv
+          .ci-venv/bin/python -m pip install --disable-pip-version-check -e '.[dev]'
+
+      - name: Ruff
+        run: .ci-venv/bin/ruff check .
+
+      - name: Pytest
+        run: .ci-venv/bin/pytest -q
+
+      - name: Whitespace check
+        run: git diff --check
+
+      - name: Remove validation environment
+        if: always()
+        run: rm -rf .ci-venv

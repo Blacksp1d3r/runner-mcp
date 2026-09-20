@@ -1,0 +1,5 @@
+blank_issues_enabled: true
+contact_links:
+  - name: Security policy
+    url: https://github.com/Blacksp1d3r/runner-mcp/security/policy
+    about: Read this before reporting a possible vulnerability or posting security-sensitive details.

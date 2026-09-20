@@ -5,8 +5,20 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "runner-mcp"
 version = "0.1.0"
-description = "Secure, self-hosted MCP service for controlled development and staging operations."
+description = "Security-first self-hosted MCP for controlled AI development and staging operations."
+readme = "README.md"
+license = { file = "LICENSE" }
 requires-python = ">=3.12"
+keywords = ["mcp", "model-context-protocol", "self-hosted", "ai", "devops", "security"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: POSIX :: Linux",
+  "Programming Language :: Python :: 3",
+  "Programming Language :: Python :: 3.12",
+  "Topic :: Software Development :: Testing",
+  "Topic :: System :: Systems Administration",
+]
 dependencies = [
   "mcp>=2.0,<3",
   "pydantic>=2.10,<3",
@@ -24,6 +36,13 @@ dev = [
 
 [project.scripts]
 runner-mcp = "runner_mcp.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/Blacksp1d3r/runner-mcp"
+Repository = "https://github.com/Blacksp1d3r/runner-mcp"
+Issues = "https://github.com/Blacksp1d3r/runner-mcp/issues"
+Documentation = "https://github.com/Blacksp1d3r/runner-mcp#readme"
+Changelog = "https://github.com/Blacksp1d3r/runner-mcp/blob/main/CHANGELOG.md"
 
 [tool.setuptools.packages.find]
 where = ["src"]

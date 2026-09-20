@@ -4,48 +4,63 @@ Runner MCP should be promoted only as fast as a new user can safely understand, 
 
 The goal is a useful open-source launch without paid advertising or paid infrastructure.
 
-## Launch gate
+## Current launch gate
 
-Before a wider public launch:
+Completed:
 
-- installation works from a clean supported Linux environment;
-- QUICKSTART can be completed without reading Python source;
-- `runner-mcp doctor` gives actionable pass/fail guidance;
-- the security baseline and threat model match implemented behavior;
-- the public repository contains no real infrastructure details;
-- a minimal demonstration can be reproduced with placeholder/sample configuration;
-- releases have clear version notes and upgrade guidance;
-- known limitations are explicit;
-- the GitHub mailbox bridge is documented as an optional transport, not a shell bypass;
-- public examples contain no credentials, private endpoints or deployment-specific paths.
+- README states the problem and safety boundary before the feature inventory;
+- repository-safe architecture overview is visible near the top of README;
+- QUICKSTART provides the full guided installation path without requiring source-code reading;
+- a separate [five-minute local demo](DEMO.md) exists;
+- `runner-mcp doctor`, status, guide and emergency-stop workflows are documented;
+- security baseline, threat model, operator-safety rules and test-execution trust boundary are public;
+- root [security reporting policy](../SECURITY.md) is present;
+- the public repository rule forbids real infrastructure details and the latest privacy scan is clean;
+- mailbox transport is documented as optional and bounded rather than a shell bypass;
+- [CHANGELOG](../CHANGELOG.md), [release checklist](RELEASE_CHECKLIST.md) and reusable [launch copy](LAUNCH_COPY.md) are prepared;
+- bug/feature issue forms warn against posting private installation data;
+- pull requests get a security/public-repository hygiene checklist;
+- public CI installs the package and runs compile, Ruff, pytest and whitespace validation;
+- no application telemetry is added for marketing.
+
+Still required before a broader launch:
+
+- run the five-minute demo end-to-end from a clean supported Linux environment;
+- create the first tagged alpha release from an exact green commit;
+- verify the release installation path and release notes;
+- set the GitHub repository description/topics to the prepared wording;
+- prepare an MCP ecosystem/registry submission only after its current packaging requirements are verified;
+- decide the timing of external community posts.
 
 ## Free discovery plan
 
-The first discovery layer is the repository itself:
+The repository itself is the first discovery layer:
 
-1. a short problem/solution statement at the top of README;
-2. a five-minute path to first successful `doctor` run;
-3. a small architecture diagram using repository-safe placeholders;
-4. clear security guarantees and non-goals;
-5. a reproducible demo;
+1. problem and safety boundary;
+2. five-minute evaluation path;
+3. architecture overview;
+4. concrete security guarantees and non-goals;
+5. reproducible demo;
 6. tagged releases with concise release notes.
 
-After that, prepare launch material for appropriate developer and self-hosted communities. External posting remains a separate human-controlled action.
+After that, use the prepared material for appropriate developer and self-hosted communities. External posting remains a separate human-controlled action.
 
 ## Launch package
 
-Prepare reusable copy for:
+Prepared copy covers:
 
-- GitHub repository description and topics;
-- MCP ecosystem/registry submission when packaging requirements are met;
+- GitHub repository description and topic suggestions;
+- first-release headline/intro;
 - a technical Show HN-style introduction;
 - developer-tool launch directories;
-- relevant self-hosted, MCP and Python communities;
-- LinkedIn or similar professional announcement.
+- relevant self-hosted/MCP/Python community posts;
+- a professional-network announcement.
 
-The copy should lead with the problem and the working technical design, not marketing superlatives.
+See [LAUNCH_COPY.md](LAUNCH_COPY.md).
 
-Suggested core sentence:
+The copy leads with the problem and the implemented technical design, not marketing superlatives.
+
+Core sentence:
 
 > Runner MCP gives AI clients a narrow, auditable path to self-hosted development and staging operations without exposing a general-purpose remote shell.
 
@@ -62,4 +77,6 @@ Do not add application telemetry solely for marketing.
 
 ## Cost rule
 
-The default launch path must remain usable without buying advertising, paid hosted CI minutes or a new hosted service. Standard GitHub-hosted CI may be used for this public repository while GitHub provides it free of charge and no private secrets are exposed. Any future paid promotion or infrastructure requires an explicit decision rather than becoming a hidden dependency.
+The default launch path must remain usable without buying advertising, paid hosted CI minutes or a new hosted service. Standard GitHub-hosted CI may be used for this public repository while GitHub provides it free of charge and no private secrets are exposed.
+
+Any future paid promotion or infrastructure requires an explicit decision rather than becoming a hidden dependency.

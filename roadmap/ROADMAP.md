@@ -121,20 +121,57 @@ Next:
 - migrate the private watcher from its pilot request/result shape to the shared validator, result envelope and replay ledger;
 - add watcher-level integration tests using only generic placeholder configuration.
 
+## Phase 3.8.1 — task-completion feedback
+
+Make asynchronous work observable to the operator without expanding execution authority.
+
+Current state:
+
+- a project-local CI completion notification pattern is proven in a pilot project: pull-request validation can report success, failure or cancellation back through GitHub after the validation job finishes;
+- a private mailbox notification workflow exists for completed `run_tests` results and reports only a small safe summary such as project, predefined test profile/suite and final status;
+- the central mailbox completion notification still needs an end-to-end proof with a newly produced result after deployment;
+- completion notifications do not add commands, change the mailbox allow-list or grant new Runner MCP permissions.
+
+Target contract:
+
+- every long-running Runner MCP action should have an explicit terminal state such as completed, failed or cancelled;
+- a transport may emit a user-facing completion signal only after the bounded/scrubbed result has been persisted;
+- notifications must contain safe identifiers/status only and must not expose paths, hosts, URLs, credentials, environment values, raw logs or service names;
+- duplicate/replayed result records must not create duplicate action execution; notification delivery may be retried independently of action execution;
+- notification failure must never turn a successful Runner MCP action into an operational failure;
+- heartbeat/stale-request recovery remains a separate resilience concern from user-facing completion feedback;
+- the public core should define generic completion-event semantics while deployment-specific notification destinations remain private configuration.
+
+Next:
+
+- prove the central `run_tests` completion signal end-to-end with a fresh mailbox result;
+- add regression coverage for duplicate result notifications and notification failure isolation;
+- define the same generic completion-event shape for other asynchronous Runner MCP job types before enabling additional mailbox actions.
+
 ## Phase 3.9 — public launch readiness
 
-Prepare Runner MCP for free, responsible discovery without changing its security boundaries:
+Prepare Runner MCP for free, responsible discovery without changing its security boundaries.
 
-- keep Runner MCP as the product identity under the Fools2Tools umbrella;
-- make the problem/solution understandable from the top of README;
-- keep Quickstart and doctor output usable without source-code knowledge;
-- create a reproducible placeholder-only demo;
-- prepare release notes and upgrade guidance;
-- define a no-telemetry-by-default discovery strategy;
-- prepare reusable launch copy for GitHub, MCP ecosystem discovery and developer communities;
-- do not add paid advertising, paid hosted CI or paid hosted infrastructure as a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
+Implemented launch-readiness foundation:
 
-External posts remain a separate human-controlled action.
+- Runner MCP remains the product identity under the Fools2Tools umbrella;
+- README leads with the problem, safety boundary and architecture;
+- Quickstart remains the full guided path while a separate five-minute local demo provides a shorter evaluation path;
+- root security-reporting policy added;
+- public changelog and release checklist added;
+- reusable factual launch copy prepared for GitHub and developer communities;
+- privacy-safe GitHub bug/feature forms and a security-focused pull-request template added;
+- package metadata improved for future distribution;
+- discovery metrics remain platform-level; no application marketing telemetry is added;
+- no paid advertising, paid hosted CI or paid hosted infrastructure is a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
+
+Remaining before a broader launch:
+
+- verify the five-minute demo from a clean supported Linux environment;
+- create the first tagged alpha release with exact release notes;
+- set the public GitHub description/topics to the prepared values;
+- prepare an MCP ecosystem/registry submission only when packaging requirements are met;
+- publish external community posts only as a separate human-controlled action.
 
 ## Phase 4 — staging service management
 

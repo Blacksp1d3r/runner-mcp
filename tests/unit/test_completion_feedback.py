@@ -230,3 +230,14 @@ def test_event_constructor_rejects_forged_event_id() -> None:
             profile="unit",
             state=CompletionState.SUCCEEDED,
         )
+
+
+def test_source_and_operation_must_match() -> None:
+    with pytest.raises(CompletionFeedbackError, match="do not match"):
+        make_completion_event(
+            source=CompletionSource.TEST_JOB,
+            source_id="job-mismatch",
+            operation=CompletionOperation.DEPLOY_STAGING,
+            project="demo",
+            state=CompletionState.SUCCEEDED,
+        )

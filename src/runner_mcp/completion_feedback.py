@@ -37,6 +37,15 @@ class CompletionState(StrEnum):
     CANCELLED = "cancelled"
 
 
+_SOURCE_OPERATIONS = {
+    CompletionSource.MAILBOX_RESULT: {CompletionOperation.RUN_TESTS},
+    CompletionSource.TEST_JOB: {CompletionOperation.RUN_TESTS},
+    CompletionSource.MIGRATION_JOB: {CompletionOperation.APPLY_MIGRATION},
+    CompletionSource.DEPLOYMENT_JOB: {CompletionOperation.DEPLOY_STAGING},
+    CompletionSource.ROLLBACK_JOB: {CompletionOperation.ROLLBACK_RELEASE},
+}
+
+
 @dataclass(frozen=True, slots=True)
 class CompletionEvent:
     event_id: str
@@ -53,6 +62,8 @@ class CompletionEvent:
             raise CompletionFeedbackError("completion project has an unsafe shape")
         if self.profile is not None and not COMPLETION_IDENTIFIER_RE.fullmatch(self.profile):
             raise CompletionFeedbackError("completion profile has an unsafe shape")
+        if self.operation not in _SOURCE_OPERATIONS[self.source]:
+            raise CompletionFeedbackError("completion source and operation do not match")
         if self.operation == CompletionOperation.RUN_TESTS:
             if self.profile is None:
                 raise CompletionFeedbackError("run_tests completion requires profile")

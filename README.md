@@ -14,7 +14,10 @@ It is intentionally not a general remote shell. The service exposes a limited se
 - auditable actions;
 - least-privilege runtime permissions;
 - explicit risk classes for operational tools;
-- DNS-rebinding protection tied to the runtime MCP resource URL.
+- DNS-rebinding protection tied to the runtime MCP resource URL;
+- external operator emergency stop;
+- rollback retention based on both release count and age;
+- database restore separated from code rollback and always approval-gated.
 
 ## Public repository rule
 
@@ -34,6 +37,8 @@ Target runtime: Python 3.12+.
 The implementation follows the official MCP Python SDK v2 line and Streamable HTTP transport. External deployment must terminate TLS before traffic reaches the MCP service.
 
 Do not connect a privileged self-hosted runner to untrusted public pull-request code. See `security/SECURITY_BASELINE.md`.
+
+Operator-stop, retention and rollback rules are documented in `security/OPERATOR_SAFETY.md`.
 
 ## Status
 

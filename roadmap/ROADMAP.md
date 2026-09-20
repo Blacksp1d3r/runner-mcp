@@ -14,9 +14,23 @@ Implement Streamable HTTP, authentication, health endpoint, project registry, st
 
 Add allow-listed project file reads, metadata, pagination, path traversal protection, symlink escape protection, secret deny-lists, and file-size limits.
 
+## Phase 2.5 — operator safety and rollback policy
+
+Before enabling mutating tools:
+
+- require an external operator emergency-stop mechanism;
+- keep future operator actions read-only until retention policy is explicitly confirmed;
+- retain code releases using both a minimum count and minimum age;
+- retain pre-migration backups separately from code releases;
+- treat database point-in-time recovery as a separate retention control;
+- allow only one code rollback step per approved action;
+- prohibit automatic production database restores;
+- require explicit human approval before any database restore;
+- require recovery/preflight metadata before migration, deploy, or rollback.
+
 ## Phase 3 — controlled test runner
 
-Add predefined test profiles, bounded execution, timeouts, process cleanup, server-side logs, and concise result summaries.
+Add predefined test profiles, bounded execution, timeouts, process cleanup, server-side logs, safe-stop observation, and concise result summaries.
 
 ## Phase 4 — staging service management
 

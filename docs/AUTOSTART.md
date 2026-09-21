@@ -1,6 +1,8 @@
-# Managed user-service autostart
+# Managed autostart
 
-Runner MCP can install its own fixed user-level systemd services without root and without exposing a general service-control interface.
+Runner MCP can install its own fixed non-root autostart without exposing a general service-control interface.
+
+The preferred backend is a systemd user manager. When a host has no usable user systemd bus, `--backend auto` falls back to a managed user crontab block that supervises the same fixed Runner MCP components once per minute.
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
@@ -12,13 +14,18 @@ The command:
 runner-mcp autostart install
 ```
 
-always installs a loopback-only Runner MCP server service.
+selects the backend automatically:
 
-It also installs the fixed GitHub mailbox watcher when the mailbox is configured and explicitly bootstrapped, and the fixed completion watcher when completion delivery is configured and explicitly bootstrapped.
+- systemd user services when the user's systemd manager is available;
+- otherwise a managed crontab block, when `crontab` is available.
 
-The generated service files live only in the local user's systemd configuration. They may contain local executable/configuration paths, so those generated files are private host state and must not be copied into the public repository.
+You can force the choice locally with `--backend systemd` or `--backend cron`.
 
-No bearer token, GitHub token, database credential or project command is placed in the unit files.
+Both backends always supervise the loopback-only Runner MCP server. They also supervise the fixed GitHub mailbox watcher when the mailbox is configured and explicitly bootstrapped, and the fixed completion watcher when completion delivery is configured and explicitly bootstrapped.
+
+Generated unit files or crontab entries live only in local user state. They may contain local executable/configuration paths, so that generated state must not be copied into the public repository.
+
+No bearer token, GitHub token, database credential or project command is placed in the generated autostart configuration.
 
 ## Safety boundaries
 
@@ -26,10 +33,12 @@ Autostart does not create a generic systemd control surface.
 
 It:
 
-- manages only the three fixed Runner MCP unit names;
+- manages only the fixed server, GitHub-watcher and completion-watcher components;
 - binds the MCP server to `127.0.0.1`;
-- calls `systemctl --user` with fixed argument arrays and no shell;
-- refuses to overwrite or delete an existing unit it did not create;
+- uses fixed `systemctl --user` argument arrays on the systemd backend;
+- uses a marked crontab block plus a local lock-protected `cron-run` helper on the cron backend;
+- the cron helper executes only fixed Runner MCP argv arrays and does not accept a shell command;
+- refuses to overwrite/delete foreign systemd units or silently absorb unmanaged Runner MCP cron entries;
 - requires watcher bootstrap before enabling either watcher;
 - keeps bootstrap/replay state unchanged;
 - never enables sudo or system-level services;
@@ -81,22 +90,26 @@ Check only safe component state:
 runner-mcp autostart status
 ```
 
-Status reports only whether the server, GitHub watcher and completion watcher are installed, enabled and active. It does not print unit-file paths, private configuration paths or credentials.
+Status reports only the selected backend and whether the server, GitHub watcher and completion watcher are installed, enabled and active. It does not print unit-file paths, crontab contents, private configuration paths or credentials.
 
 ## Remove
 
-To stop and remove only unit files managed by Runner MCP:
+To remove only autostart state managed by Runner MCP:
 
 ```bash
 runner-mcp autostart remove
 ```
 
-The CLI requires the explicit local confirmation phrase shown on screen. Foreign unit files are never removed.
+The CLI requires the explicit local confirmation phrase shown on screen. Foreign unit files and unrelated crontab entries are never removed.
+
+On the systemd backend, removal disables and stops the managed units. On the cron backend, removal deletes the managed schedule so no future restart occurs; it deliberately does not send a blind process-kill signal to a currently running component. Stop or reboot that local account explicitly when immediate termination is required. This conservative behavior avoids killing a process whose identity cannot be proven from cron state alone.
 
 ## Headless hosts
 
-User services require a functioning systemd user manager. Some Linux installations stop the user manager after logout unless the administrator has configured the account for persistent user services.
+Some Linux installations do not expose a usable systemd user manager to the Runner MCP account. In `auto` mode Runner MCP now falls back to a managed user crontab instead of requiring a system-level policy change.
 
-Runner MCP deliberately does not change login/session or system-level policies automatically. If `autostart install` reports that the user manager is unavailable, configure the host's user-service lifecycle according to your Linux distribution or administrator policy, then retry.
+The cron backend starts each fixed component through a per-component private lock. A new cron tick exits immediately while the component already owns its lock; after a crash, the next minute can start it again.
 
-This keeps host-level privilege decisions outside Runner MCP.
+If an existing unmanaged Runner MCP cron setup is detected, installation fails closed instead of creating duplicate supervisors. The operator must remove or migrate those old entries explicitly before the managed cron backend is installed.
+
+Runner MCP deliberately does not change login/session, system-level services or host privilege policy automatically.

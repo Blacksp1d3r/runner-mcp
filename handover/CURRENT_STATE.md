@@ -140,13 +140,15 @@ Phase 3.9 public launch readiness:
 - no marketing telemetry or paid runtime dependency added.
 
 Service auto-start packaging — 2026-09-21:
-- fixed local CLI management for the Runner MCP server, shared GitHub watcher and completion watcher using systemd user services;
-- the server unit binds loopback only and no generic service/unit name can be supplied by a remote client;
-- optional watcher services require their private configuration and explicit bootstrap state before installation;
-- generated units contain no credentials and Runner MCP refuses to overwrite/remove foreign user-service files;
-- systemctl calls use fixed argument arrays with no shell or sudo;
-- safe status reports only component installed/enabled/active state;
-- headless user-manager persistence remains an explicit host-administrator responsibility.
+- fixed local CLI management for the Runner MCP server, shared GitHub watcher and completion watcher;
+- systemd user services remain preferred when a usable user bus exists;
+- a managed cron backend is available for headless accounts without a usable user bus;
+- the cron backend uses a marked private-user crontab block and per-component file locks; it executes only fixed Runner MCP argv and never accepts a shell command;
+- unmanaged pre-existing Runner MCP cron entries make installation fail closed to prevent duplicate supervisors;
+- the server remains loopback-only and no generic service/unit/cron command can be supplied by a remote client;
+- optional watcher supervision requires private configuration plus explicit bootstrap state before installation;
+- generated autostart state contains no credentials; foreign systemd units and unrelated cron entries are preserved;
+- safe status reports only backend plus component installed/enabled/active state.
 
 Phase 3.8.1 task-completion feedback:
 - strict terminal completion events added for succeeded, failed and cancelled outcomes;
@@ -323,7 +325,7 @@ Phase 9 human approval gates:
 Current validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 612 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 628 tests green, with one third-party Starlette/AnyIO deprecation warning;
 - merged request-capacity change passed public CI including whitespace checks;
 - live private bridge validation passed both Runner MCP lint and unit profiles;
 - git diff whitespace check: green;

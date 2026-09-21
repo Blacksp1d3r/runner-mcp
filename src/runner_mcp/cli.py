@@ -12,8 +12,11 @@ import uvicorn
 from .approval_manager import ApprovalError, ApprovalManager
 from .autostart import (
     AutostartError,
+    configured_autostart_components,
+    has_managed_user_units,
     install_user_services,
     remove_user_services,
+    systemd_user_available,
     user_service_status,
 )
 from .completion_delivery import (
@@ -48,6 +51,14 @@ from .config_manager import (
     remove_project,
     remove_service_config,
     remove_test_profile,
+)
+from .cron_autostart import (
+    cron_available,
+    cron_status,
+    has_managed_cron,
+    install_cron_services,
+    remove_cron_services,
+    run_cron_component,
 )
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
@@ -655,32 +666,107 @@ def cmd_approval(args: argparse.Namespace) -> int:
     raise ApprovalError("Unknown approval action")
 
 
+def _print_autostart_rows(backend: str, rows) -> None:
+    print(f"backend: {backend}")
+    for item in rows:
+        print(
+            f"{item.component}: "
+            f"installed={'yes' if item.installed else 'no'}, "
+            f"enabled={'yes' if item.enabled else 'no'}, "
+            f"active={'yes' if item.active else 'no'}"
+        )
+
+
 def cmd_autostart(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
+    executable = (Path(sys.executable).parent / "runner-mcp").resolve()
+
+    if args.autostart_action == "cron-run":
+        return run_cron_component(
+            config_dir=config_dir,
+            executable=executable,
+            component=args.component,
+            port=args.port,
+        )
+
+    managed_cron = has_managed_cron() if cron_available() else False
+    managed_systemd = has_managed_user_units()
 
     if args.autostart_action == "status":
-        for item in user_service_status():
-            print(
-                f"{item.component}: "
-                f"installed={'yes' if item.installed else 'no'}, "
-                f"enabled={'yes' if item.enabled else 'no'}, "
-                f"active={'yes' if item.active else 'no'}"
+        if managed_cron and managed_systemd:
+            raise AutostartError(
+                "multiple managed autostart backends are present; remove one before continuing"
             )
+        if managed_cron:
+            components = configured_autostart_components(config_dir)
+            _print_autostart_rows(
+                "cron",
+                cron_status(
+                    config_dir=config_dir,
+                    components=components,
+                ),
+            )
+            return 0
+        if managed_systemd:
+            _print_autostart_rows("systemd-user", user_service_status())
+            return 0
+        if systemd_user_available():
+            _print_autostart_rows("none", user_service_status())
+        elif cron_available():
+            components = configured_autostart_components(config_dir)
+            _print_autostart_rows(
+                "none",
+                cron_status(
+                    config_dir=config_dir,
+                    components=components,
+                ),
+            )
+        else:
+            print("backend: none")
+            for component in ("server", "github-watcher", "completion-watcher"):
+                print(
+                    f"{component}: installed=no, enabled=no, active=no"
+                )
         return 0
 
     if args.autostart_action == "install":
-        executable = (Path(sys.executable).parent / "runner-mcp").resolve()
-        installed = install_user_services(
-            config_dir,
-            executable=executable,
-            port=args.port,
-        )
-        print("Runner MCP user services installed and started.")
-        for unit_name in installed:
-            component = unit_name.removeprefix("runner-mcp-").removesuffix(".service")
-            if unit_name == "runner-mcp.service":
-                component = "server"
-            print(f"  - {component}")
+        if managed_cron or managed_systemd:
+            raise AutostartError(
+                "managed autostart is already installed; remove it before changing backend"
+            )
+        backend = args.backend
+        if backend == "auto":
+            backend = "systemd" if systemd_user_available() else "cron"
+
+        if backend == "systemd":
+            if not systemd_user_available():
+                raise AutostartError(
+                    "systemd user manager is unavailable; use --backend cron"
+                )
+            installed = install_user_services(
+                config_dir,
+                executable=executable,
+                port=args.port,
+            )
+            print("Runner MCP autostart installed with systemd user services.")
+            for unit_name in installed:
+                component = unit_name.removeprefix("runner-mcp-").removesuffix(
+                    ".service"
+                )
+                if unit_name == "runner-mcp.service":
+                    component = "server"
+                print(f"  - {component}")
+        else:
+            components = configured_autostart_components(config_dir)
+            installed = install_cron_services(
+                executable=executable,
+                config_dir=config_dir,
+                components=components,
+                port=args.port,
+            )
+            print("Runner MCP autostart installed with managed cron supervision.")
+            for component in installed:
+                print(f"  - {component}")
         print("No private configuration values were written to the public repository.")
         return 0
 
@@ -690,8 +776,13 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         ).strip()
         if confirmation != "REMOVE RUNNER MCP AUTOSTART":
             raise AutostartError("autostart removal cancelled")
-        removed = remove_user_services()
-        print(f"Removed {len(removed)} Runner MCP user service(s).")
+
+        removed_count = 0
+        if managed_cron:
+            removed_count += int(remove_cron_services())
+        if managed_systemd:
+            removed_count += len(remove_user_services())
+        print(f"Removed {removed_count} Runner MCP autostart backend(s).")
         return 0
 
     raise AutostartError("unknown autostart action")
@@ -1189,12 +1280,34 @@ def build_parser() -> argparse.ArgumentParser:
         choices=range(1, 65536),
         metavar="PORT",
     )
+    autostart_install.add_argument(
+        "--backend",
+        choices=("auto", "systemd", "cron"),
+        default="auto",
+        help="Prefer systemd user services, or fall back to managed cron in auto mode.",
+    )
     autostart_install.set_defaults(func=cmd_autostart)
     autostart_remove = autostart_sub.add_parser(
         "remove",
-        help="Stop and remove only user services managed by Runner MCP.",
+        help="Remove only autostart scheduling/state managed by Runner MCP.",
     )
     autostart_remove.set_defaults(func=cmd_autostart)
+    autostart_cron_run = autostart_sub.add_parser(
+        "cron-run",
+        help=argparse.SUPPRESS,
+    )
+    autostart_cron_run.add_argument(
+        "component",
+        choices=("server", "github-watcher", "completion-watcher"),
+    )
+    autostart_cron_run.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        choices=range(1, 65536),
+        metavar="PORT",
+    )
+    autostart_cron_run.set_defaults(func=cmd_autostart)
 
     completion_notifier = subparsers.add_parser(
         "completion-notifier",

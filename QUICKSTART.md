@@ -284,14 +284,16 @@ For internet-facing use, put Runner MCP behind a properly configured HTTPS rever
 
 ### Optional automatic startup
 
-On a Linux host with a working systemd user manager, Runner MCP can install its fixed user services:
+On a Linux host, Runner MCP can install its fixed non-root autostart:
 
 ```bash
 runner-mcp autostart install
 runner-mcp autostart status
 ```
 
-The server remains loopback-only. The GitHub mailbox watcher and completion watcher are added only when each feature is privately configured and explicitly bootstrapped. Autostart does not create watcher cursors, replay historical work, install system services or use sudo.
+The server remains loopback-only. The GitHub mailbox watcher and completion watcher are added only when each feature is privately configured and explicitly bootstrapped. Autostart prefers systemd user services and falls back to a managed user crontab when the user systemd bus is unavailable. It does not create watcher cursors, replay historical work, install system services or use sudo.
+
+If older unmanaged Runner MCP cron entries already exist, the managed cron backend refuses to install until the operator explicitly removes or migrates them; it will not silently create duplicate supervisors.
 
 See `docs/AUTOSTART.md` for lifecycle and headless-host guidance.
 

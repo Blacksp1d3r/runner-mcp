@@ -417,7 +417,7 @@ def test_client_rejects_unsupported_internal_tool_name() -> None:
     client = LocalMCPClient(_config())
 
     with pytest.raises(BridgeExecutionAdapterError, match="unsupported tool"):
-        client._call_tool("deploy_staging", {})
+        client._call_tool("arbitrary_shell", {})
 
 
 @pytest.mark.parametrize(
@@ -487,6 +487,125 @@ def test_executor_exposes_only_fixed_bridge_calls() -> None:
         ("job_status", {"job_id": job_id}),
         ("cancel_job", {"job_id": job_id}),
     ]
+
+
+def test_executor_exposes_bounded_operational_calls() -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    test_job = "a" * 32
+    approval_id = "b" * 32
+    deploy_job = "c" * 32
+    rollback_job = "d" * 32
+    fake = FakeClient(
+        [
+            {"content": "safe"},
+            [{"service": "web"}],
+            {"service": "web", "active": True},
+            {"service": "web", "status": "started"},
+            {"service": "web", "status": "stopped"},
+            {"service": "web", "status": "restarted"},
+            [{"backup_id": "one"}],
+            {"status": "completed"},
+            {"approval_id": approval_id, "state": "pending"},
+            {"approval_id": approval_id, "state": "approved"},
+            {"status": "clean"},
+            {"status": "completed"},
+            {"commit": "e" * 40},
+            {"job_id": deploy_job, "state": "queued"},
+            {"job_id": deploy_job, "state": "running"},
+            [{"release_id": "one"}],
+            {"eligible": True},
+            {"job_id": rollback_job, "state": "queued"},
+            {"job_id": rollback_job, "state": "completed"},
+        ]
+    )
+    executor._local.client = fake
+
+    assert executor.job_log(test_job, offset=2, length=10)["content"] == "safe"
+    assert executor.list_services("demo")[0]["service"] == "web"
+    assert executor.service_status("demo", "web")["active"] is True
+    assert executor.start_service("demo", "web")["status"] == "started"
+    assert executor.stop_service("demo", "web")["status"] == "stopped"
+    assert executor.restart_service("demo", "web")["status"] == "restarted"
+    assert executor.list_backups("demo", limit=5)[0]["backup_id"] == "one"
+    assert executor.backup_database("demo")["status"] == "completed"
+    assert (
+        executor.request_action_approval("demo", "deploy")["approval_id"]
+        == approval_id
+    )
+    assert executor.approval_status(approval_id)["state"] == "approved"
+    assert executor.migration_status("demo")["status"] == "clean"
+    assert executor.apply_migrations("demo", approval_id)["status"] == "completed"
+    assert executor.plan_deploy("demo")["commit"] == "e" * 40
+    assert executor.deploy_staging("demo", approval_id)["job_id"] == deploy_job
+    assert executor.deployment_status(deploy_job)["state"] == "running"
+    assert executor.list_releases("demo", limit=7)[0]["release_id"] == "one"
+    assert executor.rollback_plan("demo")["eligible"] is True
+    assert executor.rollback_release("demo", approval_id)["job_id"] == rollback_job
+    assert executor.rollback_status(rollback_job)["state"] == "completed"
+
+    assert fake.calls == [
+        ("get_test_log", {"job_id": test_job, "offset": 2, "length": 10}),
+        ("list_services", {"project": "demo"}),
+        ("service_status", {"project": "demo", "service": "web"}),
+        ("start_service", {"project": "demo", "service": "web"}),
+        ("stop_service", {"project": "demo", "service": "web"}),
+        ("restart_service", {"project": "demo", "service": "web"}),
+        ("list_backups", {"project": "demo", "limit": 5}),
+        ("backup_database", {"project": "demo"}),
+        (
+            "request_action_approval",
+            {"project": "demo", "action": "deploy"},
+        ),
+        ("approval_status", {"approval_id": approval_id}),
+        ("migration_status", {"project": "demo"}),
+        (
+            "apply_migrations",
+            {"project": "demo", "approval_id": approval_id},
+        ),
+        ("plan_deploy", {"project": "demo"}),
+        (
+            "deploy_staging",
+            {"project": "demo", "approval_id": approval_id},
+        ),
+        ("deployment_status", {"job_id": deploy_job}),
+        ("list_releases", {"project": "demo", "limit": 7}),
+        ("rollback_plan", {"project": "demo"}),
+        (
+            "rollback_release",
+            {"project": "demo", "approval_id": approval_id},
+        ),
+        ("rollback_status", {"job_id": rollback_job}),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("method", "args"),
+    [
+        ("job_log", ("a" * 32, -1, 10)),
+        ("job_log", ("a" * 32, 0, 101)),
+        ("list_backups", ("demo", 101)),
+        ("list_releases", ("demo", 0)),
+        ("request_action_approval", ("demo", "shell")),
+        ("approval_status", ("bad-id",)),
+    ],
+)
+def test_executor_rejects_unbounded_operational_arguments(
+    method: str,
+    args: tuple,
+) -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+
+    with pytest.raises(BridgeExecutionAdapterError):
+        if method == "job_log":
+            executor.job_log(args[0], offset=args[1], length=args[2])
+        elif method == "list_backups":
+            executor.list_backups(args[0], limit=args[1])
+        elif method == "list_releases":
+            executor.list_releases(args[0], limit=args[1])
+        elif method == "request_action_approval":
+            executor.request_action_approval(args[0], args[1])
+        else:
+            executor.approval_status(args[0])
 
 
 def test_run_tests_returns_job_immediately_without_polling() -> None:

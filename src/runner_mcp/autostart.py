@@ -100,36 +100,12 @@ def _unit(
     )
 
 
-def render_user_units(
-    *,
-    config_dir: Path,
-    executable: Path,
-    port: int = 8000,
-) -> dict[str, str]:
-    if not 1 <= port <= 65535:
-        raise AutostartError("autostart port must be between 1 and 65535")
-
+def configured_autostart_components(config_dir: Path) -> tuple[str, ...]:
     config_dir = config_dir.expanduser().resolve()
     paths, _settings, _registry = read_private_runtime(config_dir)
-    executable = _validate_executable(executable)
     values = load_env_file(paths.env_file)
 
-    units = {
-        SERVER_UNIT: _unit(
-            description="Runner MCP loopback service",
-            executable=executable,
-            config_dir=config_dir,
-            arguments=(
-                "serve",
-                "--host",
-                "127.0.0.1",
-                "--port",
-                str(port),
-            ),
-            requires_server=False,
-        )
-    }
-
+    components = ["server"]
     mailbox_configured = all(
         values.get(key, "").strip() for key in GITHUB_MAILBOX_ENV_KEYS
     )
@@ -147,13 +123,7 @@ def render_user_units(
             raise AutostartError(
                 "GitHub watcher is configured but not bootstrapped"
             )
-        units[GITHUB_WATCHER_UNIT] = _unit(
-            description="Runner MCP GitHub mailbox watcher",
-            executable=executable,
-            config_dir=config_dir,
-            arguments=("github-watcher", "run"),
-            requires_server=True,
-        )
+        components.append("github-watcher")
 
     notifier = completion_notifier_status(config_dir)
     if notifier["configured"]:
@@ -161,6 +131,87 @@ def render_user_units(
             raise AutostartError(
                 "completion notifier is configured but not bootstrapped"
             )
+        components.append("completion-watcher")
+    return tuple(components)
+
+
+def systemd_user_available(
+    *,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> bool:
+    try:
+        completed = _run_systemctl(
+            ["show-environment"],
+            runner=runner,
+            check=False,
+        )
+    except AutostartError:
+        return False
+    return completed.returncode == 0
+
+
+def has_managed_user_units(
+    *,
+    unit_dir: Path | None = None,
+) -> bool:
+    target = unit_dir or default_user_unit_dir()
+    expanded = target.expanduser()
+    if not expanded.exists():
+        return False
+    if expanded.is_symlink() or not expanded.is_dir():
+        raise AutostartError("systemd user unit directory is unavailable")
+    for unit_name in KNOWN_UNITS:
+        path = expanded / unit_name
+        if not path.exists():
+            continue
+        if path.is_symlink() or not path.is_file():
+            raise AutostartError("autostart unit path is unsafe")
+        try:
+            content = path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise AutostartError("autostart unit could not be inspected") from exc
+        if content.startswith(MANAGED_MARKER + "\n"):
+            return True
+    return False
+
+
+def render_user_units(
+    *,
+    config_dir: Path,
+    executable: Path,
+    port: int = 8000,
+) -> dict[str, str]:
+    if not 1 <= port <= 65535:
+        raise AutostartError("autostart port must be between 1 and 65535")
+
+    config_dir = config_dir.expanduser().resolve()
+    executable = _validate_executable(executable)
+    components = configured_autostart_components(config_dir)
+
+    units = {
+        SERVER_UNIT: _unit(
+            description="Runner MCP loopback service",
+            executable=executable,
+            config_dir=config_dir,
+            arguments=(
+                "serve",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(port),
+            ),
+            requires_server=False,
+        )
+    }
+    if "github-watcher" in components:
+        units[GITHUB_WATCHER_UNIT] = _unit(
+            description="Runner MCP GitHub mailbox watcher",
+            executable=executable,
+            config_dir=config_dir,
+            arguments=("github-watcher", "run"),
+            requires_server=True,
+        )
+    if "completion-watcher" in components:
         units[COMPLETION_WATCHER_UNIT] = _unit(
             description="Runner MCP completion watcher",
             executable=executable,

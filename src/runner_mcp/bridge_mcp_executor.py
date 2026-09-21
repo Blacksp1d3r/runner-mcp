@@ -228,6 +228,9 @@ class LocalMCPClient:
             "rollback_plan",
             "rollback_release",
             "rollback_status",
+            "runtime_status",
+            "self_update",
+            "self_update_status",
         }:
             raise BridgeExecutionAdapterError(
                 "local MCP executor rejected an unsupported tool"
@@ -566,6 +569,22 @@ class LocalMCPBridgeExecutor:
         if not _JOB_ID_RE.fullmatch(job_id):
             raise BridgeExecutionAdapterError("Invalid rollback job identifier")
         return self._client()._call_tool("rollback_status", {"job_id": job_id})
+
+    def runtime_status(self) -> Any:
+        return self._client()._call_tool("runtime_status", {})
+
+    def self_update(self, commit: str) -> Any:
+        if not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise BridgeExecutionAdapterError("Invalid self-update commit identifier")
+        return self._client()._call_tool("self_update", {"commit": commit})
+
+    def self_update_status(self, job_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError("Invalid self-update job identifier")
+        return self._client()._call_tool(
+            "self_update_status",
+            {"job_id": job_id},
+        )
 
     def run_tests_to_completion(self, project: str, suite: str) -> Any:
         """Compatibility helper for local callers; mailbox dispatch does not use it."""

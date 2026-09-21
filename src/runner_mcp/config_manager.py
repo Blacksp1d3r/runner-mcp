@@ -224,6 +224,39 @@ def add_project(
     return project.public_summary(code)
 
 
+def set_project_test_capacity(
+    config_dir: Path,
+    *,
+    code: str,
+    max_parallel_tests: int,
+) -> dict[str, Any]:
+    paths, project_file, registry = _load_for_edit(config_dir)
+    cfg = registry.projects.get(code)
+    if cfg is None:
+        raise ConfigManagerError("Unknown project")
+    try:
+        updated_project = cfg.model_copy(update={"max_parallel_tests": max_parallel_tests})
+        updated_project = ProjectConfig.model_validate(updated_project.model_dump())
+        updated = ProjectRegistry(
+            projects={
+                **registry.projects,
+                code: updated_project,
+            }
+        )
+        updated.validate_codes()
+    except ValueError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+    _save_registry(
+        paths=paths,
+        project_file=project_file,
+        registry=updated,
+    )
+    return {
+        "project": code,
+        "max_parallel_tests": updated_project.max_parallel_tests,
+    }
+
+
 def remove_project(
     config_dir: Path,
     *,
@@ -264,6 +297,7 @@ def list_test_profiles(
             "timeout_seconds": profile.timeout_seconds,
             "max_log_bytes": profile.max_log_bytes,
             "environment_passthrough_count": len(profile.env_passthrough),
+            "parallel_safe": profile.parallel_safe,
         }
         for name, profile in sorted(cfg.test_profiles.items())
     ]
@@ -297,6 +331,7 @@ def build_test_profile(
     timeout_seconds: int = 300,
     max_log_bytes: int = 2_000_000,
     env_passthrough: list[str] | None = None,
+    parallel_safe: bool = False,
 ) -> TestProfile:
     args = list(arguments or [])
     environment = list(env_passthrough or [])
@@ -335,6 +370,7 @@ def build_test_profile(
             timeout_seconds=timeout_seconds,
             max_log_bytes=max_log_bytes,
             env_passthrough=environment,
+            parallel_safe=parallel_safe,
         )
     except ValueError as exc:
         raise ConfigManagerError(str(exc)) from exc
@@ -352,6 +388,7 @@ def add_test_profile(
     timeout_seconds: int = 300,
     max_log_bytes: int = 2_000_000,
     env_passthrough: list[str] | None = None,
+    parallel_safe: bool = False,
 ) -> dict[str, Any]:
     paths, project_file, registry = _load_for_edit(config_dir)
     cfg = registry.projects.get(project)
@@ -378,6 +415,7 @@ def add_test_profile(
         timeout_seconds=timeout_seconds,
         max_log_bytes=max_log_bytes,
         env_passthrough=env_passthrough,
+        parallel_safe=parallel_safe,
     )
 
     profiles = {
@@ -407,6 +445,7 @@ def add_test_profile(
         "timeout_seconds": profile.timeout_seconds,
         "max_log_bytes": profile.max_log_bytes,
         "environment_passthrough_count": len(profile.env_passthrough),
+        "parallel_safe": profile.parallel_safe,
     }
 
 

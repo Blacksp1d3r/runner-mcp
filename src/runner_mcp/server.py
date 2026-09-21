@@ -315,6 +315,7 @@ def build_mcp(
         safety=safety,
         tests=tests,
         source=source_sync,
+        resource_url=settings.resource_url,
     )
 
     @mcp.tool()

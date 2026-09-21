@@ -62,6 +62,30 @@ from runner_mcp.bridge_protocol import (
             },
             ("run_tests", {"project": "demo", "suite": "unit"}),
         ),
+        (
+            {"request_id": "req-007", "action": "queue_status"},
+            ("queue_status", {}),
+        ),
+        (
+            {"request_id": "req-008", "action": "worker_status"},
+            ("worker_status", {}),
+        ),
+        (
+            {
+                "request_id": "req-009",
+                "action": "job_status",
+                "job_id": "a" * 32,
+            },
+            ("job_status", {"job_id": "a" * 32}),
+        ),
+        (
+            {
+                "request_id": "req-010",
+                "action": "cancel_job",
+                "job_id": "b" * 32,
+            },
+            ("cancel_job", {"job_id": "b" * 32}),
+        ),
     ],
 )
 def test_bridge_request_maps_only_to_allow_listed_tool_calls(
@@ -95,6 +119,10 @@ def test_unknown_fields_are_rejected() -> None:
         '{"request_id":"req-001","action":"project_status","project":"demo","profile":"unit"}',
         '{"request_id":"req-001","action":"run_tests","project":"demo"}',
         '{"request_id":"req-001","action":"run_tests","profile":"unit"}',
+        '{"request_id":"req-001","action":"queue_status","project":"demo"}',
+        '{"request_id":"req-001","action":"job_status"}',
+        '{"request_id":"req-001","action":"job_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","project":"demo"}',
+        '{"request_id":"req-001","action":"cancel_job","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","profile":"unit"}',
     ],
 )
 def test_action_specific_arguments_fail_closed(payload: str) -> None:
@@ -108,6 +136,7 @@ def test_action_specific_arguments_fail_closed(payload: str) -> None:
         '{"request_id":"../bad","action":"list_projects"}',
         '{"request_id":"req-001","action":"project_status","project":"../demo"}',
         '{"request_id":"req-001","action":"run_tests","project":"demo","profile":"unit;unsafe"}',
+        '{"request_id":"req-001","action":"job_status","job_id":"../bad"}',
     ],
 )
 def test_identifiers_use_safe_shapes(payload: str) -> None:

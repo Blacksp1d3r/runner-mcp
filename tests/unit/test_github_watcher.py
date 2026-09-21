@@ -1,4 +1,6 @@
 import json
+import threading
+import time
 from pathlib import Path
 
 import pytest
@@ -115,8 +117,20 @@ class FakeExecutor:
     def list_test_profiles(self, project: str):
         return self._call("list_test_profiles", project)
 
-    def run_tests_to_completion(self, project: str, suite: str):
+    def run_tests(self, project: str, suite: str):
         return self._call("run_tests", project, suite)
+
+    def queue_status(self):
+        return self._call("queue_status")
+
+    def worker_status(self):
+        return self._call("worker_status")
+
+    def job_status(self, job_id: str):
+        return self._call("job_status", job_id)
+
+    def cancel_job(self, job_id: str):
+        return self._call("cancel_job", job_id)
 
 
 class FailingAdvanceCursorStore(GitHubWatcherCursorStore):
@@ -422,7 +436,7 @@ def test_result_persistence_failure_does_not_reexecute(tmp_path) -> None:
     assert record.state == ReplayState.CLAIMED
 
 
-def test_malformed_request_blocks_cursor_and_remaining_work(tmp_path) -> None:
+def test_malformed_request_blocks_cursor_but_not_independent_work(tmp_path) -> None:
     watcher, transport, executor, _ledger, cursor = _watcher(tmp_path)
     cursor.initialize("a" * 40)
     transport.changed_ids = ["req-709", "req-710"]
@@ -433,10 +447,74 @@ def test_malformed_request_blocks_cursor_and_remaining_work(tmp_path) -> None:
 
     assert outcome.state == GitHubWatcherCycleState.RECOVERY_REQUIRED
     assert outcome.discovered_requests == 2
-    assert outcome.heartbeat.pending_requests == 2
+    assert outcome.heartbeat.pending_requests == 1
     assert outcome.recovery_attention == 1
     assert cursor.read() == "a" * 40
-    assert executor.calls == []
+    assert executor.calls == [("list_projects", ())]
+
+
+def test_read_only_requests_execute_in_parallel_with_bounded_workers(tmp_path) -> None:
+    class SlowExecutor(FakeExecutor):
+        def __init__(self) -> None:
+            super().__init__()
+            self.active = 0
+            self.max_active = 0
+            self.lock = threading.Lock()
+
+        def list_projects(self):
+            with self.lock:
+                self.active += 1
+                self.max_active = max(self.max_active, self.active)
+            try:
+                time.sleep(0.12)
+                return self._call("list_projects")
+            finally:
+                with self.lock:
+                    self.active -= 1
+
+    executor = SlowExecutor()
+    watcher, transport, _executor, _ledger, cursor = _watcher(
+        tmp_path,
+        executor=executor,
+    )
+    watcher._max_workers = 2
+    watcher._max_inflight = 4
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-par-1", "req-par-2", "req-par-3"]
+    for request_id in transport.changed_ids:
+        transport.requests[request_id] = _request(request_id)
+
+    outcome = watcher.run_cycle()
+
+    assert outcome.state == GitHubWatcherCycleState.PROCESSED
+    assert outcome.processed_requests == 3
+    assert executor.max_active == 2
+    assert cursor.read() == transport.head
+
+
+def test_watcher_capacity_parameters_are_bounded(tmp_path) -> None:
+    transport = FakeTransport()
+    executor = FakeExecutor()
+    ledger = BridgeReplayLedger(tmp_path / "capacity-replay.json")
+    cursor = GitHubWatcherCursorStore(tmp_path / "capacity-cursor.json")
+
+    with pytest.raises(ValueError, match="max_workers"):
+        GitHubMailboxWatcher(
+            transport=transport,
+            ledger=ledger,
+            executor=executor,
+            cursor_store=cursor,
+            max_workers=0,
+        )
+    with pytest.raises(ValueError, match="max_inflight"):
+        GitHubMailboxWatcher(
+            transport=transport,
+            ledger=ledger,
+            executor=executor,
+            cursor_store=cursor,
+            max_workers=4,
+            max_inflight=3,
+        )
 
 
 def test_transport_head_failure_is_degraded_without_execution(tmp_path) -> None:

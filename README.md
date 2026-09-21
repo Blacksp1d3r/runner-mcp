@@ -60,7 +60,7 @@ The wrapper keeps the private configuration with the service account and delegat
 
 For a user-to-developer path, see [docs/USING_AND_EXTENDING.md](docs/USING_AND_EXTENDING.md). Contributors can start with [CONTRIBUTING.md](CONTRIBUTING.md).
 
-For the zero-additional-service-cost GitHub mailbox pattern, see [docs/GITHUB_MAILBOX_BRIDGE.md](docs/GITHUB_MAILBOX_BRIDGE.md). The public package now includes both a transport-neutral processor and a fixed-host GitHub transport; completion feedback and watcher resilience are documented in [docs/COMPLETION_FEEDBACK.md](docs/COMPLETION_FEEDBACK.md) and [docs/WATCHER_RESILIENCE.md](docs/WATCHER_RESILIENCE.md).
+For the zero-additional-service-cost GitHub mailbox pattern, see [docs/GITHUB_MAILBOX_BRIDGE.md](docs/GITHUB_MAILBOX_BRIDGE.md). The public package now includes both a transport-neutral processor and a fixed-host GitHub transport; completion feedback and watcher resilience are documented in [docs/COMPLETION_FEEDBACK.md](docs/COMPLETION_FEEDBACK.md) and [docs/WATCHER_RESILIENCE.md](docs/WATCHER_RESILIENCE.md). Bounded multi-project scheduling and capacity controls are documented in [docs/CONCURRENCY.md](docs/CONCURRENCY.md).
 
 Runner MCP is developed as a [Fools2Tools project](docs/FOOLS2TOOLS.md). Public launch readiness is tracked in [docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md). See also the [changelog](CHANGELOG.md), [release checklist](docs/RELEASE_CHECKLIST.md) and prepared [launch copy](docs/LAUNCH_COPY.md).
 
@@ -106,6 +106,8 @@ Current implemented foundations include:
 - rollback-retention policy using both minimum count and minimum age;
 - explicit separation between code rollback and database restore;
 - controlled asynchronous test jobs;
+- bounded fair multi-project test scheduling with per-project opt-in parallelism;
+- safe queue, worker and job observability without infrastructure disclosure;
 - allow-listed systemd-user staging service status/start/stop/restart;
 - optional private service health checks;
 - private PostgreSQL backups with safe metadata listing;

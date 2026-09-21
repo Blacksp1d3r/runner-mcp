@@ -41,6 +41,7 @@ class TestProfile(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
     max_log_bytes: int = Field(default=2_000_000, ge=4096, le=20_000_000)
     env_passthrough: list[str] = Field(default_factory=list, max_length=64)
+    parallel_safe: bool = False
 
     @field_validator("argv")
     @classmethod
@@ -218,6 +219,8 @@ class ProjectConfig(BaseModel):
     database_alias: str | None = None
     database: DatabaseConfig | None = None
     test_profiles: dict[str, TestProfile] = Field(default_factory=dict)
+    max_parallel_tests: int = Field(default=1, ge=1, le=8)
+    max_queued_tests: int = Field(default=16, ge=1, le=128)
     services: dict[str, ServiceConfig] = Field(default_factory=dict)
     deployment: DeploymentConfig | None = None
 

@@ -27,6 +27,7 @@ from .github_watcher import (
     GitHubWatcherCycleState,
 )
 from .onboarding import OnboardingError, load_env_file, read_private_runtime
+from .self_update import SelfUpdateError, consume_restart_marker
 
 DEFAULT_REQUEST_REF = "runner-control"
 DEFAULT_RESULT_REF = "runner-results"
@@ -42,6 +43,7 @@ class GitHubWatcherRuntimeError(RuntimeError):
 class GitHubWatcherRuntime:
     watcher: GitHubMailboxWatcher
     transport: GitHubMailboxTransport
+    config_dir: Path
 
     @classmethod
     def from_private_config(cls, config_dir: Path) -> GitHubWatcherRuntime:
@@ -99,7 +101,11 @@ class GitHubWatcherRuntime:
             max_workers=settings.mailbox_workers,
             max_inflight=settings.mailbox_max_inflight,
         )
-        return cls(watcher=watcher, transport=transport)
+        return cls(
+            watcher=watcher,
+            transport=transport,
+            config_dir=paths.config_dir,
+        )
 
     def bootstrap(self) -> None:
         self.watcher.bootstrap_cursor_at_current_head()
@@ -167,6 +173,20 @@ class GitHubWatcherRuntime:
                 else:
                     last_published_state = outcome.state
                     next_heartbeat_at = now + heartbeat_seconds
+
+            try:
+                restart_requested = consume_restart_marker(
+                    self.config_dir,
+                    "github-watcher",
+                )
+            except SelfUpdateError as exc:
+                raise GitHubWatcherRuntimeError(
+                    "Runner MCP self-update restart state is invalid"
+                ) from exc
+            if restart_requested:
+                raise GitHubWatcherRuntimeError(
+                    "Runner MCP self-update restart requested"
+                )
 
             time.sleep(poll_seconds)
 

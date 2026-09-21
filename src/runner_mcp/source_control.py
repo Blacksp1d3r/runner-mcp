@@ -176,6 +176,30 @@ class SourceSynchronizer:
         self.tests = tests
 
     def sync_project(self, project: str, commit: str) -> dict[str, str | bool]:
+        return self._sync_project(
+            project,
+            commit,
+            required_remote_ref=None,
+        )
+
+    def sync_project_main_commit(
+        self,
+        project: str,
+        commit: str,
+    ) -> dict[str, str | bool]:
+        return self._sync_project(
+            project,
+            commit,
+            required_remote_ref="refs/remotes/origin/main",
+        )
+
+    def _sync_project(
+        self,
+        project: str,
+        commit: str,
+        *,
+        required_remote_ref: str | None,
+    ) -> dict[str, str | bool]:
         config = self.registry.projects.get(project)
         if config is None:
             raise SourceControlError("Unknown or disabled project")
@@ -235,7 +259,12 @@ class SourceSynchronizer:
                     "refs/remotes/origin/",
                 ],
             ).splitlines()
-            if not any(
+            if required_remote_ref is not None:
+                if required_remote_ref not in containing_refs:
+                    raise SourceControlError(
+                        "Requested commit is not reachable from the required remote ref"
+                    )
+            elif not any(
                 ref.startswith("refs/remotes/origin/")
                 and ref != "refs/remotes/origin/HEAD"
                 for ref in containing_refs

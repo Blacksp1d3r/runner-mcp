@@ -44,6 +44,7 @@ Implemented design:
 - persisted safe job metadata and interrupted-job recovery;
 - restricted environment passthrough;
 - short per-job private `TMPDIR` paths for local IPC/socket based test runtimes, with 0700 permissions and terminal cleanup;
+- declarative `playwright` test runtime support that injects only a privately configured shared browser cache into the isolated job environment;
 - no automatic execution of untrusted public-fork code without stronger sandboxing.
 
 ## Phase 3.5 — packaging and onboarding
@@ -389,6 +390,21 @@ Next:
 - prove the expanded bridge live against one read-only operation and one low-risk configured mutation;
 - add Runner MCP self-status/doctor/update/restart as a separate fixed self-operations capability rather than exposing package-manager or process-control primitives;
 - preserve separate human approval for migration/deploy/rollback.
+
+## Phase 3.8.9a — shared Playwright test runtime
+
+Make browser-based E2E profiles work inside Runner MCP's isolated test environment without weakening HOME/TMPDIR isolation.
+
+Implemented foundation:
+
+- test profiles can declare a fixed runtime of `default` or `playwright`;
+- the Playwright runtime receives only `PLAYWRIGHT_BROWSERS_PATH`, sourced from private Runner MCP configuration;
+- the configured browser-cache path must be absolute, exist as a directory and not itself be a symlink;
+- the browser-cache path is treated as a private path for log scrubbing;
+- missing browser runtime fails closed before test execution;
+- no arbitrary browser path can be supplied through the mailbox or test request.
+
+This is intended for shared Chromium/Playwright installations on persistent self-hosted runners while preserving per-job HOME/TMPDIR isolation.
 
 ## Phase 3.8.10 — runtime observability bridge
 

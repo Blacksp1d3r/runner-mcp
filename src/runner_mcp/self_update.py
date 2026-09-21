@@ -412,10 +412,19 @@ class SelfUpdateManager:
         )
 
         executable = Path(sys.executable)
-        if not executable.is_absolute() or not executable.exists():
+        try:
+            resolved_executable = executable.resolve(strict=True)
+        except OSError as exc:
+            raise SelfUpdateError("Runner MCP Python runtime is unavailable") from exc
+        if (
+            not executable.is_absolute()
+            or executable.is_symlink()
+            or not resolved_executable.is_file()
+            or not os.access(resolved_executable, os.X_OK)
+        ):
             raise SelfUpdateError("Runner MCP Python runtime is unavailable")
         command = [
-            str(executable),
+            str(resolved_executable),
             "-m",
             "pip",
             "install",
@@ -531,7 +540,16 @@ class SelfUpdateManager:
                 restart_required=True,
             )
             self._schedule_server_restart()
-        except (SelfUpdateError, SourceControlError, TestRunnerError, RuntimeError, OSError):
+        except (
+            SelfUpdateError,
+            SourceControlError,
+            TestRunnerError,
+            RuntimeError,
+            ValueError,
+            KeyError,
+            TypeError,
+            OSError,
+        ):
             self._set_job(
                 job_id,
                 state=SelfUpdateJobState.FAILED,

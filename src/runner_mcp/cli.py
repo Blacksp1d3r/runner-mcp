@@ -19,6 +19,7 @@ from .config_manager import (
     add_service_config,
     add_test_profile,
     configure_github_mailbox,
+    configure_project_test_capacity,
     github_mailbox_config_status,
     list_database_configs,
     list_deployment_configs,
@@ -305,6 +306,20 @@ def cmd_project(args: argparse.Namespace) -> int:
         print(f"Project added: {result['code']} ({result['name']})")
         return 0
 
+    if args.project_action == "capacity":
+        result = configure_project_test_capacity(
+            config_dir,
+            project=args.code,
+            max_parallel_tests=args.max_parallel_tests,
+            max_queued_tests=args.max_queued_tests,
+        )
+        print(
+            f"Project test capacity updated: {result['project']} "
+            f"(parallel={result['max_parallel_tests']}, "
+            f"queued={result['max_queued_tests']})"
+        )
+        return 0
+
     if args.project_action == "remove":
         expected = f"REMOVE {args.code}"
         confirmation = input(f"Type {expected} to continue: ").strip()
@@ -356,7 +371,8 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
         for profile in profiles:
             print(
                 f"{profile['name']}: timeout={profile['timeout_seconds']}s, "
-                f"log_limit={profile['max_log_bytes']} bytes"
+                f"log_limit={profile['max_log_bytes']} bytes, "
+                f"parallel_safe={str(profile['parallel_safe']).lower()}"
             )
         return 0
 
@@ -373,6 +389,7 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
             timeout_seconds=args.timeout,
             max_log_bytes=args.max_log_bytes,
             env_passthrough=args.env,
+            parallel_safe=args.parallel_safe,
         )
         print(
             f"Test profile added: {result['name']} "
@@ -814,6 +831,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     project_add.set_defaults(func=cmd_project)
 
+    project_capacity = project_sub.add_parser(
+        "capacity",
+        help="Set bounded per-project test concurrency and queue limits.",
+    )
+    project_capacity.add_argument("code")
+    project_capacity.add_argument("--max-parallel-tests", type=int, required=True)
+    project_capacity.add_argument("--max-queued-tests", type=int, default=16)
+    project_capacity.set_defaults(func=cmd_project)
+
     project_remove = project_sub.add_parser("remove", help="Remove a project.")
     project_remove.add_argument("code")
     project_remove.set_defaults(func=cmd_project)
@@ -846,6 +872,11 @@ def build_parser() -> argparse.ArgumentParser:
     profile_add.add_argument("--cwd", default=".")
     profile_add.add_argument("--timeout", type=int, default=300)
     profile_add.add_argument("--max-log-bytes", type=int, default=2_000_000)
+    profile_add.add_argument(
+        "--parallel-safe",
+        action="store_true",
+        help="Allow this profile to overlap with other explicitly parallel-safe profiles.",
+    )
     profile_add.add_argument(
         "--env",
         action="append",

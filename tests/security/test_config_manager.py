@@ -9,9 +9,12 @@ from runner_mcp.config_manager import (
     add_project,
     add_service_config,
     add_test_profile,
+    configure_github_mailbox,
+    github_mailbox_config_status,
     list_projects,
     list_service_configs,
     list_test_profiles,
+    remove_github_mailbox,
     remove_project,
     remove_service_config,
     remove_test_profile,
@@ -484,3 +487,94 @@ def test_python_adapter_auto_migration_selects_alembic(tmp_path: Path) -> None:
         preset="auto",
     )
     assert result["preset"] == "alembic"
+
+
+def test_github_mailbox_config_stays_private(tmp_path: Path) -> None:
+    from runner_mcp.onboarding import load_env_file
+
+    paths, _ = installed(tmp_path)
+    token = "example-token-placeholder"
+    repository = "example/private-mailbox"
+
+    result = configure_github_mailbox(
+        paths.config_dir,
+        repository=repository,
+        request_ref="runner-control",
+        result_ref="runner-results",
+        token=token,
+    )
+    status = github_mailbox_config_status(paths.config_dir)
+    values = load_env_file(paths.env_file)
+    project_text = paths.projects_file.read_text(encoding="utf-8")
+
+    assert result == {"configured": True}
+    assert status == {"configured": True}
+    assert token in values.values()
+    assert repository in values.values()
+    assert token not in project_text
+    assert repository not in project_text
+    assert token not in repr(result)
+    assert repository not in repr(status)
+    assert stat.S_IMODE(paths.env_file.stat().st_mode) == 0o600
+
+
+def test_github_mailbox_config_removal_removes_all_mailbox_values(
+    tmp_path: Path,
+) -> None:
+    from runner_mcp.github_mailbox import GITHUB_MAILBOX_ENV_KEYS
+    from runner_mcp.onboarding import load_env_file
+
+    paths, _ = installed(tmp_path)
+    configure_github_mailbox(
+        paths.config_dir,
+        repository="example/private-mailbox",
+        request_ref="runner-control",
+        result_ref="runner-results",
+        token="example-token-placeholder",
+    )
+
+    remove_github_mailbox(paths.config_dir)
+
+    values = load_env_file(paths.env_file)
+    assert not (set(values) & GITHUB_MAILBOX_ENV_KEYS)
+    assert github_mailbox_config_status(paths.config_dir) == {
+        "configured": False
+    }
+
+
+def test_github_mailbox_status_fails_closed_on_partial_config(
+    tmp_path: Path,
+) -> None:
+    paths, _ = installed(tmp_path)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_MCP_GITHUB_REPOSITORY=example/private-mailbox\n")
+
+    with pytest.raises(ConfigManagerError, match="incomplete"):
+        github_mailbox_config_status(paths.config_dir)
+
+
+@pytest.mark.parametrize(
+    ("repository", "token"),
+    [
+        ("not-a-repository", "example-token-placeholder"),
+        ("example/private-mailbox", "bad token"),
+    ],
+)
+def test_github_mailbox_config_rejects_invalid_values_without_write(
+    tmp_path: Path,
+    repository: str,
+    token: str,
+) -> None:
+    paths, _ = installed(tmp_path)
+    before = paths.env_file.read_text(encoding="utf-8")
+
+    with pytest.raises(ConfigManagerError):
+        configure_github_mailbox(
+            paths.config_dir,
+            repository=repository,
+            request_ref="runner-control",
+            result_ref="runner-results",
+            token=token,
+        )
+
+    assert paths.env_file.read_text(encoding="utf-8") == before

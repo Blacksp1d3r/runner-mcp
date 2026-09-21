@@ -572,3 +572,51 @@ def test_watcher_rejects_unsupported_stale_threshold(tmp_path) -> None:
             cursor_store=cursor,
             stale_after_seconds=29,
         )
+
+
+def test_cycle_can_skip_heartbeat_without_degrading(tmp_path) -> None:
+    watcher, transport, executor, _ledger, cursor = _watcher(tmp_path)
+    cursor.initialize(transport.head)
+
+    outcome = watcher.run_cycle(publish_heartbeat=False)
+
+    assert outcome.state == GitHubWatcherCycleState.IDLE
+    assert outcome.heartbeat.state == WatcherState.HEALTHY
+    assert outcome.heartbeat_published is False
+    assert transport.heartbeats == []
+    assert executor.calls == []
+
+
+def test_processed_cycle_can_skip_heartbeat_without_degrading(tmp_path) -> None:
+    watcher, transport, executor, _ledger, cursor = _watcher(tmp_path)
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-715"]
+    transport.requests["req-715"] = _request("req-715")
+
+    outcome = watcher.run_cycle(publish_heartbeat=False)
+
+    assert outcome.state == GitHubWatcherCycleState.PROCESSED
+    assert outcome.processed_requests == 1
+    assert outcome.heartbeat_published is False
+    assert transport.heartbeats == []
+    assert executor.calls == [("list_projects", ())]
+    assert cursor.read() == transport.head
+
+
+def test_recovery_cycle_can_skip_heartbeat_without_changing_recovery_state(
+    tmp_path,
+) -> None:
+    watcher, transport, executor, ledger, cursor = _watcher(tmp_path)
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-716"]
+    transport.requests["req-716"] = _request("req-716")
+    request = parse_bridge_request(transport.requests["req-716"])
+    ledger.claim(request)
+
+    outcome = watcher.run_cycle(publish_heartbeat=False)
+
+    assert outcome.state == GitHubWatcherCycleState.RECOVERY_REQUIRED
+    assert outcome.heartbeat.state == WatcherState.DEGRADED
+    assert outcome.heartbeat_published is False
+    assert transport.heartbeats == []
+    assert executor.calls == []

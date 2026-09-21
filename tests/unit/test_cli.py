@@ -412,3 +412,278 @@ def test_guide_command_is_path_safe_and_actionable(
     assert str(paths.config_dir) not in captured.out
     assert token not in captured.out
     assert token not in captured.err
+
+
+def test_github_mailbox_cli_configure_uses_hidden_token(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    token = "example-token-placeholder"
+    repository = "example/private-mailbox"
+    monkeypatch.setattr("runner_mcp.cli.getpass.getpass", lambda _: token)
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "configure",
+            "--repository",
+            repository,
+        ]
+    )
+    configured = capsys.readouterr()
+
+    assert result == 0
+    assert token not in configured.out
+    assert token not in configured.err
+    assert repository not in configured.out
+    assert "stored privately" in configured.out
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "status",
+        ]
+    )
+    status = capsys.readouterr()
+    assert result == 0
+    assert status.out.strip() == "configured"
+    assert token not in status.out
+    assert repository not in status.out
+
+
+def test_github_mailbox_cli_remove_requires_explicit_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(
+        "runner_mcp.cli.getpass.getpass",
+        lambda _: "example-token-placeholder",
+    )
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "configure",
+            "--repository",
+            "example/private-mailbox",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    monkeypatch.setattr("builtins.input", lambda _: "no")
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "remove",
+        ]
+    ) == 2
+    denied = capsys.readouterr()
+    assert "cancelled" in denied.err.lower()
+
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _: "REMOVE GITHUB MAILBOX",
+    )
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "remove",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "status",
+        ]
+    ) == 0
+    status = capsys.readouterr()
+    assert status.out.strip() == "not configured"
+
+
+def test_github_watcher_cli_bootstrap_and_once_are_safe(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.bridge_resilience import WatcherHeartbeat, WatcherState
+    from runner_mcp.github_watcher import (
+        GitHubWatcherCycleOutcome,
+        GitHubWatcherCycleState,
+    )
+
+    paths, _ = install_config(tmp_path)
+
+    class FakeRuntime:
+        def __init__(self) -> None:
+            self.bootstrap_calls = 0
+            self.once_calls = 0
+
+        def bootstrap(self) -> None:
+            self.bootstrap_calls += 1
+
+        def run_once(self):
+            self.once_calls += 1
+            return GitHubWatcherCycleOutcome(
+                state=GitHubWatcherCycleState.PROCESSED,
+                discovered_requests=1,
+                processed_requests=1,
+                reconciled_requests=0,
+                recovery_attention=0,
+                heartbeat=WatcherHeartbeat(
+                    state=WatcherState.HEALTHY,
+                    pending_requests=0,
+                    stale_requests=0,
+                    recovery_attention=0,
+                    oldest_pending_seconds=None,
+                ),
+                heartbeat_published=True,
+            )
+
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: runtime,
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "bootstrap",
+        ]
+    ) == 0
+    bootstrap = capsys.readouterr()
+    assert runtime.bootstrap_calls == 1
+    assert "Historical mailbox requests were not replayed." in bootstrap.out
+    assert str(paths.config_dir) not in bootstrap.out
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "once",
+        ]
+    ) == 0
+    once = capsys.readouterr()
+    assert runtime.once_calls == 1
+    assert (
+        "state=processed discovered=1 processed=1 reconciled=0 attention=0"
+        in once.out
+    )
+    assert str(paths.config_dir) not in once.out
+
+
+def test_github_watcher_cli_once_returns_nonzero_for_recovery(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.bridge_resilience import WatcherHeartbeat, WatcherState
+    from runner_mcp.github_watcher import (
+        GitHubWatcherCycleOutcome,
+        GitHubWatcherCycleState,
+    )
+
+    paths, _ = install_config(tmp_path)
+
+    class FakeRuntime:
+        def run_once(self):
+            return GitHubWatcherCycleOutcome(
+                state=GitHubWatcherCycleState.RECOVERY_REQUIRED,
+                discovered_requests=1,
+                processed_requests=0,
+                reconciled_requests=0,
+                recovery_attention=1,
+                heartbeat=WatcherHeartbeat(
+                    state=WatcherState.DEGRADED,
+                    pending_requests=1,
+                    stale_requests=0,
+                    recovery_attention=1,
+                    oldest_pending_seconds=0,
+                ),
+                heartbeat_published=True,
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "once",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "state=recovery_required" in captured.out
+    assert "attention=1" in captured.out
+
+
+def test_github_watcher_cli_run_passes_bounded_intervals(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class FakeRuntime:
+        def __init__(self) -> None:
+            self.args = None
+
+        def run_forever(
+            self,
+            *,
+            poll_seconds: float,
+            heartbeat_seconds: float,
+        ) -> None:
+            self.args = (poll_seconds, heartbeat_seconds)
+            raise KeyboardInterrupt
+
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: runtime,
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "run",
+            "--poll-seconds",
+            "7",
+            "--heartbeat-seconds",
+            "180",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert runtime.args == (7.0, 180.0)
+    assert "running" in captured.out.lower()
+    assert "stopped" in captured.out.lower()

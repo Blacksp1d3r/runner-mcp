@@ -217,30 +217,37 @@ class GitHubMailboxWatcher:
         head_sha = self._transport.request_head_sha()
         self._cursor_store.initialize(head_sha)
 
-    def run_cycle(self) -> GitHubWatcherCycleOutcome:
+    def run_cycle(
+        self,
+        *,
+        publish_heartbeat: bool = True,
+    ) -> GitHubWatcherCycleOutcome:
         try:
             cursor = self._cursor_store.read()
         except GitHubWatcherError:
-            return self._degraded_outcome()
+            return self._degraded_outcome(publish_heartbeat=publish_heartbeat)
 
         if cursor is None:
-            return self._uninitialized_outcome()
+            return self._uninitialized_outcome(publish_heartbeat=publish_heartbeat)
 
         try:
             current_head = self._transport.request_head_sha()
         except GitHubMailboxTransportError:
-            return self._degraded_outcome()
+            return self._degraded_outcome(publish_heartbeat=publish_heartbeat)
 
         if current_head == cursor:
             heartbeat = assess_watcher_health(
                 [],
                 stale_after_seconds=self._stale_after_seconds,
             )
-            published = self._publish_heartbeat(heartbeat)
+            heartbeat_ok, published = self._heartbeat_delivery(
+                heartbeat,
+                publish_heartbeat=publish_heartbeat,
+            )
             return GitHubWatcherCycleOutcome(
                 state=(
                     GitHubWatcherCycleState.IDLE
-                    if published
+                    if heartbeat_ok
                     else GitHubWatcherCycleState.DEGRADED
                 ),
                 discovered_requests=0,
@@ -257,7 +264,7 @@ class GitHubMailboxWatcher:
                 head_sha=current_head,
             )
         except (GitHubMailboxTransportError, ValueError):
-            return self._degraded_outcome()
+            return self._degraded_outcome(publish_heartbeat=publish_heartbeat)
 
         observations: list[RecoveryObservation] = []
         processed = 0
@@ -386,9 +393,12 @@ class GitHubMailboxWatcher:
             stale_after_seconds=self._stale_after_seconds,
             transport_healthy=cursor_advanced or bool(observations),
         )
-        published = self._publish_heartbeat(heartbeat)
+        heartbeat_ok, published = self._heartbeat_delivery(
+            heartbeat,
+            publish_heartbeat=publish_heartbeat,
+        )
 
-        if not published:
+        if not heartbeat_ok:
             state = GitHubWatcherCycleState.DEGRADED
         elif observations:
             state = GitHubWatcherCycleState.RECOVERY_REQUIRED
@@ -407,22 +417,36 @@ class GitHubMailboxWatcher:
             heartbeat_published=published,
         )
 
-    def _publish_heartbeat(self, heartbeat: WatcherHeartbeat) -> bool:
+    def _heartbeat_delivery(
+        self,
+        heartbeat: WatcherHeartbeat,
+        *,
+        publish_heartbeat: bool,
+    ) -> tuple[bool, bool]:
+        if not publish_heartbeat:
+            return True, False
         try:
             self._transport.publish_heartbeat(
                 serialize_watcher_heartbeat(heartbeat)
             )
         except (BridgeResilienceError, GitHubMailboxTransportError):
-            return False
-        return True
+            return False, False
+        return True, True
 
-    def _uninitialized_outcome(self) -> GitHubWatcherCycleOutcome:
+    def _uninitialized_outcome(
+        self,
+        *,
+        publish_heartbeat: bool,
+    ) -> GitHubWatcherCycleOutcome:
         heartbeat = assess_watcher_health(
             [],
             stale_after_seconds=self._stale_after_seconds,
             transport_healthy=False,
         )
-        published = self._publish_heartbeat(heartbeat)
+        _heartbeat_ok, published = self._heartbeat_delivery(
+            heartbeat,
+            publish_heartbeat=publish_heartbeat,
+        )
         return GitHubWatcherCycleOutcome(
             state=GitHubWatcherCycleState.UNINITIALIZED,
             discovered_requests=0,
@@ -433,13 +457,20 @@ class GitHubMailboxWatcher:
             heartbeat_published=published,
         )
 
-    def _degraded_outcome(self) -> GitHubWatcherCycleOutcome:
+    def _degraded_outcome(
+        self,
+        *,
+        publish_heartbeat: bool,
+    ) -> GitHubWatcherCycleOutcome:
         heartbeat = assess_watcher_health(
             [],
             stale_after_seconds=self._stale_after_seconds,
             transport_healthy=False,
         )
-        published = self._publish_heartbeat(heartbeat)
+        _heartbeat_ok, published = self._heartbeat_delivery(
+            heartbeat,
+            publish_heartbeat=publish_heartbeat,
+        )
         return GitHubWatcherCycleOutcome(
             state=GitHubWatcherCycleState.DEGRADED,
             discovered_requests=0,

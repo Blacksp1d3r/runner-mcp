@@ -25,6 +25,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - fixed-host GitHub mailbox transport with strict JSON/base64 validation and create-once results;
 - incremental GitHub mailbox watcher with explicit bootstrap and restart-safe cursor reconciliation;
 - loopback-only MCP bridge executor with strict JSON/SSE parsing and bounded test polling;
+- private-config GitHub watcher runtime and CLI with explicit bootstrap and separate polling/heartbeat cadence;
 - interactive setup, doctor, guide and configuration-management CLI;
 - public CI for this public repository;
 - Fools2Tools project identity;
@@ -43,6 +44,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - GitHub mailbox transport failures are classified and kept inside the persistence/recovery boundary;
 - watcher restarts reuse cursor/replay state and never treat process restart as permission to replay actions;
 - bridge execution cannot target a non-loopback MCP endpoint and never fetches test logs;
+- GitHub mailbox secrets stay in the private 0600 runtime environment and are preserved across setup overwrite;
 - production mutations remain disabled;
 - database restore remains unimplemented rather than being automated unsafely.
 
@@ -52,7 +54,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - guided private-tunnel/reverse-proxy onboarding is not yet one-click;
 - untrusted public-fork code is not sandboxed for execution on a privileged persistent runner;
 - PostgreSQL restore/PITR orchestration and automated retention pruning are not implemented;
-- the private mailbox watcher still needs to migrate fully to the shared public protocol implementation.
+- the existing private pilot watcher still needs to switch to the shared public runtime before its duplicate pilot execution logic can be removed.
 
 ## Release format
 

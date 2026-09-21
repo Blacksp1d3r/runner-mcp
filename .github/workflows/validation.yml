@@ -72,3 +72,24 @@ jobs:
       - name: Run clean demo end to end
         shell: bash
         run: bash scripts/demo-smoke.sh
+
+
+  release-artifact:
+    name: Built release artifact
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Build and install release artifacts
+        shell: bash
+        run: bash scripts/release-artifact-smoke.sh

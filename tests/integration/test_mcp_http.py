@@ -327,6 +327,7 @@ def test_mcp_controlled_test_job_lifecycle(tmp_path: Path) -> None:
                 "name": "quick",
                 "timeout_seconds": 5,
                 "max_log_bytes": 4096,
+                "runtime": "default",
                 "parallel_safe": False,
             }
         ]

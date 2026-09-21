@@ -163,3 +163,96 @@ def test_source_sync_rejects_non_commit_reference(tmp_path: Path) -> None:
     synchronizer, _root = _synchronizer(tmp_path)
     with pytest.raises(SourceControlError, match="full Git object ID"):
         synchronizer.sync_project("demo", "main")
+
+
+def test_main_only_source_sync_rejects_commit_only_on_feature_ref(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    synchronizer, _root = _synchronizer(tmp_path)
+    before = "1" * 40
+    target = "2" * 40
+    state = {"head": before}
+
+    def fake_run_git(root, arguments, **kwargs):
+        if arguments == ["rev-parse", "--is-inside-work-tree"]:
+            return "true"
+        if arguments == ["status", "--porcelain=v1", "--untracked-files=normal"]:
+            return ""
+        if arguments == ["rev-parse", "--verify", "HEAD"]:
+            return state["head"]
+        if arguments == ["remote", "get-url", "origin"]:
+            return "https://github.com/example/demo.git"
+        if arguments == [
+            "fetch",
+            "--prune",
+            "--no-tags",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*",
+        ]:
+            return ""
+        if arguments == ["rev-parse", "--verify", f"{target}^{{commit}}"]:
+            return target
+        if arguments == [
+            "for-each-ref",
+            "--format=%(refname)",
+            f"--contains={target}",
+            "refs/remotes/origin/",
+        ]:
+            return "refs/remotes/origin/feature/test"
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr("runner_mcp.source_control._run_git", fake_run_git)
+
+    with pytest.raises(SourceControlError, match="required remote ref"):
+        synchronizer.sync_project_main_commit("demo", target)
+
+    assert state["head"] == before
+
+
+def test_main_only_source_sync_accepts_origin_main_commit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    synchronizer, _root = _synchronizer(tmp_path)
+    before = "1" * 40
+    target = "2" * 40
+    state = {"head": before}
+
+    def fake_run_git(root, arguments, **kwargs):
+        if arguments == ["rev-parse", "--is-inside-work-tree"]:
+            return "true"
+        if arguments == ["status", "--porcelain=v1", "--untracked-files=normal"]:
+            return ""
+        if arguments == ["rev-parse", "--verify", "HEAD"]:
+            return state["head"]
+        if arguments == ["remote", "get-url", "origin"]:
+            return "https://github.com/example/demo.git"
+        if arguments == [
+            "fetch",
+            "--prune",
+            "--no-tags",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*",
+        ]:
+            return ""
+        if arguments == ["rev-parse", "--verify", f"{target}^{{commit}}"]:
+            return target
+        if arguments == [
+            "for-each-ref",
+            "--format=%(refname)",
+            f"--contains={target}",
+            "refs/remotes/origin/",
+        ]:
+            return "refs/remotes/origin/main\nrefs/remotes/origin/feature/test"
+        if arguments == ["checkout", "--detach", "--quiet", target]:
+            state["head"] = target
+            return ""
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr("runner_mcp.source_control._run_git", fake_run_git)
+
+    result = synchronizer.sync_project_main_commit("demo", target)
+
+    assert result["commit"] == target
+    assert result["changed"] is True

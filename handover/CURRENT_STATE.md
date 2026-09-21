@@ -1,16 +1,16 @@
 ## Controlled multi-project concurrency — 2026-09-21
 
-Current scale work adds bounded mailbox concurrency, fair per-project persistent test queues, immediate test job IDs, per-project and per-profile parallel-safety controls, bounded backpressure, and safe queue/worker/job observability. The default remains conservative: two global test workers, one test per project unless explicitly opted into parallel-safe execution, and bounded mailbox workers/in-flight work. High-risk mailbox actions remain excluded.
+Bounded fair multi-project concurrency is merged and validated. Runner MCP now separates mailbox acceptance from durable test execution, maintains fair logical per-project queues, returns immediate job IDs, exposes safe queue/worker/job state, and keeps same-project overlap opt-in only. High-risk mailbox actions remain excluded.
 
-The implementation is being consolidated on the `scale-fair-concurrency` branch/PR. Public documentation contains no deployment-specific infrastructure values.
+The authenticated MCP request limit was also raised from 60 to a still-bounded 600 requests per minute so concurrent mailbox workers and normal status polling do not hit a transport bottleneck before worker or queue capacity. Test-worker, project-lock and queue limits remain independent safety controls.
 
 # Current state
 
-Date: 2026-09-20
+Date: 2026-09-21
 
 ## Status
 
-Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phase 3.8.1 adds a strict public task-completion event contract with deterministic notification IDs. Phase 3.8.2 adds watcher heartbeat and restart-recovery semantics. Phase 3.8.3 adds the transport-neutral bridge processor. Phase 3.8.4 adds the hardened fixed-host GitHub mailbox transport. Phase 3.8.5 adds the incremental restart-safe watcher coordinator. Phase 3.8.6 adds the loopback-only MCP bridge executor. Phase 3.8.7 now adds the private-config watcher runtime and CLI on the current feature branch. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
+Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phases 3.8.1 through 3.8.7 add completion events, restart safety, the transport-neutral processor, hardened GitHub transport, incremental watcher coordination, the loopback MCP executor and private-config watcher runtime. Phase 3.8.8 adds bounded fair multi-project concurrency. The remaining operational step is migrating the existing private pilot watcher to the shared runtime and proving restart/reconciliation end to end. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
 
 Phase 0:
 - repository structure defined;
@@ -303,10 +303,12 @@ Phase 9 human approval gates:
 
 ## Validation
 
-Phase 3.8.5 watcher-coordinator validation is green:
+Current validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 446 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 566 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- merged request-capacity change passed public CI including whitespace checks;
+- live private bridge validation passed both Runner MCP lint and unit profiles;
 - git diff whitespace check: green;
 - HTTP auth/rate-limit tests: green;
 - authenticated MCP handshake/tool-discovery test: green;
@@ -369,7 +371,7 @@ Phase 3.8.5 watcher-coordinator validation is green:
 
 ## Next steps
 
-Validate and merge the private-config watcher runtime, then migrate the private pilot watcher to `runner-mcp github-watcher run` using its existing private mailbox values. Bootstrap explicitly at the current request head before enabling continuous polling. Prove one fresh test request, strict result publication, completion notification and restart/reconciliation cycle without replaying completed work. Remove obsolete private pilot execution logic only after that proof. Afterward, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
+Migrate the private pilot watcher to `runner-mcp github-watcher run` once its private GitHub credential is configured. Bootstrap explicitly at the current request head before enabling continuous polling. Prove fresh concurrent requests, strict result publication, completion notification and a restart/reconciliation cycle without replaying completed work. Remove obsolete private pilot execution logic only after that proof. Afterward, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

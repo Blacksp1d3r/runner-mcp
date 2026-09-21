@@ -269,6 +269,18 @@ Phase 3.8.9 bounded operational bridge:
 - deployment/rollback status accepts only validated opaque job IDs;
 - restore/PITR, production mutations, arbitrary shell/argv/path/env/unit/tool input remain unavailable.
 
+Phase 3.8.10 Runner MCP self-operations:
+- runtime status and self-update are explicit operations, not generic package/process control;
+- update accepts only a full lowercase commit for the configured canonical Runner MCP repository;
+- the target commit must be reachable from origin/main and the checkout is pinned detached;
+- existing lint and unit profiles are mandatory gates before install;
+- installation is fixed to the active Python environment, local checked source, --no-deps and --no-build-isolation;
+- source commit is rechecked immediately before install;
+- private update jobs survive status polling and nonterminal jobs become interrupted after process restart;
+- server/watcher/notifier activation uses validated fixed self-reexec argv, so future updates do not require Desktop Commander, SSH process control, systemd or cron;
+- the bridge exposes only runtime_status, self_update(commit) and self_update_status(job_id);
+- arbitrary package-manager arguments, process commands, paths, refs and repositories remain excluded.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;

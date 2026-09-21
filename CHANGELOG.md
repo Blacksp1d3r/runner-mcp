@@ -27,6 +27,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - loopback-only MCP bridge executor with strict JSON/SSE parsing and bounded test polling;
 - private-config GitHub watcher runtime and CLI with explicit bootstrap and separate polling/heartbeat cadence;
 - bounded fair multi-project scheduling with persistent project queues, immediate test job IDs, safe capacity observability and explicit parallel-safe opt-in;
+- scale-aware bounded MCP request capacity sized for concurrent mailbox workers and status polling;
 - interactive setup, doctor, guide and configuration-management CLI;
 - public CI for this public repository;
 - Fools2Tools project identity;

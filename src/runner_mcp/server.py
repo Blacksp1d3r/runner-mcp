@@ -47,7 +47,7 @@ class Settings:
     resource_url: str
     projects_config: Path
     audit_log: Path
-    rate_limit_per_minute: int = 60
+    rate_limit_per_minute: int = 600
     retention_policy: RetentionPolicy = field(default_factory=RetentionPolicy)
     operator_stop_file: Path | None = None
     retention_confirmed: bool = True
@@ -72,7 +72,7 @@ class Settings:
             raise RuntimeError("Authentication issuer and MCP resource URL are required")
 
         try:
-            rate_limit = int(values.get("RUNNER_MCP_RATE_LIMIT_PER_MINUTE", "60"))
+            rate_limit = int(values.get("RUNNER_MCP_RATE_LIMIT_PER_MINUTE", "600"))
         except ValueError as exc:
             raise RuntimeError("RUNNER_MCP_RATE_LIMIT_PER_MINUTE must be an integer") from exc
         if not 1 <= rate_limit <= 6000:

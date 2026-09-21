@@ -128,6 +128,7 @@ def test_invalid_mailbox_capacity_fails_startup(
     [
         ("RUNNER_MCP_OPERATOR_STOP_FILE", "relative/stop"),
         ("RUNNER_MCP_TEST_JOBS_ROOT", "relative/jobs"),
+        ("RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH", "relative/browsers"),
     ],
 )
 def test_operator_paths_must_be_absolute(
@@ -140,6 +141,14 @@ def test_operator_paths_must_be_absolute(
 
     with pytest.raises(RuntimeError, match="absolute path"):
         Settings.from_env()
+
+
+def test_playwright_browser_path_is_optional(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.delenv("RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH", raising=False)
+    assert Settings.from_env().playwright_browsers_path is None
 
 
 def test_database_backup_root_defaults_to_unconfigured(

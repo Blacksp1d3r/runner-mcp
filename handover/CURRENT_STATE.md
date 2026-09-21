@@ -4,7 +4,7 @@ Date: 2026-09-20
 
 ## Status
 
-Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phase 3.8.1 adds a strict public task-completion event contract with deterministic notification IDs. Phase 3.8.2 adds watcher heartbeat and restart-recovery semantics. Phase 3.8.3 adds the transport-neutral bridge processor. Phase 3.8.4 adds the hardened fixed-host GitHub mailbox transport. Phase 3.8.5 adds the incremental restart-safe watcher coordinator. Phase 3.8.6 now adds the loopback-only MCP bridge executor on the current feature branch. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
+Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phase 3.8.1 adds a strict public task-completion event contract with deterministic notification IDs. Phase 3.8.2 adds watcher heartbeat and restart-recovery semantics. Phase 3.8.3 adds the transport-neutral bridge processor. Phase 3.8.4 adds the hardened fixed-host GitHub mailbox transport. Phase 3.8.5 adds the incremental restart-safe watcher coordinator. Phase 3.8.6 adds the loopback-only MCP bridge executor. Phase 3.8.7 now adds the private-config watcher runtime and CLI on the current feature branch. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
 
 Phase 0:
 - repository structure defined;
@@ -207,6 +207,19 @@ Phase 3.8.6 loopback MCP bridge executor:
 - terminal run_tests output contains only project, suite and status;
 - polling and total wait durations are bounded.
 
+Phase 3.8.7 private-config watcher runtime and CLI:
+- private GitHub repository/refs/token are stored only in the 0600 runtime environment;
+- mailbox configure/status/remove use existing atomic private-config locking;
+- status output never returns repository, refs or token;
+- token entry uses a hidden prompt and there is no token CLI argument;
+- setup overwrite preserves DB and mailbox secrets, including during bearer-token rotation;
+- private replay/cursor files are derived inside the private config directory;
+- explicit watcher bootstrap skips historical requests;
+- one-cycle watcher output is limited to safe state/counts;
+- continuous watcher polling and heartbeat cadence are separately bounded;
+- heartbeat is slower than request polling by default and is refreshed on state transitions;
+- heartbeat failure remains independent from completed action execution.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;
@@ -350,7 +363,7 @@ Phase 3.8.5 watcher-coordinator validation is green:
 
 ## Next steps
 
-Validate and merge the loopback MCP bridge executor, then add the private runtime bootstrap that wires the public GitHub transport, watcher, replay ledger, cursor and local executor together. Migrate the private pilot watcher to that bootstrap and prove one fresh request plus a restart/recovery cycle without replaying completed work. Keep completion notification independent and idempotent. After that, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
+Validate and merge the private-config watcher runtime, then migrate the private pilot watcher to `runner-mcp github-watcher run` using its existing private mailbox values. Bootstrap explicitly at the current request head before enabling continuous polling. Prove one fresh test request, strict result publication, completion notification and restart/reconciliation cycle without replaying completed work. Remove obsolete private pilot execution logic only after that proof. Afterward, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

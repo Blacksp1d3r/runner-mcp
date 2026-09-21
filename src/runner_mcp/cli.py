@@ -18,6 +18,8 @@ from .config_manager import (
     add_project,
     add_service_config,
     add_test_profile,
+    configure_github_mailbox,
+    github_mailbox_config_status,
     list_database_configs,
     list_deployment_configs,
     list_project_adapters,
@@ -27,10 +29,16 @@ from .config_manager import (
     project_capabilities,
     remove_database_config,
     remove_deployment_config,
+    remove_github_mailbox,
     remove_migration_config,
     remove_project,
     remove_service_config,
     remove_test_profile,
+)
+from .github_runtime import (
+    DEFAULT_HEARTBEAT_SECONDS,
+    DEFAULT_POLL_SECONDS,
+    GitHubWatcherRuntime,
 )
 from .onboarding import (
     OnboardingError,
@@ -617,6 +625,84 @@ def cmd_approval(args: argparse.Namespace) -> int:
     raise ApprovalError("Unknown approval action")
 
 
+def cmd_github_mailbox(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.github_mailbox_action == "status":
+        result = github_mailbox_config_status(config_dir)
+        print("configured" if result["configured"] else "not configured")
+        return 0
+
+    if args.github_mailbox_action == "configure":
+        repository = args.repository or input(
+            "Private GitHub mailbox repository (owner/name): "
+        ).strip()
+        if not repository:
+            raise ConfigManagerError("GitHub mailbox repository is required")
+        token = getpass.getpass("GitHub mailbox token: ").strip()
+        if not token:
+            raise ConfigManagerError("GitHub mailbox token is required")
+        configure_github_mailbox(
+            config_dir,
+            repository=repository,
+            request_ref=args.request_ref,
+            result_ref=args.result_ref,
+            token=token,
+        )
+        print("GitHub mailbox configured.")
+        print("The token was stored privately and was not displayed.")
+        return 0
+
+    if args.github_mailbox_action == "remove":
+        confirmation = input(
+            "Type REMOVE GITHUB MAILBOX to continue: "
+        ).strip()
+        if confirmation != "REMOVE GITHUB MAILBOX":
+            raise ConfigManagerError("GitHub mailbox removal cancelled")
+        remove_github_mailbox(config_dir)
+        print("GitHub mailbox configuration removed.")
+        return 0
+
+    raise ConfigManagerError("Unknown GitHub mailbox configuration action")
+
+
+def cmd_github_watcher(args: argparse.Namespace) -> int:
+    runtime = GitHubWatcherRuntime.from_private_config(
+        _config_dir(args.config_dir)
+    )
+
+    if args.github_watcher_action == "bootstrap":
+        runtime.bootstrap()
+        print("GitHub watcher initialized at the current request head.")
+        print("Historical mailbox requests were not replayed.")
+        return 0
+
+    if args.github_watcher_action == "once":
+        outcome = runtime.run_once()
+        print(
+            "state="
+            f"{outcome.state.value} "
+            f"discovered={outcome.discovered_requests} "
+            f"processed={outcome.processed_requests} "
+            f"reconciled={outcome.reconciled_requests} "
+            f"attention={outcome.recovery_attention}"
+        )
+        return 0 if outcome.state.value in {"idle", "processed"} else 2
+
+    if args.github_watcher_action == "run":
+        print("Runner MCP GitHub watcher running.")
+        try:
+            runtime.run_forever(
+                poll_seconds=args.poll_seconds,
+                heartbeat_seconds=args.heartbeat_seconds,
+            )
+        except KeyboardInterrupt:
+            print("Runner MCP GitHub watcher stopped.")
+            return 0
+
+    raise RuntimeError("Unknown GitHub watcher action")
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     paths, settings, registry = read_private_runtime(config_dir)
@@ -897,6 +983,73 @@ def build_parser() -> argparse.ArgumentParser:
     )
     approval_approve.add_argument("approval_id")
     approval_approve.set_defaults(func=cmd_approval)
+
+    github_mailbox = subparsers.add_parser(
+        "github-mailbox",
+        help="Configure the private GitHub mailbox transport.",
+    )
+    github_mailbox_sub = github_mailbox.add_subparsers(
+        dest="github_mailbox_action",
+        required=True,
+    )
+    github_mailbox_status = github_mailbox_sub.add_parser(
+        "status",
+        help="Show whether the private GitHub mailbox is configured.",
+    )
+    github_mailbox_status.set_defaults(func=cmd_github_mailbox)
+    github_mailbox_configure = github_mailbox_sub.add_parser(
+        "configure",
+        help="Configure the private GitHub mailbox without exposing its token.",
+    )
+    github_mailbox_configure.add_argument("--repository")
+    github_mailbox_configure.add_argument(
+        "--request-ref",
+        default="runner-control",
+    )
+    github_mailbox_configure.add_argument(
+        "--result-ref",
+        default="runner-results",
+    )
+    github_mailbox_configure.set_defaults(func=cmd_github_mailbox)
+    github_mailbox_remove = github_mailbox_sub.add_parser(
+        "remove",
+        help="Remove the private GitHub mailbox configuration.",
+    )
+    github_mailbox_remove.set_defaults(func=cmd_github_mailbox)
+
+    github_watcher = subparsers.add_parser(
+        "github-watcher",
+        help="Run the private GitHub mailbox watcher.",
+    )
+    github_watcher_sub = github_watcher.add_subparsers(
+        dest="github_watcher_action",
+        required=True,
+    )
+    github_watcher_bootstrap = github_watcher_sub.add_parser(
+        "bootstrap",
+        help="Start after the current request head without replaying history.",
+    )
+    github_watcher_bootstrap.set_defaults(func=cmd_github_watcher)
+    github_watcher_once = github_watcher_sub.add_parser(
+        "once",
+        help="Process one incremental mailbox cycle.",
+    )
+    github_watcher_once.set_defaults(func=cmd_github_watcher)
+    github_watcher_run = github_watcher_sub.add_parser(
+        "run",
+        help="Continuously poll the mailbox with a slower heartbeat cadence.",
+    )
+    github_watcher_run.add_argument(
+        "--poll-seconds",
+        type=float,
+        default=DEFAULT_POLL_SECONDS,
+    )
+    github_watcher_run.add_argument(
+        "--heartbeat-seconds",
+        type=float,
+        default=DEFAULT_HEARTBEAT_SECONDS,
+    )
+    github_watcher_run.set_defaults(func=cmd_github_watcher)
 
     serve = subparsers.add_parser(
         "serve",

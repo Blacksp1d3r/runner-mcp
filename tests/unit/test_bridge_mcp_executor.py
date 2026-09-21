@@ -385,7 +385,7 @@ def test_executor_exposes_only_fixed_bridge_calls() -> None:
             [{"name": "unit"}],
         ]
     )
-    executor._client = fake
+    executor._local.client = fake
 
     assert executor.list_projects() == ["p1"]
     assert executor.safety_status() == {"stop_active": False}
@@ -402,58 +402,64 @@ def test_executor_exposes_only_fixed_bridge_calls() -> None:
     ]
 
 
-def test_run_tests_polls_to_terminal_without_fetching_log(monkeypatch) -> None:
+def test_run_tests_returns_immediate_job_without_polling() -> None:
     executor = LocalMCPBridgeExecutor(_config())
     fake = FakeClient(
         [
-            {"job_id": "job-123"},
-            {"status": "queued"},
-            {"status": "running"},
-            {"status": "passed"},
+            {
+                "job_id": "a" * 32,
+                "project": "demo",
+                "suite": "unit",
+                "status": "queued",
+            }
         ]
     )
-    executor._client = fake
-    sleeps: list[float] = []
-    monkeypatch.setattr(
-        "runner_mcp.bridge_mcp_executor.time.sleep",
-        sleeps.append,
-    )
+    executor._local.client = fake
 
-    result = executor.run_tests_to_completion("demo", "unit")
+    result = executor.run_tests("demo", "unit")
 
-    assert result == {
-        "project": "demo",
-        "suite": "unit",
-        "status": "passed",
-    }
+    assert result["job_id"] == "a" * 32
+    assert result["status"] == "queued"
     assert fake.calls == [
         ("run_tests", {"project": "demo", "suite": "unit"}),
-        ("test_status", {"job_id": "job-123"}),
-        ("test_status", {"job_id": "job-123"}),
-        ("test_status", {"job_id": "job-123"}),
     ]
-    assert all(name != "get_test_log" for name, _args in fake.calls)
-    assert sleeps == [0.5, 0.5]
 
 
-@pytest.mark.parametrize(
-    "terminal",
-    ["failed", "timed_out", "stopped", "cancelled", "interrupted"],
-)
-def test_run_tests_returns_all_terminal_states(monkeypatch, terminal: str) -> None:
+def test_queue_and_worker_status_use_explicit_safe_tools() -> None:
     executor = LocalMCPBridgeExecutor(_config())
-    executor._client = FakeClient(
+    fake = FakeClient(
         [
-            {"job_id": "job-123"},
-            {"status": terminal},
+            {"queued_jobs": 3, "running_jobs": 2},
+            {"workers": 4, "available_workers": 2},
         ]
     )
-    monkeypatch.setattr(
-        "runner_mcp.bridge_mcp_executor.time.sleep",
-        lambda _seconds: None,
-    )
+    executor._local.client = fake
 
-    assert executor.run_tests_to_completion("demo", "unit")["status"] == terminal
+    assert executor.queue_status()["queued_jobs"] == 3
+    assert executor.worker_status()["workers"] == 4
+    assert fake.calls == [
+        ("queue_status", {}),
+        ("worker_status", {}),
+    ]
+
+
+def test_job_status_and_cancel_job_use_only_job_identifier() -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    job_id = "b" * 32
+    fake = FakeClient(
+        [
+            {"job_id": job_id, "status": "running"},
+            {"job_id": job_id, "status": "cancelled"},
+        ]
+    )
+    executor._local.client = fake
+
+    assert executor.job_status(job_id)["status"] == "running"
+    assert executor.cancel_job(job_id)["status"] == "cancelled"
+    assert fake.calls == [
+        ("job_status", {"job_id": job_id}),
+        ("cancel_job", {"job_id": job_id}),
+    ]
 
 
 @pytest.mark.parametrize(
@@ -462,55 +468,40 @@ def test_run_tests_returns_all_terminal_states(monkeypatch, terminal: str) -> No
         None,
         {},
         {"job_id": ""},
-        {"job_id": "bad id"},
-        {"job_id": 123},
+        {"job_id": "bad id", "status": "queued"},
+        {"job_id": 123, "status": "queued"},
+        {"job_id": "a" * 32},
+        {"job_id": "a" * 32, "status": 1},
     ],
 )
-def test_run_tests_rejects_invalid_job_identifier(started) -> None:
+def test_run_tests_rejects_invalid_job_payload(started) -> None:
     executor = LocalMCPBridgeExecutor(_config())
-    executor._client = FakeClient([started])
+    executor._local.client = FakeClient([started])
 
-    with pytest.raises(BridgeExecutionAdapterError, match="job identifier|start result"):
-        executor.run_tests_to_completion("demo", "unit")
-
-
-@pytest.mark.parametrize(
-    "status_payload",
-    [
-        None,
-        {},
-        {"status": 1},
-        {"status": "unknown"},
-    ],
-)
-def test_run_tests_rejects_invalid_status(status_payload) -> None:
-    executor = LocalMCPBridgeExecutor(_config())
-    executor._client = FakeClient(
-        [
-            {"job_id": "job-123"},
-            status_payload,
-        ]
-    )
-
-    with pytest.raises(BridgeExecutionAdapterError, match="test status"):
-        executor.run_tests_to_completion("demo", "unit")
+    with pytest.raises(BridgeExecutionAdapterError, match="test job"):
+        executor.run_tests("demo", "unit")
 
 
-def test_run_tests_wait_timeout_is_bounded(monkeypatch) -> None:
-    executor = LocalMCPBridgeExecutor(
-        _config(test_wait_timeout_seconds=5)
-    )
-    executor._client = FakeClient(
-        [
-            {"job_id": "job-123"},
-            {"status": "running"},
-        ]
-    )
-    times = iter([10.0, 16.0])
+def test_executor_uses_thread_local_clients(monkeypatch) -> None:
+    created: list[object] = []
+
+    class TrackingClient:
+        def __init__(self, _config):
+            created.append(object())
+
+        def _call_tool(self, name, arguments):
+            return {"name": name, "arguments": arguments}
+
     monkeypatch.setattr(
-        "runner_mcp.bridge_mcp_executor.time.monotonic",
-        lambda: next(times),
+        "runner_mcp.bridge_mcp_executor.LocalMCPClient",
+        TrackingClient,
     )
+    executor = LocalMCPBridgeExecutor(_config())
 
-    with pytest.raises(BridgeExecutionAdapterError, match="timeout expired"):
-        executor.run_tests_to_completion("demo", "unit")
+    first = executor.list_projects()
+    second = executor.safety_status()
+
+    assert first["name"] == "list_projects"
+    assert second["name"] == "safety_status"
+    assert len(created) == 1
+

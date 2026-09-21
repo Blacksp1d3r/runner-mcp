@@ -5,6 +5,7 @@ import json
 import os
 import re
 import stat
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -199,9 +200,12 @@ class GitHubMailboxWatcher:
         executor: BridgeExecutor,
         cursor_store: GitHubWatcherCursorStore,
         stale_after_seconds: int = 300,
+        max_workers: int = 4,
     ) -> None:
         if not 30 <= stale_after_seconds <= 86_400:
             raise ValueError("stale_after_seconds is outside the supported range")
+        if not 1 <= max_workers <= 16:
+            raise ValueError("max_workers must be between 1 and 16")
         self._transport = transport
         self._ledger = ledger
         self._processor = BridgeProcessor(
@@ -211,6 +215,7 @@ class GitHubMailboxWatcher:
         )
         self._cursor_store = cursor_store
         self._stale_after_seconds = stale_after_seconds
+        self._max_workers = max_workers
 
     def bootstrap_cursor_at_current_head(self) -> None:
         """Explicitly ignore historical requests and start after the current head."""
@@ -269,107 +274,18 @@ class GitHubMailboxWatcher:
         observations: list[RecoveryObservation] = []
         processed = 0
         reconciled = 0
-        hard_failure_index: int | None = None
 
-        for index, request_id in enumerate(request_ids):
-            try:
-                request_bytes = self._transport.fetch_request(request_id)
-                request = parse_bridge_request(request_bytes)
-                if request.request_id != request_id:
-                    raise BridgeProtocolError(
-                        "request filename and payload ID do not match"
-                    )
-                result = self._transport.fetch_result(request_id)
-                record = self._ledger.inspect(request)
-            except (
-                BridgeProtocolError,
-                BridgeReplayError,
-                GitHubMailboxTransportError,
-                ValueError,
-            ):
-                observations.append(
-                    RecoveryObservation(
-                        request_id=request_id,
-                        age_seconds=0,
-                        disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
-                    )
-                )
-                hard_failure_index = index
-                break
+        with ThreadPoolExecutor(
+            max_workers=self._max_workers,
+            thread_name_prefix="runner-mcp-mailbox",
+        ) as pool:
+            outcomes = list(pool.map(self._process_request, request_ids))
 
-            if result is not None:
-                if result.action != request.action:
-                    observations.append(
-                        RecoveryObservation(
-                            request_id=request_id,
-                            age_seconds=_record_age_seconds(record),
-                            disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
-                        )
-                    )
-                    hard_failure_index = index
-                    break
-
-                try:
-                    self._ledger.claim(request)
-                    self._ledger.complete(request)
-                except BridgeReplayError:
-                    observations.append(
-                        RecoveryObservation(
-                            request_id=request_id,
-                            age_seconds=_record_age_seconds(record),
-                            disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
-                        )
-                    )
-                    hard_failure_index = index
-                    break
-
-                reconciled += 1
-                continue
-
-            disposition = recovery_disposition(
-                has_result=False,
-                replay_state=(record.state if record is not None else None),
-            )
-            if disposition == RecoveryDisposition.PROCESS:
-                outcome = self._processor.process(request_bytes)
-                if outcome.state == BridgeProcessState.COMPLETED:
-                    processed += 1
-                    continue
-
-                current_record = self._ledger.inspect(request)
-                if outcome.state == BridgeProcessState.ALREADY_COMPLETED:
-                    disposition = RecoveryDisposition.RESULT_MISSING
-                else:
-                    disposition = RecoveryDisposition.AMBIGUOUS_CLAIM
-                observations.append(
-                    RecoveryObservation(
-                        request_id=request_id,
-                        age_seconds=_record_age_seconds(current_record),
-                        disposition=disposition,
-                    )
-                )
-                hard_failure_index = index
-                break
-
-            observations.append(
-                RecoveryObservation(
-                    request_id=request_id,
-                    age_seconds=_record_age_seconds(record),
-                    disposition=disposition,
-                )
-            )
-            hard_failure_index = index
-            break
-
-        if hard_failure_index is not None:
-            for request_id in request_ids[hard_failure_index + 1 :]:
-                observations.append(
-                    RecoveryObservation(
-                        request_id=request_id,
-                        age_seconds=0,
-                        disposition=RecoveryDisposition.PROCESS,
-                    )
-                )
+        for was_processed, was_reconciled, observation in outcomes:
+            processed += int(was_processed)
+            reconciled += int(was_reconciled)
+            if observation is not None:
+                observations.append(observation)
 
         cursor_advanced = False
         if not observations:
@@ -415,6 +331,78 @@ class GitHubMailboxWatcher:
             recovery_attention=heartbeat.recovery_attention,
             heartbeat=heartbeat,
             heartbeat_published=published,
+        )
+
+    def _process_request(
+        self,
+        request_id: str,
+    ) -> tuple[bool, bool, RecoveryObservation | None]:
+        try:
+            request_bytes = self._transport.fetch_request(request_id)
+            request = parse_bridge_request(request_bytes)
+            if request.request_id != request_id:
+                raise BridgeProtocolError(
+                    "request filename and payload ID do not match"
+                )
+            result = self._transport.fetch_result(request_id)
+            record = self._ledger.inspect(request)
+        except (
+            BridgeProtocolError,
+            BridgeReplayError,
+            GitHubMailboxTransportError,
+            ValueError,
+        ):
+            return False, False, RecoveryObservation(
+                request_id=request_id,
+                age_seconds=0,
+                disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+            )
+
+        if result is not None:
+            if result.action != request.action:
+                return False, False, RecoveryObservation(
+                    request_id=request_id,
+                    age_seconds=_record_age_seconds(record),
+                    disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+                )
+            try:
+                self._ledger.claim(request)
+                self._ledger.complete(request)
+            except BridgeReplayError:
+                return False, False, RecoveryObservation(
+                    request_id=request_id,
+                    age_seconds=_record_age_seconds(record),
+                    disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+                )
+            return False, True, None
+
+        disposition = recovery_disposition(
+            has_result=False,
+            replay_state=(record.state if record is not None else None),
+        )
+        if disposition != RecoveryDisposition.PROCESS:
+            return False, False, RecoveryObservation(
+                request_id=request_id,
+                age_seconds=_record_age_seconds(record),
+                disposition=disposition,
+            )
+
+        outcome = self._processor.process(request_bytes)
+        if outcome.state == BridgeProcessState.COMPLETED:
+            return True, False, None
+
+        try:
+            current_record = self._ledger.inspect(request)
+        except BridgeReplayError:
+            current_record = record
+        if outcome.state == BridgeProcessState.ALREADY_COMPLETED:
+            disposition = RecoveryDisposition.RESULT_MISSING
+        else:
+            disposition = RecoveryDisposition.AMBIGUOUS_CLAIM
+        return False, False, RecoveryObservation(
+            request_id=request_id,
+            age_seconds=_record_age_seconds(current_record),
+            disposition=disposition,
         )
 
     def _heartbeat_delivery(

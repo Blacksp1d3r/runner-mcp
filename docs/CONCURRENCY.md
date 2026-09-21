@@ -39,6 +39,7 @@ No concurrency feature accepts shell commands, executable paths, environment var
 
 The defaults are intentionally conservative:
 
+- MCP request rate limit per client: 600 requests/minute;
 - mailbox request workers: 4;
 - mailbox maximum in-flight request batch: 32;
 - global concurrent test workers: 2;
@@ -50,6 +51,8 @@ The defaults are intentionally conservative:
 With these defaults, different projects can use the global worker pool in parallel, but tests inside the same project remain serialized.
 
 A project can opt in to more parallel tests only by increasing `max_parallel_tests`. Each profile that may overlap must also set `parallel_safe: true`. If either side is not explicitly enabled, the project remains locked for that test.
+
+The MCP request rate limit is a separate safety boundary from test-worker capacity. The 600 requests/minute default leaves room for concurrent mailbox workers and status polling while still bounding runaway clients. It does not increase the number of expensive tests that can execute: test workers, project limits and queue limits remain independently enforced. The value is configurable in private runtime settings up to the validated maximum.
 
 The global test-worker setting is private runtime configuration. Queue capacity is also bounded. Capacity exhaustion fails closed instead of silently dropping work.
 

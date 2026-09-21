@@ -30,6 +30,7 @@ DEFAULT_REQUEST_REF = "runner-control"
 DEFAULT_RESULT_REF = "runner-results"
 DEFAULT_POLL_SECONDS = 5.0
 DEFAULT_HEARTBEAT_SECONDS = 300.0
+DEFAULT_WATCHER_WORKERS = 4
 
 
 class GitHubWatcherRuntimeError(RuntimeError):
@@ -42,7 +43,12 @@ class GitHubWatcherRuntime:
     transport: GitHubMailboxTransport
 
     @classmethod
-    def from_private_config(cls, config_dir: Path) -> GitHubWatcherRuntime:
+    def from_private_config(
+        cls,
+        config_dir: Path,
+        *,
+        max_workers: int = DEFAULT_WATCHER_WORKERS,
+    ) -> GitHubWatcherRuntime:
         try:
             paths, settings, _registry = read_private_runtime(config_dir)
             values = load_env_file(paths.env_file)
@@ -94,6 +100,7 @@ class GitHubWatcherRuntime:
             ledger=ledger,
             executor=executor,
             cursor_store=cursor,
+            max_workers=max_workers,
         )
         return cls(watcher=watcher, transport=transport)
 

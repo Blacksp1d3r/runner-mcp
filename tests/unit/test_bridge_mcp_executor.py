@@ -1,4 +1,5 @@
 import json
+import threading
 import urllib.error
 import urllib.request
 
@@ -390,7 +391,7 @@ def test_executor_exposes_only_fixed_bridge_calls() -> None:
             {"job_id": job_id, "status": "cancelled"},
         ]
     )
-    executor._client = fake
+    executor._local.client = fake
 
     assert executor.list_projects() == ["p1"]
     assert executor.safety_status() == {"stop_active": False}
@@ -418,7 +419,7 @@ def test_executor_exposes_only_fixed_bridge_calls() -> None:
 def test_run_tests_returns_job_immediately_without_polling() -> None:
     executor = LocalMCPBridgeExecutor(_config())
     job_id = "b" * 32
-    executor._client = FakeClient(
+    executor._local.client = FakeClient(
         [{"job_id": job_id, "project": "demo", "suite": "unit", "status": "queued"}]
     )
 
@@ -426,7 +427,7 @@ def test_run_tests_returns_job_immediately_without_polling() -> None:
 
     assert result["job_id"] == job_id
     assert result["status"] == "queued"
-    assert executor._client.calls == [
+    assert executor._local.client.calls == [
         ("run_tests", {"project": "demo", "suite": "unit"})
     ]
 
@@ -444,7 +445,7 @@ def test_run_tests_returns_job_immediately_without_polling() -> None:
 )
 def test_run_tests_rejects_invalid_initial_job_result(started) -> None:
     executor = LocalMCPBridgeExecutor(_config())
-    executor._client = FakeClient([started])
+    executor._local.client = FakeClient([started])
 
     with pytest.raises(
         BridgeExecutionAdapterError,
@@ -472,7 +473,7 @@ def test_compatibility_wait_helper_uses_job_status(monkeypatch) -> None:
             {"job_id": job_id, "status": "passed"},
         ]
     )
-    executor._client = fake
+    executor._local.client = fake
     sleeps: list[float] = []
     monkeypatch.setattr(
         "runner_mcp.bridge_mcp_executor.time.sleep",
@@ -490,3 +491,35 @@ def test_compatibility_wait_helper_uses_job_status(monkeypatch) -> None:
     ]
     assert sleeps == [0.5, 0.5]
 
+
+
+def test_executor_uses_thread_local_clients(monkeypatch) -> None:
+    created: list[int] = []
+
+    class TrackingClient:
+        def __init__(self, _config):
+            created.append(threading.get_ident())
+
+        def _call_tool(self, name, arguments):
+            return {"name": name, "arguments": arguments}
+
+    monkeypatch.setattr(
+        "runner_mcp.bridge_mcp_executor.LocalMCPClient",
+        TrackingClient,
+    )
+    executor = LocalMCPBridgeExecutor(_config())
+    barrier = threading.Barrier(2)
+    results: list[dict] = []
+
+    def call_status() -> None:
+        barrier.wait()
+        results.append(executor.queue_status())
+
+    threads = [threading.Thread(target=call_status) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(results) == 2
+    assert len(created) == 2

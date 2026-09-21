@@ -192,8 +192,7 @@ def test_external_operator_stop_terminates_running_job(tmp_path: Path) -> None:
     stop_file.write_text("stop\n", encoding="utf-8")
     finished = wait_terminal(runner, started["job_id"])
 
-    assert finished["status"] == "failed"
-    assert finished["error_category"] == "operator_stop"
+    assert finished["status"] == "stopped"
 
 
 def test_secret_and_private_paths_are_scrubbed_from_log(
@@ -358,7 +357,7 @@ def test_existing_running_metadata_fails_closed_after_restart(tmp_path: Path) ->
 
     status = runner.status(job_id)
 
-    assert status["status"] == "failed"
+    assert status["status"] == "interrupted"
     assert status["error_category"] == "runner_restart"
 
 

@@ -52,7 +52,7 @@ class Settings:
     operator_stop_file: Path | None = None
     retention_confirmed: bool = True
     test_jobs_root: Path | None = None
-    max_test_jobs: int = 4
+    max_test_jobs: int = 2
     max_queued_tests: int = 64
     mailbox_workers: int = 4
     mailbox_max_inflight: int = 32
@@ -114,7 +114,7 @@ class Settings:
             raise RuntimeError("RUNNER_MCP_APPROVAL_ROOT must be an absolute path")
 
         try:
-            max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "4"))
+            max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "2"))
         except ValueError as exc:
             raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be an integer") from exc
         try:

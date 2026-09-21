@@ -56,31 +56,30 @@ Real infrastructure details must never be copied into the public repository.
 
 ## Supported bridge actions
 
-Protocol version 1 deliberately exposes only:
+Protocol version 1 exposes a fixed operation enum. In addition to project/test actions, the bounded operational surface includes:
 
-- `list_projects`
-- `safety_status`
-- `project_status`
-- `project_capabilities`
-- `sync_project`
-- `list_test_profiles`
-- `run_tests`
-- `queue_status`
-- `worker_status`
-- `job_status`
-- `cancel_job`
+- `job_log` with bounded offset/length;
+- `list_services`, `service_status`, `start_service`, `stop_service`, `restart_service`;
+- `list_backups`, `backup_database`, `migration_status`;
+- `request_action_approval`, `approval_status`, and approval-bound `apply_migrations`;
+- `plan_deploy`, approval-bound `deploy_staging`, and `deployment_status`;
+- `list_releases`, `rollback_plan`, approval-bound `rollback_release`, and `rollback_status`.
 
-The bridge must not accept:
+The earlier inspection/test actions remain available: `list_projects`, `safety_status`, `project_status`, `project_capabilities`, `sync_project`, `list_test_profiles`, `run_tests`, `queue_status`, `worker_status`, `job_status`, and `cancel_job`.
+
+The bridge still must not accept:
 
 - arbitrary shell commands;
-- executable paths;
+- executable paths or argv;
 - environment-variable names or values;
 - filesystem paths;
-- service names;
+- arbitrary systemd unit names: only configured service aliases are accepted;
 - arbitrary MCP tool names;
-- migration, deployment, rollback or restore requests.
+- arbitrary Git refs/remotes;
+- approval grants or confirmation phrases;
+- database restore, PITR, production deployment or production rollback requests.
 
-High-risk migration/deployment/rollback flows keep their existing Runner MCP approval model and are not enabled through the mailbox bridge.
+High-risk migration/deployment/rollback execution keeps the existing Runner MCP approval model. The mailbox may request or inspect a plan, but it cannot approve one. Execution requires an already-approved, short-lived, action/project/binding-specific `approval_id`.
 
 ## Request shape
 
@@ -141,6 +140,11 @@ Rules:
 - the request body is size-bounded;
 - project and profile identifiers use the same safe identifier shape as Runner MCP configuration;
 - job actions accept only a validated opaque Runner MCP job ID;
+- log retrieval is capped to 100 lines per request and uses the already-scrubbed Runner MCP test log;
+- service actions accept only a configured project plus service alias, never a system service/unit string;
+- list limits are bounded to 100 records;
+- approval IDs use the same opaque 32-hex shape as Runner MCP approval records;
+- approval operations are limited to `migration`, `deploy`, and `code_rollback`;
 - action-specific arguments are enforced;
 - the action itself comes from a fixed enum, never directly from user-supplied tool text.
 
@@ -224,13 +228,13 @@ See [WATCHER_RESILIENCE.md](WATCHER_RESILIENCE.md) for heartbeat, stale-request 
 
 ## When to use the bridge
 
-Use the GitHub mailbox bridge for ordinary project inspection and predefined test execution when the AI client can work with GitHub but cannot directly reach the private Runner MCP service.
+Use the GitHub mailbox bridge for routine project inspection, predefined tests and configured operational work when the AI client cannot directly reach the private Runner MCP service.
 
 For source changes, use GitHub directly. Do not send source code through the operational mailbox.
 
-For local status and tests, use the mailbox bridge.
+For local status, tests, bounded scrubbed test logs, configured service control, backups and read-only deployment/database planning, use the mailbox bridge.
 
-For high-risk state changes, use the existing local approval workflow instead of expanding the mailbox allow-list.
+For migration, deployment and rollback execution, the bridge can consume only an already-approved short-lived plan. Approval itself remains a separate human-controlled local action.
 
 ## Watcher requirements
 
@@ -263,12 +267,12 @@ On 2026-09-20 the private mailbox pattern was successfully piloted as the standa
 `BridgeProcessor` accepts three local components:
 
 - a shared `BridgeReplayLedger`;
-- an explicit `BridgeExecutor` with exactly the ten mailbox-allow-listed operations;
+- an explicit `BridgeExecutor` with only the fixed mailbox operation methods;
 - a `BridgeResultSink` that receives only request ID plus the already-scrubbed serialized result.
 
 The executor interface deliberately does not expose a generic `invoke(tool_name, args)` method.
 
-For `run_tests`, the executor starts the configured allow-listed test profile and returns the accepted Runner MCP job record immediately. Test execution continues in the bounded Runner MCP scheduler. The mailbox exposes only safe `job_status` and `cancel_job` follow-up actions plus aggregate `queue_status` and `worker_status`; raw test-log retrieval is not a mailbox action.
+For `run_tests`, the executor starts the configured allow-listed test profile and returns the accepted Runner MCP job record immediately. Test execution continues in the bounded Runner MCP scheduler. Follow-up uses safe `job_status`, `cancel_job`, aggregate queue/worker state and bounded `job_log` retrieval. Log content has already passed Runner MCP's test-log scrubbing and is scrubbed again by the bridge result boundary.
 
 Processing order is fixed:
 
@@ -341,10 +345,12 @@ It is intentionally narrower than a general MCP client:
 - only the fixed bridge operations are exposed by the executor;
 - internal tool dispatch is private and allow-listed;
 - `run_tests` returns the accepted job without terminal polling;
-- `job_status` and `cancel_job` accept only a validated opaque job ID;
-- `get_test_log` is not called by the bridge executor.
+- job/deployment/rollback status calls accept only validated opaque job IDs;
+- bounded test-log retrieval maps only to `get_test_log` with validated offset/length;
+- service operations map only to configured aliases;
+- migration/deployment/rollback execution can only forward an opaque approval ID and cannot approve it.
 
-For a test run, the executor returns only safe persisted job metadata. Raw logs, local paths, commands and private runtime details are not added to the mailbox result.
+For a test run, the executor returns safe persisted job metadata. When log retrieval is explicitly requested, only the bounded scrubbed log page is returned; local paths, commands and configured secrets remain subject to both test-runner redaction and bridge-result scrubbing.
 
 MCP JSON/SSE parsing is strict and bounded. Invalid session/job identifiers or transport/server/tool failures become generic adapter errors; raw response bodies and exception details are not propagated into the bridge result.
 

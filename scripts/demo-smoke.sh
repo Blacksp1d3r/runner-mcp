@@ -70,7 +70,7 @@ while True:
 PY
 
 kill "$SERVER_PID"
-wait "$SERVER_PID"
+wait "$SERVER_PID" || true
 SERVER_PID=""
 
 echo "Runner MCP clean demo smoke test passed."

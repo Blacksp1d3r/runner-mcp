@@ -46,7 +46,10 @@ def test_runtime_defaults_keep_test_execution_unconfigured(
     settings = Settings.from_env()
 
     assert settings.test_jobs_root is None
-    assert settings.max_test_jobs == 2
+    assert settings.max_test_jobs == 4
+    assert settings.max_queued_tests == 64
+    assert settings.mailbox_workers == 4
+    assert settings.mailbox_max_inflight == 32
 
 
 @pytest.mark.parametrize("value", ["0", "17", "not-an-integer"])
@@ -58,6 +61,45 @@ def test_invalid_max_test_jobs_fails_startup(
     monkeypatch.setenv("RUNNER_MCP_MAX_TEST_JOBS", value)
 
     with pytest.raises(RuntimeError, match="RUNNER_MCP_MAX_TEST_JOBS"):
+        Settings.from_env()
+
+
+
+
+@pytest.mark.parametrize("value", ["0", "1025", "not-an-integer"])
+def test_invalid_max_queued_tests_fails_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_MAX_QUEUED_TESTS", value)
+
+    with pytest.raises(RuntimeError, match="RUNNER_MCP_MAX_QUEUED_TESTS"):
+        Settings.from_env()
+
+
+@pytest.mark.parametrize(
+    ("name", "value"),
+    [
+        ("RUNNER_MCP_MAILBOX_WORKERS", "0"),
+        ("RUNNER_MCP_MAILBOX_WORKERS", "17"),
+        ("RUNNER_MCP_MAILBOX_WORKERS", "bad"),
+        ("RUNNER_MCP_MAILBOX_MAX_INFLIGHT", "3"),
+        ("RUNNER_MCP_MAILBOX_MAX_INFLIGHT", "257"),
+        ("RUNNER_MCP_MAILBOX_MAX_INFLIGHT", "bad"),
+    ],
+)
+def test_invalid_mailbox_capacity_fails_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    name: str,
+    value: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv(name, value)
+    if name == "RUNNER_MCP_MAILBOX_MAX_INFLIGHT":
+        monkeypatch.setenv("RUNNER_MCP_MAILBOX_WORKERS", "4")
+
+    with pytest.raises(RuntimeError, match="RUNNER_MCP_MAILBOX"):
         Settings.from_env()
 
 

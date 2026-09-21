@@ -118,6 +118,15 @@ class FakeExecutor:
     def rollback_status(self, job_id: str):
         return self._result("rollback_status", job_id)
 
+    def runtime_status(self):
+        return self._result("runtime_status")
+
+    def self_update(self, commit: str):
+        return self._result("self_update", commit)
+
+    def self_update_status(self, job_id: str):
+        return self._result("self_update_status", job_id)
+
 
 class FakeSink:
     def __init__(self) -> None:
@@ -337,6 +346,9 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         '{"request_id":"req-436","action":"rollback_plan","project":"demo"}',
         '{"request_id":"req-437","action":"rollback_release","project":"demo","approval_id":"11111111111111111111111111111111"}',
         '{"request_id":"req-438","action":"rollback_status","job_id":"22222222222222222222222222222222"}',
+        '{"request_id":"req-439","action":"runtime_status"}',
+        '{"request_id":"req-440","action":"self_update","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
+        '{"request_id":"req-441","action":"self_update_status","job_id":"33333333333333333333333333333333"}',
     ]
 
     for payload in payloads:
@@ -373,6 +385,9 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         "rollback_plan",
         "rollback_release",
         "rollback_status",
+        "runtime_status",
+        "self_update",
+        "self_update_status",
     ]
 
 

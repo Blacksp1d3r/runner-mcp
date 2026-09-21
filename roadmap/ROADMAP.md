@@ -61,7 +61,7 @@ Make the safe core usable without reading or editing source code:
 - user-first README and Quickstart;
 - private config permission checks and atomic project-config updates.
 
-Service auto-start packaging is implemented with a preferred non-root systemd-user backend plus a managed cron fallback for headless accounts without a usable user bus. Both keep fixed components, explicit watcher bootstrap, duplicate-supervisor protection and foreign-state protection. Still planned for onboarding: guided TLS/reverse-proxy setup and optional graphical administration.
+Service auto-start packaging is implemented with a preferred non-root systemd-user backend plus a managed cron fallback for headless accounts without a usable user bus. Both keep fixed components, explicit watcher bootstrap, duplicate-supervisor protection and foreign-state protection. Private-connectivity onboarding now has an explicit decision guide covering the existing GitHub mailbox, outbound private MCP tunnel pattern, HTTPS reverse proxy boundary and separate operator VPN/overlay path. Automated provisioning of external tunnel/proxy/VPN products remains deliberately outside Runner MCP. Optional graphical administration remains future work.
 
 ## Phase 3.6 — community usability and extension path
 
@@ -78,7 +78,6 @@ Make the existing safe core easier to adopt, understand and extend without chang
 
 Still planned:
 
-- guided private-tunnel/TLS setup;
 - optional graphical administration;
 - framework adapters only when concrete reusable use cases justify them.
 

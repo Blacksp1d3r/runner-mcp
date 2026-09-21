@@ -469,7 +469,8 @@ class GitHubMailboxTransport:
             )
         return sorted(request_ids)
 
-    def fetch_request(self, request_id: str) -> bytes:
+    def fetch_request_unvalidated(self, request_id: str) -> bytes:
+        """Fetch bounded request bytes without applying bridge-protocol parsing."""
         _validate_request_id(request_id)
         mailbox_file = self._fetch_file(
             f"{REQUESTS_PATH}/{request_id}.json",
@@ -478,13 +479,17 @@ class GitHubMailboxTransport:
             allow_not_found=False,
         )
         assert mailbox_file is not None
-        request = parse_bridge_request(mailbox_file.content)
+        return mailbox_file.content
+
+    def fetch_request(self, request_id: str) -> bytes:
+        content = self.fetch_request_unvalidated(request_id)
+        request = parse_bridge_request(content)
         if request.request_id != request_id:
             raise GitHubMailboxTransportError(
                 "request filename and payload ID do not match",
                 kind=TransportFailureKind.INVALID_RESPONSE,
             )
-        return mailbox_file.content
+        return content
 
     def result_exists(self, request_id: str) -> bool:
         _validate_request_id(request_id)

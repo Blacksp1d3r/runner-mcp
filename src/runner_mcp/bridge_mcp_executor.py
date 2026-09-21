@@ -380,6 +380,12 @@ class LocalMCPBridgeExecutor:
     def safety_status(self) -> Any:
         return self._client()._call_tool("safety_status", {})
 
+    def runtime_status(self) -> Any:
+        return self._client()._call_tool("runtime_status", {})
+
+    def runtime_doctor(self) -> Any:
+        return self._client()._call_tool("runtime_doctor", {})
+
     def project_status(self, project: str) -> Any:
         return self._client()._call_tool(
             "project_status",

@@ -139,6 +139,15 @@ Phase 3.9 public launch readiness:
 - launch-readiness gate explicitly tracks what is complete and what still needs clean-environment/release verification;
 - no marketing telemetry or paid runtime dependency added.
 
+Service auto-start packaging — 2026-09-21:
+- fixed local CLI management for the Runner MCP server, shared GitHub watcher and completion watcher using systemd user services;
+- the server unit binds loopback only and no generic service/unit name can be supplied by a remote client;
+- optional watcher services require their private configuration and explicit bootstrap state before installation;
+- generated units contain no credentials and Runner MCP refuses to overwrite/remove foreign user-service files;
+- systemctl calls use fixed argument arrays with no shell or sudo;
+- safe status reports only component installed/enabled/active state;
+- headless user-manager persistence remains an explicit host-administrator responsibility.
+
 Phase 3.8.1 task-completion feedback:
 - strict terminal completion events added for succeeded, failed and cancelled outcomes;
 - deterministic event IDs provide notification deduplication without exposing private source identifiers;
@@ -314,7 +323,7 @@ Phase 9 human approval gates:
 Current validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 602 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 612 tests green, with one third-party Starlette/AnyIO deprecation warning;
 - merged request-capacity change passed public CI including whitespace checks;
 - live private bridge validation passed both Runner MCP lint and unit profiles;
 - git diff whitespace check: green;
@@ -379,7 +388,7 @@ Current validation is green:
 
 ## Next steps
 
-The shared watcher migration, restart/reconciliation proof, exactly-once completion-notification proof and clean-Linux five-minute demo validation are complete. Keep obsolete pilot execution paths disabled, continue service auto-start/private-connectivity onboarding, and prepare the first tagged alpha only from an exact green commit.
+The shared watcher migration, restart/reconciliation proof, exactly-once completion-notification proof, clean-Linux five-minute demo validation and non-root systemd user autostart packaging are complete. Keep obsolete pilot execution paths disabled, continue guided private-connectivity/TLS onboarding, and prepare the first tagged alpha only from an exact green commit.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

@@ -10,6 +10,12 @@ from pathlib import Path
 import uvicorn
 
 from .approval_manager import ApprovalError, ApprovalManager
+from .autostart import (
+    AutostartError,
+    install_user_services,
+    remove_user_services,
+    user_service_status,
+)
 from .completion_delivery import (
     CompletionDeliveryError,
     CompletionNotifierRuntime,
@@ -649,6 +655,48 @@ def cmd_approval(args: argparse.Namespace) -> int:
     raise ApprovalError("Unknown approval action")
 
 
+def cmd_autostart(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.autostart_action == "status":
+        for item in user_service_status():
+            print(
+                f"{item.component}: "
+                f"installed={'yes' if item.installed else 'no'}, "
+                f"enabled={'yes' if item.enabled else 'no'}, "
+                f"active={'yes' if item.active else 'no'}"
+            )
+        return 0
+
+    if args.autostart_action == "install":
+        executable = (Path(sys.executable).parent / "runner-mcp").resolve()
+        installed = install_user_services(
+            config_dir,
+            executable=executable,
+            port=args.port,
+        )
+        print("Runner MCP user services installed and started.")
+        for unit_name in installed:
+            component = unit_name.removeprefix("runner-mcp-").removesuffix(".service")
+            if unit_name == "runner-mcp.service":
+                component = "server"
+            print(f"  - {component}")
+        print("No private configuration values were written to the public repository.")
+        return 0
+
+    if args.autostart_action == "remove":
+        confirmation = input(
+            "Type REMOVE RUNNER MCP AUTOSTART to continue: "
+        ).strip()
+        if confirmation != "REMOVE RUNNER MCP AUTOSTART":
+            raise AutostartError("autostart removal cancelled")
+        removed = remove_user_services()
+        print(f"Removed {len(removed)} Runner MCP user service(s).")
+        return 0
+
+    raise AutostartError("unknown autostart action")
+
+
 def cmd_completion_notifier(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
 
@@ -1116,6 +1164,37 @@ def build_parser() -> argparse.ArgumentParser:
     )
     approval_approve.add_argument("approval_id")
     approval_approve.set_defaults(func=cmd_approval)
+
+    autostart = subparsers.add_parser(
+        "autostart",
+        help="Install, inspect or remove safe systemd user services.",
+    )
+    autostart_sub = autostart.add_subparsers(
+        dest="autostart_action",
+        required=True,
+    )
+    autostart_status = autostart_sub.add_parser(
+        "status",
+        help="Show safe Runner MCP user-service state.",
+    )
+    autostart_status.set_defaults(func=cmd_autostart)
+    autostart_install = autostart_sub.add_parser(
+        "install",
+        help="Install and start managed loopback Runner MCP user services.",
+    )
+    autostart_install.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        choices=range(1, 65536),
+        metavar="PORT",
+    )
+    autostart_install.set_defaults(func=cmd_autostart)
+    autostart_remove = autostart_sub.add_parser(
+        "remove",
+        help="Stop and remove only user services managed by Runner MCP.",
+    )
+    autostart_remove.set_defaults(func=cmd_autostart)
 
     completion_notifier = subparsers.add_parser(
         "completion-notifier",

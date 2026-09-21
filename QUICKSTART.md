@@ -282,6 +282,19 @@ The safe default is loopback-only. Runner MCP refuses a public bind unless you e
 
 For internet-facing use, put Runner MCP behind a properly configured HTTPS reverse proxy. Public deployment packaging is still being hardened and should be treated as an advanced setup for now.
 
+### Optional automatic startup
+
+On a Linux host with a working systemd user manager, Runner MCP can install its fixed user services:
+
+```bash
+runner-mcp autostart install
+runner-mcp autostart status
+```
+
+The server remains loopback-only. The GitHub mailbox watcher and completion watcher are added only when each feature is privately configured and explicitly bootstrapped. Autostart does not create watcher cursors, replay historical work, install system services or use sudo.
+
+See `docs/AUTOSTART.md` for lifecycle and headless-host guidance.
+
 ## Controlled tests
 
 Runner MCP can run tests only through predefined test profiles.
@@ -307,7 +320,6 @@ The safe staging core now includes service aliases, PostgreSQL backups/migration
 
 The remaining onboarding gaps are mainly:
 
-- service installation and automatic startup packaging;
 - guided private-tunnel and HTTPS/reverse-proxy setup;
 - optional graphical administration;
 - stronger isolation for untrusted public-fork code;

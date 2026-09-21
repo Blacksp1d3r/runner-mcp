@@ -326,3 +326,36 @@ def test_bridge_result_serialization_normalizes_unknown_types() -> None:
 
     with pytest.raises(BridgeProtocolError, match="unsupported value type"):
         serialize_bridge_result(result)
+
+
+
+def test_sync_project_requires_full_commit_and_maps_safely() -> None:
+    commit = "a" * 40
+    request = parse_bridge_request(
+        json.dumps(
+            {
+                "request_id": "sync-001",
+                "action": "sync_project",
+                "project": "demo",
+                "commit": commit,
+            }
+        )
+    )
+    assert bridge_tool_call(request) == (
+        "sync_project",
+        {"project": "demo", "commit": commit},
+    )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"request_id":"sync-002","action":"sync_project","project":"demo"}',
+        '{"request_id":"sync-003","action":"sync_project","project":"demo","commit":"main"}',
+        '{"request_id":"sync-004","action":"sync_project","project":"demo","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","profile":"pytest"}',
+        '{"request_id":"sync-005","action":"run_tests","project":"demo","profile":"pytest","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
+    ],
+)
+def test_sync_and_test_requests_reject_extra_or_unpinned_input(payload: str) -> None:
+    with pytest.raises(BridgeProtocolError, match="strict validation"):
+        parse_bridge_request(payload)

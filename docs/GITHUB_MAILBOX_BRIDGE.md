@@ -62,6 +62,7 @@ Protocol version 1 deliberately exposes only:
 - `safety_status`
 - `project_status`
 - `project_capabilities`
+- `sync_project`
 - `list_test_profiles`
 - `run_tests`
 - `queue_status`
@@ -105,6 +106,22 @@ Examples:
   "profile": "unit"
 }
 ```
+
+A source synchronization request is commit-pinned and accepts no branch, path, remote or command input:
+
+```json
+{
+  "protocol_version": 1,
+  "request_id": "req-sync",
+  "action": "sync_project",
+  "project": "demo",
+  "commit": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
+```
+
+The sync operation is staging-only, requires a clean working tree, rejects submodules, verifies that `origin` matches the configured GitHub repository, fetches only through that configured origin, verifies the commit is reachable from `origin/*`, and refuses to run while tests for that project are queued or active.
+
+For Python projects, `list_test_profiles` may also expose the fixed adapter presets `pytest` and `ruff` when the corresponding executable is safely detected inside the project virtual environment. These presets take no mailbox-supplied executable, argv, cwd or environment input. `custom` is never implicitly exposed.
 
 A successful `run_tests` request accepts the predefined test job and returns its opaque job ID immediately. The mailbox does not wait for the test process to finish. Later status or cancellation uses a separate request:
 
@@ -319,7 +336,7 @@ It is intentionally narrower than a general MCP client:
 
 - the endpoint must be loopback-only and use the `/mcp` path;
 - bearer credentials are supplied separately and never embedded in the URL;
-- only the ten bridge operations are exposed by the executor;
+- only the fixed bridge operations are exposed by the executor;
 - internal tool dispatch is private and allow-listed;
 - `run_tests` returns the accepted job without terminal polling;
 - `job_status` and `cancel_job` accept only a validated opaque job ID;

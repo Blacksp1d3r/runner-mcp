@@ -18,6 +18,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
+from .adapters import get_adapter
 from .config import ProjectRegistry, TestProfile
 from .operational_safety import (
     ActionClass,
@@ -65,6 +66,7 @@ GENERIC_SECRET_PATTERNS = (
 )
 
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+SAFE_ADAPTER_TEST_PRESETS = {"pytest", "ruff"}
 
 
 def utc_now() -> datetime:
@@ -145,6 +147,7 @@ class TestRunner:
         self._jobs: dict[str, TestJob] = {}
         self._cancel_events: dict[str, threading.Event] = {}
         self._project_queues: dict[str, deque[str]] = {}
+        self._project_source_locks: dict[str, threading.Lock] = {}
         self._project_round_robin: deque[str] = deque()
         self._stopping = False
         self._workers: list[threading.Thread] = []
@@ -218,10 +221,94 @@ class TestRunner:
                 self._cancel_events[job_id] = threading.Event()
                 self._enqueue_job_locked(job)
 
+    @staticmethod
+    def _detect_safe_project_executable(
+        root: Path,
+        names: tuple[str, ...],
+    ) -> Path | None:
+        for prefix in (root / ".venv" / "bin", root / "venv" / "bin"):
+            for name in names:
+                candidate = prefix / name
+                if (
+                    candidate.exists()
+                    and candidate.is_file()
+                    and not candidate.is_symlink()
+                    and os.access(candidate, os.X_OK)
+                ):
+                    return candidate.resolve()
+        return None
+
+    def _adapter_profile(
+        self,
+        *,
+        project: str,
+        suite: str,
+    ) -> tuple[Path, TestProfile] | None:
+        config = self.registry.projects.get(project)
+        if config is None:
+            raise TestRunnerError("Unknown or disabled project")
+        if suite not in SAFE_ADAPTER_TEST_PRESETS:
+            return None
+
+        try:
+            root = config.root.resolve(strict=True)
+        except OSError as exc:
+            raise TestRunnerError("Project root is unavailable") from exc
+        if not root.is_dir():
+            raise TestRunnerError("Project root is unavailable")
+
+        adapter = get_adapter(config.adapter)
+        if suite not in adapter.info.test_presets:
+            return None
+
+        if suite == "pytest":
+            executable = self._detect_safe_project_executable(
+                root,
+                ("python", "python3"),
+            )
+            if executable is None:
+                return None
+            profile = TestProfile(
+                argv=[str(executable), "-m", "pytest", "-q"],
+                cwd=".",
+                timeout_seconds=1200,
+                max_log_bytes=2_000_000,
+                env_passthrough=[],
+                parallel_safe=False,
+            )
+            return root, profile
+
+        if suite == "ruff":
+            executable = self._detect_safe_project_executable(root, ("ruff",))
+            if executable is None:
+                return None
+            profile = TestProfile(
+                argv=[str(executable), "check", "."],
+                cwd=".",
+                timeout_seconds=300,
+                max_log_bytes=2_000_000,
+                env_passthrough=[],
+                parallel_safe=True,
+            )
+            return root, profile
+        return None
+
     def list_profiles(self, project: str) -> list[dict[str, Any]]:
         config = self.registry.projects.get(project)
         if config is None:
             raise TestRunnerError("Unknown or disabled project")
+
+        profiles = dict(config.test_profiles)
+        for suite in sorted(SAFE_ADAPTER_TEST_PRESETS):
+            if suite in profiles:
+                continue
+            adapter_profile = self._adapter_profile(
+                project=project,
+                suite=suite,
+            )
+            if adapter_profile is not None:
+                _root, profile = adapter_profile
+                profiles[suite] = profile
 
         return [
             {
@@ -230,7 +317,7 @@ class TestRunner:
                 "max_log_bytes": profile.max_log_bytes,
                 "parallel_safe": profile.parallel_safe,
             }
-            for name, profile in sorted(config.test_profiles.items())
+            for name, profile in sorted(profiles.items())
         ]
 
     def _lookup_profile(self, project: str, suite: str) -> tuple[Path, TestProfile]:
@@ -238,8 +325,6 @@ class TestRunner:
         if config is None:
             raise TestRunnerError("Unknown or disabled project")
         profile = config.test_profiles.get(suite)
-        if profile is None:
-            raise TestRunnerError("Unknown or disabled test profile")
 
         try:
             root = config.root.resolve(strict=True)
@@ -247,7 +332,18 @@ class TestRunner:
             raise TestRunnerError("Project root is unavailable") from exc
         if not root.is_dir():
             raise TestRunnerError("Project root is unavailable")
-        return root, profile
+
+        if profile is not None:
+            return root, profile
+
+        adapter_profile = self._adapter_profile(
+            project=project,
+            suite=suite,
+        )
+        if adapter_profile is not None:
+            return adapter_profile
+
+        raise TestRunnerError("Unknown or disabled test profile")
 
     @staticmethod
     def _safe_cwd(root: Path, relative: str) -> Path:
@@ -305,11 +401,26 @@ class TestRunner:
         queue.append(job.job_id)
 
     def _profile_parallel_safe(self, job: TestJob) -> bool:
-        project = self.registry.projects.get(job.project)
-        if project is None:
+        try:
+            _root, profile = self._lookup_profile(job.project, job.suite)
+        except TestRunnerError:
             return False
-        profile = project.test_profiles.get(job.suite)
-        return bool(profile is not None and profile.parallel_safe)
+        return profile.parallel_safe
+
+    def project_has_work(self, project: str) -> bool:
+        with self._lock:
+            return bool(
+                self._queued_jobs_locked(project)
+                or self._active_jobs_locked(project)
+            )
+
+    def project_source_guard(self, project: str) -> threading.Lock:
+        with self._lock:
+            lock = self._project_source_locks.get(project)
+            if lock is None:
+                lock = threading.Lock()
+                self._project_source_locks[project] = lock
+            return lock
 
     def _project_can_claim_locked(self, job: TestJob) -> bool:
         project = self.registry.projects.get(job.project)
@@ -375,35 +486,37 @@ class TestRunner:
             worker.join(timeout=join_timeout_seconds)
 
     def start_test(self, project: str, suite: str) -> dict[str, Any]:
-        project_config = self.registry.projects.get(project)
-        if project_config is None:
-            raise TestRunnerError("Unknown or disabled project")
-        self.safety.assert_project_action_allowed(
-            ActionClass.TEST,
-            environment=project_config.environment,
-        )
-        self._lookup_profile(project, suite)
-
-        with self._condition:
-            if len(self._queued_jobs_locked()) >= self.max_queued_jobs:
-                raise TestRunnerError("Test queue capacity reached")
-            if len(self._queued_jobs_locked(project)) >= project_config.max_queued_tests:
-                raise TestRunnerError("Project test queue capacity reached")
-
-            job_id = uuid4().hex
-            job = TestJob(
-                job_id=job_id,
-                project=project,
-                suite=suite,
-                status=TestJobStatus.QUEUED,
-                created_at=utc_now(),
+        source_guard = self.project_source_guard(project)
+        with source_guard:
+            project_config = self.registry.projects.get(project)
+            if project_config is None:
+                raise TestRunnerError("Unknown or disabled project")
+            self.safety.assert_project_action_allowed(
+                ActionClass.TEST,
+                environment=project_config.environment,
             )
-            self._jobs[job_id] = job
-            self._cancel_events[job_id] = threading.Event()
-            self._persist(job)
-            self._enqueue_job_locked(job)
-            self._condition.notify_all()
-            return self.job_status(job_id)
+            self._lookup_profile(project, suite)
+
+            with self._condition:
+                if len(self._queued_jobs_locked()) >= self.max_queued_jobs:
+                    raise TestRunnerError("Test queue capacity reached")
+                if len(self._queued_jobs_locked(project)) >= project_config.max_queued_tests:
+                    raise TestRunnerError("Project test queue capacity reached")
+
+                job_id = uuid4().hex
+                job = TestJob(
+                    job_id=job_id,
+                    project=project,
+                    suite=suite,
+                    status=TestJobStatus.QUEUED,
+                    created_at=utc_now(),
+                )
+                self._jobs[job_id] = job
+                self._cancel_events[job_id] = threading.Event()
+                self._persist(job)
+                self._enqueue_job_locked(job)
+                self._condition.notify_all()
+                return self.job_status(job_id)
 
     def _set_job(
         self,

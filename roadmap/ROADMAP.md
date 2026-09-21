@@ -43,6 +43,7 @@ Implemented design:
 - scrubbed secrets and private paths in logs;
 - persisted safe job metadata and interrupted-job recovery;
 - restricted environment passthrough;
+- short per-job private `TMPDIR` paths for local IPC/socket based test runtimes, with 0700 permissions and terminal cleanup;
 - no automatic execution of untrusted public-fork code without stronger sandboxing.
 
 ## Phase 3.5 — packaging and onboarding

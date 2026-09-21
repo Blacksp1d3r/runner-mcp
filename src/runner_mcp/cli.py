@@ -947,6 +947,49 @@ def cmd_github_watcher(args: argparse.Namespace) -> int:
         )
         return 0 if outcome.state.value in {"idle", "processed"} else 2
 
+    if args.github_watcher_action == "abandon":
+        phrase = f"ABANDON {args.request_id}"
+        print(
+            "This publishes a terminal operator-aborted result for a strictly "
+            "valid request that has never been claimed."
+        )
+        print("It does not execute the requested action.")
+        confirmation = input(f"Type {phrase} to continue: ").strip()
+        if confirmation != phrase:
+            raise RuntimeError("GitHub watcher request abandonment cancelled")
+        resolution = runtime.abandon_unclaimed_request_fail_closed(
+            args.request_id
+        )
+        print(
+            "Abandonment result persisted: "
+            f"action={resolution.action.value}"
+        )
+        print("No action was executed.")
+        print("Next: runner-mcp github-watcher once")
+        return 0
+
+    if args.github_watcher_action == "quarantine":
+        phrase = f"QUARANTINE {args.request_id}"
+        print(
+            "This accepts exactly one malformed backlog request only when all "
+            "other backlog requests already have durable results."
+        )
+        print("It does not execute any backlog action.")
+        confirmation = input(f"Type {phrase} to continue: ").strip()
+        if confirmation != phrase:
+            raise RuntimeError("GitHub watcher malformed-request quarantine cancelled")
+        outcome = runtime.quarantine_malformed_request_fail_closed(
+            args.request_id
+        )
+        print(
+            "Malformed request quarantined: "
+            f"discovered={outcome.discovered_requests} "
+            f"reconciled={outcome.reconciled_requests} "
+            f"attention={outcome.recovery_attention}"
+        )
+        print("No action was executed.")
+        return 0
+
     if args.github_watcher_action == "resolve":
         phrase = f"RESOLVE {args.request_id}"
         print(
@@ -1446,6 +1489,24 @@ def build_parser() -> argparse.ArgumentParser:
         help="Process one incremental mailbox cycle.",
     )
     github_watcher_once.set_defaults(func=cmd_github_watcher)
+    github_watcher_abandon = github_watcher_sub.add_parser(
+        "abandon",
+        help=(
+            "Abandon one strictly valid unclaimed request by publishing a "
+            "terminal safe failure without executing the action."
+        ),
+    )
+    github_watcher_abandon.add_argument("request_id")
+    github_watcher_abandon.set_defaults(func=cmd_github_watcher)
+    github_watcher_quarantine = github_watcher_sub.add_parser(
+        "quarantine",
+        help=(
+            "Quarantine one malformed backlog request only when every other "
+            "backlog request already has a durable result."
+        ),
+    )
+    github_watcher_quarantine.add_argument("request_id")
+    github_watcher_quarantine.set_defaults(func=cmd_github_watcher)
     github_watcher_resolve = github_watcher_sub.add_parser(
         "resolve",
         help=(

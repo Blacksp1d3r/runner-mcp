@@ -163,13 +163,13 @@ Phase 3.8.1 task-completion feedback:
 - public completion contract is transport-neutral; private destinations remain private configuration;
 - built-in completion delivery now observes persisted terminal test jobs, uses deterministic event markers plus a private delivery ledger, and has a live exactly-once private proof; it no longer depends on repository-specific self-hosted Actions capacity.
 
-Fail-closed missing-result recovery — 2026-09-21:
-- a live commit-pinned source-sync request exposed the expected fail-closed state where the request was already claimed but no durable result was visible;
-- the watcher correctly refused automatic replay and left its cursor behind with recovery attention;
-- a local-only recovery command is being added to publish a terminal safe `RECOVERY_REQUIRED` result for an exact already-claimed request without invoking the executor;
-- resolution verifies the original request, existing result state and replay fingerprint/state before writing anything;
-- no replay-ledger reset, cursor reset, request deletion or blind task retry is part of the recovery path;
-- after the safe failure result is durable, an ordinary watcher cycle remains responsible for reconciliation and cursor advancement.
+Fail-closed mailbox recovery — 2026-09-21:
+- exact claimed/completed requests missing a durable result can be locally resolved to terminal `RECOVERY_REQUIRED` without invoking the executor;
+- a strictly valid unclaimed request can be locally abandoned to terminal `OPERATOR_ABORTED` without execution;
+- a malformed historical request can be quarantined only when every sibling request in the current backlog already has a matching durable result and the request head remains unchanged;
+- the raw recovery fetch is bounded and fixed-path; normal watcher processing remains strict protocol-v1 parsing;
+- a live malformed legacy `sync_project` request was quarantined after 40 sibling requests were verified durable/completed, restoring heartbeat to healthy with zero replay;
+- no replay-ledger reset, cursor reset command, request deletion or blind task retry exists in these recovery paths.
 
 Phase 3.8.2 watcher resilience and restart recovery:
 - replay entries now carry an explicit claimed/completed lifecycle;

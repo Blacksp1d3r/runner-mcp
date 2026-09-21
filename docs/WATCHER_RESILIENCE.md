@@ -57,6 +57,17 @@ The watcher cursor is not reset or advanced by the resolve command. The operator
 
 A request with no replay record is rejected by this command because normal processing is still authoritative. A request with an existing durable result is also rejected because normal watcher reconciliation is authoritative. Result-persistence failure leaves the prior replay state unchanged.
 
+### Explicit unclaimed abandonment and malformed quarantine
+
+Two narrower local-only recovery operations cover states that cannot use missing-result resolution:
+
+- `runner-mcp github-watcher abandon REQUEST_ID` accepts only a strictly valid request with no replay record and no durable result. It claims the request, publishes a terminal `OPERATOR_ABORTED` result without calling the executor, and completes the replay entry only after that result is durable.
+- `runner-mcp github-watcher quarantine REQUEST_ID` accepts only a malformed request in the current cursor backlog. It refuses to advance unless every other request in that backlog has a matching durable result and can be reconciled safely.
+
+Malformed quarantine reads the target only through a bounded raw-byte transport primitive at the fixed request path. Normal watcher processing continues to use strict protocol parsing. Immediately before cursor advancement the request head is fetched again; any concurrent mailbox change aborts quarantine.
+
+Neither operation deletes requests, resets the replay ledger, resets the cursor, or authorizes action replay.
+
 ## Backlog and stale requests
 
 The public heartbeat exposes only:

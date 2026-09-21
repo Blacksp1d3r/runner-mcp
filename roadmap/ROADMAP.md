@@ -173,9 +173,13 @@ Implemented public foundation:
 - transport retry policy never authorizes operational action replay;
 - local operator recovery can resolve an already-claimed missing-result request by publishing a terminal safe `RECOVERY_REQUIRED` result without invoking the executor;
 - the recovery command requires an existing exact replay record, refuses an existing durable result, preserves the cursor, and finalizes a claimed ledger entry only after the safe failure result is durable;
-- a normal watcher cycle performs the subsequent result reconciliation and cursor advance.
+- a strictly valid request that has never been claimed can be explicitly abandoned by a local operator, producing an `OPERATOR_ABORTED` result without invoking the executor;
+- a malformed historical request can be quarantined only when it is in the current backlog, has no result, every sibling request has a matching durable result, and the request head remains unchanged through final verification;
+- malformed-request quarantine fetches only bounded bytes from the fixed mailbox path and does not weaken normal protocol parsing;
+- no recovery path exposes a generic replay, ledger-reset or cursor-reset control;
+- a normal watcher cycle performs subsequent reconciliation where applicable.
 
-Operational proof already covers migrated claim -> execute -> persist -> complete ordering, sanitized heartbeat publication and restart-safe reconciliation. The explicit missing-result resolution path now has placeholder-only regression coverage and is intended for rare ambiguous/persistence-recovery incidents.
+Operational proof covers migrated claim -> execute -> persist -> complete ordering, sanitized heartbeat publication, restart-safe reconciliation and one live malformed legacy-request quarantine with zero replay. Explicit operator recovery paths have regression coverage for persistence failure, protocol validity, exact confirmation and cursor/head races.
 
 Next:
 

@@ -56,6 +56,7 @@ class BridgeAction(StrEnum):
     SAFETY_STATUS = "safety_status"
     PROJECT_STATUS = "project_status"
     PROJECT_CAPABILITIES = "project_capabilities"
+    SYNC_PROJECT = "sync_project"
     LIST_TEST_PROFILES = "list_test_profiles"
     RUN_TESTS = "run_tests"
     QUEUE_STATUS = "queue_status"
@@ -77,6 +78,7 @@ class BridgeRequest(BaseModel):
     action: BridgeAction
     project: str | None = Field(default=None, min_length=1, max_length=80)
     profile: str | None = Field(default=None, min_length=1, max_length=80)
+    commit: str | None = Field(default=None, min_length=40, max_length=40)
     job_id: str | None = Field(default=None, min_length=1, max_length=64)
 
     @model_validator(mode="after")
@@ -90,6 +92,9 @@ class BridgeRequest(BaseModel):
         if self.profile is not None and not PROJECT_CODE_RE.fullmatch(self.profile):
             raise ValueError("profile contains unsupported characters")
 
+        if self.commit is not None and not re.fullmatch(r"[0-9a-fA-F]{40}", self.commit):
+            raise ValueError("commit must be a full Git object ID")
+
         if self.job_id is not None and not JOB_ID_RE.fullmatch(self.job_id):
             raise ValueError("job_id contains unsupported characters")
 
@@ -99,7 +104,12 @@ class BridgeRequest(BaseModel):
             BridgeAction.QUEUE_STATUS,
             BridgeAction.WORKER_STATUS,
         }:
-            if self.project is not None or self.profile is not None or self.job_id is not None:
+            if (
+                self.project is not None
+                or self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+            ):
                 raise ValueError(f"{self.action.value} does not accept arguments")
             return self
 
@@ -110,21 +120,36 @@ class BridgeRequest(BaseModel):
         }:
             if self.project is None:
                 raise ValueError(f"{self.action.value} requires project")
-            if self.profile is not None or self.job_id is not None:
+            if (
+                self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+            ):
                 raise ValueError(f"{self.action.value} accepts only project")
+            return self
+
+        if self.action == BridgeAction.SYNC_PROJECT:
+            if self.project is None or self.commit is None:
+                raise ValueError("sync_project requires project and commit")
+            if self.profile is not None or self.job_id is not None:
+                raise ValueError("sync_project accepts only project and commit")
             return self
 
         if self.action == BridgeAction.RUN_TESTS:
             if self.project is None or self.profile is None:
                 raise ValueError("run_tests requires project and profile")
-            if self.job_id is not None:
-                raise ValueError("run_tests does not accept job_id")
+            if self.commit is not None or self.job_id is not None:
+                raise ValueError("run_tests accepts only project and profile")
             return self
 
         if self.action in {BridgeAction.JOB_STATUS, BridgeAction.CANCEL_JOB}:
             if self.job_id is None:
                 raise ValueError(f"{self.action.value} requires job_id")
-            if self.project is not None or self.profile is not None:
+            if (
+                self.project is not None
+                or self.profile is not None
+                or self.commit is not None
+            ):
                 raise ValueError(f"{self.action.value} accepts only job_id")
             return self
 
@@ -358,6 +383,14 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
     }:
         assert request.project is not None
         return request.action.value, {"project": request.project}
+
+    if request.action == BridgeAction.SYNC_PROJECT:
+        assert request.project is not None
+        assert request.commit is not None
+        return request.action.value, {
+            "project": request.project,
+            "commit": request.commit,
+        }
 
     if request.action == BridgeAction.RUN_TESTS:
         assert request.project is not None

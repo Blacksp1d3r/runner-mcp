@@ -61,7 +61,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - guided private-tunnel/reverse-proxy onboarding is not yet one-click;
 - untrusted public-fork code is not sandboxed for execution on a privileged persistent runner;
 - PostgreSQL restore/PITR orchestration and automated retention pruning are not implemented;
-- the existing private pilot watcher still needs to switch to the shared public runtime before its duplicate pilot execution logic can be removed.
+- deployments that use a separate completion-notification workflow still depend on that workflow's own Actions capacity; notification transport is independent from mailbox execution.
 
 ## Release format
 

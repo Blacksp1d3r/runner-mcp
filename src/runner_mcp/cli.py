@@ -396,6 +396,7 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
             print(
                 f"{profile['name']}: timeout={profile['timeout_seconds']}s, "
                 f"log_limit={profile['max_log_bytes']} bytes, "
+                f"runtime={profile.get('runtime', 'default')}, "
                 f"parallel_safe={str(profile['parallel_safe']).lower()}"
             )
         return 0
@@ -413,6 +414,7 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
             timeout_seconds=args.timeout,
             max_log_bytes=args.max_log_bytes,
             env_passthrough=args.env,
+            runtime=args.runtime,
             parallel_safe=args.parallel_safe,
         )
         print(
@@ -1176,6 +1178,12 @@ def build_parser() -> argparse.ArgumentParser:
     profile_add.add_argument("--cwd", default=".")
     profile_add.add_argument("--timeout", type=int, default=300)
     profile_add.add_argument("--max-log-bytes", type=int, default=2_000_000)
+    profile_add.add_argument(
+        "--runtime",
+        choices=("default", "playwright"),
+        default="default",
+        help="Select a fixed Runner MCP test runtime integration.",
+    )
     profile_add.add_argument(
         "--parallel-safe",
         action="store_true",

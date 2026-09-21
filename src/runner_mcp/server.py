@@ -54,6 +54,8 @@ class Settings:
     test_jobs_root: Path | None = None
     max_test_jobs: int = 4
     max_queued_tests: int = 64
+    mailbox_workers: int = 4
+    mailbox_max_inflight: int = 32
     database_backup_root: Path | None = None
     deployment_jobs_root: Path | None = None
     approval_root: Path | None = None
@@ -121,6 +123,19 @@ class Settings:
             raise RuntimeError("RUNNER_MCP_MAX_QUEUED_TESTS must be an integer") from exc
 
         try:
+            mailbox_workers = int(values.get("RUNNER_MCP_MAILBOX_WORKERS", "4"))
+        except ValueError as exc:
+            raise RuntimeError("RUNNER_MCP_MAILBOX_WORKERS must be an integer") from exc
+        try:
+            mailbox_max_inflight = int(
+                values.get("RUNNER_MCP_MAILBOX_MAX_INFLIGHT", "32")
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                "RUNNER_MCP_MAILBOX_MAX_INFLIGHT must be an integer"
+            ) from exc
+
+        try:
             approval_ttl_seconds = int(
                 values.get("RUNNER_MCP_APPROVAL_TTL_SECONDS", "600")
             )
@@ -138,6 +153,15 @@ class Settings:
             raise RuntimeError(
                 "RUNNER_MCP_MAX_QUEUED_TESTS must be between 1 and 1024"
             )
+        if not 1 <= mailbox_workers <= 16:
+            raise RuntimeError(
+                "RUNNER_MCP_MAILBOX_WORKERS must be between 1 and 16"
+            )
+        if not mailbox_workers <= mailbox_max_inflight <= 256:
+            raise RuntimeError(
+                "RUNNER_MCP_MAILBOX_MAX_INFLIGHT must be between "
+                "RUNNER_MCP_MAILBOX_WORKERS and 256"
+            )
 
         return cls(
             bearer_token=token,
@@ -154,6 +178,8 @@ class Settings:
             test_jobs_root=Path(test_jobs_root_raw) if test_jobs_root_raw else None,
             max_test_jobs=max_test_jobs,
             max_queued_tests=max_queued_tests,
+            mailbox_workers=mailbox_workers,
+            mailbox_max_inflight=mailbox_max_inflight,
             database_backup_root=(
                 Path(database_backup_root_raw) if database_backup_root_raw else None
             ),

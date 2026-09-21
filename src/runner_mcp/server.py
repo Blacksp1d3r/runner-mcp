@@ -36,7 +36,7 @@ from .operational_safety import (
     SafetyConfigurationError,
 )
 from .service_manager import ServiceManager, ServiceManagerError
-from .source_control import SourceControlError, clean_head
+from .source_control import SourceControlError, SourceSynchronizer, clean_head
 from .test_runner import TestRunner, TestRunnerError
 
 
@@ -267,6 +267,11 @@ def build_mcp(
         )
         if settings.test_jobs_root is not None
         else None
+    )
+    source_sync = SourceSynchronizer(
+        registry=registry,
+        safety=safety,
+        tests=tests,
     )
     service_manager = ServiceManager(
         registry=registry,
@@ -546,8 +551,42 @@ def build_mcp(
         )
 
     @mcp.tool()
+    def sync_project(project: str, commit: str) -> dict:
+        """Synchronize one staging project to an exact commit from its configured origin."""
+        request_id = current_request_id()
+        try:
+            result = source_sync.sync_project(project, commit)
+        except (
+            SourceControlError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    "sync_project",
+                    project,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                request_id,
+                "sync_project",
+                project,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
     def list_test_profiles(project: str) -> list[dict]:
-        """List configured test profiles without exposing executable paths or arguments."""
+        """List configured and fixed safe adapter test profiles without private argv."""
         cfg = registry.projects.get(project)
         if cfg is None:
             _audit_test_result(
@@ -556,15 +595,18 @@ def build_mcp(
                 result="denied",
             )
             raise ValueError("Unknown or disabled project")
-        result = [
-            {
-                "name": name,
-                "timeout_seconds": profile.timeout_seconds,
-                "max_log_bytes": profile.max_log_bytes,
-                "parallel_safe": profile.parallel_safe,
-            }
-            for name, profile in sorted(cfg.test_profiles.items())
-        ]
+        if tests is not None:
+            result = tests.list_profiles(project)
+        else:
+            result = [
+                {
+                    "name": name,
+                    "timeout_seconds": profile.timeout_seconds,
+                    "max_log_bytes": profile.max_log_bytes,
+                    "parallel_safe": profile.parallel_safe,
+                }
+                for name, profile in sorted(cfg.test_profiles.items())
+            ]
         _audit_test_result(
             tool_name="list_test_profiles",
             project=project,

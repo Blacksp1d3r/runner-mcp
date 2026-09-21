@@ -47,7 +47,9 @@ Before publishing a package or registry entry:
 - license metadata is correct;
 - README renders correctly as package documentation;
 - project URLs point to the public repository and documentation;
-- no private configuration file is included in the built artifact.
+- no private configuration file is included in the built artifact;
+- the wheel and source distribution pass `scripts/release-artifact-smoke.sh`;
+- a clean environment can install the built wheel and run the documented CLI smoke checks.
 
 ## Release notes
 

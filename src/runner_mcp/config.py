@@ -3,7 +3,7 @@ from __future__ import annotations
 import os
 import re
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 
 import yaml
 from pydantic import AnyHttpUrl, BaseModel, ConfigDict, Field, field_validator
@@ -26,6 +26,7 @@ BLOCKED_TEST_ENV_NAMES = {
     "LD_LIBRARY_PATH",
     "LD_PRELOAD",
     "PATH",
+    "PLAYWRIGHT_BROWSERS_PATH",
     "PYTHONHOME",
     "PYTHONPATH",
     "SHELLOPTS",
@@ -41,6 +42,7 @@ class TestProfile(BaseModel):
     timeout_seconds: int = Field(default=300, ge=1, le=3600)
     max_log_bytes: int = Field(default=2_000_000, ge=4096, le=20_000_000)
     env_passthrough: list[str] = Field(default_factory=list, max_length=64)
+    runtime: Literal["default", "playwright"] = "default"
     parallel_safe: bool = False
 
     @field_validator("argv")

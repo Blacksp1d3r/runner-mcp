@@ -16,6 +16,21 @@ from runner_mcp.self_update import (
 )
 
 
+class TrackingRLock:
+    def __init__(self) -> None:
+        self._lock = threading.RLock()
+        self.depth = 0
+
+    def __enter__(self):
+        self._lock.acquire()
+        self.depth += 1
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        self.depth -= 1
+        self._lock.release()
+
+
 class FakeSource:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
@@ -30,7 +45,7 @@ class FakeTests:
         self.fail_profile = fail_profile
         self.started: list[str] = []
         self.jobs: dict[str, str] = {}
-        self.source_lock = threading.Lock()
+        self.source_lock = TrackingRLock()
 
     def list_profiles(self, project: str):
         assert project == "runner-mcp"
@@ -45,6 +60,7 @@ class FakeTests:
 
     def start_test(self, project: str, suite: str):
         assert project == "runner-mcp"
+        assert self.source_lock.depth > 0
         self.started.append(suite)
         job_id = ("a" if suite == "lint" else "b") * 32
         self.jobs[job_id] = suite
@@ -182,7 +198,7 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     tests = FakeTests()
 
     def installer(command, **kwargs):
-        assert tests.source_lock.locked()
+        assert tests.source_lock.depth > 0
         installs.append((list(command), dict(kwargs)))
         return subprocess.CompletedProcess(command, 0, "", "")
     manager, root, _exits = make_manager(

@@ -898,3 +898,106 @@ def test_completion_watcher_cli_once_returns_nonzero_on_delivery_failure(
     assert result == 2
     assert "state=degraded" in captured.out
     assert "failures=1" in captured.out
+
+
+
+def test_autostart_cli_install_and_status_are_path_safe(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import AutostartStatus, SERVER_UNIT
+
+    paths, _ = install_config(tmp_path)
+    captured_install = {}
+
+    def fake_install(config_dir, *, executable, port):
+        captured_install["config_dir"] = config_dir
+        captured_install["executable"] = executable
+        captured_install["port"] = port
+        return [SERVER_UNIT]
+
+    monkeypatch.setattr("runner_mcp.cli.install_user_services", fake_install)
+    monkeypatch.setattr(
+        "runner_mcp.cli.user_service_status",
+        lambda: [
+            AutostartStatus(
+                component="server",
+                installed=True,
+                enabled=True,
+                active=True,
+            )
+        ],
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "autostart",
+            "install",
+            "--port",
+            "8123",
+        ]
+    )
+    installed = capsys.readouterr()
+
+    assert result == 0
+    assert captured_install["config_dir"] == paths.config_dir
+    assert captured_install["port"] == 8123
+    assert "server" in installed.out
+    assert str(paths.config_dir) not in installed.out
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "autostart",
+            "status",
+        ]
+    ) == 0
+    status = capsys.readouterr()
+    assert "server: installed=yes, enabled=yes, active=yes" in status.out
+    assert str(paths.config_dir) not in status.out
+
+
+def test_autostart_cli_remove_requires_explicit_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls = []
+    monkeypatch.setattr(
+        "runner_mcp.cli.remove_user_services",
+        lambda: calls.append("remove") or ["runner-mcp.service"],
+    )
+
+    monkeypatch.setattr("builtins.input", lambda _: "no")
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "autostart",
+            "remove",
+        ]
+    ) == 2
+    denied = capsys.readouterr()
+    assert "cancelled" in denied.err.lower()
+    assert calls == []
+
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _: "REMOVE RUNNER MCP AUTOSTART",
+    )
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "autostart",
+            "remove",
+        ]
+    ) == 0
+    removed = capsys.readouterr()
+    assert calls == ["remove"]
+    assert "Removed 1" in removed.out

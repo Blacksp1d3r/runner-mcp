@@ -29,6 +29,7 @@ from .bridge_protocol import (
 from .bridge_replay import (
     BridgeReplayError,
     BridgeReplayLedger,
+    ReplayDecision,
     ReplayRecord,
     ReplayState,
 )
@@ -68,6 +69,12 @@ class GitHubRecoveryResolution:
     request_id: str
     action: BridgeAction
     prior_state: ReplayState
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubAbandonResolution:
+    request_id: str
+    action: BridgeAction
 
 
 @dataclass(frozen=True, slots=True)
@@ -304,6 +311,203 @@ class GitHubMailboxWatcher:
             request_id=request.request_id,
             action=request.action,
             prior_state=record.state,
+        )
+
+    def abandon_unclaimed_request_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubAbandonResolution:
+        """Persist an operator-aborted result without executing a fresh request."""
+        try:
+            request_bytes = self._transport.fetch_request(request_id)
+            request = parse_bridge_request(request_bytes)
+            if request.request_id != request_id:
+                raise BridgeProtocolError(
+                    "request filename and payload ID do not match"
+                )
+            existing_result = self._transport.fetch_result(request_id)
+            record = self._ledger.inspect(request)
+        except (
+            BridgeProtocolError,
+            BridgeReplayError,
+            GitHubMailboxTransportError,
+            ValueError,
+        ) as exc:
+            raise GitHubWatcherError(
+                "abandon request state could not be verified safely"
+            ) from exc
+
+        if existing_result is not None:
+            raise GitHubWatcherError(
+                "a durable result already exists; use normal watcher reconciliation"
+            )
+        if record is not None:
+            raise GitHubWatcherError(
+                "request already has replay state; use missing-result recovery instead"
+            )
+
+        failure = BridgeResult(
+            request_id=request.request_id,
+            action=request.action,
+            state=BridgeResultState.FAILED,
+            error_code="OPERATOR_ABORTED",
+            summary=(
+                "A local operator abandoned this request. "
+                "No action was executed."
+            ),
+        )
+        try:
+            claim = self._ledger.claim(request)
+            if claim.decision != ReplayDecision.NEW:
+                raise BridgeReplayError("request was claimed concurrently")
+            result_json = serialize_bridge_result(failure)
+            self._transport.persist_result(request_id, result_json)
+        except (
+            BridgeProtocolError,
+            BridgeReplayError,
+            BridgeResultSinkError,
+            GitHubMailboxTransportError,
+            ValueError,
+        ) as exc:
+            raise GitHubWatcherError(
+                "abandonment result could not be persisted safely"
+            ) from exc
+
+        try:
+            self._ledger.complete(request)
+        except BridgeReplayError as exc:
+            raise GitHubWatcherError(
+                "abandonment result is durable; normal reconciliation is required"
+            ) from exc
+
+        return GitHubAbandonResolution(
+            request_id=request.request_id,
+            action=request.action,
+        )
+
+    def quarantine_malformed_request_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubWatcherCycleOutcome:
+        """Advance only when one malformed request is the sole unresolved backlog."""
+        try:
+            cursor = self._cursor_store.read()
+        except GitHubWatcherError:
+            raise
+        if cursor is None:
+            raise GitHubWatcherError(
+                "watcher cursor is uninitialized; bootstrap is required"
+            )
+
+        try:
+            current_head = self._transport.request_head_sha()
+            if current_head == cursor:
+                raise GitHubWatcherError("watcher backlog is already empty")
+            request_ids = self._transport.changed_request_ids(
+                base_sha=cursor,
+                head_sha=current_head,
+            )
+        except (GitHubMailboxTransportError, ValueError) as exc:
+            raise GitHubWatcherError(
+                "watcher backlog could not be verified safely"
+            ) from exc
+
+        if request_id not in request_ids:
+            raise GitHubWatcherError(
+                "malformed request is not present in the current watcher backlog"
+            )
+
+        try:
+            malformed_bytes = self._transport.fetch_request(request_id)
+            existing_result = self._transport.fetch_result(request_id)
+        except GitHubMailboxTransportError as exc:
+            raise GitHubWatcherError(
+                "malformed request state could not be verified safely"
+            ) from exc
+
+        try:
+            parse_bridge_request(malformed_bytes)
+        except BridgeProtocolError:
+            pass
+        else:
+            raise GitHubWatcherError(
+                "request is protocol-valid; use normal processing, abandon or resolve"
+            )
+
+        if existing_result is not None:
+            raise GitHubWatcherError(
+                "malformed request already has a durable result; manual review is required"
+            )
+
+        reconciled = 0
+        for other_request_id in request_ids:
+            if other_request_id == request_id:
+                continue
+            try:
+                request_bytes = self._transport.fetch_request(other_request_id)
+                request = parse_bridge_request(request_bytes)
+                if request.request_id != other_request_id:
+                    raise BridgeProtocolError(
+                        "request filename and payload ID do not match"
+                    )
+                result = self._transport.fetch_result(other_request_id)
+                record = self._ledger.inspect(request)
+            except (
+                BridgeProtocolError,
+                BridgeReplayError,
+                GitHubMailboxTransportError,
+                ValueError,
+            ) as exc:
+                raise GitHubWatcherError(
+                    "another backlog request cannot be reconciled safely"
+                ) from exc
+
+            if result is None:
+                raise GitHubWatcherError(
+                    "another backlog request is unresolved; resolve or abandon it first"
+                )
+            if result.action != request.action:
+                raise GitHubWatcherError(
+                    "another backlog result does not match its request action"
+                )
+
+            try:
+                self._ledger.claim(request)
+                self._ledger.complete(request)
+            except BridgeReplayError as exc:
+                raise GitHubWatcherError(
+                    "another backlog request cannot be reconciled safely"
+                ) from exc
+            reconciled += 1
+
+        try:
+            self._cursor_store.advance(
+                expected_sha=cursor,
+                new_sha=current_head,
+            )
+        except GitHubWatcherError:
+            raise
+
+        heartbeat = assess_watcher_health(
+            [],
+            stale_after_seconds=self._stale_after_seconds,
+        )
+        heartbeat_ok, published = self._heartbeat_delivery(
+            heartbeat,
+            publish_heartbeat=True,
+        )
+        return GitHubWatcherCycleOutcome(
+            state=(
+                GitHubWatcherCycleState.PROCESSED
+                if heartbeat_ok
+                else GitHubWatcherCycleState.DEGRADED
+            ),
+            discovered_requests=len(request_ids),
+            processed_requests=0,
+            reconciled_requests=reconciled,
+            recovery_attention=0,
+            heartbeat=heartbeat,
+            heartbeat_published=published,
         )
 
     def _process_request(

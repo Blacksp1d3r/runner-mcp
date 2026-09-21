@@ -23,6 +23,7 @@ from .completion_feedback import (
 )
 from .github_mailbox import GitHubApiSession
 from .onboarding import read_private_runtime
+from .self_update import SelfUpdateError, consume_restart_marker
 from .test_runner import JOB_ID_RE, TERMINAL_STATUSES, TestJobStatus
 
 MAX_NOTIFICATION_CONFIG_BYTES = 8_192
@@ -647,4 +648,17 @@ class CompletionNotifierRuntime:
             raise ValueError("completion notifier poll interval must be between 1 and 300 seconds")
         while True:
             self.run_once()
+            try:
+                restart_requested = consume_restart_marker(
+                    self._config_dir,
+                    "completion-watcher",
+                )
+            except SelfUpdateError as exc:
+                raise CompletionDeliveryError(
+                    "Runner MCP self-update restart state is invalid"
+                ) from exc
+            if restart_requested:
+                raise CompletionDeliveryError(
+                    "Runner MCP self-update restart requested"
+                )
             time.sleep(poll_seconds)

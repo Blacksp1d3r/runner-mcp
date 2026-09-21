@@ -643,3 +643,60 @@ def test_multiline_passthrough_secret_is_fully_redacted(
     assert "first-private-line-123" not in log["content"]
     assert "second-private-line-456" not in log["content"]
     assert log["content"].count("[REDACTED]") >= 2
+
+
+
+def test_safe_python_adapter_presets_are_available_without_private_profile_config(
+    tmp_path: Path,
+) -> None:
+    runner, root, _ = make_runner(tmp_path, {})
+    runner.registry.projects["demo"].adapter = "python"
+    bin_dir = root / ".venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    python = bin_dir / "python"
+    python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    python.chmod(0o755)
+    ruff = bin_dir / "ruff"
+    ruff.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    ruff.chmod(0o755)
+
+    names = {item["name"] for item in runner.list_profiles("demo")}
+    assert {"pytest", "ruff"} <= names
+
+    pytest_job = runner.start_test("demo", "pytest")
+    assert wait_terminal(runner, pytest_job["job_id"])["status"] == "passed"
+    ruff_job = runner.start_test("demo", "ruff")
+    assert wait_terminal(runner, ruff_job["job_id"])["status"] == "passed"
+
+
+def test_custom_adapter_preset_is_never_implicitly_exposed(tmp_path: Path) -> None:
+    runner, root, _ = make_runner(tmp_path, {})
+    runner.registry.projects["demo"].adapter = "python"
+    bin_dir = root / ".venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    python = bin_dir / "python"
+    python.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    python.chmod(0o755)
+
+    names = {item["name"] for item in runner.list_profiles("demo")}
+    assert "pytest" in names
+    assert "custom" not in names
+    with pytest.raises(RunnerError, match="Unknown or disabled test profile"):
+        runner.start_test("demo", "custom")
+
+
+def test_project_has_work_tracks_queued_or_active_tests(tmp_path: Path) -> None:
+    runner, _, _ = make_runner(
+        tmp_path,
+        {"slow": python_profile("import time; time.sleep(30)")},
+        max_concurrent_jobs=1,
+    )
+    assert runner.project_has_work("demo") is False
+
+    job = runner.start_test("demo", "slow")
+    wait_running(runner, job["job_id"])
+    assert runner.project_has_work("demo") is True
+
+    runner.cancel(job["job_id"])
+    wait_terminal(runner, job["job_id"])
+    assert runner.project_has_work("demo") is False

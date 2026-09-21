@@ -422,6 +422,126 @@ class LocalMCPBridgeExecutor:
             raise BridgeExecutionAdapterError("Invalid test job identifier")
         return self._client()._call_tool("cancel_job", {"job_id": job_id})
 
+    def job_log(self, job_id: str, *, offset: int = 0, length: int = 100) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError("Invalid test job identifier")
+        if offset < 0 or offset > 100_000:
+            raise BridgeExecutionAdapterError("Invalid test log offset")
+        if length < 1 or length > 100:
+            raise BridgeExecutionAdapterError("Invalid test log length")
+        return self._client()._call_tool(
+            "get_test_log",
+            {"job_id": job_id, "offset": offset, "length": length},
+        )
+
+    def list_services(self, project: str) -> Any:
+        return self._client()._call_tool("list_services", {"project": project})
+
+    def service_status(self, project: str, service: str) -> Any:
+        return self._client()._call_tool(
+            "service_status",
+            {"project": project, "service": service},
+        )
+
+    def start_service(self, project: str, service: str) -> Any:
+        return self._client()._call_tool(
+            "start_service",
+            {"project": project, "service": service},
+        )
+
+    def stop_service(self, project: str, service: str) -> Any:
+        return self._client()._call_tool(
+            "stop_service",
+            {"project": project, "service": service},
+        )
+
+    def restart_service(self, project: str, service: str) -> Any:
+        return self._client()._call_tool(
+            "restart_service",
+            {"project": project, "service": service},
+        )
+
+    def list_backups(self, project: str, *, limit: int = 100) -> Any:
+        if limit < 1 or limit > 100:
+            raise BridgeExecutionAdapterError("Invalid backup list limit")
+        return self._client()._call_tool(
+            "list_backups",
+            {"project": project, "limit": limit},
+        )
+
+    def backup_database(self, project: str) -> Any:
+        return self._client()._call_tool("backup_database", {"project": project})
+
+    def request_action_approval(self, project: str, operation: str) -> Any:
+        if operation not in {"migration", "deploy", "code_rollback"}:
+            raise BridgeExecutionAdapterError("Invalid approval operation")
+        return self._client()._call_tool(
+            "request_action_approval",
+            {"project": project, "action": operation},
+        )
+
+    def approval_status(self, approval_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(approval_id):
+            raise BridgeExecutionAdapterError("Invalid approval identifier")
+        return self._client()._call_tool(
+            "approval_status",
+            {"approval_id": approval_id},
+        )
+
+    def migration_status(self, project: str) -> Any:
+        return self._client()._call_tool("migration_status", {"project": project})
+
+    def apply_migrations(self, project: str, approval_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(approval_id):
+            raise BridgeExecutionAdapterError("Invalid approval identifier")
+        return self._client()._call_tool(
+            "apply_migrations",
+            {"project": project, "approval_id": approval_id},
+        )
+
+    def plan_deploy(self, project: str) -> Any:
+        return self._client()._call_tool("plan_deploy", {"project": project})
+
+    def deploy_staging(self, project: str, approval_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(approval_id):
+            raise BridgeExecutionAdapterError("Invalid approval identifier")
+        return self._client()._call_tool(
+            "deploy_staging",
+            {"project": project, "approval_id": approval_id},
+        )
+
+    def deployment_status(self, job_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError("Invalid deployment job identifier")
+        return self._client()._call_tool(
+            "deployment_status",
+            {"job_id": job_id},
+        )
+
+    def list_releases(self, project: str, *, limit: int = 100) -> Any:
+        if limit < 1 or limit > 100:
+            raise BridgeExecutionAdapterError("Invalid release list limit")
+        return self._client()._call_tool(
+            "list_releases",
+            {"project": project, "limit": limit},
+        )
+
+    def rollback_plan(self, project: str) -> Any:
+        return self._client()._call_tool("rollback_plan", {"project": project})
+
+    def rollback_release(self, project: str, approval_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(approval_id):
+            raise BridgeExecutionAdapterError("Invalid approval identifier")
+        return self._client()._call_tool(
+            "rollback_release",
+            {"project": project, "approval_id": approval_id},
+        )
+
+    def rollback_status(self, job_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError("Invalid rollback job identifier")
+        return self._client()._call_tool("rollback_status", {"job_id": job_id})
+
     def run_tests_to_completion(self, project: str, suite: str) -> Any:
         """Compatibility helper for local callers; mailbox dispatch does not use it."""
         started = self.run_tests(project, suite)

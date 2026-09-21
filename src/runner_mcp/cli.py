@@ -10,6 +10,13 @@ from pathlib import Path
 import uvicorn
 
 from .approval_manager import ApprovalError, ApprovalManager
+from .completion_delivery import (
+    CompletionDeliveryError,
+    CompletionNotifierRuntime,
+    completion_notifier_status,
+    configure_github_issue_notifier,
+    remove_completion_notifier,
+)
 from .config_manager import (
     ConfigManagerError,
     add_database_config,
@@ -642,6 +649,98 @@ def cmd_approval(args: argparse.Namespace) -> int:
     raise ApprovalError("Unknown approval action")
 
 
+def cmd_completion_notifier(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.completion_notifier_action == "status":
+        result = completion_notifier_status(config_dir)
+        print("configured" if result["configured"] else "not configured")
+        if result["configured"]:
+            print("initialized" if result["initialized"] else "not initialized")
+        return 0
+
+    if args.completion_notifier_action == "configure":
+        repository = args.repository or input(
+            "Private GitHub notification repository (owner/name): "
+        ).strip()
+        if not repository:
+            raise CompletionDeliveryError(
+                "completion notification repository is required"
+            )
+        mention = args.mention
+        if mention is None:
+            entered = input(
+                "GitHub login to mention for notification (optional): "
+            ).strip()
+            mention = entered or None
+        if args.token_stdin:
+            token = sys.stdin.readline(4098).strip()
+        else:
+            token = getpass.getpass("GitHub notification token: ").strip()
+        if not token:
+            raise CompletionDeliveryError(
+                "completion notification GitHub token is required"
+            )
+        configure_github_issue_notifier(
+            config_dir,
+            repository=repository,
+            issue_number=args.issue,
+            mention=mention,
+            token=token,
+        )
+        print("Completion notifier configured.")
+        print("The token and destination were stored privately and were not displayed.")
+        print("Next: runner-mcp completion-watcher bootstrap")
+        return 0
+
+    if args.completion_notifier_action == "remove":
+        confirmation = input(
+            "Type REMOVE COMPLETION NOTIFIER to continue: "
+        ).strip()
+        if confirmation != "REMOVE COMPLETION NOTIFIER":
+            raise CompletionDeliveryError("completion notifier removal cancelled")
+        remove_completion_notifier(config_dir)
+        print("Completion notifier configuration removed.")
+        return 0
+
+    raise CompletionDeliveryError("unknown completion notifier action")
+
+
+def cmd_completion_watcher(args: argparse.Namespace) -> int:
+    runtime = CompletionNotifierRuntime.from_private_config(
+        _config_dir(args.config_dir)
+    )
+
+    if args.completion_watcher_action == "bootstrap":
+        runtime.bootstrap()
+        print("Completion notifier initialized at the current time.")
+        print("Historical test completions were not replayed.")
+        return 0
+
+    if args.completion_watcher_action == "once":
+        outcome = runtime.run_once()
+        print(
+            "state="
+            f"{'healthy' if outcome.healthy else 'degraded'} "
+            f"discovered={outcome.discovered_events} "
+            f"delivered={outcome.delivered_events} "
+            f"reconciled={outcome.reconciled_events} "
+            f"already_delivered={outcome.already_delivered_events} "
+            f"failures={outcome.delivery_failures}"
+        )
+        return 0 if outcome.healthy else 2
+
+    if args.completion_watcher_action == "run":
+        print("Runner MCP completion watcher running.")
+        try:
+            runtime.run_forever(poll_seconds=args.poll_seconds)
+        except KeyboardInterrupt:
+            print("Runner MCP completion watcher stopped.")
+            return 0
+
+    raise CompletionDeliveryError("unknown completion watcher action")
+
+
 def cmd_github_mailbox(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
 
@@ -1017,6 +1116,67 @@ def build_parser() -> argparse.ArgumentParser:
     )
     approval_approve.add_argument("approval_id")
     approval_approve.set_defaults(func=cmd_approval)
+
+    completion_notifier = subparsers.add_parser(
+        "completion-notifier",
+        help="Configure a private idempotent GitHub issue completion notifier.",
+    )
+    completion_notifier_sub = completion_notifier.add_subparsers(
+        dest="completion_notifier_action",
+        required=True,
+    )
+    completion_notifier_status_parser = completion_notifier_sub.add_parser(
+        "status",
+        help="Show whether completion notification is configured and initialized.",
+    )
+    completion_notifier_status_parser.set_defaults(func=cmd_completion_notifier)
+    completion_notifier_configure = completion_notifier_sub.add_parser(
+        "configure",
+        help="Configure a private GitHub issue notification destination.",
+    )
+    completion_notifier_configure.add_argument("--repository")
+    completion_notifier_configure.add_argument("--issue", type=int, required=True)
+    completion_notifier_configure.add_argument("--mention")
+    completion_notifier_configure.add_argument(
+        "--token-stdin",
+        action="store_true",
+        help="Read the GitHub token from standard input instead of prompting.",
+    )
+    completion_notifier_configure.set_defaults(func=cmd_completion_notifier)
+    completion_notifier_remove = completion_notifier_sub.add_parser(
+        "remove",
+        help="Remove completion notification destination configuration.",
+    )
+    completion_notifier_remove.set_defaults(func=cmd_completion_notifier)
+
+    completion_watcher = subparsers.add_parser(
+        "completion-watcher",
+        help="Deliver terminal test completion notifications without rerunning tests.",
+    )
+    completion_watcher_sub = completion_watcher.add_subparsers(
+        dest="completion_watcher_action",
+        required=True,
+    )
+    completion_watcher_bootstrap = completion_watcher_sub.add_parser(
+        "bootstrap",
+        help="Ignore historical completions and notify only future terminal tests.",
+    )
+    completion_watcher_bootstrap.set_defaults(func=cmd_completion_watcher)
+    completion_watcher_once = completion_watcher_sub.add_parser(
+        "once",
+        help="Process one completion-notification cycle.",
+    )
+    completion_watcher_once.set_defaults(func=cmd_completion_watcher)
+    completion_watcher_run = completion_watcher_sub.add_parser(
+        "run",
+        help="Continuously watch terminal test jobs and deliver notifications.",
+    )
+    completion_watcher_run.add_argument(
+        "--poll-seconds",
+        type=float,
+        default=5.0,
+    )
+    completion_watcher_run.set_defaults(func=cmd_completion_watcher)
 
     github_mailbox = subparsers.add_parser(
         "github-mailbox",

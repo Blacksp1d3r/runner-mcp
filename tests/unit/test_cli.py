@@ -749,3 +749,152 @@ def test_github_watcher_cli_run_passes_bounded_intervals(
     assert runtime.args == (7.0, 180.0)
     assert "running" in captured.out.lower()
     assert "stopped" in captured.out.lower()
+
+
+
+def test_completion_notifier_cli_configure_hides_destination_and_token(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    token = "completion-token-placeholder"
+    repository = "example/private-notifications"
+    monkeypatch.setattr("sys.stdin", io.StringIO(token + "\n"))
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "completion-notifier",
+            "configure",
+            "--repository",
+            repository,
+            "--issue",
+            "25",
+            "--mention",
+            "operator-user",
+            "--token-stdin",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert token not in captured.out
+    assert token not in captured.err
+    assert repository not in captured.out
+    assert "stored privately" in captured.out
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "completion-notifier",
+            "status",
+        ]
+    )
+    status = capsys.readouterr()
+    assert result == 0
+    assert status.out.splitlines() == ["configured", "not initialized"]
+    assert repository not in status.out
+    assert token not in status.out
+
+
+def test_completion_watcher_cli_bootstrap_and_once_are_safe(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.completion_delivery import CompletionNotifierCycleOutcome
+
+    paths, _ = install_config(tmp_path)
+
+    class FakeRuntime:
+        def __init__(self) -> None:
+            self.bootstrap_calls = 0
+            self.once_calls = 0
+
+        def bootstrap(self) -> None:
+            self.bootstrap_calls += 1
+
+        def run_once(self):
+            self.once_calls += 1
+            return CompletionNotifierCycleOutcome(
+                discovered_events=1,
+                delivered_events=1,
+                reconciled_events=0,
+                already_delivered_events=0,
+                delivery_failures=0,
+            )
+
+    runtime = FakeRuntime()
+    monkeypatch.setattr(
+        "runner_mcp.cli.CompletionNotifierRuntime.from_private_config",
+        lambda _config_dir: runtime,
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "completion-watcher",
+            "bootstrap",
+        ]
+    ) == 0
+    bootstrap = capsys.readouterr()
+    assert runtime.bootstrap_calls == 1
+    assert "Historical test completions were not replayed." in bootstrap.out
+    assert str(paths.config_dir) not in bootstrap.out
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "completion-watcher",
+            "once",
+        ]
+    ) == 0
+    once = capsys.readouterr()
+    assert runtime.once_calls == 1
+    assert "state=healthy" in once.out
+    assert "delivered=1" in once.out
+    assert str(paths.config_dir) not in once.out
+
+
+def test_completion_watcher_cli_once_returns_nonzero_on_delivery_failure(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.completion_delivery import CompletionNotifierCycleOutcome
+
+    paths, _ = install_config(tmp_path)
+
+    class FakeRuntime:
+        def run_once(self):
+            return CompletionNotifierCycleOutcome(
+                discovered_events=1,
+                delivered_events=0,
+                reconciled_events=0,
+                already_delivered_events=0,
+                delivery_failures=1,
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.CompletionNotifierRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "completion-watcher",
+            "once",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "state=degraded" in captured.out
+    assert "failures=1" in captured.out

@@ -222,6 +222,74 @@ def test_client_initializes_session_and_sends_authenticated_tool_call(
     }
 
 
+def test_client_accepts_multi_item_list_tool_content(monkeypatch) -> None:
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "content": [
+                            {"type": "text", "text": '{"name":"privacy"}'},
+                            {"type": "text", "text": '{"name":"unit"}'},
+                        ]
+                    },
+                }
+            ).encode()
+        ),
+    ]
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda request, timeout: responses.pop(0),
+    )
+    client = LocalMCPClient(_config())
+
+    assert client._call_tool("list_test_profiles", {"project": "demo"}) == [
+        {"name": "privacy"},
+        {"name": "unit"},
+    ]
+
+
+def test_client_rejects_multi_item_non_list_tool_content(monkeypatch) -> None:
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {
+                        "content": [
+                            {"type": "text", "text": '{"status":"one"}'},
+                            {"type": "text", "text": '{"status":"two"}'},
+                        ]
+                    },
+                }
+            ).encode()
+        ),
+    ]
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda request, timeout: responses.pop(0),
+    )
+    client = LocalMCPClient(_config())
+
+    with pytest.raises(BridgeExecutionAdapterError):
+        client._call_tool("project_status", {"project": "demo"})
+
+
 def test_client_initialize_is_idempotent(monkeypatch) -> None:
     calls = 0
     responses = [
@@ -312,7 +380,12 @@ def test_client_rejects_tool_error_without_leaking_text(monkeypatch) -> None:
     "content",
     [
         {"content": "not-a-list"},
-        {"content": [{"type": "text", "text": "{}"}, {"type": "text", "text": "{}"}]},
+        {
+            "content": [
+                {"type": "text", "text": "[]"},
+                {"type": "text", "text": "{}"},
+            ]
+        },
         {"content": [{"type": "image", "data": "..."}]},
         {"content": [{"type": "text", "text": '{"a":1,"a":2}'}]},
         {"content": [{"type": "text", "text": "NaN"}]},

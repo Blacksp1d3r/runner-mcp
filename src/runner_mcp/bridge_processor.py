@@ -42,6 +42,8 @@ class BridgeExecutor(Protocol):
 
     def list_test_profiles(self, project: str) -> Any: ...
 
+    def sync_project(self, project: str, commit: str) -> Any: ...
+
     def run_tests(self, project: str, suite: str) -> Any: ...
 
     def queue_status(self) -> Any: ...
@@ -186,6 +188,14 @@ class BridgeProcessor:
         if request.action == BridgeAction.LIST_TEST_PROFILES:
             assert request.project is not None
             return self._executor.list_test_profiles(request.project)
+
+        if request.action == BridgeAction.SYNC_PROJECT:
+            assert request.project is not None
+            assert request.commit is not None
+            return self._executor.sync_project(
+                request.project,
+                request.commit,
+            )
 
         if request.action == BridgeAction.RUN_TESTS:
             assert request.project is not None

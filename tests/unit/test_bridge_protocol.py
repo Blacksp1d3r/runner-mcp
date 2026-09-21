@@ -90,7 +90,7 @@ from runner_mcp.bridge_protocol import (
 )
 def test_bridge_request_maps_only_to_allow_listed_tool_calls(
     payload: dict[str, object],
-    expected: tuple[str, dict[str, str]],
+    expected: tuple[str, dict[str, str | int]],
 ) -> None:
     request = parse_bridge_request(json.dumps(payload))
     assert bridge_tool_call(request) == expected
@@ -357,5 +357,105 @@ def test_sync_project_requires_full_commit_and_maps_safely() -> None:
     ],
 )
 def test_sync_and_test_requests_reject_extra_or_unpinned_input(payload: str) -> None:
+    with pytest.raises(BridgeProtocolError, match="strict validation"):
+        parse_bridge_request(payload)
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        (
+            {
+                "request_id": "ops-001",
+                "action": "job_log",
+                "job_id": "a" * 32,
+                "offset": 10,
+                "length": 25,
+            },
+            ("job_log", {"job_id": "a" * 32, "offset": 10, "length": 25}),
+        ),
+        (
+            {
+                "request_id": "ops-002",
+                "action": "service_status",
+                "project": "demo",
+                "service": "web",
+            },
+            ("service_status", {"project": "demo", "service": "web"}),
+        ),
+        (
+            {
+                "request_id": "ops-003",
+                "action": "list_backups",
+                "project": "demo",
+                "limit": 20,
+            },
+            ("list_backups", {"project": "demo", "limit": 20}),
+        ),
+        (
+            {
+                "request_id": "ops-004",
+                "action": "request_action_approval",
+                "project": "demo",
+                "operation": "code_rollback",
+            },
+            (
+                "request_action_approval",
+                {"project": "demo", "action": "code_rollback"},
+            ),
+        ),
+        (
+            {
+                "request_id": "ops-005",
+                "action": "deploy_staging",
+                "project": "demo",
+                "approval_id": "b" * 32,
+            },
+            (
+                "deploy_staging",
+                {"project": "demo", "approval_id": "b" * 32},
+            ),
+        ),
+        (
+            {
+                "request_id": "ops-006",
+                "action": "deployment_status",
+                "job_id": "c" * 32,
+            },
+            ("deployment_status", {"job_id": "c" * 32}),
+        ),
+        (
+            {
+                "request_id": "ops-007",
+                "action": "list_releases",
+                "project": "demo",
+            },
+            ("list_releases", {"project": "demo"}),
+        ),
+    ],
+)
+def test_operational_bridge_maps_only_bounded_arguments(
+    payload: dict[str, object],
+    expected: tuple[str, dict[str, str | int]],
+) -> None:
+    request = parse_bridge_request(json.dumps(payload))
+    assert bridge_tool_call(request) == expected
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"request_id":"ops-bad-01","action":"job_log","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","length":101}',
+        '{"request_id":"ops-bad-02","action":"job_log","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","offset":-1}',
+        '{"request_id":"ops-bad-03","action":"service_status","project":"demo","service":"../web"}',
+        '{"request_id":"ops-bad-04","action":"restart_service","project":"demo","service":"web","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
+        '{"request_id":"ops-bad-05","action":"request_action_approval","project":"demo","operation":"shell"}',
+        '{"request_id":"ops-bad-06","action":"approval_status","approval_id":"not-an-id"}',
+        '{"request_id":"ops-bad-07","action":"apply_migrations","project":"demo","approval_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","operation":"migration"}',
+        '{"request_id":"ops-bad-08","action":"list_backups","project":"demo","limit":101}',
+        '{"request_id":"ops-bad-09","action":"deploy_staging","project":"demo"}',
+    ],
+)
+def test_operational_bridge_rejects_unbounded_or_extra_arguments(payload: str) -> None:
     with pytest.raises(BridgeProtocolError, match="strict validation"):
         parse_bridge_request(payload)

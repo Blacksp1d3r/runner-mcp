@@ -82,6 +82,9 @@ class BridgeAction(StrEnum):
     ROLLBACK_PLAN = "rollback_plan"
     ROLLBACK_RELEASE = "rollback_release"
     ROLLBACK_STATUS = "rollback_status"
+    RUNTIME_STATUS = "runtime_status"
+    SELF_UPDATE = "self_update"
+    SELF_UPDATE_STATUS = "self_update_status"
 
 
 class BridgeResultState(StrEnum):
@@ -150,6 +153,7 @@ class BridgeRequest(BaseModel):
             BridgeAction.SAFETY_STATUS,
             BridgeAction.QUEUE_STATUS,
             BridgeAction.WORKER_STATUS,
+            BridgeAction.RUNTIME_STATUS,
         }:
             if (
                 self.project is not None
@@ -188,6 +192,18 @@ class BridgeRequest(BaseModel):
                 raise ValueError("sync_project accepts only project and commit")
             return self
 
+        if self.action == BridgeAction.SELF_UPDATE:
+            if self.commit is None:
+                raise ValueError("self_update requires commit")
+            if (
+                self.project is not None
+                or self.profile is not None
+                or self.job_id is not None
+                or any(value is not None for value in extra_operational)
+            ):
+                raise ValueError("self_update accepts only commit")
+            return self
+
         if self.action == BridgeAction.RUN_TESTS:
             if self.project is None or self.profile is None:
                 raise ValueError("run_tests requires project and profile")
@@ -199,7 +215,11 @@ class BridgeRequest(BaseModel):
                 raise ValueError("run_tests accepts only project and profile")
             return self
 
-        if self.action in {BridgeAction.JOB_STATUS, BridgeAction.CANCEL_JOB}:
+        if self.action in {
+            BridgeAction.JOB_STATUS,
+            BridgeAction.CANCEL_JOB,
+            BridgeAction.SELF_UPDATE_STATUS,
+        }:
             if self.job_id is None:
                 raise ValueError(f"{self.action.value} requires job_id")
             if (
@@ -591,6 +611,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
         BridgeAction.SAFETY_STATUS,
         BridgeAction.QUEUE_STATUS,
         BridgeAction.WORKER_STATUS,
+        BridgeAction.RUNTIME_STATUS,
     }:
         return request.action.value, {}
 
@@ -610,6 +631,10 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
             "commit": request.commit,
         }
 
+    if request.action == BridgeAction.SELF_UPDATE:
+        assert request.commit is not None
+        return request.action.value, {"commit": request.commit}
+
     if request.action == BridgeAction.RUN_TESTS:
         assert request.project is not None
         assert request.profile is not None
@@ -623,6 +648,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
         BridgeAction.CANCEL_JOB,
         BridgeAction.DEPLOYMENT_STATUS,
         BridgeAction.ROLLBACK_STATUS,
+        BridgeAction.SELF_UPDATE_STATUS,
     }:
         assert request.job_id is not None
         return request.action.value, {"job_id": request.job_id}

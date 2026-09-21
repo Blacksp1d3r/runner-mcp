@@ -189,6 +189,19 @@ class GitHubApiSession:
             allow_not_found=False,
         )
 
+    def post_json(
+        self,
+        api_path: str,
+        *,
+        payload: dict[str, Any],
+    ) -> Any:
+        return self._request_json(
+            "POST",
+            api_path,
+            payload=payload,
+            allow_not_found=False,
+        )
+
     def _request_json(
         self,
         method: str,
@@ -198,7 +211,7 @@ class GitHubApiSession:
         payload: dict[str, Any] | None = None,
         allow_not_found: bool,
     ) -> Any | None:
-        if method not in {"GET", "PUT"}:
+        if method not in {"GET", "POST", "PUT"}:
             raise ValueError("unsupported GitHub API method")
         if (
             not api_path.startswith("/repos/")

@@ -23,6 +23,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - optional private GitHub-issue completion delivery with bootstrap history cutoff, local delivery deduplication and remote deterministic-marker reconciliation;
 - watcher heartbeat, replay lifecycle and fail-closed restart-recovery primitives;
 - explicit local missing-result recovery that can publish a terminal safe failure for an already-claimed request without replaying the operational action or resetting watcher state;
+- local-only abandonment for strictly valid unclaimed requests and bounded malformed-request quarantine with request-head race protection;
 - transport-neutral bridge processor with explicit allow-listed executor and durable-result ordering;
 - fixed-host GitHub mailbox transport with strict JSON/base64 validation and create-once results;
 - incremental GitHub mailbox watcher with explicit bootstrap and restart-safe cursor reconciliation;
@@ -36,7 +37,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - public CI for this public repository;
 - Fools2Tools project identity;
 - five-minute local demo, release checklist and launch-readiness documentation;
-- clean Ubuntu 24.04 / Python 3.12 CI coverage for the documented five-minute demo.
+- clean Ubuntu 24.04 / Python 3.12 CI coverage for the documented five-minute demo;
+- short per-job private test temporary directories that avoid Unix-domain socket path exhaustion while preserving restrictive permissions and cleanup.
 
 ### Fixed
 
@@ -51,6 +53,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - duplicate mailbox request IDs cannot be silently re-executed;
 - notification delivery is separated from task execution so a delivery retry cannot rerun the task;
 - ambiguous or missing-result watcher recovery states do not automatically re-execute operational actions;
+- malformed historical requests can be quarantined only after all sibling backlog requests are verified durable and the request head is unchanged;
 - result persistence/finalization failures do not authorize bridge action replay;
 - GitHub mailbox transport failures are classified and kept inside the persistence/recovery boundary;
 - watcher restarts reuse cursor/replay state and never treat process restart as permission to replay actions;

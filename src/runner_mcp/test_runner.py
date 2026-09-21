@@ -695,10 +695,12 @@ class TestRunner:
                 )
             )
             os.chmod(path, 0o700)
+            if path.is_symlink():
+                raise TestRunnerError("Short test temporary directory is unsafe")
             resolved = path.resolve(strict=True)
         except OSError as exc:
             raise TestRunnerError("Short test temporary directory is unavailable") from exc
-        if resolved.is_symlink() or not resolved.is_dir():
+        if not resolved.is_dir():
             raise TestRunnerError("Short test temporary directory is unsafe")
         metadata = resolved.stat()
         if metadata.st_uid != os.getuid():

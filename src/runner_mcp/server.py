@@ -356,7 +356,7 @@ def build_mcp(
                 AuditEvent(
                     current_request_id(),
                     "self_update",
-                    SELF_PROJECT if "SELF_PROJECT" in globals() else None,
+                    "runner-mcp",
                     "authenticated-client",
                     "denied",
                     utc_timestamp(),

@@ -3,7 +3,9 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.source_control import SourceControlError, clean_head
+from runner_mcp.config import ProjectConfig, ProjectRegistry
+from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
+from runner_mcp.source_control import SourceControlError, SourceSynchronizer, clean_head
 
 
 def git(root: Path, *args: str) -> str:
@@ -49,3 +51,102 @@ def test_non_git_project_fails_closed(tmp_path: Path) -> None:
     root.mkdir()
     with pytest.raises(SourceControlError, match="Git working tree"):
         clean_head(root)
+
+
+
+class IdleTests:
+    def project_has_work(self, project: str) -> bool:
+        return False
+
+
+class BusyTests:
+    def project_has_work(self, project: str) -> bool:
+        return True
+
+
+def _synchronizer(tmp_path: Path, tests=None) -> tuple[SourceSynchronizer, Path]:
+    root = tmp_path / "sync-project"
+    root.mkdir()
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                environment="staging",
+                root=root,
+            )
+        }
+    )
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "stop",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+    return (
+        SourceSynchronizer(
+            registry=registry,
+            safety=guard,
+            tests=tests or IdleTests(),
+        ),
+        root,
+    )
+
+
+def test_source_sync_accepts_only_origin_reachable_commit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    synchronizer, _root = _synchronizer(tmp_path)
+    before = "1" * 40
+    target = "2" * 40
+    state = {"head": before, "fetched": False}
+
+    def fake_run_git(root, arguments, **kwargs):
+        if arguments == ["rev-parse", "--is-inside-work-tree"]:
+            return "true"
+        if arguments == ["status", "--porcelain=v1", "--untracked-files=normal"]:
+            return ""
+        if arguments == ["rev-parse", "--verify", "HEAD"]:
+            return state["head"]
+        if arguments == ["remote", "get-url", "origin"]:
+            return "https://github.com/example/demo.git"
+        if arguments == ["fetch", "--prune", "--no-tags", "origin"]:
+            state["fetched"] = True
+            return ""
+        if arguments == ["rev-parse", "--verify", f"{target}^{{commit}}"]:
+            assert state["fetched"] is True
+            return target
+        if arguments == [
+            "for-each-ref",
+            "--format=%(refname)",
+            f"--contains={target}",
+            "refs/remotes/origin/",
+        ]:
+            return "refs/remotes/origin/feature/test"
+        if arguments == ["checkout", "--detach", "--quiet", target]:
+            state["head"] = target
+            return ""
+        raise AssertionError(arguments)
+
+    monkeypatch.setattr("runner_mcp.source_control._run_git", fake_run_git)
+    result = synchronizer.sync_project("demo", target)
+
+    assert result == {
+        "project": "demo",
+        "commit": target,
+        "changed": True,
+    }
+
+
+def test_source_sync_rejects_busy_project_before_network(
+    tmp_path: Path,
+) -> None:
+    synchronizer, _root = _synchronizer(tmp_path, BusyTests())
+    with pytest.raises(SourceControlError, match="queued or active"):
+        synchronizer.sync_project("demo", "a" * 40)
+
+
+def test_source_sync_rejects_non_commit_reference(tmp_path: Path) -> None:
+    synchronizer, _root = _synchronizer(tmp_path)
+    with pytest.raises(SourceControlError, match="full Git object ID"):
+        synchronizer.sync_project("demo", "main")

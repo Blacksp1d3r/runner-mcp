@@ -142,6 +142,43 @@ def test_ruff_preset_detects_project_virtual_environment(tmp_path: Path) -> None
     assert result["name"] == "lint"
 
 
+def test_test_profile_cannot_override_playwright_runtime_path(tmp_path: Path) -> None:
+    paths, root = installed(tmp_path)
+    executable = root / "tools" / "check"
+    make_executable(executable)
+
+    with pytest.raises(ConfigManagerError, match="PLAYWRIGHT_BROWSERS_PATH"):
+        add_test_profile(
+            paths.config_dir,
+            project="first",
+            name="unsafe-e2e",
+            preset="custom",
+            executable=executable,
+            env_passthrough=["PLAYWRIGHT_BROWSERS_PATH"],
+            runtime="playwright",
+        )
+
+
+def test_test_profile_can_declare_playwright_runtime(tmp_path: Path) -> None:
+    paths, root = installed(tmp_path)
+    executable = root / "tools" / "check"
+    make_executable(executable)
+
+    result = add_test_profile(
+        paths.config_dir,
+        project="first",
+        name="e2e",
+        preset="custom",
+        executable=executable,
+        runtime="playwright",
+    )
+
+    _, _, registry = read_private_runtime(paths.config_dir)
+    profile = registry.projects["first"].test_profiles["e2e"]
+    assert result["runtime"] == "playwright"
+    assert profile.runtime == "playwright"
+
+
 def test_custom_profile_keeps_arguments_as_literal_values(tmp_path: Path) -> None:
     paths, root = installed(tmp_path)
     executable = root / "tools" / "check"

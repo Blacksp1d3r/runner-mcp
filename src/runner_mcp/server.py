@@ -53,6 +53,7 @@ class Settings:
     operator_stop_file: Path | None = None
     retention_confirmed: bool = True
     test_jobs_root: Path | None = None
+    playwright_browsers_path: Path | None = None
     max_test_jobs: int = 2
     max_queued_tests: int = 64
     mailbox_workers: int = 4
@@ -94,11 +95,25 @@ class Settings:
         if test_jobs_root_raw and not Path(test_jobs_root_raw).is_absolute():
             raise RuntimeError("RUNNER_MCP_TEST_JOBS_ROOT must be an absolute path")
 
+        playwright_browsers_path_raw = values.get(
+            "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH",
+            "",
+        ).strip()
+        if playwright_browsers_path_raw and not Path(
+            playwright_browsers_path_raw
+        ).is_absolute():
+            raise RuntimeError(
+                "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH must be an absolute path"
+            )
+
         database_backup_root_raw = values.get(
             "RUNNER_MCP_DATABASE_BACKUP_ROOT",
             "",
         ).strip()
-        if database_backup_root_raw and not Path(database_backup_root_raw).is_absolute():
+        if (
+            database_backup_root_raw
+            and not Path(database_backup_root_raw).is_absolute()
+        ):
             raise RuntimeError(
                 "RUNNER_MCP_DATABASE_BACKUP_ROOT must be an absolute path"
             )
@@ -107,7 +122,10 @@ class Settings:
             "RUNNER_MCP_DEPLOY_JOBS_ROOT",
             "",
         ).strip()
-        if deployment_jobs_root_raw and not Path(deployment_jobs_root_raw).is_absolute():
+        if (
+            deployment_jobs_root_raw
+            and not Path(deployment_jobs_root_raw).is_absolute()
+        ):
             raise RuntimeError("RUNNER_MCP_DEPLOY_JOBS_ROOT must be an absolute path")
 
         approval_root_raw = values.get("RUNNER_MCP_APPROVAL_ROOT", "").strip()
@@ -177,6 +195,11 @@ class Settings:
             operator_stop_file=Path(stop_file_raw) if stop_file_raw else None,
             retention_confirmed=retention_confirmed_raw == "true",
             test_jobs_root=Path(test_jobs_root_raw) if test_jobs_root_raw else None,
+            playwright_browsers_path=(
+                Path(playwright_browsers_path_raw)
+                if playwright_browsers_path_raw
+                else None
+            ),
             max_test_jobs=max_test_jobs,
             max_queued_tests=max_queued_tests,
             mailbox_workers=mailbox_workers,
@@ -263,6 +286,7 @@ def build_mcp(
             registry=registry,
             safety=safety,
             jobs_root=settings.test_jobs_root,
+            playwright_browsers_path=settings.playwright_browsers_path,
             max_concurrent_jobs=settings.max_test_jobs,
             max_queued_jobs=settings.max_queued_tests,
         )

@@ -269,18 +269,6 @@ Phase 3.8.9 bounded operational bridge:
 - deployment/rollback status accepts only validated opaque job IDs;
 - restore/PITR, production mutations, arbitrary shell/argv/path/env/unit/tool input remain unavailable.
 
-Phase 3.8.10 Runner MCP self-operations:
-- runtime status and self-update are explicit operations, not generic package/process control;
-- update accepts only a full lowercase commit for the configured canonical Runner MCP repository;
-- the target commit must be reachable from origin/main and the checkout is pinned detached;
-- existing lint and unit profiles are mandatory gates before install;
-- installation is fixed to the active Python environment, local checked source, --no-deps and --no-build-isolation;
-- source commit is rechecked immediately before install;
-- private update jobs survive status polling and nonterminal jobs become interrupted after process restart;
-- server/watcher/notifier activation uses validated fixed self-reexec argv, so future updates do not require Desktop Commander, SSH process control, systemd or cron;
-- the bridge exposes only runtime_status, self_update(commit) and self_update_status(job_id);
-- arbitrary package-manager arguments, process commands, paths, refs and repositories remain excluded.
-
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;
@@ -441,3 +429,26 @@ Do not add real environment values to this repository.
 - Adapter presets use fixed argv/cwd/env/timeout definitions. `custom` is deliberately excluded from implicit mailbox availability.
 - Added protocol, executor, source-control and test-runner regression coverage for commit pinning, extra-field rejection, busy-project rejection, safe preset discovery/execution and custom-preset denial.
 - This change does not enable migration, deployment, rollback, arbitrary shell or arbitrary Git ref execution through the mailbox.
+
+Runtime observability bridge — 2026-09-21:
+- added fixed read-only `runtime_status` and `runtime_doctor` MCP/bridge actions;
+- output is intentionally host-neutral: version, safe capacity/configuration booleans and bounded check summaries only;
+- private paths, endpoints, hostnames, environment values, service units and raw process output remain excluded;
+- this is the first self-operations step toward removing routine dependence on general-purpose remote desktop tooling.
+
+Shared Playwright runtime — 2026-09-21:
+- Runner MCP E2E jobs previously replaced HOME and therefore could not see a shared Playwright/Chromium cache unless it was passed through manually;
+- test profiles can now declare `runtime: playwright`;
+- the browser cache comes only from private `RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH`, is locally validated and is scrubbed from logs;
+- missing or unsafe browser runtime fails closed; PastEntrance does not need a project-code workaround for this boundary.
+
+Runner MCP self-update — 2026-09-21:
+- added fixed `self_update(commit)` and `self_update_status(job_id)` operations for the configured canonical Runner MCP project;
+- commits are lowercase full object IDs and must be reachable from `origin/main`; direct MCP calls and mailbox calls enforce the same lowercase boundary;
+- lint and unit profiles gate installation, and the source commit is rechecked immediately before the fixed local install;
+- server, GitHub watcher and completion watcher use component-specific restart/reexec paths; callers cannot choose executables, commands, services or paths;
+- private job/state/restart metadata is permission-restricted and restart recovery marks unfinished update jobs interrupted rather than replaying them;
+- the current read-only `runtime_status` and `runtime_doctor` behavior is preserved, with self-update readiness/state added to runtime status;
+- the local MCP bridge allow-list now explicitly includes both observability actions as well as the two self-update actions, closing the gap where protocol support existed but local dispatch could still reject runtime observability;
+- arbitrary package-manager arguments, repositories, refs, paths, environment values, process controls and general remote-shell behavior remain excluded.
+

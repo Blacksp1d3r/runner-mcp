@@ -1,5 +1,6 @@
 import json
 import stat
+import threading
 
 import pytest
 
@@ -27,6 +28,35 @@ def test_new_request_is_claimed_once(tmp_path) -> None:
     assert second.decision == ReplayDecision.DUPLICATE
     assert second.state == ReplayState.CLAIMED
     assert first.fingerprint == second.fingerprint
+
+
+def test_concurrent_duplicate_request_id_is_claimed_once(tmp_path) -> None:
+    request = parse_bridge_request(
+        '{"request_id":"req-220","action":"list_projects"}'
+    )
+    ledger = BridgeReplayLedger(tmp_path / "replay.json")
+    barrier = threading.Barrier(2)
+    decisions: list[ReplayDecision] = []
+    errors: list[BaseException] = []
+
+    def claim() -> None:
+        try:
+            barrier.wait()
+            decisions.append(ledger.claim(request).decision)
+        except BaseException as exc:  # pragma: no cover - asserted below
+            errors.append(exc)
+
+    threads = [threading.Thread(target=claim) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert errors == []
+    assert sorted(decision.value for decision in decisions) == [
+        ReplayDecision.DUPLICATE.value,
+        ReplayDecision.NEW.value,
+    ]
 
 
 def test_request_id_reuse_with_changed_content_fails_closed(tmp_path) -> None:

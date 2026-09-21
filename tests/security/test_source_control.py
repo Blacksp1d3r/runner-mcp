@@ -117,7 +117,13 @@ def test_source_sync_accepts_only_origin_reachable_commit(
             return state["head"]
         if arguments == ["remote", "get-url", "origin"]:
             return "https://github.com/example/demo.git"
-        if arguments == ["fetch", "--prune", "--no-tags", "origin"]:
+        if arguments == [
+            "fetch",
+            "--prune",
+            "--no-tags",
+            "origin",
+            "+refs/heads/*:refs/remotes/origin/*",
+        ]:
             state["fetched"] = True
             return ""
         if arguments == ["rev-parse", "--verify", f"{target}^{{commit}}"]:

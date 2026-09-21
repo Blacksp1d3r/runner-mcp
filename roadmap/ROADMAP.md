@@ -44,6 +44,7 @@ Implemented design:
 - persisted safe job metadata and interrupted-job recovery;
 - restricted environment passthrough;
 - short per-job private `TMPDIR` paths for local IPC/socket based test runtimes, with 0700 permissions and terminal cleanup;
+- declarative `playwright` test runtime support that injects only a privately configured shared browser cache into the isolated job environment;
 - no automatic execution of untrusted public-fork code without stronger sandboxing.
 
 ## Phase 3.5 — packaging and onboarding
@@ -390,32 +391,61 @@ Next:
 - add Runner MCP self-status/doctor/update/restart as a separate fixed self-operations capability rather than exposing package-manager or process-control primitives;
 - preserve separate human approval for migration/deploy/rollback.
 
-## Phase 3.8.10 — Runner MCP self-operations
+## Phase 3.8.9a — shared Playwright test runtime
 
-Remove the last routine dependency on general-purpose remote-control software by letting Runner MCP safely inspect and update its own runtime.
+Make browser-based E2E profiles work inside Runner MCP's isolated test environment without weakening HOME/TMPDIR isolation.
 
 Implemented foundation:
 
-- `runtime_status` returns only safe version/update readiness and opaque update state;
-- `self_update(commit)` accepts exactly one lowercase 40-character commit ID for the canonical Runner MCP project;
-- self-update source synchronization requires the commit to be reachable from `origin/main`, not merely any remote branch;
-- the configured `runner-mcp` project must point to the canonical public repository and must not be a production project;
-- the existing fixed `lint` and `unit` profiles must both pass before installation;
-- installation uses the currently running Python environment with fixed pip arguments, no dependency resolution, no build isolation, no shell and no caller-supplied path/argv/environment;
-- source HEAD is rechecked after tests and immediately before installation;
-- update job metadata and installed-commit state are private, persisted and permission-restricted;
-- server, GitHub watcher and completion watcher activate new code through fixed self-reexec flows rather than relying on systemd, cron or a desktop-control product;
-- restart markers are private, permission-restricted and component-specific;
-- `self_update_status(job_id)` returns only bounded persisted state;
-- arbitrary package-manager commands, arbitrary process restart, arbitrary repository/ref/path and rollback-to-arbitrary-code remain unavailable.
+- test profiles can declare a fixed runtime of `default` or `playwright`;
+- the Playwright runtime receives only `PLAYWRIGHT_BROWSERS_PATH`, sourced from private Runner MCP configuration;
+- the configured browser-cache path must be absolute, exist as a directory and not itself be a symlink;
+- the browser-cache path is treated as a private path for log scrubbing;
+- missing browser runtime fails closed before test execution;
+- no arbitrary browser path can be supplied through the mailbox or test request.
 
-This closes the normal bootstrap loop: after one initial installation of the self-operations release, future Runner MCP updates can be requested, validated, installed and activated through Runner MCP itself.
+This is intended for shared Chromium/Playwright installations on persistent self-hosted runners while preserving per-job HOME/TMPDIR isolation.
+
+## Phase 3.8.10 — runtime observability bridge
+
+Expose Runner MCP's own health/configuration state through fixed, read-only bridge actions so routine diagnosis no longer needs general-purpose remote access.
+
+Implemented foundation:
+
+- `runtime_status` returns package version, safety mode, emergency-stop state, bounded worker/queue capacities and whether test/database/deployment/approval subsystems are configured;
+- `runtime_doctor` returns only bounded PASS/WARN/FAIL-style checks and generic details;
+- no private paths, URLs, hostnames, credentials, service units, environment values or raw process output are returned;
+- both actions are fixed no-argument protocol-v1 actions and map only to local MCP tools;
+- result publication still uses the existing bridge scrubber, replay ledger and create-once result lifecycle.
 
 Next:
 
-- prove one same-commit/no-op self-update and one forward update through the live GitHub mailbox;
-- add safe `runtime_doctor` summary and managed-component health when they can be exposed without paths or private service identifiers;
-- continue configuration-management capabilities only as typed, bounded operations rather than generic file editing.
+- prove the runtime observability actions live after the private runtime is upgraded;
+- keep mutating self-operations separate from read-only diagnosis and commit-pinned;
+
+## Phase 3.8.11 — commit-pinned Runner MCP self-update
+
+Remove routine dependence on general-purpose remote-control software without introducing generic package or process control.
+
+Implemented foundation:
+
+- `self_update(commit)` accepts only one full lowercase 40-character commit ID for the configured canonical Runner MCP repository;
+- the target commit must be reachable from `origin/main`, and source synchronization remains clean-worktree, exact-commit and staging/test gated;
+- existing fixed `lint` and `unit` profiles must both pass before installation;
+- installation uses the active Python runtime with fixed local-source pip arguments, `--no-deps`, `--no-build-isolation`, no shell and no caller-supplied path/argv/environment;
+- the clean source commit is rechecked immediately before installation;
+- update jobs and installed-commit state are persisted privately with restrictive permissions;
+- server, GitHub watcher and completion watcher activate new code through fixed component-specific self-reexec flows;
+- `self_update_status(job_id)` exposes only bounded persisted state;
+- read-only `runtime_status` keeps the broader observability fields and adds self-update readiness/state; `runtime_doctor` remains separate;
+- the loopback bridge explicitly allow-lists `runtime_status`, `runtime_doctor`, `self_update` and `self_update_status`;
+- arbitrary repository/ref selection, package-manager arguments, install paths, process commands, service identifiers and restart commands remain unavailable.
+
+Next:
+
+- bootstrap this release once on the private Runner MCP host, then prove one same-commit/no-op update and one forward update through the live GitHub mailbox;
+- define a bounded recovery/rollback story for a failed post-install activation before treating self-update as unattended maintenance;
+- keep dependency-set changes explicit because the self-installer intentionally does not resolve or install dependencies.
 
 ## Phase 3.9 — public launch readiness
 

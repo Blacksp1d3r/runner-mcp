@@ -153,6 +153,7 @@ def test_setup_wizard_creates_private_configuration_without_printing_secret(
             "",
             "",
             "",
+            "",
             "YES",
         ]
     )
@@ -186,6 +187,7 @@ def test_setup_wizard_cancellation_writes_nothing(
             "Demo",
             "example/demo",
             str(project_root),
+            "",
             "",
             "",
             "",

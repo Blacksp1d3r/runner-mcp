@@ -1,4 +1,5 @@
 import json
+import threading
 import urllib.error
 import urllib.request
 
@@ -376,6 +377,7 @@ def test_client_normalizes_transport_failures(monkeypatch, error) -> None:
 
 def test_executor_exposes_only_fixed_bridge_calls() -> None:
     executor = LocalMCPBridgeExecutor(_config())
+    job_id = "a" * 32
     fake = FakeClient(
         [
             ["p1"],
@@ -383,15 +385,23 @@ def test_executor_exposes_only_fixed_bridge_calls() -> None:
             {"project": "demo"},
             {"adapter": "python"},
             [{"name": "unit"}],
+            {"queued_jobs": 0},
+            {"available_workers": 4},
+            {"job_id": job_id, "status": "running"},
+            {"job_id": job_id, "status": "cancelled"},
         ]
     )
-    executor._client = fake
+    executor._local.client = fake
 
     assert executor.list_projects() == ["p1"]
     assert executor.safety_status() == {"stop_active": False}
     assert executor.project_status("demo") == {"project": "demo"}
     assert executor.project_capabilities("demo") == {"adapter": "python"}
     assert executor.list_test_profiles("demo") == [{"name": "unit"}]
+    assert executor.queue_status() == {"queued_jobs": 0}
+    assert executor.worker_status() == {"available_workers": 4}
+    assert executor.job_status(job_id)["status"] == "running"
+    assert executor.cancel_job(job_id)["status"] == "cancelled"
 
     assert fake.calls == [
         ("list_projects", {}),
@@ -399,61 +409,27 @@ def test_executor_exposes_only_fixed_bridge_calls() -> None:
         ("project_status", {"project": "demo"}),
         ("project_capabilities", {"project": "demo"}),
         ("list_test_profiles", {"project": "demo"}),
+        ("queue_status", {}),
+        ("worker_status", {}),
+        ("job_status", {"job_id": job_id}),
+        ("cancel_job", {"job_id": job_id}),
     ]
 
 
-def test_run_tests_polls_to_terminal_without_fetching_log(monkeypatch) -> None:
+def test_run_tests_returns_job_immediately_without_polling() -> None:
     executor = LocalMCPBridgeExecutor(_config())
-    fake = FakeClient(
-        [
-            {"job_id": "job-123"},
-            {"status": "queued"},
-            {"status": "running"},
-            {"status": "passed"},
-        ]
-    )
-    executor._client = fake
-    sleeps: list[float] = []
-    monkeypatch.setattr(
-        "runner_mcp.bridge_mcp_executor.time.sleep",
-        sleeps.append,
+    job_id = "b" * 32
+    executor._local.client = FakeClient(
+        [{"job_id": job_id, "project": "demo", "suite": "unit", "status": "queued"}]
     )
 
-    result = executor.run_tests_to_completion("demo", "unit")
+    result = executor.run_tests("demo", "unit")
 
-    assert result == {
-        "project": "demo",
-        "suite": "unit",
-        "status": "passed",
-    }
-    assert fake.calls == [
-        ("run_tests", {"project": "demo", "suite": "unit"}),
-        ("test_status", {"job_id": "job-123"}),
-        ("test_status", {"job_id": "job-123"}),
-        ("test_status", {"job_id": "job-123"}),
+    assert result["job_id"] == job_id
+    assert result["status"] == "queued"
+    assert executor._local.client.calls == [
+        ("run_tests", {"project": "demo", "suite": "unit"})
     ]
-    assert all(name != "get_test_log" for name, _args in fake.calls)
-    assert sleeps == [0.5, 0.5]
-
-
-@pytest.mark.parametrize(
-    "terminal",
-    ["failed", "timed_out", "stopped", "cancelled", "interrupted"],
-)
-def test_run_tests_returns_all_terminal_states(monkeypatch, terminal: str) -> None:
-    executor = LocalMCPBridgeExecutor(_config())
-    executor._client = FakeClient(
-        [
-            {"job_id": "job-123"},
-            {"status": terminal},
-        ]
-    )
-    monkeypatch.setattr(
-        "runner_mcp.bridge_mcp_executor.time.sleep",
-        lambda _seconds: None,
-    )
-
-    assert executor.run_tests_to_completion("demo", "unit")["status"] == terminal
 
 
 @pytest.mark.parametrize(
@@ -462,55 +438,88 @@ def test_run_tests_returns_all_terminal_states(monkeypatch, terminal: str) -> No
         None,
         {},
         {"job_id": ""},
-        {"job_id": "bad id"},
-        {"job_id": 123},
+        {"job_id": "bad id", "status": "queued"},
+        {"job_id": 123, "status": "queued"},
+        {"job_id": "a" * 32, "status": "passed"},
     ],
 )
-def test_run_tests_rejects_invalid_job_identifier(started) -> None:
+def test_run_tests_rejects_invalid_initial_job_result(started) -> None:
     executor = LocalMCPBridgeExecutor(_config())
-    executor._client = FakeClient([started])
+    executor._local.client = FakeClient([started])
 
-    with pytest.raises(BridgeExecutionAdapterError, match="job identifier|start result"):
-        executor.run_tests_to_completion("demo", "unit")
+    with pytest.raises(
+        BridgeExecutionAdapterError,
+        match="job identifier|start result|initial test status",
+    ):
+        executor.run_tests("demo", "unit")
 
 
-@pytest.mark.parametrize(
-    "status_payload",
-    [
-        None,
-        {},
-        {"status": 1},
-        {"status": "unknown"},
-    ],
-)
-def test_run_tests_rejects_invalid_status(status_payload) -> None:
+def test_job_actions_reject_invalid_job_identifier() -> None:
     executor = LocalMCPBridgeExecutor(_config())
-    executor._client = FakeClient(
+    with pytest.raises(BridgeExecutionAdapterError, match="job identifier"):
+        executor.job_status("../bad")
+    with pytest.raises(BridgeExecutionAdapterError, match="job identifier"):
+        executor.cancel_job("bad id")
+
+
+def test_compatibility_wait_helper_uses_job_status(monkeypatch) -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    job_id = "c" * 32
+    fake = FakeClient(
         [
-            {"job_id": "job-123"},
-            status_payload,
+            {"job_id": job_id, "project": "demo", "suite": "unit", "status": "queued"},
+            {"job_id": job_id, "status": "claimed"},
+            {"job_id": job_id, "status": "running"},
+            {"job_id": job_id, "status": "passed"},
         ]
     )
-
-    with pytest.raises(BridgeExecutionAdapterError, match="test status"):
-        executor.run_tests_to_completion("demo", "unit")
-
-
-def test_run_tests_wait_timeout_is_bounded(monkeypatch) -> None:
-    executor = LocalMCPBridgeExecutor(
-        _config(test_wait_timeout_seconds=5)
-    )
-    executor._client = FakeClient(
-        [
-            {"job_id": "job-123"},
-            {"status": "running"},
-        ]
-    )
-    times = iter([10.0, 16.0])
+    executor._local.client = fake
+    sleeps: list[float] = []
     monkeypatch.setattr(
-        "runner_mcp.bridge_mcp_executor.time.monotonic",
-        lambda: next(times),
+        "runner_mcp.bridge_mcp_executor.time.sleep",
+        sleeps.append,
     )
 
-    with pytest.raises(BridgeExecutionAdapterError, match="timeout expired"):
-        executor.run_tests_to_completion("demo", "unit")
+    result = executor.run_tests_to_completion("demo", "unit")
+
+    assert result["status"] == "passed"
+    assert [name for name, _arguments in fake.calls] == [
+        "run_tests",
+        "job_status",
+        "job_status",
+        "job_status",
+    ]
+    assert sleeps == [0.5, 0.5]
+
+
+
+def test_executor_uses_thread_local_clients(monkeypatch) -> None:
+    created: list[int] = []
+
+    class TrackingClient:
+        def __init__(self, _config):
+            created.append(threading.get_ident())
+
+        def _call_tool(self, name, arguments):
+            return {"name": name, "arguments": arguments}
+
+    monkeypatch.setattr(
+        "runner_mcp.bridge_mcp_executor.LocalMCPClient",
+        TrackingClient,
+    )
+    executor = LocalMCPBridgeExecutor(_config())
+    barrier = threading.Barrier(2)
+    results: list[dict] = []
+
+    def call_status() -> None:
+        barrier.wait()
+        results.append(executor.queue_status())
+
+    threads = [threading.Thread(target=call_status) for _ in range(2)]
+    for thread in threads:
+        thread.start()
+    for thread in threads:
+        thread.join()
+
+    assert len(results) == 2
+    assert len(created) == 2

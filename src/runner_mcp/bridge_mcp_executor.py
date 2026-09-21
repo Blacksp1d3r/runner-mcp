@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -13,10 +14,10 @@ from .bridge_processor import BridgeExecutionAdapterError
 
 MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
-MAX_MCP_JOB_ID_CHARS = 128
+MAX_MCP_JOB_ID_CHARS = 32
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9._~-]{1,256}$")
-_JOB_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _TERMINAL_TEST_STATES = {
     "passed",
     "failed",
@@ -25,7 +26,7 @@ _TERMINAL_TEST_STATES = {
     "cancelled",
     "interrupted",
 }
-_NONTERMINAL_TEST_STATES = {"queued", "running"}
+_NONTERMINAL_TEST_STATES = {"queued", "claimed", "running"}
 
 
 @dataclass(frozen=True, slots=True)
@@ -203,6 +204,10 @@ class LocalMCPClient:
             "list_test_profiles",
             "run_tests",
             "test_status",
+            "queue_status",
+            "worker_status",
+            "job_status",
+            "cancel_job",
         }:
             raise BridgeExecutionAdapterError(
                 "local MCP executor rejected an unsupported tool"
@@ -323,34 +328,41 @@ class LocalMCPBridgeExecutor:
 
     def __init__(self, config: LocalMCPConfig) -> None:
         self._config = config
-        self._client = LocalMCPClient(config)
+        self._local = threading.local()
+
+    def _client(self) -> LocalMCPClient:
+        client = getattr(self._local, "client", None)
+        if client is None:
+            client = LocalMCPClient(self._config)
+            self._local.client = client
+        return client
 
     def list_projects(self) -> Any:
-        return self._client._call_tool("list_projects", {})
+        return self._client()._call_tool("list_projects", {})
 
     def safety_status(self) -> Any:
-        return self._client._call_tool("safety_status", {})
+        return self._client()._call_tool("safety_status", {})
 
     def project_status(self, project: str) -> Any:
-        return self._client._call_tool(
+        return self._client()._call_tool(
             "project_status",
             {"project": project},
         )
 
     def project_capabilities(self, project: str) -> Any:
-        return self._client._call_tool(
+        return self._client()._call_tool(
             "project_capabilities",
             {"project": project},
         )
 
     def list_test_profiles(self, project: str) -> Any:
-        return self._client._call_tool(
+        return self._client()._call_tool(
             "list_test_profiles",
             {"project": project},
         )
 
-    def run_tests_to_completion(self, project: str, suite: str) -> Any:
-        started = self._client._call_tool(
+    def run_tests(self, project: str, suite: str) -> Any:
+        started = self._client()._call_tool(
             "run_tests",
             {"project": project, "suite": suite},
         )
@@ -367,13 +379,37 @@ class LocalMCPBridgeExecutor:
             raise BridgeExecutionAdapterError(
                 "Runner MCP returned an invalid test job identifier"
             )
+        status = started.get("status")
+        if status not in {"queued", "claimed", "running"}:
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned an invalid initial test status"
+            )
+        return started
+
+    def queue_status(self) -> Any:
+        return self._client()._call_tool("queue_status", {})
+
+    def worker_status(self) -> Any:
+        return self._client()._call_tool("worker_status", {})
+
+    def job_status(self, job_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError("Invalid test job identifier")
+        return self._client()._call_tool("job_status", {"job_id": job_id})
+
+    def cancel_job(self, job_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError("Invalid test job identifier")
+        return self._client()._call_tool("cancel_job", {"job_id": job_id})
+
+    def run_tests_to_completion(self, project: str, suite: str) -> Any:
+        """Compatibility helper for local callers; mailbox dispatch does not use it."""
+        started = self.run_tests(project, suite)
+        job_id = started["job_id"]
 
         deadline = time.monotonic() + self._config.test_wait_timeout_seconds
         while True:
-            status_payload = self._client._call_tool(
-                "test_status",
-                {"job_id": job_id},
-            )
+            status_payload = self.job_status(job_id)
             if not isinstance(status_payload, dict):
                 raise BridgeExecutionAdapterError(
                     "Runner MCP returned an invalid test status"

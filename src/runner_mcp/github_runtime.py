@@ -94,6 +94,8 @@ class GitHubWatcherRuntime:
             ledger=ledger,
             executor=executor,
             cursor_store=cursor,
+            max_workers=settings.mailbox_workers,
+            max_inflight=settings.mailbox_max_inflight,
         )
         return cls(watcher=watcher, transport=transport)
 

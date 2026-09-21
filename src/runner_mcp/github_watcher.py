@@ -5,6 +5,7 @@ import json
 import os
 import re
 import stat
+from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -199,9 +200,15 @@ class GitHubMailboxWatcher:
         executor: BridgeExecutor,
         cursor_store: GitHubWatcherCursorStore,
         stale_after_seconds: int = 300,
+        max_workers: int = 4,
+        max_inflight: int = 32,
     ) -> None:
         if not 30 <= stale_after_seconds <= 86_400:
             raise ValueError("stale_after_seconds is outside the supported range")
+        if not 1 <= max_workers <= 16:
+            raise ValueError("max_workers must be between 1 and 16")
+        if not max_workers <= max_inflight <= 256:
+            raise ValueError("max_inflight must be between max_workers and 256")
         self._transport = transport
         self._ledger = ledger
         self._processor = BridgeProcessor(
@@ -211,11 +218,133 @@ class GitHubMailboxWatcher:
         )
         self._cursor_store = cursor_store
         self._stale_after_seconds = stale_after_seconds
+        self._max_workers = max_workers
+        self._max_inflight = max_inflight
 
     def bootstrap_cursor_at_current_head(self) -> None:
         """Explicitly ignore historical requests and start after the current head."""
         head_sha = self._transport.request_head_sha()
         self._cursor_store.initialize(head_sha)
+
+    def _process_request(
+        self,
+        request_id: str,
+    ) -> tuple[str, RecoveryObservation | None]:
+        try:
+            request_bytes = self._transport.fetch_request(request_id)
+            request = parse_bridge_request(request_bytes)
+            if request.request_id != request_id:
+                raise BridgeProtocolError(
+                    "request filename and payload ID do not match"
+                )
+            result = self._transport.fetch_result(request_id)
+            record = self._ledger.inspect(request)
+        except (
+            BridgeProtocolError,
+            BridgeReplayError,
+            GitHubMailboxTransportError,
+            ValueError,
+        ):
+            return (
+                "attention",
+                RecoveryObservation(
+                    request_id=request_id,
+                    age_seconds=0,
+                    disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+                ),
+            )
+
+        if result is not None:
+            if result.action != request.action:
+                return (
+                    "attention",
+                    RecoveryObservation(
+                        request_id=request_id,
+                        age_seconds=_record_age_seconds(record),
+                        disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+                    ),
+                )
+
+            try:
+                self._ledger.claim(request)
+                self._ledger.complete(request)
+            except BridgeReplayError:
+                return (
+                    "attention",
+                    RecoveryObservation(
+                        request_id=request_id,
+                        age_seconds=_record_age_seconds(record),
+                        disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+                    ),
+                )
+            return "reconciled", None
+
+        disposition = recovery_disposition(
+            has_result=False,
+            replay_state=(record.state if record is not None else None),
+        )
+        if disposition == RecoveryDisposition.PROCESS:
+            outcome = self._processor.process(request_bytes)
+            if outcome.state == BridgeProcessState.COMPLETED:
+                return "processed", None
+
+            current_record = self._ledger.inspect(request)
+            if outcome.state == BridgeProcessState.ALREADY_COMPLETED:
+                disposition = RecoveryDisposition.RESULT_MISSING
+            else:
+                disposition = RecoveryDisposition.AMBIGUOUS_CLAIM
+            return (
+                "attention",
+                RecoveryObservation(
+                    request_id=request_id,
+                    age_seconds=_record_age_seconds(current_record),
+                    disposition=disposition,
+                ),
+            )
+
+        return (
+            "attention",
+            RecoveryObservation(
+                request_id=request_id,
+                age_seconds=_record_age_seconds(record),
+                disposition=disposition,
+            ),
+        )
+
+    def _process_request_batch(
+        self,
+        request_ids: list[str],
+    ) -> tuple[int, int, list[RecoveryObservation]]:
+        processed = 0
+        reconciled = 0
+        observations: list[RecoveryObservation] = []
+
+        for offset in range(0, len(request_ids), self._max_inflight):
+            batch = request_ids[offset : offset + self._max_inflight]
+            with ThreadPoolExecutor(max_workers=self._max_workers) as pool:
+                futures = {
+                    pool.submit(self._process_request, request_id): request_id
+                    for request_id in batch
+                }
+                for future in as_completed(futures):
+                    request_id = futures[future]
+                    try:
+                        outcome, observation = future.result()
+                    except Exception:  # noqa: BLE001 - worker failures fail closed
+                        outcome = "attention"
+                        observation = RecoveryObservation(
+                            request_id=request_id,
+                            age_seconds=0,
+                            disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+                        )
+                    if outcome == "processed":
+                        processed += 1
+                    elif outcome == "reconciled":
+                        reconciled += 1
+                    if observation is not None:
+                        observations.append(observation)
+
+        return processed, reconciled, observations
 
     def run_cycle(
         self,
@@ -266,110 +395,7 @@ class GitHubMailboxWatcher:
         except (GitHubMailboxTransportError, ValueError):
             return self._degraded_outcome(publish_heartbeat=publish_heartbeat)
 
-        observations: list[RecoveryObservation] = []
-        processed = 0
-        reconciled = 0
-        hard_failure_index: int | None = None
-
-        for index, request_id in enumerate(request_ids):
-            try:
-                request_bytes = self._transport.fetch_request(request_id)
-                request = parse_bridge_request(request_bytes)
-                if request.request_id != request_id:
-                    raise BridgeProtocolError(
-                        "request filename and payload ID do not match"
-                    )
-                result = self._transport.fetch_result(request_id)
-                record = self._ledger.inspect(request)
-            except (
-                BridgeProtocolError,
-                BridgeReplayError,
-                GitHubMailboxTransportError,
-                ValueError,
-            ):
-                observations.append(
-                    RecoveryObservation(
-                        request_id=request_id,
-                        age_seconds=0,
-                        disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
-                    )
-                )
-                hard_failure_index = index
-                break
-
-            if result is not None:
-                if result.action != request.action:
-                    observations.append(
-                        RecoveryObservation(
-                            request_id=request_id,
-                            age_seconds=_record_age_seconds(record),
-                            disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
-                        )
-                    )
-                    hard_failure_index = index
-                    break
-
-                try:
-                    self._ledger.claim(request)
-                    self._ledger.complete(request)
-                except BridgeReplayError:
-                    observations.append(
-                        RecoveryObservation(
-                            request_id=request_id,
-                            age_seconds=_record_age_seconds(record),
-                            disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
-                        )
-                    )
-                    hard_failure_index = index
-                    break
-
-                reconciled += 1
-                continue
-
-            disposition = recovery_disposition(
-                has_result=False,
-                replay_state=(record.state if record is not None else None),
-            )
-            if disposition == RecoveryDisposition.PROCESS:
-                outcome = self._processor.process(request_bytes)
-                if outcome.state == BridgeProcessState.COMPLETED:
-                    processed += 1
-                    continue
-
-                current_record = self._ledger.inspect(request)
-                if outcome.state == BridgeProcessState.ALREADY_COMPLETED:
-                    disposition = RecoveryDisposition.RESULT_MISSING
-                else:
-                    disposition = RecoveryDisposition.AMBIGUOUS_CLAIM
-                observations.append(
-                    RecoveryObservation(
-                        request_id=request_id,
-                        age_seconds=_record_age_seconds(current_record),
-                        disposition=disposition,
-                    )
-                )
-                hard_failure_index = index
-                break
-
-            observations.append(
-                RecoveryObservation(
-                    request_id=request_id,
-                    age_seconds=_record_age_seconds(record),
-                    disposition=disposition,
-                )
-            )
-            hard_failure_index = index
-            break
-
-        if hard_failure_index is not None:
-            for request_id in request_ids[hard_failure_index + 1 :]:
-                observations.append(
-                    RecoveryObservation(
-                        request_id=request_id,
-                        age_seconds=0,
-                        disposition=RecoveryDisposition.PROCESS,
-                    )
-                )
+        processed, reconciled, observations = self._process_request_batch(request_ids)
 
         cursor_advanced = False
         if not observations:

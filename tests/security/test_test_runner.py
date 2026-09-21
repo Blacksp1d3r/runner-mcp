@@ -20,7 +20,13 @@ from runner_mcp.test_runner import (
 )
 
 
-def make_registry(root: Path, profiles: dict[str, RunnerTestProfile]) -> ProjectRegistry:
+def make_registry(
+    root: Path,
+    profiles: dict[str, RunnerTestProfile],
+    *,
+    max_parallel_tests: int = 1,
+    max_queued_tests: int = 16,
+) -> ProjectRegistry:
     root.mkdir(parents=True, exist_ok=True)
     return ProjectRegistry(
         projects={
@@ -29,6 +35,8 @@ def make_registry(root: Path, profiles: dict[str, RunnerTestProfile]) -> Project
                 repository="example/demo",
                 root=root,
                 test_profiles=profiles,
+                max_parallel_tests=max_parallel_tests,
+                max_queued_tests=max_queued_tests,
             )
         }
     )
@@ -39,6 +47,9 @@ def make_runner(
     profiles: dict[str, RunnerTestProfile],
     *,
     max_concurrent_jobs: int = 2,
+    max_queued_jobs: int = 64,
+    max_parallel_tests: int = 1,
+    max_queued_tests: int = 16,
 ) -> tuple[Runner, Path, Path]:
     root = tmp_path / "project"
     stop_file = tmp_path / "operator.stop"
@@ -48,10 +59,16 @@ def make_runner(
         retention_confirmed=True,
     )
     runner = Runner(
-        registry=make_registry(root, profiles),
+        registry=make_registry(
+            root,
+            profiles,
+            max_parallel_tests=max_parallel_tests,
+            max_queued_tests=max_queued_tests,
+        ),
         safety=guard,
         jobs_root=tmp_path / "jobs",
         max_concurrent_jobs=max_concurrent_jobs,
+        max_queued_jobs=max_queued_jobs,
         poll_interval_seconds=0.02,
         terminate_grace_seconds=0.2,
     )
@@ -65,6 +82,7 @@ def python_profile(
     max_log_bytes: int = 4096,
     env_passthrough: list[str] | None = None,
     extra_args: list[str] | None = None,
+    parallel_safe: bool = False,
 ) -> RunnerTestProfile:
     argv = [sys.executable, "-c", code]
     if extra_args:
@@ -74,6 +92,7 @@ def python_profile(
         timeout_seconds=timeout_seconds,
         max_log_bytes=max_log_bytes,
         env_passthrough=env_passthrough or [],
+        parallel_safe=parallel_safe,
     )
 
 
@@ -86,7 +105,11 @@ def wait_terminal(
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         status = runner.status(job_id)
-        if status["status"] in {item.value for item in RunnerJobStatus if item.value not in {"queued", "running"}}:
+        if status["status"] in {
+            item.value
+            for item in RunnerJobStatus
+            if item.value not in {"queued", "claimed", "running"}
+        }:
             return status
         time.sleep(0.02)
     raise AssertionError(f"job {job_id} did not finish in time")
@@ -248,20 +271,31 @@ def test_arguments_are_not_interpreted_by_a_shell(tmp_path: Path) -> None:
     assert not marker.exists()
 
 
-def test_only_one_active_job_per_project(tmp_path: Path) -> None:
+def test_default_project_capacity_queues_second_job(tmp_path: Path) -> None:
     runner, _, _ = make_runner(
         tmp_path,
         {"slow": python_profile("import time; time.sleep(30)")},
+        max_concurrent_jobs=2,
     )
 
     first = runner.start_test("demo", "slow")
     wait_running(runner, first["job_id"])
+    second = runner.start_test("demo", "slow")
+    second_status = runner.job_status(second["job_id"])
 
-    with pytest.raises(RunnerError, match="already active"):
-        runner.start_test("demo", "slow")
+    assert second_status["status"] == "queued"
+    assert second_status["waiting_reason"] in {
+        "project_parallel_limit",
+        "project_exclusive_test",
+    }
+    queue = runner.queue_status()
+    demo = next(item for item in queue["projects"] if item["project"] == "demo")
+    assert demo["project_lock_active"] is True
 
     runner.cancel(first["job_id"])
+    runner.cancel(second["job_id"])
     wait_terminal(runner, first["job_id"])
+    wait_terminal(runner, second["job_id"])
 
 
 def test_unknown_profile_is_rejected(tmp_path: Path) -> None:
@@ -282,12 +316,13 @@ def test_profile_listing_does_not_expose_argv(tmp_path: Path) -> None:
             "name": "ok",
             "timeout_seconds": 5,
             "max_log_bytes": 4096,
+            "parallel_safe": False,
         }
     ]
     assert sys.executable not in repr(listed)
 
 
-def test_existing_running_metadata_is_marked_interrupted(tmp_path: Path) -> None:
+def test_existing_running_metadata_fails_closed_after_restart(tmp_path: Path) -> None:
     jobs_root = tmp_path / "jobs"
     jobs_root.mkdir()
     job_id = "a" * 32
@@ -342,6 +377,242 @@ def test_jobs_root_and_job_files_use_restrictive_permissions(tmp_path: Path) -> 
     assert jobs_mode == 0o700
     assert log_mode == 0o600
     assert metadata_mode == 0o600
+
+
+def test_two_projects_run_at_the_same_time(tmp_path: Path) -> None:
+    roots = {"alpha": tmp_path / "alpha", "beta": tmp_path / "beta"}
+    for root in roots.values():
+        root.mkdir()
+    profile = python_profile(
+        "import time; print('start', flush=True); time.sleep(0.6)",
+        parallel_safe=False,
+    )
+    registry = ProjectRegistry(
+        projects={
+            code: ProjectConfig(
+                display_name=code.title(),
+                repository=f"example/{code}",
+                root=root,
+                test_profiles={"slow": profile},
+            )
+            for code, root in roots.items()
+        }
+    )
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "operator.stop",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+    runner = Runner(
+        registry=registry,
+        safety=guard,
+        jobs_root=tmp_path / "jobs-parallel-projects",
+        max_concurrent_jobs=2,
+        poll_interval_seconds=0.02,
+    )
+
+    alpha = runner.start_test("alpha", "slow")
+    beta = runner.start_test("beta", "slow")
+    wait_running(runner, alpha["job_id"])
+    wait_running(runner, beta["job_id"])
+
+    status = runner.worker_status()
+    assert status["running_jobs"] == 2
+    assert status["available_workers"] == 0
+
+    runner.cancel(alpha["job_id"])
+    runner.cancel(beta["job_id"])
+    wait_terminal(runner, alpha["job_id"])
+    wait_terminal(runner, beta["job_id"])
+
+
+def test_parallel_safe_profiles_can_overlap_within_one_project(tmp_path: Path) -> None:
+    profiles = {
+        "one": python_profile(
+            "import time; time.sleep(0.6)",
+            parallel_safe=True,
+        ),
+        "two": python_profile(
+            "import time; time.sleep(0.6)",
+            parallel_safe=True,
+        ),
+    }
+    runner, _, _ = make_runner(
+        tmp_path,
+        profiles,
+        max_concurrent_jobs=2,
+        max_parallel_tests=2,
+    )
+
+    one = runner.start_test("demo", "one")
+    two = runner.start_test("demo", "two")
+    wait_running(runner, one["job_id"])
+    wait_running(runner, two["job_id"])
+
+    project = next(
+        item for item in runner.queue_status()["projects"]
+        if item["project"] == "demo"
+    )
+    assert project["running_jobs"] == 2
+    assert project["project_lock_active"] is False
+
+    runner.cancel(one["job_id"])
+    runner.cancel(two["job_id"])
+    wait_terminal(runner, one["job_id"])
+    wait_terminal(runner, two["job_id"])
+
+
+def test_unsafe_profile_remains_exclusive_even_with_project_capacity(tmp_path: Path) -> None:
+    profiles = {
+        "unsafe": python_profile("import time; time.sleep(30)"),
+        "safe": python_profile(
+            "import time; time.sleep(30)",
+            parallel_safe=True,
+        ),
+    }
+    runner, _, _ = make_runner(
+        tmp_path,
+        profiles,
+        max_concurrent_jobs=2,
+        max_parallel_tests=2,
+    )
+
+    first = runner.start_test("demo", "unsafe")
+    wait_running(runner, first["job_id"])
+    second = runner.start_test("demo", "safe")
+
+    assert runner.job_status(second["job_id"])["status"] == "queued"
+    assert runner.job_status(second["job_id"])["waiting_reason"] == "project_exclusive_test"
+
+    runner.cancel(first["job_id"])
+    runner.cancel(second["job_id"])
+    wait_terminal(runner, first["job_id"])
+    wait_terminal(runner, second["job_id"])
+
+
+def test_queue_backpressure_is_bounded(tmp_path: Path) -> None:
+    runner, _, _ = make_runner(
+        tmp_path,
+        {"slow": python_profile("import time; time.sleep(30)")},
+        max_concurrent_jobs=1,
+        max_queued_jobs=1,
+        max_queued_tests=8,
+    )
+
+    running = runner.start_test("demo", "slow")
+    wait_running(runner, running["job_id"])
+    queued = runner.start_test("demo", "slow")
+    with pytest.raises(RunnerError, match="queue capacity"):
+        runner.start_test("demo", "slow")
+
+    assert runner.queue_status()["queued_jobs"] == 1
+    runner.cancel(running["job_id"])
+    runner.cancel(queued["job_id"])
+    wait_terminal(runner, running["job_id"])
+    wait_terminal(runner, queued["job_id"])
+
+
+def test_project_queue_backpressure_is_bounded(tmp_path: Path) -> None:
+    runner, _, _ = make_runner(
+        tmp_path,
+        {"slow": python_profile("import time; time.sleep(30)")},
+        max_concurrent_jobs=1,
+        max_queued_jobs=8,
+        max_queued_tests=1,
+    )
+
+    running = runner.start_test("demo", "slow")
+    wait_running(runner, running["job_id"])
+    queued = runner.start_test("demo", "slow")
+
+    with pytest.raises(RunnerError, match="Project test queue capacity"):
+        runner.start_test("demo", "slow")
+
+    assert runner.job_status(queued["job_id"])["status"] == "queued"
+    runner.cancel(running["job_id"])
+    runner.cancel(queued["job_id"])
+    wait_terminal(runner, running["job_id"])
+    wait_terminal(runner, queued["job_id"])
+
+
+def test_fair_round_robin_prevents_project_monopoly(tmp_path: Path) -> None:
+    roots = {"alpha": tmp_path / "fair-alpha", "beta": tmp_path / "fair-beta"}
+    for root in roots.values():
+        root.mkdir()
+    profile = python_profile("import time; time.sleep(0.12)")
+    registry = ProjectRegistry(
+        projects={
+            code: ProjectConfig(
+                display_name=code.title(),
+                repository=f"example/{code}",
+                root=root,
+                test_profiles={"short": profile},
+                max_queued_tests=16,
+            )
+            for code, root in roots.items()
+        }
+    )
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "fair-stop",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+    runner = Runner(
+        registry=registry,
+        safety=guard,
+        jobs_root=tmp_path / "fair-jobs",
+        max_concurrent_jobs=1,
+        poll_interval_seconds=0.01,
+    )
+
+    a1 = runner.start_test("alpha", "short")
+    wait_running(runner, a1["job_id"])
+    a2 = runner.start_test("alpha", "short")
+    a3 = runner.start_test("alpha", "short")
+    b1 = runner.start_test("beta", "short")
+
+    b_finished = wait_terminal(runner, b1["job_id"], timeout=4)
+    a3_finished = wait_terminal(runner, a3["job_id"], timeout=4)
+
+    assert b_finished["finished_at"] <= a3_finished["finished_at"]
+    assert wait_terminal(runner, a2["job_id"], timeout=4)["status"] == "passed"
+
+
+def test_queued_job_is_resumed_after_runner_restart(tmp_path: Path) -> None:
+    jobs_root = tmp_path / "resume-jobs"
+    jobs_root.mkdir()
+    job_id = "b" * 32
+    metadata = {
+        "job_id": job_id,
+        "project": "demo",
+        "suite": "resume",
+        "status": "queued",
+        "created_at": "2026-09-20T00:00:00+00:00",
+        "started_at": None,
+        "finished_at": None,
+        "exit_code": None,
+        "log_truncated": False,
+        "error_category": None,
+    }
+    (jobs_root / f"{job_id}.json").write_text(json.dumps(metadata), encoding="utf-8")
+    root = tmp_path / "resume-project"
+    profile = python_profile("print('resumed')")
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "resume-stop",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+    runner = Runner(
+        registry=make_registry(root, {"resume": profile}),
+        safety=guard,
+        jobs_root=jobs_root,
+        max_concurrent_jobs=1,
+        poll_interval_seconds=0.01,
+    )
+
+    finished = wait_terminal(runner, job_id, timeout=3)
+    assert finished["status"] == "passed"
+    assert "resumed" in runner.get_log(job_id)["content"]
 
 
 def stat_mode(path: Path) -> int:

@@ -328,6 +328,30 @@ Next:
 - remove obsolete private pilot execution logic after the migrated path is proven;
 - then return to clean-environment launch verification and service/tunnel onboarding.
 
+## Phase 3.8.8 — controlled multi-project concurrency
+
+Remove global serialization from routine bridge and test work without widening execution authority.
+
+Implemented foundation:
+
+- bounded mailbox request workers with a separate maximum in-flight batch;
+- request acceptance separated from long-running test execution;
+- persistent logical queues per project with fair round-robin scheduling;
+- bounded global test-worker capacity and bounded global/per-project queue capacity;
+- conservative defaults: two test workers globally and one active test per project;
+- explicit per-project `max_parallel_tests` plus per-profile `parallel_safe` opt-in;
+- queued, claimed and running lifecycle states before terminal test results;
+- safe queue/worker/job observability and queued/running cancellation;
+- malformed or recovery-required mailbox requests do not block independent work in the same batch, while cursor advancement remains fail-closed;
+- GitHub result writes keep only a short serialized critical section;
+- loopback MCP clients are thread-local so concurrent watcher workers do not share mutable MCP session state;
+- existing shell, path, environment, service-name and arbitrary-tool injection boundaries remain unchanged;
+- migration, deployment, rollback and restore remain outside the mailbox allow-list.
+
+Capacity can later grow by increasing bounded worker settings or adding execution capacity behind the same request/job protocol. Protocol clients do not need to change.
+
+See `docs/CONCURRENCY.md` for defaults, scheduling, observability and Runner MCP versus GitHub Actions guidance.
+
 ## Phase 3.9 — public launch readiness
 
 Prepare Runner MCP for free, responsible discovery without changing its security boundaries.

@@ -346,7 +346,9 @@ Implemented foundation:
 - GitHub result writes keep only a short serialized critical section;
 - loopback MCP clients are thread-local so concurrent watcher workers do not share mutable MCP session state;
 - existing shell, path, environment, service-name and arbitrary-tool injection boundaries remain unchanged;
-- migration, deployment, rollback and restore remain outside the mailbox allow-list.
+- migration, deployment, rollback and restore remain outside the mailbox allow-list;
+- authenticated MCP request capacity defaults to a bounded 600 requests/minute so status polling and mailbox concurrency do not become a new global bottleneck;
+- request rate, test-worker capacity and queue capacity remain separate independently enforced controls.
 
 Capacity can later grow by increasing bounded worker settings or adding execution capacity behind the same request/job protocol. Protocol clients do not need to change.
 

@@ -16,11 +16,11 @@ from runner_mcp.bridge_replay import (
 
 class FakeExecutor:
     def __init__(self) -> None:
-        self.calls: list[tuple[str, tuple[str, ...]]] = []
+        self.calls: list[tuple[str, tuple[object, ...]]] = []
         self.raise_on: str | None = None
         self.unsafe_result = False
 
-    def _result(self, action: str, *args: str):
+    def _result(self, action: str, *args: object):
         self.calls.append((action, args))
         if self.raise_on == action:
             raise BridgeExecutionAdapterError("private exception detail /srv/secret")
@@ -60,6 +60,63 @@ class FakeExecutor:
 
     def cancel_job(self, job_id: str):
         return self._result("cancel_job", job_id)
+
+    def job_log(self, job_id: str, *, offset: int = 0, length: int = 100):
+        return self._result("job_log", job_id, offset, length)
+
+    def list_services(self, project: str):
+        return self._result("list_services", project)
+
+    def service_status(self, project: str, service: str):
+        return self._result("service_status", project, service)
+
+    def start_service(self, project: str, service: str):
+        return self._result("start_service", project, service)
+
+    def stop_service(self, project: str, service: str):
+        return self._result("stop_service", project, service)
+
+    def restart_service(self, project: str, service: str):
+        return self._result("restart_service", project, service)
+
+    def list_backups(self, project: str, *, limit: int = 100):
+        return self._result("list_backups", project, limit)
+
+    def backup_database(self, project: str):
+        return self._result("backup_database", project)
+
+    def request_action_approval(self, project: str, operation: str):
+        return self._result("request_action_approval", project, operation)
+
+    def approval_status(self, approval_id: str):
+        return self._result("approval_status", approval_id)
+
+    def migration_status(self, project: str):
+        return self._result("migration_status", project)
+
+    def apply_migrations(self, project: str, approval_id: str):
+        return self._result("apply_migrations", project, approval_id)
+
+    def plan_deploy(self, project: str):
+        return self._result("plan_deploy", project)
+
+    def deploy_staging(self, project: str, approval_id: str):
+        return self._result("deploy_staging", project, approval_id)
+
+    def deployment_status(self, job_id: str):
+        return self._result("deployment_status", job_id)
+
+    def list_releases(self, project: str, *, limit: int = 100):
+        return self._result("list_releases", project, limit)
+
+    def rollback_plan(self, project: str):
+        return self._result("rollback_plan", project)
+
+    def rollback_release(self, project: str, approval_id: str):
+        return self._result("rollback_release", project, approval_id)
+
+    def rollback_status(self, job_id: str):
+        return self._result("rollback_status", job_id)
 
 
 class FakeSink:
@@ -261,6 +318,25 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         '{"request_id":"req-417","action":"worker_status"}',
         '{"request_id":"req-418","action":"job_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
         '{"request_id":"req-419","action":"cancel_job","job_id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',
+        '{"request_id":"req-420","action":"job_log","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","offset":5,"length":20}',
+        '{"request_id":"req-421","action":"list_services","project":"demo"}',
+        '{"request_id":"req-422","action":"service_status","project":"demo","service":"web"}',
+        '{"request_id":"req-423","action":"start_service","project":"demo","service":"web"}',
+        '{"request_id":"req-424","action":"stop_service","project":"demo","service":"web"}',
+        '{"request_id":"req-425","action":"restart_service","project":"demo","service":"web"}',
+        '{"request_id":"req-426","action":"list_backups","project":"demo","limit":10}',
+        '{"request_id":"req-427","action":"backup_database","project":"demo"}',
+        '{"request_id":"req-428","action":"request_action_approval","project":"demo","operation":"deploy"}',
+        '{"request_id":"req-429","action":"approval_status","approval_id":"cccccccccccccccccccccccccccccccc"}',
+        '{"request_id":"req-430","action":"migration_status","project":"demo"}',
+        '{"request_id":"req-431","action":"apply_migrations","project":"demo","approval_id":"dddddddddddddddddddddddddddddddd"}',
+        '{"request_id":"req-432","action":"plan_deploy","project":"demo"}',
+        '{"request_id":"req-433","action":"deploy_staging","project":"demo","approval_id":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}',
+        '{"request_id":"req-434","action":"deployment_status","job_id":"ffffffffffffffffffffffffffffffff"}',
+        '{"request_id":"req-435","action":"list_releases","project":"demo","limit":12}',
+        '{"request_id":"req-436","action":"rollback_plan","project":"demo"}',
+        '{"request_id":"req-437","action":"rollback_release","project":"demo","approval_id":"11111111111111111111111111111111"}',
+        '{"request_id":"req-438","action":"rollback_status","job_id":"22222222222222222222222222222222"}',
     ]
 
     for payload in payloads:
@@ -278,6 +354,25 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         "worker_status",
         "job_status",
         "cancel_job",
+        "job_log",
+        "list_services",
+        "service_status",
+        "start_service",
+        "stop_service",
+        "restart_service",
+        "list_backups",
+        "backup_database",
+        "request_action_approval",
+        "approval_status",
+        "migration_status",
+        "apply_migrations",
+        "plan_deploy",
+        "deploy_staging",
+        "deployment_status",
+        "list_releases",
+        "rollback_plan",
+        "rollback_release",
+        "rollback_status",
     ]
 
 

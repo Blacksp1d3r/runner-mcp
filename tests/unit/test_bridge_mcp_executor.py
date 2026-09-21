@@ -523,3 +523,32 @@ def test_executor_uses_thread_local_clients(monkeypatch) -> None:
 
     assert len(results) == 2
     assert len(created) == 2
+
+
+
+def test_executor_sync_project_is_commit_pinned() -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    commit = "c" * 40
+    fake = FakeClient([{"project": "demo", "commit": commit, "changed": True}])
+    executor._local.client = fake
+
+    result = executor.sync_project("demo", commit)
+
+    assert result == {
+        "project": "demo",
+        "commit": commit,
+        "changed": True,
+    }
+    assert fake.calls == [
+        (
+            "sync_project",
+            {"project": "demo", "commit": commit},
+        )
+    ]
+
+
+def test_executor_sync_project_rejects_non_commit_reference() -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+
+    with pytest.raises(BridgeExecutionAdapterError, match="commit"):
+        executor.sync_project("demo", "main")

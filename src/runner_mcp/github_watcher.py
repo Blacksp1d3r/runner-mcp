@@ -16,15 +16,21 @@ from .bridge_processor import (
     BridgeExecutor,
     BridgeProcessor,
     BridgeProcessState,
+    BridgeResultSinkError,
 )
 from .bridge_protocol import (
+    BridgeAction,
     BridgeProtocolError,
+    BridgeResult,
+    BridgeResultState,
     parse_bridge_request,
+    serialize_bridge_result,
 )
 from .bridge_replay import (
     BridgeReplayError,
     BridgeReplayLedger,
     ReplayRecord,
+    ReplayState,
 )
 from .bridge_resilience import (
     MAX_PENDING_AGE_SECONDS,
@@ -55,6 +61,13 @@ class GitHubWatcherCycleState(StrEnum):
     PROCESSED = "processed"
     RECOVERY_REQUIRED = "recovery_required"
     DEGRADED = "degraded"
+
+
+@dataclass(frozen=True, slots=True)
+class GitHubRecoveryResolution:
+    request_id: str
+    action: BridgeAction
+    prior_state: ReplayState
 
 
 @dataclass(frozen=True, slots=True)
@@ -225,6 +238,73 @@ class GitHubMailboxWatcher:
         """Explicitly ignore historical requests and start after the current head."""
         head_sha = self._transport.request_head_sha()
         self._cursor_store.initialize(head_sha)
+
+    def resolve_missing_result_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubRecoveryResolution:
+        """Publish a terminal safe failure without replaying ambiguous work."""
+        try:
+            request_bytes = self._transport.fetch_request(request_id)
+            request = parse_bridge_request(request_bytes)
+            if request.request_id != request_id:
+                raise BridgeProtocolError(
+                    "request filename and payload ID do not match"
+                )
+            existing_result = self._transport.fetch_result(request_id)
+            record = self._ledger.inspect(request)
+        except (
+            BridgeProtocolError,
+            BridgeReplayError,
+            GitHubMailboxTransportError,
+            ValueError,
+        ) as exc:
+            raise GitHubWatcherError(
+                "recovery request state could not be verified safely"
+            ) from exc
+
+        if existing_result is not None:
+            raise GitHubWatcherError(
+                "a durable result already exists; use normal watcher reconciliation"
+            )
+        if record is None:
+            raise GitHubWatcherError(
+                "request was never claimed; normal watcher processing is required"
+            )
+        if record.state not in {ReplayState.CLAIMED, ReplayState.COMPLETED}:
+            raise GitHubWatcherError("request replay state is unsupported")
+
+        failure = BridgeResult(
+            request_id=request.request_id,
+            action=request.action,
+            state=BridgeResultState.FAILED,
+            error_code="RECOVERY_REQUIRED",
+            summary=(
+                "The prior execution outcome is ambiguous. "
+                "No action was replayed during recovery."
+            ),
+        )
+        try:
+            result_json = serialize_bridge_result(failure)
+            self._transport.persist_result(request_id, result_json)
+            if record.state == ReplayState.CLAIMED:
+                self._ledger.complete(request)
+        except (
+            BridgeProtocolError,
+            BridgeReplayError,
+            BridgeResultSinkError,
+            GitHubMailboxTransportError,
+            ValueError,
+        ) as exc:
+            raise GitHubWatcherError(
+                "fail-closed recovery result could not be persisted safely"
+            ) from exc
+
+        return GitHubRecoveryResolution(
+            request_id=request.request_id,
+            action=request.action,
+            prior_state=record.state,
+        )
 
     def _process_request(
         self,

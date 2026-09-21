@@ -2,6 +2,8 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp.bridge_protocol import BridgeAction
+from runner_mcp.bridge_replay import ReplayState
 from runner_mcp.bridge_resilience import WatcherHeartbeat, WatcherState
 from runner_mcp.config_manager import configure_github_mailbox
 from runner_mcp.github_runtime import (
@@ -10,6 +12,7 @@ from runner_mcp.github_runtime import (
     _validate_intervals,
 )
 from runner_mcp.github_watcher import (
+    GitHubRecoveryResolution,
     GitHubWatcherCycleOutcome,
     GitHubWatcherCycleState,
 )
@@ -24,9 +27,21 @@ class FakeWatcher:
         self.outcomes = list(outcomes)
         self.publish_flags: list[bool] = []
         self.bootstrap_calls = 0
+        self.resolve_calls: list[str] = []
 
     def bootstrap_cursor_at_current_head(self) -> None:
         self.bootstrap_calls += 1
+
+    def resolve_missing_result_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubRecoveryResolution:
+        self.resolve_calls.append(request_id)
+        return GitHubRecoveryResolution(
+            request_id=request_id,
+            action=BridgeAction.SYNC_PROJECT,
+            prior_state=ReplayState.CLAIMED,
+        )
 
     def run_cycle(
         self,
@@ -177,6 +192,21 @@ def test_runtime_bootstrap_delegates_once() -> None:
     runtime.bootstrap()
 
     assert watcher.bootstrap_calls == 1
+
+
+def test_runtime_delegates_fail_closed_recovery() -> None:
+    watcher = FakeWatcher([])
+    runtime = GitHubWatcherRuntime(
+        watcher=watcher,  # type: ignore[arg-type]
+        transport=FakeTransport(),  # type: ignore[arg-type]
+    )
+
+    resolution = runtime.resolve_missing_result_fail_closed("req-recovery-1")
+
+    assert watcher.resolve_calls == ["req-recovery-1"]
+    assert resolution.request_id == "req-recovery-1"
+    assert resolution.action == BridgeAction.SYNC_PROJECT
+    assert resolution.prior_state == ReplayState.CLAIMED
 
 
 def test_runtime_once_requests_heartbeat() -> None:

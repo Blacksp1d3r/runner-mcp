@@ -947,6 +947,26 @@ def cmd_github_watcher(args: argparse.Namespace) -> int:
         )
         return 0 if outcome.state.value in {"idle", "processed"} else 2
 
+    if args.github_watcher_action == "resolve":
+        phrase = f"RESOLVE {args.request_id}"
+        print(
+            "This publishes a terminal safe failure for an already-claimed "
+            "request with no durable result."
+        )
+        print("It does not execute or replay the requested action.")
+        confirmation = input(f"Type {phrase} to continue: ").strip()
+        if confirmation != phrase:
+            raise RuntimeError("GitHub watcher recovery resolution cancelled")
+        resolution = runtime.resolve_missing_result_fail_closed(args.request_id)
+        print(
+            "Recovery result persisted: "
+            f"action={resolution.action.value} "
+            f"prior_state={resolution.prior_state.value}"
+        )
+        print("No action was replayed.")
+        print("Next: runner-mcp github-watcher once")
+        return 0
+
     if args.github_watcher_action == "run":
         print("Runner MCP GitHub watcher running.")
         try:
@@ -1426,6 +1446,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="Process one incremental mailbox cycle.",
     )
     github_watcher_once.set_defaults(func=cmd_github_watcher)
+    github_watcher_resolve = github_watcher_sub.add_parser(
+        "resolve",
+        help=(
+            "Resolve one already-claimed missing-result request by publishing "
+            "a terminal safe failure without replaying the action."
+        ),
+    )
+    github_watcher_resolve.add_argument("request_id")
+    github_watcher_resolve.set_defaults(func=cmd_github_watcher)
     github_watcher_run = github_watcher_sub.add_parser(
         "run",
         help="Continuously poll the mailbox with a slower heartbeat cadence.",

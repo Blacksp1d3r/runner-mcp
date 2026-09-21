@@ -705,6 +705,94 @@ def test_github_watcher_cli_once_returns_nonzero_for_recovery(
     assert "attention=1" in captured.out
 
 
+def test_github_watcher_cli_resolve_requires_exact_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+
+    class FakeRuntime:
+        def resolve_missing_result_fail_closed(self, request_id: str):
+            calls.append(request_id)
+            raise AssertionError("resolution must not run after denied confirmation")
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+    monkeypatch.setattr("builtins.input", lambda _prompt: "no")
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "resolve",
+            "req-recovery-1",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert calls == []
+    assert "cancelled" in captured.err.lower()
+    assert "does not execute or replay" in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert str(paths.config_dir) not in captured.err
+
+
+def test_github_watcher_cli_resolve_publishes_safe_summary(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.bridge_protocol import BridgeAction
+    from runner_mcp.bridge_replay import ReplayState
+    from runner_mcp.github_watcher import GitHubRecoveryResolution
+
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+
+    class FakeRuntime:
+        def resolve_missing_result_fail_closed(self, request_id: str):
+            calls.append(request_id)
+            return GitHubRecoveryResolution(
+                request_id=request_id,
+                action=BridgeAction.SYNC_PROJECT,
+                prior_state=ReplayState.CLAIMED,
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: "RESOLVE req-recovery-2",
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "resolve",
+            "req-recovery-2",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert calls == ["req-recovery-2"]
+    assert "action=sync_project prior_state=claimed" in captured.out
+    assert "No action was replayed." in captured.out
+    assert "github-watcher once" in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert str(paths.config_dir) not in captured.err
+
+
 def test_github_watcher_cli_run_passes_bounded_intervals(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

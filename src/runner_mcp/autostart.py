@@ -2,9 +2,9 @@ from __future__ import annotations
 
 import os
 import subprocess
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from .completion_delivery import completion_notifier_status
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS

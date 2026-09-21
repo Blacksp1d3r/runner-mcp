@@ -34,6 +34,10 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - Fools2Tools project identity;
 - five-minute local demo, release checklist and launch-readiness documentation.
 
+### Fixed
+
+- the loopback mailbox executor now accepts the MCP SDK's bounded multi-item text encoding for list-returning tools such as project and test-profile listings, while still rejecting multi-item content for scalar tools.
+
 ### Security
 
 - arbitrary shell input is not part of the normal MCP or mailbox interfaces;

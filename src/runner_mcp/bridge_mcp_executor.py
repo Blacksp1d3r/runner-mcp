@@ -244,26 +244,37 @@ class LocalMCPClient:
         content = result.get("content")
         if content in (None, []):
             return None
-        if not isinstance(content, list) or len(content) != 1:
-            raise BridgeExecutionAdapterError(
-                "Runner MCP returned unsupported tool content"
-            )
-        item = content[0]
-        if (
-            not isinstance(item, dict)
-            or item.get("type") != "text"
-            or not isinstance(item.get("text"), str)
-        ):
+        if not isinstance(content, list) or len(content) > 256:
             raise BridgeExecutionAdapterError(
                 "Runner MCP returned unsupported tool content"
             )
 
-        try:
-            return _strict_json_loads(item["text"])
-        except (json.JSONDecodeError, TypeError, ValueError) as exc:
-            raise BridgeExecutionAdapterError(
-                "Runner MCP tool content is not valid JSON"
-            ) from exc
+        parsed_items: list[Any] = []
+        for item in content:
+            if (
+                not isinstance(item, dict)
+                or item.get("type") != "text"
+                or not isinstance(item.get("text"), str)
+            ):
+                raise BridgeExecutionAdapterError(
+                    "Runner MCP returned unsupported tool content"
+                )
+            try:
+                parsed_items.append(_strict_json_loads(item["text"]))
+            except (json.JSONDecodeError, TypeError, ValueError) as exc:
+                raise BridgeExecutionAdapterError(
+                    "Runner MCP tool content is not valid JSON"
+                ) from exc
+
+        if len(parsed_items) == 1:
+            return parsed_items[0]
+        if name in {"list_projects", "list_test_profiles"} and all(
+            isinstance(item, dict) for item in parsed_items
+        ):
+            return parsed_items
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned unsupported tool content"
+        )
 
     def _allocate_request_id(self) -> int:
         request_id = self._next_request_id

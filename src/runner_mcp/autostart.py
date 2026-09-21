@@ -8,6 +8,7 @@ from typing import Callable
 
 from .completion_delivery import completion_notifier_status
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
+from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
 from .onboarding import load_env_file, read_private_runtime
 
 MANAGED_MARKER = "# Managed by Runner MCP autostart."
@@ -133,8 +134,16 @@ def render_user_units(
         values.get(key, "").strip() for key in GITHUB_MAILBOX_ENV_KEYS
     )
     if mailbox_configured:
-        cursor = paths.config_dir / "github-mailbox-cursor.json"
-        if not cursor.exists():
+        cursor = GitHubWatcherCursorStore(
+            paths.config_dir / "github-mailbox-cursor.json"
+        )
+        try:
+            cursor_head = cursor.read()
+        except GitHubWatcherError as exc:
+            raise AutostartError(
+                "GitHub watcher bootstrap state is unavailable"
+            ) from exc
+        if cursor_head is None:
             raise AutostartError(
                 "GitHub watcher is configured but not bootstrapped"
             )
@@ -163,16 +172,19 @@ def render_user_units(
 
 
 def _safe_unit_dir(unit_dir: Path) -> Path:
-    unit_dir = unit_dir.expanduser().resolve()
-    if unit_dir.exists() and unit_dir.is_symlink():
+    expanded = unit_dir.expanduser()
+    if expanded.exists() and expanded.is_symlink():
         raise AutostartError("systemd user unit directory must not be a symlink")
     try:
-        unit_dir.mkdir(parents=True, exist_ok=True)
+        expanded.mkdir(parents=True, exist_ok=True)
     except OSError as exc:
         raise AutostartError("systemd user unit directory is unavailable") from exc
-    if not unit_dir.is_dir():
+    if expanded.is_symlink() or not expanded.is_dir():
         raise AutostartError("systemd user unit directory is unavailable")
-    return unit_dir
+    try:
+        return expanded.resolve(strict=True)
+    except OSError as exc:
+        raise AutostartError("systemd user unit directory is unavailable") from exc
 
 
 def _write_managed_unit(path: Path, content: str) -> None:

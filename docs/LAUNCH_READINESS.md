@@ -21,12 +21,14 @@ Completed:
 - bug/feature issue forms warn against posting private installation data;
 - pull requests get a security/public-repository hygiene checklist;
 - public CI installs the package and runs compile, Ruff, pytest and whitespace validation;
+- public CI builds the wheel/source distribution, rejects private/runtime artifact path shapes, installs the built wheel in a fresh environment and smoke-checks the CLI;
+- private-connectivity guidance separates the existing mailbox, outbound private tunnel, HTTPS reverse proxy and operator VPN/overlay use cases without provisioning third-party credentials;
 - no application telemetry is added for marketing.
 
 Still required before a broader launch:
 
 - create the first tagged alpha release from an exact green commit;
-- verify the release installation path and release notes;
+- create the first release from the exact green commit and verify the published release page/source archive;
 - set the GitHub repository description/topics to the prepared wording;
 - prepare an MCP ecosystem/registry submission only after its current packaging requirements are verified;
 - decide the timing of external community posts.

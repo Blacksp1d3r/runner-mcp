@@ -20,7 +20,7 @@ from .autostart import (
     user_service_status,
 )
 from .cron_autostart import (
-    CronAutostartError,
+    cron_available,
     cron_status,
     has_managed_cron,
     install_cron_services,
@@ -689,7 +689,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             port=args.port,
         )
 
-    managed_cron = has_managed_cron()
+    managed_cron = has_managed_cron() if cron_available() else False
     managed_systemd = has_managed_user_units()
 
     if args.autostart_action == "status":
@@ -712,7 +712,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             return 0
         if systemd_user_available():
             _print_autostart_rows("none", user_service_status())
-        else:
+        elif cron_available():
             components = configured_autostart_components(config_dir)
             _print_autostart_rows(
                 "none",
@@ -721,6 +721,12 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                     components=components,
                 ),
             )
+        else:
+            print("backend: none")
+            for component in ("server", "github-watcher", "completion-watcher"):
+                print(
+                    f"{component}: installed=no, enabled=no, active=no"
+                )
         return 0
 
     if args.autostart_action == "install":

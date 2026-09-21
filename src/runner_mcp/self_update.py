@@ -14,6 +14,7 @@ from enum import StrEnum
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 from uuid import uuid4
 
 from .config import ProjectRegistry
@@ -27,6 +28,7 @@ SELF_TEST_PROFILES = ("lint", "unit")
 SELF_UPDATE_JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _RESTART_COMPONENTS = {"github-watcher", "completion-watcher"}
+_LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 
 class SelfUpdateError(RuntimeError):
@@ -110,6 +112,51 @@ def _write_restart_marker(config_dir: Path, component: str, commit: str) -> None
         raise SelfUpdateError("Self-update restart marker could not be written") from exc
 
 
+def _runner_console_executable() -> Path:
+    candidate = Path(sys.prefix) / "bin" / "runner-mcp"
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError as exc:
+        raise SelfUpdateError("Runner MCP console executable is unavailable") from exc
+    if not resolved.is_file() or not os.access(resolved, os.X_OK):
+        raise SelfUpdateError("Runner MCP console executable is unavailable")
+    return candidate
+
+
+def reexec_component(
+    config_dir: Path,
+    component: str,
+    *,
+    server_port: int | None = None,
+    exec_fn: Callable[[str, list[str]], object] = os.execv,
+) -> None:
+    executable = _runner_console_executable()
+    config = str(config_dir.expanduser().resolve())
+    argv = [str(executable), "--config-dir", config]
+    if component == "server":
+        if server_port is None or not 1 <= server_port <= 65_535:
+            raise SelfUpdateError("Runner MCP server restart port is invalid")
+        argv.extend(
+            [
+                "serve",
+                "--host",
+                "127.0.0.1",
+                "--port",
+                str(server_port),
+            ]
+        )
+    elif component == "github-watcher":
+        argv.extend(["github-watcher", "run"])
+    elif component == "completion-watcher":
+        argv.extend(["completion-watcher", "run"])
+    else:
+        raise SelfUpdateError("Unknown Runner MCP restart component")
+    try:
+        exec_fn(str(executable), argv)
+    except OSError as exc:
+        raise SelfUpdateError("Runner MCP component could not restart") from exc
+
+
 def consume_restart_marker(config_dir: Path, component: str) -> bool:
     path = restart_marker_path(config_dir, component)
     if not path.exists():
@@ -140,7 +187,8 @@ class SelfUpdateManager:
         tests: TestRunner | None,
         source: SourceSynchronizer,
         installer_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
-        server_exit: Callable[[int], object] = os._exit,
+        resource_url: str,
+        server_reexec: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
     ) -> None:
         root = config_dir.expanduser()
@@ -171,8 +219,34 @@ class SelfUpdateManager:
         self.tests = tests
         self.source = source
         self._installer_runner = installer_runner
-        self._server_exit = server_exit
         self._restart_delay_seconds = restart_delay_seconds
+        try:
+            parsed_resource = urlsplit(resource_url)
+            port = parsed_resource.port
+        except ValueError as exc:
+            raise SelfUpdateError("Runner MCP resource URL is invalid") from exc
+        if (
+            parsed_resource.scheme not in {"http", "https"}
+            or parsed_resource.hostname not in _LOOPBACK_HOSTS
+            or parsed_resource.path.rstrip("/") != "/mcp"
+            or parsed_resource.username is not None
+            or parsed_resource.password is not None
+            or parsed_resource.query
+            or parsed_resource.fragment
+        ):
+            raise SelfUpdateError("Runner MCP resource URL is not a safe loopback MCP URL")
+        if port is None:
+            port = 443 if parsed_resource.scheme == "https" else 80
+        if not 1 <= port <= 65_535:
+            raise SelfUpdateError("Runner MCP resource URL port is invalid")
+        self._server_port = port
+        self._server_reexec = server_reexec or (
+            lambda: reexec_component(
+                self.config_dir,
+                "server",
+                server_port=self._server_port,
+            )
+        )
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()
@@ -418,13 +492,12 @@ class SelfUpdateManager:
             raise SelfUpdateError("Runner MCP Python runtime is unavailable") from exc
         if (
             not executable.is_absolute()
-            or executable.is_symlink()
             or not resolved_executable.is_file()
             or not os.access(resolved_executable, os.X_OK)
         ):
             raise SelfUpdateError("Runner MCP Python runtime is unavailable")
         command = [
-            str(resolved_executable),
+            str(executable),
             "-m",
             "pip",
             "install",
@@ -491,7 +564,7 @@ class SelfUpdateManager:
     def _schedule_server_restart(self) -> None:
         def restart() -> None:
             time.sleep(self._restart_delay_seconds)
-            self._server_exit(75)
+            self._server_reexec()
 
         threading.Thread(
             target=restart,

@@ -82,6 +82,8 @@ class BridgeAction(StrEnum):
     ROLLBACK_PLAN = "rollback_plan"
     ROLLBACK_RELEASE = "rollback_release"
     ROLLBACK_STATUS = "rollback_status"
+    RUNTIME_STATUS = "runtime_status"
+    RUNTIME_DOCTOR = "runtime_doctor"
 
 
 class BridgeResultState(StrEnum):
@@ -150,6 +152,8 @@ class BridgeRequest(BaseModel):
             BridgeAction.SAFETY_STATUS,
             BridgeAction.QUEUE_STATUS,
             BridgeAction.WORKER_STATUS,
+            BridgeAction.RUNTIME_STATUS,
+            BridgeAction.RUNTIME_DOCTOR,
         }:
             if (
                 self.project is not None
@@ -591,6 +595,8 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
         BridgeAction.SAFETY_STATUS,
         BridgeAction.QUEUE_STATUS,
         BridgeAction.WORKER_STATUS,
+        BridgeAction.RUNTIME_STATUS,
+        BridgeAction.RUNTIME_DOCTOR,
     }:
         return request.action.value, {}
 

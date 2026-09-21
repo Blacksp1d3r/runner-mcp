@@ -718,6 +718,24 @@ def test_executor_uses_thread_local_clients(monkeypatch) -> None:
 
 
 
+def test_executor_runtime_observability_uses_fixed_local_tools() -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    fake = FakeClient(
+        [
+            {"version": "0.1.0", "projects": 3},
+            {"state": "pass", "failed_checks": 0, "warning_checks": 0},
+        ]
+    )
+    executor._local.client = fake
+
+    assert executor.runtime_status()["projects"] == 3
+    assert executor.runtime_doctor()["state"] == "pass"
+    assert fake.calls == [
+        ("runtime_status", {}),
+        ("runtime_doctor", {}),
+    ]
+
+
 def test_executor_sync_project_is_commit_pinned() -> None:
     executor = LocalMCPBridgeExecutor(_config())
     commit = "c" * 40

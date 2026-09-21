@@ -34,6 +34,12 @@ class FakeExecutor:
     def safety_status(self):
         return self._result("safety_status")
 
+    def runtime_status(self):
+        return self._result("runtime_status")
+
+    def runtime_doctor(self):
+        return self._result("runtime_doctor")
+
     def project_status(self, project: str):
         return self._result("project_status", project)
 
@@ -309,6 +315,8 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
     payloads = [
         '{"request_id":"req-408","action":"list_projects"}',
         '{"request_id":"req-409","action":"safety_status"}',
+        '{"request_id":"req-runtime-10","action":"runtime_status"}',
+        '{"request_id":"req-runtime-11","action":"runtime_doctor"}',
         '{"request_id":"req-410","action":"project_status","project":"demo"}',
         '{"request_id":"req-411","action":"project_capabilities","project":"demo"}',
         '{"request_id":"req-412","action":"list_test_profiles","project":"demo"}',
@@ -345,6 +353,8 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
     assert [name for name, _args in executor.calls] == [
         "list_projects",
         "safety_status",
+        "runtime_status",
+        "runtime_doctor",
         "project_status",
         "project_capabilities",
         "list_test_profiles",

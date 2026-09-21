@@ -98,6 +98,8 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         for tool_name in (
             "list_projects",
             "safety_status",
+            "runtime_status",
+            "runtime_doctor",
             "project_status",
             "read_project_file",
             "list_project_files",
@@ -128,6 +130,53 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         assert safety_payload["max_automatic_code_rollback_steps"] == 1
         assert "operator.stop" not in safety.text
         assert str(tmp_path) not in safety.text
+
+        runtime = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 31,
+                "method": "tools/call",
+                "params": {
+                    "name": "runtime_status",
+                    "arguments": {},
+                },
+            },
+        )
+        assert runtime.status_code == 200
+        runtime_event_line = next(
+            line for line in runtime.text.splitlines() if line.startswith("data: ")
+        )
+        runtime_event = json.loads(runtime_event_line.removeprefix("data: "))
+        runtime_payload = json.loads(runtime_event["result"]["content"][0]["text"])
+        assert runtime_payload["projects"] == 1
+        assert runtime_payload["retention_confirmed"] is True
+        assert str(tmp_path) not in runtime.text
+        assert "https://" not in runtime.text
+
+        doctor = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 32,
+                "method": "tools/call",
+                "params": {
+                    "name": "runtime_doctor",
+                    "arguments": {},
+                },
+            },
+        )
+        assert doctor.status_code == 200
+        doctor_event_line = next(
+            line for line in doctor.text.splitlines() if line.startswith("data: ")
+        )
+        doctor_event = json.loads(doctor_event_line.removeprefix("data: "))
+        doctor_payload = json.loads(doctor_event["result"]["content"][0]["text"])
+        assert doctor_payload["failed_checks"] == 0
+        assert str(tmp_path) not in doctor.text
+        assert "mcp.example.invalid" not in doctor.text
 
         allowed = client.post(
             "/mcp",

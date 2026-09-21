@@ -429,3 +429,9 @@ Do not add real environment values to this repository.
 - Adapter presets use fixed argv/cwd/env/timeout definitions. `custom` is deliberately excluded from implicit mailbox availability.
 - Added protocol, executor, source-control and test-runner regression coverage for commit pinning, extra-field rejection, busy-project rejection, safe preset discovery/execution and custom-preset denial.
 - This change does not enable migration, deployment, rollback, arbitrary shell or arbitrary Git ref execution through the mailbox.
+
+Runtime observability bridge — 2026-09-21:
+- added fixed read-only `runtime_status` and `runtime_doctor` MCP/bridge actions;
+- output is intentionally host-neutral: version, safe capacity/configuration booleans and bounded check summaries only;
+- private paths, endpoints, hostnames, environment values, service units and raw process output remain excluded;
+- this is the first self-operations step toward removing routine dependence on general-purpose remote desktop tooling.

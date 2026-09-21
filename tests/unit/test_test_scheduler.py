@@ -1,3 +1,4 @@
+import json
 import sys
 import time
 from pathlib import Path
@@ -288,30 +289,57 @@ def test_queued_job_can_be_cancelled_before_claim(tmp_path: Path) -> None:
 
 
 def test_queued_job_survives_runner_restart_and_is_dispatched(tmp_path: Path) -> None:
-    slow = "import time; time.sleep(30)"
-    project = ProjectConfig(
-        display_name="Demo",
-        repository="example/demo",
-        root=tmp_path / "demo",
-        test_profiles={"unit": _profile(slow)},
+    jobs_root = tmp_path / "jobs"
+    jobs_root.mkdir()
+    project_root = tmp_path / "demo"
+    project_root.mkdir()
+    job_id = "d" * 32
+    metadata = {
+        "job_id": job_id,
+        "project": "demo",
+        "suite": "unit",
+        "status": "queued",
+        "created_at": "2026-09-21T00:00:00+00:00",
+        "claimed_at": None,
+        "started_at": None,
+        "finished_at": None,
+        "exit_code": None,
+        "log_truncated": False,
+        "error_category": None,
+    }
+    (jobs_root / f"{job_id}.json").write_text(
+        json.dumps(metadata),
+        encoding="utf-8",
     )
-    runner = _runner(tmp_path, {"demo": project}, workers=1)
-    try:
-        first = runner.start_test("demo", "unit")
-        _wait_status(runner, first["job_id"], {"running"})
-        queued = runner.start_test("demo", "unit")
-        _wait_status(runner, queued["job_id"], {"queued"})
-    finally:
-        runner.cancel(first["job_id"])
-        _wait_status(runner, first["job_id"], {"cancelled"})
-        runner.shutdown()
 
-    restarted = _runner(tmp_path, {"demo": project}, workers=1)
+    runner = TestRunner(
+        registry=ProjectRegistry(
+            projects={
+                "demo": ProjectConfig(
+                    display_name="Demo",
+                    repository="example/demo",
+                    root=project_root,
+                    test_profiles={
+                        "unit": _profile("import time; time.sleep(30)")
+                    },
+                )
+            }
+        ),
+        safety=OperatorSafetyGuard(
+            stop_file=tmp_path / "operator.stop",
+            retention=RetentionPolicy(),
+            retention_confirmed=True,
+        ),
+        jobs_root=jobs_root,
+        max_concurrent_jobs=1,
+        poll_interval_seconds=0.01,
+        terminate_grace_seconds=0.1,
+    )
     try:
-        _wait_status(restarted, queued["job_id"], {"running"})
+        _wait_status(runner, job_id, {"running"})
     finally:
-        restarted.cancel(queued["job_id"])
-        restarted.shutdown()
+        runner.cancel(job_id)
+        runner.shutdown()
 
 
 def test_claimed_or_running_job_is_not_replayed_after_restart(tmp_path: Path) -> None:
@@ -334,7 +362,7 @@ def test_claimed_or_running_job_is_not_replayed_after_restart(tmp_path: Path) ->
         "error_category": None,
     }
     (jobs_root / f"{job_id}.json").write_text(
-        __import__("json").dumps(metadata),
+        json.dumps(metadata),
         encoding="utf-8",
     )
 

@@ -27,7 +27,11 @@ from .github_watcher import (
     GitHubWatcherCycleState,
 )
 from .onboarding import OnboardingError, load_env_file, read_private_runtime
-from .self_update import SelfUpdateError, consume_restart_marker
+from .self_update import (
+    SelfUpdateError,
+    consume_restart_marker,
+    reexec_component,
+)
 
 DEFAULT_REQUEST_REF = "runner-control"
 DEFAULT_RESULT_REF = "runner-results"
@@ -184,9 +188,15 @@ class GitHubWatcherRuntime:
                     "Runner MCP self-update restart state is invalid"
                 ) from exc
             if restart_requested:
-                raise GitHubWatcherRuntimeError(
-                    "Runner MCP self-update restart requested"
-                )
+                try:
+                    reexec_component(
+                        self.config_dir,
+                        "github-watcher",
+                    )
+                except SelfUpdateError as exc:
+                    raise GitHubWatcherRuntimeError(
+                        "Runner MCP self-update restart failed"
+                    ) from exc
 
             time.sleep(poll_seconds)
 

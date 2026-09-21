@@ -436,6 +436,124 @@ def test_result_persistence_failure_does_not_reexecute(tmp_path) -> None:
     assert record.state == ReplayState.CLAIMED
 
 
+def test_operator_resolves_claimed_missing_result_without_replay(tmp_path) -> None:
+    watcher, transport, executor, ledger, cursor = _watcher(tmp_path)
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-recover-claimed"]
+    transport.requests["req-recover-claimed"] = _request("req-recover-claimed")
+    request = parse_bridge_request(transport.requests["req-recover-claimed"])
+    ledger.claim(request)
+
+    resolution = watcher.resolve_missing_result_fail_closed(
+        "req-recover-claimed"
+    )
+
+    assert resolution.request_id == "req-recover-claimed"
+    assert resolution.action == BridgeAction.LIST_PROJECTS
+    assert resolution.prior_state == ReplayState.CLAIMED
+    assert executor.calls == []
+    result = transport.results["req-recover-claimed"]
+    assert result.state == BridgeResultState.FAILED
+    assert result.error_code == "RECOVERY_REQUIRED"
+    assert "No action was replayed" in (result.summary or "")
+    record = ledger.inspect(request)
+    assert record is not None
+    assert record.state == ReplayState.COMPLETED
+    assert cursor.read() == "a" * 40
+
+    outcome = watcher.run_cycle()
+
+    assert outcome.state == GitHubWatcherCycleState.PROCESSED
+    assert outcome.reconciled_requests == 1
+    assert outcome.processed_requests == 0
+    assert cursor.read() == transport.head
+    assert executor.calls == []
+
+
+def test_operator_resolves_completed_missing_result_without_replay(tmp_path) -> None:
+    watcher, transport, executor, ledger, _cursor = _watcher(tmp_path)
+    transport.requests["req-recover-completed"] = _request(
+        "req-recover-completed"
+    )
+    request = parse_bridge_request(transport.requests["req-recover-completed"])
+    ledger.claim(request)
+    ledger.complete(request)
+
+    resolution = watcher.resolve_missing_result_fail_closed(
+        "req-recover-completed"
+    )
+
+    assert resolution.prior_state == ReplayState.COMPLETED
+    assert executor.calls == []
+    result = transport.results["req-recover-completed"]
+    assert result.state == BridgeResultState.FAILED
+    assert result.error_code == "RECOVERY_REQUIRED"
+    record = ledger.inspect(request)
+    assert record is not None
+    assert record.state == ReplayState.COMPLETED
+
+
+def test_operator_recovery_rejects_unclaimed_request(tmp_path) -> None:
+    watcher, transport, executor, ledger, _cursor = _watcher(tmp_path)
+    transport.requests["req-recover-new"] = _request("req-recover-new")
+    request = parse_bridge_request(transport.requests["req-recover-new"])
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="never claimed",
+    ):
+        watcher.resolve_missing_result_fail_closed("req-recover-new")
+
+    assert "req-recover-new" not in transport.results
+    assert ledger.inspect(request) is None
+    assert executor.calls == []
+
+
+def test_operator_recovery_rejects_existing_result(tmp_path) -> None:
+    watcher, transport, executor, ledger, _cursor = _watcher(tmp_path)
+    transport.requests["req-recover-result"] = _request("req-recover-result")
+    request = parse_bridge_request(transport.requests["req-recover-result"])
+    ledger.claim(request)
+    transport.results["req-recover-result"] = _existing_result(
+        "req-recover-result"
+    )
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="durable result already exists",
+    ):
+        watcher.resolve_missing_result_fail_closed("req-recover-result")
+
+    record = ledger.inspect(request)
+    assert record is not None
+    assert record.state == ReplayState.CLAIMED
+    assert executor.calls == []
+
+
+def test_operator_recovery_persistence_failure_keeps_claimed_state(
+    tmp_path,
+) -> None:
+    watcher, transport, executor, ledger, _cursor = _watcher(tmp_path)
+    transport.requests["req-recover-persist"] = _request(
+        "req-recover-persist"
+    )
+    request = parse_bridge_request(transport.requests["req-recover-persist"])
+    ledger.claim(request)
+    transport.fail_persist = True
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="could not be persisted",
+    ):
+        watcher.resolve_missing_result_fail_closed("req-recover-persist")
+
+    record = ledger.inspect(request)
+    assert record is not None
+    assert record.state == ReplayState.CLAIMED
+    assert "req-recover-persist" not in transport.results
+    assert executor.calls == []
+
+
 def test_malformed_request_blocks_cursor_but_not_independent_work(tmp_path) -> None:
     watcher, transport, executor, _ledger, cursor = _watcher(tmp_path)
     cursor.initialize("a" * 40)

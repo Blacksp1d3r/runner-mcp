@@ -88,6 +88,11 @@ runner-mcp deployment-config add PROJECT --release-root PATH --service ALIAS
 runner-mcp github-mailbox status
 runner-mcp github-watcher once
 runner-mcp serve
+
+# MCP/mailbox clients can also use:
+# runtime_status
+# self_update <full-main-commit>
+# self_update_status <job-id>
 ```
 
 The emergency stop is intentionally easy to activate and harder to clear.
@@ -106,6 +111,7 @@ Current implemented foundations include:
 - rollback-retention policy using both minimum count and minimum age;
 - explicit separation between code rollback and database restore;
 - controlled asynchronous test jobs;
+- commit-pinned self-update for the canonical Runner MCP project, gated by fixed lint/unit validation and internal self-reexec;
 - bounded fair multi-project test scheduling with per-project opt-in parallelism;
 - safe queue, worker and job observability without infrastructure disclosure;
 - allow-listed systemd-user staging service status/start/stop/restart;

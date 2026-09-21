@@ -150,6 +150,12 @@ Service auto-start packaging — 2026-09-21:
 - generated autostart state contains no credentials; foreign systemd units and unrelated cron entries are preserved;
 - safe status reports only backend plus component installed/enabled/active state.
 
+Test runtime hardening — 2026-09-21:
+- local PostgreSQL validation exposed that the existing per-job `TMPDIR` could make Unix-domain socket paths exceed the platform limit when the private jobs root is long;
+- Runner MCP now allocates a short, unique 0700 temporary directory below the fixed system temp root for each test job;
+- the short temp path is included in private-path log scrubbing and removed after the job terminates;
+- this is project-neutral and does not add environment passthrough or project-specific command authority.
+
 Phase 3.8.1 task-completion feedback:
 - strict terminal completion events added for succeeded, failed and cancelled outcomes;
 - deterministic event IDs provide notification deduplication without exposing private source identifiers;

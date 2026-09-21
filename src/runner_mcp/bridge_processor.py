@@ -54,6 +54,44 @@ class BridgeExecutor(Protocol):
 
     def cancel_job(self, job_id: str) -> Any: ...
 
+    def job_log(self, job_id: str, *, offset: int = 0, length: int = 100) -> Any: ...
+
+    def list_services(self, project: str) -> Any: ...
+
+    def service_status(self, project: str, service: str) -> Any: ...
+
+    def start_service(self, project: str, service: str) -> Any: ...
+
+    def stop_service(self, project: str, service: str) -> Any: ...
+
+    def restart_service(self, project: str, service: str) -> Any: ...
+
+    def list_backups(self, project: str, *, limit: int = 100) -> Any: ...
+
+    def backup_database(self, project: str) -> Any: ...
+
+    def request_action_approval(self, project: str, operation: str) -> Any: ...
+
+    def approval_status(self, approval_id: str) -> Any: ...
+
+    def migration_status(self, project: str) -> Any: ...
+
+    def apply_migrations(self, project: str, approval_id: str) -> Any: ...
+
+    def plan_deploy(self, project: str) -> Any: ...
+
+    def deploy_staging(self, project: str, approval_id: str) -> Any: ...
+
+    def deployment_status(self, job_id: str) -> Any: ...
+
+    def list_releases(self, project: str, *, limit: int = 100) -> Any: ...
+
+    def rollback_plan(self, project: str) -> Any: ...
+
+    def rollback_release(self, project: str, approval_id: str) -> Any: ...
+
+    def rollback_status(self, job_id: str) -> Any: ...
+
 
 class BridgeResultSink(Protocol):
     """Transport-specific durable result writer."""
@@ -215,6 +253,112 @@ class BridgeProcessor:
         if request.action == BridgeAction.CANCEL_JOB:
             assert request.job_id is not None
             return self._executor.cancel_job(request.job_id)
+
+        if request.action == BridgeAction.JOB_LOG:
+            assert request.job_id is not None
+            return self._executor.job_log(
+                request.job_id,
+                offset=request.offset or 0,
+                length=request.length or 100,
+            )
+
+        if request.action == BridgeAction.LIST_SERVICES:
+            assert request.project is not None
+            return self._executor.list_services(request.project)
+
+        if request.action == BridgeAction.SERVICE_STATUS:
+            assert request.project is not None
+            assert request.service is not None
+            return self._executor.service_status(request.project, request.service)
+
+        if request.action == BridgeAction.START_SERVICE:
+            assert request.project is not None
+            assert request.service is not None
+            return self._executor.start_service(request.project, request.service)
+
+        if request.action == BridgeAction.STOP_SERVICE:
+            assert request.project is not None
+            assert request.service is not None
+            return self._executor.stop_service(request.project, request.service)
+
+        if request.action == BridgeAction.RESTART_SERVICE:
+            assert request.project is not None
+            assert request.service is not None
+            return self._executor.restart_service(request.project, request.service)
+
+        if request.action == BridgeAction.LIST_BACKUPS:
+            assert request.project is not None
+            return self._executor.list_backups(
+                request.project,
+                limit=request.limit or 100,
+            )
+
+        if request.action == BridgeAction.BACKUP_DATABASE:
+            assert request.project is not None
+            return self._executor.backup_database(request.project)
+
+        if request.action == BridgeAction.REQUEST_ACTION_APPROVAL:
+            assert request.project is not None
+            assert request.operation is not None
+            return self._executor.request_action_approval(
+                request.project,
+                request.operation,
+            )
+
+        if request.action == BridgeAction.APPROVAL_STATUS:
+            assert request.approval_id is not None
+            return self._executor.approval_status(request.approval_id)
+
+        if request.action == BridgeAction.MIGRATION_STATUS:
+            assert request.project is not None
+            return self._executor.migration_status(request.project)
+
+        if request.action == BridgeAction.APPLY_MIGRATIONS:
+            assert request.project is not None
+            assert request.approval_id is not None
+            return self._executor.apply_migrations(
+                request.project,
+                request.approval_id,
+            )
+
+        if request.action == BridgeAction.PLAN_DEPLOY:
+            assert request.project is not None
+            return self._executor.plan_deploy(request.project)
+
+        if request.action == BridgeAction.DEPLOY_STAGING:
+            assert request.project is not None
+            assert request.approval_id is not None
+            return self._executor.deploy_staging(
+                request.project,
+                request.approval_id,
+            )
+
+        if request.action == BridgeAction.DEPLOYMENT_STATUS:
+            assert request.job_id is not None
+            return self._executor.deployment_status(request.job_id)
+
+        if request.action == BridgeAction.LIST_RELEASES:
+            assert request.project is not None
+            return self._executor.list_releases(
+                request.project,
+                limit=request.limit or 100,
+            )
+
+        if request.action == BridgeAction.ROLLBACK_PLAN:
+            assert request.project is not None
+            return self._executor.rollback_plan(request.project)
+
+        if request.action == BridgeAction.ROLLBACK_RELEASE:
+            assert request.project is not None
+            assert request.approval_id is not None
+            return self._executor.rollback_release(
+                request.project,
+                request.approval_id,
+            )
+
+        if request.action == BridgeAction.ROLLBACK_STATUS:
+            assert request.job_id is not None
+            return self._executor.rollback_status(request.job_id)
 
         raise BridgeProtocolError("unsupported bridge action")
 

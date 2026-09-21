@@ -94,13 +94,15 @@ Status reports only the selected backend and whether the server, GitHub watcher 
 
 ## Remove
 
-To stop and remove only unit files managed by Runner MCP:
+To remove only autostart state managed by Runner MCP:
 
 ```bash
 runner-mcp autostart remove
 ```
 
-The CLI requires the explicit local confirmation phrase shown on screen. Foreign unit files are never removed.
+The CLI requires the explicit local confirmation phrase shown on screen. Foreign unit files and unrelated crontab entries are never removed.
+
+On the systemd backend, removal disables and stops the managed units. On the cron backend, removal deletes the managed schedule so no future restart occurs; it deliberately does not send a blind process-kill signal to a currently running component. Stop or reboot that local account explicitly when immediate termination is required. This conservative behavior avoids killing a process whose identity cannot be proven from cron state alone.
 
 ## Headless hosts
 

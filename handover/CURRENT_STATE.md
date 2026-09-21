@@ -150,7 +150,7 @@ Phase 3.8.1 task-completion feedback:
 - execution replay protection remains separate from notification deduplication;
 - notification transport failure may be retried but must never rerun the completed task;
 - public completion contract is transport-neutral; private destinations remain private configuration;
-- existing private mailbox notification workflow is currently blocked by unavailable repository-specific Actions capacity and has not yet completed an end-to-end delivery proof.
+- built-in completion delivery now observes persisted terminal test jobs, uses deterministic event markers plus a private delivery ledger, and has a live exactly-once private proof; it no longer depends on repository-specific self-hosted Actions capacity.
 
 Phase 3.8.2 watcher resilience and restart recovery:
 - replay entries now carry an explicit claimed/completed lifecycle;
@@ -314,7 +314,7 @@ Phase 9 human approval gates:
 Current validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 566 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 602 tests green, with one third-party Starlette/AnyIO deprecation warning;
 - merged request-capacity change passed public CI including whitespace checks;
 - live private bridge validation passed both Runner MCP lint and unit profiles;
 - git diff whitespace check: green;
@@ -379,7 +379,7 @@ Current validation is green:
 
 ## Next steps
 
-The shared watcher migration and restart/reconciliation proof are complete. Keep the obsolete pilot execution path disabled, finish the independent completion-notification proof where notification transport capacity is available, verify the five-minute demo from a clean Linux environment, and continue service/tunnel onboarding.
+The shared watcher migration, restart/reconciliation proof, exactly-once completion-notification proof and clean-Linux five-minute demo validation are complete. Keep obsolete pilot execution paths disabled, continue service auto-start/private-connectivity onboarding, and prepare the first tagged alpha only from an exact green commit.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

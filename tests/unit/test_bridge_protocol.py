@@ -30,6 +30,14 @@ from runner_mcp.bridge_protocol import (
             ("safety_status", {}),
         ),
         (
+            {"request_id": "req-runtime-01", "action": "runtime_status"},
+            ("runtime_status", {}),
+        ),
+        (
+            {"request_id": "req-runtime-02", "action": "runtime_doctor"},
+            ("runtime_doctor", {}),
+        ),
+        (
             {
                 "request_id": "req-003",
                 "action": "project_status",
@@ -120,6 +128,8 @@ def test_unknown_fields_are_rejected() -> None:
         '{"request_id":"req-001","action":"run_tests","project":"demo"}',
         '{"request_id":"req-001","action":"run_tests","profile":"unit"}',
         '{"request_id":"req-001","action":"queue_status","project":"demo"}',
+        '{"request_id":"req-001","action":"runtime_status","project":"demo"}',
+        '{"request_id":"req-001","action":"runtime_doctor","limit":2}',
         '{"request_id":"req-001","action":"job_status"}',
         '{"request_id":"req-001","action":"job_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","project":"demo"}',
         '{"request_id":"req-001","action":"cancel_job","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","profile":"unit"}',
@@ -460,14 +470,9 @@ def test_operational_bridge_rejects_unbounded_or_extra_arguments(payload: str) -
     with pytest.raises(BridgeProtocolError, match="strict validation"):
         parse_bridge_request(payload)
 
-
 @pytest.mark.parametrize(
     ("payload", "expected"),
     [
-        (
-            {"request_id": "self-001", "action": "runtime_status"},
-            ("runtime_status", {}),
-        ),
         (
             {
                 "request_id": "self-002",
@@ -496,13 +501,14 @@ def test_self_operations_map_only_fixed_arguments(
 @pytest.mark.parametrize(
     "payload",
     [
-        '{"request_id":"self-bad-01","action":"runtime_status","project":"demo"}',
         '{"request_id":"self-bad-02","action":"self_update","commit":"main"}',
         '{"request_id":"self-bad-03","action":"self_update","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","project":"runner-mcp"}',
         '{"request_id":"self-bad-04","action":"self_update_status","job_id":"bad"}',
         '{"request_id":"self-bad-05","action":"self_update_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","commit":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',
+        '{"request_id":"self-bad-06","action":"self_update","commit":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}',
     ],
 )
 def test_self_operations_reject_extra_or_unpinned_input(payload: str) -> None:
     with pytest.raises(BridgeProtocolError, match="strict validation"):
         parse_bridge_request(payload)
+

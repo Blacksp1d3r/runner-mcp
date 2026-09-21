@@ -31,6 +31,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - bounded fair multi-project scheduling with persistent project queues, immediate test job IDs, safe capacity observability and explicit parallel-safe opt-in;
 - scale-aware bounded MCP request capacity sized for concurrent mailbox workers and status polling;
 - interactive setup, doctor, guide and configuration-management CLI;
+- managed non-root systemd user autostart for the fixed Runner MCP server and explicitly bootstrapped watcher components;
 - public CI for this public repository;
 - Fools2Tools project identity;
 - five-minute local demo, release checklist and launch-readiness documentation;
@@ -59,7 +60,6 @@ Runner MCP is under active development. Until the first tagged release, changes 
 
 ### Known limitations
 
-- service auto-start packaging is still being improved;
 - guided private-tunnel/reverse-proxy onboarding is not yet one-click;
 - untrusted public-fork code is not sandboxed for execution on a privileged persistent runner;
 - PostgreSQL restore/PITR orchestration and automated retention pruning are not implemented;

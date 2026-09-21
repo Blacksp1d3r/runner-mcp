@@ -585,7 +585,7 @@ def parse_bridge_result(payload: str | bytes) -> BridgeResult:
     return result
 
 
-def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
+def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]:
     if request.action in {
         BridgeAction.LIST_PROJECTS,
         BridgeAction.SAFETY_STATUS,

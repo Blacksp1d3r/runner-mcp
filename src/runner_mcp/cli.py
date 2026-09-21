@@ -34,6 +34,7 @@ from .config_manager import (
     remove_project,
     remove_service_config,
     remove_test_profile,
+    set_project_test_capacity,
 )
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
@@ -305,6 +306,18 @@ def cmd_project(args: argparse.Namespace) -> int:
         print(f"Project added: {result['code']} ({result['name']})")
         return 0
 
+    if args.project_action == "capacity":
+        result = set_project_test_capacity(
+            config_dir,
+            code=args.code,
+            max_parallel_tests=args.max_parallel_tests,
+        )
+        print(
+            f"Project test capacity updated: {result['project']} "
+            f"(max_parallel_tests={result['max_parallel_tests']})"
+        )
+        return 0
+
     if args.project_action == "remove":
         expected = f"REMOVE {args.code}"
         confirmation = input(f"Type {expected} to continue: ").strip()
@@ -356,7 +369,8 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
         for profile in profiles:
             print(
                 f"{profile['name']}: timeout={profile['timeout_seconds']}s, "
-                f"log_limit={profile['max_log_bytes']} bytes"
+                f"log_limit={profile['max_log_bytes']} bytes, "
+                f"parallel_safe={str(profile['parallel_safe']).lower()}"
             )
         return 0
 
@@ -373,6 +387,7 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
             timeout_seconds=args.timeout,
             max_log_bytes=args.max_log_bytes,
             env_passthrough=args.env,
+            parallel_safe=args.parallel_safe,
         )
         print(
             f"Test profile added: {result['name']} "
@@ -814,6 +829,14 @@ def build_parser() -> argparse.ArgumentParser:
     )
     project_add.set_defaults(func=cmd_project)
 
+    project_capacity = project_sub.add_parser(
+        "capacity",
+        help="Set the maximum safe parallel test jobs for one project.",
+    )
+    project_capacity.add_argument("code")
+    project_capacity.add_argument("max_parallel_tests", type=int)
+    project_capacity.set_defaults(func=cmd_project)
+
     project_remove = project_sub.add_parser("remove", help="Remove a project.")
     project_remove.add_argument("code")
     project_remove.set_defaults(func=cmd_project)
@@ -851,6 +874,14 @@ def build_parser() -> argparse.ArgumentParser:
         action="append",
         default=[],
         help="Explicit environment variable name to pass through.",
+    )
+    profile_add.add_argument(
+        "--parallel-safe",
+        action="store_true",
+        help=(
+            "Allow this profile to overlap with other parallel-safe profiles "
+            "when the project capacity is greater than one."
+        ),
     )
     profile_add.set_defaults(func=cmd_test_profile)
 

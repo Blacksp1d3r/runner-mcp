@@ -17,6 +17,7 @@ MAX_RESULT_STRING_CHARS = 2_048
 MAX_RESULT_COLLECTION_ITEMS = 256
 MAX_RESULT_DEPTH = 6
 REQUEST_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$")
+JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 RESULT_KEY_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,79}$")
 ERROR_CODE_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,63}$")
 _WINDOWS_ABSOLUTE_PATH_RE = re.compile(r"^[A-Za-z]:[\\/]")
@@ -57,6 +58,10 @@ class BridgeAction(StrEnum):
     PROJECT_CAPABILITIES = "project_capabilities"
     LIST_TEST_PROFILES = "list_test_profiles"
     RUN_TESTS = "run_tests"
+    QUEUE_STATUS = "queue_status"
+    WORKER_STATUS = "worker_status"
+    JOB_STATUS = "job_status"
+    CANCEL_JOB = "cancel_job"
 
 
 class BridgeResultState(StrEnum):
@@ -72,6 +77,7 @@ class BridgeRequest(BaseModel):
     action: BridgeAction
     project: str | None = Field(default=None, min_length=1, max_length=80)
     profile: str | None = Field(default=None, min_length=1, max_length=80)
+    job_id: str | None = Field(default=None, min_length=32, max_length=32)
 
     @model_validator(mode="after")
     def validate_action_arguments(self) -> BridgeRequest:
@@ -84,9 +90,17 @@ class BridgeRequest(BaseModel):
         if self.profile is not None and not PROJECT_CODE_RE.fullmatch(self.profile):
             raise ValueError("profile contains unsupported characters")
 
-        if self.action in {BridgeAction.LIST_PROJECTS, BridgeAction.SAFETY_STATUS}:
-            if self.project is not None or self.profile is not None:
-                raise ValueError(f"{self.action.value} does not accept project or profile")
+        if self.job_id is not None and not JOB_ID_RE.fullmatch(self.job_id):
+            raise ValueError("job_id contains unsupported characters")
+
+        if self.action in {
+            BridgeAction.LIST_PROJECTS,
+            BridgeAction.SAFETY_STATUS,
+            BridgeAction.QUEUE_STATUS,
+            BridgeAction.WORKER_STATUS,
+        }:
+            if self.project is not None or self.profile is not None or self.job_id is not None:
+                raise ValueError(f"{self.action.value} does not accept request arguments")
             return self
 
         if self.action in {
@@ -96,13 +110,22 @@ class BridgeRequest(BaseModel):
         }:
             if self.project is None:
                 raise ValueError(f"{self.action.value} requires project")
-            if self.profile is not None:
-                raise ValueError(f"{self.action.value} does not accept profile")
+            if self.profile is not None or self.job_id is not None:
+                raise ValueError(f"{self.action.value} accepts only project")
             return self
 
         if self.action == BridgeAction.RUN_TESTS:
             if self.project is None or self.profile is None:
                 raise ValueError("run_tests requires project and profile")
+            if self.job_id is not None:
+                raise ValueError("run_tests does not accept job_id")
+            return self
+
+        if self.action in {BridgeAction.JOB_STATUS, BridgeAction.CANCEL_JOB}:
+            if self.job_id is None:
+                raise ValueError(f"{self.action.value} requires job_id")
+            if self.project is not None or self.profile is not None:
+                raise ValueError(f"{self.action.value} accepts only job_id")
             return self
 
         raise ValueError("unsupported bridge action")
@@ -319,7 +342,12 @@ def parse_bridge_result(payload: str | bytes) -> BridgeResult:
 
 
 def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
-    if request.action in {BridgeAction.LIST_PROJECTS, BridgeAction.SAFETY_STATUS}:
+    if request.action in {
+        BridgeAction.LIST_PROJECTS,
+        BridgeAction.SAFETY_STATUS,
+        BridgeAction.QUEUE_STATUS,
+        BridgeAction.WORKER_STATUS,
+    }:
         return request.action.value, {}
 
     if request.action in {
@@ -337,5 +365,9 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
             "project": request.project,
             "suite": request.profile,
         }
+
+    if request.action in {BridgeAction.JOB_STATUS, BridgeAction.CANCEL_JOB}:
+        assert request.job_id is not None
+        return request.action.value, {"job_id": request.job_id}
 
     raise BridgeProtocolError("unsupported bridge action")

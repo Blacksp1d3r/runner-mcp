@@ -320,13 +320,19 @@ Implemented foundation:
 - heartbeat defaults to a slower cadence and is also published on watcher-state transitions;
 - heartbeat delivery remains independent from operational task execution.
 
+Private deployment proof:
+
+- the pilot poller has been replaced by the shared `runner-mcp github-watcher run` runtime in a private deployment;
+- explicit bootstrap started at the current request head without historical replay;
+- fresh protocol-v1 inspection requests, queue/worker observability and asynchronous test execution were proven end to end;
+- restart/reconciliation preserved the cursor and replay ledger without duplicate execution;
+- the legacy pilot poller is disabled in that deployment;
+- completion-notification transport remains a separate capacity concern.
+
 Next:
 
-- migrate the private pilot watcher to `runner-mcp github-watcher run`;
-- initialize it with an explicit bootstrap before enabling continuous polling;
-- prove one fresh test request, result publication, completion notification and restart/reconciliation cycle;
-- remove obsolete private pilot execution logic after the migrated path is proven;
-- then return to clean-environment launch verification and service/tunnel onboarding.
+- finish the independent completion-notification proof where notification transport capacity is available;
+- return to clean-environment launch verification and service/tunnel onboarding.
 
 ## Phase 3.8.8 — controlled multi-project concurrency
 

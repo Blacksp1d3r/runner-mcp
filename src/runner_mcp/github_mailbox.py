@@ -3,8 +3,8 @@ from __future__ import annotations
 import base64
 import json
 import re
-import time
 import threading
+import time
 import urllib.error
 import urllib.parse
 import urllib.request

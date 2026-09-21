@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 import codecs
-from collections import deque
 import json
 import os
 import re
@@ -11,6 +10,7 @@ import stat
 import subprocess
 import threading
 import time
+from collections import deque
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum

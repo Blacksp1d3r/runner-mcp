@@ -137,7 +137,10 @@ def _require_configured_origin(root: Path, repository: str) -> None:
 
 
 def clean_head(root: Path) -> dict[str, str | bool]:
-    inside = _run_git(root, ["rev-parse", "--is-inside-work-tree"])
+    try:
+        inside = _run_git(root, ["rev-parse", "--is-inside-work-tree"])
+    except SourceControlError as exc:
+        raise SourceControlError("Project must be a Git working tree") from exc
     if inside != "true":
         raise SourceControlError("Project must be a Git working tree")
 

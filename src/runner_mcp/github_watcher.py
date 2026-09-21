@@ -418,7 +418,7 @@ class GitHubMailboxWatcher:
             )
 
         try:
-            malformed_bytes = self._transport.fetch_request(request_id)
+            malformed_bytes = self._transport.fetch_request_unvalidated(request_id)
             existing_result = self._transport.fetch_result(request_id)
         except GitHubMailboxTransportError as exc:
             raise GitHubWatcherError(
@@ -479,6 +479,17 @@ class GitHubMailboxWatcher:
                     "another backlog request cannot be reconciled safely"
                 ) from exc
             reconciled += 1
+
+        try:
+            verified_head = self._transport.request_head_sha()
+        except GitHubMailboxTransportError as exc:
+            raise GitHubWatcherError(
+                "watcher backlog could not be reverified safely"
+            ) from exc
+        if verified_head != current_head:
+            raise GitHubWatcherError(
+                "request head changed during malformed-request quarantine"
+            )
 
         try:
             self._cursor_store.advance(

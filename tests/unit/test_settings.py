@@ -46,10 +46,32 @@ def test_runtime_defaults_keep_test_execution_unconfigured(
     settings = Settings.from_env()
 
     assert settings.test_jobs_root is None
+    assert settings.rate_limit_per_minute == 600
     assert settings.max_test_jobs == 2
     assert settings.max_queued_tests == 64
     assert settings.mailbox_workers == 4
     assert settings.mailbox_max_inflight == 32
+
+
+def test_explicit_rate_limit_is_accepted(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_RATE_LIMIT_PER_MINUTE", "1200")
+
+    assert Settings.from_env().rate_limit_per_minute == 1200
+
+
+@pytest.mark.parametrize("value", ["0", "6001", "not-an-integer"])
+def test_invalid_rate_limit_fails_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    value: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_RATE_LIMIT_PER_MINUTE", value)
+
+    with pytest.raises(RuntimeError, match="RUNNER_MCP_RATE_LIMIT_PER_MINUTE"):
+        Settings.from_env()
 
 
 @pytest.mark.parametrize("value", ["0", "17", "not-an-integer"])
@@ -62,8 +84,6 @@ def test_invalid_max_test_jobs_fails_startup(
 
     with pytest.raises(RuntimeError, match="RUNNER_MCP_MAX_TEST_JOBS"):
         Settings.from_env()
-
-
 
 
 @pytest.mark.parametrize("value", ["0", "1025", "not-an-integer"])

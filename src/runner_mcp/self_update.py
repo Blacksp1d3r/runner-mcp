@@ -220,33 +220,28 @@ class SelfUpdateManager:
         self.source = source
         self._installer_runner = installer_runner
         self._restart_delay_seconds = restart_delay_seconds
+        self._server_port: int | None = None
         try:
             parsed_resource = urlsplit(resource_url)
             port = parsed_resource.port
-        except ValueError as exc:
-            raise SelfUpdateError("Runner MCP resource URL is invalid") from exc
+        except ValueError:
+            parsed_resource = None
+            port = None
         if (
-            parsed_resource.scheme not in {"http", "https"}
-            or parsed_resource.hostname not in _LOOPBACK_HOSTS
-            or parsed_resource.path.rstrip("/") != "/mcp"
-            or parsed_resource.username is not None
-            or parsed_resource.password is not None
-            or parsed_resource.query
-            or parsed_resource.fragment
+            parsed_resource is not None
+            and parsed_resource.scheme in {"http", "https"}
+            and parsed_resource.hostname in _LOOPBACK_HOSTS
+            and parsed_resource.path.rstrip("/") == "/mcp"
+            and parsed_resource.username is None
+            and parsed_resource.password is None
+            and not parsed_resource.query
+            and not parsed_resource.fragment
         ):
-            raise SelfUpdateError("Runner MCP resource URL is not a safe loopback MCP URL")
-        if port is None:
-            port = 443 if parsed_resource.scheme == "https" else 80
-        if not 1 <= port <= 65_535:
-            raise SelfUpdateError("Runner MCP resource URL port is invalid")
-        self._server_port = port
-        self._server_reexec = server_reexec or (
-            lambda: reexec_component(
-                self.config_dir,
-                "server",
-                server_port=self._server_port,
-            )
-        )
+            if port is None:
+                port = 443 if parsed_resource.scheme == "https" else 80
+            if 1 <= port <= 65_535:
+                self._server_port = port
+        self._server_reexec = server_reexec
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()
@@ -343,6 +338,9 @@ class SelfUpdateManager:
             return False
         return all(name in names for name in SELF_TEST_PROFILES)
 
+    def _restart_ready(self) -> bool:
+        return self._server_reexec is not None or self._server_port is not None
+
     def runtime_status(self) -> dict[str, Any]:
         try:
             package_version = version("runner-mcp")
@@ -370,7 +368,11 @@ class SelfUpdateManager:
 
         return {
             "version": package_version,
-            "self_update_ready": project_ready and self._required_profiles_available(),
+            "self_update_ready": (
+                project_ready
+                and self._required_profiles_available()
+                and self._restart_ready()
+            ),
             "last_installed_commit": last_commit,
             "active_update": any(
                 job.state not in _TERMINAL_SELF_UPDATE_STATES
@@ -385,6 +387,10 @@ class SelfUpdateManager:
         config = self._project_config()
         if not self._required_profiles_available():
             raise SelfUpdateError("Runner MCP self-update validation profiles are unavailable")
+        if not self._restart_ready():
+            raise SelfUpdateError(
+                "Runner MCP self-update requires a safe loopback restart runtime"
+            )
         self.safety.assert_project_action_allowed(
             ActionClass.TEST,
             environment=config.environment,
@@ -564,7 +570,16 @@ class SelfUpdateManager:
     def _schedule_server_restart(self) -> None:
         def restart() -> None:
             time.sleep(self._restart_delay_seconds)
-            self._server_reexec()
+            if self._server_reexec is not None:
+                self._server_reexec()
+                return
+            if self._server_port is None:
+                raise SelfUpdateError("Runner MCP server restart is unavailable")
+            reexec_component(
+                self.config_dir,
+                "server",
+                server_port=self._server_port,
+            )
 
         threading.Thread(
             target=restart,

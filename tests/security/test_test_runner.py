@@ -370,6 +370,7 @@ def test_profile_listing_does_not_expose_argv(tmp_path: Path) -> None:
             "name": "ok",
             "timeout_seconds": 5,
             "max_log_bytes": 4096,
+            "runtime": "default",
             "parallel_safe": False,
         }
     ]

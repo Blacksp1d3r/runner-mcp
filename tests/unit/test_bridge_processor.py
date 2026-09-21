@@ -43,8 +43,20 @@ class FakeExecutor:
     def list_test_profiles(self, project: str):
         return self._result("list_test_profiles", project)
 
-    def run_tests_to_completion(self, project: str, suite: str):
+    def run_tests(self, project: str, suite: str):
         return self._result("run_tests", project, suite)
+
+    def queue_status(self):
+        return self._result("queue_status")
+
+    def worker_status(self):
+        return self._result("worker_status")
+
+    def job_status(self, job_id: str):
+        return self._result("job_status", job_id)
+
+    def cancel_job(self, job_id: str):
+        return self._result("cancel_job", job_id)
 
 
 class FakeSink:
@@ -216,7 +228,7 @@ def test_sensitive_executor_data_is_scrubbed_before_persistence(tmp_path) -> Non
     assert published["token"] == "[redacted]"
 
 
-def test_run_tests_uses_explicit_terminal_executor_with_suite(tmp_path) -> None:
+def test_run_tests_returns_immediate_job_acceptance_with_suite(tmp_path) -> None:
     executor = FakeExecutor()
     sink = FakeSink()
     processor = _processor(tmp_path, executor=executor, sink=sink)
@@ -241,6 +253,10 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         '{"request_id":"req-411","action":"project_capabilities","project":"demo"}',
         '{"request_id":"req-412","action":"list_test_profiles","project":"demo"}',
         '{"request_id":"req-413","action":"run_tests","project":"demo","profile":"unit"}',
+        '{"request_id":"req-416","action":"queue_status"}',
+        '{"request_id":"req-417","action":"worker_status"}',
+        '{"request_id":"req-418","action":"job_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
+        '{"request_id":"req-419","action":"cancel_job","job_id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',
     ]
 
     for payload in payloads:
@@ -253,6 +269,10 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         "project_capabilities",
         "list_test_profiles",
         "run_tests",
+        "queue_status",
+        "worker_status",
+        "job_status",
+        "cancel_job",
     ]
 
 

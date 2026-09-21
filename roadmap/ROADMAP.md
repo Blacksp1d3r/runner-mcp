@@ -390,6 +390,33 @@ Next:
 - add Runner MCP self-status/doctor/update/restart as a separate fixed self-operations capability rather than exposing package-manager or process-control primitives;
 - preserve separate human approval for migration/deploy/rollback.
 
+## Phase 3.8.10 — Runner MCP self-operations
+
+Remove the last routine dependency on general-purpose remote-control software by letting Runner MCP safely inspect and update its own runtime.
+
+Implemented foundation:
+
+- `runtime_status` returns only safe version/update readiness and opaque update state;
+- `self_update(commit)` accepts exactly one lowercase 40-character commit ID for the canonical Runner MCP project;
+- self-update source synchronization requires the commit to be reachable from `origin/main`, not merely any remote branch;
+- the configured `runner-mcp` project must point to the canonical public repository and must not be a production project;
+- the existing fixed `lint` and `unit` profiles must both pass before installation;
+- installation uses the currently running Python environment with fixed pip arguments, no dependency resolution, no build isolation, no shell and no caller-supplied path/argv/environment;
+- source HEAD is rechecked after tests and immediately before installation;
+- update job metadata and installed-commit state are private, persisted and permission-restricted;
+- server, GitHub watcher and completion watcher activate new code through fixed self-reexec flows rather than relying on systemd, cron or a desktop-control product;
+- restart markers are private, permission-restricted and component-specific;
+- `self_update_status(job_id)` returns only bounded persisted state;
+- arbitrary package-manager commands, arbitrary process restart, arbitrary repository/ref/path and rollback-to-arbitrary-code remain unavailable.
+
+This closes the normal bootstrap loop: after one initial installation of the self-operations release, future Runner MCP updates can be requested, validated, installed and activated through Runner MCP itself.
+
+Next:
+
+- prove one same-commit/no-op self-update and one forward update through the live GitHub mailbox;
+- add safe `runtime_doctor` summary and managed-component health when they can be exposed without paths or private service identifiers;
+- continue configuration-management capabilities only as typed, bounded operations rather than generic file editing.
+
 ## Phase 3.9 — public launch readiness
 
 Prepare Runner MCP for free, responsible discovery without changing its security boundaries.

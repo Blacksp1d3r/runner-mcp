@@ -122,9 +122,7 @@ def _normalized_github_repository(remote: str) -> str | None:
         return None
     if parsed.scheme not in {"https", "ssh"}:
         return None
-    path = parsed.path.strip("/")
-    if path.endswith(".git"):
-        path = path[:-4]
+    path = parsed.path.strip("/").removesuffix(".git")
     if not path or path.count("/") != 1:
         return None
     return path.lower()

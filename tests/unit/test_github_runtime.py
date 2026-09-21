@@ -12,6 +12,7 @@ from runner_mcp.github_runtime import (
     _validate_intervals,
 )
 from runner_mcp.github_watcher import (
+    GitHubAbandonResolution,
     GitHubRecoveryResolution,
     GitHubWatcherCycleOutcome,
     GitHubWatcherCycleState,
@@ -28,6 +29,8 @@ class FakeWatcher:
         self.publish_flags: list[bool] = []
         self.bootstrap_calls = 0
         self.resolve_calls: list[str] = []
+        self.abandon_calls: list[str] = []
+        self.quarantine_calls: list[str] = []
 
     def bootstrap_cursor_at_current_head(self) -> None:
         self.bootstrap_calls += 1
@@ -42,6 +45,23 @@ class FakeWatcher:
             action=BridgeAction.SYNC_PROJECT,
             prior_state=ReplayState.CLAIMED,
         )
+
+    def abandon_unclaimed_request_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubAbandonResolution:
+        self.abandon_calls.append(request_id)
+        return GitHubAbandonResolution(
+            request_id=request_id,
+            action=BridgeAction.SYNC_PROJECT,
+        )
+
+    def quarantine_malformed_request_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubWatcherCycleOutcome:
+        self.quarantine_calls.append(request_id)
+        return _healthy_outcome(state=GitHubWatcherCycleState.PROCESSED)
 
     def run_cycle(
         self,
@@ -207,6 +227,35 @@ def test_runtime_delegates_fail_closed_recovery() -> None:
     assert resolution.request_id == "req-recovery-1"
     assert resolution.action == BridgeAction.SYNC_PROJECT
     assert resolution.prior_state == ReplayState.CLAIMED
+
+
+def test_runtime_delegates_unclaimed_abandonment() -> None:
+    watcher = FakeWatcher([])
+    runtime = GitHubWatcherRuntime(
+        watcher=watcher,  # type: ignore[arg-type]
+        transport=FakeTransport(),  # type: ignore[arg-type]
+    )
+
+    resolution = runtime.abandon_unclaimed_request_fail_closed("req-abandon-1")
+
+    assert watcher.abandon_calls == ["req-abandon-1"]
+    assert resolution.request_id == "req-abandon-1"
+    assert resolution.action == BridgeAction.SYNC_PROJECT
+
+
+def test_runtime_delegates_malformed_quarantine() -> None:
+    watcher = FakeWatcher([])
+    runtime = GitHubWatcherRuntime(
+        watcher=watcher,  # type: ignore[arg-type]
+        transport=FakeTransport(),  # type: ignore[arg-type]
+    )
+
+    outcome = runtime.quarantine_malformed_request_fail_closed(
+        "req-malformed-1"
+    )
+
+    assert watcher.quarantine_calls == ["req-malformed-1"]
+    assert outcome.state == GitHubWatcherCycleState.PROCESSED
 
 
 def test_runtime_once_requests_heartbeat() -> None:

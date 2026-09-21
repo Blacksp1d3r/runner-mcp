@@ -133,8 +133,38 @@ Completion feedback answers: "did this task reach a terminal result?"
 
 Stale-request recovery and heartbeat are tracked separately so a transport outage cannot be mistaken for a task result.
 
-## Current pilot
+## Built-in private notification runtime
+
+Runner MCP can optionally deliver terminal test notifications directly to a private GitHub issue without relying on a repository-specific Actions runner.
+
+Configuration stays outside the public repository:
+
+```bash
+runner-mcp completion-notifier configure \
+  --repository OWNER/PRIVATE-REPOSITORY \
+  --issue ISSUE_NUMBER
+runner-mcp completion-watcher bootstrap
+runner-mcp completion-watcher run
+```
+
+The token is entered through a hidden prompt by default. Automation may use `--token-stdin`; there is deliberately no command-line token argument.
+
+Bootstrap records the current time for the configured destination and skips historical completions. After bootstrap, the watcher observes only persisted terminal test-job metadata. It never starts, retries or cancels a test.
+
+For each terminal test job it:
+
+1. derives the public completion event from the persisted job ID, project, predefined profile and terminal state;
+2. checks a private 0600 delivery ledger;
+3. checks the destination issue for the deterministic event marker;
+4. posts a bounded completion comment only when the marker is absent;
+5. records successful or already-existing delivery locally.
+
+A notification transport failure leaves the event undelivered so a later notification cycle can retry. It does not call the test execution path and cannot authorize a task replay.
+
+The destination repository, issue number, mention and token remain private local configuration. Status output exposes only whether notification is configured and initialized.
+
+## Acceptance proof
 
 A project-local CI pattern has already demonstrated user-facing success/failure/cancellation notifications.
 
-A private GitHub mailbox notifier also exists for `run_tests` results. The next acceptance criterion is an end-to-end run in which a fresh Runner MCP test result produces exactly one notification through the deterministic completion-event ID.
+The built-in notifier removes the previous dependency on a repository-specific self-hosted Actions runner. A fresh private end-to-end proof should still be performed after deployment: one new predefined test job should reach a terminal state and produce exactly one issue notification with its deterministic event ID.

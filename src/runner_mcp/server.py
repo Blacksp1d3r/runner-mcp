@@ -110,7 +110,10 @@ class Settings:
             "RUNNER_MCP_DATABASE_BACKUP_ROOT",
             "",
         ).strip()
-        if database_backup_root_raw and not Path(database_backup_root_raw).is_absolute():
+        if (
+            database_backup_root_raw
+            and not Path(database_backup_root_raw).is_absolute()
+        ):
             raise RuntimeError(
                 "RUNNER_MCP_DATABASE_BACKUP_ROOT must be an absolute path"
             )
@@ -119,7 +122,10 @@ class Settings:
             "RUNNER_MCP_DEPLOY_JOBS_ROOT",
             "",
         ).strip()
-        if deployment_jobs_root_raw and not Path(deployment_jobs_root_raw).is_absolute():
+        if (
+            deployment_jobs_root_raw
+            and not Path(deployment_jobs_root_raw).is_absolute()
+        ):
             raise RuntimeError("RUNNER_MCP_DEPLOY_JOBS_ROOT must be an absolute path")
 
         approval_root_raw = values.get("RUNNER_MCP_APPROVAL_ROOT", "").strip()

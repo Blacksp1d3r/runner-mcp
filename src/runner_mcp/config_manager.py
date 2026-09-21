@@ -339,6 +339,7 @@ def build_test_profile(
     timeout_seconds: int = 300,
     max_log_bytes: int = 2_000_000,
     env_passthrough: list[str] | None = None,
+    runtime: str = "default",
     parallel_safe: bool = False,
 ) -> TestProfile:
     args = list(arguments or [])
@@ -378,6 +379,7 @@ def build_test_profile(
             timeout_seconds=timeout_seconds,
             max_log_bytes=max_log_bytes,
             env_passthrough=environment,
+            runtime=runtime,
             parallel_safe=parallel_safe,
         )
     except ValueError as exc:
@@ -396,6 +398,7 @@ def add_test_profile(
     timeout_seconds: int = 300,
     max_log_bytes: int = 2_000_000,
     env_passthrough: list[str] | None = None,
+    runtime: str = "default",
     parallel_safe: bool = False,
 ) -> dict[str, Any]:
     paths, project_file, registry = _load_for_edit(config_dir)
@@ -423,6 +426,7 @@ def add_test_profile(
         timeout_seconds=timeout_seconds,
         max_log_bytes=max_log_bytes,
         env_passthrough=env_passthrough,
+        runtime=runtime,
         parallel_safe=parallel_safe,
     )
 
@@ -453,6 +457,7 @@ def add_test_profile(
         "timeout_seconds": profile.timeout_seconds,
         "max_log_bytes": profile.max_log_bytes,
         "environment_passthrough_count": len(profile.env_passthrough),
+        "runtime": profile.runtime,
         "parallel_safe": profile.parallel_safe,
     }
 

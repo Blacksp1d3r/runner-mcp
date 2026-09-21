@@ -3,6 +3,7 @@ from __future__ import annotations
 import codecs
 import json
 import os
+from concurrent.futures import Future, ThreadPoolExecutor
 import re
 import selectors
 import signal
@@ -32,6 +33,7 @@ class TestRunnerError(RuntimeError):
 
 class TestJobStatus(StrEnum):
     QUEUED = "queued"
+    CLAIMED = "claimed"
     RUNNING = "running"
     PASSED = "passed"
     FAILED = "failed"
@@ -80,6 +82,7 @@ class TestJob:
     suite: str
     status: TestJobStatus
     created_at: datetime
+    claimed_at: datetime | None = None
     started_at: datetime | None = None
     finished_at: datetime | None = None
     exit_code: int | None = None
@@ -93,6 +96,7 @@ class TestJob:
             "suite": self.suite,
             "status": self.status.value,
             "created_at": iso_or_none(self.created_at),
+            "claimed_at": iso_or_none(self.claimed_at),
             "started_at": iso_or_none(self.started_at),
             "finished_at": iso_or_none(self.finished_at),
             "exit_code": self.exit_code,
@@ -112,6 +116,7 @@ class TestRunner:
         safety: OperatorSafetyGuard,
         jobs_root: Path,
         max_concurrent_jobs: int = 2,
+        max_queued_jobs: int = 64,
         poll_interval_seconds: float = 0.1,
         terminate_grace_seconds: float = 2.0,
     ) -> None:
@@ -119,6 +124,8 @@ class TestRunner:
             raise TestRunnerError("Test jobs root must be absolute")
         if max_concurrent_jobs < 1 or max_concurrent_jobs > 16:
             raise TestRunnerError("max_concurrent_jobs must be between 1 and 16")
+        if max_queued_jobs < 1 or max_queued_jobs > 1_000:
+            raise TestRunnerError("max_queued_jobs must be between 1 and 1000")
 
         if jobs_root.exists() and jobs_root.is_symlink():
             raise TestRunnerError("Test jobs root must not be a symlink")
@@ -131,13 +138,29 @@ class TestRunner:
         self.registry = registry
         self.safety = safety
         self.max_concurrent_jobs = max_concurrent_jobs
+        self.max_queued_jobs = max_queued_jobs
         self.poll_interval_seconds = poll_interval_seconds
         self.terminate_grace_seconds = terminate_grace_seconds
 
         self._lock = threading.RLock()
+        self._condition = threading.Condition(self._lock)
         self._jobs: dict[str, TestJob] = {}
         self._cancel_events: dict[str, threading.Event] = {}
+        self._active_futures: dict[str, Future[None]] = {}
+        self._project_last_dispatch: dict[str, int] = {}
+        self._dispatch_sequence = 0
+        self._shutdown = False
+        self._executor = ThreadPoolExecutor(
+            max_workers=max_concurrent_jobs,
+            thread_name_prefix="runner-mcp-test-worker",
+        )
         self._load_existing_metadata()
+        self._dispatcher = threading.Thread(
+            target=self._dispatch_loop,
+            name="runner-mcp-test-dispatcher",
+            daemon=True,
+        )
+        self._dispatcher.start()
 
     def _metadata_path(self, job_id: str) -> Path:
         return self.jobs_root / f"{job_id}.json"
@@ -180,6 +203,7 @@ class TestRunner:
                     suite=str(raw["suite"]),
                     status=status,
                     created_at=self._parse_datetime(raw["created_at"]) or utc_now(),
+                    claimed_at=self._parse_datetime(raw.get("claimed_at")),
                     started_at=self._parse_datetime(raw.get("started_at")),
                     finished_at=self._parse_datetime(raw.get("finished_at")),
                     exit_code=raw.get("exit_code"),
@@ -189,12 +213,14 @@ class TestRunner:
             except (OSError, ValueError, KeyError, TypeError, json.JSONDecodeError):
                 continue
 
-            if job.status in {TestJobStatus.QUEUED, TestJobStatus.RUNNING}:
+            if job.status in {TestJobStatus.CLAIMED, TestJobStatus.RUNNING}:
                 job.status = TestJobStatus.INTERRUPTED
                 job.finished_at = utc_now()
                 job.error_category = "runner_restart"
                 self._persist(job)
             self._jobs[job_id] = job
+            if job.status == TestJobStatus.QUEUED:
+                self._cancel_events[job_id] = threading.Event()
 
     def list_profiles(self, project: str) -> list[dict[str, Any]]:
         config = self.registry.projects.get(project)
@@ -206,6 +232,7 @@ class TestRunner:
                 "name": name,
                 "timeout_seconds": profile.timeout_seconds,
                 "max_log_bytes": profile.max_log_bytes,
+                "parallel_safe": profile.parallel_safe,
             }
             for name, profile in sorted(config.test_profiles.items())
         ]
@@ -259,18 +286,112 @@ class TestRunner:
             raise TestRunnerError("Configured test executable is not executable")
         return resolved
 
-    def _active_job_count(self) -> int:
+    def _worker_slot_count_locked(self) -> int:
         return sum(
-            job.status in {TestJobStatus.QUEUED, TestJobStatus.RUNNING}
+            job.status in {TestJobStatus.CLAIMED, TestJobStatus.RUNNING}
             for job in self._jobs.values()
         )
 
-    def _project_has_active_job(self, project: str) -> bool:
-        return any(
-            job.project == project
-            and job.status in {TestJobStatus.QUEUED, TestJobStatus.RUNNING}
+    def _queued_job_count_locked(self) -> int:
+        return sum(job.status == TestJobStatus.QUEUED for job in self._jobs.values())
+
+    def _active_project_jobs_locked(self, project: str) -> list[TestJob]:
+        return [
+            job
             for job in self._jobs.values()
+            if job.project == project
+            and job.status in {TestJobStatus.CLAIMED, TestJobStatus.RUNNING}
+        ]
+
+    def _profile_parallel_safe(self, project: str, suite: str) -> bool:
+        cfg = self.registry.projects.get(project)
+        if cfg is None:
+            return False
+        profile = cfg.test_profiles.get(suite)
+        return bool(profile and profile.parallel_safe)
+
+    def _waiting_reason_locked(self, job: TestJob) -> str | None:
+        cfg = self.registry.projects.get(job.project)
+        if cfg is None:
+            return "project_unavailable"
+
+        active = self._active_project_jobs_locked(job.project)
+        if len(active) >= cfg.max_parallel_tests:
+            return "project_parallel_limit"
+        if active:
+            if not self._profile_parallel_safe(job.project, job.suite):
+                return "project_lock"
+            if any(
+                not self._profile_parallel_safe(active_job.project, active_job.suite)
+                for active_job in active
+            ):
+                return "project_lock"
+        if self._worker_slot_count_locked() >= self.max_concurrent_jobs:
+            return "global_worker_capacity"
+        return None
+
+    def _project_lock_active_locked(self, project: str) -> bool:
+        cfg = self.registry.projects.get(project)
+        if cfg is None:
+            return False
+        active = self._active_project_jobs_locked(project)
+        if not active:
+            return False
+        if len(active) >= cfg.max_parallel_tests:
+            return True
+        return any(
+            not self._profile_parallel_safe(job.project, job.suite)
+            for job in active
         )
+
+    def _select_next_queued_locked(self) -> TestJob | None:
+        candidates: dict[str, TestJob] = {}
+        for job in sorted(self._jobs.values(), key=lambda item: (item.created_at, item.job_id)):
+            if job.status != TestJobStatus.QUEUED:
+                continue
+            if job.project in candidates:
+                continue
+            if self._waiting_reason_locked(job) is None:
+                candidates[job.project] = job
+
+        if not candidates:
+            return None
+        return min(
+            candidates.values(),
+            key=lambda job: (
+                self._project_last_dispatch.get(job.project, -1),
+                job.created_at,
+                job.job_id,
+            ),
+        )
+
+    def _dispatch_loop(self) -> None:
+        while True:
+            with self._condition:
+                while True:
+                    if self._shutdown:
+                        return
+                    job = self._select_next_queued_locked()
+                    if job is not None:
+                        job.status = TestJobStatus.CLAIMED
+                        job.claimed_at = utc_now()
+                        self._dispatch_sequence += 1
+                        self._project_last_dispatch[job.project] = self._dispatch_sequence
+                        self._persist(job)
+                        break
+                    self._condition.wait(timeout=0.2)
+
+            future = self._executor.submit(self._run_job, job.job_id)
+            with self._condition:
+                self._active_futures[job.job_id] = future
+            future.add_done_callback(
+                lambda _future, job_id=job.job_id: self._worker_finished(job_id)
+            )
+
+    def _worker_finished(self, job_id: str) -> None:
+        with self._condition:
+            self._active_futures.pop(job_id, None)
+            self._condition.notify_all()
 
     def start_test(self, project: str, suite: str) -> dict[str, Any]:
         project_config = self.registry.projects.get(project)
@@ -282,11 +403,9 @@ class TestRunner:
         )
         self._lookup_profile(project, suite)
 
-        with self._lock:
-            if self._project_has_active_job(project):
-                raise TestRunnerError("A test job is already active for this project")
-            if self._active_job_count() >= self.max_concurrent_jobs:
-                raise TestRunnerError("Maximum concurrent test jobs reached")
+        with self._condition:
+            if self._queued_job_count_locked() >= self.max_queued_jobs:
+                raise TestRunnerError("Test queue capacity reached")
 
             job_id = uuid4().hex
             job = TestJob(
@@ -299,21 +418,77 @@ class TestRunner:
             self._jobs[job_id] = job
             self._cancel_events[job_id] = threading.Event()
             self._persist(job)
+            self._condition.notify_all()
+            return self._public_status_locked(job)
 
-        worker = threading.Thread(
-            target=self._run_job,
-            args=(job_id,),
-            name=f"runner-mcp-test-{job_id[:8]}",
-            daemon=True,
-        )
-        worker.start()
-        return job.public_dict()
+    def _public_status_locked(self, job: TestJob) -> dict[str, Any]:
+        result = job.public_dict()
+        if job.status == TestJobStatus.QUEUED:
+            result["waiting_reason"] = self._waiting_reason_locked(job) or "scheduler_fairness"
+        else:
+            result["waiting_reason"] = None
+        return result
+
+    def queue_status(self) -> dict[str, Any]:
+        with self._lock:
+            now = utc_now()
+            queued = [job for job in self._jobs.values() if job.status == TestJobStatus.QUEUED]
+            claimed = [job for job in self._jobs.values() if job.status == TestJobStatus.CLAIMED]
+            running = [job for job in self._jobs.values() if job.status == TestJobStatus.RUNNING]
+            jobs_per_project: dict[str, dict[str, Any]] = {}
+            for project, cfg in sorted(self.registry.projects.items()):
+                project_jobs = [job for job in self._jobs.values() if job.project == project]
+                jobs_per_project[project] = {
+                    "queued": sum(job.status == TestJobStatus.QUEUED for job in project_jobs),
+                    "claimed": sum(job.status == TestJobStatus.CLAIMED for job in project_jobs),
+                    "running": sum(job.status == TestJobStatus.RUNNING for job in project_jobs),
+                    "max_parallel_tests": cfg.max_parallel_tests,
+                    "project_lock": self._project_lock_active_locked(project),
+                }
+            reasons: dict[str, int] = {}
+            for job in queued:
+                reason = self._waiting_reason_locked(job) or "scheduler_fairness"
+                reasons[reason] = reasons.get(reason, 0) + 1
+            oldest = min((job.created_at for job in queued), default=None)
+            active_workers = len(claimed) + len(running)
+            return {
+                "queued_jobs": len(queued),
+                "claimed_jobs": len(claimed),
+                "running_jobs": len(running),
+                "available_workers": max(0, self.max_concurrent_jobs - active_workers),
+                "concurrency_limit": self.max_concurrent_jobs,
+                "queue_limit": self.max_queued_jobs,
+                "oldest_queued_seconds": (
+                    max(0, int((now - oldest).total_seconds())) if oldest is not None else None
+                ),
+                "waiting_reasons": reasons,
+                "jobs_per_project": jobs_per_project,
+            }
+
+    def worker_status(self) -> dict[str, Any]:
+        with self._lock:
+            busy = self._worker_slot_count_locked()
+            return {
+                "workers": self.max_concurrent_jobs,
+                "busy_workers": busy,
+                "available_workers": max(0, self.max_concurrent_jobs - busy),
+                "dispatcher": "running" if self._dispatcher.is_alive() and not self._shutdown else "stopped",
+            }
+
+    def shutdown(self, *, wait: bool = True) -> None:
+        with self._condition:
+            self._shutdown = True
+            self._condition.notify_all()
+        if self._dispatcher.is_alive():
+            self._dispatcher.join(timeout=2.0 if wait else 0.0)
+        self._executor.shutdown(wait=wait, cancel_futures=False)
 
     def _set_job(
         self,
         job_id: str,
         *,
         status: TestJobStatus | None = None,
+        claimed_at: datetime | None = None,
         started_at: datetime | None = None,
         finished_at: datetime | None = None,
         exit_code: int | None = None,
@@ -324,6 +499,8 @@ class TestRunner:
             job = self._jobs[job_id]
             if status is not None:
                 job.status = status
+            if claimed_at is not None:
+                job.claimed_at = claimed_at
             if started_at is not None:
                 job.started_at = started_at
             if finished_at is not None:
@@ -335,6 +512,7 @@ class TestRunner:
             if error_category is not None:
                 job.error_category = error_category
             self._persist(job)
+            self._condition.notify_all()
             return job
 
     def status(self, job_id: str) -> dict[str, Any]:
@@ -342,19 +520,25 @@ class TestRunner:
             job = self._jobs.get(job_id)
             if job is None:
                 raise TestRunnerError("Unknown test job")
-            return job.public_dict()
+            return self._public_status_locked(job)
 
     def cancel(self, job_id: str) -> dict[str, Any]:
         self.safety.assert_action_allowed(ActionClass.CANCEL)
-        with self._lock:
+        with self._condition:
             job = self._jobs.get(job_id)
             if job is None:
                 raise TestRunnerError("Unknown test job")
             event = self._cancel_events.get(job_id)
             if job.status in TERMINAL_STATUSES or event is None:
-                return job.public_dict()
+                return self._public_status_locked(job)
             event.set()
-            return job.public_dict()
+            if job.status == TestJobStatus.QUEUED:
+                job.status = TestJobStatus.CANCELLED
+                job.finished_at = utc_now()
+                job.error_category = "cancelled_before_claim"
+                self._persist(job)
+            self._condition.notify_all()
+            return self._public_status_locked(job)
 
     @staticmethod
     def _scrub_text(
@@ -480,6 +664,14 @@ class TestRunner:
         cancel_event = self._cancel_events[job_id]
 
         try:
+            if cancel_event.is_set():
+                self._set_job(
+                    job_id,
+                    status=TestJobStatus.CANCELLED,
+                    finished_at=utc_now(),
+                    error_category="cancelled_before_start",
+                )
+                return
             with self._lock:
                 job = self._jobs[job_id]
                 project = job.project

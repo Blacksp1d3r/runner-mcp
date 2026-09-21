@@ -175,6 +175,7 @@ def render_env_file(
         ),
         "RUNNER_MCP_TEST_JOBS_ROOT": str(paths.jobs_dir),
         "RUNNER_MCP_MAX_TEST_JOBS": str(answers.max_test_jobs),
+        "RUNNER_MCP_MAX_QUEUED_TEST_JOBS": "64",
         "RUNNER_MCP_DATABASE_BACKUP_ROOT": str(paths.database_backups_dir),
         "RUNNER_MCP_DEPLOY_JOBS_ROOT": str(paths.deployment_jobs_dir),
         "RUNNER_MCP_APPROVAL_ROOT": str(paths.approvals_dir),

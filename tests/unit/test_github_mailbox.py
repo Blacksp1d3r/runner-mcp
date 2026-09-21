@@ -444,6 +444,16 @@ def test_list_request_ids_rejects_duplicate_ids() -> None:
     assert caught.value.kind == TransportFailureKind.INVALID_RESPONSE
 
 
+def test_fetch_request_unvalidated_returns_bounded_malformed_payload() -> None:
+    payload = b'{"action":"sync_project"}'
+    session = FakeSession()
+    session.get_responses.append(_file_record(payload))
+
+    fetched = _transport(session).fetch_request_unvalidated("req-malformed")
+
+    assert fetched == payload
+
+
 def test_fetch_request_accepts_wrapped_base64_and_matches_filename() -> None:
     payload = b'{"request_id":"req-003","action":"list_projects"}'
     record = _file_record(payload)

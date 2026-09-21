@@ -152,6 +152,36 @@ def test_generated_project_config_is_loadable(tmp_path: Path) -> None:
     assert registry.projects["demo"].root == project_root
 
 
+def test_generated_rate_limit_matches_concurrent_runtime_default(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+
+    values = load_env_file(paths.env_file)
+
+    assert values["RUNNER_MCP_RATE_LIMIT_PER_MINUTE"] == "600"
+
+
+def test_setup_overwrite_preserves_explicit_rate_limit(tmp_path: Path) -> None:
+    paths, project_root = installed(tmp_path)
+    text = paths.env_file.read_text(encoding="utf-8")
+    paths.env_file.write_text(
+        text.replace(
+            "RUNNER_MCP_RATE_LIMIT_PER_MINUTE=600",
+            "RUNNER_MCP_RATE_LIMIT_PER_MINUTE=1200",
+        ),
+        encoding="utf-8",
+    )
+    os.chmod(paths.env_file, 0o600)
+
+    install_private_configuration(
+        config_dir=paths.config_dir,
+        answers=answers_for(project_root),
+        overwrite=True,
+    )
+
+    after = load_env_file(paths.env_file)
+    assert after["RUNNER_MCP_RATE_LIMIT_PER_MINUTE"] == "1200"
+
+
 def test_overwrite_preserves_existing_bearer_credential_by_default(tmp_path: Path) -> None:
     paths, project_root = installed(tmp_path)
     before = load_env_file(paths.env_file)["RUNNER_MCP_BEARER_TOKEN"]

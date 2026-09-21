@@ -19,14 +19,6 @@ from .autostart import (
     systemd_user_available,
     user_service_status,
 )
-from .cron_autostart import (
-    cron_available,
-    cron_status,
-    has_managed_cron,
-    install_cron_services,
-    remove_cron_services,
-    run_cron_component,
-)
 from .completion_delivery import (
     CompletionDeliveryError,
     CompletionNotifierRuntime,
@@ -59,6 +51,14 @@ from .config_manager import (
     remove_project,
     remove_service_config,
     remove_test_profile,
+)
+from .cron_autostart import (
+    cron_available,
+    cron_status,
+    has_managed_cron,
+    install_cron_services,
+    remove_cron_services,
+    run_cron_component,
 )
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,

@@ -5,6 +5,7 @@ import secrets
 from collections.abc import Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -308,6 +309,119 @@ def build_mcp(
         if settings.approval_root is not None
         else None
     )
+
+    @mcp.tool()
+    def runtime_status() -> dict:
+        """Return safe Runner MCP runtime state without private host metadata."""
+        status = safety.status()
+        try:
+            package = version("runner-mcp")
+        except PackageNotFoundError:
+            package = "development"
+        result = {
+            "version": package,
+            "mode": status.mode,
+            "emergency_stop": status.stop_active,
+            "retention_confirmed": settings.retention_confirmed,
+            "projects": len(registry.projects),
+            "test_execution_configured": tests is not None,
+            "test_worker_limit": settings.max_test_jobs,
+            "test_queue_limit": settings.max_queued_tests,
+            "mailbox_worker_limit": settings.mailbox_workers,
+            "mailbox_inflight_limit": settings.mailbox_max_inflight,
+            "database_backups_configured": settings.database_backup_root is not None,
+            "deployment_jobs_configured": deployment_jobs is not None,
+            "approvals_configured": approval_manager is not None,
+        }
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "runtime_status",
+                None,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def runtime_doctor() -> dict:
+        """Return bounded safe runtime checks without paths, endpoints or secrets."""
+        checks: list[dict[str, str]] = []
+
+        def add(name: str, state: str, detail: str) -> None:
+            checks.append({"name": name, "state": state, "detail": detail})
+
+        add(
+            "retention",
+            "pass" if settings.retention_confirmed else "fail",
+            "confirmed" if settings.retention_confirmed else "not_confirmed",
+        )
+        safety_state = safety.status()
+        add(
+            "emergency_stop",
+            "warn" if safety_state.stop_active else "pass",
+            "active" if safety_state.stop_active else "inactive",
+        )
+        resource = urlsplit(settings.resource_url)
+        transport_ok = resource.scheme == "https" or (resource.hostname or "").lower() in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }
+        add(
+            "resource_transport",
+            "pass" if transport_ok else "fail",
+            "secure_or_loopback" if transport_ok else "unsafe",
+        )
+
+        def storage_state(value: Path | None) -> tuple[str, str]:
+            if value is None:
+                return "warn", "not_configured"
+            try:
+                safe = (
+                    value.exists()
+                    and value.is_dir()
+                    and not value.is_symlink()
+                    and os.access(value, os.W_OK | os.X_OK)
+                )
+            except OSError:
+                safe = False
+            return (
+                ("pass", "available")
+                if safe
+                else ("fail", "unavailable_or_unsafe")
+            )
+
+        for name, value in (
+            ("test_storage", settings.test_jobs_root),
+            ("database_backup_storage", settings.database_backup_root),
+            ("deployment_job_storage", settings.deployment_jobs_root),
+            ("approval_storage", settings.approval_root),
+        ):
+            state, detail = storage_state(value)
+            add(name, state, detail)
+
+        failed = sum(item["state"] == "fail" for item in checks)
+        warned = sum(item["state"] == "warn" for item in checks)
+        result = {
+            "state": "fail" if failed else ("warn" if warned else "pass"),
+            "failed_checks": failed,
+            "warning_checks": warned,
+            "checks": checks,
+        }
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "runtime_doctor",
+                None,
+                "authenticated-client",
+                result["state"],
+                utc_timestamp(),
+            )
+        )
+        return result
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:

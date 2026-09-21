@@ -390,10 +390,7 @@ class GitHubMailboxWatcher:
         request_id: str,
     ) -> GitHubWatcherCycleOutcome:
         """Advance only when one malformed request is the sole unresolved backlog."""
-        try:
-            cursor = self._cursor_store.read()
-        except GitHubWatcherError:
-            raise
+        cursor = self._cursor_store.read()
         if cursor is None:
             raise GitHubWatcherError(
                 "watcher cursor is uninitialized; bootstrap is required"
@@ -451,7 +448,7 @@ class GitHubMailboxWatcher:
                         "request filename and payload ID do not match"
                     )
                 result = self._transport.fetch_result(other_request_id)
-                record = self._ledger.inspect(request)
+                self._ledger.inspect(request)
             except (
                 BridgeProtocolError,
                 BridgeReplayError,
@@ -491,13 +488,10 @@ class GitHubMailboxWatcher:
                 "request head changed during malformed-request quarantine"
             )
 
-        try:
-            self._cursor_store.advance(
-                expected_sha=cursor,
-                new_sha=current_head,
-            )
-        except GitHubWatcherError:
-            raise
+        self._cursor_store.advance(
+            expected_sha=cursor,
+            new_sha=current_head,
+        )
 
         heartbeat = assess_watcher_health(
             [],

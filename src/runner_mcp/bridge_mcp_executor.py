@@ -13,10 +13,10 @@ from .bridge_processor import BridgeExecutionAdapterError
 
 MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
-MAX_MCP_JOB_ID_CHARS = 128
+MAX_MCP_JOB_ID_CHARS = 32
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9._~-]{1,256}$")
-_JOB_ID_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._-]{0,127}$")
+_JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _TERMINAL_TEST_STATES = {
     "passed",
     "failed",
@@ -25,7 +25,7 @@ _TERMINAL_TEST_STATES = {
     "cancelled",
     "interrupted",
 }
-_NONTERMINAL_TEST_STATES = {"queued", "running"}
+_NONTERMINAL_TEST_STATES = {"queued", "claimed", "running"}
 
 
 @dataclass(frozen=True, slots=True)

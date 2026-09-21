@@ -50,6 +50,7 @@ def make_runner(
     max_queued_jobs: int = 64,
     max_parallel_tests: int = 1,
     max_queued_tests: int = 16,
+    playwright_browsers_path: Path | None = None,
 ) -> tuple[Runner, Path, Path]:
     root = tmp_path / "project"
     stop_file = tmp_path / "operator.stop"
@@ -67,6 +68,7 @@ def make_runner(
         ),
         safety=guard,
         jobs_root=tmp_path / "jobs",
+        playwright_browsers_path=playwright_browsers_path,
         max_concurrent_jobs=max_concurrent_jobs,
         max_queued_jobs=max_queued_jobs,
         poll_interval_seconds=0.02,
@@ -82,6 +84,7 @@ def python_profile(
     max_log_bytes: int = 4096,
     env_passthrough: list[str] | None = None,
     extra_args: list[str] | None = None,
+    runtime: str = "default",
     parallel_safe: bool = False,
 ) -> RunnerTestProfile:
     argv = [sys.executable, "-c", code]
@@ -92,6 +95,7 @@ def python_profile(
         timeout_seconds=timeout_seconds,
         max_log_bytes=max_log_bytes,
         env_passthrough=env_passthrough or [],
+        runtime=runtime,
         parallel_safe=parallel_safe,
     )
 
@@ -227,6 +231,56 @@ def test_secret_and_private_paths_are_scrubbed_from_log(
     assert "[PRIVATE_PATH]" in log["content"]
 
 
+def test_playwright_runtime_requires_configured_browser_cache(
+    tmp_path: Path,
+) -> None:
+    runner, _, _ = make_runner(
+        tmp_path,
+        {
+            "e2e": python_profile(
+                "print('should not run')",
+                runtime="playwright",
+            )
+        },
+    )
+
+    started = runner.start_test("demo", "e2e")
+    finished = wait_terminal(runner, started["job_id"])
+
+    assert finished["status"] == "error"
+    assert finished["error_category"] == "execution_error"
+
+
+def test_playwright_runtime_injects_and_scrubs_browser_cache(
+    tmp_path: Path,
+) -> None:
+    browser_cache = tmp_path / "shared-browser-cache"
+    browser_cache.mkdir()
+    code = (
+        "import os; "
+        "print(os.environ['PLAYWRIGHT_BROWSERS_PATH']); "
+        "print(os.environ['HOME'])"
+    )
+    runner, _, _ = make_runner(
+        tmp_path,
+        {
+            "e2e": python_profile(
+                code,
+                runtime="playwright",
+            )
+        },
+        playwright_browsers_path=browser_cache,
+    )
+
+    started = runner.start_test("demo", "e2e")
+    finished = wait_terminal(runner, started["job_id"])
+    log = runner.get_log(started["job_id"])
+
+    assert finished["status"] == "passed"
+    assert str(browser_cache) not in log["content"]
+    assert "[PRIVATE_PATH]" in log["content"]
+
+
 def test_log_output_is_bounded_and_marked_truncated(tmp_path: Path) -> None:
     runner, _, _ = make_runner(
         tmp_path,
@@ -316,6 +370,7 @@ def test_profile_listing_does_not_expose_argv(tmp_path: Path) -> None:
             "name": "ok",
             "timeout_seconds": 5,
             "max_log_bytes": 4096,
+            "runtime": "default",
             "parallel_safe": False,
         }
     ]

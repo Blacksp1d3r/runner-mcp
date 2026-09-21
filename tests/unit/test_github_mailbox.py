@@ -218,6 +218,29 @@ def test_api_session_uses_fixed_github_host_and_safe_headers(monkeypatch) -> Non
     assert captured["timeout"] == 12
 
 
+def test_api_session_posts_json_without_leaving_fixed_host(monkeypatch) -> None:
+    captured = {}
+
+    def fake_urlopen(request, *, timeout):
+        captured["method"] = request.get_method()
+        captured["url"] = request.full_url
+        captured["body"] = request.data
+        return FakeResponse(b'{"id":123}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    session = GitHubApiSession(token="safe-token")
+
+    result = session.post_json(
+        "/repos/example/repo/issues/25/comments",
+        payload={"body": "safe completion"},
+    )
+
+    assert result == {"id": 123}
+    assert captured["method"] == "POST"
+    assert captured["url"] == f"{GITHUB_API_BASE}/repos/example/repo/issues/25/comments"
+    assert captured["body"] == b'{"body":"safe completion"}'
+
+
 @pytest.mark.parametrize(
     "api_path",
     [

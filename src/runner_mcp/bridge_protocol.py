@@ -372,4 +372,3 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
         return request.action.value, {"job_id": request.job_id}
 
     raise BridgeProtocolError("unsupported bridge action")
-

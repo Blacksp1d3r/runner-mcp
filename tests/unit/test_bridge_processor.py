@@ -43,6 +43,9 @@ class FakeExecutor:
     def list_test_profiles(self, project: str):
         return self._result("list_test_profiles", project)
 
+    def sync_project(self, project: str, commit: str):
+        return self._result("sync_project", project, commit)
+
     def run_tests(self, project: str, suite: str):
         return self._result("run_tests", project, suite)
 
@@ -252,6 +255,7 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         '{"request_id":"req-410","action":"project_status","project":"demo"}',
         '{"request_id":"req-411","action":"project_capabilities","project":"demo"}',
         '{"request_id":"req-412","action":"list_test_profiles","project":"demo"}',
+        '{"request_id":"req-sync-all","action":"sync_project","project":"demo","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
         '{"request_id":"req-413","action":"run_tests","project":"demo","profile":"unit"}',
         '{"request_id":"req-416","action":"queue_status"}',
         '{"request_id":"req-417","action":"worker_status"}',
@@ -268,6 +272,7 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         "project_status",
         "project_capabilities",
         "list_test_profiles",
+        "sync_project",
         "run_tests",
         "queue_status",
         "worker_status",
@@ -327,3 +332,24 @@ def test_result_persisted_but_ledger_finalize_failed_requires_recovery(
     assert outcome.requires_recovery is True
     assert len(sink.records) == 1
     assert executor.calls == [("list_projects", ())]
+
+
+
+def test_sync_project_dispatches_only_project_and_commit(tmp_path) -> None:
+    executor = FakeExecutor()
+    processor = _processor(tmp_path, executor=executor)
+    commit = "b" * 40
+
+    outcome = processor.process(
+        json.dumps(
+            {
+                "request_id": "req-sync-001",
+                "action": "sync_project",
+                "project": "demo",
+                "commit": commit,
+            }
+        )
+    )
+
+    assert outcome.state == BridgeProcessState.COMPLETED
+    assert executor.calls == [("sync_project", ("demo", commit))]

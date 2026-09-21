@@ -209,7 +209,13 @@ class SourceSynchronizer:
 
             _run_git(
                 root,
-                ["fetch", "--prune", "--no-tags", "origin"],
+                [
+                    "fetch",
+                    "--prune",
+                    "--no-tags",
+                    "origin",
+                    "+refs/heads/*:refs/remotes/origin/*",
+                ],
                 timeout=120,
                 network=True,
             )

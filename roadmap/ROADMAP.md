@@ -376,10 +376,10 @@ Implemented launch-readiness foundation:
 - package metadata improved for future distribution;
 - discovery metrics remain platform-level; no application marketing telemetry is added;
 - no paid advertising, paid hosted CI or paid hosted infrastructure is a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
+- clean Ubuntu 24.04 / Python 3.12 CI now exercises the documented five-minute demo end to end, including installation, setup, doctor, predefined test-profile configuration, emergency stop and loopback health check;
 
 Remaining before a broader launch:
 
-- clean Ubuntu 24.04 / Python 3.12 CI now exercises the documented five-minute demo end to end, including installation, setup, doctor, predefined test-profile configuration, emergency stop and loopback health check;
 - create the first tagged alpha release with exact release notes;
 - set the public GitHub description/topics to the prepared values;
 - prepare an MCP ecosystem/registry submission only when packaging requirements are met;

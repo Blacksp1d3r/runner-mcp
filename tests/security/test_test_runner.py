@@ -86,7 +86,11 @@ def wait_terminal(
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
         status = runner.status(job_id)
-        if status["status"] in {item.value for item in RunnerJobStatus if item.value not in {"queued", "running"}}:
+        if status["status"] in {
+            item.value
+            for item in RunnerJobStatus
+            if item.value not in {"queued", "claimed", "running"}
+        }:
             return status
         time.sleep(0.02)
     raise AssertionError(f"job {job_id} did not finish in time")
@@ -248,7 +252,7 @@ def test_arguments_are_not_interpreted_by_a_shell(tmp_path: Path) -> None:
     assert not marker.exists()
 
 
-def test_only_one_active_job_per_project(tmp_path: Path) -> None:
+def test_default_project_capacity_queues_second_job(tmp_path: Path) -> None:
     runner, _, _ = make_runner(
         tmp_path,
         {"slow": python_profile("import time; time.sleep(30)")},
@@ -256,12 +260,17 @@ def test_only_one_active_job_per_project(tmp_path: Path) -> None:
 
     first = runner.start_test("demo", "slow")
     wait_running(runner, first["job_id"])
+    second = runner.start_test("demo", "slow")
 
-    with pytest.raises(RunnerError, match="already active"):
-        runner.start_test("demo", "slow")
+    assert runner.status(second["job_id"])["status"] == "queued"
+    queue = runner.queue_status()
+    assert queue["jobs_per_project"]["demo"]["project_lock"] is True
 
     runner.cancel(first["job_id"])
     wait_terminal(runner, first["job_id"])
+    wait_running(runner, second["job_id"])
+    runner.cancel(second["job_id"])
+    wait_terminal(runner, second["job_id"])
 
 
 def test_unknown_profile_is_rejected(tmp_path: Path) -> None:
@@ -282,6 +291,7 @@ def test_profile_listing_does_not_expose_argv(tmp_path: Path) -> None:
             "name": "ok",
             "timeout_seconds": 5,
             "max_log_bytes": 4096,
+            "parallel_safe": False,
         }
     ]
     assert sys.executable not in repr(listed)

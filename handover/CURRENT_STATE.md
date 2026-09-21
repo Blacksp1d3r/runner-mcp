@@ -333,7 +333,7 @@ Phase 9 human approval gates:
 Current validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 628 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 636 tests green, with one third-party Starlette/AnyIO deprecation warning;
 - merged request-capacity change passed public CI including whitespace checks;
 - live private bridge validation passed both Runner MCP lint and unit profiles;
 - git diff whitespace check: green;
@@ -396,9 +396,17 @@ Current validation is green:
 - automatic database restore;
 - automatic release pruning.
 
+Private connectivity onboarding — 2026-09-21:
+- added an infrastructure-neutral decision guide separating AI request transport, human operator networking and public MCP ingress;
+- routine remote development continues to prefer the bounded GitHub mailbox with no inbound MCP listener;
+- for supported OpenAI products needing direct private MCP, the guide points to the current outbound Secure MCP Tunnel model while keeping tunnel identity/credentials/lifecycle outside Runner MCP;
+- public HTTPS reverse proxy remains an explicit alternative only when a client truly requires a public MCP URL;
+- operator VPN/private-overlay access is documented as a separate host-administration concern;
+- no external tunnel, proxy, VPN account or credential is provisioned automatically by Runner MCP.
+
 ## Next steps
 
-The shared watcher migration, restart/reconciliation proof, exactly-once completion-notification proof, clean-Linux five-minute demo validation and non-root systemd user autostart packaging are complete. Keep obsolete pilot execution paths disabled, continue guided private-connectivity/TLS onboarding, and prepare the first tagged alpha only from an exact green commit.
+The shared watcher migration, restart/reconciliation proof, exactly-once completion-notification proof, clean-Linux demo, built-artifact validation, managed non-root autostart and guided private-connectivity decision path are complete. Keep obsolete pilot execution paths disabled and prepare the first tagged alpha only from an exact green commit. The current private deployment still needs the merged fail-closed recovery command installed locally before its one ambiguous missing-result request can be resolved without replay.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

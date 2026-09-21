@@ -23,7 +23,11 @@ from .completion_feedback import (
 )
 from .github_mailbox import GitHubApiSession
 from .onboarding import read_private_runtime
-from .self_update import SelfUpdateError, consume_restart_marker
+from .self_update import (
+    SelfUpdateError,
+    consume_restart_marker,
+    reexec_component,
+)
 from .test_runner import JOB_ID_RE, TERMINAL_STATUSES, TestJobStatus
 
 MAX_NOTIFICATION_CONFIG_BYTES = 8_192
@@ -658,7 +662,13 @@ class CompletionNotifierRuntime:
                     "Runner MCP self-update restart state is invalid"
                 ) from exc
             if restart_requested:
-                raise CompletionDeliveryError(
-                    "Runner MCP self-update restart requested"
-                )
+                try:
+                    reexec_component(
+                        self._config_dir,
+                        "completion-watcher",
+                    )
+                except SelfUpdateError as exc:
+                    raise CompletionDeliveryError(
+                        "Runner MCP self-update restart failed"
+                    ) from exc
             time.sleep(poll_seconds)

@@ -228,6 +228,7 @@ class TestRunner:
                 "name": name,
                 "timeout_seconds": profile.timeout_seconds,
                 "max_log_bytes": profile.max_log_bytes,
+                "parallel_safe": profile.parallel_safe,
             }
             for name, profile in sorted(config.test_profiles.items())
         ]

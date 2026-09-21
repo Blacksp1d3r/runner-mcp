@@ -61,7 +61,7 @@ Make the safe core usable without reading or editing source code:
 - user-first README and Quickstart;
 - private config permission checks and atomic project-config updates.
 
-Service auto-start packaging is implemented with fixed non-root systemd user services, explicit watcher bootstrap requirements and foreign-unit protection. Still planned for onboarding: guided TLS/reverse-proxy setup and optional graphical administration.
+Service auto-start packaging is implemented with a preferred non-root systemd-user backend plus a managed cron fallback for headless accounts without a usable user bus. Both keep fixed components, explicit watcher bootstrap, duplicate-supervisor protection and foreign-state protection. Still planned for onboarding: guided TLS/reverse-proxy setup and optional graphical administration.
 
 ## Phase 3.6 — community usability and extension path
 

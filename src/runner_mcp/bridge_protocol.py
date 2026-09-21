@@ -83,6 +83,7 @@ class BridgeAction(StrEnum):
     ROLLBACK_RELEASE = "rollback_release"
     ROLLBACK_STATUS = "rollback_status"
     RUNTIME_STATUS = "runtime_status"
+    RUNTIME_DOCTOR = "runtime_doctor"
     SELF_UPDATE = "self_update"
     SELF_UPDATE_STATUS = "self_update_status"
 
@@ -154,6 +155,7 @@ class BridgeRequest(BaseModel):
             BridgeAction.QUEUE_STATUS,
             BridgeAction.WORKER_STATUS,
             BridgeAction.RUNTIME_STATUS,
+            BridgeAction.RUNTIME_DOCTOR,
         }:
             if (
                 self.project is not None
@@ -195,6 +197,8 @@ class BridgeRequest(BaseModel):
         if self.action == BridgeAction.SELF_UPDATE:
             if self.commit is None:
                 raise ValueError("self_update requires commit")
+            if not re.fullmatch(r"[0-9a-f]{40}", self.commit):
+                raise ValueError("self_update requires a full lowercase commit")
             if (
                 self.project is not None
                 or self.profile is not None
@@ -215,11 +219,7 @@ class BridgeRequest(BaseModel):
                 raise ValueError("run_tests accepts only project and profile")
             return self
 
-        if self.action in {
-            BridgeAction.JOB_STATUS,
-            BridgeAction.CANCEL_JOB,
-            BridgeAction.SELF_UPDATE_STATUS,
-        }:
+        if self.action in {BridgeAction.JOB_STATUS, BridgeAction.CANCEL_JOB}:
             if self.job_id is None:
                 raise ValueError(f"{self.action.value} requires job_id")
             if (
@@ -612,6 +612,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
         BridgeAction.QUEUE_STATUS,
         BridgeAction.WORKER_STATUS,
         BridgeAction.RUNTIME_STATUS,
+        BridgeAction.RUNTIME_DOCTOR,
     }:
         return request.action.value, {}
 

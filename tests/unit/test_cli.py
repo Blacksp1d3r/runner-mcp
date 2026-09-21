@@ -1,3 +1,4 @@
+import io
 from pathlib import Path
 
 import pytest
@@ -457,6 +458,65 @@ def test_github_mailbox_cli_configure_uses_hidden_token(
     assert status.out.strip() == "configured"
     assert token not in status.out
     assert repository not in status.out
+
+
+def test_github_mailbox_cli_can_read_token_from_stdin_without_echo(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    token = "example-token-from-stdin"
+    repository = "example/private-mailbox"
+    monkeypatch.setattr("sys.stdin", io.StringIO(token + "\n"))
+    monkeypatch.setattr(
+        "runner_mcp.cli.getpass.getpass",
+        lambda _: (_ for _ in ()).throw(AssertionError("hidden prompt used")),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "configure",
+            "--repository",
+            repository,
+            "--token-stdin",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert token not in captured.out
+    assert token not in captured.err
+    assert repository not in captured.out
+    assert load_env_file(paths.env_file)["RUNNER_MCP_GITHUB_TOKEN"] == token
+
+
+def test_github_mailbox_cli_rejects_empty_stdin_token(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO("\n"))
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-mailbox",
+            "configure",
+            "--repository",
+            "example/private-mailbox",
+            "--token-stdin",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "token is required" in captured.err
 
 
 def test_github_mailbox_cli_remove_requires_explicit_confirmation(

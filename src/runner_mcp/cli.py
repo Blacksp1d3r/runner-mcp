@@ -9,13 +9,13 @@ from pathlib import Path
 
 import uvicorn
 
+from .approval_manager import ApprovalError, ApprovalManager
 from .autostart import (
     AutostartError,
     install_user_services,
     remove_user_services,
     user_service_status,
 )
-from .approval_manager import ApprovalError, ApprovalManager
 from .completion_delivery import (
     CompletionDeliveryError,
     CompletionNotifierRuntime,

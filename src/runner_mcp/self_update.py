@@ -480,67 +480,71 @@ class SelfUpdateManager:
 
     def _install_from_checked_source(self, expected_commit: str) -> None:
         config = self._project_config()
-        root = config.root.resolve(strict=True)
-        source_state = clean_head(root)
-        if source_state["commit"] != expected_commit:
-            raise SelfUpdateError("Self-update source changed after validation")
+        if self.tests is None:
+            raise SelfUpdateError("Runner MCP test runner is unavailable")
 
-        self.safety.assert_project_action_allowed(
-            ActionClass.TEST,
-            environment=config.environment,
-        )
+        with self.tests.project_source_guard(SELF_PROJECT):
+            root = config.root.resolve(strict=True)
+            source_state = clean_head(root)
+            if source_state["commit"] != expected_commit:
+                raise SelfUpdateError("Self-update source changed after validation")
 
-        executable = Path(sys.executable)
-        try:
-            resolved_executable = executable.resolve(strict=True)
-        except OSError as exc:
-            raise SelfUpdateError("Runner MCP Python runtime is unavailable") from exc
-        if (
-            not executable.is_absolute()
-            or not resolved_executable.is_file()
-            or not os.access(resolved_executable, os.X_OK)
-        ):
-            raise SelfUpdateError("Runner MCP Python runtime is unavailable")
-        command = [
-            str(executable),
-            "-m",
-            "pip",
-            "install",
-            "--no-input",
-            "--disable-pip-version-check",
-            "--no-deps",
-            "--no-build-isolation",
-            "--force-reinstall",
-            str(root),
-        ]
-        environment = {
-            "PATH": "/usr/local/bin:/usr/bin:/bin",
-            "LANG": "C.UTF-8",
-            "LC_ALL": "C.UTF-8",
-            "PIP_DISABLE_PIP_VERSION_CHECK": "1",
-            "PIP_NO_INPUT": "1",
-            "PYTHONNOUSERSITE": "1",
-        }
-        home = os.environ.get("HOME", "").strip()
-        if home and Path(home).is_absolute():
-            environment["HOME"] = home
-
-        try:
-            completed = self._installer_runner(
-                command,
-                cwd=str(root),
-                env=environment,
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-                timeout=300,
-                check=False,
+            self.safety.assert_project_action_allowed(
+                ActionClass.TEST,
+                environment=config.environment,
             )
-        except (OSError, subprocess.SubprocessError) as exc:
-            raise SelfUpdateError("Runner MCP self-install failed") from exc
-        if completed.returncode != 0:
-            raise SelfUpdateError("Runner MCP self-install failed")
+
+            executable = Path(sys.executable)
+            try:
+                resolved_executable = executable.resolve(strict=True)
+            except OSError as exc:
+                raise SelfUpdateError("Runner MCP Python runtime is unavailable") from exc
+            if (
+                not executable.is_absolute()
+                or not resolved_executable.is_file()
+                or not os.access(resolved_executable, os.X_OK)
+            ):
+                raise SelfUpdateError("Runner MCP Python runtime is unavailable")
+            command = [
+                str(executable),
+                "-m",
+                "pip",
+                "install",
+                "--no-input",
+                "--disable-pip-version-check",
+                "--no-deps",
+                "--no-build-isolation",
+                "--force-reinstall",
+                str(root),
+            ]
+            environment = {
+                "PATH": "/usr/local/bin:/usr/bin:/bin",
+                "LANG": "C.UTF-8",
+                "LC_ALL": "C.UTF-8",
+                "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+                "PIP_NO_INPUT": "1",
+                "PYTHONNOUSERSITE": "1",
+            }
+            home = os.environ.get("HOME", "").strip()
+            if home and Path(home).is_absolute():
+                environment["HOME"] = home
+
+            try:
+                completed = self._installer_runner(
+                    command,
+                    cwd=str(root),
+                    env=environment,
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=300,
+                    check=False,
+                )
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise SelfUpdateError("Runner MCP self-install failed") from exc
+            if completed.returncode != 0:
+                raise SelfUpdateError("Runner MCP self-install failed")
 
     def _record_installed_commit(self, commit: str) -> None:
         path = self._state_path()

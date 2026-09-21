@@ -43,6 +43,9 @@ class FakeExecutor:
     def list_test_profiles(self, project: str):
         return self._result("list_test_profiles", project)
 
+    def sync_project(self, project: str, commit: str):
+        return self._result("sync_project", project, commit)
+
     def run_tests(self, project: str, suite: str):
         return self._result("run_tests", project, suite)
 
@@ -327,3 +330,24 @@ def test_result_persisted_but_ledger_finalize_failed_requires_recovery(
     assert outcome.requires_recovery is True
     assert len(sink.records) == 1
     assert executor.calls == [("list_projects", ())]
+
+
+
+def test_sync_project_dispatches_only_project_and_commit(tmp_path) -> None:
+    executor = FakeExecutor()
+    processor = _processor(tmp_path, executor=executor)
+    commit = "b" * 40
+
+    outcome = processor.process(
+        json.dumps(
+            {
+                "request_id": "req-sync-001",
+                "action": "sync_project",
+                "project": "demo",
+                "commit": commit,
+            }
+        )
+    )
+
+    assert outcome.state == BridgeProcessState.COMPLETED
+    assert executor.calls == [("sync_project", ("demo", commit))]

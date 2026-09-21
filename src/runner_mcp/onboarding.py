@@ -180,6 +180,8 @@ def render_env_file(
         "RUNNER_MCP_TEST_JOBS_ROOT": str(paths.jobs_dir),
         "RUNNER_MCP_MAX_TEST_JOBS": str(answers.max_test_jobs),
         "RUNNER_MCP_MAX_QUEUED_TESTS": str(answers.max_queued_tests),
+        "RUNNER_MCP_MAILBOX_WORKERS": "4",
+        "RUNNER_MCP_MAILBOX_MAX_INFLIGHT": "32",
         "RUNNER_MCP_DATABASE_BACKUP_ROOT": str(paths.database_backups_dir),
         "RUNNER_MCP_DEPLOY_JOBS_ROOT": str(paths.deployment_jobs_dir),
         "RUNNER_MCP_APPROVAL_ROOT": str(paths.approvals_dir),

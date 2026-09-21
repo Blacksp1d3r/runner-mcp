@@ -33,7 +33,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - interactive setup, doctor, guide and configuration-management CLI;
 - public CI for this public repository;
 - Fools2Tools project identity;
-- five-minute local demo, release checklist and launch-readiness documentation.
+- five-minute local demo, release checklist and launch-readiness documentation;
+- clean Ubuntu 24.04 / Python 3.12 CI coverage for the documented five-minute demo.
 
 ### Fixed
 
@@ -62,7 +63,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - guided private-tunnel/reverse-proxy onboarding is not yet one-click;
 - untrusted public-fork code is not sandboxed for execution on a privileged persistent runner;
 - PostgreSQL restore/PITR orchestration and automated retention pruning are not implemented;
-- deployments that use a separate completion-notification workflow still depend on that workflow's own Actions capacity; notification transport is independent from mailbox execution.
+- the optional built-in GitHub-issue notifier requires a private destination and GitHub credential; notification transport remains independent from mailbox execution.
 
 ## Release format
 

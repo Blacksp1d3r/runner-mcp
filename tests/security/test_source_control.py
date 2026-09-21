@@ -1,4 +1,5 @@
 import subprocess
+from contextlib import nullcontext
 from pathlib import Path
 
 import pytest
@@ -55,11 +56,17 @@ def test_non_git_project_fails_closed(tmp_path: Path) -> None:
 
 
 class IdleTests:
+    def project_source_guard(self, project: str):
+        return nullcontext()
+
     def project_has_work(self, project: str) -> bool:
         return False
 
 
 class BusyTests:
+    def project_source_guard(self, project: str):
+        return nullcontext()
+
     def project_has_work(self, project: str) -> bool:
         return True
 

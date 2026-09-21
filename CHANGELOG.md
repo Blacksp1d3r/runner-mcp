@@ -20,6 +20,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - GitHub mailbox bridge protocol with a strict allow-list;
 - bounded bridge result envelopes and replay protection;
 - strict terminal task-completion events with deterministic notification IDs;
+- optional private GitHub-issue completion delivery with bootstrap history cutoff, local delivery deduplication and remote deterministic-marker reconciliation;
 - watcher heartbeat, replay lifecycle and fail-closed restart-recovery primitives;
 - transport-neutral bridge processor with explicit allow-listed executor and durable-result ordering;
 - fixed-host GitHub mailbox transport with strict JSON/base64 validation and create-once results;

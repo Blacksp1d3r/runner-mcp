@@ -53,6 +53,7 @@ class Settings:
     retention_confirmed: bool = True
     test_jobs_root: Path | None = None
     max_test_jobs: int = 2
+    max_queued_test_jobs: int = 64
     database_backup_root: Path | None = None
     deployment_jobs_root: Path | None = None
     approval_root: Path | None = None
@@ -114,6 +115,14 @@ class Settings:
             max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "2"))
         except ValueError as exc:
             raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be an integer") from exc
+        try:
+            max_queued_test_jobs = int(
+                values.get("RUNNER_MCP_MAX_QUEUED_TEST_JOBS", "64")
+            )
+        except ValueError as exc:
+            raise RuntimeError(
+                "RUNNER_MCP_MAX_QUEUED_TEST_JOBS must be an integer"
+            ) from exc
 
         try:
             approval_ttl_seconds = int(
@@ -129,6 +138,10 @@ class Settings:
             )
         if not 1 <= max_test_jobs <= 16:
             raise RuntimeError("RUNNER_MCP_MAX_TEST_JOBS must be between 1 and 16")
+        if not 1 <= max_queued_test_jobs <= 1000:
+            raise RuntimeError(
+                "RUNNER_MCP_MAX_QUEUED_TEST_JOBS must be between 1 and 1000"
+            )
 
         return cls(
             bearer_token=token,
@@ -144,6 +157,7 @@ class Settings:
             retention_confirmed=retention_confirmed_raw == "true",
             test_jobs_root=Path(test_jobs_root_raw) if test_jobs_root_raw else None,
             max_test_jobs=max_test_jobs,
+            max_queued_test_jobs=max_queued_test_jobs,
             database_backup_root=(
                 Path(database_backup_root_raw) if database_backup_root_raw else None
             ),
@@ -227,6 +241,7 @@ def build_mcp(
             safety=safety,
             jobs_root=settings.test_jobs_root,
             max_concurrent_jobs=settings.max_test_jobs,
+            max_queued_jobs=settings.max_queued_test_jobs,
         )
         if settings.test_jobs_root is not None
         else None
@@ -402,8 +417,9 @@ def build_mcp(
             )
             raise ValueError("Unknown or disabled project")
 
-        result = cfg.public_summary(project)
+        result: dict[str, object] = cfg.public_summary(project)
         result["status"] = "registered"
+        result["max_parallel_tests"] = cfg.max_parallel_tests
         audit.append(
             AuditEvent(
                 request_id,
@@ -524,6 +540,7 @@ def build_mcp(
                 "name": name,
                 "timeout_seconds": profile.timeout_seconds,
                 "max_log_bytes": profile.max_log_bytes,
+                "parallel_safe": profile.parallel_safe,
             }
             for name, profile in sorted(cfg.test_profiles.items())
         ]
@@ -562,6 +579,58 @@ def build_mcp(
             tool_name="test_status",
             project=result.get("project"),
             result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def queue_status() -> dict:
+        """Return bounded queue capacity and per-project scheduling state."""
+        try:
+            result = _require_test_runner().queue_status()
+        except TestRunnerError as exc:
+            _audit_test_result(tool_name="queue_status", project=None, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(tool_name="queue_status", project=None, result="ok")
+        return result
+
+    @mcp.tool()
+    def worker_status() -> dict:
+        """Return safe worker-pool capacity without process or host details."""
+        try:
+            result = _require_test_runner().worker_status()
+        except TestRunnerError as exc:
+            _audit_test_result(tool_name="worker_status", project=None, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(tool_name="worker_status", project=None, result="ok")
+        return result
+
+    @mcp.tool()
+    def job_status(job_id: str) -> dict:
+        """Return safe status for one queued or running test job."""
+        try:
+            result = _require_test_runner().status(job_id)
+        except TestRunnerError as exc:
+            _audit_test_result(tool_name="job_status", project=None, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(
+            tool_name="job_status",
+            project=result.get("project"),
+            result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def cancel_job(job_id: str) -> dict:
+        """Cancel one queued, claimed or running test job."""
+        try:
+            result = _require_test_runner().cancel(job_id)
+        except TestRunnerError as exc:
+            _audit_test_result(tool_name="cancel_job", project=None, result="denied")
+            raise ValueError(str(exc)) from None
+        _audit_test_result(
+            tool_name="cancel_job",
+            project=result.get("project"),
+            result="requested",
         )
         return result
 

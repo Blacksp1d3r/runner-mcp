@@ -249,13 +249,15 @@ def test_self_update_requires_safe_loopback_resource(tmp_path: Path) -> None:
         retention=RetentionPolicy(),
         retention_confirmed=True,
     )
-    with pytest.raises(SelfUpdateError, match="loopback"):
-        SelfUpdateManager(
-            config_dir=tmp_path / "config-loopback",
-            registry=registry,
-            safety=guard,
-            tests=FakeTests(),
-            source=FakeSource(),
-            resource_url="https://example.invalid/mcp",
-            server_reexec=lambda: None,
-        )
+    manager = SelfUpdateManager(
+        config_dir=tmp_path / "config-loopback",
+        registry=registry,
+        safety=guard,
+        tests=FakeTests(),
+        source=FakeSource(),
+        resource_url="https://example.invalid/mcp",
+    )
+
+    assert manager.runtime_status()["self_update_ready"] is False
+    with pytest.raises(SelfUpdateError, match="loopback restart runtime"):
+        manager.start("a" * 40)

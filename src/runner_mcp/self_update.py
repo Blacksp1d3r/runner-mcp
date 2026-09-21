@@ -381,7 +381,6 @@ class SelfUpdateManager:
         }
 
     def start(self, commit: str) -> dict[str, Any]:
-        commit = commit.lower()
         if not _COMMIT_RE.fullmatch(commit):
             raise SelfUpdateError("Self-update requires a full lowercase commit ID")
         config = self._project_config()

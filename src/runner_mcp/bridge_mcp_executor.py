@@ -201,6 +201,7 @@ class LocalMCPClient:
             "safety_status",
             "project_status",
             "project_capabilities",
+            "sync_project",
             "list_test_profiles",
             "run_tests",
             "test_status",
@@ -353,6 +354,14 @@ class LocalMCPBridgeExecutor:
         return self._client()._call_tool(
             "project_capabilities",
             {"project": project},
+        )
+
+    def sync_project(self, project: str, commit: str) -> Any:
+        if not re.fullmatch(r"[0-9a-fA-F]{40}", commit):
+            raise BridgeExecutionAdapterError("Invalid Git commit identifier")
+        return self._client()._call_tool(
+            "sync_project",
+            {"project": project, "commit": commit.lower()},
         )
 
     def list_test_profiles(self, project: str) -> Any:

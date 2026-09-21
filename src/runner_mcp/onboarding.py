@@ -62,7 +62,8 @@ class SetupAnswers:
     min_release_age_days: int = 90
     pitr_retention_days: int = 30
     pre_migration_backup_days: int = 180
-    max_test_jobs: int = 2
+    max_test_jobs: int = 4
+    max_queued_tests: int = 64
 
 
 @dataclass(frozen=True)
@@ -129,6 +130,8 @@ def validate_setup_answers(answers: SetupAnswers) -> SetupAnswers:
         raise OnboardingError("Pre-migration backup days must be between 1 and 3650")
     if not 1 <= answers.max_test_jobs <= 16:
         raise OnboardingError("Maximum test jobs must be between 1 and 16")
+    if not 1 <= answers.max_queued_tests <= 1024:
+        raise OnboardingError("Maximum queued tests must be between 1 and 1024")
 
     return SetupAnswers(
         resource_url=answers.resource_url,
@@ -142,6 +145,7 @@ def validate_setup_answers(answers: SetupAnswers) -> SetupAnswers:
         pitr_retention_days=answers.pitr_retention_days,
         pre_migration_backup_days=answers.pre_migration_backup_days,
         max_test_jobs=answers.max_test_jobs,
+        max_queued_tests=answers.max_queued_tests,
     )
 
 
@@ -175,6 +179,7 @@ def render_env_file(
         ),
         "RUNNER_MCP_TEST_JOBS_ROOT": str(paths.jobs_dir),
         "RUNNER_MCP_MAX_TEST_JOBS": str(answers.max_test_jobs),
+        "RUNNER_MCP_MAX_QUEUED_TESTS": str(answers.max_queued_tests),
         "RUNNER_MCP_DATABASE_BACKUP_ROOT": str(paths.database_backups_dir),
         "RUNNER_MCP_DEPLOY_JOBS_ROOT": str(paths.deployment_jobs_dir),
         "RUNNER_MCP_APPROVAL_ROOT": str(paths.approvals_dir),
@@ -648,5 +653,6 @@ def prompt_setup_answers(
         min_release_age_days=ask_int("Minimum release retention days", 90),
         pitr_retention_days=ask_int("Database PITR retention days", 30),
         pre_migration_backup_days=ask_int("Pre-migration backup retention days", 180),
-        max_test_jobs=ask_int("Maximum simultaneous test jobs", 2),
+        max_test_jobs=ask_int("Maximum simultaneous test jobs", 4),
+        max_queued_tests=ask_int("Maximum queued test jobs", 64),
     )

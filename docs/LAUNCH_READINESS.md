@@ -11,7 +11,7 @@ Completed:
 - README states the problem and safety boundary before the feature inventory;
 - repository-safe architecture overview is visible near the top of README;
 - QUICKSTART provides the full guided installation path without requiring source-code reading;
-- a separate [five-minute local demo](DEMO.md) exists;
+- a separate [five-minute local demo](DEMO.md) exists and is exercised end to end on clean Ubuntu 24.04 / Python 3.12 in public CI;
 - `runner-mcp doctor`, status, guide and emergency-stop workflows are documented;
 - security baseline, threat model, operator-safety rules and test-execution trust boundary are public;
 - root [security reporting policy](../SECURITY.md) is present;
@@ -25,7 +25,6 @@ Completed:
 
 Still required before a broader launch:
 
-- run the five-minute demo end-to-end from a clean supported Linux environment;
 - create the first tagged alpha release from an exact green commit;
 - verify the release installation path and release notes;
 - set the GitHub repository description/topics to the prepared wording;

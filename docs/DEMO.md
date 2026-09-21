@@ -30,9 +30,11 @@ cd runner-mcp
 Runner MCP's pytest preset deliberately requires a project-local Python executable. Create one in this clone:
 
 ```bash
-python3 -m venv .venv
+python3 -m venv --copies .venv
 .venv/bin/python -m pip install -e '.[dev]'
 ```
+
+The `--copies` flag is intentional: Runner MCP refuses symlink executables for predefined profiles, so the demo creates a regular project-local Python executable instead of the symlink that many `venv` installations use by default.
 
 This environment is used only for the predefined demo test profile.
 

@@ -106,6 +106,28 @@ def test_pytest_preset_detects_project_virtual_environment(tmp_path: Path) -> No
     assert ".venv" not in repr(listed)
 
 
+def test_pytest_preset_rejects_symlink_virtual_environment_python(
+    tmp_path: Path,
+) -> None:
+    paths, root = installed(tmp_path)
+    target = root / "tools" / "python-real"
+    make_executable(target)
+    link = root / ".venv" / "bin" / "python"
+    link.parent.mkdir(parents=True, exist_ok=True)
+    link.symlink_to(target)
+
+    with pytest.raises(
+        ConfigManagerError,
+        match="Could not find a project Python executable",
+    ):
+        add_test_profile(
+            paths.config_dir,
+            project="first",
+            name="unit",
+            preset="pytest",
+        )
+
+
 def test_ruff_preset_detects_project_virtual_environment(tmp_path: Path) -> None:
     paths, root = installed(tmp_path)
     make_executable(root / ".venv" / "bin" / "ruff")

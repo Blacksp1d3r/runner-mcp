@@ -1,4 +1,5 @@
 import json
+import threading
 from pathlib import Path
 
 import pytest
@@ -115,8 +116,20 @@ class FakeExecutor:
     def list_test_profiles(self, project: str):
         return self._call("list_test_profiles", project)
 
-    def run_tests_to_completion(self, project: str, suite: str):
+    def run_tests(self, project: str, suite: str):
         return self._call("run_tests", project, suite)
+
+    def queue_status(self):
+        return self._call("queue_status")
+
+    def worker_status(self):
+        return self._call("worker_status")
+
+    def job_status(self, job_id: str):
+        return self._call("job_status", job_id)
+
+    def cancel_job(self, job_id: str):
+        return self._call("cancel_job", job_id)
 
 
 class FailingAdvanceCursorStore(GitHubWatcherCursorStore):
@@ -422,7 +435,7 @@ def test_result_persistence_failure_does_not_reexecute(tmp_path) -> None:
     assert record.state == ReplayState.CLAIMED
 
 
-def test_malformed_request_blocks_cursor_and_remaining_work(tmp_path) -> None:
+def test_malformed_request_keeps_cursor_but_does_not_block_independent_work(tmp_path) -> None:
     watcher, transport, executor, _ledger, cursor = _watcher(tmp_path)
     cursor.initialize("a" * 40)
     transport.changed_ids = ["req-709", "req-710"]
@@ -433,10 +446,53 @@ def test_malformed_request_blocks_cursor_and_remaining_work(tmp_path) -> None:
 
     assert outcome.state == GitHubWatcherCycleState.RECOVERY_REQUIRED
     assert outcome.discovered_requests == 2
-    assert outcome.heartbeat.pending_requests == 2
+    assert outcome.processed_requests == 1
+    assert outcome.heartbeat.pending_requests == 1
     assert outcome.recovery_attention == 1
     assert cursor.read() == "a" * 40
-    assert executor.calls == []
+    assert executor.calls == [("list_projects", ())]
+
+
+def test_independent_mailbox_requests_execute_concurrently(tmp_path) -> None:
+    class ConcurrentExecutor(FakeExecutor):
+        def __init__(self) -> None:
+            super().__init__()
+            self._gate = threading.Event()
+            self._entry_lock = threading.Lock()
+            self._inside = 0
+            self.overlapped = False
+
+        def _blocking_call(self, action: str):
+            with self._entry_lock:
+                self._inside += 1
+                if self._inside >= 2:
+                    self.overlapped = True
+                    self._gate.set()
+            self._gate.wait(timeout=1.0)
+            return self._call(action)
+
+        def list_projects(self):
+            return self._blocking_call("list_projects")
+
+        def safety_status(self):
+            return self._blocking_call("safety_status")
+
+    executor = ConcurrentExecutor()
+    watcher, transport, _selected, _ledger, cursor = _watcher(
+        tmp_path,
+        executor=executor,
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-720", "req-721"]
+    transport.requests["req-720"] = _request("req-720", "list_projects")
+    transport.requests["req-721"] = _request("req-721", "safety_status")
+
+    outcome = watcher.run_cycle(publish_heartbeat=False)
+
+    assert executor.overlapped is True
+    assert outcome.processed_requests == 2
+    assert outcome.state == GitHubWatcherCycleState.PROCESSED
+    assert cursor.read() == transport.head
 
 
 def test_transport_head_failure_is_degraded_without_execution(tmp_path) -> None:

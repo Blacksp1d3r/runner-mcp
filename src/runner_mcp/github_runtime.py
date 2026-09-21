@@ -19,6 +19,7 @@ from .github_mailbox import (
     GitHubMailboxTransportError,
 )
 from .github_watcher import (
+    GitHubAbandonResolution,
     GitHubMailboxWatcher,
     GitHubRecoveryResolution,
     GitHubWatcherCursorStore,
@@ -111,6 +112,18 @@ class GitHubWatcherRuntime:
         request_id: str,
     ) -> GitHubRecoveryResolution:
         return self.watcher.resolve_missing_result_fail_closed(request_id)
+
+    def abandon_unclaimed_request_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubAbandonResolution:
+        return self.watcher.abandon_unclaimed_request_fail_closed(request_id)
+
+    def quarantine_malformed_request_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubWatcherCycleOutcome:
+        return self.watcher.quarantine_malformed_request_fail_closed(request_id)
 
     def run_forever(
         self,

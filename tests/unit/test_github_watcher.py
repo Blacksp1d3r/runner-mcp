@@ -67,6 +67,9 @@ class FakeTransport:
             )
         return list(self.changed_ids)
 
+    def fetch_request_unvalidated(self, request_id: str) -> bytes:
+        return self.requests[request_id]
+
     def fetch_request(self, request_id: str) -> bytes:
         return self.requests[request_id]
 
@@ -551,6 +554,149 @@ def test_operator_recovery_persistence_failure_keeps_claimed_state(
     assert record is not None
     assert record.state == ReplayState.CLAIMED
     assert "req-recover-persist" not in transport.results
+    assert executor.calls == []
+
+
+def test_operator_abandons_unclaimed_request_without_execution(tmp_path) -> None:
+    watcher, transport, executor, ledger, _cursor = _watcher(tmp_path)
+    transport.requests["req-abandon"] = _request("req-abandon")
+    request = parse_bridge_request(transport.requests["req-abandon"])
+
+    resolution = watcher.abandon_unclaimed_request_fail_closed("req-abandon")
+
+    assert resolution.request_id == "req-abandon"
+    assert resolution.action == BridgeAction.LIST_PROJECTS
+    assert executor.calls == []
+    result = transport.results["req-abandon"]
+    assert result.state == BridgeResultState.FAILED
+    assert result.error_code == "OPERATOR_ABORTED"
+    assert "No action was executed" in (result.summary or "")
+    record = ledger.inspect(request)
+    assert record is not None
+    assert record.state == ReplayState.COMPLETED
+
+
+def test_operator_abandon_rejects_request_with_replay_state(tmp_path) -> None:
+    watcher, transport, executor, ledger, _cursor = _watcher(tmp_path)
+    transport.requests["req-abandon-claimed"] = _request("req-abandon-claimed")
+    request = parse_bridge_request(transport.requests["req-abandon-claimed"])
+    ledger.claim(request)
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="already has replay state",
+    ):
+        watcher.abandon_unclaimed_request_fail_closed("req-abandon-claimed")
+
+    assert "req-abandon-claimed" not in transport.results
+    assert executor.calls == []
+
+
+def test_operator_abandon_persistence_failure_leaves_claimed_state(tmp_path) -> None:
+    watcher, transport, executor, ledger, _cursor = _watcher(tmp_path)
+    transport.requests["req-abandon-persist"] = _request("req-abandon-persist")
+    request = parse_bridge_request(transport.requests["req-abandon-persist"])
+    transport.fail_persist = True
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="could not be persisted",
+    ):
+        watcher.abandon_unclaimed_request_fail_closed("req-abandon-persist")
+
+    record = ledger.inspect(request)
+    assert record is not None
+    assert record.state == ReplayState.CLAIMED
+    assert executor.calls == []
+
+
+def test_operator_quarantines_only_malformed_resolved_backlog(tmp_path) -> None:
+    watcher, transport, executor, ledger, cursor = _watcher(tmp_path)
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-malformed", "req-durable"]
+    transport.requests["req-malformed"] = b'{"action":"sync_project"}'
+    transport.requests["req-durable"] = _request("req-durable")
+    transport.results["req-durable"] = _existing_result("req-durable")
+
+    outcome = watcher.quarantine_malformed_request_fail_closed("req-malformed")
+
+    assert outcome.state == GitHubWatcherCycleState.PROCESSED
+    assert outcome.discovered_requests == 2
+    assert outcome.processed_requests == 0
+    assert outcome.reconciled_requests == 1
+    assert outcome.recovery_attention == 0
+    assert cursor.read() == transport.head
+    assert executor.calls == []
+    request = parse_bridge_request(transport.requests["req-durable"])
+    record = ledger.inspect(request)
+    assert record is not None
+    assert record.state == ReplayState.COMPLETED
+
+
+def test_operator_quarantine_rejects_head_change_before_cursor_advance(
+    tmp_path,
+) -> None:
+    class MovingHeadTransport(FakeTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self._heads = ["b" * 40, "c" * 40]
+
+        def request_head_sha(self) -> str:
+            if self._heads:
+                return self._heads.pop(0)
+            return "c" * 40
+
+    transport = MovingHeadTransport()
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path,
+        transport=transport,
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-malformed"]
+    transport.requests["req-malformed"] = b'{"action":"sync_project"}'
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="request head changed",
+    ):
+        watcher.quarantine_malformed_request_fail_closed("req-malformed")
+
+    assert cursor.read() == "a" * 40
+    assert executor.calls == []
+
+
+def test_operator_quarantine_rejects_protocol_valid_request(tmp_path) -> None:
+    watcher, transport, executor, _ledger, cursor = _watcher(tmp_path)
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-valid"]
+    transport.requests["req-valid"] = _request("req-valid")
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="protocol-valid",
+    ):
+        watcher.quarantine_malformed_request_fail_closed("req-valid")
+
+    assert cursor.read() == "a" * 40
+    assert executor.calls == []
+
+
+def test_operator_quarantine_refuses_unresolved_other_request(tmp_path) -> None:
+    watcher, transport, executor, ledger, cursor = _watcher(tmp_path)
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-malformed", "req-unresolved"]
+    transport.requests["req-malformed"] = b'{"action":"sync_project"}'
+    transport.requests["req-unresolved"] = _request("req-unresolved")
+    request = parse_bridge_request(transport.requests["req-unresolved"])
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="another backlog request is unresolved",
+    ):
+        watcher.quarantine_malformed_request_fail_closed("req-malformed")
+
+    assert cursor.read() == "a" * 40
+    assert ledger.inspect(request) is None
     assert executor.calls == []
 
 

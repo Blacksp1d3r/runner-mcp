@@ -34,6 +34,29 @@ Both conditions are fail-closed and require recovery attention. The watcher must
 
 For `result_missing`, a transport may republish a previously persisted safe result if it has one. Republishing a result is not task execution.
 
+### Explicit fail-closed operator resolution
+
+When no trustworthy prior safe result exists, Runner MCP provides a local operator escape hatch that still refuses action replay:
+
+```bash
+runner-mcp github-watcher resolve REQUEST_ID
+```
+
+This command is local CLI only and requires an exact confirmation phrase. It does not call the bridge executor.
+
+Before changing recovery state it verifies all of the following:
+
+- the original request still parses under the strict bridge protocol and matches its mailbox filename;
+- no durable result already exists;
+- the replay ledger contains the exact same request fingerprint/action;
+- the replay state is already `claimed` or `completed`.
+
+Only then it publishes a bounded terminal failed result with error code `RECOVERY_REQUIRED` and an explicit statement that no action was replayed. If the request was still `claimed`, lifecycle completion happens only after that safe failure result is durable.
+
+The watcher cursor is not reset or advanced by the resolve command. The operator runs a normal watcher cycle afterwards. That cycle sees the durable result, reconciles replay state, and advances the cursor through the ordinary restart-safe path.
+
+A request with no replay record is rejected by this command because normal processing is still authoritative. A request with an existing durable result is also rejected because normal watcher reconciliation is authoritative. Result-persistence failure leaves the prior replay state unchanged.
+
 ## Backlog and stale requests
 
 The public heartbeat exposes only:

@@ -218,6 +218,8 @@ The private watcher should claim a request before invoking Runner MCP, persist t
 
 A claimed request with no result after watcher restart is treated as ambiguous and is not automatically re-executed. A completed request with a missing transport result is also not re-executed; the watcher may republish a previously persisted safe result if one exists.
 
+If no trustworthy prior safe result exists, a local operator may explicitly resolve an already-claimed missing-result request with `runner-mcp github-watcher resolve REQUEST_ID`. This publishes only a terminal `RECOVERY_REQUIRED` failure result after strict request/fingerprint checks. It never invokes the bridge executor, never resets the replay ledger/cursor, and never authorizes action replay. A normal watcher cycle must then reconcile the durable result and advance the cursor.
+
 See [WATCHER_RESILIENCE.md](WATCHER_RESILIENCE.md) for heartbeat, stale-request classification and restart recovery.
 
 ## When to use the bridge

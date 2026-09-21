@@ -163,6 +163,14 @@ Phase 3.8.1 task-completion feedback:
 - public completion contract is transport-neutral; private destinations remain private configuration;
 - built-in completion delivery now observes persisted terminal test jobs, uses deterministic event markers plus a private delivery ledger, and has a live exactly-once private proof; it no longer depends on repository-specific self-hosted Actions capacity.
 
+Fail-closed missing-result recovery — 2026-09-21:
+- a live commit-pinned source-sync request exposed the expected fail-closed state where the request was already claimed but no durable result was visible;
+- the watcher correctly refused automatic replay and left its cursor behind with recovery attention;
+- a local-only recovery command is being added to publish a terminal safe `RECOVERY_REQUIRED` result for an exact already-claimed request without invoking the executor;
+- resolution verifies the original request, existing result state and replay fingerprint/state before writing anything;
+- no replay-ledger reset, cursor reset, request deletion or blind task retry is part of the recovery path;
+- after the safe failure result is durable, an ordinary watcher cycle remains responsible for reconciliation and cursor advancement.
+
 Phase 3.8.2 watcher resilience and restart recovery:
 - replay entries now carry an explicit claimed/completed lifecycle;
 - legacy replay entries without state are treated conservatively as claimed;

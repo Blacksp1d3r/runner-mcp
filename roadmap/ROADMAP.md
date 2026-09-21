@@ -170,15 +170,17 @@ Implemented public foundation:
 - duplicate heartbeat observations fail closed;
 - transient transport retry is bounded to timeout/rate-limit/unavailable failures;
 - authorization and invalid-response failures are not automatically retried;
-- transport retry policy never authorizes operational action replay.
+- transport retry policy never authorizes operational action replay;
+- local operator recovery can resolve an already-claimed missing-result request by publishing a terminal safe `RECOVERY_REQUIRED` result without invoking the executor;
+- the recovery command requires an existing exact replay record, refuses an existing durable result, preserves the cursor, and finalizes a claimed ledger entry only after the safe failure result is durable;
+- a normal watcher cycle performs the subsequent result reconciliation and cursor advance.
+
+Operational proof already covers migrated claim -> execute -> persist -> complete ordering, sanitized heartbeat publication and restart-safe reconciliation. The explicit missing-result resolution path now has placeholder-only regression coverage and is intended for rare ambiguous/persistence-recovery incidents.
 
 Next:
 
-- migrate the private watcher to claim -> execute -> persist safe result -> mark completed;
-- publish the sanitized heartbeat through the private transport;
-- add watcher-level integration tests using placeholder-only configuration;
-- prove restart recovery against a fresh backlog without replaying completed work;
-- keep notification delivery and heartbeat/stale recovery independent.
+- keep notification delivery and heartbeat/stale recovery independent;
+- extend operator recovery only when a new fail-closed state has a provable non-replay resolution; never add a generic replay/reset switch.
 
 ## Phase 3.8.3 — transport-neutral bridge processor
 

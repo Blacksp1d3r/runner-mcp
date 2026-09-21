@@ -21,6 +21,9 @@ The first alpha release includes:
 - safe queue/worker/job observability and cancellation;
 - independent exactly-once completion notification delivery;
 - explicit fail-closed recovery for already-claimed mailbox requests whose result is missing, without action replay;
+- local-only abandonment of strictly valid unclaimed mailbox requests and bounded quarantine of malformed historical requests without executor replay, ledger reset or generic cursor reset;
+- race-safe malformed-request quarantine that rechecks the request head before cursor advancement;
+- short per-job private test temporary directories for local IPC/Unix-socket runtimes, with restrictive permissions, log redaction and terminal cleanup;
 - managed non-root autostart using systemd user services when available or a lock-protected managed cron fallback;
 - interactive setup, doctor, guide, operator wrapper, Quickstart and a clean five-minute demo.
 
@@ -30,7 +33,7 @@ Runner MCP intentionally separates source collaboration, operational requests, e
 
 The GitHub mailbox accepts only its documented fixed action enum. It does not accept shell commands, executable paths, filesystem paths, environment values, service names or arbitrary MCP tool names from the request.
 
-Ambiguous recovery states do not authorize rerunning work. A claimed request with no durable result remains fail-closed. The local recovery command can publish only a terminal safe failure after exact request/replay checks; it does not invoke the original action.
+Ambiguous recovery states do not authorize rerunning work. A claimed request with no durable result remains fail-closed. Local recovery can publish only bounded terminal failures after exact request/replay checks; it never invokes the original action. A malformed historical request can be quarantined only when every sibling request in the current backlog already has a matching durable result and the request head remains unchanged through final verification.
 
 Notification delivery is similarly separate from execution. Retrying a notification cannot rerun the task.
 
@@ -42,6 +45,7 @@ Operators testing development snapshots should nevertheless review the following
 
 - use the current protocol-v1 mailbox request shape;
 - keep existing watcher replay/cursor state; do not delete or reset it during upgrades;
+- use the explicit resolve/abandon/quarantine operator paths for exceptional mailbox recovery rather than replaying or clearing state;
 - replace any legacy private pilot watcher with the shared Runner MCP watcher runtime;
 - use explicit watcher/bootstrap commands rather than silently skipping historical mailbox state;
 - if using autostart, remove or migrate unmanaged Runner MCP cron entries before enabling the managed cron backend;
@@ -70,6 +74,8 @@ Before publishing v0.1.0, the exact tag commit must have all of these green:
 - built wheel and source-distribution validation;
 - clean install from the built wheel with CLI smoke checks;
 - public-repository privacy review.
+
+The current pre-tag release-candidate baseline is 651 passed tests with one third-party Starlette/AnyIO deprecation warning, plus green compile, Ruff, whitespace, clean-demo and built-artifact jobs. Reconfirm these checks on the exact final tag commit.
 
 Record the exact passing test count and commit SHA in the GitHub release notes when the tag is created.
 

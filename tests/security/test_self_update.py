@@ -119,6 +119,8 @@ def test_self_update_rejects_non_commit_and_concurrent_job(tmp_path: Path) -> No
     manager, _root, _exits = make_manager(tmp_path)
     with pytest.raises(SelfUpdateError, match="full lowercase commit"):
         manager.start("main")
+    with pytest.raises(SelfUpdateError, match="full lowercase commit"):
+        manager.start("A" * 40)
 
     with manager._lock:
         from runner_mcp.self_update import SelfUpdateJob, _utc_now

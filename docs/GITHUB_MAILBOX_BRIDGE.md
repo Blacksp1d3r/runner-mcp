@@ -64,6 +64,10 @@ Protocol version 1 deliberately exposes only:
 - `project_capabilities`
 - `list_test_profiles`
 - `run_tests`
+- `queue_status`
+- `worker_status`
+- `job_status`
+- `cancel_job`
 
 The bridge must not accept:
 
@@ -102,12 +106,24 @@ Examples:
 }
 ```
 
+A successful `run_tests` request accepts the predefined test job and returns its opaque job ID immediately. The mailbox does not wait for the test process to finish. Later status or cancellation uses a separate request:
+
+```json
+{
+  "protocol_version": 1,
+  "request_id": "req-003",
+  "action": "job_status",
+  "job_id": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+}
+```
+
 Rules:
 
 - unknown JSON fields are rejected;
 - duplicate JSON keys are rejected;
 - the request body is size-bounded;
 - project and profile identifiers use the same safe identifier shape as Runner MCP configuration;
+- job actions accept only a validated opaque Runner MCP job ID;
 - action-specific arguments are enforced;
 - the action itself comes from a fixed enum, never directly from user-supplied tool text.
 
@@ -141,7 +157,7 @@ A failed result uses a small safe error code instead of raw exception or process
   "action": "run_tests",
   "state": "failed",
   "error_code": "TEST_FAILED",
-  "summary": "The predefined test profile did not complete successfully"
+  "summary": "The allow-listed Runner MCP action failed"
 }
 ```
 
@@ -228,12 +244,12 @@ On 2026-09-20 the private mailbox pattern was successfully piloted as the standa
 `BridgeProcessor` accepts three local components:
 
 - a shared `BridgeReplayLedger`;
-- an explicit `BridgeExecutor` with exactly the six mailbox-allow-listed operations;
+- an explicit `BridgeExecutor` with exactly the ten mailbox-allow-listed operations;
 - a `BridgeResultSink` that receives only request ID plus the already-scrubbed serialized result.
 
 The executor interface deliberately does not expose a generic `invoke(tool_name, args)` method.
 
-For `run_tests`, the executor method is `run_tests_to_completion(project, suite)`. A private adapter may implement this by starting the configured Runner MCP test profile and polling its existing bounded job-status API until terminal state. The mailbox itself does not gain `test_status` or log-fetch actions.
+For `run_tests`, the executor starts the configured allow-listed test profile and returns the accepted Runner MCP job record immediately. Test execution continues in the bounded Runner MCP scheduler. The mailbox exposes only safe `job_status` and `cancel_job` follow-up actions plus aggregate `queue_status` and `worker_status`; raw test-log retrieval is not a mailbox action.
 
 Processing order is fixed:
 
@@ -303,16 +319,17 @@ It is intentionally narrower than a general MCP client:
 
 - the endpoint must be loopback-only and use the `/mcp` path;
 - bearer credentials are supplied separately and never embedded in the URL;
-- only the six bridge operations are exposed by the executor;
+- only the ten bridge operations are exposed by the executor;
 - internal tool dispatch is private and allow-listed;
-- `test_status` is used only as an implementation detail for an already-authorized `run_tests` request;
+- `run_tests` returns the accepted job without terminal polling;
+- `job_status` and `cancel_job` accept only a validated opaque job ID;
 - `get_test_log` is not called by the bridge executor.
 
-For a test run, the executor returns only the configured project, suite and terminal status. Raw logs, local paths, commands and private runtime details are not added to the mailbox result.
+For a test run, the executor returns only safe persisted job metadata. Raw logs, local paths, commands and private runtime details are not added to the mailbox result.
 
 MCP JSON/SSE parsing is strict and bounded. Invalid session/job identifiers or transport/server/tool failures become generic adapter errors; raw response bodies and exception details are not propagated into the bridge result.
 
-This executor lets a private watcher become a thin bootstrap over public Runner MCP components rather than maintaining its own duplicate request validator, MCP handshake or test polling logic.
+This executor lets a private watcher become a thin bootstrap over public Runner MCP components rather than maintaining its own duplicate request validator, MCP handshake or generic tool-dispatch logic.
 
 
 ## Private-config runtime and CLI

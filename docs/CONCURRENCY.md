@@ -40,8 +40,10 @@ No concurrency feature accepts shell commands, executable paths, environment var
 The defaults are intentionally conservative:
 
 - mailbox request workers: 4;
+- mailbox maximum in-flight request batch: 32;
 - global concurrent test workers: 2;
 - maximum queued test jobs: 64;
+- per-project maximum queued test jobs: 16;
 - per-project `max_parallel_tests`: 1;
 - test-profile `parallel_safe`: false.
 

@@ -147,6 +147,7 @@ class TestRunner:
         self._jobs: dict[str, TestJob] = {}
         self._cancel_events: dict[str, threading.Event] = {}
         self._project_queues: dict[str, deque[str]] = {}
+        self._project_source_locks: dict[str, threading.Lock] = {}
         self._project_round_robin: deque[str] = deque()
         self._stopping = False
         self._workers: list[threading.Thread] = []
@@ -413,6 +414,14 @@ class TestRunner:
                 or self._active_jobs_locked(project)
             )
 
+    def project_source_guard(self, project: str) -> threading.Lock:
+        with self._lock:
+            lock = self._project_source_locks.get(project)
+            if lock is None:
+                lock = threading.Lock()
+                self._project_source_locks[project] = lock
+            return lock
+
     def _project_can_claim_locked(self, job: TestJob) -> bool:
         project = self.registry.projects.get(job.project)
         if project is None:
@@ -477,35 +486,37 @@ class TestRunner:
             worker.join(timeout=join_timeout_seconds)
 
     def start_test(self, project: str, suite: str) -> dict[str, Any]:
-        project_config = self.registry.projects.get(project)
-        if project_config is None:
-            raise TestRunnerError("Unknown or disabled project")
-        self.safety.assert_project_action_allowed(
-            ActionClass.TEST,
-            environment=project_config.environment,
-        )
-        self._lookup_profile(project, suite)
-
-        with self._condition:
-            if len(self._queued_jobs_locked()) >= self.max_queued_jobs:
-                raise TestRunnerError("Test queue capacity reached")
-            if len(self._queued_jobs_locked(project)) >= project_config.max_queued_tests:
-                raise TestRunnerError("Project test queue capacity reached")
-
-            job_id = uuid4().hex
-            job = TestJob(
-                job_id=job_id,
-                project=project,
-                suite=suite,
-                status=TestJobStatus.QUEUED,
-                created_at=utc_now(),
+        source_guard = self.project_source_guard(project)
+        with source_guard:
+            project_config = self.registry.projects.get(project)
+            if project_config is None:
+                raise TestRunnerError("Unknown or disabled project")
+            self.safety.assert_project_action_allowed(
+                ActionClass.TEST,
+                environment=project_config.environment,
             )
-            self._jobs[job_id] = job
-            self._cancel_events[job_id] = threading.Event()
-            self._persist(job)
-            self._enqueue_job_locked(job)
-            self._condition.notify_all()
-            return self.job_status(job_id)
+            self._lookup_profile(project, suite)
+
+            with self._condition:
+                if len(self._queued_jobs_locked()) >= self.max_queued_jobs:
+                    raise TestRunnerError("Test queue capacity reached")
+                if len(self._queued_jobs_locked(project)) >= project_config.max_queued_tests:
+                    raise TestRunnerError("Project test queue capacity reached")
+
+                job_id = uuid4().hex
+                job = TestJob(
+                    job_id=job_id,
+                    project=project,
+                    suite=suite,
+                    status=TestJobStatus.QUEUED,
+                    created_at=utc_now(),
+                )
+                self._jobs[job_id] = job
+                self._cancel_events[job_id] = threading.Event()
+                self._persist(job)
+                self._enqueue_job_locked(job)
+                self._condition.notify_all()
+                return self.job_status(job_id)
 
     def _set_job(
         self,

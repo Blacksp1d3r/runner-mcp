@@ -209,6 +209,25 @@ class LocalMCPClient:
             "worker_status",
             "job_status",
             "cancel_job",
+            "get_test_log",
+            "list_services",
+            "service_status",
+            "start_service",
+            "stop_service",
+            "restart_service",
+            "list_backups",
+            "backup_database",
+            "request_action_approval",
+            "approval_status",
+            "migration_status",
+            "apply_migrations",
+            "plan_deploy",
+            "deploy_staging",
+            "deployment_status",
+            "list_releases",
+            "rollback_plan",
+            "rollback_release",
+            "rollback_status",
         }:
             raise BridgeExecutionAdapterError(
                 "local MCP executor rejected an unsupported tool"
@@ -268,7 +287,13 @@ class LocalMCPClient:
 
         if len(parsed_items) == 1:
             return parsed_items[0]
-        if name in {"list_projects", "list_test_profiles"} and all(
+        if name in {
+            "list_projects",
+            "list_test_profiles",
+            "list_services",
+            "list_backups",
+            "list_releases",
+        } and all(
             isinstance(item, dict) for item in parsed_items
         ):
             return parsed_items

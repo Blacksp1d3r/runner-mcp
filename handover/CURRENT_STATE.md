@@ -323,7 +323,7 @@ Phase 9 human approval gates:
 Current validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 602 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: 612 tests green, with one third-party Starlette/AnyIO deprecation warning;
 - merged request-capacity change passed public CI including whitespace checks;
 - live private bridge validation passed both Runner MCP lint and unit profiles;
 - git diff whitespace check: green;

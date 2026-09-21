@@ -3,7 +3,6 @@ from __future__ import annotations
 import codecs
 import json
 import os
-from concurrent.futures import Future, ThreadPoolExecutor
 import re
 import selectors
 import signal
@@ -11,6 +10,7 @@ import stat
 import subprocess
 import threading
 import time
+from concurrent.futures import Future, ThreadPoolExecutor
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum

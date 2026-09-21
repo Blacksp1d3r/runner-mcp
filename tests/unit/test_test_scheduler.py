@@ -5,13 +5,15 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.config import ProjectConfig, ProjectRegistry, TestProfile
+from runner_mcp.config import ProjectConfig, ProjectRegistry
+from runner_mcp.config import TestProfile as RunnerTestProfile
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
-from runner_mcp.test_runner import TestRunner, TestRunnerError
+from runner_mcp.test_runner import TestRunner as Runner
+from runner_mcp.test_runner import TestRunnerError as RunnerError
 
 
-def _profile(code: str, *, parallel_safe: bool = False) -> TestProfile:
-    return TestProfile(
+def _profile(code: str, *, parallel_safe: bool = False) -> RunnerTestProfile:
+    return RunnerTestProfile(
         argv=[sys.executable, "-c", code],
         timeout_seconds=5,
         max_log_bytes=4096,
@@ -25,10 +27,10 @@ def _runner(
     *,
     workers: int = 2,
     queue_limit: int = 16,
-) -> TestRunner:
+) -> Runner:
     for project in projects.values():
         project.root.mkdir(parents=True, exist_ok=True)
-    return TestRunner(
+    return Runner(
         registry=ProjectRegistry(projects=projects),
         safety=OperatorSafetyGuard(
             stop_file=tmp_path / "operator.stop",
@@ -44,7 +46,7 @@ def _runner(
 
 
 def _wait_status(
-    runner: TestRunner,
+    runner: Runner,
     job_id: str,
     wanted: set[str],
     *,
@@ -251,7 +253,7 @@ def test_queue_overflow_fails_closed_with_backpressure(tmp_path: Path) -> None:
         second = runner.start_test("demo", "unit")
         _wait_status(runner, second["job_id"], {"queued"})
 
-        with pytest.raises(TestRunnerError, match="queue capacity"):
+        with pytest.raises(RunnerError, match="queue capacity"):
             runner.start_test("demo", "unit")
     finally:
         runner.cancel(first["job_id"])
@@ -312,7 +314,7 @@ def test_queued_job_survives_runner_restart_and_is_dispatched(tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    runner = TestRunner(
+    runner = Runner(
         registry=ProjectRegistry(
             projects={
                 "demo": ProjectConfig(
@@ -366,7 +368,7 @@ def test_claimed_or_running_job_is_not_replayed_after_restart(tmp_path: Path) ->
         encoding="utf-8",
     )
 
-    runner = TestRunner(
+    runner = Runner(
         registry=ProjectRegistry(
             projects={
                 "demo": ProjectConfig(

@@ -61,7 +61,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 
 ### Known limitations
 
-- guided private-tunnel/reverse-proxy onboarding is not yet one-click;
+- private tunnel/reverse-proxy/VPN provisioning remains external to Runner MCP; the repository provides a guided decision/preflight path rather than managing third-party credentials or network policy;
 - untrusted public-fork code is not sandboxed for execution on a privileged persistent runner;
 - PostgreSQL restore/PITR orchestration and automated retention pruning are not implemented;
 - the optional built-in GitHub-issue notifier requires a private destination and GitHub credential; notification transport remains independent from mailbox execution.

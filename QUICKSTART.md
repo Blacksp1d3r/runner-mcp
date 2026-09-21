@@ -118,7 +118,7 @@ The real project path is stored only in the private configuration. Normal list/s
 
 ### Add a test profile
 
-For a Python project with a `.venv` or `venv` folder, Runner MCP can detect the project Python executable and create a pytest profile:
+For a Python project with a `.venv` or `venv` folder, Runner MCP can detect a regular project-local Python executable and create a pytest profile. Runner MCP deliberately rejects symlink executables; when creating a new environment with Python's standard `venv`, use `python3 -m venv --copies .venv`:
 
 ```bash
 runner-mcp test-profile add myproject unit --preset pytest

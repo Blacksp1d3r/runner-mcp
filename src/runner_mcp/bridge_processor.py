@@ -36,6 +36,10 @@ class BridgeExecutor(Protocol):
 
     def safety_status(self) -> Any: ...
 
+    def runtime_status(self) -> Any: ...
+
+    def runtime_doctor(self) -> Any: ...
+
     def project_status(self, project: str) -> Any: ...
 
     def project_capabilities(self, project: str) -> Any: ...
@@ -214,6 +218,12 @@ class BridgeProcessor:
 
         if request.action == BridgeAction.SAFETY_STATUS:
             return self._executor.safety_status()
+
+        if request.action == BridgeAction.RUNTIME_STATUS:
+            return self._executor.runtime_status()
+
+        if request.action == BridgeAction.RUNTIME_DOCTOR:
+            return self._executor.runtime_doctor()
 
         if request.action == BridgeAction.PROJECT_STATUS:
             assert request.project is not None

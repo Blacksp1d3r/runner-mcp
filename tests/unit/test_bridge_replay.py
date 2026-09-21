@@ -1,6 +1,7 @@
 import json
 import stat
 import threading
+from concurrent.futures import ThreadPoolExecutor
 
 import pytest
 
@@ -36,23 +37,14 @@ def test_concurrent_duplicate_request_id_is_claimed_once(tmp_path) -> None:
     )
     ledger = BridgeReplayLedger(tmp_path / "replay.json")
     barrier = threading.Barrier(2)
-    decisions: list[ReplayDecision] = []
-    errors: list[BaseException] = []
+    def claim() -> ReplayDecision:
+        barrier.wait()
+        return ledger.claim(request).decision
 
-    def claim() -> None:
-        try:
-            barrier.wait()
-            decisions.append(ledger.claim(request).decision)
-        except BaseException as exc:  # pragma: no cover - asserted below
-            errors.append(exc)
+    with ThreadPoolExecutor(max_workers=2) as pool:
+        futures = [pool.submit(claim) for _ in range(2)]
+        decisions = [future.result() for future in futures]
 
-    threads = [threading.Thread(target=claim) for _ in range(2)]
-    for thread in threads:
-        thread.start()
-    for thread in threads:
-        thread.join()
-
-    assert errors == []
     assert sorted(decision.value for decision in decisions) == [
         ReplayDecision.DUPLICATE.value,
         ReplayDecision.NEW.value,

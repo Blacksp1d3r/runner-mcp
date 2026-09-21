@@ -793,6 +793,183 @@ def test_github_watcher_cli_resolve_publishes_safe_summary(
     assert str(paths.config_dir) not in captured.err
 
 
+def test_github_watcher_cli_abandon_requires_exact_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+
+    class FakeRuntime:
+        def abandon_unclaimed_request_fail_closed(self, request_id: str):
+            calls.append(request_id)
+            raise AssertionError("abandonment must not run after denied confirmation")
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+    monkeypatch.setattr("builtins.input", lambda _prompt: "no")
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "abandon",
+            "req-abandon-1",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert calls == []
+    assert "cancelled" in captured.err.lower()
+    assert "does not execute" in captured.out
+
+
+def test_github_watcher_cli_abandon_publishes_safe_summary(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.bridge_protocol import BridgeAction
+    from runner_mcp.github_watcher import GitHubAbandonResolution
+
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+
+    class FakeRuntime:
+        def abandon_unclaimed_request_fail_closed(self, request_id: str):
+            calls.append(request_id)
+            return GitHubAbandonResolution(
+                request_id=request_id,
+                action=BridgeAction.SYNC_PROJECT,
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: "ABANDON req-abandon-2",
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "abandon",
+            "req-abandon-2",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert calls == ["req-abandon-2"]
+    assert "action=sync_project" in captured.out
+    assert "No action was executed." in captured.out
+    assert "github-watcher once" in captured.out
+
+
+def test_github_watcher_cli_quarantine_requires_exact_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+
+    class FakeRuntime:
+        def quarantine_malformed_request_fail_closed(self, request_id: str):
+            calls.append(request_id)
+            raise AssertionError("quarantine must not run after denied confirmation")
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+    monkeypatch.setattr("builtins.input", lambda _prompt: "no")
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "quarantine",
+            "req-malformed-1",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert calls == []
+    assert "cancelled" in captured.err.lower()
+    assert "does not execute any backlog action" in captured.out
+
+
+def test_github_watcher_cli_quarantine_reports_safe_reconciliation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.bridge_resilience import WatcherHeartbeat, WatcherState
+    from runner_mcp.github_watcher import (
+        GitHubWatcherCycleOutcome,
+        GitHubWatcherCycleState,
+    )
+
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+
+    class FakeRuntime:
+        def quarantine_malformed_request_fail_closed(self, request_id: str):
+            calls.append(request_id)
+            return GitHubWatcherCycleOutcome(
+                state=GitHubWatcherCycleState.PROCESSED,
+                discovered_requests=3,
+                processed_requests=0,
+                reconciled_requests=2,
+                recovery_attention=0,
+                heartbeat=WatcherHeartbeat(
+                    state=WatcherState.HEALTHY,
+                    pending_requests=0,
+                    stale_requests=0,
+                    recovery_attention=0,
+                    oldest_pending_seconds=None,
+                ),
+                heartbeat_published=True,
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
+        lambda _config_dir: FakeRuntime(),
+    )
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: "QUARANTINE req-malformed-2",
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "github-watcher",
+            "quarantine",
+            "req-malformed-2",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert calls == ["req-malformed-2"]
+    assert "discovered=3 reconciled=2 attention=0" in captured.out
+    assert "No action was executed." in captured.out
+
+
 def test_github_watcher_cli_run_passes_bounded_intervals(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

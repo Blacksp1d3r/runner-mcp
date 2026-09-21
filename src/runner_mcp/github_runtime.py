@@ -20,8 +20,8 @@ from .github_mailbox import (
 )
 from .github_watcher import (
     GitHubMailboxWatcher,
-    GitHubWatcherCursorStore,
     GitHubRecoveryResolution,
+    GitHubWatcherCursorStore,
     GitHubWatcherCycleOutcome,
     GitHubWatcherCycleState,
 )

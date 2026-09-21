@@ -906,7 +906,7 @@ def test_autostart_cli_install_and_status_are_path_safe(
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    from runner_mcp.autostart import AutostartStatus, SERVER_UNIT
+    from runner_mcp.autostart import SERVER_UNIT, AutostartStatus
 
     paths, _ = install_config(tmp_path)
     captured_install = {}

@@ -5,6 +5,7 @@ import secrets
 from collections.abc import Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
+from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -53,6 +54,7 @@ class Settings:
     operator_stop_file: Path | None = None
     retention_confirmed: bool = True
     test_jobs_root: Path | None = None
+    playwright_browsers_path: Path | None = None
     max_test_jobs: int = 2
     max_queued_tests: int = 64
     mailbox_workers: int = 4
@@ -94,11 +96,25 @@ class Settings:
         if test_jobs_root_raw and not Path(test_jobs_root_raw).is_absolute():
             raise RuntimeError("RUNNER_MCP_TEST_JOBS_ROOT must be an absolute path")
 
+        playwright_browsers_path_raw = values.get(
+            "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH",
+            "",
+        ).strip()
+        if playwright_browsers_path_raw and not Path(
+            playwright_browsers_path_raw
+        ).is_absolute():
+            raise RuntimeError(
+                "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH must be an absolute path"
+            )
+
         database_backup_root_raw = values.get(
             "RUNNER_MCP_DATABASE_BACKUP_ROOT",
             "",
         ).strip()
-        if database_backup_root_raw and not Path(database_backup_root_raw).is_absolute():
+        if (
+            database_backup_root_raw
+            and not Path(database_backup_root_raw).is_absolute()
+        ):
             raise RuntimeError(
                 "RUNNER_MCP_DATABASE_BACKUP_ROOT must be an absolute path"
             )
@@ -107,7 +123,10 @@ class Settings:
             "RUNNER_MCP_DEPLOY_JOBS_ROOT",
             "",
         ).strip()
-        if deployment_jobs_root_raw and not Path(deployment_jobs_root_raw).is_absolute():
+        if (
+            deployment_jobs_root_raw
+            and not Path(deployment_jobs_root_raw).is_absolute()
+        ):
             raise RuntimeError("RUNNER_MCP_DEPLOY_JOBS_ROOT must be an absolute path")
 
         approval_root_raw = values.get("RUNNER_MCP_APPROVAL_ROOT", "").strip()
@@ -177,6 +196,11 @@ class Settings:
             operator_stop_file=Path(stop_file_raw) if stop_file_raw else None,
             retention_confirmed=retention_confirmed_raw == "true",
             test_jobs_root=Path(test_jobs_root_raw) if test_jobs_root_raw else None,
+            playwright_browsers_path=(
+                Path(playwright_browsers_path_raw)
+                if playwright_browsers_path_raw
+                else None
+            ),
             max_test_jobs=max_test_jobs,
             max_queued_tests=max_queued_tests,
             mailbox_workers=mailbox_workers,
@@ -263,6 +287,7 @@ def build_mcp(
             registry=registry,
             safety=safety,
             jobs_root=settings.test_jobs_root,
+            playwright_browsers_path=settings.playwright_browsers_path,
             max_concurrent_jobs=settings.max_test_jobs,
             max_queued_jobs=settings.max_queued_tests,
         )
@@ -320,9 +345,29 @@ def build_mcp(
 
     @mcp.tool()
     def runtime_status() -> dict:
-        """Return safe Runner MCP runtime/self-update status."""
+        """Return safe Runner MCP runtime state without private host metadata."""
+        status = safety.status()
         try:
-            result = self_update_manager.runtime_status()
+            package = version("runner-mcp")
+        except PackageNotFoundError:
+            package = "development"
+        result = {
+            "version": package,
+            "mode": status.mode,
+            "emergency_stop": status.stop_active,
+            "retention_confirmed": settings.retention_confirmed,
+            "projects": len(registry.projects),
+            "test_execution_configured": tests is not None,
+            "test_worker_limit": settings.max_test_jobs,
+            "test_queue_limit": settings.max_queued_tests,
+            "mailbox_worker_limit": settings.mailbox_workers,
+            "mailbox_inflight_limit": settings.mailbox_max_inflight,
+            "database_backups_configured": settings.database_backup_root is not None,
+            "deployment_jobs_configured": deployment_jobs is not None,
+            "approvals_configured": approval_manager is not None,
+        }
+        try:
+            result.update(self_update_manager.runtime_status())
         except SelfUpdateError as exc:
             audit.append(
                 AuditEvent(
@@ -342,6 +387,84 @@ def build_mcp(
                 None,
                 "authenticated-client",
                 "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def runtime_doctor() -> dict:
+        """Return bounded safe runtime checks without paths, endpoints or secrets."""
+        checks: list[dict[str, str]] = []
+
+        def add(name: str, state: str, detail: str) -> None:
+            checks.append({"name": name, "state": state, "detail": detail})
+
+        add(
+            "retention",
+            "pass" if settings.retention_confirmed else "fail",
+            "confirmed" if settings.retention_confirmed else "not_confirmed",
+        )
+        safety_state = safety.status()
+        add(
+            "emergency_stop",
+            "warn" if safety_state.stop_active else "pass",
+            "active" if safety_state.stop_active else "inactive",
+        )
+        resource = urlsplit(settings.resource_url)
+        transport_ok = resource.scheme == "https" or (resource.hostname or "").lower() in {
+            "localhost",
+            "127.0.0.1",
+            "::1",
+        }
+        add(
+            "resource_transport",
+            "pass" if transport_ok else "fail",
+            "secure_or_loopback" if transport_ok else "unsafe",
+        )
+
+        def storage_state(value: Path | None) -> tuple[str, str]:
+            if value is None:
+                return "warn", "not_configured"
+            try:
+                safe = (
+                    value.exists()
+                    and value.is_dir()
+                    and not value.is_symlink()
+                    and os.access(value, os.W_OK | os.X_OK)
+                )
+            except OSError:
+                safe = False
+            return (
+                ("pass", "available")
+                if safe
+                else ("fail", "unavailable_or_unsafe")
+            )
+
+        for name, value in (
+            ("test_storage", settings.test_jobs_root),
+            ("database_backup_storage", settings.database_backup_root),
+            ("deployment_job_storage", settings.deployment_jobs_root),
+            ("approval_storage", settings.approval_root),
+        ):
+            state, detail = storage_state(value)
+            add(name, state, detail)
+
+        failed = sum(item["state"] == "fail" for item in checks)
+        warned = sum(item["state"] == "warn" for item in checks)
+        result = {
+            "state": "fail" if failed else ("warn" if warned else "pass"),
+            "failed_checks": failed,
+            "warning_checks": warned,
+            "checks": checks,
+        }
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "runtime_doctor",
+                None,
+                "authenticated-client",
+                result["state"],
                 utc_timestamp(),
             )
         )

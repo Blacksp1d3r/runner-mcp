@@ -92,7 +92,7 @@ Formalize the proven GitHub to Runner MCP transport without turning it into a re
 - fixed allow-list for project inspection and predefined test execution;
 - unknown fields, duplicate keys and oversized requests fail closed;
 - no client-supplied shell, executable, path, environment, service or arbitrary MCP tool name;
-- migration, deployment, rollback and restore remain outside the mailbox allow-list;
+- migration, deployment and rollback execution are available only through their existing approval IDs; restore remains outside the mailbox allow-list;
 - watcher implementation stays private until deployment-specific parts are separated from reusable protocol logic.
 
 Next:
@@ -365,6 +365,30 @@ Implemented foundation:
 Capacity can later grow by increasing bounded worker settings or adding execution capacity behind the same request/job protocol. Protocol clients do not need to change.
 
 See `docs/CONCURRENCY.md` for defaults, scheduling, observability and Runner MCP versus GitHub Actions guidance.
+
+## Phase 3.8.9 — bounded operational bridge
+
+Extend the GitHub mailbox from inspection/tests into existing Runner MCP operational capabilities without introducing a generic remote shell or bypassing local safety controls.
+
+Implemented foundation:
+
+- bounded scrubbed test-log pages through `job_log`;
+- configured service alias listing/status/start/stop/restart, never arbitrary systemd unit names;
+- backup listing and on-demand configured PostgreSQL backups;
+- read-only migration status, deployment plans, release lists and rollback plans;
+- approval-plan request/status through opaque IDs;
+- migration/deployment/rollback execution only with an already-approved short-lived approval ID;
+- deployment and rollback job status through validated opaque job IDs;
+- per-action strict argument schemas, bounded list/log ranges and fixed loopback MCP tool mapping;
+- database restore, PITR, production actions, shell/argv/path/env injection and approval granting remain outside the mailbox authority.
+
+This phase is specifically intended to remove routine dependence on general-purpose remote-control software. GitHub remains a transport; Runner MCP remains the local authorization and execution boundary.
+
+Next:
+
+- prove the expanded bridge live against one read-only operation and one low-risk configured mutation;
+- add Runner MCP self-status/doctor/update/restart as a separate fixed self-operations capability rather than exposing package-manager or process-control primitives;
+- preserve separate human approval for migration/deploy/rollback.
 
 ## Phase 3.9 — public launch readiness
 

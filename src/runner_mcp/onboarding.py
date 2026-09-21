@@ -168,7 +168,7 @@ def render_env_file(
         "RUNNER_MCP_RESOURCE_URL": answers.resource_url,
         "RUNNER_MCP_PROJECTS_CONFIG": str(paths.projects_file),
         "RUNNER_MCP_AUDIT_LOG": str(paths.audit_log),
-        "RUNNER_MCP_RATE_LIMIT_PER_MINUTE": "60",
+        "RUNNER_MCP_RATE_LIMIT_PER_MINUTE": "600",
         "RUNNER_MCP_OPERATOR_STOP_FILE": str(paths.stop_file),
         "RUNNER_MCP_RETENTION_CONFIRMED": "true",
         "RUNNER_MCP_MIN_RELEASES_TO_KEEP": str(answers.min_releases_to_keep),
@@ -188,7 +188,11 @@ def render_env_file(
         "RUNNER_MCP_APPROVAL_TTL_SECONDS": "600",
     }
     for key, value in sorted((extra_values or {}).items()):
-        if key.startswith("RUNNER_MCP_DB_") or key in GITHUB_MAILBOX_ENV_KEYS:
+        if (
+            key.startswith("RUNNER_MCP_DB_")
+            or key in GITHUB_MAILBOX_ENV_KEYS
+            or key == "RUNNER_MCP_RATE_LIMIT_PER_MINUTE"
+        ):
             values[key] = value
     lines = [
         "# Private Runner MCP runtime configuration.",
@@ -283,6 +287,7 @@ def install_private_configuration(
             for key, value in existing.items()
             if key.startswith("RUNNER_MCP_DB_")
             or key in GITHUB_MAILBOX_ENV_KEYS
+            or key == "RUNNER_MCP_RATE_LIMIT_PER_MINUTE"
         }
         if not rotate_token:
             candidate = existing.get("RUNNER_MCP_BEARER_TOKEN", "")

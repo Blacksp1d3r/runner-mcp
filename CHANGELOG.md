@@ -38,7 +38,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - Fools2Tools project identity;
 - five-minute local demo, release checklist and launch-readiness documentation;
 - clean Ubuntu 24.04 / Python 3.12 CI coverage for the documented five-minute demo;
-- short per-job private test temporary directories that avoid Unix-domain socket path exhaustion while preserving restrictive permissions and cleanup.
+- short per-job private test temporary directories that avoid Unix-domain socket path exhaustion while preserving restrictive permissions and cleanup;
+- bounded operational GitHub mailbox actions for scrubbed test logs, configured service control, backups, migration/deployment/rollback planning and approval-bound high-risk execution.
 
 ### Fixed
 
@@ -54,6 +55,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - notification delivery is separated from task execution so a delivery retry cannot rerun the task;
 - ambiguous or missing-result watcher recovery states do not automatically re-execute operational actions;
 - malformed historical requests can be quarantined only after all sibling backlog requests are verified durable and the request head is unchanged;
+- mailbox operational actions remain fixed-schema: no arbitrary shell, argv, path, environment, systemd unit, MCP tool, approval grant, restore or production mutation is accepted;
 - result persistence/finalization failures do not authorize bridge action replay;
 - GitHub mailbox transport failures are classified and kept inside the persistence/recovery boundary;
 - watcher restarts reuse cursor/replay state and never treat process restart as permission to replay actions;

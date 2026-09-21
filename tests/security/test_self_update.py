@@ -90,7 +90,8 @@ def make_manager(
         tests=tests or FakeTests(),
         source=source or FakeSource(),
         installer_runner=installer_runner,
-        server_exit=lambda code: exits.append(code),
+        resource_url="http://127.0.0.1:8000/mcp",
+        server_reexec=lambda: exits.append(75),
         restart_delay_seconds=1,
     )
     return manager, project, exits
@@ -239,3 +240,23 @@ def test_restart_marker_rejects_symlink(tmp_path: Path) -> None:
 
     with pytest.raises(SelfUpdateError, match="unsafe"):
         consume_restart_marker(config, "github-watcher")
+
+
+def test_self_update_requires_safe_loopback_resource(tmp_path: Path) -> None:
+    project = tmp_path / "project-loopback"
+    registry = make_registry(project)
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "stop-loopback",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+    with pytest.raises(SelfUpdateError, match="loopback"):
+        SelfUpdateManager(
+            config_dir=tmp_path / "config-loopback",
+            registry=registry,
+            safety=guard,
+            tests=FakeTests(),
+            source=FakeSource(),
+            resource_url="https://example.invalid/mcp",
+            server_reexec=lambda: None,
+        )

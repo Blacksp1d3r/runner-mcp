@@ -600,26 +600,35 @@ class SelfUpdateManager:
                 current_step="sync",
             )
             self.source.sync_project_main_commit(SELF_PROJECT, job.commit)
+            if self.tests is None:
+                raise SelfUpdateError("Runner MCP test runner is unavailable")
 
-            self._set_job(
-                job_id,
-                state=SelfUpdateJobState.TESTING,
-                current_step="lint",
-            )
-            self._wait_for_profile("lint")
-            self._set_job(
-                job_id,
-                state=SelfUpdateJobState.TESTING,
-                current_step="unit",
-            )
-            self._wait_for_profile("unit")
+            with self.tests.project_source_guard(SELF_PROJECT):
+                config = self._project_config()
+                root = config.root.resolve(strict=True)
+                source_state = clean_head(root)
+                if source_state["commit"] != job.commit:
+                    raise SelfUpdateError("Self-update source changed before validation")
 
-            self._set_job(
-                job_id,
-                state=SelfUpdateJobState.INSTALLING,
-                current_step="install",
-            )
-            self._install_from_checked_source(job.commit)
+                self._set_job(
+                    job_id,
+                    state=SelfUpdateJobState.TESTING,
+                    current_step="lint",
+                )
+                self._wait_for_profile("lint")
+                self._set_job(
+                    job_id,
+                    state=SelfUpdateJobState.TESTING,
+                    current_step="unit",
+                )
+                self._wait_for_profile("unit")
+
+                self._set_job(
+                    job_id,
+                    state=SelfUpdateJobState.INSTALLING,
+                    current_step="install",
+                )
+                self._install_from_checked_source(job.commit)
             self._record_installed_commit(job.commit)
             _write_restart_marker(self.config_dir, "github-watcher", job.commit)
             _write_restart_marker(self.config_dir, "completion-watcher", job.commit)

@@ -144,8 +144,13 @@ class TestRunner:
         if playwright_browsers_path is not None:
             if not playwright_browsers_path.is_absolute():
                 raise TestRunnerError("Playwright browser path must be absolute")
-            if playwright_browsers_path.exists() and playwright_browsers_path.is_symlink():
-                raise TestRunnerError("Playwright browser path must not be a symlink")
+            if (
+                playwright_browsers_path.exists()
+                and playwright_browsers_path.is_symlink()
+            ):
+                raise TestRunnerError(
+                    "Playwright browser path must not be a symlink"
+                )
             try:
                 resolved_browser_path = playwright_browsers_path.resolve(strict=True)
             except OSError as exc:

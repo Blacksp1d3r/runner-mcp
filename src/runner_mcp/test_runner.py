@@ -117,6 +117,7 @@ class TestRunner:
         registry: ProjectRegistry,
         safety: OperatorSafetyGuard,
         jobs_root: Path,
+        playwright_browsers_path: Path | None = None,
         max_concurrent_jobs: int = 2,
         max_queued_jobs: int = 64,
         poll_interval_seconds: float = 0.1,
@@ -139,6 +140,19 @@ class TestRunner:
 
         self.registry = registry
         self.safety = safety
+        self.playwright_browsers_path: Path | None = None
+        if playwright_browsers_path is not None:
+            if not playwright_browsers_path.is_absolute():
+                raise TestRunnerError("Playwright browser path must be absolute")
+            if playwright_browsers_path.exists() and playwright_browsers_path.is_symlink():
+                raise TestRunnerError("Playwright browser path must not be a symlink")
+            try:
+                resolved_browser_path = playwright_browsers_path.resolve(strict=True)
+            except OSError as exc:
+                raise TestRunnerError("Playwright browser runtime is unavailable") from exc
+            if not resolved_browser_path.is_dir():
+                raise TestRunnerError("Playwright browser runtime is unavailable")
+            self.playwright_browsers_path = resolved_browser_path
         self.max_concurrent_jobs = max_concurrent_jobs
         self.max_queued_jobs = max_queued_jobs
         self.poll_interval_seconds = poll_interval_seconds
@@ -317,6 +331,7 @@ class TestRunner:
                 "name": name,
                 "timeout_seconds": profile.timeout_seconds,
                 "max_log_bytes": profile.max_log_bytes,
+                "runtime": profile.runtime,
                 "parallel_safe": profile.parallel_safe,
             }
             for name, profile in sorted(profiles.items())
@@ -727,6 +742,11 @@ class TestRunner:
             "PYTHONDONTWRITEBYTECODE": "1",
         }
         sensitive_values: list[str] = []
+        if profile.runtime == "playwright":
+            if self.playwright_browsers_path is None:
+                raise TestRunnerError("Playwright browser runtime is not configured")
+            env["PLAYWRIGHT_BROWSERS_PATH"] = str(self.playwright_browsers_path)
+
         for name in profile.env_passthrough:
             value = os.environ.get(name)
             if value is None:
@@ -848,6 +868,11 @@ class TestRunner:
                 str(self.jobs_root),
                 str(executable),
                 str(executable.parent),
+                *(
+                    [str(self.playwright_browsers_path)]
+                    if self.playwright_browsers_path is not None
+                    else []
+                ),
                 *[
                     value
                     for value in profile.argv[1:]

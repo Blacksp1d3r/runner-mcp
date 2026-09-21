@@ -36,6 +36,14 @@ class BridgeExecutor(Protocol):
 
     def safety_status(self) -> Any: ...
 
+    def runtime_status(self) -> Any: ...
+
+    def runtime_doctor(self) -> Any: ...
+
+    def self_update(self, commit: str) -> Any: ...
+
+    def self_update_status(self, job_id: str) -> Any: ...
+
     def project_status(self, project: str) -> Any: ...
 
     def project_capabilities(self, project: str) -> Any: ...
@@ -91,12 +99,6 @@ class BridgeExecutor(Protocol):
     def rollback_release(self, project: str, approval_id: str) -> Any: ...
 
     def rollback_status(self, job_id: str) -> Any: ...
-
-    def runtime_status(self) -> Any: ...
-
-    def self_update(self, commit: str) -> Any: ...
-
-    def self_update_status(self, job_id: str) -> Any: ...
 
 
 class BridgeResultSink(Protocol):
@@ -220,6 +222,20 @@ class BridgeProcessor:
 
         if request.action == BridgeAction.SAFETY_STATUS:
             return self._executor.safety_status()
+
+        if request.action == BridgeAction.RUNTIME_STATUS:
+            return self._executor.runtime_status()
+
+        if request.action == BridgeAction.RUNTIME_DOCTOR:
+            return self._executor.runtime_doctor()
+
+        if request.action == BridgeAction.SELF_UPDATE:
+            assert request.commit is not None
+            return self._executor.self_update(request.commit)
+
+        if request.action == BridgeAction.SELF_UPDATE_STATUS:
+            assert request.job_id is not None
+            return self._executor.self_update_status(request.job_id)
 
         if request.action == BridgeAction.PROJECT_STATUS:
             assert request.project is not None
@@ -365,17 +381,6 @@ class BridgeProcessor:
         if request.action == BridgeAction.ROLLBACK_STATUS:
             assert request.job_id is not None
             return self._executor.rollback_status(request.job_id)
-
-        if request.action == BridgeAction.RUNTIME_STATUS:
-            return self._executor.runtime_status()
-
-        if request.action == BridgeAction.SELF_UPDATE:
-            assert request.commit is not None
-            return self._executor.self_update(request.commit)
-
-        if request.action == BridgeAction.SELF_UPDATE_STATUS:
-            assert request.job_id is not None
-            return self._executor.self_update_status(request.job_id)
 
         raise BridgeProtocolError("unsupported bridge action")
 

@@ -1,3 +1,9 @@
+## Controlled multi-project concurrency — 2026-09-21
+
+Current scale work adds bounded mailbox concurrency, fair per-project persistent test queues, immediate test job IDs, per-project and per-profile parallel-safety controls, bounded backpressure, and safe queue/worker/job observability. The default remains conservative: two global test workers, one test per project unless explicitly opted into parallel-safe execution, and bounded mailbox workers/in-flight work. High-risk mailbox actions remain excluded.
+
+The implementation is being consolidated on the `scale-fair-concurrency` branch/PR. Public documentation contains no deployment-specific infrastructure values.
+
 # Current state
 
 Date: 2026-09-20

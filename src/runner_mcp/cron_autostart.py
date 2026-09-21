@@ -34,6 +34,17 @@ class CronComponentStatus:
         }
 
 
+def cron_available() -> bool:
+    candidate = shutil.which("crontab")
+    if not candidate:
+        return False
+    try:
+        resolved = Path(candidate).resolve(strict=True)
+    except OSError:
+        return False
+    return resolved.is_absolute() and resolved.is_file()
+
+
 def _crontab_executable() -> str:
     candidate = shutil.which("crontab")
     if not candidate:

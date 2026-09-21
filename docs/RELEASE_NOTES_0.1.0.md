@@ -53,7 +53,7 @@ Operators testing development snapshots should nevertheless review the following
 - production mutations remain disabled;
 - database restore and PostgreSQL PITR/WAL orchestration are not implemented;
 - automated backup/release retention pruning is not implemented;
-- guided private-tunnel/TLS onboarding is not yet one-click;
+- Runner MCP guides private tunnel/reverse-proxy/VPN choices but deliberately leaves third-party provisioning, credentials and host network policy external;
 - managed-cron removal stops future supervision but deliberately does not blindly terminate an already-running component;
 - the optional completion notifier needs a private GitHub destination and credential;
 - public launch/registry/community publication remains a separate human-controlled step.

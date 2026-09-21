@@ -1289,7 +1289,7 @@ def build_parser() -> argparse.ArgumentParser:
     autostart_install.set_defaults(func=cmd_autostart)
     autostart_remove = autostart_sub.add_parser(
         "remove",
-        help="Stop and remove only autostart state managed by Runner MCP.",
+        help="Remove only autostart scheduling/state managed by Runner MCP.",
     )
     autostart_remove.set_defaults(func=cmd_autostart)
     autostart_cron_run = autostart_sub.add_parser(

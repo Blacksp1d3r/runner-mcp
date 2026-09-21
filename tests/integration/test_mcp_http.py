@@ -278,6 +278,7 @@ def test_mcp_controlled_test_job_lifecycle(tmp_path: Path) -> None:
                 "name": "quick",
                 "timeout_seconds": 5,
                 "max_log_bytes": 4096,
+                "parallel_safe": False,
             }
         ]
         assert sys.executable not in profiles.text
@@ -322,7 +323,7 @@ def test_mcp_controlled_test_job_lifecycle(tmp_path: Path) -> None:
                 },
             )
             status_payload = parse_tool_json(status)
-            if status_payload["status"] not in {"queued", "running"}:
+            if status_payload["status"] not in {"queued", "claimed", "running"}:
                 break
             request_id += 1
             time.sleep(0.02)

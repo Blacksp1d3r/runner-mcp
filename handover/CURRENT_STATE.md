@@ -4,13 +4,21 @@ Bounded fair multi-project concurrency is merged and validated. Runner MCP now s
 
 The authenticated MCP request limit was also raised from 60 to a still-bounded 600 requests per minute so concurrent mailbox workers and normal status polling do not hit a transport bottleneck before worker or queue capacity. Test-worker, project-lock and queue limits remain independent safety controls.
 
+## Shared watcher migration proof — 2026-09-21
+
+A private deployment has been migrated from the pilot poller to the shared `runner-mcp github-watcher run` runtime. The watcher was explicitly bootstrapped at the current request head, so historical mailbox entries were not replayed. After fresh requests and a package restart, the private cursor matched the request head, the replay ledger contained only completed records, and the heartbeat reported healthy with zero recovery attention.
+
+Live protocol-v1 checks completed for `project_status`, `project_capabilities`, `list_test_profiles`, `queue_status` and `worker_status`. A real predefined test request was accepted asynchronously and later reached a terminal passed state through `job_status`. During that proof, the MCP SDK's multi-item encoding for list-returning tools exposed a compatibility gap; the loopback executor was hardened to accept bounded object-only multi-item list results while scalar tools remain fail-closed.
+
+The legacy private poller is disabled in that deployment. Completion-notification transport remains an independent capacity concern and is not part of mailbox execution authority.
+
 # Current state
 
 Date: 2026-09-21
 
 ## Status
 
-Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phases 3.8.1 through 3.8.7 add completion events, restart safety, the transport-neutral processor, hardened GitHub transport, incremental watcher coordination, the loopback MCP executor and private-config watcher runtime. Phase 3.8.8 adds bounded fair multi-project concurrency. The remaining operational step is migrating the existing private pilot watcher to the shared runtime and proving restart/reconciliation end to end. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
+Runner MCP Phases 0 through 9 and Phase 3.9 launch-readiness are merged to main. Phase 3.7 formalizes the GitHub mailbox transport; Phase 3.8 adds bounded results and replay protection. Phases 3.8.1 through 3.8.7 add completion events, restart safety, the transport-neutral processor, hardened GitHub transport, incremental watcher coordination, the loopback MCP executor and private-config watcher runtime. Phase 3.8.8 adds bounded fair multi-project concurrency. The shared watcher runtime has now also been proven in a private deployment with explicit bootstrap, restart-safe cursor/replay recovery, bounded concurrent request handling, strict result publication and asynchronous test-job follow-up. GitHub remains the source-code surface, while Runner MCP remains the local execution and safety boundary.
 
 Phase 0:
 - repository structure defined;
@@ -371,7 +379,7 @@ Current validation is green:
 
 ## Next steps
 
-Migrate the private pilot watcher to `runner-mcp github-watcher run` once its private GitHub credential is configured. Bootstrap explicitly at the current request head before enabling continuous polling. Prove fresh concurrent requests, strict result publication, completion notification and a restart/reconciliation cycle without replaying completed work. Remove obsolete private pilot execution logic only after that proof. Afterward, verify the five-minute demo from a clean Linux environment and continue service/tunnel onboarding.
+The shared watcher migration and restart/reconciliation proof are complete. Keep the obsolete pilot execution path disabled, finish the independent completion-notification proof where notification transport capacity is available, verify the five-minute demo from a clean Linux environment, and continue service/tunnel onboarding.
 
 Before activating real project test/service/database/deployment profiles, create the private runtime configuration and verify Linux-account, service-health and PostgreSQL recovery boundaries on the actual host.
 

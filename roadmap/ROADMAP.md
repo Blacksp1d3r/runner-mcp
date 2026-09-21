@@ -138,20 +138,20 @@ Implemented public contract:
 - notification delivery is explicitly separate from task execution: delivery retries may never rerun the operational action;
 - mailbox permissions and action allow-lists are unchanged.
 
-Pilot transport state:
+Implemented notification runtime and private proof:
 
-- project-local CI completion notifications are proven for success, failure and cancellation;
-- a private mailbox notification workflow exists for completed `run_tests` results;
-- the private mailbox notifier currently depends on a repository-specific self-hosted Actions runner, so delivery jobs queue when that runner is unavailable;
-- the central completion path therefore still needs a fresh end-to-end proof after the notification transport is activated.
+- an optional private GitHub-issue notifier observes persisted terminal test jobs without calling the execution path;
+- notifier bootstrap deliberately skips historical completions;
+- deterministic event IDs are used both in a private 0600 delivery ledger and as remote notification markers;
+- existing remote markers are reconciled instead of posted again;
+- notification failures remain retryable independently from task execution;
+- one fresh predefined test job was proven end to end to produce exactly one user-facing notification, and a repeated notification cycle produced no duplicate;
+- the built-in notifier no longer requires a repository-specific self-hosted Actions runner.
 
 Next:
 
-- make the private notifier use the deterministic event ID as an idempotency marker;
-- activate a notification transport that does not require widening Runner MCP execution authority;
-- prove that one fresh `run_tests` result produces exactly one user-facing completion notification;
-- keep heartbeat/stale-request recovery as a separate resilience concern;
-- map other existing asynchronous Runner MCP jobs to the same completion-event contract before adding any new mailbox actions.
+- keep heartbeat/stale-request recovery separate from notification delivery;
+- map other existing asynchronous Runner MCP job classes to the same completion-delivery runtime only when their persisted terminal metadata can be consumed without widening execution authority.
 
 ## Phase 3.8.2 — watcher resilience and restart recovery
 
@@ -379,7 +379,7 @@ Implemented launch-readiness foundation:
 
 Remaining before a broader launch:
 
-- verify the five-minute demo from a clean supported Linux environment;
+- clean Ubuntu 24.04 / Python 3.12 CI now exercises the documented five-minute demo end to end, including installation, setup, doctor, predefined test-profile configuration, emergency stop and loopback health check;
 - create the first tagged alpha release with exact release notes;
 - set the public GitHub description/topics to the prepared values;
 - prepare an MCP ecosystem/registry submission only when packaging requirements are met;

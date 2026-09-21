@@ -559,7 +559,7 @@ def test_github_watcher_cli_bootstrap_and_once_are_safe(
     runtime = FakeRuntime()
     monkeypatch.setattr(
         "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
-        lambda _config_dir: runtime,
+        lambda _config_dir, **_kwargs: runtime,
     )
 
     assert main(
@@ -625,7 +625,7 @@ def test_github_watcher_cli_once_returns_nonzero_for_recovery(
 
     monkeypatch.setattr(
         "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
-        lambda _config_dir: FakeRuntime(),
+        lambda _config_dir, **_kwargs: FakeRuntime(),
     )
 
     result = main(
@@ -666,7 +666,7 @@ def test_github_watcher_cli_run_passes_bounded_intervals(
     runtime = FakeRuntime()
     monkeypatch.setattr(
         "runner_mcp.cli.GitHubWatcherRuntime.from_private_config",
-        lambda _config_dir: runtime,
+        lambda _config_dir, **_kwargs: runtime,
     )
 
     result = main(

@@ -39,6 +39,7 @@ from .config_manager import (
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
+    DEFAULT_WATCHER_WORKERS,
     GitHubWatcherRuntime,
 )
 from .onboarding import (
@@ -683,7 +684,8 @@ def cmd_github_mailbox(args: argparse.Namespace) -> int:
 
 def cmd_github_watcher(args: argparse.Namespace) -> int:
     runtime = GitHubWatcherRuntime.from_private_config(
-        _config_dir(args.config_dir)
+        _config_dir(args.config_dir),
+        max_workers=getattr(args, "workers", DEFAULT_WATCHER_WORKERS),
     )
 
     if args.github_watcher_action == "bootstrap":
@@ -1060,15 +1062,33 @@ def build_parser() -> argparse.ArgumentParser:
         "bootstrap",
         help="Start after the current request head without replaying history.",
     )
+    github_watcher_bootstrap.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WATCHER_WORKERS,
+        help="Bounded number of mailbox request workers.",
+    )
     github_watcher_bootstrap.set_defaults(func=cmd_github_watcher)
     github_watcher_once = github_watcher_sub.add_parser(
         "once",
         help="Process one incremental mailbox cycle.",
     )
+    github_watcher_once.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WATCHER_WORKERS,
+        help="Bounded number of mailbox request workers.",
+    )
     github_watcher_once.set_defaults(func=cmd_github_watcher)
     github_watcher_run = github_watcher_sub.add_parser(
         "run",
         help="Continuously poll the mailbox with a slower heartbeat cadence.",
+    )
+    github_watcher_run.add_argument(
+        "--workers",
+        type=int,
+        default=DEFAULT_WATCHER_WORKERS,
+        help="Bounded number of mailbox request workers.",
     )
     github_watcher_run.add_argument(
         "--poll-seconds",

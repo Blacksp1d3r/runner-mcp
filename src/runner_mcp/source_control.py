@@ -14,6 +14,14 @@ class SourceControlError(RuntimeError):
     pass
 
 
+class _NullGuard:
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc, tb) -> None:
+        return None
+
+
 _COMMIT_RE = re.compile(r"^[0-9a-fA-F]{40}$")
 _SCP_GITHUB_RE = re.compile(
     r"^git@github\.com:(?P<repository>[A-Za-z0-9][A-Za-z0-9-]*/[A-Za-z0-9_.-]+?)(?:\.git)?$"
@@ -177,65 +185,73 @@ class SourceSynchronizer:
             ActionClass.TEST,
             environment=config.environment,
         )
-        if self.tests is not None and self.tests.project_has_work(project):
-            raise SourceControlError(
-                "Project source sync is blocked while tests are queued or active"
-            )
-
-        root = _safe_root(config.root)
-        if (root / ".gitmodules").exists():
-            raise SourceControlError(
-                "Project source sync does not support submodule worktrees"
-            )
-
-        before = clean_head(root)["commit"]
-        assert isinstance(before, str)
-        _require_configured_origin(root, config.repository)
-
-        _run_git(
-            root,
-            ["fetch", "--prune", "--no-tags", "origin"],
-            timeout=120,
-            network=True,
+        source_guard = (
+            self.tests.project_source_guard(project)
+            if self.tests is not None
+            else _NullGuard()
         )
-        resolved_commit = _run_git(
-            root,
-            ["rev-parse", "--verify", f"{commit}^{{commit}}"],
-        ).lower()
-        if resolved_commit != commit.lower():
-            raise SourceControlError("Requested commit did not resolve exactly")
+        with source_guard:
+            if self.tests is not None and self.tests.project_has_work(project):
+                raise SourceControlError(
+                    "Project source sync is blocked while tests are queued or active"
+                )
 
-        containing_refs = _run_git(
-            root,
-            [
-                "for-each-ref",
-                "--format=%(refname)",
-                f"--contains={resolved_commit}",
-                "refs/remotes/origin/",
-            ],
-        ).splitlines()
-        if not any(
-            ref.startswith("refs/remotes/origin/")
-            and ref != "refs/remotes/origin/HEAD"
-            for ref in containing_refs
-        ):
-            raise SourceControlError(
-                "Requested commit is not reachable from the configured origin"
-            )
+            root = _safe_root(config.root)
+            if (root / ".gitmodules").exists():
+                raise SourceControlError(
+                    "Project source sync does not support submodule worktrees"
+                )
 
-        if before != resolved_commit:
+            before = clean_head(root)["commit"]
+            assert isinstance(before, str)
+            _require_configured_origin(root, config.repository)
+
             _run_git(
                 root,
-                ["checkout", "--detach", "--quiet", resolved_commit],
-                timeout=60,
+                ["fetch", "--prune", "--no-tags", "origin"],
+                timeout=120,
+                network=True,
             )
+            resolved_commit = _run_git(
+                root,
+                ["rev-parse", "--verify", f"{commit}^{{commit}}"],
+            ).lower()
+            if resolved_commit != commit.lower():
+                raise SourceControlError("Requested commit did not resolve exactly")
 
-        after = clean_head(root)["commit"]
-        if after != resolved_commit:
-            raise SourceControlError("Project checkout did not reach requested commit")
+            containing_refs = _run_git(
+                root,
+                [
+                    "for-each-ref",
+                    "--format=%(refname)",
+                    f"--contains={resolved_commit}",
+                    "refs/remotes/origin/",
+                ],
+            ).splitlines()
+            if not any(
+                ref.startswith("refs/remotes/origin/")
+                and ref != "refs/remotes/origin/HEAD"
+                for ref in containing_refs
+            ):
+                raise SourceControlError(
+                    "Requested commit is not reachable from the configured origin"
+                )
 
-        return {
-            "project": project,
-            "commit": resolved_commit,
-            "changed": before != resolved_commit,
-        }
+            if before != resolved_commit:
+                _run_git(
+                    root,
+                    ["checkout", "--detach", "--quiet", resolved_commit],
+                    timeout=60,
+                )
+
+            after = clean_head(root)["commit"]
+            if after != resolved_commit:
+                raise SourceControlError(
+                    "Project checkout did not reach requested commit"
+                )
+
+            return {
+                "project": project,
+                "commit": resolved_commit,
+                "changed": before != resolved_commit,
+            }

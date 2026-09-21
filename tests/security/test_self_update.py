@@ -1,4 +1,5 @@
 import subprocess
+import threading
 import time
 from pathlib import Path
 
@@ -29,6 +30,7 @@ class FakeTests:
         self.fail_profile = fail_profile
         self.started: list[str] = []
         self.jobs: dict[str, str] = {}
+        self.source_lock = threading.Lock()
 
     def list_profiles(self, project: str):
         assert project == "runner-mcp"
@@ -36,6 +38,10 @@ class FakeTests:
             {"name": "lint", "timeout_seconds": 120},
             {"name": "unit", "timeout_seconds": 300},
         ]
+
+    def project_source_guard(self, project: str):
+        assert project == "runner-mcp"
+        return self.source_lock
 
     def start_test(self, project: str, suite: str):
         assert project == "runner-mcp"
@@ -172,12 +178,13 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
 ) -> None:
     installs: list[tuple[list[str], dict]] = []
 
-    def installer(command, **kwargs):
-        installs.append((list(command), dict(kwargs)))
-        return subprocess.CompletedProcess(command, 0, "", "")
-
     source = FakeSource()
     tests = FakeTests()
+
+    def installer(command, **kwargs):
+        assert tests.source_lock.locked()
+        installs.append((list(command), dict(kwargs)))
+        return subprocess.CompletedProcess(command, 0, "", "")
     manager, root, _exits = make_manager(
         tmp_path,
         tests=tests,

@@ -3,6 +3,7 @@ from __future__ import annotations
 import base64
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -342,6 +343,7 @@ class GitHubMailboxTransport:
     ) -> None:
         self._config = config
         self._session = session
+        self._write_lock = threading.Lock()
 
     def list_request_ids(self) -> list[str]:
         raw = self._session.get_json(
@@ -516,28 +518,29 @@ class GitHubMailboxTransport:
 
         path = f"{RESULTS_PATH}/{request_id}.json"
         try:
-            existing = self._fetch_file(
-                path,
-                ref=self._config.result_ref,
-                max_bytes=MAX_BRIDGE_RESULT_BYTES,
-                allow_not_found=True,
-            )
-            if existing is not None:
-                if existing.content == encoded:
-                    return
-                raise GitHubMailboxTransportError(
-                    "result already exists with different content",
-                    kind=TransportFailureKind.INVALID_RESPONSE,
+            with self._write_lock:
+                existing = self._fetch_file(
+                    path,
+                    ref=self._config.result_ref,
+                    max_bytes=MAX_BRIDGE_RESULT_BYTES,
+                    allow_not_found=True,
                 )
+                if existing is not None:
+                    if existing.content == encoded:
+                        return
+                    raise GitHubMailboxTransportError(
+                        "result already exists with different content",
+                        kind=TransportFailureKind.INVALID_RESPONSE,
+                    )
 
-            self._session.put_json(
-                self._contents_path(path),
-                payload={
-                    "message": "runner: publish bridge result",
-                    "content": base64.b64encode(encoded).decode("ascii"),
-                    "branch": self._config.result_ref,
-                },
-            )
+                self._session.put_json(
+                    self._contents_path(path),
+                    payload={
+                        "message": "runner: publish bridge result",
+                        "content": base64.b64encode(encoded).decode("ascii"),
+                        "branch": self._config.result_ref,
+                    },
+                )
         except GitHubMailboxTransportError as exc:
             raise GitHubMailboxResultSinkError(
                 "GitHub mailbox result persistence failed",
@@ -550,24 +553,25 @@ class GitHubMailboxTransport:
             raise BridgeResilienceError("watcher heartbeat exceeds size limit")
         parse_watcher_heartbeat(heartbeat_json)
 
-        existing = self._fetch_file(
-            HEARTBEAT_PATH,
-            ref=self._config.result_ref,
-            max_bytes=MAX_HEARTBEAT_BYTES,
-            allow_not_found=True,
-        )
-        payload: dict[str, Any] = {
-            "message": "runner: publish watcher heartbeat",
-            "content": base64.b64encode(encoded).decode("ascii"),
-            "branch": self._config.result_ref,
-        }
-        if existing is not None:
-            payload["sha"] = existing.sha
+        with self._write_lock:
+            existing = self._fetch_file(
+                HEARTBEAT_PATH,
+                ref=self._config.result_ref,
+                max_bytes=MAX_HEARTBEAT_BYTES,
+                allow_not_found=True,
+            )
+            payload: dict[str, Any] = {
+                "message": "runner: publish watcher heartbeat",
+                "content": base64.b64encode(encoded).decode("ascii"),
+                "branch": self._config.result_ref,
+            }
+            if existing is not None:
+                payload["sha"] = existing.sha
 
-        self._session.put_json(
-            self._contents_path(HEARTBEAT_PATH),
-            payload=payload,
-        )
+            self._session.put_json(
+                self._contents_path(HEARTBEAT_PATH),
+                payload=payload,
+            )
 
     def _fetch_file(
         self,

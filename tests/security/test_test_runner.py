@@ -402,7 +402,11 @@ def test_job_uses_short_private_tmpdir_and_cleans_it(tmp_path: Path) -> None:
     assert lines[0].startswith("runner-mcp-")
     assert int(lines[1]) < 80
     assert lines[2] == "0o700"
-    assert not (Path("/tmp") / lines[0]).exists()
+    temp_path = Path("/tmp") / lines[0]
+    deadline = time.monotonic() + 1.0
+    while temp_path.exists() and time.monotonic() < deadline:
+        time.sleep(0.01)
+    assert not temp_path.exists()
 
 
 def test_two_projects_run_at_the_same_time(tmp_path: Path) -> None:

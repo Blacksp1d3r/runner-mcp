@@ -42,7 +42,15 @@ class BridgeExecutor(Protocol):
 
     def list_test_profiles(self, project: str) -> Any: ...
 
-    def run_tests_to_completion(self, project: str, suite: str) -> Any: ...
+    def run_tests(self, project: str, suite: str) -> Any: ...
+
+    def queue_status(self) -> Any: ...
+
+    def worker_status(self) -> Any: ...
+
+    def job_status(self, job_id: str) -> Any: ...
+
+    def cancel_job(self, job_id: str) -> Any: ...
 
 
 class BridgeResultSink(Protocol):
@@ -182,10 +190,24 @@ class BridgeProcessor:
         if request.action == BridgeAction.RUN_TESTS:
             assert request.project is not None
             assert request.profile is not None
-            return self._executor.run_tests_to_completion(
+            return self._executor.run_tests(
                 request.project,
                 request.profile,
             )
+
+        if request.action == BridgeAction.QUEUE_STATUS:
+            return self._executor.queue_status()
+
+        if request.action == BridgeAction.WORKER_STATUS:
+            return self._executor.worker_status()
+
+        if request.action == BridgeAction.JOB_STATUS:
+            assert request.job_id is not None
+            return self._executor.job_status(request.job_id)
+
+        if request.action == BridgeAction.CANCEL_JOB:
+            assert request.job_id is not None
+            return self._executor.cancel_job(request.job_id)
 
         raise BridgeProtocolError("unsupported bridge action")
 

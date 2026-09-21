@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+import threading
 import time
 import urllib.error
 import urllib.parse
@@ -327,34 +328,41 @@ class LocalMCPBridgeExecutor:
 
     def __init__(self, config: LocalMCPConfig) -> None:
         self._config = config
-        self._client = LocalMCPClient(config)
+        self._local = threading.local()
+
+    def _client(self) -> LocalMCPClient:
+        client = getattr(self._local, "client", None)
+        if client is None:
+            client = LocalMCPClient(self._config)
+            self._local.client = client
+        return client
 
     def list_projects(self) -> Any:
-        return self._client._call_tool("list_projects", {})
+        return self._client()._call_tool("list_projects", {})
 
     def safety_status(self) -> Any:
-        return self._client._call_tool("safety_status", {})
+        return self._client()._call_tool("safety_status", {})
 
     def project_status(self, project: str) -> Any:
-        return self._client._call_tool(
+        return self._client()._call_tool(
             "project_status",
             {"project": project},
         )
 
     def project_capabilities(self, project: str) -> Any:
-        return self._client._call_tool(
+        return self._client()._call_tool(
             "project_capabilities",
             {"project": project},
         )
 
     def list_test_profiles(self, project: str) -> Any:
-        return self._client._call_tool(
+        return self._client()._call_tool(
             "list_test_profiles",
             {"project": project},
         )
 
     def run_tests(self, project: str, suite: str) -> Any:
-        started = self._client._call_tool(
+        started = self._client()._call_tool(
             "run_tests",
             {"project": project, "suite": suite},
         )
@@ -379,20 +387,20 @@ class LocalMCPBridgeExecutor:
         return started
 
     def queue_status(self) -> Any:
-        return self._client._call_tool("queue_status", {})
+        return self._client()._call_tool("queue_status", {})
 
     def worker_status(self) -> Any:
-        return self._client._call_tool("worker_status", {})
+        return self._client()._call_tool("worker_status", {})
 
     def job_status(self, job_id: str) -> Any:
         if not _JOB_ID_RE.fullmatch(job_id):
             raise BridgeExecutionAdapterError("Invalid test job identifier")
-        return self._client._call_tool("job_status", {"job_id": job_id})
+        return self._client()._call_tool("job_status", {"job_id": job_id})
 
     def cancel_job(self, job_id: str) -> Any:
         if not _JOB_ID_RE.fullmatch(job_id):
             raise BridgeExecutionAdapterError("Invalid test job identifier")
-        return self._client._call_tool("cancel_job", {"job_id": job_id})
+        return self._client()._call_tool("cancel_job", {"job_id": job_id})
 
     def run_tests_to_completion(self, project: str, suite: str) -> Any:
         """Compatibility helper for local callers; mailbox dispatch does not use it."""

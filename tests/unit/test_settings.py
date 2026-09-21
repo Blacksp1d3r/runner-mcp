@@ -46,7 +46,7 @@ def test_runtime_defaults_keep_test_execution_unconfigured(
     settings = Settings.from_env()
 
     assert settings.test_jobs_root is None
-    assert settings.max_test_jobs == 4
+    assert settings.max_test_jobs == 2
     assert settings.max_queued_tests == 64
     assert settings.mailbox_workers == 4
     assert settings.mailbox_max_inflight == 32

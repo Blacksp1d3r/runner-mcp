@@ -62,7 +62,7 @@ class SetupAnswers:
     min_release_age_days: int = 90
     pitr_retention_days: int = 30
     pre_migration_backup_days: int = 180
-    max_test_jobs: int = 4
+    max_test_jobs: int = 2
     max_queued_tests: int = 64
 
 
@@ -655,6 +655,6 @@ def prompt_setup_answers(
         min_release_age_days=ask_int("Minimum release retention days", 90),
         pitr_retention_days=ask_int("Database PITR retention days", 30),
         pre_migration_backup_days=ask_int("Pre-migration backup retention days", 180),
-        max_test_jobs=ask_int("Maximum simultaneous test jobs", 4),
+        max_test_jobs=ask_int("Maximum simultaneous test jobs", 2),
         max_queued_tests=ask_int("Maximum queued test jobs", 64),
     )

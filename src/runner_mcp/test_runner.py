@@ -113,7 +113,7 @@ class TestRunner:
         registry: ProjectRegistry,
         safety: OperatorSafetyGuard,
         jobs_root: Path,
-        max_concurrent_jobs: int = 4,
+        max_concurrent_jobs: int = 2,
         max_queued_jobs: int = 64,
         poll_interval_seconds: float = 0.1,
         terminate_grace_seconds: float = 2.0,
@@ -209,7 +209,7 @@ class TestRunner:
                 continue
 
             if job.status in {TestJobStatus.CLAIMED, TestJobStatus.RUNNING}:
-                job.status = TestJobStatus.FAILED
+                job.status = TestJobStatus.INTERRUPTED
                 job.finished_at = utc_now()
                 job.error_category = "runner_restart"
                 self._persist(job)
@@ -355,10 +355,11 @@ class TestRunner:
     def _worker_loop(self) -> None:
         while True:
             with self._condition:
-                job_id = self._claim_next_locked()
-                while job_id is None and not self._stopping:
-                    self._condition.wait(timeout=0.5)
+                job_id = None
+                while not self._stopping and job_id is None:
                     job_id = self._claim_next_locked()
+                    if job_id is None:
+                        self._condition.wait(timeout=0.5)
                 if self._stopping:
                     return
             assert job_id is not None
@@ -839,14 +840,14 @@ class TestRunner:
         except OperatorStopActive:
             self._set_job(
                 job_id,
-                status=TestJobStatus.FAILED,
+                status=TestJobStatus.STOPPED,
                 finished_at=utc_now(),
                 error_category="operator_stop",
             )
         except SafetyConfigurationError:
             self._set_job(
                 job_id,
-                status=TestJobStatus.FAILED,
+                status=TestJobStatus.ERROR,
                 finished_at=utc_now(),
                 error_category="safety_configuration",
             )
@@ -858,7 +859,7 @@ class TestRunner:
                 )
             self._set_job(
                 job_id,
-                status=TestJobStatus.FAILED,
+                status=TestJobStatus.ERROR,
                 finished_at=utc_now(),
                 error_category="execution_error",
             )

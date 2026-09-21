@@ -435,3 +435,9 @@ Runtime observability bridge — 2026-09-21:
 - output is intentionally host-neutral: version, safe capacity/configuration booleans and bounded check summaries only;
 - private paths, endpoints, hostnames, environment values, service units and raw process output remain excluded;
 - this is the first self-operations step toward removing routine dependence on general-purpose remote desktop tooling.
+
+Shared Playwright runtime — 2026-09-21:
+- Runner MCP E2E jobs previously replaced HOME and therefore could not see a shared Playwright/Chromium cache unless it was passed through manually;
+- test profiles can now declare `runtime: playwright`;
+- the browser cache comes only from private `RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH`, is locally validated and is scrubbed from logs;
+- missing or unsafe browser runtime fails closed; PastEntrance does not need a project-code workaround for this boundary.

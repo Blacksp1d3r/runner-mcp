@@ -63,6 +63,25 @@ class BridgeAction(StrEnum):
     WORKER_STATUS = "worker_status"
     JOB_STATUS = "job_status"
     CANCEL_JOB = "cancel_job"
+    JOB_LOG = "job_log"
+    LIST_SERVICES = "list_services"
+    SERVICE_STATUS = "service_status"
+    START_SERVICE = "start_service"
+    STOP_SERVICE = "stop_service"
+    RESTART_SERVICE = "restart_service"
+    LIST_BACKUPS = "list_backups"
+    BACKUP_DATABASE = "backup_database"
+    REQUEST_ACTION_APPROVAL = "request_action_approval"
+    APPROVAL_STATUS = "approval_status"
+    MIGRATION_STATUS = "migration_status"
+    APPLY_MIGRATIONS = "apply_migrations"
+    PLAN_DEPLOY = "plan_deploy"
+    DEPLOY_STAGING = "deploy_staging"
+    DEPLOYMENT_STATUS = "deployment_status"
+    LIST_RELEASES = "list_releases"
+    ROLLBACK_PLAN = "rollback_plan"
+    ROLLBACK_RELEASE = "rollback_release"
+    ROLLBACK_STATUS = "rollback_status"
 
 
 class BridgeResultState(StrEnum):
@@ -80,6 +99,12 @@ class BridgeRequest(BaseModel):
     profile: str | None = Field(default=None, min_length=1, max_length=80)
     commit: str | None = Field(default=None, min_length=40, max_length=40)
     job_id: str | None = Field(default=None, min_length=1, max_length=64)
+    service: str | None = Field(default=None, min_length=1, max_length=80)
+    approval_id: str | None = Field(default=None, min_length=1, max_length=64)
+    operation: str | None = Field(default=None, min_length=1, max_length=32)
+    offset: int | None = Field(default=None, ge=0, le=100_000)
+    length: int | None = Field(default=None, ge=1, le=100)
+    limit: int | None = Field(default=None, ge=1, le=100)
 
     @model_validator(mode="after")
     def validate_action_arguments(self) -> BridgeRequest:
@@ -98,6 +123,28 @@ class BridgeRequest(BaseModel):
         if self.job_id is not None and not JOB_ID_RE.fullmatch(self.job_id):
             raise ValueError("job_id contains unsupported characters")
 
+        if self.service is not None and not PROJECT_CODE_RE.fullmatch(self.service):
+            raise ValueError("service contains unsupported characters")
+
+        if self.approval_id is not None and not JOB_ID_RE.fullmatch(self.approval_id):
+            raise ValueError("approval_id contains unsupported characters")
+
+        if self.operation is not None and self.operation not in {
+            "migration",
+            "deploy",
+            "code_rollback",
+        }:
+            raise ValueError("operation is unsupported")
+
+        extra_operational = (
+            self.service,
+            self.approval_id,
+            self.operation,
+            self.offset,
+            self.length,
+            self.limit,
+        )
+
         if self.action in {
             BridgeAction.LIST_PROJECTS,
             BridgeAction.SAFETY_STATUS,
@@ -109,6 +156,7 @@ class BridgeRequest(BaseModel):
                 or self.profile is not None
                 or self.commit is not None
                 or self.job_id is not None
+                or any(value is not None for value in extra_operational)
             ):
                 raise ValueError(f"{self.action.value} does not accept arguments")
             return self
@@ -124,6 +172,7 @@ class BridgeRequest(BaseModel):
                 self.profile is not None
                 or self.commit is not None
                 or self.job_id is not None
+                or any(value is not None for value in extra_operational)
             ):
                 raise ValueError(f"{self.action.value} accepts only project")
             return self
@@ -131,14 +180,22 @@ class BridgeRequest(BaseModel):
         if self.action == BridgeAction.SYNC_PROJECT:
             if self.project is None or self.commit is None:
                 raise ValueError("sync_project requires project and commit")
-            if self.profile is not None or self.job_id is not None:
+            if (
+                self.profile is not None
+                or self.job_id is not None
+                or any(value is not None for value in extra_operational)
+            ):
                 raise ValueError("sync_project accepts only project and commit")
             return self
 
         if self.action == BridgeAction.RUN_TESTS:
             if self.project is None or self.profile is None:
                 raise ValueError("run_tests requires project and profile")
-            if self.commit is not None or self.job_id is not None:
+            if (
+                self.commit is not None
+                or self.job_id is not None
+                or any(value is not None for value in extra_operational)
+            ):
                 raise ValueError("run_tests accepts only project and profile")
             return self
 
@@ -149,6 +206,167 @@ class BridgeRequest(BaseModel):
                 self.project is not None
                 or self.profile is not None
                 or self.commit is not None
+                or any(value is not None for value in extra_operational)
+            ):
+                raise ValueError(f"{self.action.value} accepts only job_id")
+            return self
+
+        if self.action == BridgeAction.JOB_LOG:
+            if self.job_id is None:
+                raise ValueError("job_log requires job_id")
+            if (
+                self.project is not None
+                or self.profile is not None
+                or self.commit is not None
+                or self.service is not None
+                or self.approval_id is not None
+                or self.operation is not None
+                or self.limit is not None
+            ):
+                raise ValueError("job_log accepts only job_id, offset and length")
+            return self
+
+        if self.action in {
+            BridgeAction.LIST_SERVICES,
+            BridgeAction.BACKUP_DATABASE,
+            BridgeAction.MIGRATION_STATUS,
+            BridgeAction.PLAN_DEPLOY,
+            BridgeAction.ROLLBACK_PLAN,
+        }:
+            if self.project is None:
+                raise ValueError(f"{self.action.value} requires project")
+            if (
+                self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+                or self.service is not None
+                or self.approval_id is not None
+                or self.operation is not None
+                or self.offset is not None
+                or self.length is not None
+                or self.limit is not None
+            ):
+                raise ValueError(f"{self.action.value} accepts only project")
+            return self
+
+        if self.action in {
+            BridgeAction.SERVICE_STATUS,
+            BridgeAction.START_SERVICE,
+            BridgeAction.STOP_SERVICE,
+            BridgeAction.RESTART_SERVICE,
+        }:
+            if self.project is None or self.service is None:
+                raise ValueError(f"{self.action.value} requires project and service")
+            if (
+                self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+                or self.approval_id is not None
+                or self.operation is not None
+                or self.offset is not None
+                or self.length is not None
+                or self.limit is not None
+            ):
+                raise ValueError(
+                    f"{self.action.value} accepts only project and service"
+                )
+            return self
+
+        if self.action in {BridgeAction.LIST_BACKUPS, BridgeAction.LIST_RELEASES}:
+            if self.project is None:
+                raise ValueError(f"{self.action.value} requires project")
+            if (
+                self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+                or self.service is not None
+                or self.approval_id is not None
+                or self.operation is not None
+                or self.offset is not None
+                or self.length is not None
+            ):
+                raise ValueError(
+                    f"{self.action.value} accepts only project and optional limit"
+                )
+            return self
+
+        if self.action == BridgeAction.REQUEST_ACTION_APPROVAL:
+            if self.project is None or self.operation is None:
+                raise ValueError(
+                    "request_action_approval requires project and operation"
+                )
+            if (
+                self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+                or self.service is not None
+                or self.approval_id is not None
+                or self.offset is not None
+                or self.length is not None
+                or self.limit is not None
+            ):
+                raise ValueError(
+                    "request_action_approval accepts only project and operation"
+                )
+            return self
+
+        if self.action == BridgeAction.APPROVAL_STATUS:
+            if self.approval_id is None:
+                raise ValueError("approval_status requires approval_id")
+            if (
+                self.project is not None
+                or self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+                or self.service is not None
+                or self.operation is not None
+                or self.offset is not None
+                or self.length is not None
+                or self.limit is not None
+            ):
+                raise ValueError("approval_status accepts only approval_id")
+            return self
+
+        if self.action in {
+            BridgeAction.APPLY_MIGRATIONS,
+            BridgeAction.DEPLOY_STAGING,
+            BridgeAction.ROLLBACK_RELEASE,
+        }:
+            if self.project is None or self.approval_id is None:
+                raise ValueError(
+                    f"{self.action.value} requires project and approval_id"
+                )
+            if (
+                self.profile is not None
+                or self.commit is not None
+                or self.job_id is not None
+                or self.service is not None
+                or self.operation is not None
+                or self.offset is not None
+                or self.length is not None
+                or self.limit is not None
+            ):
+                raise ValueError(
+                    f"{self.action.value} accepts only project and approval_id"
+                )
+            return self
+
+        if self.action in {
+            BridgeAction.DEPLOYMENT_STATUS,
+            BridgeAction.ROLLBACK_STATUS,
+        }:
+            if self.job_id is None:
+                raise ValueError(f"{self.action.value} requires job_id")
+            if (
+                self.project is not None
+                or self.profile is not None
+                or self.commit is not None
+                or self.service is not None
+                or self.approval_id is not None
+                or self.operation is not None
+                or self.offset is not None
+                or self.length is not None
+                or self.limit is not None
             ):
                 raise ValueError(f"{self.action.value} accepts only job_id")
             return self
@@ -367,7 +585,7 @@ def parse_bridge_result(payload: str | bytes) -> BridgeResult:
     return result
 
 
-def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
+def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]:
     if request.action in {
         BridgeAction.LIST_PROJECTS,
         BridgeAction.SAFETY_STATUS,
@@ -400,8 +618,76 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str]]:
             "suite": request.profile,
         }
 
-    if request.action in {BridgeAction.JOB_STATUS, BridgeAction.CANCEL_JOB}:
+    if request.action in {
+        BridgeAction.JOB_STATUS,
+        BridgeAction.CANCEL_JOB,
+        BridgeAction.DEPLOYMENT_STATUS,
+        BridgeAction.ROLLBACK_STATUS,
+    }:
         assert request.job_id is not None
         return request.action.value, {"job_id": request.job_id}
+
+    if request.action == BridgeAction.JOB_LOG:
+        assert request.job_id is not None
+        arguments: dict[str, str | int] = {"job_id": request.job_id}
+        if request.offset is not None:
+            arguments["offset"] = request.offset
+        if request.length is not None:
+            arguments["length"] = request.length
+        return request.action.value, arguments
+
+    if request.action in {
+        BridgeAction.LIST_SERVICES,
+        BridgeAction.BACKUP_DATABASE,
+        BridgeAction.MIGRATION_STATUS,
+        BridgeAction.PLAN_DEPLOY,
+        BridgeAction.ROLLBACK_PLAN,
+    }:
+        assert request.project is not None
+        return request.action.value, {"project": request.project}
+
+    if request.action in {
+        BridgeAction.SERVICE_STATUS,
+        BridgeAction.START_SERVICE,
+        BridgeAction.STOP_SERVICE,
+        BridgeAction.RESTART_SERVICE,
+    }:
+        assert request.project is not None
+        assert request.service is not None
+        return request.action.value, {
+            "project": request.project,
+            "service": request.service,
+        }
+
+    if request.action in {BridgeAction.LIST_BACKUPS, BridgeAction.LIST_RELEASES}:
+        assert request.project is not None
+        arguments = {"project": request.project}
+        if request.limit is not None:
+            arguments["limit"] = request.limit
+        return request.action.value, arguments
+
+    if request.action == BridgeAction.REQUEST_ACTION_APPROVAL:
+        assert request.project is not None
+        assert request.operation is not None
+        return request.action.value, {
+            "project": request.project,
+            "action": request.operation,
+        }
+
+    if request.action == BridgeAction.APPROVAL_STATUS:
+        assert request.approval_id is not None
+        return request.action.value, {"approval_id": request.approval_id}
+
+    if request.action in {
+        BridgeAction.APPLY_MIGRATIONS,
+        BridgeAction.DEPLOY_STAGING,
+        BridgeAction.ROLLBACK_RELEASE,
+    }:
+        assert request.project is not None
+        assert request.approval_id is not None
+        return request.action.value, {
+            "project": request.project,
+            "approval_id": request.approval_id,
+        }
 
     raise BridgeProtocolError("unsupported bridge action")

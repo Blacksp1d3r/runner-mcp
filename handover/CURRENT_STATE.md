@@ -259,6 +259,16 @@ Phase 3.8.7 private-config watcher runtime and CLI:
 - heartbeat is slower than request polling by default and is refreshed on state transitions;
 - heartbeat failure remains independent from completed action execution.
 
+Phase 3.8.9 bounded operational bridge:
+- the mailbox action enum now reaches existing configured service, backup, migration, deployment and rollback capabilities through explicit methods only;
+- test-log retrieval is bounded to 100 lines per request and remains subject to test-runner redaction plus bridge-result scrubbing;
+- service mutations accept only configured service aliases and preserve per-alias opt-in plus emergency-stop enforcement;
+- backup creation uses only configured database state; no DSN/path/command input is accepted from the mailbox;
+- migration/deploy/rollback plans can be requested and inspected remotely, but approval granting remains local/human-controlled;
+- apply/deploy/rollback execution requires a valid pre-approved opaque approval ID and cannot bypass action/project/binding/expiry checks;
+- deployment/rollback status accepts only validated opaque job IDs;
+- restore/PITR, production mutations, arbitrary shell/argv/path/env/unit/tool input remain unavailable.
+
 Phase 4 staging service management:
 - private service aliases map to systemd-user units;
 - service aliases default to read-only;

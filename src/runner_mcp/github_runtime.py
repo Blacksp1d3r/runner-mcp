@@ -47,7 +47,7 @@ class GitHubWatcherRuntimeError(RuntimeError):
 class GitHubWatcherRuntime:
     watcher: GitHubMailboxWatcher
     transport: GitHubMailboxTransport
-    config_dir: Path
+    config_dir: Path | None = None
 
     @classmethod
     def from_private_config(cls, config_dir: Path) -> GitHubWatcherRuntime:
@@ -178,25 +178,26 @@ class GitHubWatcherRuntime:
                     last_published_state = outcome.state
                     next_heartbeat_at = now + heartbeat_seconds
 
-            try:
-                restart_requested = consume_restart_marker(
-                    self.config_dir,
-                    "github-watcher",
-                )
-            except SelfUpdateError as exc:
-                raise GitHubWatcherRuntimeError(
-                    "Runner MCP self-update restart state is invalid"
-                ) from exc
-            if restart_requested:
+            if self.config_dir is not None:
                 try:
-                    reexec_component(
+                    restart_requested = consume_restart_marker(
                         self.config_dir,
                         "github-watcher",
                     )
                 except SelfUpdateError as exc:
                     raise GitHubWatcherRuntimeError(
-                        "Runner MCP self-update restart failed"
+                        "Runner MCP self-update restart state is invalid"
                     ) from exc
+                if restart_requested:
+                    try:
+                        reexec_component(
+                            self.config_dir,
+                            "github-watcher",
+                        )
+                    except SelfUpdateError as exc:
+                        raise GitHubWatcherRuntimeError(
+                            "Runner MCP self-update restart failed"
+                        ) from exc
 
             time.sleep(poll_seconds)
 

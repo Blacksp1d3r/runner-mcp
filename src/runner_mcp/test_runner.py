@@ -5,9 +5,11 @@ import json
 import os
 import re
 import selectors
+import shutil
 import signal
 import stat
 import subprocess
+import tempfile
 import threading
 import time
 from collections import deque
@@ -681,22 +683,42 @@ class TestRunner:
                 redacted = pattern.sub("[REDACTED]", redacted)
         return redacted
 
+    @staticmethod
+    def _short_job_tmp(job_id: str) -> Path:
+        if not JOB_ID_RE.fullmatch(job_id):
+            raise TestRunnerError("Invalid test job identifier")
+        try:
+            path = Path(
+                tempfile.mkdtemp(
+                    prefix=f"runner-mcp-{job_id[:8]}-",
+                    dir="/tmp",
+                )
+            )
+            os.chmod(path, 0o700)
+            resolved = path.resolve(strict=True)
+        except OSError as exc:
+            raise TestRunnerError("Short test temporary directory is unavailable") from exc
+        if resolved.is_symlink() or not resolved.is_dir():
+            raise TestRunnerError("Short test temporary directory is unsafe")
+        metadata = resolved.stat()
+        if metadata.st_uid != os.getuid():
+            raise TestRunnerError("Short test temporary directory has unsafe ownership")
+        return resolved
+
     def _build_environment(
         self,
         *,
         profile: TestProfile,
         work_dir: Path,
+        temp_dir: Path,
     ) -> tuple[dict[str, str], list[str]]:
         home = work_dir / "home"
-        temp = work_dir / "tmp"
         home.mkdir(parents=True, exist_ok=True)
-        temp.mkdir(parents=True, exist_ok=True)
         os.chmod(home, 0o700)
-        os.chmod(temp, 0o700)
 
         env = {
             "HOME": str(home),
-            "TMPDIR": str(temp),
+            "TMPDIR": str(temp_dir),
             "PATH": "/usr/local/bin:/usr/bin:/bin",
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
@@ -780,6 +802,7 @@ class TestRunner:
     def _run_job(self, job_id: str) -> None:
         process: subprocess.Popen[bytes] | None = None
         selector: selectors.BaseSelector | None = None
+        short_tmp: Path | None = None
         work_dir = self._job_directory(job_id)
         log_path = self._log_path(job_id)
         cancel_event = self._cancel_events[job_id]
@@ -809,14 +832,17 @@ class TestRunner:
             executable = self._resolve_executable(profile)
 
             work_dir.mkdir(mode=0o700, parents=False, exist_ok=False)
+            short_tmp = self._short_job_tmp(job_id)
             env, secret_values = self._build_environment(
                 profile=profile,
                 work_dir=work_dir,
+                temp_dir=short_tmp,
             )
             private_paths = [
                 str(root),
                 str(cwd),
                 str(work_dir),
+                str(short_tmp),
                 str(self.jobs_root),
                 str(executable),
                 str(executable.parent),
@@ -979,6 +1005,14 @@ class TestRunner:
         finally:
             if selector is not None:
                 selector.close()
+            if short_tmp is not None:
+                try:
+                    if short_tmp.is_symlink():
+                        short_tmp.unlink()
+                    elif short_tmp.exists():
+                        shutil.rmtree(short_tmp)
+                except OSError:
+                    pass
             with self._condition:
                 self._condition.notify_all()
 

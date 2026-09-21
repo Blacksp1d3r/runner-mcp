@@ -390,6 +390,24 @@ Next:
 - add Runner MCP self-status/doctor/update/restart as a separate fixed self-operations capability rather than exposing package-manager or process-control primitives;
 - preserve separate human approval for migration/deploy/rollback.
 
+## Phase 3.8.10 — runtime observability bridge
+
+Expose Runner MCP's own health/configuration state through fixed, read-only bridge actions so routine diagnosis no longer needs general-purpose remote access.
+
+Implemented foundation:
+
+- `runtime_status` returns package version, safety mode, emergency-stop state, bounded worker/queue capacities and whether test/database/deployment/approval subsystems are configured;
+- `runtime_doctor` returns only bounded PASS/WARN/FAIL-style checks and generic details;
+- no private paths, URLs, hostnames, credentials, service units, environment values or raw process output are returned;
+- both actions are fixed no-argument protocol-v1 actions and map only to local MCP tools;
+- result publication still uses the existing bridge scrubber, replay ledger and create-once result lifecycle.
+
+Next:
+
+- add fixed self-update/restart as a separate commit-pinned capability with rollback;
+- add generic shared browser runtime support for Playwright E2E profiles;
+- prove the new runtime actions live after the private runtime is upgraded.
+
 ## Phase 3.9 — public launch readiness
 
 Prepare Runner MCP for free, responsible discovery without changing its security boundaries.

@@ -656,7 +656,10 @@ def cmd_github_mailbox(args: argparse.Namespace) -> int:
         ).strip()
         if not repository:
             raise ConfigManagerError("GitHub mailbox repository is required")
-        token = getpass.getpass("GitHub mailbox token: ").strip()
+        if args.token_stdin:
+            token = sys.stdin.readline(4098).strip()
+        else:
+            token = getpass.getpass("GitHub mailbox token: ").strip()
         if not token:
             raise ConfigManagerError("GitHub mailbox token is required")
         configure_github_mailbox(
@@ -1040,6 +1043,11 @@ def build_parser() -> argparse.ArgumentParser:
     github_mailbox_configure.add_argument(
         "--result-ref",
         default="runner-results",
+    )
+    github_mailbox_configure.add_argument(
+        "--token-stdin",
+        action="store_true",
+        help="Read the GitHub token from standard input instead of prompting.",
     )
     github_mailbox_configure.set_defaults(func=cmd_github_mailbox)
     github_mailbox_remove = github_mailbox_sub.add_parser(

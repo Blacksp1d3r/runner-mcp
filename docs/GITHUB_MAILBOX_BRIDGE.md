@@ -344,7 +344,7 @@ runner-mcp github-mailbox status
 runner-mcp github-mailbox remove
 ```
 
-The repository identifier and refs are stored with the GitHub token in the existing private runtime environment. The token is entered through a hidden prompt and there is deliberately no `--token` argument. The status command reports only whether the mailbox is configured.
+The repository identifier and refs are stored with the GitHub token in the existing private runtime environment. By default the token is entered through a hidden prompt. For a secure operator pipeline, `github-mailbox configure --token-stdin` can instead read one token from standard input. There is deliberately no `--token` argument, so credentials do not need to appear in process arguments or shell history. Runner MCP does not echo the token. The status command reports only whether the mailbox is configured.
 
 Watcher lifecycle is managed with:
 

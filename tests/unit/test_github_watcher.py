@@ -67,6 +67,9 @@ class FakeTransport:
             )
         return list(self.changed_ids)
 
+    def fetch_request_unvalidated(self, request_id: str) -> bytes:
+        return self.requests[request_id]
+
     def fetch_request(self, request_id: str) -> bytes:
         return self.requests[request_id]
 
@@ -628,6 +631,38 @@ def test_operator_quarantines_only_malformed_resolved_backlog(tmp_path) -> None:
     record = ledger.inspect(request)
     assert record is not None
     assert record.state == ReplayState.COMPLETED
+
+
+def test_operator_quarantine_rejects_head_change_before_cursor_advance(
+    tmp_path,
+) -> None:
+    class MovingHeadTransport(FakeTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self._heads = ["b" * 40, "c" * 40]
+
+        def request_head_sha(self) -> str:
+            if self._heads:
+                return self._heads.pop(0)
+            return "c" * 40
+
+    transport = MovingHeadTransport()
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path,
+        transport=transport,
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-malformed"]
+    transport.requests["req-malformed"] = b'{"action":"sync_project"}'
+
+    with pytest.raises(
+        GitHubWatcherError,
+        match="request head changed",
+    ):
+        watcher.quarantine_malformed_request_fail_closed("req-malformed")
+
+    assert cursor.read() == "a" * 40
+    assert executor.calls == []
 
 
 def test_operator_quarantine_rejects_protocol_valid_request(tmp_path) -> None:

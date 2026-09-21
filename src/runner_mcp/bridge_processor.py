@@ -92,6 +92,12 @@ class BridgeExecutor(Protocol):
 
     def rollback_status(self, job_id: str) -> Any: ...
 
+    def runtime_status(self) -> Any: ...
+
+    def self_update(self, commit: str) -> Any: ...
+
+    def self_update_status(self, job_id: str) -> Any: ...
+
 
 class BridgeResultSink(Protocol):
     """Transport-specific durable result writer."""
@@ -359,6 +365,17 @@ class BridgeProcessor:
         if request.action == BridgeAction.ROLLBACK_STATUS:
             assert request.job_id is not None
             return self._executor.rollback_status(request.job_id)
+
+        if request.action == BridgeAction.RUNTIME_STATUS:
+            return self._executor.runtime_status()
+
+        if request.action == BridgeAction.SELF_UPDATE:
+            assert request.commit is not None
+            return self._executor.self_update(request.commit)
+
+        if request.action == BridgeAction.SELF_UPDATE_STATUS:
+            assert request.job_id is not None
+            return self._executor.self_update_status(request.job_id)
 
         raise BridgeProtocolError("unsupported bridge action")
 

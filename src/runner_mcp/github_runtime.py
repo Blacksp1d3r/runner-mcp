@@ -21,6 +21,7 @@ from .github_mailbox import (
 from .github_watcher import (
     GitHubMailboxWatcher,
     GitHubWatcherCursorStore,
+    GitHubRecoveryResolution,
     GitHubWatcherCycleOutcome,
     GitHubWatcherCycleState,
 )
@@ -104,6 +105,12 @@ class GitHubWatcherRuntime:
 
     def run_once(self) -> GitHubWatcherCycleOutcome:
         return self.watcher.run_cycle(publish_heartbeat=True)
+
+    def resolve_missing_result_fail_closed(
+        self,
+        request_id: str,
+    ) -> GitHubRecoveryResolution:
+        return self.watcher.resolve_missing_result_fail_closed(request_id)
 
     def run_forever(
         self,

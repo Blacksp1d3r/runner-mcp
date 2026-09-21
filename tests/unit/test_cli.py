@@ -918,6 +918,13 @@ def test_autostart_cli_install_and_status_are_path_safe(
         return [SERVER_UNIT]
 
     monkeypatch.setattr("runner_mcp.cli.install_user_services", fake_install)
+    monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: False)
+    monkeypatch.setattr(
+        "runner_mcp.cli.has_managed_user_units",
+        lambda: bool(captured_install),
+    )
+    monkeypatch.setattr("runner_mcp.cli.systemd_user_available", lambda: True)
     monkeypatch.setattr(
         "runner_mcp.cli.user_service_status",
         lambda: [
@@ -968,6 +975,9 @@ def test_autostart_cli_remove_requires_explicit_confirmation(
 ) -> None:
     paths, _ = install_config(tmp_path)
     calls = []
+    monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_user_units", lambda: True)
     monkeypatch.setattr(
         "runner_mcp.cli.remove_user_services",
         lambda: calls.append("remove") or ["runner-mcp.service"],
@@ -1001,3 +1011,103 @@ def test_autostart_cli_remove_requires_explicit_confirmation(
     removed = capsys.readouterr()
     assert calls == ["remove"]
     assert "Removed 1" in removed.out
+
+
+
+def test_autostart_cli_auto_falls_back_to_managed_cron(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.cron_autostart import CronComponentStatus
+
+    paths, _ = install_config(tmp_path)
+    captured = {}
+
+    monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.cli.has_managed_cron",
+        lambda: bool(captured),
+    )
+    monkeypatch.setattr("runner_mcp.cli.has_managed_user_units", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.systemd_user_available", lambda: False)
+    monkeypatch.setattr(
+        "runner_mcp.cli.configured_autostart_components",
+        lambda _config_dir: ("server", "github-watcher"),
+    )
+
+    def fake_install_cron(*, executable, config_dir, components, port):
+        captured.update(
+            executable=executable,
+            config_dir=config_dir,
+            components=components,
+            port=port,
+        )
+        return components
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_cron_services",
+        fake_install_cron,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.cron_status",
+        lambda **_: [
+            CronComponentStatus("server", True, True, True),
+            CronComponentStatus("github-watcher", True, True, True),
+            CronComponentStatus("completion-watcher", False, False, False),
+        ],
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "autostart",
+            "install",
+        ]
+    ) == 0
+    installed = capsys.readouterr()
+
+    assert captured["config_dir"] == paths.config_dir
+    assert captured["components"] == ("server", "github-watcher")
+    assert captured["port"] == 8000
+    assert "managed cron supervision" in installed.out
+    assert str(paths.config_dir) not in installed.out
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "autostart",
+            "status",
+        ]
+    ) == 0
+    status = capsys.readouterr()
+    assert "backend: cron" in status.out
+    assert "server: installed=yes, enabled=yes, active=yes" in status.out
+    assert str(paths.config_dir) not in status.out
+
+
+def test_autostart_cli_explicit_systemd_fails_when_user_manager_missing(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: True)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_user_units", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.systemd_user_available", lambda: False)
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "autostart",
+            "install",
+            "--backend",
+            "systemd",
+        ]
+    ) == 2
+    captured = capsys.readouterr()
+    assert "systemd user manager is unavailable" in captured.err

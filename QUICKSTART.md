@@ -380,11 +380,15 @@ Finally call the corresponding MCP action with the approved `approval_id`. The a
 
 Production environments remain read-only.
 
-## Private ChatGPT connection
+## Private connectivity
 
-For supported OpenAI products, prefer OpenAI Secure MCP Tunnel instead of exposing Runner MCP directly to the public internet. Run Runner MCP on loopback/private networking and run the tunnel client inside the network that can reach it. The tunnel is outbound HTTPS only.
+Do not expose Runner MCP publicly just because a remote client cannot reach its loopback/private listener.
 
-A future public one-click hosted relay is optional and outside the current MVP.
+For routine ChatGPT-assisted development, the private GitHub mailbox bridge requires no inbound Runner MCP port. For supported OpenAI products that need a normal private MCP connection, current OpenAI documentation provides Secure MCP Tunnel as an outbound tunnel-client pattern. Other clients may require a hardened public HTTPS reverse proxy.
+
+Human SSH/VPN connectivity is a separate operator path and should not be confused with cloud MCP connectivity.
+
+Use the decision tree and preflight/rollback checklist in [docs/PRIVATE_CONNECTIVITY.md](docs/PRIVATE_CONNECTIVITY.md).
 
 ## Extending Runner MCP
 

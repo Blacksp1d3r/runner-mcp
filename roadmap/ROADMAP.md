@@ -61,7 +61,7 @@ Make the safe core usable without reading or editing source code:
 - user-first README and Quickstart;
 - private config permission checks and atomic project-config updates.
 
-Still planned for onboarding: service auto-start packaging, guided TLS/reverse-proxy setup and optional graphical administration.
+Service auto-start packaging is implemented with fixed non-root systemd user services, explicit watcher bootstrap requirements and foreign-unit protection. Still planned for onboarding: guided TLS/reverse-proxy setup and optional graphical administration.
 
 ## Phase 3.6 — community usability and extension path
 
@@ -78,7 +78,6 @@ Make the existing safe core easier to adopt, understand and extend without chang
 
 Still planned:
 
-- service auto-start packaging;
 - guided private-tunnel/TLS setup;
 - optional graphical administration;
 - framework adapters only when concrete reusable use cases justify them.

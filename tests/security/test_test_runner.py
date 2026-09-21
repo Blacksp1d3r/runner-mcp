@@ -512,6 +512,29 @@ def test_queue_backpressure_is_bounded(tmp_path: Path) -> None:
     wait_terminal(runner, queued["job_id"])
 
 
+def test_project_queue_backpressure_is_bounded(tmp_path: Path) -> None:
+    runner, _, _ = make_runner(
+        tmp_path,
+        {"slow": python_profile("import time; time.sleep(30)")},
+        max_concurrent_jobs=1,
+        max_queued_jobs=8,
+        max_queued_tests=1,
+    )
+
+    running = runner.start_test("demo", "slow")
+    wait_running(runner, running["job_id"])
+    queued = runner.start_test("demo", "slow")
+
+    with pytest.raises(RunnerError, match="Project test queue capacity"):
+        runner.start_test("demo", "slow")
+
+    assert runner.job_status(queued["job_id"])["status"] == "queued"
+    runner.cancel(running["job_id"])
+    runner.cancel(queued["job_id"])
+    wait_terminal(runner, running["job_id"])
+    wait_terminal(runner, queued["job_id"])
+
+
 def test_fair_round_robin_prevents_project_monopoly(tmp_path: Path) -> None:
     roots = {"alpha": tmp_path / "fair-alpha", "beta": tmp_path / "fair-beta"}
     for root in roots.values():

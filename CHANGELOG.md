@@ -6,6 +6,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 
 ## Unreleased
 
+- Surface self-update install recovery state in local `status`/`doctor` without exposing commits or private artifact paths; corrupt/unsafe transaction state fails doctor.
+
 - Add a bounded local self-update install recovery command that requires the emergency stop, restores only the persisted private baseline wheel/source commit, and remains unavailable through MCP/mailbox control.
 
 ### Added

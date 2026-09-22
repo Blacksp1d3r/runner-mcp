@@ -542,3 +542,15 @@ Local install recovery merged — 2026-09-22:
 - bootstrap/no-baseline transactions and overlapping activation recovery remain fail-closed;
 - no install-recovery action was added to MCP or the GitHub mailbox;
 - next: bootstrap this merged baseline on the private host and prove same-commit, forward-update and deliberately interrupted/recovered package-install paths through the safe operating model.
+
+## Coordination checkpoint — 2026-09-22
+
+Canonical coordination now uses `SESSION_HANDOFF.md`, `AGENT_EXCHANGE.md` and `RESUME_PROMPT.md`. GitHub live state wins over stale handoff text.
+
+Immediate priority:
+1. reconcile the four private watcher recovery-attention items without replay/reset shortcuts;
+2. confirm the pending read-only runtime-status probe;
+3. reconcile and, if still green/current, merge PR #45;
+4. bootstrap/prove the newest recovery-capable self-update baseline on the private host.
+
+Current blocker: watcher heartbeat is degraded by four recovery-attention items, so cursor advancement is intentionally withheld. Desktop Commander is unavailable; use GitHub plus the bounded Runner-MCP bridge.

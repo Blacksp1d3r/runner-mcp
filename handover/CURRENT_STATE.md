@@ -502,3 +502,14 @@ Review cleanup merged — 2026-09-22:
 - validation: Ruff and whitespace checks green, pytest 711 passed with one known third-party warning, clean demo green, built release artifact green;
 - Claude's review branch remains unmerged by design; only independently revalidated low-risk findings were adopted;
 - next functional target remains staged/rollback-capable self-update installation plus live private-host bootstrap/proof.
+
+
+Self-update package-install recovery hardening — 2026-09-22:
+- PR #43 stages the validated target as a private wheel instead of installing directly from the checkout;
+- when a known installed baseline exists, a private recovery wheel is built before source sync while the project source guard remains held across baseline staging, target sync, lint/unit validation, target staging and package mutation;
+- a strict private 0600 install-transaction marker is persisted before the in-place pip operation; pending recovery is exposed only as a bounded boolean and blocks overlapping self-updates;
+- target installation must also pass a fresh-process Runner MCP import verification;
+- a caught target install/import failure rolls back only when both baseline-package reinstall/import verification and exact baseline source restoration succeed; otherwise the transaction remains fail-closed as `install_recovery_required`;
+- same-commit self-update requests still verify reachability through `origin/main` and then avoid unnecessary reinstall/restart;
+- clean CI exposed that offline `--no-build-isolation` wheel staging requires the setuptools build backend to remain available at runtime, so `setuptools>=75` is now an explicit runtime dependency; this dependency-set change reinforces that the first private-host bootstrap must use the normal dependency-resolving installation path;
+- the current design deliberately does not claim atomic in-place pip mutation. A process interruption can leave an install transaction pending; the next hardening slice is a bounded local recovery command before live package-install fault injection.

@@ -1598,4 +1598,3 @@ def test_doctor_fails_for_invalid_self_update_recovery_state(
     assert "self-update install recovery" in captured.out
     assert "FAIL" in captured.out
     assert "invalid or unsafe" in captured.out
-

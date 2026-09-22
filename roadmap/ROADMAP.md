@@ -435,6 +435,7 @@ Implemented foundation:
 - a first/bootstrap install failure, process interruption during package mutation, failed rollback, or unfinalized transaction remains `install_recovery_required` and blocks further self-update instead of pretending the environment is intact;
 - a persisted rollback-capable install transaction can be recovered only through the local `runner-mcp self-update-recovery` operator command; it requires the emergency stop to be active, reuses only the privately staged baseline wheel, restores the exact baseline commit from `origin/main`, re-verifies the installed runtime and clears the transaction only after package/source/state recovery is proven;
 - the local recovery path refuses first/bootstrap transactions without a known baseline and refuses to overlap pending activation recovery; no recovery action is exposed through the mailbox or MCP tool surface;
+- local `status` exposes only `clear`, `REQUIRED` or `INVALID` install-recovery state, while `doctor` warns on a valid pending transaction and fails on corrupt/unsafe transaction state without exposing commits or artifact paths;
 - same-commit requests still verify the exact commit against `origin/main`, but then complete without package mutation or restart;
 - the build backend required by the deliberate `--no-build-isolation` wheel path is an explicit runtime dependency rather than an implicit build-environment assumption;
 - update jobs and installed-commit state are persisted privately with restrictive permissions;

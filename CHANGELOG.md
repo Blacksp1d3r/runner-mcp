@@ -6,6 +6,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 
 ## Unreleased
 
+- Add a fail-fast local release-check wrapper for compile, Ruff, pytest, whitespace, built-artifact and clean-demo validation while keeping GitHub CI authoritative.
+- Keep the clean demo's temporary development virtual environment outside the repository so local validation does not delete a developer's `.venv`.
 - Surface self-update install recovery state in local `status`/`doctor` without exposing commits or private artifact paths; corrupt/unsafe transaction state fails doctor.
 
 - Add a bounded local self-update install recovery command that requires the emergency stop, restores only the persisted private baseline wheel/source commit, and remains unavailable through MCP/mailbox control.

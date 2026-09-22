@@ -3,6 +3,7 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 DEMO_ROOT="$(mktemp -d)"
+DEMO_PROJECT="$DEMO_ROOT/project"
 SERVER_PID=""
 
 cleanup() {
@@ -10,7 +11,6 @@ cleanup() {
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
   fi
-  rm -rf "$REPO_ROOT/.venv"
   rm -rf "$DEMO_ROOT"
 }
 trap cleanup EXIT
@@ -24,14 +24,15 @@ mkdir -p "$HOME"
 cd "$REPO_ROOT"
 ./install.sh
 
-python3 -m venv --copies .venv
-.venv/bin/python -m pip install --disable-pip-version-check -e '.[dev]'
+mkdir -p "$DEMO_PROJECT"
+python3 -m venv --copies "$DEMO_PROJECT/.venv"
+"$DEMO_PROJECT/.venv/bin/python" -m pip install --disable-pip-version-check -e "$REPO_ROOT[dev]"
 
 printf '\n%s\n%s\n%s\n%s\n\n\n\n\n\n\nYES\n' \
   "demo" \
   "Runner MCP demo" \
   "Blacksp1d3r/runner-mcp" \
-  "$REPO_ROOT" \
+  "$DEMO_PROJECT" \
   | runner-mcp setup
 
 runner-mcp doctor

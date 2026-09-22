@@ -78,6 +78,7 @@ from .onboarding import (
     run_doctor,
 )
 from .self_update import SelfUpdateManager
+from .self_update_install import install_recovery_state
 from .server import create_app
 from .source_control import SourceSynchronizer
 
@@ -170,6 +171,13 @@ def cmd_status(args: argparse.Namespace) -> int:
         "Test execution: "
         + ("configured" if settings.test_jobs_root is not None else "not configured")
     )
+    recovery_state = install_recovery_state(config_dir)
+    if recovery_state == "pending":
+        print("Self-update install recovery: REQUIRED")
+    elif recovery_state == "invalid":
+        print("Self-update install recovery: INVALID")
+    else:
+        print("Self-update install recovery: clear")
     print(f"Projects: {len(registry.projects)}")
     for code in sorted(registry.projects):
         project = registry.projects[code]

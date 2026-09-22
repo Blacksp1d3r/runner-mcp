@@ -467,3 +467,10 @@ Self-update activation recovery — 2026-09-22:
 - server self-reexec retries are bounded; watcher/notifier re-exec failure restores the marker so managed systemd/cron supervision can retry after process restart;
 - failures after package installation are distinguished as activation failures with restart required, while pre-install failures remain ordinary self-update failures;
 - package-install rollback remains a separate future hardening item; this slice improves activation recovery without claiming atomic package rollback.
+
+Activation recovery merged — 2026-09-22:
+- PR #40 merged as `1d160afdb9c0b6e0d3ebb3a74b88644b84eb348e`;
+- validation was fully green: Ruff, 708 pytest tests, clean five-minute demo and built-release artifact;
+- fixed-component restart intent now survives a failed re-exec, pending activation blocks overlapping self-updates, and runtime status reports only a bounded pending state/count;
+- issue #7 (mailbox liveness/stale-request recovery) was closed as completed because its heartbeat, retry and fail-closed recovery scope is already implemented and live-proven;
+- next self-update hardening target is package-install rollback/staging; current activation recovery does not claim atomic recovery from a failed in-place pip installation.

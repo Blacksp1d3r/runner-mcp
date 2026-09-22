@@ -205,7 +205,7 @@ To conserve Claude Code quota, analysis/design-heavy tasks should be done in nor
 
 
 
-## Task 6 — documentation / CLI contract drift audit — NEXT (CHAT REVIEW)
+## Task 6 — documentation / CLI contract drift audit — COMPLETE
 
 Goal: make public operator documentation match current code without duplicating state.
 
@@ -229,11 +229,20 @@ Acceptance:
 - documentation-only unless a real CLI defect is discovered;
 - if a real code defect appears, stop that expansion, open a minimal separate regression/fix PR and record it here.
 
+Status: `COMPLETE`. PR #53 merged as `0c46bbefb8fcad6ae5c7f87450e638c40492a41a`.
+
+Evidence:
+- corrected the demonstrated `runtime_doctor` omission in README and the canonical public bridge action list;
+- verified all 34 protocol-v1 bridge actions are named in the bridge documentation;
+- audited public operator examples with no unknown top-level `runner-mcp` command;
+- removed the stale evergreen pre-tag pytest count from the release-notes draft;
+- exact PR-head CI green across validation, built artifact and clean demo.
+
 Then continue to Task 7.
 
 ---
 
-## Task 7 — dependency-set compatibility review for self-update `--no-deps` — NEXT (CHAT REVIEW)
+## Task 7 — dependency-set compatibility review for self-update `--no-deps` — COMPLETE
 
 This is analysis/design only. Do not edit self-update implementation.
 
@@ -256,6 +265,17 @@ Do not:
 - upgrade dependencies merely for freshness;
 - allow mailbox clients to pass pip/package-manager arguments;
 - change self-update implementation in this task.
+
+Status: `COMPLETE`. PR #54 merged as `69e604935bfe0fef0dd61b48dfdde76fed8f46ba`.
+
+Evidence:
+- `docs/SELF_UPDATE_COMPATIBILITY.md` inventories Python, build, runtime and dev/test dependency contracts;
+- pure code, changed constraints, new dependencies, minimum-version increases, removals, interpreter/build changes and test-tool changes are classified;
+- dependency/build/interpreter contract changes remain local bootstrap/manual events under the current `--no-deps --no-index --no-build-isolation` design;
+- a conservative exact-contract compatibility marker/preflight is proposed without implementing it;
+- safe observability is limited to bounded readiness/error categories, not installed versions or private environment details;
+- release checklist links dependency changes to the bootstrap contract;
+- exact PR-head CI green across validation, built artifact and clean demo.
 
 Record the design PR/evidence here, then continue to Task 8.
 
@@ -297,7 +317,7 @@ Evidence:
 
 ---
 
-## Task 9 — release-candidate hygiene dry run — NEXT (CHAT REVIEW)
+## Task 9 — release-candidate hygiene dry run — COMPLETE
 
 Goal: inspect whether the current repository is release-candidate clean without actually releasing anything.
 
@@ -317,9 +337,28 @@ Output:
 - do not rank by subjective severity beyond those operational categories;
 - do not create tags/releases or publish artifacts externally.
 
+Status: `COMPLETE`. PR #55 merged as `358f8f6345a7ff6f094eb6c8e4d7db4b9943aed7`.
+
+Evidence:
+- `claude_feedback/RELEASE_CANDIDATE_DRY_RUN.md` records the package/docs/privacy/artifact/changelog/dependency/live-proof review;
+- no current public-repository code/package blocker was found;
+- required-before-tag work is explicit: changelog/release-note finalization, exact-candidate CI and privacy review, dependency-bootstrap discipline, and truthful handling of the remaining private-host self-update proof;
+- optional follow-up work is separated from the release gate;
+- no tag, release or external artifact was created;
+- exact PR-head CI green across validation, built artifact and clean demo.
+
 When complete, update this file and `handover/AGENT_EXCHANGE.md` with the remaining release blockers.
 
 ---
+
+## Proposed future tasks — integrator review required
+
+Do not start these automatically from the completed Tasks 2–9 queue.
+
+- Finalize the v0.1.0 changelog and release-notes draft, then validate the exact candidate commit and repeat privacy review before any tag.
+- Reconcile/prove the newest recovery-capable self-update baseline on the private host, or explicitly preserve the unproven-live-path limitation in release notes.
+- Consider implementing the fail-closed self-update compatibility marker/preflight from `docs/SELF_UPDATE_COMPATIBILITY.md` as a separately approved code task.
+- Production integration of category-only safe diagnostics remains separately scoped and must preserve the documented privacy boundary.
 
 ## Queue completion rule
 

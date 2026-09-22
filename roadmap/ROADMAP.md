@@ -433,6 +433,8 @@ Implemented foundation:
 - target package installation is verified in a fresh Python process before it is accepted;
 - a caught target install/import failure automatically reinstalls and verifies the recovery wheel and restores the exact prior source commit when both package and source rollback can be proven; successful automatic recovery is reported as `install_rolled_back` without scheduling activation;
 - a first/bootstrap install failure, process interruption during package mutation, failed rollback, or unfinalized transaction remains `install_recovery_required` and blocks further self-update instead of pretending the environment is intact;
+- a persisted rollback-capable install transaction can be recovered only through the local `runner-mcp self-update-recovery` operator command; it requires the emergency stop to be active, reuses only the privately staged baseline wheel, restores the exact baseline commit from `origin/main`, re-verifies the installed runtime and clears the transaction only after package/source/state recovery is proven;
+- the local recovery path refuses first/bootstrap transactions without a known baseline and refuses to overlap pending activation recovery; no recovery action is exposed through the mailbox or MCP tool surface;
 - same-commit requests still verify the exact commit against `origin/main`, but then complete without package mutation or restart;
 - the build backend required by the deliberate `--no-build-isolation` wheel path is an explicit runtime dependency rather than an implicit build-environment assumption;
 - update jobs and installed-commit state are persisted privately with restrictive permissions;
@@ -449,7 +451,7 @@ Implemented foundation:
 Next:
 
 - bootstrap the merged rollback-capable package-install baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
-- add a bounded local operator recovery command for a persisted `install_recovery_required` transaction before deliberately fault-injecting a live package-install interruption; do not expose generic package-manager or transaction-reset controls through the mailbox;
+- after the local recovery command is validated in CI, bootstrap the merged recovery-capable baseline on the private host and deliberately fault-inject one package-install interruption to prove the persisted transaction can be recovered without generic package-manager or transaction-reset controls;
 - keep dependency-set changes explicit because self-update intentionally never resolves or installs dependencies; a dependency-set change still requires an explicit compatible bootstrap path;
 - do not describe in-place pip mutation as atomic: the transaction marker makes interruption detectable and fail-closed, while automatic rollback is claimed only for caught failures where both package and source restoration are verified.
 

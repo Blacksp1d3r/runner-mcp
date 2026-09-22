@@ -77,7 +77,9 @@ from .onboarding import (
     read_private_runtime,
     run_doctor,
 )
+from .self_update import SelfUpdateManager
 from .server import create_app
+from .source_control import SourceSynchronizer
 
 
 def package_version() -> str:
@@ -1026,6 +1028,48 @@ def cmd_github_watcher(args: argparse.Namespace) -> int:
     raise RuntimeError("Unknown GitHub watcher action")
 
 
+def _local_self_update_manager(config_dir: Path) -> SelfUpdateManager:
+    paths, settings, registry = read_private_runtime(config_dir)
+    _, safety = operator_stop_status(config_dir)
+    source = SourceSynchronizer(
+        registry=registry,
+        safety=safety,
+        tests=None,
+    )
+    return SelfUpdateManager(
+        config_dir=paths.config_dir,
+        registry=registry,
+        safety=safety,
+        tests=None,
+        source=source,
+        resource_url=settings.resource_url,
+    )
+
+
+def cmd_self_update_recovery(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    _, safety = operator_stop_status(config_dir)
+    if not safety.status().stop_active:
+        raise RuntimeError(
+            "Self-update install recovery requires the operator emergency stop to be active"
+        )
+
+    phrase = "RECOVER SELF UPDATE"
+    print(
+        "This reinstalls the previously staged Runner MCP baseline, restores the exact "
+        "baseline source commit, and clears the pending install transaction only after "
+        "verification succeeds."
+    )
+    confirmation = input(f"Type {phrase} to continue: ").strip()
+    if confirmation != phrase:
+        raise RuntimeError("Self-update install recovery cancelled")
+
+    result = _local_self_update_manager(config_dir).recover_installation()
+    print("Runner MCP self-update installation recovered to the prior verified baseline.")
+    print(f"Recovery job: {result['job_id']}")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     paths, settings, registry = read_private_runtime(config_dir)
@@ -1115,6 +1159,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     stop.add_argument("stop_action", choices=("on", "status", "off"))
     stop.set_defaults(func=cmd_emergency_stop)
+
+    self_update_recovery = subparsers.add_parser(
+        "self-update-recovery",
+        help=(
+            "Locally recover a pending Runner MCP self-update install transaction. "
+            "Requires the operator emergency stop."
+        ),
+    )
+    self_update_recovery.set_defaults(func=cmd_self_update_recovery)
 
     project = subparsers.add_parser(
         "project",

@@ -3,12 +3,59 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.cli import main
+from runner_mcp.cli import _require_removal_confirmation, main
 from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
     load_env_file,
 )
+
+
+@pytest.mark.parametrize(
+    "entered",
+    [
+        "REMOVE EXAMPLE",
+        " REMOVE EXAMPLE ",
+        "\tREMOVE EXAMPLE\n",
+    ],
+)
+def test_removal_confirmation_accepts_exact_value_after_strip(
+    entered: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    prompts: list[str] = []
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda prompt: prompts.append(prompt) or entered,
+    )
+
+    _require_removal_confirmation(
+        "REMOVE EXAMPLE",
+        RuntimeError("removal cancelled"),
+    )
+
+    assert prompts == ["Type REMOVE EXAMPLE to continue: "]
+
+
+@pytest.mark.parametrize(
+    "entered",
+    [
+        "",
+        "remove example",
+        "REMOVE EXAMPLE extra",
+    ],
+)
+def test_removal_confirmation_rejects_nonmatching_input_with_same_exception(
+    entered: str,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    cancellation = ValueError("exact cancellation")
+    monkeypatch.setattr("builtins.input", lambda _prompt: entered)
+
+    with pytest.raises(ValueError) as caught:
+        _require_removal_confirmation("REMOVE EXAMPLE", cancellation)
+
+    assert caught.value is cancellation
 
 
 def install_config(tmp_path: Path):

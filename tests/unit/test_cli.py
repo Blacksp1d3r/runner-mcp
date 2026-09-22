@@ -1,4 +1,5 @@
 import io
+import json
 from pathlib import Path
 
 import pytest
@@ -42,6 +43,7 @@ def test_status_does_not_print_private_paths_or_bearer_value(
     assert result == 0
     assert "Mode: operational" in captured.out
     assert "demo: Demo" in captured.out
+    assert "Self-update install recovery: clear" in captured.out
     assert str(project_root) not in captured.out
     assert str(paths.config_dir) not in captured.out
     assert token not in captured.out
@@ -1472,3 +1474,81 @@ def test_self_update_recovery_cli_reports_safe_success(
     assert "b" * 40 not in captured.out
     assert str(paths.config_dir) not in captured.out
     assert str(paths.config_dir) not in captured.err
+
+
+def test_status_reports_pending_self_update_recovery_without_private_values(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, project_root = install_config(tmp_path)
+    transaction = paths.config_dir / "self-update-install-transaction.json"
+    transaction.write_text(
+        json.dumps(
+            {
+                "job_id": "a" * 32,
+                "target_commit": "b" * 40,
+                "baseline_commit": "c" * 40,
+                "rollback_capable": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    transaction.chmod(0o600)
+
+    result = main(["--config-dir", str(paths.config_dir), "status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "Self-update install recovery: REQUIRED" in captured.out
+    assert "b" * 40 not in captured.out
+    assert "c" * 40 not in captured.out
+    assert str(project_root) not in captured.out
+    assert str(paths.config_dir) not in captured.out
+
+
+def test_doctor_warns_for_pending_self_update_recovery(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    transaction = paths.config_dir / "self-update-install-transaction.json"
+    transaction.write_text(
+        json.dumps(
+            {
+                "job_id": "d" * 32,
+                "target_commit": "e" * 40,
+                "baseline_commit": "f" * 40,
+                "rollback_capable": True,
+            }
+        ),
+        encoding="utf-8",
+    )
+    transaction.chmod(0o600)
+
+    result = main(["--config-dir", str(paths.config_dir), "doctor"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "self-update install recovery" in captured.out
+    assert "WARN" in captured.out
+    assert "self-update-recovery" in captured.out
+    assert "e" * 40 not in captured.out
+    assert "f" * 40 not in captured.out
+
+
+def test_doctor_fails_for_invalid_self_update_recovery_state(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    transaction = paths.config_dir / "self-update-install-transaction.json"
+    transaction.write_text("{", encoding="utf-8")
+    transaction.chmod(0o600)
+
+    result = main(["--config-dir", str(paths.config_dir), "doctor"])
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "self-update install recovery" in captured.out
+    assert "FAIL" in captured.out
+    assert "invalid or unsafe" in captured.out

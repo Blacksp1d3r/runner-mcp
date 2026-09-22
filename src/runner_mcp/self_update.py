@@ -878,4 +878,3 @@ class SelfUpdateManager:
         finally:
             if not preserve_artifacts:
                 self._cleanup_install_artifacts(job_id)
-

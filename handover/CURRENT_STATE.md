@@ -495,3 +495,10 @@ Deferred rather than applied blindly:
 - a full roadmap status table: not added because it would duplicate per-phase status and create another drift surface. The source-of-truth rule and stale-status cleanup address the underlying problem with less duplication.
 
 The next functional priority remains the staged/rollback-capable self-update package-install strategy, plus live bootstrap/proof on the private host when that host can be upgraded through an available safe path.
+
+
+Review cleanup merged — 2026-09-22:
+- PR #41 merged as `0e66368ca1377359019de1d594833377892db7aa`;
+- validation: Ruff and whitespace checks green, pytest 711 passed with one known third-party warning, clean demo green, built release artifact green;
+- Claude's review branch remains unmerged by design; only independently revalidated low-risk findings were adopted;
+- next functional target remains staged/rollback-capable self-update installation plus live private-host bootstrap/proof.

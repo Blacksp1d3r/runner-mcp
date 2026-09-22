@@ -27,7 +27,7 @@ SELF_REPOSITORY = "Blacksp1d3r/runner-mcp"
 SELF_TEST_PROFILES = ("lint", "unit")
 SELF_UPDATE_JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
-_RESTART_COMPONENTS = {"github-watcher", "completion-watcher"}
+_RESTART_COMPONENTS = {"server", "github-watcher", "completion-watcher"}
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 
 
@@ -92,15 +92,45 @@ def restart_marker_path(config_dir: Path, component: str) -> Path:
     return config_dir.expanduser().resolve() / f"self-update-restart-{component}.marker"
 
 
+def restart_marker_commit(config_dir: Path, component: str) -> str | None:
+    path = restart_marker_path(config_dir, component)
+    if not path.exists():
+        return None
+    if path.is_symlink() or not path.is_file():
+        raise SelfUpdateError("Self-update restart marker is unsafe")
+    try:
+        raw = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise SelfUpdateError("Self-update restart marker could not be read") from exc
+    commit = raw.strip()
+    if not _COMMIT_RE.fullmatch(commit):
+        raise SelfUpdateError("Self-update restart marker is invalid")
+    return commit
+
+
+def restart_pending_count(config_dir: Path) -> int:
+    return sum(
+        restart_marker_commit(config_dir, component) is not None
+        for component in _RESTART_COMPONENTS
+    )
+
+
 def _write_restart_marker(config_dir: Path, component: str, commit: str) -> None:
     if not _COMMIT_RE.fullmatch(commit):
         raise SelfUpdateError("Invalid self-update commit")
     path = restart_marker_path(config_dir, component)
-    if path.exists() and path.is_symlink():
-        raise SelfUpdateError("Self-update restart marker is unsafe")
+    if path.exists():
+        if path.is_symlink() or not path.is_file():
+            raise SelfUpdateError("Self-update restart marker is unsafe")
+        raise SelfUpdateError("Self-update restart is already pending")
     temporary = path.with_suffix(".tmp")
+    if temporary.exists():
+        if temporary.is_symlink() or not temporary.is_file():
+            raise SelfUpdateError("Self-update restart marker is unsafe")
+        raise SelfUpdateError("Self-update restart staging file already exists")
     try:
-        temporary.write_text(commit + "\n", encoding="utf-8")
+        with temporary.open("x", encoding="utf-8") as handle:
+            handle.write(commit + "\n")
         os.chmod(temporary, 0o600)
         os.replace(temporary, path)
         os.chmod(path, 0o600)
@@ -111,6 +141,62 @@ def _write_restart_marker(config_dir: Path, component: str, commit: str) -> None
             pass
         raise SelfUpdateError("Self-update restart marker could not be written") from exc
 
+
+def _remove_restart_marker(config_dir: Path, component: str) -> None:
+    path = restart_marker_path(config_dir, component)
+    if not path.exists():
+        return
+    if path.is_symlink() or not path.is_file():
+        raise SelfUpdateError("Self-update restart marker is unsafe")
+    try:
+        path.unlink()
+    except OSError as exc:
+        raise SelfUpdateError("Self-update restart marker could not be consumed") from exc
+
+
+def consume_restart_marker(config_dir: Path, component: str) -> bool:
+    commit = restart_marker_commit(config_dir, component)
+    if commit is None:
+        return False
+    _remove_restart_marker(config_dir, component)
+    return True
+
+
+def run_restart_if_requested(
+    config_dir: Path,
+    component: str,
+    restart_fn: Callable[[], object],
+) -> bool:
+    commit = restart_marker_commit(config_dir, component)
+    if commit is None:
+        return False
+    _remove_restart_marker(config_dir, component)
+    try:
+        restart_fn()
+    except Exception as exc:
+        try:
+            _write_restart_marker(config_dir, component, commit)
+        except SelfUpdateError as restore_exc:
+            raise SelfUpdateError(
+                "Runner MCP restart failed and restart state could not be restored"
+            ) from restore_exc
+        raise SelfUpdateError("Runner MCP component could not restart") from exc
+    return True
+
+
+def _write_restart_markers(config_dir: Path, commit: str) -> None:
+    written: list[str] = []
+    try:
+        for component in sorted(_RESTART_COMPONENTS):
+            _write_restart_marker(config_dir, component, commit)
+            written.append(component)
+    except SelfUpdateError:
+        for component in reversed(written):
+            try:
+                _remove_restart_marker(config_dir, component)
+            except SelfUpdateError:
+                pass
+        raise
 
 def _runner_console_executable() -> Path:
     candidate = Path(sys.prefix) / "bin" / "runner-mcp"
@@ -156,25 +242,6 @@ def reexec_component(
     except OSError as exc:
         raise SelfUpdateError("Runner MCP component could not restart") from exc
 
-
-def consume_restart_marker(config_dir: Path, component: str) -> bool:
-    path = restart_marker_path(config_dir, component)
-    if not path.exists():
-        return False
-    if path.is_symlink() or not path.is_file():
-        raise SelfUpdateError("Self-update restart marker is unsafe")
-    try:
-        raw = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise SelfUpdateError("Self-update restart marker could not be read") from exc
-    commit = raw.strip()
-    if not _COMMIT_RE.fullmatch(commit):
-        raise SelfUpdateError("Self-update restart marker is invalid")
-    try:
-        path.unlink()
-    except OSError as exc:
-        raise SelfUpdateError("Self-update restart marker could not be consumed") from exc
-    return True
 
 
 class SelfUpdateManager:

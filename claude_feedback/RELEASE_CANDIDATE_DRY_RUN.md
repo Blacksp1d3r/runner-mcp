@@ -7,7 +7,7 @@ Reviewed baseline: `main` at `69e604935bfe0fef0dd61b48dfdde76fed8f46ba`, after T
 ## Baseline checks
 
 - Package metadata is internally aligned for the intended first alpha: package version `0.1.0`, Python `>=3.12`, MIT license metadata, public repository/documentation URLs and the `runner-mcp` console entry point.
-- The latest Task 7 PR validation was green across compile/Ruff/pytest/whitespace, built release artifact and clean five-minute demo. The exact final release commit still requires its own green public CI.
+- The reviewed `main` baseline passed its push validation across compile/Ruff/pytest/whitespace, built release artifact and clean five-minute demo. The exact final release commit still requires its own green public CI.
 - README and the canonical bridge documentation now include the implemented bounded `runtime_doctor` action.
 - The public bridge document names every current protocol-v1 `BridgeAction`.
 - The audited public operator documentation contained no unknown top-level `runner-mcp` command examples.

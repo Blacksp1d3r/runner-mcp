@@ -349,7 +349,7 @@ Phase 9 human approval gates:
 Current validation is green:
 - Python 3.12 compile: green;
 - Ruff: green;
-- pytest: 628 tests green, with one third-party Starlette/AnyIO deprecation warning;
+- pytest: green in current CI; exact test counts are recorded with dated validation/release evidence rather than treated as durable status here;
 - merged request-capacity change passed public CI including whitespace checks;
 - live private bridge validation passed both Runner MCP lint and unit profiles;
 - git diff whitespace check: green;
@@ -474,3 +474,24 @@ Activation recovery merged — 2026-09-22:
 - fixed-component restart intent now survives a failed re-exec, pending activation blocks overlapping self-updates, and runtime status reports only a bounded pending state/count;
 - issue #7 (mailbox liveness/stale-request recovery) was closed as completed because its heartbeat, retry and fail-closed recovery scope is already implemented and live-proven;
 - next self-update hardening target is package-install rollback/staging; current activation recovery does not claim atomic recovery from a failed in-place pip installation.
+
+
+## 2026-09-22 — external review triage and low-risk cleanup
+
+Claude's read-only review branch `claude/roadmap-review-suggestions-xxbhfo` was evaluated against the newer main baseline rather than merged wholesale. The review branch was based on `319259c7...`, before the commit-pinned self-update and recoverable activation work, so its exact test counts and some roadmap observations were already stale.
+
+Accepted low-risk findings in this slice:
+- gate the demo-smoke and release-artifact CI jobs on the main validate job so obviously invalid commits do not spend extra runner time;
+- expose the validation workflow status from README and clarify that the operator wrapper is unnecessary for same-account installs;
+- define status authority explicitly: roadmap for architectural phase status, handover for chronology, CI/release records for exact validation results;
+- reconcile stale roadmap "Next" items that still described watcher migration, coordinator integration, completion proof and self-operation work that is already implemented;
+- add direct unit coverage for the append-only audit logger and its 0600 file-permission contract.
+
+Deferred rather than applied blindly:
+- a shared `secure_io` rewrite: worthwhile, but the existing atomic/private-write call sites have different lifecycle and failure semantics, so this needs an inventory plus dedicated regression tests rather than a mechanical replacement;
+- a generic audited-tool decorator: potentially useful, but audit payloads and failure categories differ by tool family and should not be homogenized without a separate design/test slice;
+- watcher `logging`: operationally useful, but must first define a scrubbed, category-only logging contract so diagnostics cannot become a new private-data leak;
+- large `server.py`/`cli.py` splits and adapter plug-in discovery: maintenance work, not current safety or self-update blockers;
+- a full roadmap status table: not added because it would duplicate per-phase status and create another drift surface. The source-of-truth rule and stale-status cleanup address the underlying problem with less duplication.
+
+The next functional priority remains the staged/rollback-capable self-update package-install strategy, plus live bootstrap/proof on the private host when that host can be upgraded through an available safe path.

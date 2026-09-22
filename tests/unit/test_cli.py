@@ -1376,3 +1376,99 @@ def test_autostart_cli_explicit_systemd_fails_when_user_manager_missing(
     ) == 2
     captured = capsys.readouterr()
     assert "systemd user manager is unavailable" in captured.err
+
+
+def test_self_update_recovery_cli_requires_active_emergency_stop(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    result = main(
+        ["--config-dir", str(paths.config_dir), "self-update-recovery"]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "emergency stop" in captured.err.lower()
+    assert str(paths.config_dir) not in captured.out
+    assert str(paths.config_dir) not in captured.err
+
+
+def test_self_update_recovery_cli_requires_exact_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    assert main(
+        ["--config-dir", str(paths.config_dir), "emergency-stop", "on"]
+    ) == 0
+    capsys.readouterr()
+
+    called: list[bool] = []
+
+    class FakeManager:
+        def recover_installation(self):
+            called.append(True)
+            raise AssertionError("recovery must not run after denied confirmation")
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_self_update_manager",
+        lambda _config_dir: FakeManager(),
+    )
+    monkeypatch.setattr("builtins.input", lambda _prompt: "no")
+
+    result = main(
+        ["--config-dir", str(paths.config_dir), "self-update-recovery"]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert called == []
+    assert "cancelled" in captured.err.lower()
+    assert "prior verified baseline" not in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert str(paths.config_dir) not in captured.err
+
+
+def test_self_update_recovery_cli_reports_safe_success(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    assert main(
+        ["--config-dir", str(paths.config_dir), "emergency-stop", "on"]
+    ) == 0
+    capsys.readouterr()
+
+    calls: list[str] = []
+
+    class FakeManager:
+        def recover_installation(self):
+            calls.append("recover")
+            return {
+                "recovered": True,
+                "job_id": "a" * 32,
+                "commit": "b" * 40,
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_self_update_manager",
+        lambda _config_dir: FakeManager(),
+    )
+    monkeypatch.setattr("builtins.input", lambda _prompt: "RECOVER SELF UPDATE")
+
+    result = main(
+        ["--config-dir", str(paths.config_dir), "self-update-recovery"]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert calls == ["recover"]
+    assert "prior verified baseline" in captured.out
+    assert "a" * 32 in captured.out
+    assert "b" * 40 not in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert str(paths.config_dir) not in captured.err

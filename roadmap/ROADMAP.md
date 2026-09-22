@@ -448,7 +448,7 @@ Implemented foundation:
 
 Next:
 
-- merge and bootstrap the rollback-capable package-install baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
+- bootstrap the merged rollback-capable package-install baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
 - add a bounded local operator recovery command for a persisted `install_recovery_required` transaction before deliberately fault-injecting a live package-install interruption; do not expose generic package-manager or transaction-reset controls through the mailbox;
 - keep dependency-set changes explicit because self-update intentionally never resolves or installs dependencies; a dependency-set change still requires an explicit compatible bootstrap path;
 - do not describe in-place pip mutation as atomic: the transaction marker makes interruption detectable and fail-closed, while automatic rollback is claimed only for caught failures where both package and source restoration are verified.

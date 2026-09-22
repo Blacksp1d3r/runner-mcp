@@ -1,3 +1,12 @@
+## 2026-09-22 — Task 8 checkpoint
+
+- PR #52 merged as `d6821ddb0773b586b6a106b66b2e18154c90cc7a`.
+- local release validation now has one fail-fast wrapper: `bash scripts/release-check.sh`;
+- the wrapper covers compile, Ruff, pytest, branch/local whitespace, built-artifact smoke and clean-demo smoke while explicitly leaving GitHub CI authoritative;
+- the clean demo no longer creates or deletes the repository's developer `.venv`; its project virtualenv lives under the temporary demo root;
+- Task 6 audit has one demonstrated documentation drift ready for the next slice: `runtime_doctor` exists in the bridge protocol/executor/server but is omitted from README and the public bridge supported-action list;
+- private watcher/recovery state was not re-probed in this batch.
+
 ## 2026-09-22 — current reconciliation checkpoint
 
 Current public GitHub state:

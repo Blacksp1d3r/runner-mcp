@@ -40,7 +40,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - clean Ubuntu 24.04 / Python 3.12 CI coverage for the documented five-minute demo;
 - short per-job private test temporary directories that avoid Unix-domain socket path exhaustion while preserving restrictive permissions and cleanup;
 - bounded operational GitHub mailbox actions for scrubbed test logs, configured service control, backups, migration/deployment/rollback planning and approval-bound high-risk execution;
-- canonical main-only Runner MCP self-update jobs with fixed lint/unit gates, local no-dependency installation and internal component self-reexec.
+- canonical main-only Runner MCP self-update jobs with fixed lint/unit gates, local no-dependency installation and internal component self-reexec;
+- recoverable self-update activation markers that block overlapping updates and preserve pending restart intent when a fixed component re-exec fails.
 
 ### Fixed
 
@@ -58,6 +59,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - malformed historical requests can be quarantined only after all sibling backlog requests are verified durable and the request head is unchanged;
 - mailbox operational actions remain fixed-schema: no arbitrary shell, argv, path, environment, systemd unit, MCP tool, approval grant, restore or production mutation is accepted;
 - self-update cannot select an arbitrary repository, branch, package-manager command, executable, install path or restart command;
+- self-update restart markers are create-once, batch-prepared for the fixed components, and restored after a failed re-exec instead of silently losing activation intent;
 - result persistence/finalization failures do not authorize bridge action replay;
 - GitHub mailbox transport failures are classified and kept inside the persistence/recovery boundary;
 - watcher restarts reuse cursor/replay state and never treat process restart as permission to replay actions;

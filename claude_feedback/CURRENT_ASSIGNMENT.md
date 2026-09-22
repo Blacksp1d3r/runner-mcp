@@ -40,6 +40,31 @@ Do not wait for the user between independent tasks. Stop only when:
 - a required external/manual action is needed;
 - GitHub/CI state is ambiguous enough that proceeding could duplicate or overwrite work.
 
+## Rate-limit / takeover protocol
+
+Claude availability is opportunistic, not a project dependency.
+
+Every unfinished task may use these status values:
+- `UNCLAIMED`
+- `CLAUDE_IN_PROGRESS`
+- `CHATGPT_IN_PROGRESS`
+- `PR_OPEN`
+- `PAUSED_LIMIT`
+- `BLOCKED`
+- `COMPLETE`
+
+When starting a task, record the status plus `Claimed by`, `Branch` and `PR` when known.
+
+If Claude hits a usage/rate limit or is otherwise unavailable:
+- do not treat that as a project blocker;
+- ChatGPT may take over an assigned task when it becomes the next dependency/blocker;
+- before takeover, reconcile GitHub branches/PRs and inspect any Claude work already pushed;
+- if no conflicting active work exists, set `CHATGPT_IN_PROGRESS` and continue;
+- if a useful Claude branch exists and the user has confirmed Claude is unavailable, ChatGPT may continue/review that branch rather than duplicate it;
+- if Claude later resumes, he must re-read this file and skip any task currently claimed by ChatGPT or already completed.
+
+Likewise, Claude may pick up a previously unclaimed task after ChatGPT moves elsewhere, but may never duplicate an active ChatGPT branch/PR.
+
 ## Coordination boundary with ChatGPT
 
 ChatGPT currently owns:

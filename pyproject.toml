@@ -20,6 +20,7 @@ classifiers = [
   "Topic :: System :: Systems Administration",
 ]
 dependencies = [
+  "setuptools>=75",
   "mcp>=2.0,<3",
   "pydantic>=2.10,<3",
   "PyYAML>=6,<7",

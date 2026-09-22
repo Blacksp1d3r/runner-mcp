@@ -39,9 +39,14 @@ class TrackingRLock:
 class FakeSource:
     def __init__(self) -> None:
         self.calls: list[tuple[str, str]] = []
+        self.recovery_calls: list[tuple[str, str]] = []
 
     def sync_project_main_commit(self, project: str, commit: str):
         self.calls.append((project, commit))
+        return {"project": project, "commit": commit, "changed": True}
+
+    def restore_project_main_commit_for_recovery(self, project: str, commit: str):
+        self.recovery_calls.append((project, commit))
         return {"project": project, "commit": commit, "changed": True}
 
 
@@ -558,3 +563,158 @@ def test_self_update_requires_safe_loopback_resource(tmp_path: Path) -> None:
     assert manager.runtime_status()["self_update_ready"] is False
     with pytest.raises(SelfUpdateError, match="loopback restart runtime"):
         manager.start("a" * 40)
+
+
+def test_local_install_recovery_requires_operator_stop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "7" * 40
+    target = "8" * 40
+
+    def installer(command, **kwargs):
+        command = list(command)
+        if len(command) > 3 and command[3] == "wheel":
+            stage_fake_wheel(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager, project, _exits = make_manager(
+        tmp_path,
+        installer_runner=installer,
+    )
+    manager._record_installed_commit(baseline)
+    manager._package_installer.build_wheel(
+        source_root=project,
+        job_id="9" * 32,
+        label="baseline",
+    )
+    manager._package_installer.begin_transaction(
+        job_id="9" * 32,
+        target_commit=target,
+        baseline_commit=baseline,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda root: {"commit": baseline, "clean": True},
+    )
+
+    with pytest.raises(SelfUpdateError, match="emergency stop"):
+        manager.recover_installation()
+
+    assert manager.runtime_status()["install_recovery_pending"] is True
+
+
+def test_local_install_recovery_restores_verified_baseline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "a" * 40
+    target = "b" * 40
+    current = {"commit": target}
+
+    class RecoverySource(FakeSource):
+        def restore_project_main_commit_for_recovery(self, project: str, commit: str):
+            result = super().restore_project_main_commit_for_recovery(project, commit)
+            current["commit"] = commit
+            return result
+
+    source = RecoverySource()
+    calls: list[list[str]] = []
+
+    def installer(command, **kwargs):
+        command = list(command)
+        calls.append(command)
+        if len(command) > 3 and command[3] == "wheel":
+            stage_fake_wheel(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager, project, _exits = make_manager(
+        tmp_path,
+        source=source,
+        installer_runner=installer,
+    )
+    manager._record_installed_commit(target)
+    job_id = "c" * 32
+    manager._package_installer.build_wheel(
+        source_root=project,
+        job_id=job_id,
+        label="baseline",
+    )
+    manager._package_installer.begin_transaction(
+        job_id=job_id,
+        target_commit=target,
+        baseline_commit=baseline,
+    )
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.touch()
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda root: {"commit": current["commit"], "clean": True},
+    )
+
+    result = manager.recover_installation()
+
+    assert result == {
+        "recovered": True,
+        "job_id": job_id,
+        "commit": baseline,
+    }
+    assert source.recovery_calls == [("runner-mcp", baseline)]
+    assert current["commit"] == baseline
+    assert manager.runtime_status()["last_installed_commit"] == baseline
+    assert manager.runtime_status()["install_recovery_pending"] is False
+    assert not (manager._package_installer.artifacts_root / job_id).exists()
+    assert any(len(command) > 3 and command[3] == "install" for command in calls)
+    assert any(len(command) > 1 and command[1] == "-c" for command in calls)
+
+
+def test_local_install_recovery_refuses_transaction_without_baseline(
+    tmp_path: Path,
+) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    manager._package_installer.begin_transaction(
+        job_id="d" * 32,
+        target_commit="e" * 40,
+        baseline_commit=None,
+    )
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.touch()
+
+    with pytest.raises(SelfUpdateError, match="no automatic baseline"):
+        manager.recover_installation()
+
+    assert manager.runtime_status()["install_recovery_pending"] is True
+
+
+def test_local_install_recovery_refuses_pending_activation(
+    tmp_path: Path,
+) -> None:
+    manager, project, _exits = make_manager(tmp_path)
+    baseline = "1" * 40
+    target = "2" * 40
+
+    def fake_runner(command, **kwargs):
+        command = list(command)
+        if len(command) > 3 and command[3] == "wheel":
+            stage_fake_wheel(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager._package_installer._runner = fake_runner
+    manager._package_installer.build_wheel(
+        source_root=project,
+        job_id="3" * 32,
+        label="baseline",
+    )
+    manager._package_installer.begin_transaction(
+        job_id="3" * 32,
+        target_commit=target,
+        baseline_commit=baseline,
+    )
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.touch()
+    _write_restart_marker(manager.config_dir, "server", target)
+
+    with pytest.raises(SelfUpdateError, match="activation recovery"):
+        manager.recover_installation()
+
+    assert manager.runtime_status()["install_recovery_pending"] is True

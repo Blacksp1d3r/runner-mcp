@@ -261,7 +261,7 @@ Record the design PR/evidence here, then continue to Task 8.
 
 ---
 
-## Task 8 — local release-check convenience — NEXT (ChatGPT CODE preferred)
+## Task 8 — local release-check convenience — COMPLETE
 
 Goal: provide one developer/operator command or script that runs the existing local release validation sequence consistently.
 
@@ -285,6 +285,15 @@ Acceptance:
 - documentation states CI remains authoritative.
 
 Then continue to Task 9.
+
+Status: `COMPLETE`. PR: #52, merged as `d6821ddb0773b586b6a106b66b2e18154c90cc7a`.
+
+Evidence:
+- `bash scripts/release-check.sh` runs compile, Ruff, pytest, committed/staged/unstaged whitespace checks, built-artifact smoke and clean-demo smoke in fail-fast order;
+- orchestration tests prove exact order and immediate stop on first failure;
+- documentation explicitly keeps GitHub CI on the exact commit authoritative;
+- clean demo now uses an isolated temporary project virtualenv and no longer creates/deletes the developer repository's `.venv`;
+- final current-head CI green: Ruff/pytest, whitespace, built release artifact and clean five-minute demo.
 
 ---
 

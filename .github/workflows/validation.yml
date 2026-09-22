@@ -55,6 +55,7 @@ jobs:
 
   demo-smoke:
     name: Clean five-minute demo
+    needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -76,6 +77,7 @@ jobs:
 
   release-artifact:
     name: Built release artifact
+    needs: validate
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

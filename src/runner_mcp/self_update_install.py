@@ -181,7 +181,11 @@ class SelfUpdatePackageInstaller:
         if not destination.exists() or not destination.is_dir():
             raise PackageInstallError("Self-update wheel stage is unavailable")
         try:
-            wheels = [candidate for candidate in destination.iterdir() if candidate.suffix == ".whl"]
+            wheels = [
+                candidate
+                for candidate in destination.iterdir()
+                if candidate.suffix == ".whl"
+            ]
         except OSError as exc:
             raise PackageInstallError("Self-update wheel stage is unavailable") from exc
         if len(wheels) != 1:

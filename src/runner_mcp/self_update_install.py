@@ -169,6 +169,38 @@ class SelfUpdatePackageInstaller:
             raise PackageInstallError("Runner MCP wheel staging produced unsafe output")
         return resolved
 
+    def staged_wheel(self, *, job_id: str, label: str) -> Path:
+        if label not in _WHEEL_LABELS:
+            raise PackageInstallError("Invalid self-update wheel stage")
+        job_root = self._job_root(job_id)
+        if job_root.is_symlink():
+            raise PackageInstallError("Self-update install artifact storage is unsafe")
+        destination = job_root / label
+        if destination.is_symlink():
+            raise PackageInstallError("Self-update wheel stage is unsafe")
+        if not destination.exists() or not destination.is_dir():
+            raise PackageInstallError("Self-update wheel stage is unavailable")
+        try:
+            wheels = [
+                candidate
+                for candidate in destination.iterdir()
+                if candidate.suffix == ".whl"
+            ]
+        except OSError as exc:
+            raise PackageInstallError("Self-update wheel stage is unavailable") from exc
+        if len(wheels) != 1:
+            raise PackageInstallError("Self-update wheel stage is invalid")
+        wheel = wheels[0]
+        if wheel.is_symlink() or not wheel.is_file():
+            raise PackageInstallError("Self-update wheel stage is unsafe")
+        try:
+            resolved = wheel.resolve(strict=True)
+        except OSError as exc:
+            raise PackageInstallError("Self-update wheel stage is unavailable") from exc
+        if not resolved.is_relative_to(self.artifacts_root):
+            raise PackageInstallError("Self-update wheel stage is unsafe")
+        return resolved
+
     def install_wheel(self, wheel: Path) -> None:
         if wheel.is_symlink():
             raise PackageInstallError("Self-update wheel is unsafe")

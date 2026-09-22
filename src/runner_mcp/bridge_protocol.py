@@ -219,7 +219,11 @@ class BridgeRequest(BaseModel):
                 raise ValueError("run_tests accepts only project and profile")
             return self
 
-        if self.action in {BridgeAction.JOB_STATUS, BridgeAction.CANCEL_JOB}:
+        if self.action in {
+            BridgeAction.JOB_STATUS,
+            BridgeAction.CANCEL_JOB,
+            BridgeAction.SELF_UPDATE_STATUS,
+        }:
             if self.job_id is None:
                 raise ValueError(f"{self.action.value} requires job_id")
             if (

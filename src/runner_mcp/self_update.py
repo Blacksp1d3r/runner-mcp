@@ -787,6 +787,7 @@ class SelfUpdateManager:
                 )
                 try:
                     self._package_installer.install_wheel(target_wheel)
+                    self._package_installer.verify_runtime()
                     installed = True
                 except PackageInstallError as install_exc:
                     if baseline_commit is None or baseline_wheel is None:
@@ -803,6 +804,7 @@ class SelfUpdateManager:
                     rollback_succeeded = True
                     try:
                         self._package_installer.install_wheel(baseline_wheel)
+                        self._package_installer.verify_runtime()
                     except PackageInstallError:
                         rollback_succeeded = False
                     try:

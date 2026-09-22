@@ -12,10 +12,59 @@ from typing import Any
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _WHEEL_LABELS = {"baseline", "target"}
+_TRANSACTION_FILENAME = "self-update-install-transaction.json"
 
 
 class PackageInstallError(RuntimeError):
     """Safe package-install failure without private path or process output."""
+
+
+
+def _read_transaction_path(path: Path) -> dict[str, Any] | None:
+    if path.is_symlink():
+        raise PackageInstallError("Self-update install transaction is unsafe")
+    if not path.exists():
+        return None
+    if not path.is_file():
+        raise PackageInstallError("Self-update install transaction is unsafe")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise PackageInstallError("Self-update install transaction is invalid") from exc
+    if not isinstance(raw, dict) or set(raw) != {
+        "job_id",
+        "target_commit",
+        "baseline_commit",
+        "rollback_capable",
+    }:
+        raise PackageInstallError("Self-update install transaction is invalid")
+    job_id = raw.get("job_id")
+    target_commit = raw.get("target_commit")
+    baseline_commit = raw.get("baseline_commit")
+    rollback_capable = raw.get("rollback_capable")
+    if not isinstance(job_id, str) or not _JOB_ID_RE.fullmatch(job_id):
+        raise PackageInstallError("Self-update install transaction is invalid")
+    if not isinstance(target_commit, str) or not _COMMIT_RE.fullmatch(target_commit):
+        raise PackageInstallError("Self-update install transaction is invalid")
+    if baseline_commit is not None and (
+        not isinstance(baseline_commit, str)
+        or not _COMMIT_RE.fullmatch(baseline_commit)
+    ):
+        raise PackageInstallError("Self-update install transaction is invalid")
+    if not isinstance(rollback_capable, bool):
+        raise PackageInstallError("Self-update install transaction is invalid")
+    if rollback_capable != (baseline_commit is not None):
+        raise PackageInstallError("Self-update install transaction is invalid")
+    return raw
+
+
+def install_recovery_state(config_dir: Path) -> str:
+    path = config_dir.expanduser() / _TRANSACTION_FILENAME
+    try:
+        transaction = _read_transaction_path(path)
+    except PackageInstallError:
+        return "invalid"
+    return "pending" if transaction is not None else "clear"
 
 
 class SelfUpdatePackageInstaller:
@@ -58,7 +107,7 @@ class SelfUpdatePackageInstaller:
                 "Self-update install artifact storage is unavailable"
             ) from exc
 
-        self.transaction_path = config_dir / "self-update-install-transaction.json"
+        self.transaction_path = config_dir / _TRANSACTION_FILENAME
 
     @staticmethod
     def _environment() -> dict[str, str]:
@@ -266,42 +315,7 @@ class SelfUpdatePackageInstaller:
             raise PackageInstallError("Runner MCP installed runtime verification failed")
 
     def pending_transaction(self) -> dict[str, Any] | None:
-        path = self.transaction_path
-        if path.is_symlink():
-            raise PackageInstallError("Self-update install transaction is unsafe")
-        if not path.exists():
-            return None
-        if not path.is_file():
-            raise PackageInstallError("Self-update install transaction is unsafe")
-        try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise PackageInstallError("Self-update install transaction is invalid") from exc
-        if not isinstance(raw, dict) or set(raw) != {
-            "job_id",
-            "target_commit",
-            "baseline_commit",
-            "rollback_capable",
-        }:
-            raise PackageInstallError("Self-update install transaction is invalid")
-        job_id = raw.get("job_id")
-        target_commit = raw.get("target_commit")
-        baseline_commit = raw.get("baseline_commit")
-        rollback_capable = raw.get("rollback_capable")
-        if not isinstance(job_id, str) or not _JOB_ID_RE.fullmatch(job_id):
-            raise PackageInstallError("Self-update install transaction is invalid")
-        if not isinstance(target_commit, str) or not _COMMIT_RE.fullmatch(target_commit):
-            raise PackageInstallError("Self-update install transaction is invalid")
-        if baseline_commit is not None and (
-            not isinstance(baseline_commit, str)
-            or not _COMMIT_RE.fullmatch(baseline_commit)
-        ):
-            raise PackageInstallError("Self-update install transaction is invalid")
-        if not isinstance(rollback_capable, bool):
-            raise PackageInstallError("Self-update install transaction is invalid")
-        if rollback_capable != (baseline_commit is not None):
-            raise PackageInstallError("Self-update install transaction is invalid")
-        return raw
+        return _read_transaction_path(self.transaction_path)
 
     def begin_transaction(
         self,

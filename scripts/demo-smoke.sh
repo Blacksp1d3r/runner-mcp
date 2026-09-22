@@ -10,7 +10,6 @@ cleanup() {
     kill "$SERVER_PID" 2>/dev/null || true
     wait "$SERVER_PID" 2>/dev/null || true
   fi
-  rm -rf "$REPO_ROOT/.venv"
   rm -rf "$DEMO_ROOT"
 }
 trap cleanup EXIT
@@ -24,8 +23,8 @@ mkdir -p "$HOME"
 cd "$REPO_ROOT"
 ./install.sh
 
-python3 -m venv --copies .venv
-.venv/bin/python -m pip install --disable-pip-version-check -e '.[dev]'
+python3 -m venv --copies "$DEMO_ROOT/dev-venv"
+"$DEMO_ROOT/dev-venv/bin/python" -m pip install --disable-pip-version-check -e '.[dev]'
 
 printf '\n%s\n%s\n%s\n%s\n\n\n\n\n\n\nYES\n' \
   "demo" \

@@ -6,8 +6,8 @@ Last reconciled: 2026-09-22. GitHub current state wins.
 1. Core safety/protocol invariants remain the base for every later slice.
 2. Watcher/replay/result recovery must be healthy before relying on mailbox-driven self-update proof.
 3. Self-update package transaction recovery and activation recovery must be proven before treating live self-update as routine.
-4. PR #45 recovery-state visibility may merge independently of private-host bootstrap, but must be green/current.
-5. Private-host bootstrap/proof comes after current main + recovery visibility are reconciled.
+4. Recovery-state visibility is reconciled on current main via PR #51; stale PR #45 is closed.
+5. Private-host bootstrap/proof comes after current main + recovery visibility are reconciled and after a fresh bounded watcher/recovery health check.
 6. Public launch/release tagging comes only from an exact green commit after operational recovery proof.
 
 ## Parallel work that is safe

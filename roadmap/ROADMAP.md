@@ -2,6 +2,9 @@
 
 This public roadmap is intentionally infrastructure-neutral. Real deployment details belong only in private configuration.
 
+
+Handoff policy: `roadmap/ROADMAP.md` is the canonical architectural roadmap; `roadmap/DEPENDENCIES.md` is the canonical cross-stream build/integration order when parallel work exists. GitHub live state wins if either document lags.
+
 Status policy: this roadmap is the architectural source of truth for implemented and remaining phases. `handover/CURRENT_STATE.md` is chronological evidence of completed work, while GitHub CI and release records are authoritative for exact validation results such as test counts.
 
 ## Phase 0 — repository and design

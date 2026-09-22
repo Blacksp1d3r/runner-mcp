@@ -10,7 +10,7 @@ SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "release-check.sh"
 
 def _write_fake(bin_dir: Path, name: str, body: str) -> None:
     path = bin_dir / name
-    path.write_text("#!/usr/bin/env bash\nset -euo pipefail\n" + body, encoding="utf-8")
+    path.write_text("#!/bin/bash\nset -euo pipefail\n" + body, encoding="utf-8")
     path.chmod(0o755)
 
 

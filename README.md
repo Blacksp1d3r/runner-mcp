@@ -93,6 +93,7 @@ runner-mcp serve
 
 # MCP/mailbox clients can also use:
 # runtime_status
+# runtime_doctor
 # self_update <full-main-commit>
 # self_update_status <job-id>
 ```

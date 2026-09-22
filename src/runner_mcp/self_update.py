@@ -609,13 +609,20 @@ class SelfUpdateManager:
             "installed_at": _iso(_utc_now()),
         }
         try:
-            temporary.write_text(
-                json.dumps(payload, sort_keys=True, separators=(",", ":")),
-                encoding="utf-8",
-            )
+            with temporary.open("w", encoding="utf-8") as handle:
+                handle.write(
+                    json.dumps(payload, sort_keys=True, separators=(",", ":"))
+                )
+                handle.flush()
+                os.fsync(handle.fileno())
             os.chmod(temporary, 0o600)
             os.replace(temporary, path)
             os.chmod(path, 0o600)
+            directory_fd = os.open(path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
         except OSError as exc:
             try:
                 temporary.unlink(missing_ok=True)

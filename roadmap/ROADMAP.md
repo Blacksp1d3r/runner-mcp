@@ -433,12 +433,14 @@ Implemented foundation:
 - the target commit must be reachable from `origin/main`, and source synchronization remains clean-worktree, exact-commit and staging/test gated;
 - existing fixed `lint` and `unit` profiles must both pass before installation;
 - installation uses the active Python runtime with fixed local-source pip arguments, `--no-deps`, `--no-build-isolation`, no shell and no caller-supplied path/argv/environment;
-- the clean source commit is rechecked immediately before installation;
+- the clean source commit is rechecked immediately before validation and again before installation;
+- the per-project source guard is held across lint, unit validation and installation so another source sync cannot invalidate what was tested;
 - update jobs and installed-commit state are persisted privately with restrictive permissions;
 - server, GitHub watcher and completion watcher activate new code through fixed component-specific self-reexec flows;
 - `self_update_status(job_id)` exposes only bounded persisted state;
 - read-only `runtime_status` keeps the broader observability fields and adds self-update readiness/state; `runtime_doctor` remains separate;
 - the loopback bridge explicitly allow-lists `runtime_status`, `runtime_doctor`, `self_update` and `self_update_status`;
+- protocol validation treats `self_update_status` as an exact job-id-only action, and direct/self-update entry points reject uppercase or abbreviated commit identifiers;
 - arbitrary repository/ref selection, package-manager arguments, install paths, process commands, service identifiers and restart commands remain unavailable.
 
 Next:

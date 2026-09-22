@@ -511,4 +511,3 @@ def test_self_operations_map_only_fixed_arguments(
 def test_self_operations_reject_extra_or_unpinned_input(payload: str) -> None:
     with pytest.raises(BridgeProtocolError, match="strict validation"):
         parse_bridge_request(payload)
-

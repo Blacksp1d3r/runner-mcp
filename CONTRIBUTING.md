@@ -20,6 +20,14 @@ pytest
 ruff check .
 ~~~
 
+Before asking for release readiness, run the repository-local convenience check:
+
+~~~bash
+bash scripts/release-check.sh
+~~~
+
+It runs compile, Ruff, pytest, committed and local whitespace checks, the built-artifact smoke test and the clean demo in fail-fast order. It is a local convenience wrapper only; GitHub CI on the exact commit remains authoritative.
+
 New behavior should include tests. Security-relevant changes should include a negative/fail-closed test as well as a success test.
 
 ## Design rules

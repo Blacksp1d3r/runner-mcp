@@ -15,6 +15,7 @@ import yaml
 from .config import ProjectConfig, ProjectRegistry
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .operational_safety import OperatorSafetyGuard
+from .self_update_install import install_recovery_state
 from .server import Settings
 
 
@@ -500,6 +501,32 @@ def run_doctor(config_dir: Path) -> list[DoctorCheck]:
             "currently active" if safety.stop_active else "available and inactive",
         )
     )
+
+    recovery_state = install_recovery_state(paths.config_dir)
+    if recovery_state == "invalid":
+        checks.append(
+            DoctorCheck(
+                "self-update install recovery",
+                "FAIL",
+                "recovery state is invalid or unsafe",
+            )
+        )
+    elif recovery_state == "pending":
+        checks.append(
+            DoctorCheck(
+                "self-update install recovery",
+                "WARN",
+                "pending; activate the emergency stop and run self-update-recovery",
+            )
+        )
+    else:
+        checks.append(
+            DoctorCheck(
+                "self-update install recovery",
+                "PASS",
+                "no pending install recovery",
+            )
+        )
 
     resource = urlsplit(settings.resource_url)
     secure_transport = resource.scheme == "https" or (resource.hostname or "").lower() in {

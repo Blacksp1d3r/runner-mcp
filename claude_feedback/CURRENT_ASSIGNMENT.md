@@ -166,7 +166,7 @@ Evidence:
 
 ---
 
-## Task 5 — CLI confirmation helper deduplication — IN PROGRESS (claimed by ChatGPT)
+## Task 5 — CLI confirmation helper deduplication — COMPLETE
 
 Goal: remove repeated confirmation-input code without changing any destructive/privileged approval behavior.
 
@@ -188,9 +188,24 @@ Acceptance:
 
 Then continue to Task 6.
 
+Status: `COMPLETE`. PR: #50, merged as `07d9a4b1041cd20e7b2201aa4a83b674a1a1c85c`.
+
+Evidence:
+- one narrow `_require_removal_confirmation` helper handles only ordinary REMOVE-style configuration removals;
+- nine exact existing removal phrases migrated without changing prompt text, stripping behavior, exception class/message, or successful return behavior;
+- setup YES, emergency-stop UNLOCK, one-action APPROVE, watcher ABANDON/QUARANTINE/RESOLVE, and RECOVER SELF UPDATE remain separate and unchanged;
+- focused tests cover exact acceptance, surrounding-whitespace behavior, rejection cases and exact cancellation-exception identity;
+- CI green: Ruff/pytest, built release artifact and clean five-minute demo.
+
 ---
 
-## Task 6 — documentation / CLI contract drift audit — NEXT
+## Claude capacity policy — 2026-09-22
+
+To conserve Claude Code quota, analysis/design-heavy tasks should be done in normal Claude chat and returned as findings only. Claude Code must not claim tasks explicitly marked `CHAT REVIEW`. ChatGPT remains the default implementer unless the user explicitly assigns a CODE task to Claude Code. A rate-limited Claude session is never a project blocker.
+
+
+
+## Task 6 — documentation / CLI contract drift audit — NEXT (CHAT REVIEW)
 
 Goal: make public operator documentation match current code without duplicating state.
 
@@ -218,7 +233,7 @@ Then continue to Task 7.
 
 ---
 
-## Task 7 — dependency-set compatibility review for self-update `--no-deps` — NEXT
+## Task 7 — dependency-set compatibility review for self-update `--no-deps` — NEXT (CHAT REVIEW)
 
 This is analysis/design only. Do not edit self-update implementation.
 
@@ -246,7 +261,7 @@ Record the design PR/evidence here, then continue to Task 8.
 
 ---
 
-## Task 8 — local release-check convenience — NEXT
+## Task 8 — local release-check convenience — NEXT (ChatGPT CODE preferred)
 
 Goal: provide one developer/operator command or script that runs the existing local release validation sequence consistently.
 
@@ -273,7 +288,7 @@ Then continue to Task 9.
 
 ---
 
-## Task 9 — release-candidate hygiene dry run — NEXT
+## Task 9 — release-candidate hygiene dry run — NEXT (CHAT REVIEW)
 
 Goal: inspect whether the current repository is release-candidate clean without actually releasing anything.
 

@@ -90,65 +90,38 @@ No further action.
 
 ---
 
-## Task 2 — installer/operator robustness — CURRENT
+## Task 2 — installer/operator robustness — COMPLETE
 
-Goal: improve local operator installation failure handling without changing authority.
+Status: `COMPLETE`. Claimed by: Claude. PR: #46 (`claude/installer-operator-robustness`, head `9922bf4786992f82ce0c7469ddf039fa9cbef393`).
 
-Scope:
-- detect missing `sudo` before `install-operator.sh` attempts cross-account delegation;
-- add deterministic regression coverage for the missing-sudo path without depending on the CI host actually lacking sudo;
-- review reinstall/overwrite messaging and improve only verified confusing cases;
-- preserve service-account validation, wrapper ownership recognition, symlink refusal and private-config separation;
-- review whether existing failure output accidentally prints private paths or host-specific details and add regression coverage if needed.
+Evidence:
+- `install-operator.sh` now detects a missing `sudo` right after confirming the service account exists via `getent`, before any filesystem mutation, instead of failing later with a raw `sudo: command not found`;
+- reviewed reinstall/overwrite messaging and existing failure-output paths for private-path leakage per the task checklist; found no confusing case and no leakage beyond the operator's own local `$HOME` path on their own terminal, so no unrequested change was made;
+- added a deterministic regression test for the missing-sudo path that does not depend on the CI host actually lacking `sudo` (shrinks `PATH` to a minimal binary set so `command -v sudo` genuinely cannot resolve it, regardless of the host);
+- Ruff green; full pytest suite 753 passed, 1 deselected (see below);
+- PR #46 CI fully green: Ruff and pytest / Clean five-minute demo / Built release artifact all `success`; `mergeable_state: clean`;
+- `self_update.py`/restart/activation untouched.
 
-Do not:
-- add automatic sudo installation/configuration;
-- add privilege escalation helpers;
-- add uninstall/destructive cleanup;
-- touch self-update/restart/activation code.
+One pre-existing, unrelated sandbox-only test failure was found and documented rather than silently worked around: `tests/security/test_self_update_install.py::test_real_project_wheel_can_stage_without_index` fails identically on unmodified `main` in this execution sandbox (confirmed via `git stash`) but is green in the real GitHub CI for the same commit — a sandbox build/network-isolation limitation in `self_update_install.py`, which this task does not own or touch.
 
-Acceptance:
-- focused installer tests green;
-- Ruff/full pytest green;
-- normal PR CI green;
-- no authority expansion.
-
-After opening the PR and recording evidence here, continue to Task 3 without waiting for merge.
+Not merged — awaiting integrator/user merge decision per the "do not merge your own PR" rule.
 
 ---
 
-## Task 3 — secure I/O inventory and regression plan — NEXT
+## Task 3 — secure I/O inventory and regression plan — COMPLETE
 
-This is a design/inventory task, not a mass refactor.
+Status: `COMPLETE`. Claimed by: Claude. PR: #47 (`claude/secure-io-inventory`, head `d14b6265`).
 
-Goal: inventory every atomic/private file-write path and determine which semantics are truly shareable.
+Evidence:
+- `docs/SECURE_IO_INVENTORY.md` added: 30 writer functions across 14 non-self-update modules, each with create-only/overwrite, mode, temp/atomic-replace strategy, symlink safety, locking, fsync, and crash/cleanup semantics, traced to `file:line`;
+- six semantic classes identified (ledger stores; mkstemp-based atomic writers — proposed as the shared target primitive; fixed-name-temp writers; high-churn job-metadata writers, gated on an explicit maintainer durability decision; one-shot directory/lock creators; create-only writers, which must stay distinguishable from overwrite to avoid a correctness regression);
+- four write paths explicitly identified as not migration candidates, with reasons (`deployment_manager._activate_release`'s symlink+directory-fsync pattern as the reference, not a target for generalization; `_create_release`'s tar extraction; `audit.py`'s append-only log, separately flagged as the weakest-postured writer found and worth its own security review; everything in `self_update.py`/`self_update_install.py`);
+- 7 categories of regression test proposed for any future migration (mode enforcement, symlink refusal, create-only/overwrite, concurrent-writer safety, crash simulation, fsync-invocation, orphan-temp characterization);
+- no production code changed; Ruff green; full pytest suite 753 passed, 1 deselected (same pre-existing sandbox-only failure as Task 2, unrelated — this PR touches only a markdown file).
 
-Deliverable:
-- create/update a dedicated document under `docs/` or `claude_feedback/`;
-- enumerate each private/atomic writer and its caller;
-- classify:
-  - create-only vs overwrite;
-  - expected file/dir mode;
-  - symlink/no-follow behavior;
-  - parent-directory requirements;
-  - temp/staging strategy;
-  - atomic replace expectations;
-  - fsync/durability expectations;
-  - locking/concurrency assumptions;
-  - crash/recovery semantics;
-  - cleanup semantics;
-- identify semantic classes that can safely share primitives;
-- identify call sites that should remain specialized;
-- propose regression tests required before any migration.
+Handoff: two durability gaps found in `self_update.py`/`self_update_install.py` (both inventoried but out of scope to fix here) were surfaced to the self-update workstream via a new `handover/AGENT_EXCHANGE.md` entry rather than fixed in this PR.
 
-Do not refactor all writers in this task.
-
-Acceptance:
-- inventory is traceable to current code;
-- no secrets/private deployment values;
-- proposed helpers preserve or strengthen fail-closed behavior.
-
-After the PR/evidence is recorded here, continue to Task 4.
+Not merged — awaiting integrator/user merge decision.
 
 ---
 

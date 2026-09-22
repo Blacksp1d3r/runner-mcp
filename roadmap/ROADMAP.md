@@ -2,6 +2,8 @@
 
 This public roadmap is intentionally infrastructure-neutral. Real deployment details belong only in private configuration.
 
+Status policy: this roadmap is the architectural source of truth for implemented and remaining phases. `handover/CURRENT_STATE.md` is chronological evidence of completed work, while GitHub CI and release records are authoritative for exact validation results such as test counts.
+
 ## Phase 0 — repository and design
 
 Establish repository structure, security baseline, threat model, configuration model, handover notes, dependency policy, and public-repository hygiene controls.
@@ -96,10 +98,10 @@ Formalize the proven GitHub to Runner MCP transport without turning it into a re
 - migration, deployment and rollback execution are available only through their existing approval IDs; restore remains outside the mailbox allow-list;
 - watcher implementation stays private until deployment-specific parts are separated from reusable protocol logic.
 
-Next:
+Current status:
 
-- migrate the private watcher to the shared protocol validator;
-- package a generic watcher only when it can be done without exposing credentials or infrastructure details.
+- the private watcher migration is complete through the shared runtime described in Phases 3.8.3–3.8.7;
+- deployment-specific credentials and infrastructure details remain private.
 
 ## Phase 3.8 — bridge result envelope and replay protection
 
@@ -117,10 +119,9 @@ Harden the GitHub mailbox transport in both directions:
 - corrupt, oversized, capacity-exhausted or symlinked replay ledgers fail closed;
 - ledger file permissions restricted to the service account.
 
-Next:
+Current status:
 
-- migrate the private watcher from its pilot request/result shape to the shared validator, result envelope and replay ledger;
-- add watcher-level integration tests using only generic placeholder configuration.
+- the shared validator, result envelope and replay lifecycle are integrated into the public watcher runtime and proven through the later 3.8.x phases.
 
 ## Phase 3.8.1 — task-completion feedback
 
@@ -217,11 +218,9 @@ Still transport-specific/private:
 - notification destination;
 - supervisor/service configuration.
 
-Next:
+Current status:
 
-- combine the public processor with the fixed-host GitHub mailbox transport;
-- migrate the pilot watcher to the public request/replay/result lifecycle;
-- prove fresh request processing, restart recovery, heartbeat and completion feedback end to end.
+- the processor is integrated with the hardened GitHub transport and watcher coordinator in Phases 3.8.4–3.8.7; the private pilot migration and end-to-end proof are complete.
 
 ## Phase 3.8.4 — hardened GitHub mailbox transport
 
@@ -244,12 +243,10 @@ Implemented foundation:
 - HTTP authorization, rate-limit, timeout, conflict and availability failures are classified without returning raw GitHub response content;
 - no GitHub SDK or paid external service is required.
 
-Next:
+Current status:
 
-- add a generic watcher/coordinator loop around the public transport, processor, replay lifecycle and heartbeat contract;
-- keep credentials, repository/ref selection and supervisor configuration private;
-- migrate the private pilot watcher to that thin adapter;
-- prove restart recovery and exactly-once completion feedback on the migrated watcher.
+- the generic coordinator and private-runtime integration are implemented in Phases 3.8.5–3.8.7;
+- credentials, repository/ref selection and supervisor configuration remain private.
 
 ## Phase 3.8.5 — incremental watcher coordinator
 
@@ -274,12 +271,10 @@ Implemented foundation:
 - heartbeat delivery failure never rewinds an already-advanced cursor or reruns an action;
 - non-request commits can advance the cursor without executing work.
 
-Next:
+Current status:
 
-- combine the watcher coordinator with the loopback MCP bridge executor;
-- migrate the private pilot watcher with private runtime configuration only;
-- prove the migrated watcher against one fresh request plus a restart/recovery cycle;
-- keep completion-notification delivery independent and idempotent.
+- the coordinator is combined with the loopback MCP executor and private runtime in Phases 3.8.6–3.8.7; restart/reconciliation proof is complete;
+- completion delivery remains an independent idempotent subsystem.
 
 ## Phase 3.8.6 — loopback MCP bridge executor
 
@@ -300,12 +295,10 @@ Implemented foundation:
 - terminal test output is reduced to project, suite and status;
 - polling interval and overall wait time are bounded.
 
-Next:
+Current status:
 
-- use the private-config runtime and CLI to migrate the existing pilot watcher;
-- prove one fresh request and one restart/reconciliation cycle end to end;
-- keep completion notification independent and idempotent;
-- then return to clean-environment launch verification and service/tunnel onboarding.
+- private-config watcher migration and restart/reconciliation proof are complete in Phase 3.8.7;
+- clean-environment demo validation and completion notification proof are also complete; remaining connectivity/onboarding work is tracked separately.
 
 ## Phase 3.8.7 — private-config watcher runtime and CLI
 
@@ -336,10 +329,10 @@ Private deployment proof:
 - the legacy pilot poller is disabled in that deployment;
 - completion-notification transport remains a separate capacity concern.
 
-Next:
+Current status:
 
-- finish the independent completion-notification proof where notification transport capacity is available;
-- return to clean-environment launch verification and service/tunnel onboarding.
+- the independent exactly-once completion-notification proof and clean-environment demo validation are complete;
+- remaining private-connectivity/TLS onboarding stays in the onboarding/launch phases.
 
 ## Phase 3.8.8 — controlled multi-project concurrency
 
@@ -387,9 +380,10 @@ This phase is specifically intended to remove routine dependence on general-purp
 
 Next:
 
-- prove the expanded bridge live against one read-only operation and one low-risk configured mutation;
-- add Runner MCP self-status/doctor/update/restart as a separate fixed self-operations capability rather than exposing package-manager or process-control primitives;
+- prove the expanded operational bridge live against one read-only operation and one low-risk configured mutation on the upgraded private runtime;
 - preserve separate human approval for migration/deploy/rollback.
+
+Runner MCP read-only observability and commit-pinned self-operations are implemented separately in Phases 3.8.10–3.8.11 rather than exposing package-manager or process-control primitives.
 
 ## Phase 3.8.9a — shared Playwright test runtime
 
@@ -420,8 +414,9 @@ Implemented foundation:
 
 Next:
 
-- prove the runtime observability actions live after the private runtime is upgraded;
-- keep mutating self-operations separate from read-only diagnosis and commit-pinned;
+- prove the runtime observability actions live after the private runtime is upgraded.
+
+Mutating self-operations remain separate from read-only diagnosis and are implemented as commit-pinned operations in Phase 3.8.11.
 
 ## Phase 3.8.11 — commit-pinned Runner MCP self-update
 
@@ -448,9 +443,8 @@ Implemented foundation:
 
 Next:
 
-- bootstrap this release once on the private Runner MCP host, then prove one same-commit/no-op update and one forward update through the live GitHub mailbox;
-- bootstrap the merged self-update releases on the private host and validate the recoverable activation flow live, including one deliberately failed/retried restart path;
-- next hardening slice: add a staged/rollback-capable package-install strategy; activation recovery is merged, but a failed in-place pip installation is not yet claimed to be atomic or automatically recoverable;
+- bootstrap the merged self-update baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
+- add a staged/rollback-capable package-install strategy; activation recovery is merged, but a failed in-place pip installation is not yet claimed to be atomic or automatically recoverable;
 - keep dependency-set changes explicit because the self-installer intentionally does not resolve or install dependencies.
 
 ## Phase 3.9 — public launch readiness

@@ -1,5 +1,7 @@
 # Runner MCP
 
+[![Runner MCP validation](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml/badge.svg?branch=main)](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml)
+
 _A Fools2Tools project — practical tools from real problems._
 
 Runner MCP is a security-first, self-hosted Model Context Protocol service for controlled development and staging operations.
@@ -49,7 +51,7 @@ runner-mcp status
 
 Start with [QUICKSTART.md](QUICKSTART.md) for the guided installation.
 
-If Runner MCP runs under a dedicated service account while you log in with a separate operator account, install a local operator wrapper:
+If Runner MCP runs under a dedicated service account while you log in with a separate operator account, install a local operator wrapper. Skip this step when Runner MCP runs under the same account you use interactively:
 
 ```bash
 ./install-operator.sh SERVICE_USER

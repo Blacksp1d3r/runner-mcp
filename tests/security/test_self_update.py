@@ -11,8 +11,13 @@ from runner_mcp.self_update import (
     SelfUpdateError,
     SelfUpdateJobState,
     SelfUpdateManager,
+    _write_restart_marker,
+    _write_restart_markers,
     consume_restart_marker,
+    restart_marker_commit,
     restart_marker_path,
+    restart_pending_count,
+    run_restart_if_requested,
 )
 
 
@@ -242,16 +247,97 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert kwargs["env"]["PIP_NO_INPUT"] == "1"
     assert "PIP_INDEX_URL" not in kwargs["env"]
 
-    for component in ("github-watcher", "completion-watcher"):
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == commit
+    assert status["self_update_ready"] is False
+    assert status["restart_pending"] is True
+    assert status["pending_restart_count"] == 3
+
+    for component in ("server", "github-watcher", "completion-watcher"):
         marker = restart_marker_path(manager.config_dir, component)
         assert marker.exists()
         assert oct(marker.stat().st_mode & 0o777) == "0o600"
+        assert restart_marker_commit(manager.config_dir, component) == commit
         assert consume_restart_marker(manager.config_dir, component) is True
         assert not marker.exists()
 
     status = manager.runtime_status()
-    assert status["last_installed_commit"] == commit
+    assert status["restart_pending"] is False
+    assert status["pending_restart_count"] == 0
     assert status["self_update_ready"] is True
+
+
+
+def test_restart_failure_restores_pending_marker(tmp_path: Path) -> None:
+    config = tmp_path / "config-restart"
+    config.mkdir()
+    commit = "e" * 40
+    _write_restart_marker(config, "github-watcher", commit)
+
+    def fail_restart() -> None:
+        raise OSError("synthetic exec failure")
+
+    with pytest.raises(SelfUpdateError, match="could not restart"):
+        run_restart_if_requested(config, "github-watcher", fail_restart)
+
+    assert restart_marker_commit(config, "github-watcher") == commit
+    assert restart_pending_count(config) == 1
+
+
+def test_restart_marker_batch_rolls_back_partial_write(tmp_path: Path) -> None:
+    config = tmp_path / "config-batch"
+    config.mkdir()
+    unsafe = restart_marker_path(config, "github-watcher")
+    unsafe.symlink_to(tmp_path / "missing-target")
+
+    with pytest.raises(SelfUpdateError, match="unsafe"):
+        _write_restart_markers(config, "f" * 40)
+
+    assert not restart_marker_path(config, "completion-watcher").exists()
+    assert not restart_marker_path(config, "server").exists()
+
+
+def test_pending_activation_blocks_next_self_update(tmp_path: Path) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    _write_restart_marker(manager.config_dir, "server", "a" * 40)
+
+    with pytest.raises(SelfUpdateError, match="activation is still pending"):
+        manager.start("b" * 40)
+
+
+def test_post_install_activation_failure_is_distinguished(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installs: list[list[str]] = []
+
+    def installer(command, **kwargs):
+        installs.append(list(command))
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager, _root, _exits = make_manager(
+        tmp_path,
+        installer_runner=installer,
+    )
+    commit = "c" * 40
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda root: {"commit": commit, "clean": True},
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update._write_restart_markers",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            SelfUpdateError("synthetic activation failure")
+        ),
+    )
+
+    started = manager.start(commit)
+    result = wait_terminal(manager, started["job_id"])
+
+    assert installs
+    assert result["state"] == "failed"
+    assert result["error_category"] == "activation_failed"
+    assert result["restart_required"] is True
 
 
 def test_restart_marker_rejects_symlink(tmp_path: Path) -> None:

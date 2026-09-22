@@ -437,6 +437,9 @@ Implemented foundation:
 - the per-project source guard is held across lint, unit validation and installation so another source sync cannot invalidate what was tested;
 - update jobs and installed-commit state are persisted privately with restrictive permissions;
 - server, GitHub watcher and completion watcher activate new code through fixed component-specific self-reexec flows;
+- activation creates fixed create-once restart markers for all three components; a failed component re-exec restores its marker instead of silently consuming the restart request;
+- runtime status exposes only whether activation remains pending and the bounded number of fixed pending components; another self-update is blocked until those markers are cleared;
+- server activation uses bounded retries, while watcher/notifier failures preserve their marker so existing systemd/cron supervision can safely retry on restart;
 - `self_update_status(job_id)` exposes only bounded persisted state;
 - read-only `runtime_status` keeps the broader observability fields and adds self-update readiness/state; `runtime_doctor` remains separate;
 - the loopback bridge explicitly allow-lists `runtime_status`, `runtime_doctor`, `self_update` and `self_update_status`;
@@ -446,7 +449,8 @@ Implemented foundation:
 Next:
 
 - bootstrap this release once on the private Runner MCP host, then prove one same-commit/no-op update and one forward update through the live GitHub mailbox;
-- define a bounded recovery/rollback story for a failed post-install activation before treating self-update as unattended maintenance;
+- validate the recoverable activation flow live on the private host, including one deliberately failed/retried restart path;
+- keep package-install rollback separate: a failed in-place pip installation still requires a stronger staged/atomic package strategy before self-update is treated as fully unattended;
 - keep dependency-set changes explicit because the self-installer intentionally does not resolve or install dependencies.
 
 ## Phase 3.9 — public launch readiness

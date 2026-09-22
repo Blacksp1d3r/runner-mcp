@@ -41,7 +41,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - short per-job private test temporary directories that avoid Unix-domain socket path exhaustion while preserving restrictive permissions and cleanup;
 - bounded operational GitHub mailbox actions for scrubbed test logs, configured service control, backups, migration/deployment/rollback planning and approval-bound high-risk execution;
 - canonical main-only Runner MCP self-update jobs with fixed lint/unit gates, local no-dependency installation and internal component self-reexec;
-- recoverable self-update activation markers that block overlapping updates and preserve pending restart intent when a fixed component re-exec fails.
+- recoverable self-update activation markers that block overlapping updates and preserve pending restart intent when a fixed component re-exec fails;
+- private staged self-update wheels with durable install transactions, verified baseline rollback for caught package failures and fail-closed pending-recovery state for unproven interruption.
 
 ### Fixed
 
@@ -60,6 +61,7 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - mailbox operational actions remain fixed-schema: no arbitrary shell, argv, path, environment, systemd unit, MCP tool, approval grant, restore or production mutation is accepted;
 - self-update cannot select an arbitrary repository, branch, package-manager command, executable, install path or restart command;
 - self-update restart markers are create-once, batch-prepared for the fixed components, and restored after a failed re-exec instead of silently losing activation intent;
+- self-update package mutation is preceded by private wheel staging and a strict transaction marker; caught failures roll back only when both package and source restoration are verified, while interrupted/unproven recovery blocks further updates;
 - result persistence/finalization failures do not authorize bridge action replay;
 - GitHub mailbox transport failures are classified and kept inside the persistence/recovery boundary;
 - watcher restarts reuse cursor/replay state and never treat process restart as permission to replay actions;

@@ -16,12 +16,15 @@ Runner MCP is a small, auditable, deny-by-default operations interface. GitHub i
 
 ## Current state
 GitHub current state wins if anything below is stale.
-- `main`: `f5d2586674d30cc12a526273da6c352312f2ac9a` at this handoff.
-- PR #45 is open and CI-green: “Surface self-update install recovery in status and doctor”.
-- PR #44 was merged as `3ce122012d56ead3fbf75dfbf8fe770572f3ed47`: bounded local self-update install recovery.
-- The private GitHub watcher is live, but its heartbeat is currently degraded with 4 recovery-attention items.
-- A read-only `runtime_status` mailbox probe `runner-runtime-status-20260922-0640` was submitted and had no result yet at this handoff.
-- The current watcher behavior deliberately does not advance its cursor while recovery observations remain.
+- `main`: `011fcbfec4e0b75a93820ca1c4c487111da6b495` at this reconciliation checkpoint.
+- No open Runner-MCP pull requests at this checkpoint.
+- PR #46 merged as `a50fe7eca0c74dff8aa337e431feadf55fa3e287`: installer/operator missing-sudo robustness.
+- PR #47 merged as `5d2f21409723578e7b6873f31746fac1d8ada459`: secure-I/O inventory.
+- PR #48 merged as `4f84a192581015e219774b8d0a40e1172124c12b`: self-update file + directory fsync durability.
+- PR #49 merged as `57d9f114dcab22df434aaa051796ae036b71ebb9`: category-only safe diagnostics contract.
+- PR #50 merged as `07d9a4b1041cd20e7b2201aa4a83b674a1a1c85c`: narrow REMOVE-confirmation helper.
+- PR #51 merged as `011fcbfec4e0b75a93820ca1c4c487111da6b495`: current-main recovery visibility; stale PR #45 was closed unmerged.
+- The last recorded private-runtime handoff said the watcher had 4 recovery-attention items and a read-only runtime probe was pending. That private state was not re-probed in this GitHub-only session and must be treated as historical until checked again.
 
 ## Important decisions
 - no arbitrary shell/executable/path/environment/process/package-manager input through MCP/mailbox;
@@ -31,25 +34,26 @@ GitHub current state wins if anything below is stale.
 - GitHub live PR/issue/CI state is authoritative over stale handoff text.
 
 ## Open PRs / issues
-- PR #45 — recovery state visibility in local `status` / `doctor`; mergeable and CI-green at last check.
-- No open Runner-MCP issues at last check.
+- No open Runner-MCP pull requests at this checkpoint.
+- No open Runner-MCP issues were re-established as blockers during this GitHub reconciliation.
 
 ## Blockers
-- private watcher recovery backlog: 4 recovery-attention items keep the cursor from advancing cleanly;
+- private watcher/recovery health still needs a fresh bounded probe before mailbox-driven self-update proof; the previous degraded observation is not assumed current;
 - private host still needs bootstrap/proof of the newest recovery-capable self-update baseline;
-- Desktop Commander is unavailable due monthly limit; prefer GitHub + Runner-MCP bridge.
+- Desktop Commander is unavailable due monthly limit; prefer GitHub + bounded Runner-MCP bridge when available.
 
 ## Current assignment
-1. reconcile/resolve the four watcher recovery-attention items without replaying operations;
-2. confirm the live `runtime_status` probe result;
-3. merge PR #45 only after confirming GitHub state is still green/current;
-4. bootstrap and live-prove the newest self-update baseline through the safe operating model.
+1. keep Task 6 and Task 7 as normal-chat analysis/review work, not Claude Code work;
+2. use ChatGPT for Task 8 implementation unless explicitly reassigned;
+3. before live self-update proof, obtain a fresh bounded private-runtime watcher/recovery status;
+4. bootstrap and live-prove the current recovery-capable self-update baseline only after watcher/recovery state is clean enough for safe proof.
 
 ## Next safe steps
-- inspect exact recovery observations and use only existing fail-closed operator recovery/quarantine mechanisms;
-- never reset replay/cursor state generically;
-- once watcher health is clean, re-run one read-only runtime probe;
-- then prove same-commit self-update, forward update, failed/retried activation and interrupted/recovered package-install paths.
+- Task 6: documentation/CLI contract drift audit as a CHAT REVIEW; return findings only, no code.
+- Task 7: dependency-set / `--no-deps` compatibility analysis as a CHAT REVIEW.
+- Task 8: local release-check convenience as ChatGPT CODE work.
+- independently, re-probe private watcher/recovery state before relying on mailbox-driven self-update proof;
+- never reset replay/cursor/transaction state generically.
 
 ## Definition of done for a work batch
 Tests/evidence must be terminal, blockers must be recorded or resolved, and this file plus `CURRENT_STATE.md` / `AGENT_EXCHANGE.md` must make the next safe action obvious.

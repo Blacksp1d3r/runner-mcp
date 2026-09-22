@@ -33,10 +33,19 @@ mkdir -p "$INSTALL_ROOT" "$BIN_DIR"
 chmod 700 "$INSTALL_ROOT"
 
 echo "Creating isolated Python environment..."
-"$PYTHON_BIN" -m venv "$VENV_DIR"
+if ! "$PYTHON_BIN" -m venv "$VENV_DIR"; then
+  echo "Error: could not create the Python virtual environment." >&2
+  echo "Install venv support for this Python 3.12+ interpreter (for Debian/Ubuntu, typically python3-venv)." >&2
+  exit 1
+fi
 
 echo "Installing Runner MCP..."
 "$VENV_DIR/bin/python" -m pip install --disable-pip-version-check "$ROOT_DIR"
+
+if ! "$VENV_DIR/bin/runner-mcp" --help >/dev/null 2>&1; then
+  echo "Error: Runner MCP installation self-check failed." >&2
+  exit 1
+fi
 
 ln -sfn "$VENV_DIR/bin/runner-mcp" "$BIN_DIR/runner-mcp"
 

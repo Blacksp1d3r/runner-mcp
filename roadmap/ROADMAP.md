@@ -449,8 +449,8 @@ Implemented foundation:
 Next:
 
 - bootstrap this release once on the private Runner MCP host, then prove one same-commit/no-op update and one forward update through the live GitHub mailbox;
-- validate the recoverable activation flow live on the private host, including one deliberately failed/retried restart path;
-- keep package-install rollback separate: a failed in-place pip installation still requires a stronger staged/atomic package strategy before self-update is treated as fully unattended;
+- bootstrap the merged self-update releases on the private host and validate the recoverable activation flow live, including one deliberately failed/retried restart path;
+- next hardening slice: add a staged/rollback-capable package-install strategy; activation recovery is merged, but a failed in-place pip installation is not yet claimed to be atomic or automatically recoverable;
 - keep dependency-set changes explicit because the self-installer intentionally does not resolve or install dependencies.
 
 ## Phase 3.9 — public launch readiness

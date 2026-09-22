@@ -19,6 +19,7 @@ from uuid import uuid4
 
 from .config import ProjectRegistry
 from .operational_safety import ActionClass, OperatorSafetyGuard
+from .self_update_install import PackageInstallError, SelfUpdatePackageInstaller
 from .source_control import SourceControlError, SourceSynchronizer, clean_head
 from .test_runner import TERMINAL_STATUSES, TestJobStatus, TestRunner, TestRunnerError
 
@@ -293,7 +294,14 @@ class SelfUpdateManager:
         self.safety = safety
         self.tests = tests
         self.source = source
-        self._installer_runner = installer_runner
+        try:
+            self._package_installer = SelfUpdatePackageInstaller(
+                config_dir=self.config_dir,
+                python_executable=Path(sys.executable),
+                runner=installer_runner,
+            )
+        except PackageInstallError as exc:
+            raise SelfUpdateError("Self-update package installer is unavailable") from exc
         self._restart_delay_seconds = restart_delay_seconds
         self._server_port: int | None = None
         try:
@@ -327,6 +335,29 @@ class SelfUpdateManager:
     def _state_path(self) -> Path:
         return self.config_dir / "self-update-state.json"
 
+    def _installed_commit(self) -> str | None:
+        path = self._state_path()
+        if path.is_symlink():
+            raise SelfUpdateError("Self-update state is unsafe")
+        if not path.exists():
+            return None
+        if not path.is_file():
+            raise SelfUpdateError("Self-update state is unsafe")
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SelfUpdateError("Self-update state is unavailable") from exc
+        candidate = raw.get("commit") if isinstance(raw, dict) else None
+        if not isinstance(candidate, str) or not _COMMIT_RE.fullmatch(candidate):
+            raise SelfUpdateError("Self-update state is invalid")
+        return candidate
+
+    def _pending_install_transaction(self) -> dict[str, Any] | None:
+        try:
+            return self._package_installer.pending_transaction()
+        except PackageInstallError as exc:
+            raise SelfUpdateError("Self-update install recovery state is unsafe") from exc
+
     def _persist_job(self, job: SelfUpdateJob) -> None:
         path = self._job_path(job.job_id)
         if path.exists() and path.is_symlink():
@@ -348,6 +379,7 @@ class SelfUpdateManager:
             raise SelfUpdateError("Self-update job metadata could not be persisted") from exc
 
     def _load_existing_jobs(self) -> None:
+        transaction = self._pending_install_transaction()
         for path in self.jobs_root.glob("*.json"):
             if path.is_symlink() or not path.is_file():
                 continue
@@ -389,7 +421,11 @@ class SelfUpdateManager:
                 job.state = SelfUpdateJobState.INTERRUPTED
                 job.finished_at = _utc_now()
                 job.current_step = None
-                job.error_category = "runner_restart"
+                job.error_category = (
+                    "install_recovery_required"
+                    if transaction is not None and transaction["job_id"] == job_id
+                    else "runner_restart"
+                )
                 job.restart_required = False
                 self._persist_job(job)
             self._jobs[job_id] = job
@@ -422,18 +458,8 @@ class SelfUpdateManager:
         except PackageNotFoundError:
             package_version = "development"
 
-        last_commit = None
-        state_path = self._state_path()
-        if state_path.exists():
-            if state_path.is_symlink() or not state_path.is_file():
-                raise SelfUpdateError("Self-update state is unsafe")
-            try:
-                raw = json.loads(state_path.read_text(encoding="utf-8"))
-            except (OSError, json.JSONDecodeError) as exc:
-                raise SelfUpdateError("Self-update state is unavailable") from exc
-            candidate = raw.get("commit") if isinstance(raw, dict) else None
-            if isinstance(candidate, str) and _COMMIT_RE.fullmatch(candidate):
-                last_commit = candidate
+        last_commit = self._installed_commit()
+        recovery_pending = self._pending_install_transaction() is not None
 
         try:
             self._project_config()
@@ -449,6 +475,7 @@ class SelfUpdateManager:
                 and self._required_profiles_available()
                 and self._restart_ready()
                 and pending_restarts == 0
+                and not recovery_pending
             ),
             "last_installed_commit": last_commit,
             "active_update": any(
@@ -457,6 +484,7 @@ class SelfUpdateManager:
             ),
             "restart_pending": pending_restarts > 0,
             "pending_restart_count": pending_restarts,
+            "install_recovery_pending": recovery_pending,
         }
 
     def start(self, commit: str) -> dict[str, Any]:
@@ -476,6 +504,10 @@ class SelfUpdateManager:
         if restart_pending_count(self.config_dir):
             raise SelfUpdateError(
                 "Runner MCP self-update activation is still pending"
+            )
+        if self._pending_install_transaction() is not None:
+            raise SelfUpdateError(
+                "Runner MCP self-update installation recovery is still pending"
             )
 
         with self._lock:
@@ -561,73 +593,11 @@ class SelfUpdateManager:
             time.sleep(0.2)
         raise SelfUpdateError("Self-update validation timed out")
 
-    def _install_from_checked_source(self, expected_commit: str) -> None:
-        config = self._project_config()
-        if self.tests is None:
-            raise SelfUpdateError("Runner MCP test runner is unavailable")
-
-        with self.tests.project_source_guard(SELF_PROJECT):
-            root = config.root.resolve(strict=True)
-            source_state = clean_head(root)
-            if source_state["commit"] != expected_commit:
-                raise SelfUpdateError("Self-update source changed after validation")
-
-            self.safety.assert_project_action_allowed(
-                ActionClass.TEST,
-                environment=config.environment,
-            )
-
-            executable = Path(sys.executable)
-            try:
-                resolved_executable = executable.resolve(strict=True)
-            except OSError as exc:
-                raise SelfUpdateError("Runner MCP Python runtime is unavailable") from exc
-            if (
-                not executable.is_absolute()
-                or not resolved_executable.is_file()
-                or not os.access(resolved_executable, os.X_OK)
-            ):
-                raise SelfUpdateError("Runner MCP Python runtime is unavailable")
-            command = [
-                str(executable),
-                "-m",
-                "pip",
-                "install",
-                "--no-input",
-                "--disable-pip-version-check",
-                "--no-deps",
-                "--no-build-isolation",
-                "--force-reinstall",
-                str(root),
-            ]
-            environment = {
-                "PATH": "/usr/local/bin:/usr/bin:/bin",
-                "LANG": "C.UTF-8",
-                "LC_ALL": "C.UTF-8",
-                "PIP_DISABLE_PIP_VERSION_CHECK": "1",
-                "PIP_NO_INPUT": "1",
-                "PYTHONNOUSERSITE": "1",
-            }
-            home = os.environ.get("HOME", "").strip()
-            if home and Path(home).is_absolute():
-                environment["HOME"] = home
-
-            try:
-                completed = self._installer_runner(
-                    command,
-                    cwd=str(root),
-                    env=environment,
-                    stdin=subprocess.DEVNULL,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True,
-                    timeout=300,
-                    check=False,
-                )
-            except (OSError, subprocess.SubprocessError) as exc:
-                raise SelfUpdateError("Runner MCP self-install failed") from exc
-            if completed.returncode != 0:
-                raise SelfUpdateError("Runner MCP self-install failed")
+    def _cleanup_install_artifacts(self, job_id: str) -> None:
+        try:
+            self._package_installer.cleanup_job(job_id)
+        except PackageInstallError:
+            pass
 
     def _record_installed_commit(self, commit: str) -> None:
         path = self._state_path()
@@ -691,20 +661,69 @@ class SelfUpdateManager:
     def _run_job(self, job_id: str) -> None:
         job = self._jobs[job_id]
         installed = False
+        failure_category = "self_update_failed"
+        preserve_artifacts = False
         try:
-            self._set_job(
-                job_id,
-                state=SelfUpdateJobState.SYNCING,
-                started_at=_utc_now(),
-                current_step="sync",
-            )
-            self.source.sync_project_main_commit(SELF_PROJECT, job.commit)
             if self.tests is None:
                 raise SelfUpdateError("Runner MCP test runner is unavailable")
 
             with self.tests.project_source_guard(SELF_PROJECT):
                 config = self._project_config()
                 root = config.root.resolve(strict=True)
+                source_state = clean_head(root)
+                current_commit = source_state["commit"]
+                if not isinstance(current_commit, str):
+                    raise SelfUpdateError("Self-update source state is invalid")
+                baseline_commit = self._installed_commit()
+                if baseline_commit is not None and current_commit != baseline_commit:
+                    raise SelfUpdateError(
+                        "Self-update source does not match the installed baseline"
+                    )
+
+                self._set_job(
+                    job_id,
+                    state=SelfUpdateJobState.SYNCING,
+                    started_at=_utc_now(),
+                    current_step="noop" if baseline_commit == job.commit else "sync",
+                )
+                if baseline_commit == job.commit:
+                    self._set_job(
+                        job_id,
+                        state=SelfUpdateJobState.COMPLETED,
+                        finished_at=_utc_now(),
+                        current_step=None,
+                        restart_required=False,
+                    )
+                    return
+
+                baseline_wheel: Path | None = None
+                if baseline_commit is not None:
+                    self._set_job(
+                        job_id,
+                        state=SelfUpdateJobState.SYNCING,
+                        current_step="stage-baseline",
+                    )
+                    try:
+                        baseline_wheel = self._package_installer.build_wheel(
+                            source_root=root,
+                            job_id=job_id,
+                            label="baseline",
+                        )
+                    except PackageInstallError as exc:
+                        raise SelfUpdateError(
+                            "Self-update recovery wheel could not be staged"
+                        ) from exc
+                    if clean_head(root)["commit"] != baseline_commit:
+                        raise SelfUpdateError(
+                            "Self-update source changed while staging recovery"
+                        )
+
+                self._set_job(
+                    job_id,
+                    state=SelfUpdateJobState.SYNCING,
+                    current_step="sync",
+                )
+                self.source.sync_project_main_commit(SELF_PROJECT, job.commit)
                 source_state = clean_head(root)
                 if source_state["commit"] != job.commit:
                     raise SelfUpdateError("Self-update source changed before validation")
@@ -725,12 +744,102 @@ class SelfUpdateManager:
                 self._set_job(
                     job_id,
                     state=SelfUpdateJobState.INSTALLING,
+                    current_step="stage-target",
+                )
+                try:
+                    target_wheel = self._package_installer.build_wheel(
+                        source_root=root,
+                        job_id=job_id,
+                        label="target",
+                    )
+                except PackageInstallError as exc:
+                    raise SelfUpdateError(
+                        "Self-update target wheel could not be staged"
+                    ) from exc
+                if clean_head(root)["commit"] != job.commit:
+                    raise SelfUpdateError(
+                        "Self-update source changed while staging target"
+                    )
+
+                self.safety.assert_project_action_allowed(
+                    ActionClass.TEST,
+                    environment=config.environment,
+                )
+                try:
+                    self._package_installer.begin_transaction(
+                        job_id=job_id,
+                        target_commit=job.commit,
+                        baseline_commit=baseline_commit,
+                    )
+                except PackageInstallError as exc:
+                    raise SelfUpdateError(
+                        "Self-update install transaction could not start"
+                    ) from exc
+                preserve_artifacts = True
+                self._set_job(
+                    job_id,
+                    state=SelfUpdateJobState.INSTALLING,
                     current_step="install",
                 )
-                self._install_from_checked_source(job.commit)
+                try:
+                    self._package_installer.install_wheel(target_wheel)
+                    installed = True
+                except PackageInstallError as install_exc:
+                    if baseline_commit is None or baseline_wheel is None:
+                        failure_category = "install_recovery_required"
+                        raise SelfUpdateError(
+                            "Runner MCP self-install failed without a recovery baseline"
+                        ) from install_exc
+
+                    self._set_job(
+                        job_id,
+                        state=SelfUpdateJobState.INSTALLING,
+                        current_step="rollback",
+                    )
+                    rollback_succeeded = True
+                    try:
+                        self._package_installer.install_wheel(baseline_wheel)
+                    except PackageInstallError:
+                        rollback_succeeded = False
+                    try:
+                        self.source.sync_project_main_commit(
+                            SELF_PROJECT,
+                            baseline_commit,
+                        )
+                        restored = clean_head(root)
+                        if restored["commit"] != baseline_commit:
+                            rollback_succeeded = False
+                    except (SourceControlError, RuntimeError, OSError):
+                        rollback_succeeded = False
+
+                    if not rollback_succeeded:
+                        failure_category = "install_recovery_required"
+                        raise SelfUpdateError(
+                            "Runner MCP self-install recovery is required"
+                        ) from install_exc
+
+                    try:
+                        self._package_installer.clear_transaction()
+                    except PackageInstallError as exc:
+                        failure_category = "install_recovery_required"
+                        raise SelfUpdateError(
+                            "Runner MCP self-install recovery could not be finalized"
+                        ) from exc
+                    preserve_artifacts = False
+                    failure_category = "install_rolled_back"
+                    raise SelfUpdateError(
+                        "Runner MCP self-install failed and was rolled back"
+                    ) from install_exc
+
             self._record_installed_commit(job.commit)
-            installed = True
             _write_restart_markers(self.config_dir, job.commit)
+            try:
+                self._package_installer.clear_transaction()
+            except PackageInstallError as exc:
+                raise SelfUpdateError(
+                    "Self-update install transaction could not be finalized"
+                ) from exc
+            preserve_artifacts = False
             self._set_job(
                 job_id,
                 state=SelfUpdateJobState.COMPLETED,
@@ -740,6 +849,7 @@ class SelfUpdateManager:
             )
             self._schedule_server_restart()
         except (
+            PackageInstallError,
             SelfUpdateError,
             SourceControlError,
             TestRunnerError,
@@ -749,13 +859,17 @@ class SelfUpdateManager:
             TypeError,
             OSError,
         ):
+            if installed and failure_category == "self_update_failed":
+                failure_category = "activation_failed"
             self._set_job(
                 job_id,
                 state=SelfUpdateJobState.FAILED,
                 finished_at=_utc_now(),
                 current_step=None,
-                error_category=(
-                    "activation_failed" if installed else "self_update_failed"
-                ),
+                error_category=failure_category,
                 restart_required=installed,
             )
+        finally:
+            if not preserve_artifacts:
+                self._cleanup_install_artifacts(job_id)
+

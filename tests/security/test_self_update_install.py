@@ -86,6 +86,23 @@ def test_build_wheel_uses_fixed_offline_arguments(tmp_path: Path) -> None:
     assert stat.S_IMODE(wheel.stat().st_mode) == 0o600
 
 
+def test_runtime_verification_uses_fixed_python_import(tmp_path: Path) -> None:
+    calls: list[tuple[list[str], dict]] = []
+
+    def runner(command, **kwargs):
+        calls.append((list(command), dict(kwargs)))
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    installer = make_installer(tmp_path, runner=runner)
+    installer.verify_runtime()
+
+    command, kwargs = calls[0]
+    assert command[1] == "-c"
+    assert command[2] == "import runner_mcp; import runner_mcp.self_update"
+    assert kwargs["shell"] is False
+    assert kwargs["timeout"] == 60
+
+
 def test_install_rejects_wheel_outside_private_artifacts(tmp_path: Path) -> None:
     installer = make_installer(tmp_path)
     outside = tmp_path / "outside.whl"

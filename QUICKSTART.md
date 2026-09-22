@@ -343,7 +343,15 @@ If you are worried that an operation should stop immediately:
 runner-mcp emergency-stop on
 ```
 
-You do not need to inspect the source code to use either command.
+If `status` reports `Self-update install recovery: REQUIRED`, keep the emergency stop active and run:
+
+```bash
+runner-mcp self-update-recovery
+```
+
+The recovery command uses only the previously staged verified baseline. `doctor` reports a pending recovery as a warning and treats corrupt/unsafe recovery state as a failure. Neither command prints the private wheel path or commit IDs.
+
+You do not need to inspect the source code to use these commands.
 
 ## Project adapters
 

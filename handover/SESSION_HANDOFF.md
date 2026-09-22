@@ -15,7 +15,7 @@ Runner MCP is a small, auditable, deny-by-default operations interface. GitHub i
 - commit-pinned self-update with staged wheels, transaction markers, activation markers and rollback/recovery controls.
 
 ## Current state
-GitHub current state wins if anything below is stale.
+- Task 8 merged via PR #52 (`d6821ddb0773b586b6a106b66b2e18154c90cc7a`): fail-fast local release-check wrapper plus isolated clean-demo project venv.\n- Task 6 has one demonstrated docs drift queued: `runtime_doctor` is implemented but omitted from README/public bridge action documentation.\nGitHub current state wins if anything below is stale.
 - `main`: `011fcbfec4e0b75a93820ca1c4c487111da6b495` at this reconciliation checkpoint.
 - No open Runner-MCP pull requests at this checkpoint.
 - PR #46 merged as `a50fe7eca0c74dff8aa337e431feadf55fa3e287`: installer/operator missing-sudo robustness.

@@ -10,6 +10,7 @@ This checklist applies to public releases. A release does not authorize any prod
 - the release commit is on `main`;
 - public CI is green on the exact release commit;
 - Python compile, Ruff, pytest and whitespace checks are green;
+- `bash scripts/release-check.sh` is available as a fail-fast local convenience check for the same validation families plus artifact/demo smoke tests; it does not replace green GitHub CI on the exact release commit;
 - security-sensitive changes have dedicated fail-closed tests;
 - no test is being treated as green merely because a runner or quota prevented it from starting.
 

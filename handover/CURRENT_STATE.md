@@ -1,3 +1,22 @@
+## 2026-09-22 — current reconciliation checkpoint
+
+Current public GitHub state:
+- `main` includes PR #46 installer/operator robustness, PR #47 secure-I/O inventory, PR #48 self-update durability fsync hardening, PR #49 safe diagnostics contract, PR #50 CLI removal-confirmation deduplication and PR #51 reconciled self-update recovery visibility.
+- PR #51 merged as `011fcbfec4e0b75a93820ca1c4c487111da6b495` after current-main CI passed Ruff, 773 pytest tests, whitespace validation, clean demo and built release artifact.
+- stale PR #45 was closed unmerged after its functionality was rebuilt on current main in #51.
+- there are no open Runner-MCP pull requests at this checkpoint.
+- self-update transaction and installed-state markers now flush/fsync the file before replace and fsync the parent directory after replace.
+- local `status` exposes install recovery only as `clear`, `REQUIRED` or `INVALID`; `doctor` warns/fails on pending/invalid recovery without exposing transaction details.
+- watcher/notifier/supervisor diagnostics now have a category-only safe contract; production logging integration remains a separate later slice.
+- ordinary REMOVE-style CLI confirmations share one narrow helper; emergency-stop, approval, watcher-recovery and self-update-recovery confirmations remain separate.
+
+Agent-capacity policy:
+- analysis/design-heavy Claude work is marked `CHAT REVIEW` and should be done in normal Claude chat rather than Claude Code;
+- ChatGPT is the default implementer for CODE work unless explicitly reassigned;
+- a Claude rate limit never blocks the critical path.
+
+Private runtime state was not re-probed during this GitHub-only reconciliation. The prior handoff's degraded watcher/recovery-attention observation therefore remains historical/last-known, not a newly verified current fact.
+
 ## Controlled multi-project concurrency — 2026-09-21
 
 Bounded fair multi-project concurrency is merged and validated. Runner MCP now separates mailbox acceptance from durable test execution, maintains fair logical per-project queues, returns immediate job IDs, exposes safe queue/worker/job state, and keeps same-project overlap opt-in only. High-risk mailbox actions remain excluded.

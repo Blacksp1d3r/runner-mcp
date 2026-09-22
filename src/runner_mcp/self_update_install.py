@@ -333,9 +333,16 @@ class SelfUpdatePackageInstaller:
                 handle.write(
                     json.dumps(payload, sort_keys=True, separators=(",", ":"))
                 )
+                handle.flush()
+                os.fsync(handle.fileno())
             os.chmod(temporary, 0o600)
             os.replace(temporary, self.transaction_path)
             os.chmod(self.transaction_path, 0o600)
+            directory_fd = os.open(self.transaction_path.parent, os.O_RDONLY)
+            try:
+                os.fsync(directory_fd)
+            finally:
+                os.close(directory_fd)
         except OSError as exc:
             try:
                 temporary.unlink(missing_ok=True)

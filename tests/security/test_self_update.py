@@ -225,6 +225,21 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
         "runner_mcp.self_update.clean_head",
         lambda project_root: {"commit": commit, "clean": True},
     )
+    record_installed = manager._record_installed_commit
+
+    def guarded_record_installed(value: str) -> None:
+        assert tests.source_lock.depth > 0
+        record_installed(value)
+
+    def guarded_restart_markers(config_dir: Path, value: str) -> None:
+        assert tests.source_lock.depth > 0
+        _write_restart_markers(config_dir, value)
+
+    monkeypatch.setattr(manager, "_record_installed_commit", guarded_record_installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update._write_restart_markers",
+        guarded_restart_markers,
+    )
 
     started = manager.start(commit)
     result = wait_terminal(manager, started["job_id"])

@@ -457,4 +457,13 @@ Self-update hardening follow-up — 2026-09-22:
 - review of PR #37 found and fixed three integration gaps before merge: local MCP dispatch had not allow-listed runtime observability, the direct self-update capability normalized uppercase commits instead of rejecting them, and `self_update_status` was present in the enum/mapping but missing from strict request validation;
 - the self-update source is now guarded across post-sync verification, lint, unit and install, closing the window where another source sync could change the checkout between validation steps;
 - the project source guard was made re-entrant so the self-update orchestration can hold it while existing test-start/install paths safely re-enter it;
-- the clean five-minute demo and built-artifact jobs were already green on the prior run; the corrected bridge/unit validation is being rerun before merge.
+- PR #37 merged as `8570f842ffad5282bb28a89a77bcbcba5dd01bcd` after clean five-minute demo, built-artifact validation, Ruff and 704 pytest tests all passed.
+
+Self-update activation recovery — 2026-09-22:
+- follow-up work makes restart intent durable across fixed-component re-exec failure rather than consuming the marker before an unsuccessful activation;
+- restart markers now cover server, GitHub watcher and completion watcher, are create-once and are batch-prepared so partial marker creation is rolled back;
+- a new self-update is refused while any fixed activation marker remains pending;
+- runtime status exposes only a boolean pending state and bounded fixed-component count, not paths/process identifiers;
+- server self-reexec retries are bounded; watcher/notifier re-exec failure restores the marker so managed systemd/cron supervision can retry after process restart;
+- failures after package installation are distinguished as activation failures with restart required, while pre-install failures remain ordinary self-update failures;
+- package-install rollback remains a separate future hardening item; this slice improves activation recovery without claiming atomic package rollback.

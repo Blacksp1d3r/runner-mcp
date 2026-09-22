@@ -64,3 +64,5 @@ When a persistent agent queue exists at `claude_feedback/CURRENT_ASSIGNMENT.md`:
 - a resumed agent must re-read the queue and skip tasks already claimed by another agent or completed.
 
 This takeover rule does not weaken branch/PR/review/test requirements.
+
+If `claude_feedback/CURRENT_ASSIGNMENT.md` exists, read it after GitHub reconciliation before claiming parallel work; its task claim/takeover status prevents duplicate agent work.

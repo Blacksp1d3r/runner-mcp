@@ -75,7 +75,7 @@ Before publishing v0.1.0, the exact tag commit must have all of these green:
 - clean install from the built wheel with CLI smoke checks;
 - public-repository privacy review.
 
-The current pre-tag release-candidate baseline is 651 passed tests with one third-party Starlette/AnyIO deprecation warning, plus green compile, Ruff, whitespace, clean-demo and built-artifact jobs. Reconfirm these checks on the exact final tag commit.
+The current pre-tag release-candidate baseline has green compile, Ruff, pytest, whitespace, clean-demo and built-artifact jobs. Reconfirm every check on the exact final tag commit; record exact test counts only in dated release evidence.
 
 Record the exact passing test count and commit SHA in the GitHub release notes when the tag is created.
 

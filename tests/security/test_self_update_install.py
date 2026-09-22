@@ -49,6 +49,35 @@ def test_transaction_is_private_and_strict(tmp_path: Path) -> None:
     assert installer.pending_transaction() is None
 
 
+def test_transaction_fsyncs_file_and_parent_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installer = make_installer(tmp_path)
+    observed: list[str] = []
+    real_fsync = os.fsync
+
+    def tracking_fsync(fd: int) -> None:
+        mode = os.fstat(fd).st_mode
+        if stat.S_ISREG(mode):
+            observed.append("file")
+        elif stat.S_ISDIR(mode):
+            observed.append("directory")
+        else:
+            observed.append("other")
+        real_fsync(fd)
+
+    monkeypatch.setattr("runner_mcp.self_update_install.os.fsync", tracking_fsync)
+
+    installer.begin_transaction(
+        job_id="a" * 32,
+        target_commit="b" * 40,
+        baseline_commit="c" * 40,
+    )
+
+    assert observed == ["file", "directory"]
+
+
 def test_transaction_symlink_fails_closed(tmp_path: Path) -> None:
     installer = make_installer(tmp_path)
     target = tmp_path / "outside"

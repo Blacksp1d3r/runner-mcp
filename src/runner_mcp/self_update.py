@@ -837,22 +837,22 @@ class SelfUpdateManager:
                         "Runner MCP self-install failed and was rolled back"
                     ) from install_exc
 
-            self._record_installed_commit(job.commit)
-            _write_restart_markers(self.config_dir, job.commit)
-            try:
-                self._package_installer.clear_transaction()
-            except PackageInstallError as exc:
-                raise SelfUpdateError(
-                    "Self-update install transaction could not be finalized"
-                ) from exc
-            preserve_artifacts = False
-            self._set_job(
-                job_id,
-                state=SelfUpdateJobState.COMPLETED,
-                finished_at=_utc_now(),
-                current_step=None,
-                restart_required=True,
-            )
+                self._record_installed_commit(job.commit)
+                _write_restart_markers(self.config_dir, job.commit)
+                try:
+                    self._package_installer.clear_transaction()
+                except PackageInstallError as exc:
+                    raise SelfUpdateError(
+                        "Self-update install transaction could not be finalized"
+                    ) from exc
+                preserve_artifacts = False
+                self._set_job(
+                    job_id,
+                    state=SelfUpdateJobState.COMPLETED,
+                    finished_at=_utc_now(),
+                    current_step=None,
+                    restart_required=True,
+                )
             self._schedule_server_restart()
         except (
             PackageInstallError,

@@ -93,6 +93,12 @@ def _config_dir(value: str | None) -> Path:
     return Path(value).expanduser().resolve() if value else default_config_dir()
 
 
+def _require_removal_confirmation(expected: str, cancellation_error: Exception) -> None:
+    confirmation = input(f"Type {expected} to continue: ").strip()
+    if confirmation != expected:
+        raise cancellation_error
+
+
 def cmd_setup(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     print("Runner MCP setup")
@@ -348,9 +354,10 @@ def cmd_project(args: argparse.Namespace) -> int:
 
     if args.project_action == "remove":
         expected = f"REMOVE {args.code}"
-        confirmation = input(f"Type {expected} to continue: ").strip()
-        if confirmation != expected:
-            raise ConfigManagerError("Project removal cancelled")
+        _require_removal_confirmation(
+            expected,
+            ConfigManagerError("Project removal cancelled"),
+        )
         remove_project(config_dir, code=args.code)
         print(f"Project removed: {args.code}")
         return 0
@@ -427,9 +434,10 @@ def cmd_test_profile(args: argparse.Namespace) -> int:
 
     if args.profile_action == "remove":
         expected = f"REMOVE {args.name}"
-        confirmation = input(f"Type {expected} to continue: ").strip()
-        if confirmation != expected:
-            raise ConfigManagerError("Test-profile removal cancelled")
+        _require_removal_confirmation(
+            expected,
+            ConfigManagerError("Test-profile removal cancelled"),
+        )
         remove_test_profile(
             config_dir,
             project=args.project,
@@ -480,9 +488,10 @@ def cmd_service_config(args: argparse.Namespace) -> int:
 
     if args.service_config_action == "remove":
         expected = f"REMOVE {args.name}"
-        confirmation = input(f"Type {expected} to continue: ").strip()
-        if confirmation != expected:
-            raise ConfigManagerError("Service removal cancelled")
+        _require_removal_confirmation(
+            expected,
+            ConfigManagerError("Service removal cancelled"),
+        )
         remove_service_config(
             config_dir,
             project=args.project,
@@ -520,9 +529,10 @@ def cmd_database_config(args: argparse.Namespace) -> int:
 
     if args.database_action == "remove":
         expected = f"REMOVE DATABASE {args.project}"
-        confirmation = input(f"Type {expected} to continue: ").strip()
-        if confirmation != expected:
-            raise ConfigManagerError("Database removal cancelled")
+        _require_removal_confirmation(
+            expected,
+            ConfigManagerError("Database removal cancelled"),
+        )
         remove_database_config(config_dir, project=args.project)
         print(f"Database configuration removed: {args.project}")
         return 0
@@ -560,9 +570,10 @@ def cmd_migration_config(args: argparse.Namespace) -> int:
 
     if args.migration_action == "remove":
         expected = f"REMOVE MIGRATIONS {args.project}"
-        confirmation = input(f"Type {expected} to continue: ").strip()
-        if confirmation != expected:
-            raise ConfigManagerError("Migration-profile removal cancelled")
+        _require_removal_confirmation(
+            expected,
+            ConfigManagerError("Migration-profile removal cancelled"),
+        )
         remove_migration_config(config_dir, project=args.project)
         print(f"Migration profile removed: {args.project}")
         return 0
@@ -598,9 +609,10 @@ def cmd_deployment_config(args: argparse.Namespace) -> int:
 
     if args.deployment_action == "remove":
         expected = f"REMOVE DEPLOYMENT {args.project}"
-        confirmation = input(f"Type {expected} to continue: ").strip()
-        if confirmation != expected:
-            raise ConfigManagerError("Deployment configuration removal cancelled")
+        _require_removal_confirmation(
+            expected,
+            ConfigManagerError("Deployment configuration removal cancelled"),
+        )
         remove_deployment_config(config_dir, project=args.project)
         print(
             f"Deployment configuration removed: {args.project}. "
@@ -775,11 +787,10 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         return 0
 
     if args.autostart_action == "remove":
-        confirmation = input(
-            "Type REMOVE RUNNER MCP AUTOSTART to continue: "
-        ).strip()
-        if confirmation != "REMOVE RUNNER MCP AUTOSTART":
-            raise AutostartError("autostart removal cancelled")
+        _require_removal_confirmation(
+            "REMOVE RUNNER MCP AUTOSTART",
+            AutostartError("autostart removal cancelled"),
+        )
 
         removed_count = 0
         if managed_cron:
@@ -837,11 +848,10 @@ def cmd_completion_notifier(args: argparse.Namespace) -> int:
         return 0
 
     if args.completion_notifier_action == "remove":
-        confirmation = input(
-            "Type REMOVE COMPLETION NOTIFIER to continue: "
-        ).strip()
-        if confirmation != "REMOVE COMPLETION NOTIFIER":
-            raise CompletionDeliveryError("completion notifier removal cancelled")
+        _require_removal_confirmation(
+            "REMOVE COMPLETION NOTIFIER",
+            CompletionDeliveryError("completion notifier removal cancelled"),
+        )
         remove_completion_notifier(config_dir)
         print("Completion notifier configuration removed.")
         return 0
@@ -916,11 +926,10 @@ def cmd_github_mailbox(args: argparse.Namespace) -> int:
         return 0
 
     if args.github_mailbox_action == "remove":
-        confirmation = input(
-            "Type REMOVE GITHUB MAILBOX to continue: "
-        ).strip()
-        if confirmation != "REMOVE GITHUB MAILBOX":
-            raise ConfigManagerError("GitHub mailbox removal cancelled")
+        _require_removal_confirmation(
+            "REMOVE GITHUB MAILBOX",
+            ConfigManagerError("GitHub mailbox removal cancelled"),
+        )
         remove_github_mailbox(config_dir)
         print("GitHub mailbox configuration removed.")
         return 0

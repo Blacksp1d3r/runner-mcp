@@ -125,7 +125,7 @@ Not merged — awaiting integrator/user merge decision.
 
 ---
 
-## Task 4 — safe watcher diagnostics contract — IN PROGRESS (claimed by ChatGPT)
+## Task 4 — safe watcher diagnostics contract — COMPLETE
 
 Goal: design a minimal category-only diagnostic/logging contract for long-running watcher/notifier/supervisor components.
 
@@ -153,9 +153,20 @@ Do not touch self-update watcher recovery semantics.
 
 After recording PR/evidence here, continue to Task 5.
 
+Status: `COMPLETE`. PR: #49, merged as `57d9f114dcab22df434aaa051796ae036b71ebb9`.
+
+Evidence:
+- category-only `safe_diagnostics` contract added with enum-only component/event/error fields;
+- lifecycle, cycle outcome, bounded retry and supervisor-restart categories are allow-listed;
+- dynamic strings are rejected without echoing rejected values;
+- forbidden output and current consumers are documented in `docs/SAFE_DIAGNOSTICS.md`;
+- security tests prove sensitive literals cannot flow through the renderer;
+- production watcher logging integration deliberately remains a separate reviewed slice;
+- CI green: Ruff/pytest, built release artifact and clean five-minute demo.
+
 ---
 
-## Task 5 — CLI confirmation helper deduplication — NEXT
+## Task 5 — CLI confirmation helper deduplication — IN PROGRESS (claimed by ChatGPT)
 
 Goal: remove repeated confirmation-input code without changing any destructive/privileged approval behavior.
 

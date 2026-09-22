@@ -209,6 +209,30 @@ class SelfUpdatePackageInstaller:
         if completed.returncode != 0:
             raise PackageInstallError("Runner MCP package installation failed")
 
+    def verify_runtime(self) -> None:
+        command = [
+            str(self.python_executable),
+            "-c",
+            "import runner_mcp; import runner_mcp.self_update",
+        ]
+        try:
+            completed = self._runner(
+                command,
+                cwd=str(self.artifacts_root),
+                env=self._environment(),
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=60,
+                check=False,
+                shell=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise PackageInstallError("Runner MCP installed runtime verification failed") from exc
+        if completed.returncode != 0:
+            raise PackageInstallError("Runner MCP installed runtime verification failed")
+
     def pending_transaction(self) -> dict[str, Any] | None:
         path = self.transaction_path
         if path.is_symlink():

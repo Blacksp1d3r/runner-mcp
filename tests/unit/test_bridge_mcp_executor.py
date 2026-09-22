@@ -608,6 +608,58 @@ def test_executor_rejects_unbounded_operational_arguments(
             executor.approval_status(args[0])
 
 
+def test_executor_exposes_fixed_self_operations() -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    update_job = "a" * 32
+    commit = "b" * 40
+    fake = FakeClient(
+        [
+            {
+                "version": "0.1.0",
+                "self_update_ready": True,
+                "active_update": False,
+            },
+            {
+                "job_id": update_job,
+                "commit": commit,
+                "state": "queued",
+            },
+            {
+                "job_id": update_job,
+                "commit": commit,
+                "state": "testing",
+            },
+        ]
+    )
+    executor._local.client = fake
+
+    assert executor.runtime_status()["self_update_ready"] is True
+    assert executor.self_update(commit)["job_id"] == update_job
+    assert executor.self_update_status(update_job)["state"] == "testing"
+    assert fake.calls == [
+        ("runtime_status", {}),
+        ("self_update", {"commit": commit}),
+        ("self_update_status", {"job_id": update_job}),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("method", "value"),
+    [
+        ("self_update", "main"),
+        ("self_update", "A" * 40),
+        ("self_update_status", "bad-id"),
+    ],
+)
+def test_executor_rejects_invalid_self_operation_identifiers(
+    method: str,
+    value: str,
+) -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    with pytest.raises(BridgeExecutionAdapterError):
+        getattr(executor, method)(value)
+
+
 def test_run_tests_returns_job_immediately_without_polling() -> None:
     executor = LocalMCPBridgeExecutor(_config())
     job_id = "b" * 32

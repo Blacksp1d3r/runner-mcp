@@ -40,6 +40,12 @@ class FakeExecutor:
     def runtime_doctor(self):
         return self._result("runtime_doctor")
 
+    def self_update(self, commit: str):
+        return self._result("self_update", commit)
+
+    def self_update_status(self, job_id: str):
+        return self._result("self_update_status", job_id)
+
     def project_status(self, project: str):
         return self._result("project_status", project)
 
@@ -317,6 +323,8 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         '{"request_id":"req-409","action":"safety_status"}',
         '{"request_id":"req-runtime-10","action":"runtime_status"}',
         '{"request_id":"req-runtime-11","action":"runtime_doctor"}',
+        '{"request_id":"req-self-12","action":"self_update","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
+        '{"request_id":"req-self-13","action":"self_update_status","job_id":"33333333333333333333333333333333"}',
         '{"request_id":"req-410","action":"project_status","project":"demo"}',
         '{"request_id":"req-411","action":"project_capabilities","project":"demo"}',
         '{"request_id":"req-412","action":"list_test_profiles","project":"demo"}',
@@ -355,6 +363,8 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         "safety_status",
         "runtime_status",
         "runtime_doctor",
+        "self_update",
+        "self_update_status",
         "project_status",
         "project_capabilities",
         "list_test_profiles",

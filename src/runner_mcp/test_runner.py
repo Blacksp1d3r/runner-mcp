@@ -168,7 +168,7 @@ class TestRunner:
         self._jobs: dict[str, TestJob] = {}
         self._cancel_events: dict[str, threading.Event] = {}
         self._project_queues: dict[str, deque[str]] = {}
-        self._project_source_locks: dict[str, threading.Lock] = {}
+        self._project_source_locks: dict[str, threading.RLock] = {}
         self._project_round_robin: deque[str] = deque()
         self._stopping = False
         self._workers: list[threading.Thread] = []
@@ -436,11 +436,11 @@ class TestRunner:
                 or self._active_jobs_locked(project)
             )
 
-    def project_source_guard(self, project: str) -> threading.Lock:
+    def project_source_guard(self, project: str) -> threading.RLock:
         with self._lock:
             lock = self._project_source_locks.get(project)
             if lock is None:
-                lock = threading.Lock()
+                lock = threading.RLock()
                 self._project_source_locks[project] = lock
             return lock
 

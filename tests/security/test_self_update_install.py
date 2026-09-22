@@ -140,3 +140,36 @@ def test_cleanup_rejects_symlinked_job_root(tmp_path: Path) -> None:
         installer.cleanup_job("f" * 32)
 
     assert os.path.isdir(outside)
+
+
+def test_staged_wheel_returns_only_private_named_stage(tmp_path: Path) -> None:
+    def runner(command, **kwargs):
+        wheel_dir = Path(command[command.index("--wheel-dir") + 1])
+        (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    installer = make_installer(tmp_path, runner=runner)
+    source = tmp_path / "source"
+    source.mkdir()
+    built = installer.build_wheel(
+        source_root=source,
+        job_id="1" * 32,
+        label="baseline",
+    )
+
+    recovered = installer.staged_wheel(job_id="1" * 32, label="baseline")
+
+    assert recovered == built
+    assert recovered.is_relative_to(installer.artifacts_root)
+
+
+def test_staged_wheel_rejects_symlinked_stage(tmp_path: Path) -> None:
+    installer = make_installer(tmp_path)
+    job_root = installer.artifacts_root / ("2" * 32)
+    job_root.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (job_root / "baseline").symlink_to(outside)
+
+    with pytest.raises(PackageInstallError, match="unsafe"):
+        installer.staged_wheel(job_id="2" * 32, label="baseline")

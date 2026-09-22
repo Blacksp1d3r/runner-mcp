@@ -623,6 +623,82 @@ class SelfUpdateManager:
                 pass
             raise SelfUpdateError("Self-update state could not be persisted") from exc
 
+    def recover_installation(self) -> dict[str, Any]:
+        transaction = self._pending_install_transaction()
+        if transaction is None:
+            raise SelfUpdateError("No Runner MCP self-update installation recovery is pending")
+        baseline_commit = transaction["baseline_commit"]
+        if baseline_commit is None:
+            raise SelfUpdateError(
+                "Runner MCP self-update recovery has no automatic baseline"
+            )
+        if restart_pending_count(self.config_dir):
+            raise SelfUpdateError(
+                "Runner MCP activation recovery must be resolved before install recovery"
+            )
+
+        status = self.safety.status()
+        if (
+            not self.safety.retention_confirmed
+            or not status.configured
+            or not status.stop_active
+        ):
+            raise SelfUpdateError(
+                "Runner MCP install recovery requires the operator emergency stop to be active"
+            )
+
+        config = self._project_config()
+        job_id = str(transaction["job_id"])
+        target_commit = str(transaction["target_commit"])
+        try:
+            baseline_wheel = self._package_installer.staged_wheel(
+                job_id=job_id,
+                label="baseline",
+            )
+            self._package_installer.install_wheel(baseline_wheel)
+            self._package_installer.verify_runtime()
+            self.source.restore_project_main_commit_for_recovery(
+                SELF_PROJECT,
+                baseline_commit,
+            )
+            root = config.root.resolve(strict=True)
+            restored = clean_head(root)
+            if restored["commit"] != baseline_commit:
+                raise SelfUpdateError(
+                    "Runner MCP self-update recovery source verification failed"
+                )
+            self._record_installed_commit(baseline_commit)
+
+            with self._lock:
+                job = self._jobs.get(job_id)
+                if job is not None and job.commit == target_commit:
+                    job.error_category = "install_rolled_back"
+                    job.restart_required = False
+                    job.current_step = None
+                    if job.state not in _TERMINAL_SELF_UPDATE_STATES:
+                        job.state = SelfUpdateJobState.INTERRUPTED
+                        job.finished_at = _utc_now()
+                    self._persist_job(job)
+
+            self._package_installer.clear_transaction()
+        except (
+            PackageInstallError,
+            SelfUpdateError,
+            SourceControlError,
+            RuntimeError,
+            OSError,
+        ) as exc:
+            raise SelfUpdateError(
+                "Runner MCP self-update installation recovery remains required"
+            ) from exc
+
+        self._cleanup_install_artifacts(job_id)
+        return {
+            "recovered": True,
+            "job_id": job_id,
+            "commit": baseline_commit,
+        }
+
     def _schedule_server_restart(self) -> None:
         def restart_component() -> object:
             if self._server_reexec is not None:

@@ -191,6 +191,19 @@ class SourceSynchronizer:
             project,
             commit,
             required_remote_ref="refs/remotes/origin/main",
+            recovery=False,
+        )
+
+    def restore_project_main_commit_for_recovery(
+        self,
+        project: str,
+        commit: str,
+    ) -> dict[str, str | bool]:
+        return self._sync_project(
+            project,
+            commit,
+            required_remote_ref="refs/remotes/origin/main",
+            recovery=True,
         )
 
     def _sync_project(
@@ -199,6 +212,7 @@ class SourceSynchronizer:
         commit: str,
         *,
         required_remote_ref: str | None,
+        recovery: bool = False,
     ) -> dict[str, str | bool]:
         config = self.registry.projects.get(project)
         if config is None:
@@ -206,10 +220,25 @@ class SourceSynchronizer:
         if not _COMMIT_RE.fullmatch(commit):
             raise SourceControlError("Commit must be a full Git object ID")
 
-        self.safety.assert_project_action_allowed(
-            ActionClass.TEST,
-            environment=config.environment,
-        )
+        if recovery:
+            status = self.safety.status()
+            if (
+                not self.safety.retention_confirmed
+                or not status.configured
+                or not status.stop_active
+            ):
+                raise SourceControlError(
+                    "Recovery source sync requires the operator emergency stop to be active"
+                )
+            if config.environment != "staging":
+                raise SourceControlError(
+                    "Recovery source sync is enabled only for staging environments"
+                )
+        else:
+            self.safety.assert_project_action_allowed(
+                ActionClass.TEST,
+                environment=config.environment,
+            )
         source_guard = (
             self.tests.project_source_guard(project)
             if self.tests is not None

@@ -432,6 +432,7 @@ class SelfUpdateManager:
             project_ready = True
         except SelfUpdateError:
             project_ready = False
+        pending_restarts = restart_pending_count(self.config_dir)
 
         return {
             "version": package_version,
@@ -439,12 +440,15 @@ class SelfUpdateManager:
                 project_ready
                 and self._required_profiles_available()
                 and self._restart_ready()
+                and pending_restarts == 0
             ),
             "last_installed_commit": last_commit,
             "active_update": any(
                 job.state not in _TERMINAL_SELF_UPDATE_STATES
                 for job in self._jobs.values()
             ),
+            "restart_pending": pending_restarts > 0,
+            "pending_restart_count": pending_restarts,
         }
 
     def start(self, commit: str) -> dict[str, Any]:
@@ -461,6 +465,10 @@ class SelfUpdateManager:
             ActionClass.TEST,
             environment=config.environment,
         )
+        if restart_pending_count(self.config_dir):
+            raise SelfUpdateError(
+                "Runner MCP self-update activation is still pending"
+            )
 
         with self._lock:
             if any(
@@ -638,18 +646,33 @@ class SelfUpdateManager:
             raise SelfUpdateError("Self-update state could not be persisted") from exc
 
     def _schedule_server_restart(self) -> None:
-        def restart() -> None:
-            time.sleep(self._restart_delay_seconds)
+        def restart_component() -> object:
             if self._server_reexec is not None:
-                self._server_reexec()
-                return
+                return self._server_reexec()
             if self._server_port is None:
                 raise SelfUpdateError("Runner MCP server restart is unavailable")
-            reexec_component(
+            return reexec_component(
                 self.config_dir,
                 "server",
                 server_port=self._server_port,
             )
+
+        def restart() -> None:
+            time.sleep(self._restart_delay_seconds)
+            for retry_delay in (0.0, 2.0, 5.0):
+                if retry_delay:
+                    time.sleep(retry_delay)
+                try:
+                    requested = run_restart_if_requested(
+                        self.config_dir,
+                        "server",
+                        restart_component,
+                    )
+                except SelfUpdateError:
+                    continue
+                if not requested:
+                    return
+                return
 
         threading.Thread(
             target=restart,
@@ -659,6 +682,7 @@ class SelfUpdateManager:
 
     def _run_job(self, job_id: str) -> None:
         job = self._jobs[job_id]
+        installed = False
         try:
             self._set_job(
                 job_id,
@@ -697,8 +721,8 @@ class SelfUpdateManager:
                 )
                 self._install_from_checked_source(job.commit)
             self._record_installed_commit(job.commit)
-            _write_restart_marker(self.config_dir, "github-watcher", job.commit)
-            _write_restart_marker(self.config_dir, "completion-watcher", job.commit)
+            installed = True
+            _write_restart_markers(self.config_dir, job.commit)
             self._set_job(
                 job_id,
                 state=SelfUpdateJobState.COMPLETED,
@@ -722,6 +746,8 @@ class SelfUpdateManager:
                 state=SelfUpdateJobState.FAILED,
                 finished_at=_utc_now(),
                 current_step=None,
-                error_category="self_update_failed",
-                restart_required=False,
+                error_category=(
+                    "activation_failed" if installed else "self_update_failed"
+                ),
+                restart_required=installed,
             )

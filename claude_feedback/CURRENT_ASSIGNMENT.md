@@ -125,7 +125,7 @@ Not merged — awaiting integrator/user merge decision.
 
 ---
 
-## Task 4 — safe watcher diagnostics contract — NEXT
+## Task 4 — safe watcher diagnostics contract — IN PROGRESS (claimed by ChatGPT)
 
 Goal: design a minimal category-only diagnostic/logging contract for long-running watcher/notifier/supervisor components.
 

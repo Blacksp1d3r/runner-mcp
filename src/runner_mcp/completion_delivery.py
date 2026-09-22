@@ -25,8 +25,8 @@ from .github_mailbox import GitHubApiSession
 from .onboarding import read_private_runtime
 from .self_update import (
     SelfUpdateError,
-    consume_restart_marker,
     reexec_component,
+    run_restart_if_requested,
 )
 from .test_runner import JOB_ID_RE, TERMINAL_STATUSES, TestJobStatus
 
@@ -653,22 +653,16 @@ class CompletionNotifierRuntime:
         while True:
             self.run_once()
             try:
-                restart_requested = consume_restart_marker(
+                run_restart_if_requested(
                     self._config_dir,
                     "completion-watcher",
+                    lambda: reexec_component(
+                        self._config_dir,
+                        "completion-watcher",
+                    ),
                 )
             except SelfUpdateError as exc:
                 raise CompletionDeliveryError(
-                    "Runner MCP self-update restart state is invalid"
+                    "Runner MCP self-update restart failed"
                 ) from exc
-            if restart_requested:
-                try:
-                    reexec_component(
-                        self._config_dir,
-                        "completion-watcher",
-                    )
-                except SelfUpdateError as exc:
-                    raise CompletionDeliveryError(
-                        "Runner MCP self-update restart failed"
-                    ) from exc
             time.sleep(poll_seconds)

@@ -11,6 +11,7 @@ import pytest
 from runner_mcp.self_update_install import (
     PackageInstallError,
     SelfUpdatePackageInstaller,
+    install_recovery_state,
 )
 
 
@@ -202,3 +203,18 @@ def test_staged_wheel_rejects_symlinked_stage(tmp_path: Path) -> None:
 
     with pytest.raises(PackageInstallError, match="unsafe"):
         installer.staged_wheel(job_id="2" * 32, label="baseline")
+
+def test_install_recovery_state_is_safe_and_bounded(tmp_path: Path) -> None:
+    installer = make_installer(tmp_path)
+    assert install_recovery_state(installer.transaction_path.parent) == "clear"
+
+    installer.begin_transaction(
+        job_id="9" * 32,
+        target_commit="8" * 40,
+        baseline_commit="7" * 40,
+    )
+    assert install_recovery_state(installer.transaction_path.parent) == "pending"
+
+    installer.transaction_path.write_text("{", encoding="utf-8")
+    assert install_recovery_state(installer.transaction_path.parent) == "invalid"
+

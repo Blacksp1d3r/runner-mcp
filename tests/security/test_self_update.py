@@ -133,6 +133,12 @@ def wait_terminal(manager: SelfUpdateManager, job_id: str) -> dict:
     raise AssertionError("self-update job did not terminate")
 
 
+def stage_fake_wheel(command: list[str]) -> None:
+    wheel_dir = Path(command[command.index("--wheel-dir") + 1])
+    wheel_dir.mkdir(parents=True, exist_ok=True)
+    (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(b"synthetic wheel")
+
+
 def test_self_update_rejects_noncanonical_repository(tmp_path: Path) -> None:
     manager, _root, _exits = make_manager(
         tmp_path,
@@ -205,6 +211,8 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     def installer(command, **kwargs):
         assert tests.source_lock.depth > 0
         installs.append((list(command), dict(kwargs)))
+        if command[3] == "wheel":
+            stage_fake_wheel(list(command))
         return subprocess.CompletedProcess(command, 0, "", "")
     manager, root, _exits = make_manager(
         tmp_path,
@@ -225,27 +233,32 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert result["restart_required"] is True
     assert source.calls == [("runner-mcp", commit)]
     assert tests.started == ["lint", "unit"]
-    assert len(installs) == 1
+    assert len(installs) == 2
 
-    command, kwargs = installs[0]
-    assert command[1:] == [
-        "-m",
-        "pip",
-        "install",
-        "--no-input",
-        "--disable-pip-version-check",
-        "--no-deps",
-        "--no-build-isolation",
-        "--force-reinstall",
-        str(root.resolve()),
-    ]
-    assert Path(command[0]).is_absolute()
-    assert kwargs["shell"] is False if "shell" in kwargs else True
-    assert kwargs["stdin"] is subprocess.DEVNULL
-    assert kwargs["timeout"] == 300
-    assert kwargs["check"] is False
-    assert kwargs["env"]["PIP_NO_INPUT"] == "1"
-    assert "PIP_INDEX_URL" not in kwargs["env"]
+    wheel_command, wheel_kwargs = installs[0]
+    assert wheel_command[1:4] == ["-m", "pip", "wheel"]
+    assert "--no-deps" in wheel_command
+    assert "--no-build-isolation" in wheel_command
+    assert str(root.resolve()) == wheel_command[-1]
+    assert wheel_kwargs["shell"] is False
+    assert wheel_kwargs["stdin"] is subprocess.DEVNULL
+    assert wheel_kwargs["timeout"] == 300
+    assert wheel_kwargs["env"]["PIP_NO_INDEX"] == "1"
+
+    install_command, install_kwargs = installs[1]
+    assert install_command[1:4] == ["-m", "pip", "install"]
+    assert "--no-index" in install_command
+    assert "--no-deps" in install_command
+    assert "--force-reinstall" in install_command
+    assert install_command[-1].endswith(".whl")
+    assert Path(install_command[0]).is_absolute()
+    assert install_kwargs["shell"] is False
+    assert install_kwargs["stdin"] is subprocess.DEVNULL
+    assert install_kwargs["timeout"] == 300
+    assert install_kwargs["check"] is False
+    assert install_kwargs["env"]["PIP_NO_INPUT"] == "1"
+    assert install_kwargs["env"]["PIP_NO_INDEX"] == "1"
+    assert "PIP_INDEX_URL" not in install_kwargs["env"]
 
     status = manager.runtime_status()
     assert status["last_installed_commit"] == commit
@@ -266,6 +279,143 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert status["pending_restart_count"] == 0
     assert status["self_update_ready"] is True
 
+
+
+def test_same_installed_commit_is_noop(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installs: list[list[str]] = []
+    source = FakeSource()
+
+    def installer(command, **kwargs):
+        installs.append(list(command))
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager, _root, exits = make_manager(
+        tmp_path,
+        source=source,
+        installer_runner=installer,
+    )
+    commit = "1" * 40
+    manager._record_installed_commit(commit)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda root: {"commit": commit, "clean": True},
+    )
+
+    started = manager.start(commit)
+    result = wait_terminal(manager, started["job_id"])
+
+    assert result["state"] == "completed"
+    assert result["restart_required"] is False
+    assert source.calls == []
+    assert installs == []
+    assert exits == []
+    assert manager.runtime_status()["install_recovery_pending"] is False
+
+
+def test_failed_target_install_rolls_back_known_baseline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "2" * 40
+    target = "3" * 40
+    current = {"commit": baseline}
+
+    class StatefulSource(FakeSource):
+        def sync_project_main_commit(self, project: str, commit: str):
+            result = super().sync_project_main_commit(project, commit)
+            current["commit"] = commit
+            return result
+
+    source = StatefulSource()
+    installs: list[list[str]] = []
+
+    def installer(command, **kwargs):
+        command = list(command)
+        installs.append(command)
+        if command[3] == "wheel":
+            stage_fake_wheel(command)
+            return subprocess.CompletedProcess(command, 0, "", "")
+        if "/target/" in command[-1]:
+            return subprocess.CompletedProcess(command, 1, "", "synthetic failure")
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager, _root, _exits = make_manager(
+        tmp_path,
+        source=source,
+        installer_runner=installer,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda root: {"commit": current["commit"], "clean": True},
+    )
+
+    started = manager.start(target)
+    result = wait_terminal(manager, started["job_id"])
+
+    assert result["state"] == "failed"
+    assert result["error_category"] == "install_rolled_back"
+    assert result["restart_required"] is False
+    assert source.calls == [("runner-mcp", target), ("runner-mcp", baseline)]
+    assert current["commit"] == baseline
+    assert [command[3] for command in installs] == [
+        "wheel",
+        "wheel",
+        "install",
+        "install",
+    ]
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == baseline
+    assert status["install_recovery_pending"] is False
+    assert status["self_update_ready"] is True
+
+
+def test_failed_first_install_requires_explicit_recovery(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = "4" * 40
+    current = {"commit": "5" * 40}
+
+    class StatefulSource(FakeSource):
+        def sync_project_main_commit(self, project: str, commit: str):
+            result = super().sync_project_main_commit(project, commit)
+            current["commit"] = commit
+            return result
+
+    source = StatefulSource()
+
+    def installer(command, **kwargs):
+        command = list(command)
+        if command[3] == "wheel":
+            stage_fake_wheel(command)
+            return subprocess.CompletedProcess(command, 0, "", "")
+        return subprocess.CompletedProcess(command, 1, "", "synthetic failure")
+
+    manager, _root, _exits = make_manager(
+        tmp_path,
+        source=source,
+        installer_runner=installer,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda root: {"commit": current["commit"], "clean": True},
+    )
+
+    started = manager.start(target)
+    result = wait_terminal(manager, started["job_id"])
+
+    assert result["state"] == "failed"
+    assert result["error_category"] == "install_recovery_required"
+    assert result["restart_required"] is False
+    status = manager.runtime_status()
+    assert status["install_recovery_pending"] is True
+    assert status["self_update_ready"] is False
+    with pytest.raises(SelfUpdateError, match="recovery is still pending"):
+        manager.start("6" * 40)
 
 
 def test_restart_failure_restores_pending_marker(tmp_path: Path) -> None:
@@ -313,6 +463,8 @@ def test_post_install_activation_failure_is_distinguished(
 
     def installer(command, **kwargs):
         installs.append(list(command))
+        if command[3] == "wheel":
+            stage_fake_wheel(list(command))
         return subprocess.CompletedProcess(command, 0, "", "")
 
     manager, _root, _exits = make_manager(

@@ -64,7 +64,7 @@ Protocol version 1 exposes a fixed operation enum. In addition to project/test a
 - `request_action_approval`, `approval_status`, and approval-bound `apply_migrations`;
 - `plan_deploy`, approval-bound `deploy_staging`, and `deployment_status`;
 - `list_releases`, `rollback_plan`, approval-bound `rollback_release`, and `rollback_status`;
-- `runtime_status`, canonical-main-only `self_update`, and `self_update_status`.
+- `runtime_status`, bounded safe `runtime_doctor`, canonical-main-only `self_update`, and `self_update_status`.
 
 The earlier inspection/test actions remain available: `list_projects`, `safety_status`, `project_status`, `project_capabilities`, `sync_project`, `list_test_profiles`, `run_tests`, `queue_status`, `worker_status`, `job_status`, and `cancel_job`.
 

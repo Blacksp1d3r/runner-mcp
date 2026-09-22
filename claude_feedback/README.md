@@ -16,6 +16,8 @@ Claude's previous read-only review was useful. The low-risk findings that were i
 
 The merged review cleanup is `0e66368ca1377359019de1d594833377892db7aa`; the handover follow-up is `74e8e0691b50653586cc1d2bba97a262cf7b2747`.
 
+Claude's first parallel assignment was subsequently completed and merged in PR #42 as `3653e22f9618f0e00374ee3d008c5c435c94acdc`: 26 additional direct Settings/transport-security/adapter regression tests, with no production-code changes. The current assignment is Task 2 in `CURRENT_ASSIGNMENT.md`.
+
 ## Suggestions that remain useful, but need separate hardening work
 
 These are not rejected. They were deliberately not merged as mechanical "quick wins":
@@ -23,7 +25,6 @@ These are not rejected. They were deliberately not merged as mechanical "quick w
 - centralizing private/atomic file writes in a shared `secure_io` layer;
 - scrubbed watcher lifecycle diagnostics/logging;
 - reducing repetitive CLI confirmation logic;
-- improving direct unit coverage of settings validation and adapters;
 - making release/check tooling easier to run locally.
 
 For the first two, preserve the current fail-closed behavior and do not broaden what is logged or exposed. Existing write paths have different lifecycle/failure semantics and must be inventoried before consolidation.

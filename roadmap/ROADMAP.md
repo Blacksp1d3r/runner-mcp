@@ -427,9 +427,14 @@ Implemented foundation:
 - `self_update(commit)` accepts only one full lowercase 40-character commit ID for the configured canonical Runner MCP repository;
 - the target commit must be reachable from `origin/main`, and source synchronization remains clean-worktree, exact-commit and staging/test gated;
 - existing fixed `lint` and `unit` profiles must both pass before installation;
-- installation uses the active Python runtime with fixed local-source pip arguments, `--no-deps`, `--no-build-isolation`, no shell and no caller-supplied path/argv/environment;
-- the clean source commit is rechecked immediately before validation and again before installation;
-- the per-project source guard is held across lint, unit validation and installation so another source sync cannot invalidate what was tested;
+- validated update source is staged as a private wheel before installation; wheel building and installation use the active Python runtime with fixed offline/no-dependency pip arguments, no shell and no caller-supplied path/argv/environment;
+- when a previously installed commit is known, its clean source is staged as a private recovery wheel before source synchronization, while the per-project source guard remains held across recovery staging, target sync, lint/unit validation, target staging and installation;
+- a private 0600 install-transaction marker is durable before the in-place package mutation; runtime status exposes only a bounded `install_recovery_pending` boolean and overlapping self-updates fail closed while it exists;
+- target package installation is verified in a fresh Python process before it is accepted;
+- a caught target install/import failure automatically reinstalls and verifies the recovery wheel and restores the exact prior source commit when both package and source rollback can be proven; successful automatic recovery is reported as `install_rolled_back` without scheduling activation;
+- a first/bootstrap install failure, process interruption during package mutation, failed rollback, or unfinalized transaction remains `install_recovery_required` and blocks further self-update instead of pretending the environment is intact;
+- same-commit requests still verify the exact commit against `origin/main`, but then complete without package mutation or restart;
+- the build backend required by the deliberate `--no-build-isolation` wheel path is an explicit runtime dependency rather than an implicit build-environment assumption;
 - update jobs and installed-commit state are persisted privately with restrictive permissions;
 - server, GitHub watcher and completion watcher activate new code through fixed component-specific self-reexec flows;
 - activation creates fixed create-once restart markers for all three components; a failed component re-exec restores its marker instead of silently consuming the restart request;
@@ -443,9 +448,10 @@ Implemented foundation:
 
 Next:
 
-- bootstrap the merged self-update baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
-- add a staged/rollback-capable package-install strategy; activation recovery is merged, but a failed in-place pip installation is not yet claimed to be atomic or automatically recoverable;
-- keep dependency-set changes explicit because the self-installer intentionally does not resolve or install dependencies.
+- merge and bootstrap the rollback-capable package-install baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
+- add a bounded local operator recovery command for a persisted `install_recovery_required` transaction before deliberately fault-injecting a live package-install interruption; do not expose generic package-manager or transaction-reset controls through the mailbox;
+- keep dependency-set changes explicit because self-update intentionally never resolves or installs dependencies; a dependency-set change still requires an explicit compatible bootstrap path;
+- do not describe in-place pip mutation as atomic: the transaction marker makes interruption detectable and fail-closed, while automatic rollback is claimed only for caught failures where both package and source restoration are verified.
 
 ## Phase 3.9 — public launch readiness
 

@@ -469,3 +469,45 @@ def test_operational_bridge_maps_only_bounded_arguments(
 def test_operational_bridge_rejects_unbounded_or_extra_arguments(payload: str) -> None:
     with pytest.raises(BridgeProtocolError, match="strict validation"):
         parse_bridge_request(payload)
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        (
+            {
+                "request_id": "self-002",
+                "action": "self_update",
+                "commit": "a" * 40,
+            },
+            ("self_update", {"commit": "a" * 40}),
+        ),
+        (
+            {
+                "request_id": "self-003",
+                "action": "self_update_status",
+                "job_id": "b" * 32,
+            },
+            ("self_update_status", {"job_id": "b" * 32}),
+        ),
+    ],
+)
+def test_self_operations_map_only_fixed_arguments(
+    payload: dict[str, object],
+    expected: tuple[str, dict[str, str | int]],
+) -> None:
+    assert bridge_tool_call(parse_bridge_request(json.dumps(payload))) == expected
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        '{"request_id":"self-bad-02","action":"self_update","commit":"main"}',
+        '{"request_id":"self-bad-03","action":"self_update","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","project":"runner-mcp"}',
+        '{"request_id":"self-bad-04","action":"self_update_status","job_id":"bad"}',
+        '{"request_id":"self-bad-05","action":"self_update_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","commit":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',
+        '{"request_id":"self-bad-06","action":"self_update","commit":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}',
+    ],
+)
+def test_self_operations_reject_extra_or_unpinned_input(payload: str) -> None:
+    with pytest.raises(BridgeProtocolError, match="strict validation"):
+        parse_bridge_request(payload)

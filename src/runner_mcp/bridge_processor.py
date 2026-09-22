@@ -40,6 +40,10 @@ class BridgeExecutor(Protocol):
 
     def runtime_doctor(self) -> Any: ...
 
+    def self_update(self, commit: str) -> Any: ...
+
+    def self_update_status(self, job_id: str) -> Any: ...
+
     def project_status(self, project: str) -> Any: ...
 
     def project_capabilities(self, project: str) -> Any: ...
@@ -224,6 +228,14 @@ class BridgeProcessor:
 
         if request.action == BridgeAction.RUNTIME_DOCTOR:
             return self._executor.runtime_doctor()
+
+        if request.action == BridgeAction.SELF_UPDATE:
+            assert request.commit is not None
+            return self._executor.self_update(request.commit)
+
+        if request.action == BridgeAction.SELF_UPDATE_STATUS:
+            assert request.job_id is not None
+            return self._executor.self_update_status(request.job_id)
 
         if request.action == BridgeAction.PROJECT_STATUS:
             assert request.project is not None

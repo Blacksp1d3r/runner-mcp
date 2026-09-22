@@ -63,7 +63,8 @@ Protocol version 1 exposes a fixed operation enum. In addition to project/test a
 - `list_backups`, `backup_database`, `migration_status`;
 - `request_action_approval`, `approval_status`, and approval-bound `apply_migrations`;
 - `plan_deploy`, approval-bound `deploy_staging`, and `deployment_status`;
-- `list_releases`, `rollback_plan`, approval-bound `rollback_release`, and `rollback_status`.
+- `list_releases`, `rollback_plan`, approval-bound `rollback_release`, and `rollback_status`;
+- `runtime_status`, canonical-main-only `self_update`, and `self_update_status`.
 
 The earlier inspection/test actions remain available: `list_projects`, `safety_status`, `project_status`, `project_capabilities`, `sync_project`, `list_test_profiles`, `run_tests`, `queue_status`, `worker_status`, `job_status`, and `cancel_job`.
 
@@ -75,7 +76,8 @@ The bridge still must not accept:
 - filesystem paths;
 - arbitrary systemd unit names: only configured service aliases are accepted;
 - arbitrary MCP tool names;
-- arbitrary Git refs/remotes;
+- arbitrary Git refs/remotes or self-update repositories;
+- package-manager commands, install paths or arbitrary process restart commands;
 - approval grants or confirmation phrases;
 - database restore, PITR, production deployment or production rollback requests.
 
@@ -386,3 +388,16 @@ Continuous mode separates request polling from heartbeat publication. Request po
 The runtime derives its replay ledger and cursor locations inside the private configuration directory. It reuses the existing private Runner MCP bearer credential for loopback MCP access and never prints either credential.
 
 Setup overwrite preserves already-configured mailbox and database secrets. Explicit Runner MCP bearer-token rotation rotates only that bearer credential and does not erase unrelated private secrets.
+
+
+## Runner MCP self-update
+
+Self-update is intentionally narrower than ordinary project synchronization.
+
+`self_update` accepts only a lowercase full commit ID. The private runtime must already contain a configured `runner-mcp` project whose repository is the canonical Runner MCP repository. The target commit must be reachable from `origin/main`.
+
+The update runs asynchronously and exposes only an opaque job ID plus safe status. Runner MCP executes its existing fixed `lint` and `unit` profiles before installation and rechecks the clean source commit immediately before installing. Installation uses the active Python environment and fixed local-source pip arguments with dependency resolution disabled.
+
+After a successful installation, server, GitHub watcher and completion watcher activate the new installation through fixed component-specific self-reexec arguments. The mailbox cannot choose an executable, process, service, path, repository, branch, dependency or package-manager argument.
+
+This means the GitHub mailbox can become the normal transport for future Runner MCP upgrades without becoming a general remote-control channel.

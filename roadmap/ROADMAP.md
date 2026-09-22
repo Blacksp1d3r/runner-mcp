@@ -420,9 +420,34 @@ Implemented foundation:
 
 Next:
 
-- add fixed self-update/restart as a separate commit-pinned capability with rollback;
-- add generic shared browser runtime support for Playwright E2E profiles;
-- prove the new runtime actions live after the private runtime is upgraded.
+- prove the runtime observability actions live after the private runtime is upgraded;
+- keep mutating self-operations separate from read-only diagnosis and commit-pinned;
+
+## Phase 3.8.11 — commit-pinned Runner MCP self-update
+
+Remove routine dependence on general-purpose remote-control software without introducing generic package or process control.
+
+Implemented foundation:
+
+- `self_update(commit)` accepts only one full lowercase 40-character commit ID for the configured canonical Runner MCP repository;
+- the target commit must be reachable from `origin/main`, and source synchronization remains clean-worktree, exact-commit and staging/test gated;
+- existing fixed `lint` and `unit` profiles must both pass before installation;
+- installation uses the active Python runtime with fixed local-source pip arguments, `--no-deps`, `--no-build-isolation`, no shell and no caller-supplied path/argv/environment;
+- the clean source commit is rechecked immediately before validation and again before installation;
+- the per-project source guard is held across lint, unit validation and installation so another source sync cannot invalidate what was tested;
+- update jobs and installed-commit state are persisted privately with restrictive permissions;
+- server, GitHub watcher and completion watcher activate new code through fixed component-specific self-reexec flows;
+- `self_update_status(job_id)` exposes only bounded persisted state;
+- read-only `runtime_status` keeps the broader observability fields and adds self-update readiness/state; `runtime_doctor` remains separate;
+- the loopback bridge explicitly allow-lists `runtime_status`, `runtime_doctor`, `self_update` and `self_update_status`;
+- protocol validation treats `self_update_status` as an exact job-id-only action, and direct/self-update entry points reject uppercase or abbreviated commit identifiers;
+- arbitrary repository/ref selection, package-manager arguments, install paths, process commands, service identifiers and restart commands remain unavailable.
+
+Next:
+
+- bootstrap this release once on the private Runner MCP host, then prove one same-commit/no-op update and one forward update through the live GitHub mailbox;
+- define a bounded recovery/rollback story for a failed post-install activation before treating self-update as unattended maintenance;
+- keep dependency-set changes explicit because the self-installer intentionally does not resolve or install dependencies.
 
 ## Phase 3.9 — public launch readiness
 

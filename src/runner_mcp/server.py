@@ -36,6 +36,7 @@ from .operational_safety import (
     RetentionPolicy,
     SafetyConfigurationError,
 )
+from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
 from .source_control import SourceControlError, SourceSynchronizer, clean_head
 from .test_runner import TestRunner, TestRunnerError
@@ -333,6 +334,14 @@ def build_mcp(
         if settings.approval_root is not None
         else None
     )
+    self_update_manager = SelfUpdateManager(
+        config_dir=settings.projects_config.parent,
+        registry=registry,
+        safety=safety,
+        tests=tests,
+        source=source_sync,
+        resource_url=settings.resource_url,
+    )
 
     @mcp.tool()
     def runtime_status() -> dict:
@@ -357,6 +366,20 @@ def build_mcp(
             "deployment_jobs_configured": deployment_jobs is not None,
             "approvals_configured": approval_manager is not None,
         }
+        try:
+            result.update(self_update_manager.runtime_status())
+        except SelfUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "runtime_status",
+                    None,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -442,6 +465,64 @@ def build_mcp(
                 None,
                 "authenticated-client",
                 result["state"],
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def self_update(commit: str) -> dict:
+        """Start a canonical main-only Runner MCP self-update job."""
+        try:
+            result = self_update_manager.start(commit)
+        except (SelfUpdateError, OperatorStopActive, SafetyConfigurationError) as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "self_update",
+                    "runner-mcp",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "self_update",
+                "runner-mcp",
+                "authenticated-client",
+                "started",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def self_update_status(job_id: str) -> dict:
+        """Return safe persisted status for one Runner MCP self-update job."""
+        try:
+            result = self_update_manager.status(job_id)
+        except SelfUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "self_update_status",
+                    None,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "self_update_status",
+                "runner-mcp",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
                 utc_timestamp(),
             )
         )

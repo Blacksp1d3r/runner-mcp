@@ -18,6 +18,12 @@ if [[ -z "$SERVICE_HOME" ]]; then
   exit 2
 fi
 
+if [[ "$(id -un)" != "$SERVICE_USER" ]] && ! command -v sudo >/dev/null 2>&1; then
+  echo "Error: sudo is required to manage a different service account, but it was not found." >&2
+  echo "Install sudo, or run this installer as the service account itself." >&2
+  exit 2
+fi
+
 RUNNER_BIN="${RUNNER_MCP_SERVICE_BIN:-$SERVICE_HOME/.local/bin/runner-mcp}"
 CONFIG_DIR="${RUNNER_MCP_SERVICE_CONFIG_DIR:-$SERVICE_HOME/.config/runner-mcp}"
 BIN_DIR="${RUNNER_MCP_OPERATOR_BIN_DIR:-$HOME/.local/bin}"

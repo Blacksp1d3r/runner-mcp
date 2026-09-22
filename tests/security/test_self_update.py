@@ -1,3 +1,5 @@
+import os
+import stat
 import subprocess
 import threading
 import time
@@ -484,6 +486,31 @@ def test_invalid_installed_state_fails_closed(tmp_path: Path) -> None:
 
     with pytest.raises(SelfUpdateError, match="state is invalid"):
         manager.runtime_status()
+
+
+def test_installed_state_fsyncs_file_and_parent_directory(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    observed: list[str] = []
+    real_fsync = os.fsync
+
+    def tracking_fsync(fd: int) -> None:
+        mode = os.fstat(fd).st_mode
+        if stat.S_ISREG(mode):
+            observed.append("file")
+        elif stat.S_ISDIR(mode):
+            observed.append("directory")
+        else:
+            observed.append("other")
+        real_fsync(fd)
+
+    monkeypatch.setattr("runner_mcp.self_update.os.fsync", tracking_fsync)
+
+    manager._record_installed_commit("a" * 40)
+
+    assert observed == ["file", "directory"]
 
 
 def test_pending_activation_blocks_next_self_update(tmp_path: Path) -> None:

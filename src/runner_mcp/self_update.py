@@ -94,9 +94,11 @@ def restart_marker_path(config_dir: Path, component: str) -> Path:
 
 def restart_marker_commit(config_dir: Path, component: str) -> str | None:
     path = restart_marker_path(config_dir, component)
+    if path.is_symlink():
+        raise SelfUpdateError("Self-update restart marker is unsafe")
     if not path.exists():
         return None
-    if path.is_symlink() or not path.is_file():
+    if not path.is_file():
         raise SelfUpdateError("Self-update restart marker is unsafe")
     try:
         raw = path.read_text(encoding="utf-8")
@@ -119,13 +121,17 @@ def _write_restart_marker(config_dir: Path, component: str, commit: str) -> None
     if not _COMMIT_RE.fullmatch(commit):
         raise SelfUpdateError("Invalid self-update commit")
     path = restart_marker_path(config_dir, component)
+    if path.is_symlink():
+        raise SelfUpdateError("Self-update restart marker is unsafe")
     if path.exists():
-        if path.is_symlink() or not path.is_file():
+        if not path.is_file():
             raise SelfUpdateError("Self-update restart marker is unsafe")
         raise SelfUpdateError("Self-update restart is already pending")
     temporary = path.with_suffix(".tmp")
+    if temporary.is_symlink():
+        raise SelfUpdateError("Self-update restart marker is unsafe")
     if temporary.exists():
-        if temporary.is_symlink() or not temporary.is_file():
+        if not temporary.is_file():
             raise SelfUpdateError("Self-update restart marker is unsafe")
         raise SelfUpdateError("Self-update restart staging file already exists")
     try:
@@ -144,9 +150,11 @@ def _write_restart_marker(config_dir: Path, component: str, commit: str) -> None
 
 def _remove_restart_marker(config_dir: Path, component: str) -> None:
     path = restart_marker_path(config_dir, component)
+    if path.is_symlink():
+        raise SelfUpdateError("Self-update restart marker is unsafe")
     if not path.exists():
         return
-    if path.is_symlink() or not path.is_file():
+    if not path.is_file():
         raise SelfUpdateError("Self-update restart marker is unsafe")
     try:
         path.unlink()

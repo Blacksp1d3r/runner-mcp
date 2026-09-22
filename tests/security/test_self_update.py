@@ -211,7 +211,7 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     def installer(command, **kwargs):
         assert tests.source_lock.depth > 0
         installs.append((list(command), dict(kwargs)))
-        if command[3] == "wheel":
+        if len(command) > 3 and command[3] == "wheel":
             stage_fake_wheel(list(command))
         return subprocess.CompletedProcess(command, 0, "", "")
     manager, root, _exits = make_manager(
@@ -233,7 +233,7 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert result["restart_required"] is True
     assert source.calls == [("runner-mcp", commit)]
     assert tests.started == ["lint", "unit"]
-    assert len(installs) == 2
+    assert len(installs) == 3
 
     wheel_command, wheel_kwargs = installs[0]
     assert wheel_command[1:4] == ["-m", "pip", "wheel"]
@@ -259,6 +259,12 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert install_kwargs["env"]["PIP_NO_INPUT"] == "1"
     assert install_kwargs["env"]["PIP_NO_INDEX"] == "1"
     assert "PIP_INDEX_URL" not in install_kwargs["env"]
+
+    verify_command, verify_kwargs = installs[2]
+    assert verify_command[1] == "-c"
+    assert "runner_mcp.self_update" in verify_command[2]
+    assert verify_kwargs["shell"] is False
+    assert verify_kwargs["timeout"] == 60
 
     status = manager.runtime_status()
     assert status["last_installed_commit"] == commit
@@ -335,10 +341,10 @@ def test_failed_target_install_rolls_back_known_baseline(
     def installer(command, **kwargs):
         command = list(command)
         installs.append(command)
-        if command[3] == "wheel":
+        if len(command) > 3 and command[3] == "wheel":
             stage_fake_wheel(command)
             return subprocess.CompletedProcess(command, 0, "", "")
-        if "/target/" in command[-1]:
+        if len(command) > 3 and command[3] == "install" and "/target/" in command[-1]:
             return subprocess.CompletedProcess(command, 1, "", "synthetic failure")
         return subprocess.CompletedProcess(command, 0, "", "")
 
@@ -361,11 +367,15 @@ def test_failed_target_install_rolls_back_known_baseline(
     assert result["restart_required"] is False
     assert source.calls == [("runner-mcp", target), ("runner-mcp", baseline)]
     assert current["commit"] == baseline
-    assert [command[3] for command in installs] == [
+    assert [
+        command[3] if len(command) > 3 else command[1]
+        for command in installs
+    ] == [
         "wheel",
         "wheel",
         "install",
         "install",
+        "-c",
     ]
     status = manager.runtime_status()
     assert status["last_installed_commit"] == baseline
@@ -390,7 +400,7 @@ def test_failed_first_install_requires_explicit_recovery(
 
     def installer(command, **kwargs):
         command = list(command)
-        if command[3] == "wheel":
+        if len(command) > 3 and command[3] == "wheel":
             stage_fake_wheel(command)
             return subprocess.CompletedProcess(command, 0, "", "")
         return subprocess.CompletedProcess(command, 1, "", "synthetic failure")
@@ -472,7 +482,7 @@ def test_post_install_activation_failure_is_distinguished(
 
     def installer(command, **kwargs):
         installs.append(list(command))
-        if command[3] == "wheel":
+        if len(command) > 3 and command[3] == "wheel":
             stage_fake_wheel(list(command))
         return subprocess.CompletedProcess(command, 0, "", "")
 

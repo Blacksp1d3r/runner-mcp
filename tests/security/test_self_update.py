@@ -309,7 +309,7 @@ def test_same_installed_commit_is_noop(
 
     assert result["state"] == "completed"
     assert result["restart_required"] is False
-    assert source.calls == []
+    assert source.calls == [("runner-mcp", commit)]
     assert installs == []
     assert exits == []
     assert manager.runtime_status()["install_recovery_pending"] is False
@@ -445,6 +445,15 @@ def test_restart_marker_batch_rolls_back_partial_write(tmp_path: Path) -> None:
 
     assert not restart_marker_path(config, "completion-watcher").exists()
     assert not restart_marker_path(config, "server").exists()
+
+
+def test_invalid_installed_state_fails_closed(tmp_path: Path) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    state = manager._state_path()
+    state.write_text('{"commit":"not-a-commit"}', encoding="utf-8")
+
+    with pytest.raises(SelfUpdateError, match="state is invalid"):
+        manager.runtime_status()
 
 
 def test_pending_activation_blocks_next_self_update(tmp_path: Path) -> None:

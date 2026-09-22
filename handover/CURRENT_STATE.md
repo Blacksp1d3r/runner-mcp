@@ -520,3 +520,15 @@ Package-install recovery merged — 2026-09-22:
 - final validation was fully green: Ruff, whitespace, 742 pytest tests with one known third-party warning, clean five-minute demo and built release artifact;
 - the source guard now remains held through installed-state persistence, restart-marker preparation and install-transaction finalization, closing a final post-install source-race window;
 - the next hardening target is a bounded local operator recovery command for persisted install transactions; live package-interruption fault injection remains deferred until that local recovery path exists.
+
+
+## 2026-09-22 — bounded local self-update install recovery
+
+A local operator-only recovery path is being added for persisted rollback-capable self-update install transactions:
+- `runner-mcp self-update-recovery` is local CLI only; it is not mapped into MCP or the GitHub mailbox;
+- recovery requires the operator emergency stop to be active and exact confirmation `RECOVER SELF UPDATE`;
+- only the private staged baseline wheel from the persisted transaction can be used;
+- the installed package is reinstalled and import-verified, source is restored to the exact baseline commit reachable from `origin/main`, and installed-state metadata is reset to that same commit;
+- the transaction is cleared only after all of those checks succeed; otherwise recovery remains pending and further self-update stays blocked;
+- bootstrap/first-install transactions without a known baseline are deliberately not auto-recoverable;
+- pending activation markers and install recovery are not allowed to overlap.

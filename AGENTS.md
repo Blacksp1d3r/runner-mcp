@@ -51,3 +51,16 @@ Feature/code work remains branch -> PR -> review/tests. Handoff/coordination fil
 An AI assignment is complete only when relevant tests/evidence are terminal and green or the blocker is explicitly recorded, and the next agent has a clear handoff. “Claude says done” or “ChatGPT says done” is not acceptance by itself.
 
 Before closing a chat after material state changed, update `handover/SESSION_HANDOFF.md`, `handover/CURRENT_STATE.md` and, when agent coordination changed, `handover/AGENT_EXCHANGE.md`.
+
+## Multi-agent availability and task takeover
+
+Claude/other-agent availability is a parallel accelerator, not a project dependency. A rate/usage limit is not by itself a blocker.
+
+When a persistent agent queue exists at `claude_feedback/CURRENT_ASSIGNMENT.md`:
+- the agent starting a task records a claim/status plus branch/PR when known;
+- before taking over another agent's task, reconcile GitHub branches, PRs and CI and inspect any work already pushed;
+- if the user confirms the previous agent is unavailable or the task is otherwise blocking progress, ChatGPT may take over rather than wait;
+- never duplicate an active conflicting branch/PR; continue/review existing useful work when safe;
+- a resumed agent must re-read the queue and skip tasks already claimed by another agent or completed.
+
+This takeover rule does not weaken branch/PR/review/test requirements.

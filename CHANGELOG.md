@@ -6,6 +6,8 @@ Runner MCP is under active development. Until the first tagged release, changes 
 
 ## Unreleased
 
+- Add a bounded local self-update install recovery command that requires the emergency stop, restores only the persisted private baseline wheel/source commit, and remains unavailable through MCP/mailbox control.
+
 ### Added
 
 - security-first self-hosted MCP server foundation;

@@ -1,6 +1,6 @@
 import os
-import subprocess
 from pathlib import Path
+import subprocess
 
 
 SCRIPT = Path(__file__).resolve().parents[2] / "scripts" / "release-check.sh"

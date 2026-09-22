@@ -2,9 +2,9 @@
 
 The tasks below are ordered to maximize useful parallel progress while minimizing conflicts with the current self-update hardening work.
 
-## Task 1 — direct configuration and adapter regression coverage
+## Task 1 — direct configuration and adapter regression coverage — completed
 
-This is the preferred next task.
+Completed in PR #42, merged as `3653e22f9618f0e00374ee3d008c5c435c94acdc`. Claude added 26 direct regression tests without production-code changes; CI was fully green.
 
 Goal: strengthen direct tests around existing public contracts without changing runtime behavior.
 
@@ -21,7 +21,7 @@ Acceptance:
 - no weakened security assertions;
 - concise PR explaining exactly which previously indirect contracts now have direct coverage.
 
-## Task 2 — installer/operator robustness
+## Task 2 — installer/operator robustness — current
 
 Goal: improve operator-facing failure messages without changing authority.
 
@@ -78,6 +78,50 @@ Optional, lower priority.
 Goal: provide one developer command/script that runs the already-existing local release checks (compile, Ruff, pytest, whitespace and artifact/demo checks where practical).
 
 It must remain a convenience wrapper, not a replacement for GitHub CI or the release checklist, and must not introduce paid services or new secrets.
+
+## Task 7 — documentation/CLI contract drift audit
+
+Goal: detect stale user-facing commands and capability claims without rewriting the documentation wholesale.
+
+Scope:
+- compare README, QUICKSTART and the main operational docs against the current argparse/MCP surfaces;
+- identify commands/options that are stale, missing or contradictory;
+- fix only verified drift;
+- prefer links to one canonical explanation instead of duplicating long command sequences;
+- do not add another global status table or exact test counts to evergreen prose.
+
+Acceptance:
+- every changed claim is traceable to current code/tests;
+- documentation-only unless a real CLI defect is found;
+- no private deployment details.
+
+## Task 8 — dependency-set compatibility review
+
+Design/review task; do not upgrade dependencies just for freshness.
+
+Goal: support the self-update `--no-deps` model by documenting what dependency-set changes would require explicit operator/bootstrap action.
+
+Deliverable:
+- inventory runtime vs dev dependencies from `pyproject.toml`;
+- identify which kinds of future changes cannot be safely delivered by the current no-deps self-update;
+- propose a fail-closed compatibility/version marker or preflight contract if useful;
+- no automatic dependency installation and no package-manager arguments exposed to mailbox/MCP clients.
+
+Coordinate with ChatGPT before touching self-update implementation.
+
+## Task 9 — release-candidate hygiene dry run
+
+Lower priority; do after the implementation-oriented tasks above.
+
+Goal: walk the release checklist against the then-current main and report only concrete blockers/drift.
+
+Check:
+- README/Quickstart/release notes consistency;
+- package metadata and built-artifact smoke;
+- public-repository hygiene;
+- exact tag candidate must remain human-selected after green CI.
+
+Do not create a tag/release or publish externally without an explicit user instruction.
 
 ## Coordination / do-not-conflict note
 

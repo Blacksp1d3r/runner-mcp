@@ -532,3 +532,13 @@ A local operator-only recovery path is being added for persisted rollback-capabl
 - the transaction is cleared only after all of those checks succeed; otherwise recovery remains pending and further self-update stays blocked;
 - bootstrap/first-install transactions without a known baseline are deliberately not auto-recoverable;
 - pending activation markers and install recovery are not allowed to overlap.
+
+
+Local install recovery merged — 2026-09-22:
+- PR #44 merged as `3ce122012d56ead3fbf75dfbf8fe770572f3ed47`;
+- validation was fully green: Ruff, whitespace, 753 pytest tests with one known third-party warning, clean five-minute demo and built release artifact;
+- persisted rollback-capable self-update transactions can now be recovered only through local `runner-mcp self-update-recovery`, with the operator emergency stop active and exact confirmation;
+- the recovery path restores the private staged baseline package, fresh-process import validity, exact baseline source commit and installed-state metadata before clearing the transaction;
+- bootstrap/no-baseline transactions and overlapping activation recovery remain fail-closed;
+- no install-recovery action was added to MCP or the GitHub mailbox;
+- next: bootstrap this merged baseline on the private host and prove same-commit, forward-update and deliberately interrupted/recovered package-install paths through the safe operating model.

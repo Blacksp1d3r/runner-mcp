@@ -1,6 +1,6 @@
 import pytest
 
-from runner_mcp.server import Settings
+from runner_mcp.server import Settings, transport_security_for
 
 
 def required_env(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -215,3 +215,69 @@ def test_invalid_approval_ttl_fails_startup(
     monkeypatch.setenv("RUNNER_MCP_APPROVAL_TTL_SECONDS", value)
     with pytest.raises(RuntimeError, match="APPROVAL_TTL_SECONDS"):
         Settings.from_env()
+
+
+@pytest.mark.parametrize("token", ["", "x" * 31])
+def test_short_bearer_token_fails_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    token: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_BEARER_TOKEN", token)
+
+    with pytest.raises(RuntimeError, match="at least 32 characters"):
+        Settings.from_env()
+
+
+def test_missing_auth_issuer_fails_startup(monkeypatch: pytest.MonkeyPatch) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_AUTH_ISSUER", "")
+
+    with pytest.raises(RuntimeError, match="issuer and MCP resource URL are required"):
+        Settings.from_env()
+
+
+def test_missing_resource_url_fails_startup(monkeypatch: pytest.MonkeyPatch) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_RESOURCE_URL", "")
+
+    with pytest.raises(RuntimeError, match="issuer and MCP resource URL are required"):
+        Settings.from_env()
+
+
+def test_minimal_valid_settings_parse_successfully(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Confirms the happy path still returns a usable Settings object, not just
+    that invalid input is rejected."""
+    required_env(monkeypatch)
+
+    settings = Settings.from_env()
+
+    assert settings.bearer_token == "x" * 32
+    assert settings.auth_issuer == "https://auth.example.invalid/"
+    assert settings.resource_url == "https://mcp.example.invalid/mcp"
+
+
+@pytest.mark.parametrize(
+    "resource_url",
+    ["not-a-url", "ftp://mcp.example.invalid/mcp", "https:///mcp"],
+)
+def test_transport_security_rejects_non_http_or_hostless_url(
+    resource_url: str,
+) -> None:
+    with pytest.raises(RuntimeError, match="absolute HTTP\\(S\\) URL"):
+        transport_security_for(resource_url)
+
+
+def test_transport_security_rejects_embedded_credentials() -> None:
+    with pytest.raises(RuntimeError, match="must not contain credentials"):
+        transport_security_for("https://operator:secret@mcp.example.invalid/mcp")
+
+
+def test_transport_security_accepts_valid_https_url() -> None:
+    result = transport_security_for("https://mcp.example.invalid/mcp")
+
+    assert result.enable_dns_rebinding_protection is True
+    assert result.allowed_hosts == ["mcp.example.invalid"]
+    assert result.allowed_origins == ["https://mcp.example.invalid"]

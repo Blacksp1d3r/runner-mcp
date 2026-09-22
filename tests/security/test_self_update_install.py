@@ -217,4 +217,3 @@ def test_install_recovery_state_is_safe_and_bounded(tmp_path: Path) -> None:
 
     installer.transaction_path.write_text("{", encoding="utf-8")
     assert install_recovery_state(installer.transaction_path.parent) == "invalid"
-

@@ -50,7 +50,8 @@ Before publishing a package or registry entry:
 - project URLs point to the public repository and documentation;
 - no private configuration file is included in the built artifact;
 - the wheel and source distribution pass `scripts/release-artifact-smoke.sh`;
-- a clean environment can install the built wheel and run the documented CLI smoke checks.
+- a clean environment can install the built wheel and run the documented CLI smoke checks;
+- dependency, build-backend and interpreter changes have an explicit bootstrap/upgrade path consistent with `docs/SELF_UPDATE_COMPATIBILITY.md`; the no-dependency self-update path is not used to resolve them.
 
 ## Release notes
 

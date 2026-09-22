@@ -513,3 +513,10 @@ Self-update package-install recovery hardening — 2026-09-22:
 - same-commit self-update requests still verify reachability through `origin/main` and then avoid unnecessary reinstall/restart;
 - clean CI exposed that offline `--no-build-isolation` wheel staging requires the setuptools build backend to remain available at runtime, so `setuptools>=75` is now an explicit runtime dependency; this dependency-set change reinforces that the first private-host bootstrap must use the normal dependency-resolving installation path;
 - the current design deliberately does not claim atomic in-place pip mutation. A process interruption can leave an install transaction pending; the next hardening slice is a bounded local recovery command before live package-install fault injection.
+
+
+Package-install recovery merged — 2026-09-22:
+- PR #43 merged as `2b7dac9fb3c9e5168c07c7967333995b646957de`;
+- final validation was fully green: Ruff, whitespace, 742 pytest tests with one known third-party warning, clean five-minute demo and built release artifact;
+- the source guard now remains held through installed-state persistence, restart-marker preparation and install-transaction finalization, closing a final post-install source-race window;
+- the next hardening target is a bounded local operator recovery command for persisted install transactions; live package-interruption fault injection remains deferred until that local recovery path exists.

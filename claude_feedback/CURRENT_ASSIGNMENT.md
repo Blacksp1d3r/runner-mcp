@@ -649,7 +649,7 @@ Acceptance:
 
 ### Task 23 — integrate category-only diagnostics into completion watcher — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task23-completion-safe-diagnostics`. PR: pending. Dependency satisfied: Task 18 is `COMPLETE` on main.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task23-completion-safe-diagnostics`. PR: #80. Exact head: `595bb6466e7eca50b4b21a9dbc8695a59b248c11`. Dependency satisfied: Task 18 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code after Task 18.
 

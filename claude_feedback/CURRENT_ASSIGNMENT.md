@@ -496,7 +496,7 @@ Return only demonstrated defects or ambiguities. Do not create a tag/release.
 
 ### Task 16 — adversarial bridge/protocol regression review — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task16-bridge-adversarial-review`.
+Status: `COMPLETE`. Review: `claude_feedback/TASK16_BRIDGE_ADVERSARIAL_REVIEW.md`. No runtime defect demonstrated; regression-test hardening queued.
 
 Preferred executor: Claude Chat.
 
@@ -578,6 +578,28 @@ Acceptance:
 - release/artifact documentation does not call the current clean wheel install offline/no-index unless a real wheelhouse-based offline test is added;
 - source-clone `./install.sh` remains the documented pre-publication consumer path;
 - no dependency changes, tag, release or package publication.
+
+---
+
+### Task 20 — exhaustive bridge protocol adversarial regression matrix — CODE/TEST lane
+
+Status: `UNCLAIMED`.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source review:
+`claude_feedback/TASK16_BRIDGE_ADVERSARIAL_REVIEW.md`.
+
+Goal:
+Pin the current fail-closed bridge protocol contract with exhaustive adversarial tests; do not broaden or redesign the protocol.
+
+Acceptance:
+- every BridgeAction has a known-valid minimal request fixture;
+- every syntactically valid non-owned optional field is injected per action and rejected;
+- action case/prefix/hyphen variants are rejected;
+- duplicate request_id, uppercase self_update commit and request-side NaN/Infinity are rejected;
+- rejected requests cannot reach executor invocation;
+- no action enum, alias, normalization, identifier-regex, replay-state or capability changes.
 
 ---
 

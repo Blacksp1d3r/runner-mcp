@@ -3,13 +3,15 @@
 Last reconciled: 2026-09-23.
 
 ## Current checkpoint
-- Live GitHub reconciled after Task 18 through coordination checkpoint `09acf32310e86d4aa36c548bb5ed5e12c0e2f572`; the code merge itself is `5c4f5db350cdafa99066bdb091866b7d6979a7a9` (PR #76).
-- Task 18 is COMPLETE. Exact PR head `97fcde693d6264171920c386d10e9e63403a9a9a` passed CI run 35894315537 fully green: Ruff, whitespace, 794 pytest tests, built release artifact and clean demo.
-- Task 18 added `runner_mcp.secure_io.atomic_replace_private` and migrated only config-manager, approval-manager and completion notifier private JSON state. Existing higher-level locks/serialization/state ordering and completion size/schema/parent semantics are preserved.
-- Explicitly untouched by Task 18: autostart/cron ownership logic, high-churn job metadata, in-place ledgers, create-only writers, deployment activation/tar extraction and self-update.
+- Live GitHub reconciled after Tasks 18 and 20 through coordination checkpoint `182ba9c24b927001257be85454cffe018a4f9cb1`; live GitHub always wins over this recorded checkpoint.
+- Task 18 COMPLETE: PR #76 merged as `5c4f5db350cdafa99066bdb091866b7d6979a7a9`. Exact PR head `97fcde693d6264171920c386d10e9e63403a9a9a` passed CI run 35894315537 fully green: Ruff, whitespace, 794 pytest tests, built release artifact and clean demo.
+- Task 18 added `runner_mcp.secure_io.atomic_replace_private` and migrated only config-manager, approval-manager and completion notifier private JSON state. Existing locks/serialization/state ordering and completion size/schema/parent semantics were preserved. Autostart/cron, job metadata, ledgers, create-only writers, deployment activation/tar extraction and self-update were untouched.
+- Task 20 COMPLETE: PR #77 merged as `4bfd71d85cb5228ba328ee17fc60414c84c43e0a`. Exact PR head `666a399803db41bae4deae73fc4f205de5e97854` passed CI run 35895116909 fully green: Ruff, whitespace, 1203 pytest tests, built release artifact and clean demo.
+- Task 20 was test-only. It pins a valid fixture for every BridgeAction, exhaustive non-owned optional-field rejection, action case/hyphen/prefix rejection, duplicate request_id rejection, request-side NaN/Infinity rejection, lowercase-only self-update commit enforcement and zero executor invocation for rejected requests.
+- No production bridge protocol/capability code changed in Task 20.
 - Open Runner-MCP PRs/issues at the post-merge reconciliation checkpoint: none.
 - Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Current UNCLAIMED bounded public queue: Task 20 bridge adversarial regression matrix; Task 21 managed-autostart secure-I/O migration; Task 22 cron supervisor safe diagnostics; Task 23 completion-watcher safe diagnostics. Task 18 prerequisites for Tasks 21/23 are satisfied.
+- Current UNCLAIMED bounded public queue: Task 21 managed-autostart secure-I/O migration; Task 22 cron supervisor safe diagnostics; Task 23 completion-watcher safe diagnostics. Task 18 prerequisites for Tasks 21/23 are satisfied.
 - Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`; do not duplicate work if another agent has claimed it.
 - No tag, GitHub release, package publication, deployment, migration or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof therefore remains unresolved.

@@ -7,6 +7,7 @@ import os
 import re
 import stat
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -23,6 +24,12 @@ from .completion_feedback import (
 )
 from .github_mailbox import GitHubApiSession
 from .onboarding import read_private_runtime
+from .safe_diagnostics import (
+    DiagnosticComponent,
+    DiagnosticErrorCategory,
+    DiagnosticEvent,
+    render_safe_diagnostic,
+)
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 from .self_update import (
     SelfUpdateError,
@@ -578,12 +585,14 @@ class CompletionNotifierRuntime:
         jobs_root: Path,
         config: GitHubIssueNotificationConfig,
         notifier: GitHubIssueCompletionNotifier | None = None,
+        diagnostic_sink: Callable[[str], object] | None = None,
     ) -> None:
         self._config_dir = config_dir.expanduser().resolve()
         self._jobs_root = jobs_root
         self._config = config
         self._notifier = notifier or GitHubIssueCompletionNotifier(config)
         self._ledger = CompletionDeliveryLedger(notification_ledger_path(config_dir))
+        self._diagnostic_sink = diagnostic_sink
 
     @classmethod
     def from_private_config(cls, config_dir: Path) -> CompletionNotifierRuntime:
@@ -643,22 +652,58 @@ class CompletionNotifierRuntime:
             delivery_failures=failures,
         )
 
+    def _diagnose(
+        self,
+        event: DiagnosticEvent,
+        error: DiagnosticErrorCategory | None = None,
+    ) -> None:
+        if self._diagnostic_sink is None:
+            return
+        self._diagnostic_sink(
+            render_safe_diagnostic(
+                component=DiagnosticComponent.COMPLETION_WATCHER,
+                event=event,
+                error=error,
+            )
+        )
+
     def run_forever(self, *, poll_seconds: float = 5.0) -> None:
         if not 1 <= poll_seconds <= 300:
             raise ValueError("completion notifier poll interval must be between 1 and 300 seconds")
-        while True:
-            self.run_once()
-            try:
-                run_restart_if_requested(
-                    self._config_dir,
-                    "completion-watcher",
-                    lambda: reexec_component(
-                        self._config_dir,
-                        "completion-watcher",
+
+        self._diagnose(DiagnosticEvent.LIFECYCLE_STARTED)
+        try:
+            while True:
+                outcome = self.run_once()
+                self._diagnose(
+                    (
+                        DiagnosticEvent.CYCLE_HEALTHY
+                        if outcome.healthy
+                        else DiagnosticEvent.CYCLE_DEGRADED
+                    ),
+                    (
+                        None
+                        if outcome.healthy
+                        else DiagnosticErrorCategory.DELIVERY_FAILED
                     ),
                 )
-            except SelfUpdateError as exc:
-                raise CompletionDeliveryError(
-                    "Runner MCP self-update restart failed"
-                ) from exc
-            time.sleep(poll_seconds)
+                try:
+                    run_restart_if_requested(
+                        self._config_dir,
+                        "completion-watcher",
+                        lambda: reexec_component(
+                            self._config_dir,
+                            "completion-watcher",
+                        ),
+                    )
+                except SelfUpdateError as exc:
+                    self._diagnose(
+                        DiagnosticEvent.SUPERVISOR_RESTART_FAILED,
+                        DiagnosticErrorCategory.RESTART_FAILED,
+                    )
+                    raise CompletionDeliveryError(
+                        "Runner MCP self-update restart failed"
+                    ) from exc
+                time.sleep(poll_seconds)
+        finally:
+            self._diagnose(DiagnosticEvent.LIFECYCLE_STOPPED)

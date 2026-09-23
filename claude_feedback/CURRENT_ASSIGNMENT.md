@@ -583,7 +583,7 @@ Acceptance:
 
 ### Task 20 — exhaustive bridge protocol adversarial regression matrix — CODE/TEST lane
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task20-bridge-adversarial-matrix`. PR: pending.
 
 Preferred executor: ChatGPT or Claude Code.
 

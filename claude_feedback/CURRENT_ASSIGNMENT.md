@@ -671,7 +671,7 @@ Acceptance:
 
 ### Task 24 — asynchronous completion-delivery expansion review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task24-completion-expansion-review`. PR: pending.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 
@@ -736,6 +736,30 @@ Deliverable:
 - propose a separate CODE task only if the review demonstrates a safe minimal slice.
 
 Do not modify service/runtime code and do not add remote process-control capability.
+
+
+---
+
+### Task 27 — database restore/recovery boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no code changes.
+
+Source:
+Phase 5 and Phase 7 in `roadmap/ROADMAP.md`: database restore, WAL/PITR orchestration/verification and database restore/recovery workflow remain deferred.
+
+Goal:
+Define the safety and approval boundary for any future database restore/recovery capability without implementing restore or broadening mailbox authority.
+
+Deliverable:
+- distinguish one-backup restore, WAL/PITR and deployment rollback boundaries;
+- identify required local/operator approvals, emergency-stop behavior and pre-restore evidence;
+- define what metadata may be surfaced safely without paths, DSNs or database contents;
+- preserve the rule that automatic production database restore is prohibited;
+- identify prerequisites and the smallest future implementation slice, if any.
+
+Do not execute a restore, change database state, add mailbox restore actions or expose credentials/paths.
 
 
 ## Queue refill rule

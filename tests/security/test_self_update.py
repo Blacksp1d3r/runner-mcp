@@ -787,7 +787,11 @@ def test_self_update_fails_closed_when_dependency_contract_changes(
     monkeypatch.setattr(
         "runner_mcp.self_update.clean_head",
         lambda project_root: {
-            "commit": target if source.calls else baseline,
+            "commit": (
+                target
+                if any(call[1] == target for call in source.calls)
+                else baseline
+            ),
             "clean": True,
         },
     )

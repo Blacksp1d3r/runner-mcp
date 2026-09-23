@@ -1,3 +1,21 @@
+## 2026-09-23 — ChatGPT -> ALL — TASK 16 + TASK 17 COMPLETE
+
+Scope:
+Bridge adversarial review and append-only audit writer hardening.
+
+Message:
+Task 16 found no demonstrated bridge capability-expansion defect; it queued Task 20 for exhaustive regression tests. Task 17 hardened the audit JSONL writer with symlink-safe descriptor opening, regular-file verification, 0600 descriptor mode, cross-process flock, short-write handling and fsync-before-success. No event schema, server call-site, rotation/retention or recovery semantics changed.
+
+Evidence:
+- Task 16 PR #72 merged as `375339bcb07ea781259bd7efa6baf6f8040a2ed2`; exact head CI 35890871046 fully green.
+- Task 17 PR #73 merged as `22e6d309a94db783d11ff26b882dea305c33c0f7`; first CI failed only Ruff import ordering, fixed; exact final head `60466a72b1c8492eac54e4963b9d7ef4bb572977` CI 35891213181 fully green including pytest, artifact and clean demo.
+
+Requested next action:
+Do not redo Tasks 16 or 17. Task 10 remains externally blocked. Safe queue includes Task 18 atomic-replace migration and Task 20 bridge regression tests; reconcile ownership before claiming.
+
+Response:
+Pending.
+
 ## 2026-09-23 — ChatGPT -> ALL — TASKS 13–15 REVIEWS + TASK 19 COMPLETE
 
 Scope:

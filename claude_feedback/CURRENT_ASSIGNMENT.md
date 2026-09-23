@@ -605,7 +605,7 @@ Acceptance:
 
 ### Task 21 — migrate managed autostart unit writes to shared private replace — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task21-autostart-secure-io`. PR: pending. Dependency satisfied: Task 18 is `COMPLETE` on main.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task21-autostart-secure-io`. PR: #78. Exact head: `01ee0c0bfeaeae8f3a07a47f4162d4f9560304ab`. Dependency satisfied: Task 18 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code after Task 18.
 

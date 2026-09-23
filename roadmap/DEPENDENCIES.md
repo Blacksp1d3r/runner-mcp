@@ -1,14 +1,14 @@
 # Runner MCP — Dependency / Integration Order
 
-Last reconciled: 2026-09-22. GitHub current state wins.
+Last reconciled: 2026-09-23. GitHub current state wins.
 
 ## Current build order
 1. Core safety/protocol invariants remain the base for every later slice.
-2. Watcher/replay/result recovery must be healthy before relying on mailbox-driven self-update proof.
-3. Self-update package transaction recovery and activation recovery must be proven before treating live self-update as routine.
-4. Recovery-state visibility is reconciled on current main via PR #51; stale PR #45 is closed.
-5. Private-host bootstrap/proof comes after current main + recovery visibility are reconciled and after a fresh bounded watcher/recovery health check.
-6. Public launch/release tagging comes only from an exact green commit after operational recovery proof.
+2. Task 10 private-host live self-update/recovery proof remains externally blocked; it does not block independent public hardening work.
+3. Tasks 16 and 17 are complete on main; do not duplicate them.
+4. Task 18 atomic private-write migration and Task 20 bridge adversarial regression tests are dependency-safe after ownership reconciliation.
+5. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
+6. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
 
 ## Parallel work that is safe
 - documentation/CLI contract drift audits;

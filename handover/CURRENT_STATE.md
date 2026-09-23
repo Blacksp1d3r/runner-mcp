@@ -1,3 +1,13 @@
+## 2026-09-23 — Tasks 16/17 landed and session reconciled
+
+- Canonical main checkpoint after PR #74: `3d7792ee088a10ca44126415394e74c8e3c29ce3`.
+- Task 16 COMPLETE: adversarial protocol review merged via PR #72; no runtime capability-expansion defect demonstrated; bounded follow-up Task 20 queued for exhaustive fail-closed regression coverage.
+- Task 17 COMPLETE: append-only audit writer hardening merged via PR #73. Exact final head `60466a72b1c8492eac54e4963b9d7ef4bb572977` passed CI run 35891213181 fully green.
+- PR #74 merged the queue/agent handoff evidence for Tasks 16/17.
+- Task 10 remains externally BLOCKED pending a usable private-host proof path.
+- Next safe implementation work is Task 18 or Task 20 after live ownership reconciliation.
+- No release/tag/publication was authorized or performed.
+
 ## 2026-09-23 — v0.1.0 public release docs prepared
 
 - PR #57 merged: the changelog now has a dated v0.1.0 release-candidate section and Unreleased is reopened.

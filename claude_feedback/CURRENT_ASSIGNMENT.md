@@ -408,7 +408,15 @@ Do not perform dependency upgrades in this task.
 
 ### Task 12 — safe diagnostics production integration — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`.
+Status: `COMPLETE`. PR #60 merged as `67973b14dbcbbae5a7ee2d0a6b8ce37942a5724b`.
+
+Evidence:
+- integrated the enum-only safe diagnostics contract into `GitHubWatcherRuntime` as the first bounded production slice;
+- lifecycle start, healthy/degraded/uninitialized cycle state and self-update restart failure use only allow-listed component/event/error categories;
+- the injected diagnostic sink receives only rendered category strings; no exception text, IDs, paths, URLs, payloads, counts or private runtime context are accepted;
+- watcher replay/recovery behavior was not changed;
+- focused runtime tests cover bounded uninitialized and recovery-required output;
+- exact PR-head CI run 35869924479 green: Ruff/pytest/whitespace, built release artifact and clean five-minute demo.
 
 Preferred executor: ChatGPT or Claude Code, but not concurrently with another agent touching the same watcher/supervisor files.
 

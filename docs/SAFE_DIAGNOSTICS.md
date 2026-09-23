@@ -81,8 +81,9 @@ event mapping and rate/noise behavior without changing the safe schema:
    executable/config path or caught exception text.
 
 3. `CompletionNotifierRuntime.run_forever()` in `completion_delivery.py`
-   remains the next bounded integration for lifecycle, healthy/degraded cycle
-   state and bounded restart failure.
+   is integrated for lifecycle start/stop, healthy/degraded delivery cycle
+   state and bounded restart failure. It does not emit repository, issue,
+   mention, token, event/job ID, path, URL or caught exception text.
 
 4. The CLI entry points that currently print the fixed
    `"... watcher running/stopped"` messages may later delegate those lifecycle

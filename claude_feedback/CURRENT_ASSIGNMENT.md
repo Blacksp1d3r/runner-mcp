@@ -496,7 +496,7 @@ Return only demonstrated defects or ambiguities. Do not create a tag/release.
 
 ### Task 16 — adversarial bridge/protocol regression review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task16-bridge-adversarial-review`.
 
 Preferred executor: Claude Chat.
 

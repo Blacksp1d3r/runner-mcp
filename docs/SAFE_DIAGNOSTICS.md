@@ -67,27 +67,22 @@ A component may still raise a bounded typed exception to its caller. This
 contract concerns normal long-running operator diagnostics and must not be
 used as permission to broaden exception or API output elsewhere.
 
-## Current consumers for a later integration slice
+## Production consumers and remaining integrations
 
-The following existing locations should consume this contract when production
-logging is added:
+The contract is integrated incrementally so each component can be reviewed for
+event mapping and rate/noise behavior without changing the safe schema:
 
-1. `GitHubWatcherRuntime.run_forever()` in `github_runtime.py`
-   - lifecycle start/stop;
-   - watcher cycle state transitions;
-   - bounded transport retry classes;
-   - self-update restart request/handoff/failure.
+1. `GitHubWatcherRuntime.run_forever()` in `github_runtime.py` is integrated
+   for lifecycle start, watcher cycle state and bounded restart failure.
 
-2. `CompletionNotifierRuntime.run_forever()` in `completion_delivery.py`
-   - lifecycle start/stop;
-   - healthy/degraded delivery cycle outcome;
-   - bounded delivery/retry categories;
-   - self-update restart request/handoff/failure.
+2. `run_cron_component()` in `cron_autostart.py` is integrated for
+   supervisor lock already-held state, component exec handoff and bounded
+   start/restart failure. It never emits the selected component, argv,
+   executable/config path or caught exception text.
 
-3. `run_cron_component()` in `cron_autostart.py`
-   - supervisor lock already-held state;
-   - component exec handoff;
-   - bounded start/restart failure category.
+3. `CompletionNotifierRuntime.run_forever()` in `completion_delivery.py`
+   remains the next bounded integration for lifecycle, healthy/degraded cycle
+   state and bounded restart failure.
 
 4. The CLI entry points that currently print the fixed
    `"... watcher running/stopped"` messages may later delegate those lifecycle
@@ -100,8 +95,7 @@ diagnostics.
 
 ## Integration rule
 
-This PR establishes the contract and regression tests only. Production logging
-calls should be added in a separate small slice so each component can be
-reviewed for event mapping and rate/noise behavior without changing the safe
-schema. Integrations must pass enum values directly and may not construct a
-diagnostic from caught exception text.
+Production integrations must pass enum values directly and may not construct a
+diagnostic from caught exception text. New components remain separate small
+slices so their event mapping and rate/noise behavior can be reviewed without
+changing the safe schema.

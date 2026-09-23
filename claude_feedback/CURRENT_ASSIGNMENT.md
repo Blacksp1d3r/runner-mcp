@@ -671,7 +671,7 @@ Acceptance:
 
 ### Task 24 — asynchronous completion-delivery expansion review — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task24-completion-expansion-review`. PR: pending.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task24-completion-expansion-review`. PR: #81. Exact head: `22d5e9a7c7e5ab854b81d84b7b9997202837caf4`.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 

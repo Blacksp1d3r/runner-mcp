@@ -435,7 +435,7 @@ Keep this separate from Task 10.
 
 ### Task 13 — secure I/O follow-up: append-only audit durability review — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task13-audit-durability-review`.
+Status: `COMPLETE`. Review: `claude_feedback/TASK13_AUDIT_DURABILITY_REVIEW.md`. A dedicated CODE follow-up is required.
 
 Preferred executor: Claude Chat; no code changes.
 
@@ -513,6 +513,29 @@ Focus:
 
 Deliverable:
 a concise adversarial test matrix and any demonstrated gaps. No implementation in this task.
+
+---
+
+### Task 17 — harden append-only audit writer — CODE lane
+
+Status: `UNCLAIMED`.
+
+Preferred executor: ChatGPT or Claude Code after reconciling Task 13 findings.
+
+Source review:
+`claude_feedback/TASK13_AUDIT_DURABILITY_REVIEW.md`.
+
+Goal:
+Harden `AuditLogger.append` without changing event schema, server call sites, retention/rotation, or other secure-I/O families.
+
+Acceptance:
+- audit target is opened append-only with private mode and symlink refusal;
+- opened target is verified as a regular file;
+- cooperating processes serialize whole JSONL records with a file-level exclusive lock;
+- short writes cannot silently truncate a record;
+- successful append performs `fsync`; fsync failure propagates;
+- adversarial tests prove symlink target contents/mode are untouched, concurrent records do not interleave, and existing JSONL order/schema remain unchanged;
+- no automatic repair/truncation, rotation, retention or parent-directory policy expansion in this slice.
 
 ---
 

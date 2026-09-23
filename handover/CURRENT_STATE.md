@@ -1,3 +1,12 @@
+## 2026-09-23 — Task 23 completion watcher diagnostics landed
+
+- Task 23 COMPLETE: PR #80 merged as `873f905c64cdfbfc0ec6ac4b5091c04877b84d59`.
+- Exact PR head `595bb6466e7eca50b4b21a9dbc8695a59b248c11` passed CI run 35914643900 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- `CompletionNotifierRuntime.run_forever()` now emits only enum-rendered lifecycle, healthy/degraded cycle and bounded restart-failure diagnostics through an optional sink.
+- Delivery/replay/idempotency behavior remains unchanged; tests inject repository/path/token/event/URL/exception literals and prove they cannot enter diagnostics.
+- Task 10 remains externally BLOCKED. Current bounded queue: Tasks 24, 25 and 26.
+- No tag, release, publication, deployment or migration was performed.
+
 ## 2026-09-23 — Task 22 cron supervisor diagnostics landed
 
 - Task 22 COMPLETE: PR #79 merged as `1bfeb9e7e8991058fb82a31b6d93b94f77c5ba72`.

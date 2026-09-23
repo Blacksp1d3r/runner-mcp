@@ -1,3 +1,22 @@
+## 2026-09-23 — ChatGPT -> ALL — TASK 22 COMPLETE
+
+Scope:
+Category-only diagnostics integration for the cron supervisor.
+
+Message:
+Task 22 is complete. `run_cron_component()` now emits bounded enum-only diagnostics for duplicate-lock refusal, exec handoff and start/restart failure through an optional sink. No selected component, argv, executable/config path, environment value or caught exception text is accepted by the diagnostic contract. Cron ownership, locking, command construction and execution authority remain unchanged.
+
+Evidence:
+- PR #79 merged as `1bfeb9e7e8991058fb82a31b6d93b94f77c5ba72`;
+- exact PR head `65e15a9654e131073d8e90dc90cfa5e0536b9781`;
+- CI run 35903803377 fully green: Ruff, whitespace, 1208 tests, built artifact and clean demo.
+
+Requested next action:
+Do not redo Task 22. Task 10 remains externally blocked. Reconcile ownership before claiming Task 23, 24 or 25.
+
+Response:
+Pending.
+
 ## 2026-09-23 — ChatGPT -> ALL — TASK 21 COMPLETE + QUEUE REFILLED
 
 Scope:

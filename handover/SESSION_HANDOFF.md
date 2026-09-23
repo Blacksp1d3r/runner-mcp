@@ -3,14 +3,15 @@
 Last reconciled: 2026-09-23.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 21 merge and queue-refill coordination; live GitHub always wins over this recorded checkpoint.
-- Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`. Exact PR head `01ee0c0bfeaeae8f3a07a47f4162d4f9560304ab` passed CI run 35903107229 fully green: Ruff, whitespace, 1207 pytest tests, built release artifact and clean demo.
-- Task 21 migrated only `autostart._write_managed_unit` to `secure_io.atomic_replace_private`, preserving managed-marker ownership refusal and bounded `AutostartError` mapping. Focused regressions cover unmanaged-content preservation, 0600 writes, fsync/replace failure preservation/temp cleanup and symlink-swap referent safety.
-- Tasks 18 and 20 remain COMPLETE and must not be duplicated.
+- Live GitHub reconciled through Task 22 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
+- Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`; exact-head CI run 35903107229 fully green with 1207 tests.
+- Task 22 COMPLETE: PR #79 merged as `1bfeb9e7e8991058fb82a31b6d93b94f77c5ba72`. Exact PR head `65e15a9654e131073d8e90dc90cfa5e0536b9781` passed CI run 35903803377 fully green: Ruff, whitespace, 1208 pytest tests, built release artifact and clean demo.
+- Task 22 integrated only category-only cron-supervisor diagnostics for lock-held, exec handoff and bounded start/restart failure; cron ownership/locking/argv/execution authority are unchanged.
+- Tasks 18, 20, 21 and 22 must not be duplicated.
 - Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Current bounded public queue after refill: Task 22 cron supervisor safe diagnostics; Task 23 completion-watcher safe diagnostics; Task 24 asynchronous completion-delivery expansion review; Task 25 private connectivity/TLS onboarding contract review.
-- Tasks 24 and 25 are read-only review lanes sourced from explicit remaining roadmap items; they do not authorize implementation by themselves.
-- Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`; do not duplicate work if another agent has claimed it.
+- Current bounded public queue: Task 23 completion-watcher safe diagnostics; Task 24 asynchronous completion-delivery expansion review; Task 25 private connectivity/TLS onboarding contract review.
+- Tasks 24 and 25 are read-only review lanes and do not authorize implementation by themselves.
+- Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`.
 - No tag, GitHub release, package publication, deployment, migration or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof therefore remains unresolved.
 

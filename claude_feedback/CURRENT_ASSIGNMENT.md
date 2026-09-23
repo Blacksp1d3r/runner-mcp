@@ -649,7 +649,7 @@ Acceptance:
 
 ### Task 23 — integrate category-only diagnostics into completion watcher — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 18 is `COMPLETE` on main.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task23-completion-safe-diagnostics`. PR: pending. Dependency satisfied: Task 18 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code after Task 18.
 
@@ -712,6 +712,30 @@ Deliverable:
 - keep real hosts, ports, service names and credentials out of public examples.
 
 Do not change network exposure, firewall state, certificates or deployment configuration in this review.
+
+
+---
+
+### Task 26 — bounded service journal/log access contract review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no code changes.
+
+Source:
+Phase 4 in `roadmap/ROADMAP.md`: “Journal/log access remains a later bounded addition.”
+
+Goal:
+Define whether and how bounded staging service journal/log access can be added without exposing arbitrary unit names, paths, secrets, raw unbounded output or generic process-control authority.
+
+Deliverable:
+- inventory current service aliases/status/health boundaries and existing log-scrubbing primitives;
+- define a bounded read-only request/response contract, or document why one should remain deferred;
+- identify safe pagination/size/time limits and redaction requirements;
+- preserve fixed service aliases and deny arbitrary journalctl arguments, units and filesystem paths;
+- propose a separate CODE task only if the review demonstrates a safe minimal slice.
+
+Do not modify service/runtime code and do not add remote process-control capability.
 
 
 ## Queue refill rule

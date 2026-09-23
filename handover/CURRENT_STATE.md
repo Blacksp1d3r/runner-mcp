@@ -1,3 +1,14 @@
+## 2026-09-23 — Task 18 private atomic-replace hardening landed
+
+- Task 18 COMPLETE: PR #76 merged as `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
+- Exact PR head `97fcde693d6264171920c386d10e9e63403a9a9a` passed CI run 35894315537 fully green: Ruff, whitespace, 794 pytest tests, built release artifact and clean demo.
+- Added one internal `secure_io.atomic_replace_private` overwrite primitive using a random same-directory temp, exact 0600 descriptor mode, file fsync before atomic replace, symlink refusal, ordinary-failure cleanup and bounded errors.
+- `config_manager` and `approval_manager` now use the primitive while retaining their existing higher-level locks and serialization/state ordering.
+- Completion notifier config/bootstrap private JSON state now uses the primitive while retaining size/schema checks and parent-creation behavior.
+- Autostart, cron, high-churn job metadata, in-place ledgers, create-only writers, deployment activation/tar extraction and self-update were not changed.
+- Queue refilled from existing review evidence: Tasks 20, 21, 22 and 23 are UNCLAIMED; Task 10 remains externally BLOCKED on a private-host proof path.
+- No tag, release, publication, deployment or migration was performed.
+
 ## 2026-09-23 — Tasks 16/17 landed and session reconciled
 
 - Canonical main checkpoint after PR #74: `3d7792ee088a10ca44126415394e74c8e3c29ce3`.

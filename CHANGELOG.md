@@ -2,15 +2,15 @@
 
 All notable user-visible changes to Runner MCP will be documented here.
 
-Runner MCP is under active development. Until the first tagged release, changes are collected under **Unreleased**.
+Runner MCP is under active development. New changes are collected under **Unreleased** until the next release candidate is prepared.
 
 ## Unreleased
 
-- Add a fail-fast local release-check wrapper for compile, Ruff, pytest, whitespace, built-artifact and clean-demo validation while keeping GitHub CI authoritative.
-- Keep the clean demo's temporary development virtual environment outside the repository so local validation does not delete a developer's `.venv`.
-- Surface self-update install recovery state in local `status`/`doctor` without exposing commits or private artifact paths; corrupt/unsafe transaction state fails doctor.
+No user-visible changes recorded after the v0.1.0 release-candidate cut.
 
-- Add a bounded local self-update install recovery command that requires the emergency stop, restores only the persisted private baseline wheel/source commit, and remains unavailable through MCP/mailbox control.
+## 0.1.0 - 2026-09-23
+
+First alpha release candidate.
 
 ### Added
 
@@ -48,11 +48,15 @@ Runner MCP is under active development. Until the first tagged release, changes 
 - bounded operational GitHub mailbox actions for scrubbed test logs, configured service control, backups, migration/deployment/rollback planning and approval-bound high-risk execution;
 - canonical main-only Runner MCP self-update jobs with fixed lint/unit gates, local no-dependency installation and internal component self-reexec;
 - recoverable self-update activation markers that block overlapping updates and preserve pending restart intent when a fixed component re-exec fails;
-- private staged self-update wheels with durable install transactions, verified baseline rollback for caught package failures and fail-closed pending-recovery state for unproven interruption.
+- private staged self-update wheels with durable install transactions, verified baseline rollback for caught package failures and fail-closed pending-recovery state for unproven interruption;
+- bounded local self-update install recovery requiring the emergency stop and restoring only the persisted private baseline wheel/source commit, unavailable through MCP/mailbox control;
+- bounded local `status`/`doctor` visibility for self-update install recovery without exposing commits or private artifact paths;
+- a fail-fast local release-check wrapper covering compile, Ruff, pytest, whitespace, built-artifact and clean-demo validation while keeping GitHub CI authoritative.
 
 ### Fixed
 
-- the loopback mailbox executor now accepts the MCP SDK's bounded multi-item text encoding for list-returning tools such as project and test-profile listings, while still rejecting multi-item content for scalar tools.
+- the loopback mailbox executor now accepts the MCP SDK's bounded multi-item text encoding for list-returning tools such as project and test-profile listings, while still rejecting multi-item content for scalar tools;
+- the clean demo keeps its temporary project virtual environment outside the repository so local validation cannot delete a developer's `.venv`.
 
 ### Security
 
@@ -86,10 +90,4 @@ Runner MCP is under active development. Until the first tagged release, changes 
 
 ## Release format
 
-When the first release is tagged, move the relevant entries from **Unreleased** into a section such as:
-
-```text
-## 0.1.0 - YYYY-MM-DD
-```
-
-Release notes should link to the exact validated tag/commit and call out security-boundary changes explicitly.
+Future releases should move relevant entries from **Unreleased** into a dated version section. Release notes should link to the exact validated tag/commit and call out security-boundary changes explicitly.

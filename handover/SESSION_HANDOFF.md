@@ -3,13 +3,14 @@
 Last reconciled: 2026-09-23.
 
 ## Current checkpoint
-- Tasks 2–9 are complete.
-- PR #56 merged the canonical queue/handoff reconciliation.
-- PR #57 merged the v0.1.0 changelog and release-note preparation.
-- No tag/release/external artifact has been created.
-- Next: require green CI and a fresh privacy review on the exact final `main` candidate after this handoff update.
-- Private-host self-update live proof remains unverified in this session; either complete it before release or keep the explicit release-note limitation.
-- GitHub live state is authoritative if any older section below is stale.
+- GitHub reconciled through main `3d7792ee088a10ca44126415394e74c8e3c29ce3` (PR #74).
+- Tasks 16 and 17 are COMPLETE; do not repeat them.
+- Task 16 adversarial bridge review found no demonstrated capability-expansion defect. PR #72 merged as `375339bcb07ea781259bd7efa6baf6f8040a2ed2`; follow-up Task 20 is queued for exhaustive adversarial regression tests.
+- Task 17 hardened the append-only audit writer. PR #73 merged as `22e6d309a94db783d11ff26b882dea305c33c0f7`; final exact head `60466a72b1c8492eac54e4963b9d7ef4bb572977` passed CI run 35891213181 including Ruff/pytest, release artifact and clean demo.
+- Task 17 now uses symlink-safe append opening, regular-file verification, private descriptor mode, cross-process flock, short-write completion and fsync-before-success; event schema/call sites/rotation/retention/recovery semantics were not changed.
+- Task 10 remains BLOCKED on a usable private-host execution/proof path. Never reset replay/cursor/transaction state as a shortcut.
+- Next dependency-safe CODE work: Task 18 atomic private-write primitive/migration, or Task 20 bridge adversarial regression matrix after ownership reconciliation. GitHub/current assignment wins if newer.
+- No tag, GitHub release, package publication or external publication has been authorized.
 
 ## Purpose
 Runner MCP is a small, auditable, deny-by-default operations interface. GitHub is the code/collaboration surface; Runner MCP is the local execution and safety boundary. It must never become a generic remote shell.

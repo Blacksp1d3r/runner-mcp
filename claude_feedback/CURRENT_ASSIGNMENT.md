@@ -455,7 +455,7 @@ Do not modify code. Record findings for an integrator to turn into a later CODE 
 
 ### Task 14 — secure I/O migration candidate selection — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `COMPLETE`. Review: `claude_feedback/TASK14_SECURE_IO_MIGRATION_REVIEW.md`. A bounded CODE follow-up is queued.
 
 Preferred executor: Claude Chat; no code changes.
 
@@ -513,6 +513,27 @@ Focus:
 
 Deliverable:
 a concise adversarial test matrix and any demonstrated gaps. No implementation in this task.
+
+---
+
+### Task 18 — extract private atomic-replace primitive + migrate completion state — CODE lane
+
+Status: `UNCLAIMED`.
+
+Preferred executor: ChatGPT or Claude Code after reconciling Task 14 findings.
+
+Source review:
+`claude_feedback/TASK14_SECURE_IO_MIGRATION_REVIEW.md`.
+
+Goal:
+Extract the existing strong Class B private-file overwrite mechanics and migrate config/approval plus completion-delivery private JSON state without changing higher-level policy semantics.
+
+Acceptance:
+- one internal same-directory random-temp atomic replace primitive with 0600 mode, symlink refusal, file fsync before replace and bounded errors;
+- config-manager and approval-manager preserve their existing higher-level locks, serialization and state ordering;
+- completion-delivery preserves size/schema checks while replacing predictable non-fsynced temp writes with the shared primitive;
+- security tests cover permissive umask, symlink referent preservation, fsync-before-replace, failure cleanup and bounded error output;
+- do not touch autostart, high-churn job metadata, in-place ledgers, create-only writers, deployment activation/tar extraction or self-update.
 
 ---
 

@@ -37,7 +37,10 @@ def atomic_replace_private(path: Path, content: bytes) -> None:
         raise PrivateAtomicWriteError("private file replacement failed") from exc
     finally:
         if fd >= 0:
-            os.close(fd)
+            try:
+                os.close(fd)
+            except OSError:
+                pass
         if temporary is not None:
             try:
                 temporary.unlink(missing_ok=True)

@@ -10,6 +10,7 @@ from .completion_delivery import completion_notifier_status
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
 from .onboarding import load_env_file, read_private_runtime
+from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
 MANAGED_MARKER = "# Managed by Runner MCP autostart."
 SERVER_UNIT = "runner-mcp.service"
@@ -250,17 +251,9 @@ def _write_managed_unit(path: Path, content: str) -> None:
             raise AutostartError(
                 "refusing to replace a user service not managed by Runner MCP"
             )
-    temporary = path.with_name(f".{path.name}.tmp")
     try:
-        temporary.write_text(content, encoding="utf-8")
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, path)
-        os.chmod(path, 0o600)
-    except OSError as exc:
-        try:
-            temporary.unlink(missing_ok=True)
-        except OSError:
-            pass
+        atomic_replace_private(path, content.encode("utf-8"))
+    except PrivateAtomicWriteError as exc:
         raise AutostartError("autostart unit could not be written") from exc
 
 

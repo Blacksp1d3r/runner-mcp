@@ -13,6 +13,7 @@ from runner_mcp.self_update import (
     SelfUpdateError,
     SelfUpdateJobState,
     SelfUpdateManager,
+    _compatibility_contract,
     _write_restart_marker,
     _write_restart_markers,
     consume_restart_marker,
@@ -127,6 +128,12 @@ def make_manager(
         server_reexec=lambda: exits.append(75),
         restart_delay_seconds=1,
     )
+    pyproject = project / "pyproject.toml"
+    pyproject.write_text(
+        """[build-system]\nrequires = ["setuptools>=75"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "runner-mcp"\nversion = "0.1.0"\nrequires-python = ">=3.12"\ndependencies = ["mcp>=2.0,<3"]\n\n[project.optional-dependencies]\ndev = ["pytest>=8,<9", "ruff>=0.13,<1"]\n""",
+        encoding="utf-8",
+    )
+    manager._write_compatibility_record(_compatibility_contract(project))
     return manager, project, exits
 
 
@@ -745,3 +752,65 @@ def test_local_install_recovery_refuses_pending_activation(
         manager.recover_installation()
 
     assert manager.runtime_status()["install_recovery_pending"] is True
+
+
+def test_self_update_fails_closed_when_dependency_contract_changes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    source = FakeSource()
+    manager, root, _exits = make_manager(tmp_path, source=source)
+    baseline = "1" * 40
+    target = "2" * 40
+    manager._record_installed_commit(baseline)
+
+    monkeypatch.setattr(manager._package_installer, "build_wheel", lambda **kwargs: root / "baseline.whl")
+
+    def sync(_project: str, commit: str):
+        source.calls.append((_project, commit))
+        if commit == target:
+            (root / "pyproject.toml").write_text(
+                """[build-system]\nrequires = ["setuptools>=75"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "runner-mcp"\nversion = "0.1.0"\nrequires-python = ">=3.12"\ndependencies = ["mcp>=2.0,<3", "new-runtime>=1"]\n\n[project.optional-dependencies]\ndev = ["pytest>=8,<9", "ruff>=0.13,<1"]\n""",
+                encoding="utf-8",
+            )
+        return {"project": _project, "commit": commit, "changed": True}
+
+    source.sync_project_main_commit = sync
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda project_root: {
+            "commit": (
+                target
+                if any(call[1] == target for call in source.calls)
+                else baseline
+            ),
+            "clean": True,
+        },
+    )
+
+    result = wait_terminal(manager, manager.start(target)["job_id"])
+
+    assert result["state"] == "failed"
+    assert result["error_category"] == "dependency_contract_changed"
+    assert manager._package_installer.pending_transaction() is None
+
+
+def test_compatibility_contract_is_canonical_and_host_neutral(tmp_path: Path) -> None:
+    root = tmp_path / "source"
+    root.mkdir()
+    (root / "pyproject.toml").write_text(
+        """[build-system]\nrequires = ["z-build", "a-build"]\nbuild-backend = "example.backend"\n\n[project]\nname = "runner-mcp"\nversion = "0.1.0"\nrequires-python = ">=3.12"\ndependencies = ["z-runtime", "a-runtime"]\n\n[project.optional-dependencies]\ndev = ["z-test", "a-test"]\n""",
+        encoding="utf-8",
+    )
+
+    contract = _compatibility_contract(root)
+
+    assert contract == {
+        "schema": 1,
+        "requires_python": ">=3.12",
+        "build_backend": "example.backend",
+        "build_requires": ["a-build", "z-build"],
+        "runtime_dependencies": ["a-runtime", "z-runtime"],
+        "validation_dependencies": ["a-test", "z-test"],
+    }
+    assert str(root) not in str(contract)

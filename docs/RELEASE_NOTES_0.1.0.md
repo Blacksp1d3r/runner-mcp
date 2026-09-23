@@ -31,6 +31,7 @@ The first alpha release includes:
 - staged target/baseline wheels plus durable install transactions, verified rollback for caught package failures and fail-closed pending recovery after unproven interruption;
 - local-only `self-update-recovery` requiring the emergency stop; it is intentionally unavailable through MCP/mailbox control;
 - bounded `runtime_status` and `runtime_doctor` visibility without exposing commits, package versions or private artifact/environment details.
+
 ## Why the boundaries matter
 
 Runner MCP intentionally separates source collaboration, operational requests, execution and human approval.
@@ -55,6 +56,7 @@ Operators testing development snapshots should nevertheless review the following
 - if using autostart, remove or migrate unmanaged Runner MCP cron entries before enabling the managed cron backend;
 - keep all private repository/ref/token, project paths and executable definitions in private host configuration;
 - treat any Python/build/runtime dependency-contract change as a local bootstrap/manual upgrade event: the current self-update path uses `--no-deps --no-index --no-build-isolation` and is only eligible for contract-preserving Runner MCP code updates. See `docs/SELF_UPDATE_COMPATIBILITY.md`.
+
 ## Known limitations
 
 - Runner MCP is not a sandbox for hostile or untrusted project code;
@@ -66,6 +68,7 @@ Operators testing development snapshots should nevertheless review the following
 - the optional completion notifier needs a private GitHub destination and credential;
 - public launch/registry/community publication remains a separate human-controlled step;
 - the newest recovery-capable private-host self-update baseline and full live recovery matrix have not yet been freshly re-proven for this release candidate. Until that proof is completed, do not interpret the code/CI recovery coverage as a claim that same-commit/no-op, forward update, activation retry and interrupted package-install recovery have all been demonstrated on the current private deployment.
+
 ## Validation required for the release tag
 
 Before publishing v0.1.0, the exact tag commit must have all of these green:

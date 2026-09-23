@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp import completion_delivery as completion_delivery_module
 from runner_mcp import secure_io as secure_io_module
 from runner_mcp.completion_delivery import (
     CompletionDeliveryError,
@@ -436,3 +437,176 @@ def test_runtime_retries_delivery_failure_without_marking_delivered(
         destination_id="0" * 32,
         event_id=event.event_id,
     )
+
+
+def test_runtime_forever_emits_bounded_healthy_lifecycle_diagnostics(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jobs = tmp_path / "private-repository-secret" / "jobs"
+    jobs.mkdir(parents=True)
+    configure_github_issue_notifier(
+        tmp_path,
+        repository="example/private",
+        issue_number=25,
+        mention="operator-user",
+        token="sensitive-token-value",
+    )
+    bootstrap_completion_notifier(tmp_path)
+    config = load_github_issue_notifier(tmp_path)
+    diagnostics: list[str] = []
+    runtime = CompletionNotifierRuntime(
+        config_dir=tmp_path,
+        jobs_root=jobs,
+        config=config,
+        notifier=GitHubIssueCompletionNotifier(config, session=FakeSession()),
+        diagnostic_sink=diagnostics.append,
+    )
+
+    monkeypatch.setattr(
+        completion_delivery_module,
+        "run_restart_if_requested",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        completion_delivery_module.time,
+        "sleep",
+        lambda _seconds: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        runtime.run_forever(poll_seconds=5)
+
+    assert diagnostics == [
+        "component=completion_watcher event=lifecycle_started",
+        "component=completion_watcher event=cycle_healthy",
+        "component=completion_watcher event=lifecycle_stopped",
+    ]
+    rendered = "\n".join(diagnostics)
+    assert "private-repository-secret" not in rendered
+    assert "example/private" not in rendered
+    assert "operator-user" not in rendered
+    assert "sensitive-token-value" not in rendered
+
+
+def test_runtime_forever_degraded_diagnostic_does_not_echo_delivery_error(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sensitive = "delivery-private-secret"
+    jobs = tmp_path / sensitive / "jobs"
+    jobs.mkdir(parents=True)
+    configure_github_issue_notifier(
+        tmp_path,
+        repository="example/private",
+        issue_number=25,
+        mention=None,
+        token="a" * 40,
+    )
+    bootstrap_completion_notifier(tmp_path)
+    config = load_github_issue_notifier(tmp_path)
+
+    class FailingNotifier:
+        def deliver(self, _event):
+            raise CompletionDeliveryError(
+                f"{sensitive} https://example.invalid/private event={'f' * 32}"
+            )
+
+    _write_job(
+        jobs,
+        job_id="1" * 32,
+        status="failed",
+        finished_at=datetime.now(UTC) + timedelta(milliseconds=10),
+    )
+    diagnostics: list[str] = []
+    runtime = CompletionNotifierRuntime(
+        config_dir=tmp_path,
+        jobs_root=jobs,
+        config=config,
+        notifier=FailingNotifier(),
+        diagnostic_sink=diagnostics.append,
+    )
+
+    monkeypatch.setattr(
+        completion_delivery_module,
+        "run_restart_if_requested",
+        lambda *_args, **_kwargs: False,
+    )
+    monkeypatch.setattr(
+        completion_delivery_module.time,
+        "sleep",
+        lambda _seconds: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        runtime.run_forever(poll_seconds=5)
+
+    assert diagnostics == [
+        "component=completion_watcher event=lifecycle_started",
+        (
+            "component=completion_watcher event=cycle_degraded "
+            "error=delivery_failed"
+        ),
+        "component=completion_watcher event=lifecycle_stopped",
+    ]
+    rendered = "\n".join(diagnostics)
+    assert sensitive not in rendered
+    assert "example.invalid" not in rendered
+    assert "1" * 32 not in rendered
+    assert "f" * 32 not in rendered
+
+
+def test_runtime_forever_restart_failure_diagnostic_is_bounded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    sensitive = "restart-private-secret"
+    jobs = tmp_path / sensitive / "jobs"
+    jobs.mkdir(parents=True)
+    configure_github_issue_notifier(
+        tmp_path,
+        repository="example/private",
+        issue_number=25,
+        mention=None,
+        token="a" * 40,
+    )
+    bootstrap_completion_notifier(tmp_path)
+    config = load_github_issue_notifier(tmp_path)
+    diagnostics: list[str] = []
+    runtime = CompletionNotifierRuntime(
+        config_dir=tmp_path,
+        jobs_root=jobs,
+        config=config,
+        notifier=GitHubIssueCompletionNotifier(config, session=FakeSession()),
+        diagnostic_sink=diagnostics.append,
+    )
+
+    def fail_restart(*_args, **_kwargs):
+        raise completion_delivery_module.SelfUpdateError(
+            f"{sensitive} {tmp_path} https://example.invalid/private"
+        )
+
+    monkeypatch.setattr(
+        completion_delivery_module,
+        "run_restart_if_requested",
+        fail_restart,
+    )
+
+    with pytest.raises(CompletionDeliveryError) as captured:
+        runtime.run_forever(poll_seconds=5)
+
+    assert str(captured.value) == "Runner MCP self-update restart failed"
+    assert sensitive not in str(captured.value)
+    assert diagnostics == [
+        "component=completion_watcher event=lifecycle_started",
+        "component=completion_watcher event=cycle_healthy",
+        (
+            "component=completion_watcher event=supervisor_restart_failed "
+            "error=restart_failed"
+        ),
+        "component=completion_watcher event=lifecycle_stopped",
+    ]
+    rendered = "\n".join(diagnostics)
+    assert sensitive not in rendered
+    assert str(tmp_path) not in rendered
+    assert "example.invalid" not in rendered

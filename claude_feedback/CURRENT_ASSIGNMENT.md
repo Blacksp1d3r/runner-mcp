@@ -351,20 +351,165 @@ When complete, update this file and `handover/AGENT_EXCHANGE.md` with the remain
 
 ---
 
-## Proposed future tasks — integrator review required
+## Parallel work queue — authorized 2026-09-23
 
-Do not start these automatically from the completed Tasks 2–9 queue.
+The user authorized continuation and parallel queue expansion. This section supersedes the old proposed-future-task holding area.
 
-- Finalize the v0.1.0 changelog and release-notes draft, then validate the exact candidate commit and repeat privacy review before any tag.
-- Reconcile/prove the newest recovery-capable self-update baseline on the private host, or explicitly preserve the unproven-live-path limitation in release notes.
-- Consider implementing the fail-closed self-update compatibility marker/preflight from `docs/SELF_UPDATE_COMPATIBILITY.md` as a separately approved code task.
-- Production integration of category-only safe diagnostics remains separately scoped and must preserve the documented privacy boundary.
+### Scheduling rules
 
-## Queue completion rule
+- Keep at least several prerequisite-safe tasks ready when useful; do not let one external/private-host blocker drain the whole queue.
+- Claim before editing. Never duplicate an active branch/PR from another agent.
+- ChatGPT owns the release/private-host/self-update critical lane unless explicitly reassigned.
+- Claude Code should be used for bounded high-value implementation; Claude Chat should be preferred for analysis/review to conserve Code quota.
+- A Claude usage/rate limit is never a project blocker: ChatGPT may take over after GitHub reconciliation.
+- Tasks in different lanes may run in parallel only when their file/semantic ownership does not conflict.
+- Every task still follows branch -> tests -> PR -> CI -> evidence -> handoff. Do not tag or publish a release without explicit user authorization.
 
-When Tasks 2–9 are all complete:
-- re-read current GitHub state;
-- update this file so every task has PR/evidence/status;
-- write one final `handover/AGENT_EXCHANGE.md` entry summarizing what Claude completed and what remains with ChatGPT/user;
-- do not invent additional implementation work just to stay busy;
-- if useful new work is discovered, add it under a clearly marked `Proposed future tasks` section for integrator review rather than starting it automatically.
+### Task 10 — private-host v0.1.0 live self-update/recovery proof — CHATGPT lane
+
+Status: `BLOCKED` pending a usable private-host execution path or bounded operator-assisted commands.
+
+Goal:
+- prove the newest recovery-capable baseline on the private host;
+- prove same-commit/no-op;
+- prove one forward update;
+- prove activation retry;
+- deliberately interrupt package installation once and prove persisted transaction recovery.
+
+Safety:
+- never generically reset replay/cursor/transaction state;
+- do not expose secrets/private paths in public evidence;
+- keep the release-note limitation until this is freshly proven.
+
+This blocker does not prevent Tasks 11–16.
+
+---
+
+### Task 11 — self-update compatibility preflight — CODE lane
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Code when capacity is available; ChatGPT may take over.
+
+Goal:
+Implement the conservative fail-closed compatibility marker/preflight designed in `docs/SELF_UPDATE_COMPATIBILITY.md`.
+
+Acceptance:
+- exact current runtime/dependency/build/interpreter contract can be compared without resolving/installing dependencies;
+- pure code updates with unchanged contract remain eligible;
+- dependency/build/interpreter contract changes fail closed into a bounded bootstrap-required category;
+- remote/mailbox callers gain no pip/index/path/package-manager arguments;
+- no installed versions, environment paths or private host details leak;
+- focused security/regression tests plus full required validation.
+
+Do not perform dependency upgrades in this task.
+
+---
+
+### Task 12 — safe diagnostics production integration — CODE lane
+
+Status: `UNCLAIMED`.
+
+Preferred executor: ChatGPT or Claude Code, but not concurrently with another agent touching the same watcher/supervisor files.
+
+Goal:
+Integrate the existing category-only `safe_diagnostics` contract into a smallest useful production watcher/notifier/supervisor slice.
+
+Acceptance:
+- only allow-listed categories reach normal operator logs;
+- no payloads, paths, URLs, credentials, environment values, host/service names, arbitrary exception text or stack traces;
+- tests inject sensitive literals and prove they cannot escape;
+- no change to watcher replay/recovery semantics.
+
+Keep this separate from Task 10.
+
+---
+
+### Task 13 — secure I/O follow-up: append-only audit durability review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat; no code changes.
+
+Goal:
+Review the append-only audit writer identified by `docs/SECURE_IO_INVENTORY.md` as the weakest-postured non-self-update writer.
+
+Deliverable:
+- threat/failure model;
+- durability and symlink/concurrency assessment;
+- concrete tests that would prove a fix;
+- smallest recommended implementation boundary;
+- explicit note if no change is warranted.
+
+Do not modify code. Record findings for an integrator to turn into a later CODE task.
+
+---
+
+### Task 14 — secure I/O migration candidate selection — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat; no code changes.
+
+Goal:
+Using `docs/SECURE_IO_INVENTORY.md`, choose the next coherent non-self-update writer family suitable for a shared safe-write primitive.
+
+Deliverable:
+- exact candidate functions/files;
+- semantic differences that must be preserved (create-only vs overwrite, locking, modes);
+- migration hazards;
+- regression-test matrix;
+- suggested bounded CODE slice.
+
+Exclude `self_update.py`, `self_update_install.py`, release symlink activation and tar extraction.
+
+---
+
+### Task 15 — release/package consumer-path audit — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat.
+
+Goal:
+Independently review the v0.1.0 package from a fresh consumer/operator perspective without publishing it.
+
+Check:
+- package metadata and Python requirement;
+- install/entry-point assumptions;
+- README -> Quickstart -> five-minute demo path;
+- offline/no-index artifact smoke assumptions;
+- bootstrap boundary for dependency changes;
+- public privacy/security wording.
+
+Return only demonstrated defects or ambiguities. Do not create a tag/release.
+
+---
+
+### Task 16 — adversarial bridge/protocol regression review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat.
+
+Goal:
+Review protocol-v1 action validation and bridge allow-listing for parser differentials and accidental capability expansion.
+
+Focus:
+- unknown fields/actions;
+- case/abbreviation ambiguity;
+- duplicate/extra identifiers;
+- request-id/action mismatch;
+- dangerous argument smuggling;
+- bounded error output.
+
+Deliverable:
+a concise adversarial test matrix and any demonstrated gaps. No implementation in this task.
+
+---
+
+## Queue refill rule
+
+When fewer than three prerequisite-safe `UNCLAIMED` tasks remain, the integrator should review the roadmap, current findings and open PRs and add new bounded tasks before the queue drains completely. New work must be dependency-safe and must not be invented merely to keep agents busy.
+
+When a CHAT REVIEW demonstrates a real defect, add a separate CODE task with explicit files, acceptance criteria and ownership rather than silently expanding the review.

@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp import secure_io as secure_io_module
 from runner_mcp.config_manager import (
     ConfigManagerError,
     add_project,
@@ -637,3 +638,33 @@ def test_github_mailbox_config_rejects_invalid_values_without_write(
         )
 
     assert paths.env_file.read_text(encoding="utf-8") == before
+
+
+def test_project_config_write_failure_is_bounded_and_preserves_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = installed(tmp_path)
+    before = paths.projects_file.read_bytes()
+    second_root = tmp_path / "second"
+    second_root.mkdir()
+    sensitive = str(tmp_path / "private-config-path")
+
+    def fail_fsync(_fd: int) -> None:
+        raise OSError(sensitive)
+
+    monkeypatch.setattr(secure_io_module.os, "fsync", fail_fsync)
+
+    with pytest.raises(ConfigManagerError) as captured:
+        add_project(
+            paths.config_dir,
+            code="second",
+            display_name="Second",
+            repository="example/second",
+            root=second_root,
+        )
+
+    assert str(captured.value) == "Project configuration could not be written"
+    assert sensitive not in str(captured.value)
+    assert paths.projects_file.read_bytes() == before
+    assert list(paths.projects_file.parent.glob(".projects.yaml.*.tmp")) == []

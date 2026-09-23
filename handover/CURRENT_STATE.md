@@ -1,3 +1,12 @@
+## 2026-09-23 — v0.1.0 public release docs prepared
+
+- PR #57 merged: the changelog now has a dated v0.1.0 release-candidate section and Unreleased is reopened.
+- `docs/RELEASE_NOTES_0.1.0.md` now covers the completed self-update hardening, bounded runtime visibility and the no-dependency bootstrap boundary.
+- The release notes explicitly state that the newest private-host self-update recovery matrix has not yet been freshly re-proven.
+- No tag, GitHub release or external publication has been created.
+- After this handoff-only update lands, the resulting exact `main` commit must pass public CI and a final privacy review before it can be considered a tag candidate.
+- The remaining non-public evidence item is the private-host live self-update proof; if it is not completed before release, the limitation must remain explicit.
+
 ## 2026-09-23 — Tasks 2–9 queue complete
 
 Current public repository state:

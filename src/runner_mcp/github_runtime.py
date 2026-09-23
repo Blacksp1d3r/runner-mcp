@@ -27,6 +27,12 @@ from .github_watcher import (
     GitHubWatcherCycleState,
 )
 from .onboarding import OnboardingError, load_env_file, read_private_runtime
+from .safe_diagnostics import (
+    DiagnosticComponent,
+    DiagnosticErrorCategory,
+    DiagnosticEvent,
+    render_safe_diagnostic,
+)
 from .self_update import (
     SelfUpdateError,
     reexec_component,
@@ -48,6 +54,7 @@ class GitHubWatcherRuntime:
     watcher: GitHubMailboxWatcher
     transport: GitHubMailboxTransport
     config_dir: Path | None = None
+    diagnostic_sink: object | None = None
 
     @classmethod
     def from_private_config(cls, config_dir: Path) -> GitHubWatcherRuntime:
@@ -135,6 +142,20 @@ class GitHubWatcherRuntime:
     ) -> GitHubWatcherCycleOutcome:
         return self.watcher.quarantine_malformed_request_fail_closed(request_id)
 
+    def _diagnose(
+        self,
+        event: DiagnosticEvent,
+        error: DiagnosticErrorCategory | None = None,
+    ) -> None:
+        if self.diagnostic_sink is None:
+            return
+        line = render_safe_diagnostic(
+            component=DiagnosticComponent.GITHUB_WATCHER,
+            event=event,
+            error=error,
+        )
+        self.diagnostic_sink(line)  # type: ignore[operator]
+
     def run_forever(
         self,
         *,
@@ -146,6 +167,7 @@ class GitHubWatcherRuntime:
             heartbeat_seconds=heartbeat_seconds,
         )
 
+        self._diagnose(DiagnosticEvent.LIFECYCLE_STARTED)
         next_heartbeat_at = 0.0
         last_published_state: GitHubWatcherCycleState | None = None
 
@@ -157,6 +179,10 @@ class GitHubWatcherRuntime:
             )
 
             if outcome.state == GitHubWatcherCycleState.UNINITIALIZED:
+                self._diagnose(
+                    DiagnosticEvent.CYCLE_UNINITIALIZED,
+                    DiagnosticErrorCategory.BOOTSTRAP_REQUIRED,
+                )
                 raise GitHubWatcherRuntimeError(
                     "GitHub watcher cursor is uninitialized; bootstrap is required"
                 )
@@ -189,6 +215,10 @@ class GitHubWatcherRuntime:
                         ),
                     )
                 except SelfUpdateError as exc:
+                    self._diagnose(
+                        DiagnosticEvent.SUPERVISOR_RESTART_FAILED,
+                        DiagnosticErrorCategory.RESTART_FAILED,
+                    )
                     raise GitHubWatcherRuntimeError(
                         "Runner MCP self-update restart failed"
                     ) from exc

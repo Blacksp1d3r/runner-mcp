@@ -628,7 +628,7 @@ Acceptance:
 
 ### Task 22 — integrate category-only diagnostics into cron supervisor — CODE lane
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task22-cron-safe-diagnostics`. PR: pending.
 
 Preferred executor: Claude Code or ChatGPT; keep separate from Task 18 and Task 20.
 

@@ -541,7 +541,7 @@ Acceptance:
 
 ### Task 18 — extract private atomic-replace primitive + migrate completion state — CODE lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task18-secure-io-atomic-replace`. PR: #76, exact head `1a28d7387c03e1b2e6855d9814b0402cdb03ba0d`; CI pending.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task18-secure-io-atomic-replace`. PR: #76, exact head `eb4b5766f7a5826c2c15eb0b4681c52a9e841540`; CI run 35894134799 in progress.
 
 Preferred executor: ChatGPT or Claude Code after reconciling Task 14 findings.
 
@@ -602,6 +602,72 @@ Acceptance:
 - no action enum, alias, normalization, identifier-regex, replay-state or capability changes.
 
 ---
+
+---
+
+### Task 21 — migrate managed autostart unit writes to shared private replace — CODE lane
+
+Status: `UNCLAIMED`. Dependency: Task 18 must be `COMPLETE` on main first.
+
+Preferred executor: ChatGPT or Claude Code after Task 18.
+
+Source:
+`claude_feedback/TASK14_SECURE_IO_MIGRATION_REVIEW.md`.
+
+Goal:
+Migrate only `autostart._write_managed_unit` to the shared private atomic-replace primitive while preserving the existing Runner MCP managed-marker ownership refusal.
+
+Acceptance:
+- existing unmanaged unit content is never overwritten;
+- managed-marker inspection/refusal semantics remain unchanged;
+- private mode and atomic replacement use the shared primitive;
+- symlink referents remain untouched;
+- write/fsync/replace failures are bounded and preserve the previous unit;
+- focused TOCTOU/adversarial regression coverage is added where the current ownership check permits meaningful proof;
+- do not touch cron, job metadata, ledgers, create-only writers, deployment activation, tar extraction or self-update.
+
+---
+
+### Task 22 — integrate category-only diagnostics into cron supervisor — CODE lane
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Code or ChatGPT; keep separate from Task 18 and Task 20.
+
+Source:
+`docs/SAFE_DIAGNOSTICS.md` and the existing `runner_mcp.safe_diagnostics` contract.
+
+Goal:
+Integrate the existing category-only diagnostics contract into the smallest useful `run_cron_component()` supervisor slice without exposing paths, argv, component-specific private values or exception text.
+
+Acceptance:
+- only allow-listed `cron_supervisor` component/event/error enums are rendered;
+- lock-already-held, exec handoff and bounded start/restart failure states are observable without private context;
+- no argv, executable/config path, service identity beyond the existing generic enum, environment value or raw exception text is emitted;
+- tests inject sensitive literals and prove they cannot escape;
+- no change to cron ownership, locking, command construction or execution authority.
+
+---
+
+### Task 23 — integrate category-only diagnostics into completion watcher — CODE lane
+
+Status: `UNCLAIMED`. Dependency: Task 18 must be `COMPLETE` on main first.
+
+Preferred executor: ChatGPT or Claude Code after Task 18.
+
+Source:
+`docs/SAFE_DIAGNOSTICS.md`.
+
+Goal:
+Integrate the existing safe diagnostics contract into `CompletionNotifierRuntime.run_forever()` only.
+
+Acceptance:
+- lifecycle and healthy/degraded cycle state use only allow-listed completion-watcher categories;
+- restart failure is reported only through the bounded diagnostics contract;
+- no repository, issue, mention, token, event/job ID, path, URL or exception text can reach the sink;
+- delivery/replay/idempotency behavior is unchanged;
+- focused sensitive-literal regression tests plus required validation.
+
 
 ## Queue refill rule
 

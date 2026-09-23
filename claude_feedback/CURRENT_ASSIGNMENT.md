@@ -408,7 +408,7 @@ Do not perform dependency upgrades in this task.
 
 ### Task 12 — safe diagnostics production integration — CODE lane
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`.
 
 Preferred executor: ChatGPT or Claude Code, but not concurrently with another agent touching the same watcher/supervisor files.
 

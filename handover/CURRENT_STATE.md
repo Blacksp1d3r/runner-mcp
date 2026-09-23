@@ -1,3 +1,13 @@
+## 2026-09-23 — Task 21 managed autostart secure I/O landed
+
+- Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`.
+- Exact PR head `01ee0c0bfeaeae8f3a07a47f4162d4f9560304ab` passed CI run 35903107229 fully green: Ruff, whitespace, 1207 pytest tests, built release artifact and clean demo.
+- `autostart._write_managed_unit` now uses the shared private atomic-replace primitive while preserving the existing managed-marker ownership refusal.
+- Regressions prove unmanaged unit content is preserved, successful writes end at 0600, fsync/replace failures keep the previous managed unit and emit only bounded errors, and a symlink swap cannot alter its referent.
+- Cron, job metadata, ledgers, create-only writers, deployment activation/tar extraction and self-update were not changed.
+- Queue refilled from explicit roadmap items: Tasks 22 and 23 remain CODE lanes; Tasks 24 and 25 are bounded CHAT REVIEW lanes for completion-delivery expansion and private connectivity/TLS onboarding.
+- Task 10 remains externally BLOCKED on a usable private-host proof path. No tag, release, publication, deployment or migration was performed.
+
 ## 2026-09-23 — Task 20 bridge adversarial matrix landed
 
 - Task 20 COMPLETE: PR #77 merged as `4bfd71d85cb5228ba328ee17fc60414c84c43e0a`.

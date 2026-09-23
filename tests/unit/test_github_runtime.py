@@ -21,6 +21,7 @@ from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
 )
+from runner_mcp.safe_diagnostics import DiagnosticErrorCategory, DiagnosticEvent
 
 
 class FakeWatcher:
@@ -409,3 +410,84 @@ def test_runtime_publishes_heartbeat_immediately_on_state_change(
     assert watcher.publish_flags == [True, False, False]
     assert len(transport.heartbeats) == 1
     assert '"state":"degraded"' in transport.heartbeats[0]
+
+
+def test_runtime_emits_only_bounded_uninitialized_diagnostic() -> None:
+    watcher = FakeWatcher(
+        [
+            GitHubWatcherCycleOutcome(
+                state=GitHubWatcherCycleState.UNINITIALIZED,
+                discovered_requests=0,
+                processed_requests=0,
+                reconciled_requests=0,
+                recovery_attention=0,
+                heartbeat=WatcherHeartbeat(
+                    state=WatcherState.DEGRADED,
+                    pending_requests=0,
+                    stale_requests=0,
+                    recovery_attention=0,
+                    oldest_pending_seconds=None,
+                ),
+                heartbeat_published=True,
+            )
+        ]
+    )
+    diagnostics: list[str] = []
+    runtime = GitHubWatcherRuntime(
+        watcher=watcher,  # type: ignore[arg-type]
+        transport=FakeTransport(),  # type: ignore[arg-type]
+        diagnostic_sink=diagnostics.append,
+    )
+
+    with pytest.raises(GitHubWatcherRuntimeError):
+        runtime.run_forever(poll_seconds=5, heartbeat_seconds=300)
+
+    assert diagnostics == [
+        "component=github_watcher event=lifecycle_started",
+        (
+            "component=github_watcher event=cycle_uninitialized "
+            "error=bootstrap_required"
+        ),
+    ]
+
+
+def test_runtime_diagnostics_have_no_dynamic_context_channel() -> None:
+    diagnostics: list[str] = []
+    runtime = GitHubWatcherRuntime(
+        watcher=FakeWatcher([]),  # type: ignore[arg-type]
+        transport=FakeTransport(),  # type: ignore[arg-type]
+        diagnostic_sink=diagnostics.append,
+    )
+
+    runtime._diagnose(
+        event=DiagnosticEvent.CYCLE_DEGRADED,
+        error=DiagnosticErrorCategory.RECOVERY_REQUIRED,
+    )
+
+    assert diagnostics == [
+        "component=github_watcher event=cycle_degraded error=recovery_required"
+    ]
+    assert "secret-value" not in diagnostics[0]
+
+
+def test_runtime_emits_bounded_cycle_state_without_counts_or_ids(monkeypatch) -> None:
+    watcher = FakeWatcher([_recovery_outcome()])
+    diagnostics: list[str] = []
+    runtime = GitHubWatcherRuntime(
+        watcher=watcher,  # type: ignore[arg-type]
+        transport=FakeTransport(),  # type: ignore[arg-type]
+        diagnostic_sink=diagnostics.append,
+    )
+
+    monkeypatch.setattr(
+        "runner_mcp.github_runtime.time.sleep",
+        lambda _seconds: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        runtime.run_forever(poll_seconds=5, heartbeat_seconds=300)
+
+    assert diagnostics == [
+        "component=github_watcher event=lifecycle_started",
+        "component=github_watcher event=cycle_degraded error=recovery_required",
+    ]

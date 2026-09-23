@@ -1,3 +1,13 @@
+## 2026-09-23 — Task 22 cron supervisor diagnostics landed
+
+- Task 22 COMPLETE: PR #79 merged as `1bfeb9e7e8991058fb82a31b6d93b94f77c5ba72`.
+- Exact PR head `65e15a9654e131073d8e90dc90cfa5e0536b9781` passed CI run 35903803377 fully green: Ruff, whitespace, 1208 pytest tests, built release artifact and clean demo.
+- `run_cron_component()` now emits only enum-rendered `cron_supervisor` diagnostics for lock-held, exec handoff and bounded start/restart failure states through an optional sink.
+- Diagnostics contain no selected component, argv, executable/config path, environment value or raw exception text; adversarial tests inject sensitive literals and prove they cannot escape.
+- Cron ownership, locking, command construction and execution authority were not changed.
+- Task 10 remains externally BLOCKED. Current bounded queue: Tasks 23, 24 and 25.
+- No tag, release, publication, deployment or migration was performed.
+
 ## 2026-09-23 — Task 21 managed autostart secure I/O landed
 
 - Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`.

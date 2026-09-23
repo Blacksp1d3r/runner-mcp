@@ -562,7 +562,7 @@ Acceptance:
 
 ### Task 19 — reconcile self-update/release consumer documentation — CODE/DOC lane
 
-Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task19-doc-reconciliation`.
+Status: `COMPLETE`. PR #70 merged as `4f2ac941fe87346747d5e615df1ba26dc8359237`; exact PR-head CI run 35886054525 green.
 
 Preferred executor: ChatGPT.
 

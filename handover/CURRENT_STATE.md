@@ -1,3 +1,13 @@
+## 2026-09-23 — Task 20 bridge adversarial matrix landed
+
+- Task 20 COMPLETE: PR #77 merged as `4bfd71d85cb5228ba328ee17fc60414c84c43e0a`.
+- Exact PR head `666a399803db41bae4deae73fc4f205de5e97854` passed CI run 35895116909 fully green: Ruff, whitespace, 1203 pytest tests, built release artifact and clean demo.
+- Test-only hardening: one minimal valid fixture now exists for every BridgeAction, every syntactically valid non-owned optional field is rejected per action, action case/hyphen/prefix variants fail closed, duplicate request_id and request-side NaN/Infinity fail closed, and uppercase self-update commit remains rejected.
+- Every adversarial rejection is exercised through BridgeProcessor with fail-if-reached replay/result boundaries and an executor invocation counter, proving invalid requests do not reach execution.
+- No production protocol, action enum, alias, normalization, identifier regex, replay state, executor mapping or capability changed.
+- Current UNCLAIMED bounded public queue: Tasks 21, 22 and 23. Task 10 remains externally BLOCKED.
+- No tag, release, publication, deployment or migration was performed.
+
 ## 2026-09-23 — Task 18 private atomic-replace hardening landed
 
 - Task 18 COMPLETE: PR #76 merged as `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.

@@ -3,6 +3,7 @@ from __future__ import annotations
 import time
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Callable
 
 from .bridge_mcp_executor import LocalMCPBridgeExecutor, LocalMCPConfig
 from .bridge_replay import BridgeReplayLedger
@@ -54,7 +55,7 @@ class GitHubWatcherRuntime:
     watcher: GitHubMailboxWatcher
     transport: GitHubMailboxTransport
     config_dir: Path | None = None
-    diagnostic_sink: object | None = None
+    diagnostic_sink: Callable[[str], object] | None = None
 
     @classmethod
     def from_private_config(cls, config_dir: Path) -> GitHubWatcherRuntime:
@@ -154,7 +155,7 @@ class GitHubWatcherRuntime:
             event=event,
             error=error,
         )
-        self.diagnostic_sink(line)  # type: ignore[operator]
+        self.diagnostic_sink(line)
 
     def run_forever(
         self,

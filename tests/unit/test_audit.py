@@ -1,13 +1,21 @@
 from __future__ import annotations
 
 import json
+import multiprocessing
 import os
 import stat
 
 import pytest
 from datetime import datetime, timedelta
+from pathlib import Path
 
 from runner_mcp.audit import AuditEvent, AuditLogger, utc_timestamp
+
+
+def _append_many(path: str, prefix: str, count: int) -> None:
+    logger = AuditLogger(Path(path))
+    for index in range(count):
+        logger.append(_event(f"{prefix}-{index}", "ok"))
 
 
 def _event(request_id: str, result: str) -> AuditEvent:
@@ -110,3 +118,27 @@ def test_audit_logger_retries_short_writes(tmp_path, monkeypatch) -> None:
     rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
     assert [row["request_id"] for row in rows] == ["req-short"]
     assert calls > 1
+
+
+def test_audit_logger_serializes_cross_process_records(tmp_path) -> None:
+    path = tmp_path / "audit.jsonl"
+    processes = [
+        multiprocessing.Process(target=_append_many, args=(str(path), prefix, 20))
+        for prefix in ("left", "right")
+    ]
+
+    for process in processes:
+        process.start()
+    for process in processes:
+        process.join(timeout=15)
+        assert process.exitcode == 0
+
+    rows = [json.loads(line) for line in path.read_text(encoding="utf-8").splitlines()]
+    ids = [row["request_id"] for row in rows]
+    assert len(ids) == 40
+    assert len(set(ids)) == 40
+    assert set(ids) == {
+        f"{prefix}-{index}"
+        for prefix in ("left", "right")
+        for index in range(20)
+    }

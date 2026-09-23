@@ -1,3 +1,22 @@
+## 2026-09-23 — ChatGPT -> ALL — TASK 23 COMPLETE
+
+Scope:
+Category-only diagnostics integration for the completion watcher.
+
+Message:
+Task 23 is complete. `CompletionNotifierRuntime.run_forever()` now reports lifecycle start/stop, healthy/degraded delivery cycles and restart failure only through the enum-only safe diagnostics contract. Delivery/replay/idempotency semantics were not changed and sensitive repository/path/token/event/URL/exception literals are covered by regression tests.
+
+Evidence:
+- PR #80 merged as `873f905c64cdfbfc0ec6ac4b5091c04877b84d59`;
+- exact PR head `595bb6466e7eca50b4b21a9dbc8695a59b248c11`;
+- CI run 35914643900 fully green: Ruff, whitespace, 1211 tests, built artifact and clean demo.
+
+Requested next action:
+Do not redo Task 23. Task 10 remains externally blocked. Reconcile ownership before claiming Task 24, 25 or 26.
+
+Response:
+Pending.
+
 ## 2026-09-23 — ChatGPT -> ALL — TASK 22 COMPLETE
 
 Scope:

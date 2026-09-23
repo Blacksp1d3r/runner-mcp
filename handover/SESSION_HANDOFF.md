@@ -3,15 +3,13 @@
 Last reconciled: 2026-09-23.
 
 ## Current checkpoint
-- Live GitHub reconciled after Tasks 18 and 20 through coordination checkpoint `182ba9c24b927001257be85454cffe018a4f9cb1`; live GitHub always wins over this recorded checkpoint.
-- Task 18 COMPLETE: PR #76 merged as `5c4f5db350cdafa99066bdb091866b7d6979a7a9`. Exact PR head `97fcde693d6264171920c386d10e9e63403a9a9a` passed CI run 35894315537 fully green: Ruff, whitespace, 794 pytest tests, built release artifact and clean demo.
-- Task 18 added `runner_mcp.secure_io.atomic_replace_private` and migrated only config-manager, approval-manager and completion notifier private JSON state. Existing locks/serialization/state ordering and completion size/schema/parent semantics were preserved. Autostart/cron, job metadata, ledgers, create-only writers, deployment activation/tar extraction and self-update were untouched.
-- Task 20 COMPLETE: PR #77 merged as `4bfd71d85cb5228ba328ee17fc60414c84c43e0a`. Exact PR head `666a399803db41bae4deae73fc4f205de5e97854` passed CI run 35895116909 fully green: Ruff, whitespace, 1203 pytest tests, built release artifact and clean demo.
-- Task 20 was test-only. It pins a valid fixture for every BridgeAction, exhaustive non-owned optional-field rejection, action case/hyphen/prefix rejection, duplicate request_id rejection, request-side NaN/Infinity rejection, lowercase-only self-update commit enforcement and zero executor invocation for rejected requests.
-- No production bridge protocol/capability code changed in Task 20.
-- Open Runner-MCP PRs/issues at the post-merge reconciliation checkpoint: none.
+- Live GitHub reconciled through Task 21 merge and queue-refill coordination; live GitHub always wins over this recorded checkpoint.
+- Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`. Exact PR head `01ee0c0bfeaeae8f3a07a47f4162d4f9560304ab` passed CI run 35903107229 fully green: Ruff, whitespace, 1207 pytest tests, built release artifact and clean demo.
+- Task 21 migrated only `autostart._write_managed_unit` to `secure_io.atomic_replace_private`, preserving managed-marker ownership refusal and bounded `AutostartError` mapping. Focused regressions cover unmanaged-content preservation, 0600 writes, fsync/replace failure preservation/temp cleanup and symlink-swap referent safety.
+- Tasks 18 and 20 remain COMPLETE and must not be duplicated.
 - Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Current UNCLAIMED bounded public queue: Task 21 managed-autostart secure-I/O migration; Task 22 cron supervisor safe diagnostics; Task 23 completion-watcher safe diagnostics. Task 18 prerequisites for Tasks 21/23 are satisfied.
+- Current bounded public queue after refill: Task 22 cron supervisor safe diagnostics; Task 23 completion-watcher safe diagnostics; Task 24 asynchronous completion-delivery expansion review; Task 25 private connectivity/TLS onboarding contract review.
+- Tasks 24 and 25 are read-only review lanes sourced from explicit remaining roadmap items; they do not authorize implementation by themselves.
 - Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`; do not duplicate work if another agent has claimed it.
 - No tag, GitHub release, package publication, deployment, migration or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof therefore remains unresolved.

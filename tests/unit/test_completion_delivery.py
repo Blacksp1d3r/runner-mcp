@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp import secure_io as secure_io_module
 from runner_mcp.completion_delivery import (
     CompletionDeliveryError,
     CompletionDeliveryLedger,
@@ -102,6 +103,66 @@ def test_notification_config_is_private_and_round_trips(tmp_path: Path) -> None:
         "configured": True,
         "initialized": False,
     }
+
+
+def test_notification_config_refuses_symlink_without_touching_referent(
+    tmp_path: Path,
+) -> None:
+    referent = tmp_path / "outside.json"
+    referent.write_bytes(b"outside")
+    referent.chmod(0o640)
+    target = notification_config_path(tmp_path)
+    target.symlink_to(referent)
+
+    with pytest.raises(CompletionDeliveryError, match="symlink"):
+        configure_github_issue_notifier(
+            tmp_path,
+            repository="example/private",
+            issue_number=25,
+            mention=None,
+            token="a" * 40,
+        )
+
+    assert target.is_symlink()
+    assert referent.read_bytes() == b"outside"
+    assert oct(referent.stat().st_mode & 0o777) == "0o640"
+
+
+def test_notification_config_write_failure_is_bounded_and_preserves_previous_state(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    configure_github_issue_notifier(
+        tmp_path,
+        repository="example/private",
+        issue_number=25,
+        mention=None,
+        token="a" * 40,
+    )
+    target = notification_config_path(tmp_path)
+    before = target.read_bytes()
+    sensitive = str(tmp_path / "private-token-path")
+
+    def fail_fsync(_fd: int) -> None:
+        raise OSError(sensitive)
+
+    monkeypatch.setattr(secure_io_module.os, "fsync", fail_fsync)
+
+    with pytest.raises(CompletionDeliveryError) as captured:
+        configure_github_issue_notifier(
+            tmp_path,
+            repository="example/private",
+            issue_number=26,
+            mention=None,
+            token="b" * 40,
+        )
+
+    assert str(captured.value) == "private completion state could not be written"
+    assert sensitive not in str(captured.value)
+    assert "b" * 40 not in str(captured.value)
+    assert target.read_bytes() == before
+    assert load_github_issue_notifier(tmp_path).token == "a" * 40
+    assert list(tmp_path.glob(".completion-notifier.json.*.tmp")) == []
 
 
 def test_notification_config_rejects_broad_permissions(tmp_path: Path) -> None:

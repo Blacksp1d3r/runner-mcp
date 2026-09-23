@@ -1,3 +1,23 @@
+## 2026-09-23 — Tasks 2–9 queue complete
+
+Current public repository state:
+- PR #53 merged as `0c46bbefb8fcad6ae5c7f87450e638c40492a41a`: Task 6 documentation/CLI contract audit complete; `runtime_doctor` is documented and the stale evergreen pre-tag test count is gone.
+- PR #54 merged as `69e604935bfe0fef0dd61b48dfdde76fed8f46ba`: Task 7 dependency compatibility/bootstrap design complete; `docs/SELF_UPDATE_COMPATIBILITY.md` is the canonical boundary.
+- PR #55 merged as `358f8f6345a7ff6f094eb6c8e4d7db4b9943aed7`: Task 9 release-candidate hygiene dry run complete.
+- Tasks 2–9 are complete; no open Runner-MCP PR existed when this checkpoint was reconciled.
+- No tag, release or external artifact has been created.
+
+Next safe release-preparation work:
+- finalize the v0.1.0 changelog and release-notes draft;
+- validate the exact candidate commit and repeat public-repository privacy review before any tag;
+- keep dependency/build/interpreter contract changes on the normal dependency-resolving bootstrap path;
+- reconcile the remaining private-host self-update live proof, or explicitly retain that limitation in release notes.
+
+Private runtime state:
+- this batch did not re-probe the private host;
+- older watcher recovery-attention observations remain historical/last-known, not current health evidence;
+- never reset watcher replay/cursor/transaction state as a shortcut.
+
 ## 2026-09-22 — Task 8 checkpoint
 
 - PR #52 merged as `d6821ddb0773b586b6a106b66b2e18154c90cc7a`.

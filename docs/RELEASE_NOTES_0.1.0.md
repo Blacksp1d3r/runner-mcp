@@ -78,8 +78,7 @@ Before publishing v0.1.0, the exact tag commit must have all of these green:
 - complete pytest suite;
 - whitespace validation;
 - clean Ubuntu 24.04 five-minute demo;
-- built wheel and source-distribution validation;
-- clean install from the built wheel with CLI smoke checks;
+- built wheel and source-distribution validation;\n- clean dependency-resolving install from the built wheel in a fresh virtual environment with CLI smoke checks (this is not an offline/no-index consumer-install proof);
 - public-repository privacy review.
 
 The current pre-tag release-candidate baseline has green compile, Ruff, pytest, whitespace, clean-demo and built-artifact jobs. Reconfirm every check on the exact final tag commit; record exact test counts only in dated release evidence.

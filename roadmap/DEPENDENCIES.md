@@ -5,9 +5,9 @@ Last reconciled: 2026-09-23. GitHub current state wins.
 ## Current build order
 1. Core safety/protocol invariants remain the base for every later slice.
 2. Task 10 private-host live self-update/recovery proof remains externally blocked; it does not block independent public hardening work.
-3. Tasks 16, 17 and 18 are complete on main; do not duplicate them.
-4. Tasks 20–23 are the current bounded public hardening queue after ownership reconciliation: bridge adversarial regression tests, managed-autostart private-write migration, cron safe-diagnostics integration, and completion-watcher safe-diagnostics integration.
-5. Task 21 and Task 23 had Task 18 as their prerequisite; that prerequisite is now satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
+3. Tasks 16, 17, 18 and 20 are complete on main; do not duplicate them.
+4. Tasks 21–23 are the current bounded public hardening queue after ownership reconciliation: managed-autostart private-write migration, cron safe-diagnostics integration, and completion-watcher safe-diagnostics integration.
+5. Task 21 and Task 23 had Task 18 as their prerequisite; that prerequisite is satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
 6. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
 7. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
 

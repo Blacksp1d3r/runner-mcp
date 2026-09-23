@@ -541,7 +541,7 @@ Acceptance:
 
 ### Task 18 — extract private atomic-replace primitive + migrate completion state — CODE lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task18-secure-io-atomic-replace`. PR: #76, exact head `eb4b5766f7a5826c2c15eb0b4681c52a9e841540`; CI run 35894134799 in progress.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task18-secure-io-atomic-replace`. PR: #76, exact head `97fcde693d6264171920c386d10e9e63403a9a9a`; previous CI run 35894134799 failed Ruff import grouping and is superseded; exact-head CI pending.
 
 Preferred executor: ChatGPT or Claude Code after reconciling Task 14 findings.
 

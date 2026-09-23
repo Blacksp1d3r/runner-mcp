@@ -387,7 +387,7 @@ This blocker does not prevent Tasks 11–16.
 
 ### Task 11 — self-update compatibility preflight — CODE lane
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task11-self-update-compatibility`.
 
 Preferred executor: Claude Code when capacity is available; ChatGPT may take over.
 

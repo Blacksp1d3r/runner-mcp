@@ -541,7 +541,7 @@ Acceptance:
 
 ### Task 18 — extract private atomic-replace primitive + migrate completion state — CODE lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task18-secure-io-atomic-replace`. PR: #76, exact head `97fcde693d6264171920c386d10e9e63403a9a9a`; previous CI run 35894134799 failed Ruff import grouping and is superseded; exact-head CI pending.
+Status: `COMPLETE`. PR #76 merged as `5c4f5db350cdafa99066bdb091866b7d6979a7a9`; exact PR head `97fcde693d6264171920c386d10e9e63403a9a9a`; exact-head CI run 35894315537 fully green (Ruff, whitespace, 794 pytest tests, built release artifact, clean demo).
 
 Preferred executor: ChatGPT or Claude Code after reconciling Task 14 findings.
 
@@ -607,7 +607,7 @@ Acceptance:
 
 ### Task 21 — migrate managed autostart unit writes to shared private replace — CODE lane
 
-Status: `UNCLAIMED`. Dependency: Task 18 must be `COMPLETE` on main first.
+Status: `UNCLAIMED`. Dependency satisfied: Task 18 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code after Task 18.
 
@@ -651,7 +651,7 @@ Acceptance:
 
 ### Task 23 — integrate category-only diagnostics into completion watcher — CODE lane
 
-Status: `UNCLAIMED`. Dependency: Task 18 must be `COMPLETE` on main first.
+Status: `UNCLAIMED`. Dependency satisfied: Task 18 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code after Task 18.
 

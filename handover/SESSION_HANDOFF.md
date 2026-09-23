@@ -3,14 +3,16 @@
 Last reconciled: 2026-09-23.
 
 ## Current checkpoint
-- GitHub reconciled through main `3d7792ee088a10ca44126415394e74c8e3c29ce3` (PR #74).
-- Tasks 16 and 17 are COMPLETE; do not repeat them.
-- Task 16 adversarial bridge review found no demonstrated capability-expansion defect. PR #72 merged as `375339bcb07ea781259bd7efa6baf6f8040a2ed2`; follow-up Task 20 is queued for exhaustive adversarial regression tests.
-- Task 17 hardened the append-only audit writer. PR #73 merged as `22e6d309a94db783d11ff26b882dea305c33c0f7`; final exact head `60466a72b1c8492eac54e4963b9d7ef4bb572977` passed CI run 35891213181 including Ruff/pytest, release artifact and clean demo.
-- Task 17 now uses symlink-safe append opening, regular-file verification, private descriptor mode, cross-process flock, short-write completion and fsync-before-success; event schema/call sites/rotation/retention/recovery semantics were not changed.
-- Task 10 remains BLOCKED on a usable private-host execution/proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Next dependency-safe CODE work: Task 18 atomic private-write primitive/migration, or Task 20 bridge adversarial regression matrix after ownership reconciliation. GitHub/current assignment wins if newer.
-- No tag, GitHub release, package publication or external publication has been authorized.
+- Live GitHub reconciled after Task 18 through coordination checkpoint `09acf32310e86d4aa36c548bb5ed5e12c0e2f572`; the code merge itself is `5c4f5db350cdafa99066bdb091866b7d6979a7a9` (PR #76).
+- Task 18 is COMPLETE. Exact PR head `97fcde693d6264171920c386d10e9e63403a9a9a` passed CI run 35894315537 fully green: Ruff, whitespace, 794 pytest tests, built release artifact and clean demo.
+- Task 18 added `runner_mcp.secure_io.atomic_replace_private` and migrated only config-manager, approval-manager and completion notifier private JSON state. Existing higher-level locks/serialization/state ordering and completion size/schema/parent semantics are preserved.
+- Explicitly untouched by Task 18: autostart/cron ownership logic, high-churn job metadata, in-place ledgers, create-only writers, deployment activation/tar extraction and self-update.
+- Open Runner-MCP PRs/issues at the post-merge reconciliation checkpoint: none.
+- Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
+- Current UNCLAIMED bounded public queue: Task 20 bridge adversarial regression matrix; Task 21 managed-autostart secure-I/O migration; Task 22 cron supervisor safe diagnostics; Task 23 completion-watcher safe diagnostics. Task 18 prerequisites for Tasks 21/23 are satisfied.
+- Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`; do not duplicate work if another agent has claimed it.
+- No tag, GitHub release, package publication, deployment, migration or external publication has been authorized/performed in this session.
+- Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof therefore remains unresolved.
 
 ## Purpose
 Runner MCP is a small, auditable, deny-by-default operations interface. GitHub is the code/collaboration surface; Runner MCP is the local execution and safety boundary. It must never become a generic remote shell.

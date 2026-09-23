@@ -30,13 +30,14 @@ from .github_mailbox import (
     GitHubApiSession,
     GitHubMailboxConfig,
 )
-from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 from .onboarding import (
     OnboardingError,
     PrivatePaths,
     load_env_file,
     read_private_runtime,
 )
+
+from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
 
 class ConfigManagerError(RuntimeError):

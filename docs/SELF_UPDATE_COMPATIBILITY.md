@@ -1,6 +1,6 @@
 # Self-update dependency compatibility contract
 
-This document records the compatibility boundary for the current Runner MCP self-update path. It is a design constraint, not an implementation change.
+This document records the implemented compatibility boundary for the current Runner MCP self-update path. The exact-contract preflight described below is active in v0.1.0 candidate code; broader dependency resolution remains deliberately out of scope.
 
 The self-update installer intentionally builds and installs only the Runner MCP wheel. It uses `pip wheel --no-deps --no-build-isolation` and `pip install --no-index --no-deps --force-reinstall`. Mailbox/MCP callers cannot supply package-manager arguments, repositories, indexes, paths or dependency choices.
 
@@ -39,31 +39,28 @@ The current installer must not be treated as a dependency resolver. A successful
 
 “Bootstrap/manual” means use the normal dependency-resolving installation/upgrade path under local operator control, then re-establish and validate the self-update baseline. It does not mean allowing a mailbox request to pass pip arguments.
 
-## Recommended fail-closed preflight
+## Implemented fail-closed preflight
 
-Before broadening self-update beyond an unchanged dependency contract, add a small compatibility contract with schema versioning.
+The current implementation uses a conservative exact compatibility contract rather than trying to infer that a changed requirement is probably compatible.
 
-The conservative first implementation should compare exact canonical dependency contracts rather than trying to infer that a changed requirement is probably compatible:
+Before normal target validation/package mutation, trusted current-runtime code parses the target checkout's `pyproject.toml` with the standard-library TOML parser and canonicalizes:
 
-1. package the installed Runner MCP build with a canonical compatibility record;
-2. have trusted current-runtime code parse the target checkout's `pyproject.toml` with the standard-library TOML parser;
-3. canonicalize and compare at least:
-   - `requires-python`;
-   - build backend and build requirements;
-   - direct runtime dependencies;
-   - dependencies needed by the fixed self-update lint/unit gates;
-4. refuse package mutation when the target contract differs from the installed contract;
-5. return only a bounded category such as `dependency_contract_changed`.
+- `requires-python`;
+- build backend and build requirements;
+- direct runtime dependencies;
+- development/test dependencies needed by the fixed self-update validation gates.
 
-Exact equality is deliberately conservative. It can produce a safe false positive when a changed requirement would happen to be satisfied locally, but it cannot silently authorize dependency acquisition. A later design may permit a changed constraint only after a local, trusted installed-distribution check proves it without network access.
+That target contract is compared exactly with the trusted local compatibility baseline. A missing baseline fails closed as `bootstrap_required`; any contract difference fails closed as `dependency_contract_changed`. The comparison does not resolve dependencies, contact an index, inspect caller-supplied paths or accept package-manager arguments.
 
-The compatibility record must be validated in CI against packaging metadata so a stale record cannot make a dependency-changing commit look unchanged.
+Exact equality is deliberately conservative. It can refuse an update whose changed requirement would happen to be satisfied locally, but it cannot silently authorize dependency acquisition. Such a refusal means the operator uses the normal local bootstrap/manual upgrade path and re-establishes the baseline afterward.
+
+A future design may relax exact equality only if trusted local code can prove a changed constraint from installed-distribution metadata without network access or caller-controlled package-manager behavior. That future relaxation is not part of v0.1.0.
 
 ## Safe observability
 
 Compatibility state should remain host-neutral.
 
-Suitable surfaces are:
+The compatibility refusal itself is implemented. Additional bounded observability may use surfaces such as:
 
 - `runtime_status`: a boolean indicating whether the installed compatibility record is present and valid;
 - `runtime_doctor`: a bounded pass/fail compatibility-record integrity check;

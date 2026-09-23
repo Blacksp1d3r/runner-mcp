@@ -2,6 +2,7 @@ import json
 
 import pytest
 
+from runner_mcp.bridge_processor import BridgeProcessor
 from runner_mcp.bridge_protocol import (
     MAX_BRIDGE_REQUEST_BYTES,
     MAX_BRIDGE_RESULT_BYTES,
@@ -511,3 +512,338 @@ def test_self_operations_map_only_fixed_arguments(
 def test_self_operations_reject_extra_or_unpinned_input(payload: str) -> None:
     with pytest.raises(BridgeProtocolError, match="strict validation"):
         parse_bridge_request(payload)
+
+
+# Exhaustive fail-closed matrix from Task 16's adversarial protocol review.
+_VALID_REQUEST_BY_ACTION: dict[BridgeAction, dict[str, object]] = {
+    BridgeAction.LIST_PROJECTS: {
+        "request_id": "matrix-list-projects",
+        "action": "list_projects",
+    },
+    BridgeAction.SAFETY_STATUS: {
+        "request_id": "matrix-safety-status",
+        "action": "safety_status",
+    },
+    BridgeAction.PROJECT_STATUS: {
+        "request_id": "matrix-project-status",
+        "action": "project_status",
+        "project": "demo",
+    },
+    BridgeAction.PROJECT_CAPABILITIES: {
+        "request_id": "matrix-project-capabilities",
+        "action": "project_capabilities",
+        "project": "demo",
+    },
+    BridgeAction.SYNC_PROJECT: {
+        "request_id": "matrix-sync-project",
+        "action": "sync_project",
+        "project": "demo",
+        "commit": "a" * 40,
+    },
+    BridgeAction.LIST_TEST_PROFILES: {
+        "request_id": "matrix-list-test-profiles",
+        "action": "list_test_profiles",
+        "project": "demo",
+    },
+    BridgeAction.RUN_TESTS: {
+        "request_id": "matrix-run-tests",
+        "action": "run_tests",
+        "project": "demo",
+        "profile": "unit",
+    },
+    BridgeAction.QUEUE_STATUS: {
+        "request_id": "matrix-queue-status",
+        "action": "queue_status",
+    },
+    BridgeAction.WORKER_STATUS: {
+        "request_id": "matrix-worker-status",
+        "action": "worker_status",
+    },
+    BridgeAction.JOB_STATUS: {
+        "request_id": "matrix-job-status",
+        "action": "job_status",
+        "job_id": "1" * 32,
+    },
+    BridgeAction.CANCEL_JOB: {
+        "request_id": "matrix-cancel-job",
+        "action": "cancel_job",
+        "job_id": "2" * 32,
+    },
+    BridgeAction.JOB_LOG: {
+        "request_id": "matrix-job-log",
+        "action": "job_log",
+        "job_id": "3" * 32,
+    },
+    BridgeAction.LIST_SERVICES: {
+        "request_id": "matrix-list-services",
+        "action": "list_services",
+        "project": "demo",
+    },
+    BridgeAction.SERVICE_STATUS: {
+        "request_id": "matrix-service-status",
+        "action": "service_status",
+        "project": "demo",
+        "service": "web",
+    },
+    BridgeAction.START_SERVICE: {
+        "request_id": "matrix-start-service",
+        "action": "start_service",
+        "project": "demo",
+        "service": "web",
+    },
+    BridgeAction.STOP_SERVICE: {
+        "request_id": "matrix-stop-service",
+        "action": "stop_service",
+        "project": "demo",
+        "service": "web",
+    },
+    BridgeAction.RESTART_SERVICE: {
+        "request_id": "matrix-restart-service",
+        "action": "restart_service",
+        "project": "demo",
+        "service": "web",
+    },
+    BridgeAction.LIST_BACKUPS: {
+        "request_id": "matrix-list-backups",
+        "action": "list_backups",
+        "project": "demo",
+    },
+    BridgeAction.BACKUP_DATABASE: {
+        "request_id": "matrix-backup-database",
+        "action": "backup_database",
+        "project": "demo",
+    },
+    BridgeAction.REQUEST_ACTION_APPROVAL: {
+        "request_id": "matrix-request-approval",
+        "action": "request_action_approval",
+        "project": "demo",
+        "operation": "deploy",
+    },
+    BridgeAction.APPROVAL_STATUS: {
+        "request_id": "matrix-approval-status",
+        "action": "approval_status",
+        "approval_id": "4" * 32,
+    },
+    BridgeAction.MIGRATION_STATUS: {
+        "request_id": "matrix-migration-status",
+        "action": "migration_status",
+        "project": "demo",
+    },
+    BridgeAction.APPLY_MIGRATIONS: {
+        "request_id": "matrix-apply-migrations",
+        "action": "apply_migrations",
+        "project": "demo",
+        "approval_id": "5" * 32,
+    },
+    BridgeAction.PLAN_DEPLOY: {
+        "request_id": "matrix-plan-deploy",
+        "action": "plan_deploy",
+        "project": "demo",
+    },
+    BridgeAction.DEPLOY_STAGING: {
+        "request_id": "matrix-deploy-staging",
+        "action": "deploy_staging",
+        "project": "demo",
+        "approval_id": "6" * 32,
+    },
+    BridgeAction.DEPLOYMENT_STATUS: {
+        "request_id": "matrix-deployment-status",
+        "action": "deployment_status",
+        "job_id": "7" * 32,
+    },
+    BridgeAction.LIST_RELEASES: {
+        "request_id": "matrix-list-releases",
+        "action": "list_releases",
+        "project": "demo",
+    },
+    BridgeAction.ROLLBACK_PLAN: {
+        "request_id": "matrix-rollback-plan",
+        "action": "rollback_plan",
+        "project": "demo",
+    },
+    BridgeAction.ROLLBACK_RELEASE: {
+        "request_id": "matrix-rollback-release",
+        "action": "rollback_release",
+        "project": "demo",
+        "approval_id": "8" * 32,
+    },
+    BridgeAction.ROLLBACK_STATUS: {
+        "request_id": "matrix-rollback-status",
+        "action": "rollback_status",
+        "job_id": "9" * 32,
+    },
+    BridgeAction.RUNTIME_STATUS: {
+        "request_id": "matrix-runtime-status",
+        "action": "runtime_status",
+    },
+    BridgeAction.RUNTIME_DOCTOR: {
+        "request_id": "matrix-runtime-doctor",
+        "action": "runtime_doctor",
+    },
+    BridgeAction.SELF_UPDATE: {
+        "request_id": "matrix-self-update",
+        "action": "self_update",
+        "commit": "b" * 40,
+    },
+    BridgeAction.SELF_UPDATE_STATUS: {
+        "request_id": "matrix-self-update-status",
+        "action": "self_update_status",
+        "job_id": "a" * 32,
+    },
+}
+
+_OPTIONAL_FIELD_VALUES: dict[str, object] = {
+    "project": "other",
+    "profile": "smoke",
+    "commit": "c" * 40,
+    "job_id": "b" * 32,
+    "service": "api",
+    "approval_id": "c" * 32,
+    "operation": "migration",
+    "offset": 1,
+    "length": 1,
+    "limit": 1,
+}
+
+
+def _owned_optional_fields(
+    action: BridgeAction,
+    payload: dict[str, object],
+) -> set[str]:
+    owned = set(payload) & set(_OPTIONAL_FIELD_VALUES)
+    if action == BridgeAction.JOB_LOG:
+        owned.update({"offset", "length"})
+    if action in {BridgeAction.LIST_BACKUPS, BridgeAction.LIST_RELEASES}:
+        owned.add("limit")
+    return owned
+
+
+_NON_OWNED_FIELD_CASES = [
+    (action, field)
+    for action, payload in _VALID_REQUEST_BY_ACTION.items()
+    for field in _OPTIONAL_FIELD_VALUES
+    if field not in _owned_optional_fields(action, payload)
+]
+
+_VALID_ACTION_VALUES = {action.value for action in BridgeAction}
+_ACTION_VARIANT_CASES = [
+    (action, variant)
+    for action in BridgeAction
+    for variant in {
+        action.value.upper(),
+        action.value.replace("_", "-"),
+        action.value[:-1],
+    }
+    if variant not in _VALID_ACTION_VALUES
+]
+
+
+class _InvocationCounterExecutor:
+    def __init__(self) -> None:
+        self.calls = 0
+
+    def __getattr__(self, _name: str):
+        def invoke(*_args: object, **_kwargs: object) -> dict[str, object]:
+            self.calls += 1
+            return {}
+
+        return invoke
+
+
+class _UnexpectedLedger:
+    def claim(self, _request: BridgeRequest):
+        raise AssertionError("invalid request reached replay ledger")
+
+
+class _UnexpectedSink:
+    def persist_result(self, _request_id: str, _result_json: str) -> None:
+        raise AssertionError("invalid request reached result sink")
+
+
+def _assert_rejected_before_execution(
+    payload: str,
+    *,
+    match: str = "strict validation",
+) -> None:
+    executor = _InvocationCounterExecutor()
+    processor = BridgeProcessor(
+        ledger=_UnexpectedLedger(),
+        executor=executor,
+        result_sink=_UnexpectedSink(),
+    )
+
+    with pytest.raises(BridgeProtocolError, match=match):
+        processor.process(payload)
+
+    assert executor.calls == 0
+
+
+def test_adversarial_matrix_has_valid_fixture_for_every_bridge_action() -> None:
+    assert set(_VALID_REQUEST_BY_ACTION) == set(BridgeAction)
+
+    for action, payload in _VALID_REQUEST_BY_ACTION.items():
+        request = parse_bridge_request(json.dumps(payload))
+        assert request.action == action
+        tool_name, _arguments = bridge_tool_call(request)
+        assert tool_name == action.value
+
+
+@pytest.mark.parametrize(("action", "field"), _NON_OWNED_FIELD_CASES)
+def test_every_action_rejects_every_non_owned_optional_field_before_execution(
+    action: BridgeAction,
+    field: str,
+) -> None:
+    payload = dict(_VALID_REQUEST_BY_ACTION[action])
+    payload[field] = _OPTIONAL_FIELD_VALUES[field]
+
+    _assert_rejected_before_execution(json.dumps(payload))
+
+
+@pytest.mark.parametrize(("action", "variant"), _ACTION_VARIANT_CASES)
+def test_action_case_hyphen_and_prefix_variants_fail_before_execution(
+    action: BridgeAction,
+    variant: str,
+) -> None:
+    payload = dict(_VALID_REQUEST_BY_ACTION[action])
+    payload["action"] = variant
+
+    _assert_rejected_before_execution(json.dumps(payload))
+
+
+@pytest.mark.parametrize("field", ["command", "cwd", "env"])
+def test_unknown_execution_shaping_fields_fail_before_execution(field: str) -> None:
+    payload: dict[str, object] = {
+        "request_id": f"matrix-extra-{field}",
+        "action": "list_projects",
+        field: {"TOKEN": "secret"} if field == "env" else "/srv/private",
+    }
+
+    _assert_rejected_before_execution(json.dumps(payload))
+
+
+def test_duplicate_request_id_fails_before_execution() -> None:
+    _assert_rejected_before_execution(
+        '{"request_id":"matrix-dup-a","request_id":"matrix-dup-b",'
+        '"action":"list_projects"}',
+        match="duplicate JSON keys",
+    )
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_request_non_standard_json_constants_fail_before_execution(
+    constant: str,
+) -> None:
+    _assert_rejected_before_execution(
+        '{"request_id":"matrix-constant","action":"job_log",'
+        '"job_id":"dddddddddddddddddddddddddddddddd","offset":'
+        + constant
+        + "}",
+        match="non-standard JSON constant",
+    )
+
+
+def test_uppercase_self_update_commit_fails_before_execution() -> None:
+    payload = dict(_VALID_REQUEST_BY_ACTION[BridgeAction.SELF_UPDATE])
+    payload["commit"] = "A" * 40
+
+    _assert_rejected_before_execution(json.dumps(payload))

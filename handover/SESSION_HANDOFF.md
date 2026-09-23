@@ -3,14 +3,15 @@
 Last reconciled: 2026-09-23.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 22 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
-- Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`; exact-head CI run 35903107229 fully green with 1207 tests.
-- Task 22 COMPLETE: PR #79 merged as `1bfeb9e7e8991058fb82a31b6d93b94f77c5ba72`. Exact PR head `65e15a9654e131073d8e90dc90cfa5e0536b9781` passed CI run 35903803377 fully green: Ruff, whitespace, 1208 pytest tests, built release artifact and clean demo.
-- Task 22 integrated only category-only cron-supervisor diagnostics for lock-held, exec handoff and bounded start/restart failure; cron ownership/locking/argv/execution authority are unchanged.
-- Tasks 18, 20, 21 and 22 must not be duplicated.
+- Live GitHub reconciled through Task 23 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
+- Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`; exact-head CI 35903107229 green with 1207 tests.
+- Task 22 COMPLETE: PR #79 merged as `1bfeb9e7e8991058fb82a31b6d93b94f77c5ba72`; exact-head CI 35903803377 green with 1208 tests.
+- Task 23 COMPLETE: PR #80 merged as `873f905c64cdfbfc0ec6ac4b5091c04877b84d59`. Exact PR head `595bb6466e7eca50b4b21a9dbc8695a59b248c11` passed CI run 35914643900 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- Safe diagnostics now have bounded production integration in GitHub watcher, cron supervisor and completion watcher without broadening execution authority or exposing dynamic private context.
+- Tasks 18, 20, 21, 22 and 23 must not be duplicated.
 - Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Current bounded public queue: Task 23 completion-watcher safe diagnostics; Task 24 asynchronous completion-delivery expansion review; Task 25 private connectivity/TLS onboarding contract review.
-- Tasks 24 and 25 are read-only review lanes and do not authorize implementation by themselves.
+- Current bounded public queue: Task 24 asynchronous completion-delivery expansion review; Task 25 private connectivity/TLS onboarding contract review; Task 26 bounded service journal/log access contract review.
+- Tasks 24–26 are read-only review lanes and do not authorize implementation by themselves.
 - Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`.
 - No tag, GitHub release, package publication, deployment, migration or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof therefore remains unresolved.

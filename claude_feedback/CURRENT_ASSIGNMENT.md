@@ -518,7 +518,7 @@ a concise adversarial test matrix and any demonstrated gaps. No implementation i
 
 ### Task 17 — harden append-only audit writer — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task17-audit-hardening`.
+Status: `COMPLETE`. PR #73 merged as `22e6d309a94db783d11ff26b882dea305c33c0f7`; exact head CI run 35891213181 fully green after one import-order fix.
 
 Preferred executor: ChatGPT or Claude Code after reconciling Task 13 findings.
 

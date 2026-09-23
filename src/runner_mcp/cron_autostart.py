@@ -9,6 +9,13 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .safe_diagnostics import (
+    DiagnosticComponent,
+    DiagnosticErrorCategory,
+    DiagnosticEvent,
+    render_safe_diagnostic,
+)
+
 CRON_BEGIN = "# BEGIN RUNNER MCP AUTOSTART v1"
 CRON_END = "# END RUNNER MCP AUTOSTART v1"
 CRON_COMPONENTS = ("server", "github-watcher", "completion-watcher")
@@ -16,6 +23,22 @@ CRON_COMPONENTS = ("server", "github-watcher", "completion-watcher")
 
 class CronAutostartError(RuntimeError):
     """Safe cron-autostart failure without private command output."""
+
+
+def _diagnose_cron_supervisor(
+    diagnostic_sink: Callable[[str], object] | None,
+    event: DiagnosticEvent,
+    error: DiagnosticErrorCategory | None = None,
+) -> None:
+    if diagnostic_sink is None:
+        return
+    diagnostic_sink(
+        render_safe_diagnostic(
+            component=DiagnosticComponent.CRON_SUPERVISOR,
+            event=event,
+            error=error,
+        )
+    )
 
 
 @dataclass(frozen=True, slots=True)
@@ -315,17 +338,32 @@ def run_cron_component(
     component: str,
     port: int = 8000,
     exec_fn: Callable[[str, list[str]], object] = os.execv,
+    diagnostic_sink: Callable[[str], object] | None = None,
 ) -> int:
     if component not in CRON_COMPONENTS:
         raise CronAutostartError("unknown cron autostart component")
     if not 1 <= port <= 65535:
         raise CronAutostartError("autostart port must be between 1 and 65535")
 
-    fd = _open_component_lock(config_dir, component)
+    try:
+        fd = _open_component_lock(config_dir, component)
+    except CronAutostartError:
+        _diagnose_cron_supervisor(
+            diagnostic_sink,
+            DiagnosticEvent.SUPERVISOR_RESTART_FAILED,
+            DiagnosticErrorCategory.RESTART_FAILED,
+        )
+        raise
+
     try:
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
+            _diagnose_cron_supervisor(
+                diagnostic_sink,
+                DiagnosticEvent.SUPERVISOR_RESTART_FAILED,
+                DiagnosticErrorCategory.SUPERVISOR_LOCKED,
+            )
             return 0
         os.set_inheritable(fd, True)
 
@@ -349,9 +387,18 @@ def run_cron_component(
         else:
             argv.extend(["completion-watcher", "run"])
 
+        _diagnose_cron_supervisor(
+            diagnostic_sink,
+            DiagnosticEvent.SUPERVISOR_RESTART_HANDOFF,
+        )
         exec_fn(str(executable), argv)
         return 0
     except OSError as exc:
+        _diagnose_cron_supervisor(
+            diagnostic_sink,
+            DiagnosticEvent.SUPERVISOR_RESTART_FAILED,
+            DiagnosticErrorCategory.RESTART_FAILED,
+        )
         raise CronAutostartError("cron autostart component could not start") from exc
     finally:
         try:

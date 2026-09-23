@@ -5,7 +5,6 @@ import hashlib
 import json
 import os
 import re
-import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
@@ -13,6 +12,8 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
+
+from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
 
 class ApprovalError(RuntimeError):
@@ -195,33 +196,17 @@ class ApprovalManager:
 
     def _write_locked(self, plan: ApprovalPlan) -> None:
         path = self._path(plan.approval_id)
-        if path.exists() and path.is_symlink():
+        if path.is_symlink():
             raise ApprovalError("Approval file path is unsafe")
         content = json.dumps(
             plan.persisted_dict(),
             sort_keys=True,
             separators=(",", ":"),
         ) + "\n"
-        fd, temp_name = tempfile.mkstemp(
-            prefix=".approval-",
-            suffix=".tmp",
-            dir=self.root,
-            text=True,
-        )
-        temp = Path(temp_name)
         try:
-            os.chmod(temp, 0o600)
-            with os.fdopen(fd, "w", encoding="utf-8", closefd=True) as handle:
-                fd = -1
-                handle.write(content)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(temp, path)
-            os.chmod(path, 0o600)
-        finally:
-            if fd >= 0:
-                os.close(fd)
-            temp.unlink(missing_ok=True)
+            atomic_replace_private(path, content.encode("utf-8"))
+        except PrivateAtomicWriteError as exc:
+            raise ApprovalError("Approval file could not be written") from exc
 
     def request(
         self,

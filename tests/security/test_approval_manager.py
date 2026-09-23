@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from runner_mcp import approval_manager as approval_module
+from runner_mcp import secure_io as secure_io_module
 from runner_mcp.approval_manager import ApprovalError, ApprovalManager
 
 
@@ -146,3 +147,29 @@ def test_approval_file_symlink_is_rejected(tmp_path: Path) -> None:
 
     with pytest.raises(ApprovalError, match="Unknown approval"):
         approvals.status(requested["approval_id"])
+
+
+def test_approval_write_failure_is_bounded_and_cleans_temp(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    approvals = manager(tmp_path)
+    sensitive = str(tmp_path / "private-approval-path")
+
+    def fail_fsync(_fd: int) -> None:
+        raise OSError(sensitive)
+
+    monkeypatch.setattr(secure_io_module.os, "fsync", fail_fsync)
+
+    with pytest.raises(ApprovalError) as captured:
+        approvals.request(
+            action="deploy",
+            project="demo",
+            binding={"commit": "a" * 40},
+            summary={},
+        )
+
+    assert str(captured.value) == "Approval file could not be written"
+    assert sensitive not in str(captured.value)
+    assert list(approvals.root.glob("*.json")) == []
+    assert list(approvals.root.glob(".*.tmp")) == []

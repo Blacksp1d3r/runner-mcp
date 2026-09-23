@@ -188,6 +188,20 @@ class GitHubWatcherRuntime:
                     "GitHub watcher cursor is uninitialized; bootstrap is required"
                 )
 
+            self._diagnose(
+                DiagnosticEvent.CYCLE_DEGRADED
+                if outcome.state in {
+                    GitHubWatcherCycleState.DEGRADED,
+                    GitHubWatcherCycleState.RECOVERY_REQUIRED,
+                }
+                else DiagnosticEvent.CYCLE_HEALTHY,
+                (
+                    DiagnosticErrorCategory.RECOVERY_REQUIRED
+                    if outcome.state == GitHubWatcherCycleState.RECOVERY_REQUIRED
+                    else None
+                ),
+            )
+
             if heartbeat_due:
                 if outcome.heartbeat_published:
                     last_published_state = outcome.state

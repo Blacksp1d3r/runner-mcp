@@ -7,6 +7,7 @@ import subprocess
 import sys
 import threading
 import time
+import tomllib
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -30,6 +31,49 @@ SELF_UPDATE_JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _RESTART_COMPONENTS = {"server", "github-watcher", "completion-watcher"}
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
+_COMPATIBILITY_SCHEMA = 1
+_COMPATIBILITY_FILENAME = "self-update-compatibility.json"
+_PYPROJECT_FILENAME = "pyproject.toml"
+
+
+def _compatibility_contract(source_root: Path) -> dict[str, Any]:
+    path = source_root / _PYPROJECT_FILENAME
+    if path.is_symlink() or not path.is_file():
+        raise SelfUpdateError("Self-update compatibility metadata is unavailable")
+    try:
+        with path.open("rb") as handle:
+            raw = tomllib.load(handle)
+        project = raw["project"]
+        build = raw["build-system"]
+        optional = project.get("optional-dependencies", {})
+        dev = optional.get("dev", [])
+        contract = {
+            "schema": _COMPATIBILITY_SCHEMA,
+            "requires_python": project["requires-python"],
+            "build_backend": build["build-backend"],
+            "build_requires": sorted(build["requires"]),
+            "runtime_dependencies": sorted(project.get("dependencies", [])),
+            "validation_dependencies": sorted(dev),
+        }
+    except (OSError, tomllib.TOMLDecodeError, KeyError, TypeError) as exc:
+        raise SelfUpdateError("Self-update compatibility metadata is invalid") from exc
+    if not all(
+        isinstance(value, str)
+        for value in (
+            contract["requires_python"],
+            contract["build_backend"],
+            *contract["build_requires"],
+            *contract["runtime_dependencies"],
+            *contract["validation_dependencies"],
+        )
+    ):
+        raise SelfUpdateError("Self-update compatibility metadata is invalid")
+    return contract
+
+
+def _compatibility_record_path(config_dir: Path) -> Path:
+    return config_dir / _COMPATIBILITY_FILENAME
+
 
 
 class SelfUpdateError(RuntimeError):
@@ -334,6 +378,42 @@ class SelfUpdateManager:
 
     def _state_path(self) -> Path:
         return self.config_dir / "self-update-state.json"
+
+    def _compatibility_record(self) -> dict[str, Any] | None:
+        path = _compatibility_record_path(self.config_dir)
+        if path.is_symlink():
+            raise SelfUpdateError("Self-update compatibility record is unsafe")
+        if not path.exists():
+            return None
+        if not path.is_file():
+            raise SelfUpdateError("Self-update compatibility record is unsafe")
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SelfUpdateError("Self-update compatibility record is invalid") from exc
+        if not isinstance(raw, dict) or raw.get("schema") != _COMPATIBILITY_SCHEMA:
+            raise SelfUpdateError("Self-update compatibility record is invalid")
+        return raw
+
+    def _write_compatibility_record(self, contract: dict[str, Any]) -> None:
+        path = _compatibility_record_path(self.config_dir)
+        if path.exists() and path.is_symlink():
+            raise SelfUpdateError("Self-update compatibility record is unsafe")
+        temporary = path.with_suffix(".tmp")
+        try:
+            with temporary.open("x", encoding="utf-8") as handle:
+                handle.write(json.dumps(contract, sort_keys=True, separators=(",", ":")))
+                handle.flush()
+                os.fsync(handle.fileno())
+            os.chmod(temporary, 0o600)
+            os.replace(temporary, path)
+            os.chmod(path, 0o600)
+        except OSError as exc:
+            try:
+                temporary.unlink(missing_ok=True)
+            except OSError:
+                pass
+            raise SelfUpdateError("Self-update compatibility record could not be persisted") from exc
 
     def _installed_commit(self) -> str | None:
         path = self._state_path()
@@ -815,6 +895,15 @@ class SelfUpdateManager:
                 if source_state["commit"] != job.commit:
                     raise SelfUpdateError("Self-update source changed before validation")
 
+                baseline_contract = self._compatibility_record()
+                if baseline_contract is None:
+                    failure_category = "bootstrap_required"
+                    raise SelfUpdateError("Self-update compatibility baseline is unavailable")
+                target_contract = _compatibility_contract(root)
+                if target_contract != baseline_contract:
+                    failure_category = "dependency_contract_changed"
+                    raise SelfUpdateError("Self-update compatibility contract changed")
+
                 self._set_job(
                     job_id,
                     state=SelfUpdateJobState.TESTING,
@@ -921,6 +1010,7 @@ class SelfUpdateManager:
                     ) from install_exc
 
                 self._record_installed_commit(job.commit)
+                self._write_compatibility_record(target_contract)
                 _write_restart_markers(self.config_dir, job.commit)
                 try:
                     self._package_installer.clear_transaction()

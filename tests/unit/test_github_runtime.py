@@ -468,3 +468,26 @@ def test_runtime_diagnostics_have_no_dynamic_context_channel() -> None:
         "component=github_watcher event=cycle_degraded error=recovery_required"
     ]
     assert "secret-value" not in diagnostics[0]
+
+
+def test_runtime_emits_bounded_cycle_state_without_counts_or_ids(monkeypatch) -> None:
+    watcher = FakeWatcher([_recovery_outcome()])
+    diagnostics: list[str] = []
+    runtime = GitHubWatcherRuntime(
+        watcher=watcher,  # type: ignore[arg-type]
+        transport=FakeTransport(),  # type: ignore[arg-type]
+        diagnostic_sink=diagnostics.append,
+    )
+
+    monkeypatch.setattr(
+        "runner_mcp.github_runtime.time.sleep",
+        lambda _seconds: (_ for _ in ()).throw(KeyboardInterrupt()),
+    )
+
+    with pytest.raises(KeyboardInterrupt):
+        runtime.run_forever(poll_seconds=5, heartbeat_seconds=300)
+
+    assert diagnostics == [
+        "component=github_watcher event=lifecycle_started",
+        "component=github_watcher event=cycle_degraded error=recovery_required",
+    ]

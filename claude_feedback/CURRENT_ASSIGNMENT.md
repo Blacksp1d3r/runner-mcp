@@ -475,7 +475,7 @@ Exclude `self_update.py`, `self_update_install.py`, release symlink activation a
 
 ### Task 15 — release/package consumer-path audit — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task15-consumer-path-review`.
+Status: `COMPLETE`. Review: `claude_feedback/TASK15_CONSUMER_PATH_AUDIT.md`. Documentation/evidence drift follow-up queued.
 
 Preferred executor: Claude Chat.
 
@@ -513,6 +513,27 @@ Focus:
 
 Deliverable:
 a concise adversarial test matrix and any demonstrated gaps. No implementation in this task.
+
+---
+
+### Task 19 — reconcile self-update/release consumer documentation — CODE/DOC lane
+
+Status: `UNCLAIMED`.
+
+Preferred executor: ChatGPT.
+
+Source review:
+`claude_feedback/TASK15_CONSUMER_PATH_AUDIT.md`.
+
+Goal:
+Remove demonstrated v0.1.0 documentation/evidence drift without changing runtime behavior or publishing anything.
+
+Acceptance:
+- `docs/SELF_UPDATE_COMPATIBILITY.md` describes the exact compatibility preflight as implemented, not merely recommended future work;
+- README mentions the unchanged compatibility-contract gate and local bootstrap/manual path for dependency/build/interpreter drift;
+- release/artifact documentation does not call the current clean wheel install offline/no-index unless a real wheelhouse-based offline test is added;
+- source-clone `./install.sh` remains the documented pre-publication consumer path;
+- no dependency changes, tag, release or package publication.
 
 ---
 

@@ -17,6 +17,7 @@ from runner_mcp.github_watcher import (
     GitHubWatcherCycleOutcome,
     GitHubWatcherCycleState,
 )
+from runner_mcp.safe_diagnostics import DiagnosticErrorCategory, DiagnosticEvent
 from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
@@ -459,8 +460,8 @@ def test_runtime_diagnostics_have_no_dynamic_context_channel() -> None:
     )
 
     runtime._diagnose(
-        event=__import__("runner_mcp.safe_diagnostics", fromlist=["DiagnosticEvent"]).DiagnosticEvent.CYCLE_DEGRADED,
-        error=__import__("runner_mcp.safe_diagnostics", fromlist=["DiagnosticErrorCategory"]).DiagnosticErrorCategory.RECOVERY_REQUIRED,
+        event=DiagnosticEvent.CYCLE_DEGRADED,
+        error=DiagnosticErrorCategory.RECOVERY_REQUIRED,
     )
 
     assert diagnostics == [

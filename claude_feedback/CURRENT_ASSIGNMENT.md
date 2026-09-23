@@ -562,7 +562,7 @@ Acceptance:
 
 ### Task 19 — reconcile self-update/release consumer documentation — CODE/DOC lane
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task19-doc-reconciliation`.
 
 Preferred executor: ChatGPT.
 

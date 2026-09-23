@@ -1,9 +1,9 @@
 from __future__ import annotations
 
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 from .bridge_mcp_executor import LocalMCPBridgeExecutor, LocalMCPConfig
 from .bridge_replay import BridgeReplayLedger

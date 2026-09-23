@@ -475,7 +475,7 @@ Exclude `self_update.py`, `self_update_install.py`, release symlink activation a
 
 ### Task 15 — release/package consumer-path audit — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task15-consumer-path-review`.
 
 Preferred executor: Claude Chat.
 

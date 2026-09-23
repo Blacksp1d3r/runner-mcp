@@ -758,21 +758,13 @@ def test_self_update_fails_closed_when_dependency_contract_changes(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    installs: list[list[str]] = []
     source = FakeSource()
-
-    def installer(command, **kwargs):
-        installs.append(list(command))
-        return subprocess.CompletedProcess(command, 0, "", "")
-
-    manager, root, _exits = make_manager(
-        tmp_path,
-        source=source,
-        installer_runner=installer,
-    )
+    manager, root, _exits = make_manager(tmp_path, source=source)
     baseline = "1" * 40
     target = "2" * 40
     manager._record_installed_commit(baseline)
+
+    monkeypatch.setattr(manager._package_installer, "build_wheel", lambda **kwargs: root / "baseline.whl")
 
     def sync(_project: str, commit: str):
         source.calls.append((_project, commit))
@@ -800,8 +792,7 @@ def test_self_update_fails_closed_when_dependency_contract_changes(
 
     assert result["state"] == "failed"
     assert result["error_category"] == "dependency_contract_changed"
-    assert installs[0][1:4] == ["-m", "pip", "wheel"]
-    assert len(installs) == 1
+    assert manager._package_installer.pending_transaction() is None
 
 
 def test_compatibility_contract_is_canonical_and_host_neutral(tmp_path: Path) -> None:

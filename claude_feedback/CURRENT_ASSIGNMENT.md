@@ -513,4 +513,3 @@ a concise adversarial test matrix and any demonstrated gaps. No implementation i
 When fewer than three prerequisite-safe `UNCLAIMED` tasks remain, the integrator should review the roadmap, current findings and open PRs and add new bounded tasks before the queue drains completely. New work must be dependency-safe and must not be invented merely to keep agents busy.
 
 When a CHAT REVIEW demonstrates a real defect, add a separate CODE task with explicit files, acceptance criteria and ownership rather than silently expanding the review.
-

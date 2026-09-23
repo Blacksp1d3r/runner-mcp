@@ -605,7 +605,7 @@ Acceptance:
 
 ### Task 21 — migrate managed autostart unit writes to shared private replace — CODE lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task21-autostart-secure-io`. PR: #78. Exact head: `01ee0c0bfeaeae8f3a07a47f4162d4f9560304ab`. Dependency satisfied: Task 18 is `COMPLETE` on main.
+Status: `COMPLETE`. PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`; exact PR head `01ee0c0bfeaeae8f3a07a47f4162d4f9560304ab`; exact-head CI run 35903107229 fully green (Ruff, whitespace, 1207 pytest tests, built release artifact, clean demo).
 
 Preferred executor: ChatGPT or Claude Code after Task 18.
 
@@ -665,6 +665,53 @@ Acceptance:
 - no repository, issue, mention, token, event/job ID, path, URL or exception text can reach the sink;
 - delivery/replay/idempotency behavior is unchanged;
 - focused sensitive-literal regression tests plus required validation.
+
+
+---
+
+### Task 24 — asynchronous completion-delivery expansion review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no code changes.
+
+Source:
+Phase 3.8.1 `Next` in `roadmap/ROADMAP.md`.
+
+Goal:
+Determine whether existing persisted terminal metadata for migration, deployment and rollback jobs can be consumed by the completion-delivery runtime without widening execution authority or weakening idempotency.
+
+Deliverable:
+- inventory each candidate job class and its persisted terminal metadata;
+- identify source/operation binding and stable deduplication inputs;
+- identify privacy or replay hazards;
+- classify each class as safe candidate, blocked, or requiring a separate prerequisite;
+- propose the smallest bounded CODE slice only when evidence supports one.
+
+Do not modify delivery/runtime code in this review and do not add new execution authority.
+
+---
+
+### Task 25 — private connectivity/TLS onboarding contract review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no code changes.
+
+Source:
+Phases 3.5 and 3.6 `Still planned` in `roadmap/ROADMAP.md`.
+
+Goal:
+Turn the remaining guided private-tunnel/TLS onboarding item into a concrete, infrastructure-neutral contract without exposing private deployment details or opening inbound access by default.
+
+Deliverable:
+- audit current README/Quickstart/connectivity guidance and CLI capabilities;
+- define safe supported onboarding states and explicit non-goals;
+- preserve loopback/private defaults and outbound-connectivity preference;
+- identify any documentation drift or smallest future implementation slice;
+- keep real hosts, ports, service names and credentials out of public examples.
+
+Do not change network exposure, firewall state, certificates or deployment configuration in this review.
 
 
 ## Queue refill rule

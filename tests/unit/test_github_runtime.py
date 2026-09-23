@@ -17,11 +17,11 @@ from runner_mcp.github_watcher import (
     GitHubWatcherCycleOutcome,
     GitHubWatcherCycleState,
 )
-from runner_mcp.safe_diagnostics import DiagnosticErrorCategory, DiagnosticEvent
 from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
 )
+from runner_mcp.safe_diagnostics import DiagnosticErrorCategory, DiagnosticEvent
 
 
 class FakeWatcher:

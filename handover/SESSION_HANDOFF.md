@@ -1,6 +1,16 @@
 # Runner MCP — Session Handoff
 
-Last reconciled: 2026-09-22.
+Last reconciled: 2026-09-23.
+
+## Current checkpoint
+- Tasks 2–9 are complete.
+- PR #53 merged: Task 6 public docs/CLI drift audit.
+- PR #54 merged: Task 7 self-update dependency compatibility/bootstrap design.
+- PR #55 merged: Task 9 release-candidate hygiene dry run.
+- No tag/release/external artifact has been created.
+- Next safe public-repository slice is v0.1.0 changelog/release-note finalization plus exact-candidate CI/privacy validation.
+- Private-host self-update live proof was not re-probed here; prior recovery-attention observations are historical until freshly checked.
+- GitHub live state is authoritative if any older section below is stale.
 
 ## Purpose
 Runner MCP is a small, auditable, deny-by-default operations interface. GitHub is the code/collaboration surface; Runner MCP is the local execution and safety boundary. It must never become a generic remote shell.

@@ -75,7 +75,6 @@ def _compatibility_record_path(config_dir: Path) -> Path:
     return config_dir / _COMPATIBILITY_FILENAME
 
 
-
 class SelfUpdateError(RuntimeError):
     """Safe self-update failure without private path or process output."""
 

@@ -23,6 +23,7 @@ from .completion_feedback import (
 )
 from .github_mailbox import GitHubApiSession
 from .onboarding import read_private_runtime
+from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 from .self_update import (
     SelfUpdateError,
     reexec_component,
@@ -143,9 +144,12 @@ def _check_private_file(path: Path, *, max_bytes: int) -> None:
 
 
 def _atomic_private_json(path: Path, payload: dict[str, Any], *, max_bytes: int) -> None:
-    if path.exists() and path.is_symlink():
+    if path.is_symlink():
         raise CompletionDeliveryError("private completion state must not be a symlink")
-    path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        path.parent.mkdir(parents=True, exist_ok=True)
+    except OSError as exc:
+        raise CompletionDeliveryError("private completion state could not be written") from exc
     encoded = json.dumps(
         payload,
         ensure_ascii=False,
@@ -155,17 +159,9 @@ def _atomic_private_json(path: Path, payload: dict[str, Any], *, max_bytes: int)
     ).encode("utf-8")
     if len(encoded) > max_bytes:
         raise CompletionDeliveryError("private completion state exceeds size limit")
-    temporary = path.with_name(f".{path.name}.tmp")
     try:
-        temporary.write_bytes(encoded)
-        os.chmod(temporary, 0o600)
-        os.replace(temporary, path)
-        os.chmod(path, 0o600)
-    except OSError as exc:
-        try:
-            temporary.unlink(missing_ok=True)
-        except OSError:
-            pass
+        atomic_replace_private(path, encoded)
+    except PrivateAtomicWriteError as exc:
         raise CompletionDeliveryError("private completion state could not be written") from exc
 
 

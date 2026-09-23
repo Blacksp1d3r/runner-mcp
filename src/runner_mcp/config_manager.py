@@ -4,7 +4,6 @@ import fcntl
 import hashlib
 import os
 import shlex
-import tempfile
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -37,6 +36,7 @@ from .onboarding import (
     load_env_file,
     read_private_runtime,
 )
+from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
 
 class ConfigManagerError(RuntimeError):
@@ -93,31 +93,13 @@ def _atomic_write_private(path: Path, content: str) -> None:
     parent = path.parent
     if not parent.exists() or not parent.is_dir():
         raise ConfigManagerError("Project configuration directory is unavailable")
-    if path.exists() and path.is_symlink():
+    if path.is_symlink():
         raise ConfigManagerError("Project configuration must not be a symlink")
 
-    fd, temp_name = tempfile.mkstemp(
-        prefix=".projects-",
-        suffix=".tmp",
-        dir=parent,
-        text=True,
-    )
-    temp_path = Path(temp_name)
     try:
-        os.chmod(temp_path, 0o600)
-        with os.fdopen(fd, "w", encoding="utf-8", closefd=True) as handle:
-            fd = -1
-            handle.write(content)
-            handle.flush()
-            os.fsync(handle.fileno())
-        os.replace(temp_path, path)
-        os.chmod(path, 0o600)
-    except Exception:
-        temp_path.unlink(missing_ok=True)
-        raise
-    finally:
-        if fd >= 0:
-            os.close(fd)
+        atomic_replace_private(path, content.encode("utf-8"))
+    except PrivateAtomicWriteError as exc:
+        raise ConfigManagerError("Project configuration could not be written") from exc
 
 
 def _load_for_edit(config_dir: Path) -> tuple[PrivatePaths, Path, ProjectRegistry]:

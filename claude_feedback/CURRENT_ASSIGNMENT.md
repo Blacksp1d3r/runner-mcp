@@ -435,7 +435,7 @@ Keep this separate from Task 10.
 
 ### Task 13 — secure I/O follow-up: append-only audit durability review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Branch: `chatgpt/task13-audit-durability-review`.
 
 Preferred executor: Claude Chat; no code changes.
 

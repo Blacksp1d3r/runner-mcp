@@ -5,12 +5,15 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp import autostart as autostart_module
+from runner_mcp import secure_io as secure_io_module
 from runner_mcp.autostart import (
     COMPLETION_WATCHER_UNIT,
     GITHUB_WATCHER_UNIT,
     MANAGED_MARKER,
     SERVER_UNIT,
     AutostartError,
+    _write_managed_unit,
     install_user_services,
     remove_user_services,
     render_user_units,
@@ -182,7 +185,9 @@ def test_install_refuses_to_replace_foreign_unit(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
     unit_dir = tmp_path / "units"
     unit_dir.mkdir()
-    (unit_dir / SERVER_UNIT).write_text("[Service]\nExecStart=/bin/false\n")
+    unit_path = unit_dir / SERVER_UNIT
+    foreign_content = "[Service]\nExecStart=/bin/false\n"
+    unit_path.write_text(foreign_content)
     systemctl = FakeSystemctl()
 
     with pytest.raises(AutostartError, match="not managed"):
@@ -192,6 +197,77 @@ def test_install_refuses_to_replace_foreign_unit(tmp_path: Path) -> None:
             unit_dir=unit_dir,
             runner=systemctl,
         )
+
+    assert unit_path.read_text(encoding="utf-8") == foreign_content
+
+
+def test_write_managed_unit_uses_private_atomic_replace(tmp_path: Path) -> None:
+    target = tmp_path / SERVER_UNIT
+    target.write_text(MANAGED_MARKER + "\nold\n", encoding="utf-8")
+    target.chmod(0o644)
+
+    _write_managed_unit(target, MANAGED_MARKER + "\nnew\n")
+
+    assert target.read_text(encoding="utf-8") == MANAGED_MARKER + "\nnew\n"
+    assert target.stat().st_mode & 0o777 == 0o600
+    assert list(tmp_path.glob(f".{SERVER_UNIT}.*.tmp")) == []
+
+
+@pytest.mark.parametrize("failure_point", ["fsync", "replace"])
+def test_write_managed_unit_bounded_failure_preserves_previous_unit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure_point: str,
+) -> None:
+    target = tmp_path / SERVER_UNIT
+    previous = MANAGED_MARKER + "\nold\n"
+    target.write_text(previous, encoding="utf-8")
+    target.chmod(0o600)
+    sensitive = str(tmp_path / "private-sensitive-value")
+
+    def fail(*_args: object) -> None:
+        raise OSError(sensitive)
+
+    monkeypatch.setattr(secure_io_module.os, failure_point, fail)
+
+    with pytest.raises(AutostartError) as captured:
+        _write_managed_unit(target, MANAGED_MARKER + "\nnew\n")
+
+    assert str(captured.value) == "autostart unit could not be written"
+    assert sensitive not in str(captured.value)
+    assert target.read_text(encoding="utf-8") == previous
+    assert list(tmp_path.glob(f".{SERVER_UNIT}.*.tmp")) == []
+
+
+def test_write_managed_unit_symlink_swap_cannot_touch_referent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = tmp_path / SERVER_UNIT
+    target.write_text(MANAGED_MARKER + "\nold\n", encoding="utf-8")
+    referent = tmp_path / "foreign.service"
+    referent.write_text("foreign\n", encoding="utf-8")
+    referent.chmod(0o640)
+    referent_mode = referent.stat().st_mode & 0o777
+    real_replace = secure_io_module.atomic_replace_private
+
+    def swap_to_symlink_then_replace(path: Path, content: bytes) -> None:
+        path.unlink()
+        path.symlink_to(referent)
+        real_replace(path, content)
+
+    monkeypatch.setattr(
+        autostart_module,
+        "atomic_replace_private",
+        swap_to_symlink_then_replace,
+    )
+
+    with pytest.raises(AutostartError, match="could not be written"):
+        _write_managed_unit(target, MANAGED_MARKER + "\nnew\n")
+
+    assert target.is_symlink()
+    assert referent.read_text(encoding="utf-8") == "foreign\n"
+    assert referent.stat().st_mode & 0o777 == referent_mode
 
 
 def test_status_is_safe_and_normalized(tmp_path: Path) -> None:

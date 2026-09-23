@@ -583,7 +583,7 @@ Acceptance:
 
 ### Task 20 — exhaustive bridge protocol adversarial regression matrix — CODE/TEST lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task20-bridge-adversarial-matrix`. PR: #77, exact head `666a399803db41bae4deae73fc4f205de5e97854`; CI pending.
+Status: `COMPLETE`. PR #77 merged as `4bfd71d85cb5228ba328ee17fc60414c84c43e0a`; exact PR head `666a399803db41bae4deae73fc4f205de5e97854`; exact-head CI run 35895116909 fully green (Ruff, whitespace, 1203 pytest tests, built release artifact, clean demo).
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -600,8 +600,6 @@ Acceptance:
 - duplicate request_id, uppercase self_update commit and request-side NaN/Infinity are rejected;
 - rejected requests cannot reach executor invocation;
 - no action enum, alias, normalization, identifier-regex, replay-state or capability changes.
-
----
 
 ---
 

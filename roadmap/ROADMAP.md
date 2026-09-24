@@ -499,7 +499,7 @@ Implemented core design:
 - subprocess execution uses a fixed systemctl argument array with `shell=False`;
 - no sudo or generic system-service control.
 
-Journal/log access remains a later bounded addition.
+Task 41 adds a reusable bounded text-redaction prerequisite shared by TestRunner. Journal/log access itself remains deferred; Task 47 is the bounded local/private reader with explicit per-service opt-in and no MCP/mailbox exposure.
 
 ## Phase 5 — backups and migrations
 
@@ -526,7 +526,7 @@ Not implemented yet:
 - WAL archiving/PITR orchestration and verification;
 - automatic/unattended retention pruning;
 - backup pruning remains deferred pending a separate crash-safe pair-deletion contract;
-- Task 43 is the bounded first mutation slice for one local/manual non-migration orphan release per confirmed plan after Task 40 integration.
+- Task 43 is the bounded first mutation slice for one local/manual non-migration orphan release, but is blocked on Task 46 because the existing deployment lock is process-local while the prune command is local CLI.
 
 ## Phase 6 — staging release engine
 

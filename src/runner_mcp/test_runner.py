@@ -28,6 +28,7 @@ from .operational_safety import (
     OperatorStopActive,
     SafetyConfigurationError,
 )
+from .text_redaction import redact_bounded_text
 
 
 class TestRunnerError(RuntimeError):
@@ -56,16 +57,6 @@ TERMINAL_STATUSES = {
     TestJobStatus.ERROR,
     TestJobStatus.INTERRUPTED,
 }
-
-GENERIC_SECRET_PATTERNS = (
-    re.compile(r"(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]{12,}"),
-    re.compile(
-        r"(?im)(\b(?:password|passwd|token|secret|api[_-]?key)\b"
-        r"\s*[:=]\s*)([^\s,;]{8,})"
-    ),
-    re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
-    re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
-)
 
 JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 SAFE_ADAPTER_TEST_PRESETS = {"pytest", "ruff"}
@@ -690,18 +681,13 @@ class TestRunner:
         secret_values: list[str],
         private_paths: list[str],
     ) -> str:
-        redacted = text
-        for value in sorted((v for v in secret_values if len(v) >= 4), key=len, reverse=True):
-            redacted = redacted.replace(value, "[REDACTED]")
-        for value in sorted((v for v in private_paths if v), key=len, reverse=True):
-            redacted = redacted.replace(value, "[PRIVATE_PATH]")
-
-        for pattern in GENERIC_SECRET_PATTERNS:
-            if pattern.pattern.startswith("(?i)(Bearer") or pattern.groups >= 2:
-                redacted = pattern.sub(r"\1[REDACTED]", redacted)
-            else:
-                redacted = pattern.sub("[REDACTED]", redacted)
-        return redacted
+        return redact_bounded_text(
+            text,
+            secret_values=secret_values,
+            private_paths=private_paths,
+            max_input_bytes=262_144,
+            max_output_bytes=262_144,
+        ).text
 
     @staticmethod
     def _short_job_tmp(job_id: str) -> Path:

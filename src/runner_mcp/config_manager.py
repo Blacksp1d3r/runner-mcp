@@ -11,7 +11,14 @@ from typing import Any
 
 import yaml
 
-from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
+from .adapters import (
+    AdapterError,
+    get_adapter,
+    inspect_project,
+    list_adapters,
+    materialize_migration_preset,
+    materialize_test_preset,
+)
 from .config import (
     DatabaseConfig,
     DeploymentConfig,
@@ -293,24 +300,6 @@ def list_test_profiles(
     ]
 
 
-def _detect_project_executable(root: Path, names: tuple[str, ...]) -> Path | None:
-    prefixes = (
-        root / ".venv" / "bin",
-        root / "venv" / "bin",
-    )
-    for prefix in prefixes:
-        for name in names:
-            candidate = prefix / name
-            if (
-                candidate.exists()
-                and candidate.is_file()
-                and not candidate.is_symlink()
-                and os.access(candidate, os.X_OK)
-            ):
-                return candidate.resolve()
-    return None
-
-
 def build_test_profile(
     *,
     project_root: Path,
@@ -327,21 +316,7 @@ def build_test_profile(
     args = list(arguments or [])
     environment = list(env_passthrough or [])
 
-    if preset == "pytest":
-        detected = _detect_project_executable(project_root, ("python", "python3"))
-        if detected is None:
-            raise ConfigManagerError(
-                "Could not find a project Python executable in .venv/bin or venv/bin"
-            )
-        argv = [str(detected), "-m", "pytest", "-q", *args]
-    elif preset == "ruff":
-        detected = _detect_project_executable(project_root, ("ruff",))
-        if detected is None:
-            raise ConfigManagerError(
-                "Could not find a project Ruff executable in .venv/bin or venv/bin"
-            )
-        argv = [str(detected), "check", ".", *args]
-    elif preset == "custom":
+    if preset == "custom":
         if executable is None:
             raise ConfigManagerError("Custom profiles require an executable")
         resolved = _absolute_without_symlinks(
@@ -352,7 +327,15 @@ def build_test_profile(
             raise ConfigManagerError("Custom executable is unavailable or unsafe")
         argv = [str(resolved), *args]
     else:
-        raise ConfigManagerError("Unknown test-profile preset")
+        try:
+            recipe = materialize_test_preset(
+                project_root,
+                preset,
+                tuple(args),
+            )
+        except AdapterError as exc:
+            raise ConfigManagerError(str(exc)) from exc
+        argv = list(recipe.argv)
 
     try:
         return TestProfile(
@@ -767,21 +750,6 @@ def remove_database_config(config_dir: Path, *, project: str) -> None:
         _write_private_environment(paths, env_values)
 
 
-def _detect_alembic(project_root: Path) -> Path:
-    for candidate in (
-        project_root / ".venv" / "bin" / "alembic",
-        project_root / "venv" / "bin" / "alembic",
-    ):
-        if (
-            candidate.exists()
-            and candidate.is_file()
-            and not candidate.is_symlink()
-            and os.access(candidate, os.X_OK)
-        ):
-            return candidate.resolve()
-    raise ConfigManagerError("Could not find Alembic in .venv/bin or venv/bin")
-
-
 def add_migration_config(
     config_dir: Path,
     *,
@@ -813,11 +781,7 @@ def add_migration_config(
             raise ConfigManagerError("Project adapter has no automatic migration preset")
         preset = automatic
 
-    if preset == "alembic":
-        executable = _detect_alembic(cfg.root)
-        status_argv = [str(executable), "current"]
-        apply_argv = [str(executable), "upgrade", "head"]
-    elif preset == "custom":
+    if preset == "custom":
         if status_executable is None or apply_executable is None:
             raise ConfigManagerError(
                 "Custom migration profiles require status and apply executables"
@@ -839,7 +803,12 @@ def add_migration_config(
         status_argv = [str(status_resolved), *(status_arguments or [])]
         apply_argv = [str(apply_resolved), *(apply_arguments or [])]
     else:
-        raise ConfigManagerError("Unknown migration preset")
+        try:
+            recipe = materialize_migration_preset(cfg.root, preset)
+        except AdapterError as exc:
+            raise ConfigManagerError(str(exc)) from exc
+        status_argv = list(recipe.status_argv)
+        apply_argv = list(recipe.apply_argv)
 
     try:
         migrations = MigrationConfig(

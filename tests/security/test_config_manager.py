@@ -668,3 +668,30 @@ def test_project_config_write_failure_is_bounded_and_preserves_state(
     assert sensitive not in str(captured.value)
     assert paths.projects_file.read_bytes() == before
     assert list(paths.projects_file.parent.glob(".projects.yaml.*.tmp")) == []
+
+
+def test_explicit_alembic_preset_keeps_legacy_generic_project_path(
+    tmp_path: Path,
+) -> None:
+    from runner_mcp.config_manager import add_database_config, add_migration_config
+
+    paths, root = installed(tmp_path)
+    make_executable(root / ".venv" / "bin" / "alembic")
+    add_database_config(
+        paths.config_dir,
+        project="first",
+        dsn="postgresql://user:secret@example.invalid/app",
+    )
+
+    result = add_migration_config(
+        paths.config_dir,
+        project="first",
+        preset="alembic",
+    )
+
+    assert result["preset"] == "alembic"
+    _, _, registry = read_private_runtime(paths.config_dir)
+    migration = registry.projects["first"].database.migrations
+    assert migration is not None
+    assert migration.status_argv[1:] == ["current"]
+    assert migration.apply_argv[1:] == ["upgrade", "head"]

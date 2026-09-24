@@ -766,7 +766,7 @@ Do not execute a restore, change database state, add mailbox restore actions or 
 
 ### Task 28 — deployment/rollback completion delivery integration — CODE lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task28-deploy-rollback-completion`. PR: #85. Exact head: `87f1d0c8295b059b4504e2971c5ef89ed9dc8422`. Dependency satisfied: Task 24 is `COMPLETE` on main.
+Status: `COMPLETE`. PR #85 merged as `131e168e02b7d5781441bbc8256e65de434e6166`; exact PR head `87f1d0c8295b059b4504e2971c5ef89ed9dc8422`; exact-head CI run 35951310986 fully green (Ruff, whitespace, 1235 pytest tests, built release artifact, clean demo). Deployment and rollback completion delivery is now read-only, source-scoped and idempotent; migration completion remains blocked on a durable migration-job substrate.
 
 Preferred executor: ChatGPT or Claude Code.
 

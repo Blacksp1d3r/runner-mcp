@@ -79,6 +79,7 @@ from .onboarding import (
     read_private_runtime,
     run_doctor,
 )
+from .retention_preview import RetentionPreviewPlanner
 from .self_update import SelfUpdateManager
 from .self_update_install import install_recovery_state
 from .server import create_app
@@ -598,6 +599,58 @@ def _local_readonly_database_manager(config_dir: Path) -> DatabaseManager:
         secret_values={},
         prepare_storage=False,
     )
+
+
+def _local_retention_preview_planner(
+    config_dir: Path,
+) -> RetentionPreviewPlanner:
+    _paths, settings, registry = read_private_runtime(config_dir)
+    _, safety = operator_stop_status(config_dir)
+    return RetentionPreviewPlanner(
+        registry=registry,
+        safety=safety,
+        backup_root=settings.database_backup_root,
+    )
+
+
+def cmd_retention(args: argparse.Namespace) -> int:
+    if args.retention_action != "preview":
+        raise RuntimeError("Unknown retention action")
+
+    result = _local_retention_preview_planner(
+        _config_dir(args.config_dir)
+    ).preview(args.project)
+
+    print("Retention preview")
+    print(f"Project: {result['project']}")
+    print(f"Environment: {result['environment']}")
+    print("Advisory only: yes")
+    print("Deletion authorized: no")
+
+    print("Releases:")
+    if not result["releases"]:
+        print("  none")
+    for row in result["releases"]:
+        categories = ",".join(row["categories"]) or "none"
+        eligible = "yes" if row["potentially_eligible"] else "no"
+        print(
+            f"  {row['release_id']}  {row['created_at']}  "
+            f"categories={categories}  potentially-eligible={eligible}"
+        )
+
+    print("Backups:")
+    if not result["backups"]:
+        print("  none")
+    for row in result["backups"]:
+        categories = ",".join(row["categories"]) or "none"
+        eligible = "yes" if row["potentially_eligible"] else "no"
+        print(
+            f"  {row['backup_id']}  {row['kind']}  {row['created_at']}  "
+            f"categories={categories}  potentially-eligible={eligible}"
+        )
+
+    print("No release, backup or metadata file was changed.")
+    return 0
 
 
 def cmd_database(args: argparse.Namespace) -> int:
@@ -1389,6 +1442,21 @@ def build_parser() -> argparse.ArgumentParser:
     database_remove = database_sub.add_parser("remove", help="Remove a database configuration.")
     database_remove.add_argument("project")
     database_remove.set_defaults(func=cmd_database_config)
+
+    retention = subparsers.add_parser(
+        "retention",
+        help="Inspect advisory release/backup retention state without deleting data.",
+    )
+    retention_sub = retention.add_subparsers(
+        dest="retention_action",
+        required=True,
+    )
+    retention_preview = retention_sub.add_parser(
+        "preview",
+        help="Show protected and potentially eligible release/backup records.",
+    )
+    retention_preview.add_argument("project")
+    retention_preview.set_defaults(func=cmd_retention)
 
     database_ops = subparsers.add_parser(
         "database",

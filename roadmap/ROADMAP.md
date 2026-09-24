@@ -571,6 +571,7 @@ Implemented core design:
 Still deferred:
 
 - automatic release pruning;
+- arbitrary historical target selection remains deferred after the Task 35 boundary review; older history is reached only through fresh direct-previous one-step approvals with health revalidation;
 - production rollback;
 - database restore/recovery workflow.
 

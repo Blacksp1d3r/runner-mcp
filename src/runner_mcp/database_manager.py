@@ -443,7 +443,7 @@ class DatabaseManager:
             os.close(fd)
 
     @staticmethod
-    def _hash_private_backup_dump(path: Path, *, expected_size: int) -> str:
+    def _open_private_backup_dump(path: Path, *, expected_size: int) -> int:
         if path.is_symlink():
             raise DatabaseManagerError("Backup file path is unsafe")
         flags = os.O_RDONLY
@@ -461,19 +461,31 @@ class DatabaseManager:
                 raise DatabaseManagerError("Backup file permissions are unsafe")
             if metadata.st_size <= 0 or metadata.st_size != expected_size:
                 raise DatabaseManagerError("Backup dump size does not match metadata")
-            digest = hashlib.sha256()
-            total = 0
-            while True:
-                chunk = os.read(fd, 1_048_576)
-                if not chunk:
-                    break
-                digest.update(chunk)
-                total += len(chunk)
-            if total != expected_size:
-                raise DatabaseManagerError("Backup dump size changed during preflight")
-            return digest.hexdigest()
-        finally:
+            return fd
+        except Exception:
             os.close(fd)
+            raise
+
+    @staticmethod
+    def _hash_open_backup_dump(handle, *, expected_size: int) -> str:
+        try:
+            handle.seek(0)
+        except OSError as exc:
+            raise DatabaseManagerError("Backup file is unavailable") from exc
+        digest = hashlib.sha256()
+        total = 0
+        while True:
+            try:
+                chunk = handle.read(1_048_576)
+            except OSError as exc:
+                raise DatabaseManagerError("Backup file is unavailable") from exc
+            if not chunk:
+                break
+            digest.update(chunk)
+            total += len(chunk)
+        if total != expected_size:
+            raise DatabaseManagerError("Backup dump size changed during preflight")
+        return digest.hexdigest()
 
     def _restore_project_dir(self, project: str) -> Path:
         if self.backup_root is None:
@@ -564,32 +576,57 @@ class DatabaseManager:
         if created_at.tzinfo is None:
             raise DatabaseManagerError("Backup metadata timestamp must include a timezone")
 
-        archive_sha256 = self._hash_private_backup_dump(
+        dump_fd = self._open_private_backup_dump(
             dump_path,
             expected_size=raw["size_bytes"],
         )
+        executable = self._pg_restore()
+        try:
+            with os.fdopen(dump_fd, "rb", closefd=True) as dump_handle:
+                dump_fd = -1
+                archive_sha256 = self._hash_open_backup_dump(
+                    dump_handle,
+                    expected_size=raw["size_bytes"],
+                )
+                dump_handle.seek(0)
+                try:
+                    completed = subprocess.run(
+                        [str(executable), "--list"],
+                        stdin=dump_handle,
+                        stdout=subprocess.DEVNULL,
+                        stderr=subprocess.DEVNULL,
+                        check=False,
+                        timeout=RESTORE_PREFLIGHT_TIMEOUT_SECONDS,
+                        shell=False,
+                        env=dict(SAFE_ENV),
+                    )
+                except (OSError, subprocess.TimeoutExpired) as exc:
+                    raise DatabaseManagerError(
+                        "Database restore preflight command failed"
+                    ) from exc
+                if completed.returncode != 0:
+                    raise DatabaseManagerError(
+                        "Database restore preflight archive is invalid"
+                    )
+                if (
+                    self._hash_open_backup_dump(
+                        dump_handle,
+                        expected_size=raw["size_bytes"],
+                    )
+                    != archive_sha256
+                ):
+                    raise DatabaseManagerError(
+                        "Backup dump changed during restore preflight"
+                    )
+        finally:
+            if dump_fd >= 0:
+                os.close(dump_fd)
+
         binding_payload = (
             f"runner-mcp-restore-preflight:v1:{project}:{backup_id}:"
             f"{raw['size_bytes']}:{archive_sha256}"
         ).encode()
         binding_fingerprint = hashlib.sha256(binding_payload).hexdigest()
-
-        executable = self._pg_restore()
-        try:
-            completed = subprocess.run(
-                [str(executable), "--list", str(dump_path)],
-                stdin=subprocess.DEVNULL,
-                stdout=subprocess.DEVNULL,
-                stderr=subprocess.DEVNULL,
-                check=False,
-                timeout=RESTORE_PREFLIGHT_TIMEOUT_SECONDS,
-                shell=False,
-                env=dict(SAFE_ENV),
-            )
-        except (OSError, subprocess.TimeoutExpired) as exc:
-            raise DatabaseManagerError("Database restore preflight command failed") from exc
-        if completed.returncode != 0:
-            raise DatabaseManagerError("Database restore preflight archive is invalid")
 
         return (
             {

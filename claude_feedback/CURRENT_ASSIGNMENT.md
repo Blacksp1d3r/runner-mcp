@@ -878,7 +878,7 @@ focused adversarial tests for identity/symlink/permissions/size/pg_restore/outpu
 
 ### Task 32 — alpha launch-readiness gap audit — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task32-alpha-readiness-audit`. PR: pending.
 
 Preferred executor: Claude Chat or ChatGPT review; no release/tag/publication actions.
 
@@ -951,6 +951,31 @@ Acceptance:
 
 Required validation:
 focused adversarial preview tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 35 — manual historical rollback selection boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no rollback/runtime code changes.
+
+Source:
+Phase 6/7 in `roadmap/ROADMAP.md`: manual historical rollback selection remains deferred while the implemented safety model permits only the direct previous release per approved action.
+
+Goal:
+Determine whether any future historical rollback selection can be added without weakening one-step rollback, migration-boundary, health-check, approval-binding and production-read-only guarantees.
+
+Deliverable:
+- inventory the current release-chain and rollback invariants;
+- distinguish operator visibility of older releases from authority to activate them;
+- define how migration boundaries and missing/retained release metadata affect any historical target;
+- define whether historical rollback should remain multiple explicit one-step approvals rather than arbitrary target selection;
+- assess concurrency/TOCTOU and approval-fingerprint requirements;
+- propose a bounded implementation slice only if the review demonstrates a safe need.
+
+Do not add arbitrary target selection, multi-step automatic rollback, database restore, production rollback or remote approval bypass.
 
 
 ## Queue refill rule

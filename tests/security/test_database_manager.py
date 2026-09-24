@@ -293,12 +293,8 @@ def test_restore_preflight_is_read_only_private_and_uses_fixed_pg_restore(
         "eligible": True,
         "preflight_state": "eligible",
     }
-    assert seen == [
-        (
-            [str(pg_restore), "--list", str(dump)],
-            seen[0][1],
-        )
-    ]
+    assert len(seen) == 1
+    assert seen[0][0] == [str(pg_restore), "--list", str(dump)]
     assert dump.read_bytes() == before_dump
     assert metadata.read_bytes() == before_metadata
     rendered = repr(result)
@@ -501,6 +497,43 @@ def test_restore_preflight_rejects_untrusted_pg_restore_path(tmp_path: Path) -> 
 
     with pytest.raises(DatabaseManagerError, match="pg_restore"):
         manager.restore_preflight("demo", backup_id)
+
+
+def test_restore_preflight_rejects_non_executable_pg_restore(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, _dump, _metadata = write_restore_backup(backup_root)
+    executable = tmp_path / "pg_restore"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o600)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=executable,
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="pg_restore"):
+        manager.restore_preflight("demo", backup_id)
+
+
+def test_readonly_manager_refuses_broad_storage_without_chmod(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir(mode=0o750)
+    backup_root.chmod(0o750)
+
+    with pytest.raises(DatabaseManagerError, match="0700"):
+        DatabaseManager(
+            registry=make_registry(tmp_path / "project"),
+            safety=make_guard(tmp_path),
+            backup_root=backup_root,
+            secret_values=ExplodingSecrets(),
+            pg_restore_path=make_pg_restore(tmp_path),
+            prepare_storage=False,
+        )
+
+    assert stat.S_IMODE(backup_root.stat().st_mode) == 0o750
 
 
 def test_restore_preflight_failure_is_bounded_and_hides_private_values(

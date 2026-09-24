@@ -1091,7 +1091,7 @@ focused adapter/config-manager tests plus full Ruff/pytest/whitespace, built art
 
 ### Task 40 — retention pruning execute-boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 34 / PR #92 is merged on main.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task40-retention-pruning-review`. Dependency satisfied: Task 34 / PR #92 is merged on main.
 
 Preferred executor: Claude Chat or ChatGPT review; no deletion/runtime code changes.
 

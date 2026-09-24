@@ -1,3 +1,13 @@
+## 2026-09-24 — Task 25 private connectivity/TLS onboarding review landed
+
+- Task 25 COMPLETE: PR #82 merged as `f2c1d6a135133033ab1e0059f9a92cfec3021d88`.
+- Exact PR head `38b3143d53d49c58af896adfe96b943e34c2ee5a` passed CI run 35948648167 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- Review confirms Runner MCP already preserves the required runtime safety boundary: setup does not mutate network exposure, serve/autostart remain loopback-first, non-loopback bind requires explicit override, and non-loopback HTTP is rejected/flagged.
+- Demonstrated onboarding drift: `security/CONNECTIVITY.md` still describes Secure MCP Tunnel as a future connection, while current official OpenAI guidance and Runner MCP's own README/Quickstart describe it as available for supported products.
+- Task 29 queued for documentation + privacy-safe guide reconciliation only; it must not configure TLS, DNS, firewall, reverse proxy or tunnel state.
+- Task 10 remains externally BLOCKED. Current bounded queue: Tasks 26–29.
+- No tag, release, publication, deployment, migration, restore or network mutation was performed.
+
 ## 2026-09-24 — Task 24 completion-delivery expansion review landed
 
 - Task 24 COMPLETE: PR #81 merged as `d9f7d40f952ab39478d4a0286d317f160d6b46ce`.

@@ -1038,7 +1038,7 @@ Do not execute a restore, create/drop databases, add restore to MCP/bridge/mailb
 
 ### Task 38 — multi-project adapter boundary completion review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `IN_PROGRESS` — claimed by ChatGPT for review only; no adapter/runtime changes.
 
 Preferred executor: Claude Chat or ChatGPT review; no adapter/runtime code changes unless a concrete core leak is demonstrated first.
 

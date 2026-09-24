@@ -6,6 +6,7 @@ import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
 from pathlib import Path
+from urllib.parse import urlsplit
 
 import uvicorn
 
@@ -204,9 +205,23 @@ def cmd_doctor(args: argparse.Namespace) -> int:
     return 0
 
 
+def _connectivity_category(resource_url: str) -> str:
+    parsed = urlsplit(resource_url)
+    host = (parsed.hostname or "").lower()
+    if parsed.scheme in {"http", "https"} and host in {
+        "localhost",
+        "127.0.0.1",
+        "::1",
+    }:
+        return "loopback"
+    if parsed.scheme == "https" and host:
+        return "https_external_identity"
+    return "unsafe_non_loopback_http"
+
+
 def cmd_guide(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
-    _, _, registry = read_private_runtime(config_dir)
+    _, settings, registry = read_private_runtime(config_dir)
     _, guard = operator_stop_status(config_dir)
     stop_active = guard.status().stop_active
 
@@ -218,6 +233,30 @@ def cmd_guide(args: argparse.Namespace) -> int:
     if stop_active:
         print("Emergency stop is ACTIVE; mutating actions are currently blocked.")
         print()
+
+    connectivity = _connectivity_category(settings.resource_url)
+    print("Connectivity:")
+    print(f"- category: {connectivity}")
+    if connectivity == "loopback":
+        print("- local loopback is ready for same-host evaluation.")
+        print(
+            "- remote use: prefer an outbound private MCP tunnel where supported, "
+            "or an externally managed HTTPS reverse proxy to loopback."
+        )
+    elif connectivity == "https_external_identity":
+        print(
+            "- setup records external HTTPS identity only; it does not open a bind, "
+            "install TLS, edit DNS/firewalls, or configure a proxy/tunnel."
+        )
+        print(
+            "- remote use: prefer an outbound private MCP tunnel for private access, "
+            "or terminate TLS in an externally managed reverse proxy."
+        )
+    else:
+        print("- external plaintext/non-HTTP(S) identity is unsupported.")
+        print("- correct the private configuration before any remote use.")
+    print("- verify after connectivity changes: runner-mcp doctor")
+    print()
 
     print("Configured projects:")
     for code in sorted(registry.projects):

@@ -68,9 +68,11 @@ Runner MCP automatically uses a loopback-only MCP URL. You do not need to config
 
 ### Public mode
 
-Choose `public` only when you already have an HTTPS endpoint and understand the reverse-proxy requirements.
+Choose `public` only when you already have an HTTPS identity for the endpoint you intend to use.
 
-The public endpoint must use HTTPS. Real hostnames, private server paths and credentials belong only in your private runtime configuration and must never be committed to this repository.
+Public setup records that external HTTPS resource/auth identity only. It does **not** bind Runner MCP publicly, install TLS, create DNS records, edit a firewall, configure a reverse proxy or create a tunnel. The public endpoint identity must use HTTPS. Real hostnames, private server paths and credentials belong only in your private runtime configuration and must never be committed to this repository.
+
+For remote use, keep Runner MCP on loopback/private networking and prefer either an outbound private MCP tunnel where supported or a separately administered HTTPS reverse proxy. Run `runner-mcp guide` for the privacy-safe connectivity category and next step.
 
 ## 4. Choose rollback retention
 
@@ -280,7 +282,7 @@ runner-mcp serve
 
 The safe default is loopback-only. Runner MCP refuses a public bind unless you explicitly override that protection.
 
-For internet-facing use, put Runner MCP behind a properly configured HTTPS reverse proxy. Public deployment packaging is still being hardened and should be treated as an advanced setup for now.
+For externally reachable HTTPS use, keep Runner MCP on loopback and put it behind a separately administered HTTPS reverse proxy. Runner MCP does not install TLS or automatically trust proxy headers. Where a supported OpenAI product needs private access, prefer Secure MCP Tunnel so no inbound Runner MCP firewall port is required.
 
 ### Optional automatic startup
 
@@ -320,10 +322,10 @@ Do not run untrusted public-fork code on a privileged persistent runner. Running
 
 The safe staging core now includes service aliases, PostgreSQL backups/migrations, staging deployment, one-step rollback and local approval gates.
 
-The remaining onboarding gaps are mainly:
+Things that remain deliberately outside the one-click path include:
 
-- guided private-tunnel and HTTPS/reverse-proxy setup;
 - optional graphical administration;
+- automatic tunnel/proxy/TLS provisioning, which intentionally remains outside Runner MCP's core setup;
 - stronger isolation for untrusted public-fork code;
 - database restore/PITR orchestration and retention pruning.
 
@@ -390,7 +392,9 @@ Production environments remain read-only.
 
 ## Private ChatGPT connection
 
-For supported OpenAI products, prefer OpenAI Secure MCP Tunnel instead of exposing Runner MCP directly to the public internet. Run Runner MCP on loopback/private networking and run the tunnel client inside the network that can reach it. The tunnel is outbound HTTPS only.
+For supported OpenAI products, prefer [OpenAI Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels) instead of exposing Runner MCP directly to the public internet. Run Runner MCP on loopback/private networking and run the tunnel client inside the network that can reach it. The tunnel uses an outbound HTTPS path and does not require an inbound Runner MCP firewall port.
+
+Runner MCP setup does not install or authenticate the tunnel client. Follow the current OpenAI tunnel documentation for vendor-specific provisioning, then run `runner-mcp doctor` and `runner-mcp guide` locally.
 
 A future public one-click hosted relay is optional and outside the current MVP.
 

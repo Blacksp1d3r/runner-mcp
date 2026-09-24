@@ -1,12 +1,12 @@
-## 2026-09-24 — release-track handoff after Runner Fabric split
+## 2026-09-24 — release-track reconciliation after Task 41 integration
 
-- Runner Fabric has been split into its own private repository/project. Do not expand Runner-MCP with Runner Fabric's next-generation orchestration scope; Runner-MCP remains the small, auditable execution product intended for release.
-- Live `main` at handoff: `82ecef725d828b69e328f8f474553e01ef8548cb` (PR #96 merged).
-- PR #97 `feat: add reusable bounded text redaction` remains OPEN and mergeable at exact head `899b218f223a4f479bd6fd5ae8fd1624a3edbe88`.
-- PR #97 exact-head validation run `35996927397` completed successfully. Do not rerun it unnecessarily; independently review the exact head before merge.
-- Live issue search returned no open Runner-MCP issues at this checkpoint.
-- The user's next Runner-MCP session should focus on finishing the existing bounded queue and getting Runner-MCP to the planned first release, not starting Runner Fabric work here.
-- No tag, GitHub release, package publication or external announcement was performed in this handoff.
+- Runner Fabric remains a separate private repository/project. Runner-MCP stays the small, auditable execution product intended for release and must not absorb Runner Fabric orchestration scope.
+- PR #97 `feat: add reusable bounded text redaction` merged as `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`.
+- Exact PR head `91e0c1b1e737ad14a43b31750cfdfbf1bf582f24` passed validation run `36037258558` fully green: Ruff/pytest/whitespace, clean five-minute demo and built release artifact.
+- Live reconciliation after the merge found no open Runner-MCP pull requests and no open Runner-MCP issues.
+- This coordination update must itself receive exact-main green CI before any first alpha tag is considered.
+- Task 10 private-host self-update/recovery proof remains unproven; release wording must keep that limitation explicit rather than implying live-host proof.
+- The next release-track action after exact-main CI is a final alpha-candidate gate check. Tag/release, repository description/topics, registry submission and external posting remain explicit user-controlled actions.
 
 ## 2026-09-24 — Task 41 bounded redaction complete; Task 43 lock prerequisite found
 

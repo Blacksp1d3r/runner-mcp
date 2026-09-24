@@ -1,3 +1,15 @@
+## 2026-09-24 — Tasks 32 and 36 alpha-readiness work landed
+
+- Task 32 COMPLETE: PR #89 merged as `e629515f9c7e7a5d44506dfb82a48343870f94da`.
+- Task 32 exact PR head `99c72037eff4ed54cf7e92f7a08b278b48af4e45` passed CI run 35967246877 fully green: Ruff, whitespace, 1267 pytest tests, built release artifact and clean demo.
+- Audit conclusion: package/build/demo mechanics are suitable for an alpha candidate, but six public-documentation drift items had to be reconciled before any tag.
+- Task 36 COMPLETE: PR #90 merged as `8c971016e4fc3cd821dc52d28334567c20835ff4`.
+- Task 36 exact PR head `1b3567b5de1f5a4ac5a67db16c609db2edac25dd` passed CI run 35967550375 fully green: Ruff, whitespace, 1267 pytest tests, built release artifact and clean demo.
+- CHANGELOG now treats 0.1.0 as an unreleased alpha candidate; restore/security wording, mailbox launch copy, README rendering, public-data hygiene wording and connectivity limitation are reconciled.
+- Live GitHub still has no `v0.1.0` tag or GitHub release. Repository description/topics, tag/release, registry submission and external posts remain explicit user-controlled actions.
+- Task 10 private-host live self-update/recovery proof remains externally BLOCKED and must not be overclaimed in release wording.
+- Current bounded queue: Tasks 33–35. No release/publication action was performed.
+
 ## 2026-09-24 — Task 31 local read-only restore preflight landed
 
 - Task 31 COMPLETE: PR #88 merged as `e54a0684bdc9da3a32d062e0e0e45261c1616020`.

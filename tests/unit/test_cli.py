@@ -59,15 +59,20 @@ def test_removal_confirmation_rejects_nonmatching_input_with_same_exception(
     assert caught.value is cancellation
 
 
-def install_config(tmp_path: Path):
+def install_config(
+    tmp_path: Path,
+    *,
+    resource_url: str = "https://mcp.example.invalid/mcp",
+    auth_issuer: str = "https://auth.example.invalid/",
+):
     project_root = tmp_path / "project"
     project_root.mkdir()
     config_dir = tmp_path / "config"
     paths = install_private_configuration(
         config_dir=config_dir,
         answers=SetupAnswers(
-            resource_url="https://mcp.example.invalid/mcp",
-            auth_issuer="https://auth.example.invalid/",
+            resource_url=resource_url,
+            auth_issuer=auth_issuer,
             project_code="demo",
             project_name="Demo",
             repository="example/demo",
@@ -448,7 +453,13 @@ def test_guide_command_is_path_safe_and_actionable(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
-    paths, project_root = install_config(tmp_path)
+    resource_url = "https://sensitive-mcp.example.invalid/mcp"
+    auth_issuer = "https://sensitive-auth.example.invalid/"
+    paths, project_root = install_config(
+        tmp_path,
+        resource_url=resource_url,
+        auth_issuer=auth_issuer,
+    )
     token = load_env_file(paths.env_file)["RUNNER_MCP_BEARER_TOKEN"]
 
     result = main(["--config-dir", str(paths.config_dir), "guide"])
@@ -456,14 +467,73 @@ def test_guide_command_is_path_safe_and_actionable(
 
     assert result == 0
     assert "Runner MCP guide" in captured.out
+    assert "Connectivity:" in captured.out
+    assert "category: https_external_identity" in captured.out
+    assert "setup records external HTTPS identity only" in captured.out
+    assert "outbound private MCP tunnel" in captured.out
     assert "- demo: Demo" in captured.out
     assert "test profiles: not configured" in captured.out
     assert "runner-mcp test-profile add demo" in captured.out
     assert "runner-mcp doctor" in captured.out
+    assert resource_url not in captured.out
+    assert auth_issuer not in captured.out
+    assert "sensitive-mcp.example.invalid" not in captured.out
+    assert "sensitive-auth.example.invalid" not in captured.out
     assert str(project_root) not in captured.out
     assert str(paths.config_dir) not in captured.out
     assert token not in captured.out
     assert token not in captured.err
+
+
+def test_guide_reports_loopback_without_private_values(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, project_root = install_config(
+        tmp_path,
+        resource_url="http://127.0.0.1:8000/mcp",
+        auth_issuer="http://127.0.0.1:8000/",
+    )
+    token = load_env_file(paths.env_file)["RUNNER_MCP_BEARER_TOKEN"]
+
+    assert main(["--config-dir", str(paths.config_dir), "guide"]) == 0
+    captured = capsys.readouterr()
+
+    assert "category: loopback" in captured.out
+    assert "local loopback is ready" in captured.out
+    assert "outbound private MCP tunnel" in captured.out
+    assert str(project_root) not in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert token not in captured.out
+
+
+def test_guide_fails_closed_for_unsafe_non_loopback_http_without_echo(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, project_root = install_config(tmp_path)
+    env_text = paths.env_file.read_text(encoding="utf-8")
+    env_text = env_text.replace(
+        "https://mcp.example.invalid/mcp",
+        "http://unsafe-sensitive.example.invalid/mcp",
+    ).replace(
+        "https://auth.example.invalid/",
+        "http://unsafe-auth.example.invalid/",
+    )
+    paths.env_file.write_text(env_text, encoding="utf-8")
+    paths.env_file.chmod(0o600)
+
+    assert main(["--config-dir", str(paths.config_dir), "guide"]) == 0
+    captured = capsys.readouterr()
+
+    assert "category: unsafe_non_loopback_http" in captured.out
+    assert "unsupported" in captured.out
+    assert "runner-mcp doctor" in captured.out
+    assert "private MCP tunnel" not in captured.out
+    assert "reverse proxy" not in captured.out
+    assert "unsafe-sensitive.example.invalid" not in captured.out
+    assert "unsafe-auth.example.invalid" not in captured.out
+    assert str(project_root) not in captured.out
 
 
 def test_github_mailbox_cli_configure_uses_hidden_token(

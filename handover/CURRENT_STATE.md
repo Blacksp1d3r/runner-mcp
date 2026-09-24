@@ -1,3 +1,12 @@
+## 2026-09-24 — Task 40 retention pruning execute-boundary review complete
+
+- Task 40 review is COMPLETE on `chatgpt/task40-retention-pruning-review` pending integration.
+- Task 34 evidence is sufficient for one conservative next mutation only: local/manual pruning of exactly one old non-migration orphan release outside the entire retained rollback chain.
+- The first executable slice must preserve current/direct rollback/reference closure and every migration-boundary release, acquire the deployment lock, recompute eligibility, bind a short-lived local plan, quarantine atomically, and use only symlink-safe fd-relative recursive deletion.
+- Manual backups remain indefinite-retention/non-candidates. Backup pair pruning remains separately deferred because flat dump+metadata deletion needs its own durable crash-recovery transaction.
+- Automatic/unattended pruning and all MCP/mailbox deletion authority remain deferred.
+- Task 43 is queued but blocked until Task 40 is integrated.
+
 ## 2026-09-24 — Task 34 read-only retention preview implementation complete on PR #92
 
 - Task 34 implementation is COMPLETE on PR #92 pending final exact-head CI/integration.

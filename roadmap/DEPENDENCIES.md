@@ -16,9 +16,10 @@ Last reconciled: 2026-09-24. GitHub current state wins.
 11. Task 23 had Task 18 as its prerequisite; that prerequisite is satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
 12. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
 13. Task 39 depends on Task 38; that dependency is satisfied by PR #91 merge `11b9a4d4e508ac93cd436037563c09d08cfa43ab`. Task 39 is COMPLETE on PR #94 pending final integration.
-14. Tasks 41 and 42 are grounded follow-ups from completed Tasks 26 and 24 respectively and are prerequisite-safe.
-15. Task 43 depends on Task 40 integration; it must not start from stale main and must not include backup deletion or unattended pruning.
-16. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
+14. Task 41 is a grounded follow-up from completed Task 26 and is prerequisite-safe. Task 42 migration-job review is COMPLETE on PR #96 pending integration; Task 44 depends on that integration.
+15. Task 43 depended on Task 40; that dependency is satisfied by PR #95 merge `83453d9bb56f1bcbb69ccf68563699aab56e777b`. Task 43 is prerequisite-safe but must not include backup deletion or unattended pruning.
+16. Task 45 is blocked on Task 44 integration and is the separate review for any future asynchronous MCP/bridge migration contract change.
+17. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
 
 
 ## Parallel work that is safe

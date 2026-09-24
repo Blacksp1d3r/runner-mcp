@@ -5,6 +5,21 @@ from pathlib import Path
 from typing import Protocol
 
 
+class AdapterPresetError(RuntimeError):
+    pass
+
+
+@dataclass(frozen=True)
+class TestPresetRecipe:
+    argv: tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class MigrationPresetRecipe:
+    status_argv: tuple[str, ...]
+    apply_argv: tuple[str, ...]
+
+
 @dataclass(frozen=True)
 class AdapterInfo:
     adapter_id: str
@@ -33,3 +48,16 @@ class ProjectAdapter(Protocol):
     def default_test_preset(self, root: Path) -> str | None: ...
 
     def default_migration_preset(self, root: Path) -> str | None: ...
+
+    def materialize_test_preset(
+        self,
+        root: Path,
+        preset: str,
+        arguments: tuple[str, ...],
+    ) -> TestPresetRecipe: ...
+
+    def materialize_migration_preset(
+        self,
+        root: Path,
+        preset: str,
+    ) -> MigrationPresetRecipe: ...

@@ -1063,7 +1063,7 @@ Do not add speculative framework adapters, arbitrary command execution, untruste
 
 ### Task 39 — move built-in preset materialization behind adapter boundary — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task39-adapter-preset-recipes`. PR: #94. Dependency satisfied: Task 38 merged via PR #91.
+Status: `COMPLETE` on `chatgpt/task39-adapter-preset-recipes` / PR #94. Built-in pytest/Ruff/Alembic preset materialization is now behind typed adapter recipe methods; generic config management retains only the explicit custom path. Dependency satisfied: Task 38 merged via PR #91.
 
 Preferred executor: ChatGPT or Claude Code.
 

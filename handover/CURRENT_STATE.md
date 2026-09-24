@@ -1,3 +1,14 @@
+## 2026-09-24 — Task 39 adapter preset boundary refactor complete on PR #94
+
+- Task 39 implementation is COMPLETE on PR #94 pending final exact-head CI/integration.
+- Built-in pytest, Ruff and Alembic recipe materialization moved out of generic `config_manager.py` framework branches and behind typed adapter methods.
+- Python adapter executable discovery remains project-local, rejects symlinked roots/virtualenvs/executables, requires executable access and verifies the resolved executable remains under the project root.
+- The generic adapter has no built-in recipe authority. Unknown/ambiguous presets fail closed.
+- The `custom` path remains explicit/local with the previous validation and no shell command string.
+- Direct adapter/config-manager regression coverage and extension documentation were updated.
+- No dynamic plugin loading, framework dependency, speculative adapter or new execution authority was added.
+- Tasks 37 and 40 are already integrated on main; Task 43 remains blocked only on its explicit ownership/implementation claim, not on Task 40.
+
 ## 2026-09-24 — Task 40 retention pruning execute-boundary review complete
 
 - Task 40 review is COMPLETE on `chatgpt/task40-retention-pruning-review` pending integration.

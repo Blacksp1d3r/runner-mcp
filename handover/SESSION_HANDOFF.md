@@ -1,3 +1,14 @@
+## 2026-09-24 — NEW CHAT RESUME CHECKPOINT: finish Runner-MCP toward release
+
+- Runner Fabric is now a separate private project/repository. This Runner-MCP project should stay focused on completing and releasing Runner-MCP itself.
+- Live main: `82ecef725d828b69e328f8f474553e01ef8548cb`.
+- Only open PR at reconciliation: #97, `feat: add reusable bounded text redaction`.
+- PR #97 exact head: `899b218f223a4f479bd6fd5ae8fd1624a3edbe88`.
+- Exact-head workflow run `35996927397` is terminal SUCCESS. Do not create a duplicate rerun.
+- First action in the new chat: read the canonical bootstrap files, reconcile live GitHub and `claude_feedback/CURRENT_ASSIGNMENT.md`, independently review PR #97 exact head, and merge only if the demonstrated boundary is still correct.
+- After integration, reconcile remaining release blockers versus the roadmap/release checklist and continue toward the first tagged alpha. Do not overclaim private-host self-update/recovery proof; either prove it safely or preserve the documented limitation.
+- No release/tag/publication was performed here.
+
 # Runner MCP — Session Handoff
 
 Last reconciled: 2026-09-24.

@@ -742,7 +742,7 @@ Do not modify service/runtime code and do not add remote process-control capabil
 
 ### Task 27 — database restore/recovery boundary review — CHAT REVIEW
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task27-database-restore-review`. PR: #84. Exact head: `a90667259b7dea7d6dcddf1ead26fc982d4fb893`.
+Status: `COMPLETE`. PR #84 merged as `f1e92bb2997ad8b9d26e978892319289e1b7e4f1`; exact PR head `a90667259b7dea7d6dcddf1ead26fc982d4fb893`; exact-head CI run 35949363983 fully green (Ruff, whitespace, 1211 pytest tests, built release artifact, clean demo). Review conclusion: keep actual restore/PITR and all remote restore authority deferred; the smallest safe next slice is a local read-only restore preflight/plan only.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 
@@ -843,6 +843,35 @@ Deliverable:
 - propose a separate implementation slice only if the review demonstrates a bounded safe path.
 
 Do not delete backups/releases, change retention settings, add mailbox deletion actions or modify deployment/database state.
+
+
+---
+
+### Task 31 — local read-only database restore preflight — CODE lane
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 27 is `COMPLETE` on main.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK27_DATABASE_RESTORE_RECOVERY_REVIEW.md`.
+
+Goal:
+Implement a local, read-only restore preflight/plan for one existing PostgreSQL backup without adding restore execution or remote restore authority.
+
+Acceptance:
+- validate staging project, PostgreSQL database config, configured backup root and exact backup ID before any subprocess work;
+- validate metadata identity (backup ID/project/kind/engine), safe private regular metadata/dump files, positive and recorded size match, and no symlink traversal;
+- detect a fixed trusted non-symlink executable `pg_restore` and run only a fixed parseability check such as `pg_restore --list` with `shell=False`, bounded timeout and no database DSN/connection;
+- compute an exact archive fingerprint for private plan binding but do not expose that digest, archive path, backup root, pg_restore path, object listing, raw stderr or database credentials;
+- return only bounded safe metadata and eligibility categories;
+- expose the preflight through a local CLI command only; no MCP tool, bridge action, mailbox request, approval action or restore execution;
+- production projects report ineligible rather than becoming restorable;
+- emergency-stop state must not block this read-only preflight;
+- actual logical restore, pre-restore backup creation, `database_restore` approval flow, WAL/PITR and production recovery remain out of scope.
+
+Required validation:
+focused adversarial tests for identity/symlink/permissions/size/pg_restore/output privacy and zero database mutation, plus full Ruff/pytest/whitespace, built artifact and clean demo.
 
 
 ## Queue refill rule

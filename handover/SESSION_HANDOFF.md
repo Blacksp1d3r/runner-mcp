@@ -3,17 +3,18 @@
 Last reconciled: 2026-09-24.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 27 merge and queue coordination; live GitHub always wins over this recorded checkpoint.
-- Tasks 21–27 are COMPLETE and must not be duplicated.
-- Task 24 queued Task 28 for deployment/rollback completion delivery; migration completion remains blocked on a missing durable migration-job substrate.
-- Task 25 queued Task 29 for privacy-safe guided connectivity reconciliation.
-- Task 26 keeps remote service-journal access deferred pending explicit per-service log-read opt-in and reusable bounded text redaction; no generic journalctl bridge action is authorized.
-- Task 27 COMPLETE: PR #84 merged as `f1e92bb2997ad8b9d26e978892319289e1b7e4f1`; exact PR head `a90667259b7dea7d6dcddf1ead26fc982d4fb893`; CI run 35949363983 fully green with Ruff, whitespace, 1211 tests, built artifact and clean demo.
-- Task 27 queued Task 31 for a local read-only database restore preflight only. Actual restore, WAL/PITR, production restore and remote restore authority remain deferred.
-- Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Current bounded public queue: Task 28 deployment/rollback completion-delivery integration; Task 29 privacy-safe guided connectivity reconciliation; Task 30 automated retention-pruning boundary review; Task 31 local read-only database restore preflight.
-- No new task is claimed at this landing checkpoint. Reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md` before the next claim.
-- No tag, GitHub release, package publication, deployment, migration, restore, deletion, network exposure change or external publication has been authorized/performed in this session.
+- Live GitHub reconciled through Task 28 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
+- Tasks 21–28 are COMPLETE and must not be duplicated.
+- Task 28 COMPLETE: PR #85 merged as `131e168e02b7d5781441bbc8256e65de434e6166`; exact PR head `87f1d0c8295b059b4504e2971c5ef89ed9dc8422`; CI run 35951310986 fully green with Ruff, whitespace, 1235 pytest tests, built artifact and clean demo.
+- Deployment/rollback completion delivery is read-only and source-scoped. The watcher scans strict persisted deployment metadata directly, preserves bootstrap/ledger/remote-marker idempotency and never instantiates the deployment runner.
+- Non-test notifications show only the allow-listed operation and omit test-profile rendering. Deployment result/error/commit/release/path data is not emitted.
+- Migration completion remains blocked on a missing durable persisted migration-job substrate.
+- Task 26 still keeps remote service-journal access deferred pending explicit per-service log-read opt-in and reusable bounded redaction.
+- Task 27 queued Task 31 for local read-only database restore preflight only; actual restore/PITR/production/remote restore remains deferred.
+- Task 10 remains BLOCKED on usable private-host self-update/recovery proof.
+- Current bounded public queue: Task 29 privacy-safe guided connectivity reconciliation; Task 30 automated retention-pruning boundary review; Task 31 local read-only database restore preflight.
+- No new task is claimed at this checkpoint. Reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md` before the next claim.
+- No tag, GitHub release, package publication, deployment, rollback, migration, restore, deletion, network exposure change or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof remains unresolved.
 
 ## Purpose

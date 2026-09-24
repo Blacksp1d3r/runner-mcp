@@ -472,7 +472,10 @@ def test_deployment_source_ids_remain_source_scoped(tmp_path: Path) -> None:
     assert deploy_event.event_id != rollback_event.event_id
 
 
-@pytest.mark.parametrize("operation", [None, "Deploy", "migration", "unknown"])
+@pytest.mark.parametrize(
+    "operation",
+    [None, "Deploy", "migration", "unknown", {}, []],
+)
 def test_scan_deployment_rejects_missing_or_unknown_operation(
     tmp_path: Path,
     operation,

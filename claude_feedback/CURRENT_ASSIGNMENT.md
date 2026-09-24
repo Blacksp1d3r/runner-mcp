@@ -824,7 +824,7 @@ focused guide/privacy tests plus full Ruff/pytest/whitespace, built artifact and
 
 ### Task 30 — automated retention pruning boundary review — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task30-retention-pruning-review`. PR: pending.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task30-retention-pruning-review`. PR: #87. Exact head: `0a6e09fe4e4cd403c6ee6c4cc66461694b019a2a`.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 

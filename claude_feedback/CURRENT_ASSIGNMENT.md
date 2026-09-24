@@ -1148,7 +1148,7 @@ focused redaction/TestRunner regression tests plus full Ruff/pytest/whitespace, 
 
 ### Task 42 — durable migration-job substrate boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 24 is `COMPLETE`.
+Status: `COMPLETE` on `chatgpt/task42-migration-job-review` / PR #96. Review conclusion: an additive durable migration-job substrate plus read-only completion scanning is justified, but existing MCP/bridge `apply_migrations` must remain synchronous until that substrate is independently proven. Dependency satisfied: Task 24 is `COMPLETE`.
 
 Preferred executor: Claude Chat or ChatGPT review; no migration/runtime code changes.
 
@@ -1175,7 +1175,7 @@ Do not infer migration completion from audit/deployment records, replay interrup
 
 ### Task 43 — local one-release pruning plan/execute — CODE lane
 
-Status: `BLOCKED_ON_TASK40_INTEGRATION`. Dependency: Task 40 review must be merged/accepted first.
+Status: `UNCLAIMED`. Dependency satisfied: Task 40 merged via PR #95.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1201,6 +1201,65 @@ Acceptance:
 
 Required validation:
 focused adversarial plan/staleness/locking/quarantine/interruption tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 44 — durable migration-job substrate + completion source — CODE lane
+
+Status: `BLOCKED_ON_TASK42_INTEGRATION`. Dependency: Task 42 review must be merged/accepted first.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK42_MIGRATION_JOB_SUBSTRATE_REVIEW.md`.
+
+Goal:
+Add strict persisted migration-job state and read-only migration completion events without changing the existing synchronous MCP/bridge migration execution contract.
+
+Acceptance:
+- add a separate private migration-jobs root in Settings/onboarding;
+- add a strict migration-job state model/store with 32-lowercase-hex identity, private 0700 root, 0600 exact-shape metadata, bounded size, duplicate-key/non-standard JSON rejection and durable atomic private writes;
+- states are queued/running/completed/stopped/error/interrupted with no retry/resume state;
+- queued state is durable before a worker starts;
+- worker accepts only project plus bounded expected binding evidence, revalidates the exact migration plan before mutation, then calls existing `DatabaseManager.apply_migrations()` at most once;
+- do not acquire the DatabaseManager project lock outside `apply_migrations()`;
+- database-busy, operator-stop, safety, plan-change, timeout/failure, restart and unexpected errors map to fixed bounded categories with no raw exception persistence;
+- valid queued/running records at process restart become terminal interrupted and are never automatically executed or resumed;
+- public job status contains only bounded safe state and no DSN, path, executable, cwd, raw migration output or private binding fingerprint;
+- add a strict read-only migration-job scanner to completion delivery; completed/applied => succeeded, stopped => cancelled, error/interrupted => failed;
+- completion uses existing `MIGRATION_JOB` + `APPLY_MIGRATION` source/operation and deterministic source-scoped event IDs;
+- completion scanning must not instantiate the mutation-capable runner;
+- deployment-triggered migrations remain synchronous;
+- existing MCP `apply_migrations`, bridge `APPLY_MIGRATIONS`, approval flow and direct `migration_status` semantics remain unchanged;
+- no automatic restore, arbitrary SQL, production mutation or new mailbox/MCP migration action.
+
+Required validation:
+focused state/persistence/restart/binding/lock/privacy/completion tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 45 — asynchronous migration integration boundary review — CHAT REVIEW
+
+Status: `BLOCKED_ON_TASK44_INTEGRATION`. Dependency: Task 44 must first prove the substrate.
+
+Preferred executor: Claude Chat or ChatGPT review; no execution-contract changes.
+
+Source:
+Task 42 and the eventual Task 44 implementation evidence.
+
+Goal:
+Decide whether remote asynchronous migration execution should use a new explicit action/status contract or a versioned change to the current synchronous `apply_migrations` path.
+
+Deliverable:
+- assess bridge replay/durable-result ordering and current-client compatibility;
+- define approval-consumption versus durable-enqueue proof;
+- define migration job-status authorization and audit semantics;
+- define how completion delivery and immediate bridge results coexist;
+- choose a contract only if it can remain fail-closed and backward-compatible enough for the alpha boundary.
+
+Do not change MCP/mailbox actions, approval authority or migration execution during this review.
 
 
 ## Queue refill rule

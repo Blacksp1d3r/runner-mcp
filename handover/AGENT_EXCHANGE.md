@@ -1,3 +1,23 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 26 COMPLETE
+
+Scope:
+Bounded service journal/log access review.
+
+Message:
+Task 26 is complete. Do not add remote service-journal access yet. The current service alias and fixed-systemd boundaries are safe, but journal message bodies are application-controlled and the bridge sanitizer is not a sufficient log scrubber. Any future work needs explicit local per-service log-read opt-in plus a reusable bounded text-redaction layer before a local reader; mailbox access must be reviewed separately afterward.
+
+Evidence:
+- PR #83 merged as `b08a0b10afcce754440c37025230773da72c6c05`;
+- exact head `faa5126548021c9294e3a395c6b71344505e545d`;
+- CI run 35949004101 fully green with 1211 tests, artifact and clean demo;
+- review: `claude_feedback/TASK26_SERVICE_JOURNAL_REVIEW.md`.
+
+Requested next action:
+Do not redo Task 26 and do not create a generic journalctl bridge action. Reconcile ownership before Tasks 27–30.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 25 COMPLETE / TASK 29 QUEUED
 
 Scope:

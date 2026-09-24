@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import codecs
+import hashlib
 import json
 import os
 import re
@@ -25,6 +26,8 @@ class DatabaseManagerError(RuntimeError):
 
 
 BACKUP_ID_RE = re.compile(r"^[0-9]{8}T[0-9]{6}Z-[0-9a-f]{12}$")
+MAX_BACKUP_METADATA_BYTES = 8_192
+RESTORE_PREFLIGHT_TIMEOUT_SECONDS = 60
 SAFE_ENV = {
     "PATH": "/usr/local/bin:/usr/bin:/bin",
     "LANG": "C.UTF-8",
@@ -89,6 +92,8 @@ class DatabaseManager:
         backup_root: Path | None,
         secret_values: dict[str, str] | Any,
         pg_dump_path: Path | None = None,
+        pg_restore_path: Path | None = None,
+        prepare_storage: bool = True,
         poll_interval_seconds: float = 0.1,
         terminate_grace_seconds: float = 2.0,
     ) -> None:
@@ -96,6 +101,7 @@ class DatabaseManager:
         self.safety = safety
         self.secret_values = secret_values
         self.pg_dump_path = pg_dump_path
+        self.pg_restore_path = pg_restore_path
         self.poll_interval_seconds = poll_interval_seconds
         self.terminate_grace_seconds = terminate_grace_seconds
         self._locks: dict[str, threading.Lock] = {}
@@ -107,15 +113,21 @@ class DatabaseManager:
                 raise DatabaseManagerError("Database backup root must be absolute")
             if backup_root.exists() and backup_root.is_symlink():
                 raise DatabaseManagerError("Database backup root must not be a symlink")
-            backup_root.mkdir(parents=True, exist_ok=True)
-            os.chmod(backup_root, 0o700)
+            if prepare_storage:
+                backup_root.mkdir(parents=True, exist_ok=True)
+                os.chmod(backup_root, 0o700)
+            elif not backup_root.exists() or not backup_root.is_dir():
+                raise DatabaseManagerError("Database backup storage is unavailable")
             self.backup_root = backup_root.resolve(strict=True)
+            if stat.S_IMODE(self.backup_root.stat().st_mode) != 0o700:
+                raise DatabaseManagerError("Database backup root must use mode 0700")
 
             home = self.backup_root / ".runtime-home"
-            if home.exists() and home.is_symlink():
-                raise DatabaseManagerError("Database runtime home must not be a symlink")
-            home.mkdir(mode=0o700, exist_ok=True)
-            os.chmod(home, 0o700)
+            if prepare_storage:
+                if home.exists() and home.is_symlink():
+                    raise DatabaseManagerError("Database runtime home must not be a symlink")
+                home.mkdir(mode=0o700, exist_ok=True)
+                os.chmod(home, 0o700)
 
     def _lock_for(self, project: str) -> threading.Lock:
         with self._locks_guard:
@@ -169,6 +181,14 @@ class DatabaseManager:
         path = _path_without_symlinks(self.pg_dump_path, label="pg_dump")
         if not path.is_file() or not os.access(path, os.X_OK):
             raise DatabaseManagerError("pg_dump is unavailable")
+        return path
+
+    def _pg_restore(self) -> Path:
+        if self.pg_restore_path is None:
+            self.pg_restore_path = _known_executable(("pg_restore",))
+        path = _path_without_symlinks(self.pg_restore_path, label="pg_restore")
+        if not path.is_file() or not os.access(path, os.X_OK):
+            raise DatabaseManagerError("pg_restore is unavailable")
         return path
 
     def _base_env(self) -> dict[str, str]:
@@ -358,6 +378,208 @@ class DatabaseManager:
             if len(results) >= limit:
                 break
         return results
+
+    @staticmethod
+    def _strict_backup_metadata(text: str) -> dict[str, Any]:
+        def reject_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
+            result: dict[str, Any] = {}
+            for key, value in pairs:
+                if key in result:
+                    raise DatabaseManagerError("Backup metadata contains duplicate keys")
+                result[key] = value
+            return result
+
+        def reject_constant(_value: str) -> None:
+            raise DatabaseManagerError("Backup metadata contains non-standard JSON")
+
+        try:
+            raw = json.loads(
+                text,
+                object_pairs_hook=reject_duplicates,
+                parse_constant=reject_constant,
+            )
+        except DatabaseManagerError:
+            raise
+        except (json.JSONDecodeError, TypeError) as exc:
+            raise DatabaseManagerError("Backup metadata is invalid") from exc
+        if not isinstance(raw, dict):
+            raise DatabaseManagerError("Backup metadata is invalid")
+        return raw
+
+    @staticmethod
+    def _read_private_file(path: Path, *, max_bytes: int | None = None) -> bytes:
+        if path.is_symlink():
+            raise DatabaseManagerError("Backup file path is unsafe")
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            fd = os.open(path, flags)
+        except OSError as exc:
+            raise DatabaseManagerError("Backup file is unavailable") from exc
+        try:
+            metadata = os.fstat(fd)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise DatabaseManagerError("Backup file must be a regular file")
+            if stat.S_IMODE(metadata.st_mode) != 0o600:
+                raise DatabaseManagerError("Backup file permissions are unsafe")
+            if max_bytes is not None and metadata.st_size > max_bytes:
+                raise DatabaseManagerError("Backup metadata exceeds size limit")
+            chunks: list[bytes] = []
+            remaining = metadata.st_size
+            while remaining > 0:
+                chunk = os.read(fd, min(65_536, remaining))
+                if not chunk:
+                    break
+                chunks.append(chunk)
+                remaining -= len(chunk)
+            return b"".join(chunks)
+        finally:
+            os.close(fd)
+
+    def _restore_project_dir(self, project: str) -> Path:
+        if self.backup_root is None:
+            raise DatabaseManagerError("Database backup storage is not configured")
+        if (
+            self.backup_root.is_symlink()
+            or not self.backup_root.is_dir()
+            or stat.S_IMODE(self.backup_root.stat().st_mode) != 0o700
+        ):
+            raise DatabaseManagerError("Database backup storage is unsafe")
+        project_dir = self.backup_root / project
+        if project_dir.is_symlink() or not project_dir.is_dir():
+            raise DatabaseManagerError("Database backup project directory is unavailable")
+        try:
+            resolved = project_dir.resolve(strict=True)
+            resolved.relative_to(self.backup_root)
+        except (OSError, ValueError) as exc:
+            raise DatabaseManagerError("Database backup project directory is unsafe") from exc
+        if stat.S_IMODE(resolved.stat().st_mode) != 0o700:
+            raise DatabaseManagerError("Database backup project directory permissions are unsafe")
+        return resolved
+
+    def _restore_preflight_locked(
+        self,
+        project: str,
+        backup_id: str,
+    ) -> tuple[dict[str, Any], str]:
+        config = self.registry.projects.get(project)
+        if config is None:
+            raise DatabaseManagerError("Unknown or disabled project")
+        _, database = self._database(project)
+        if database.engine != "postgresql":
+            raise DatabaseManagerError("Only PostgreSQL restore preflight is supported")
+        if not BACKUP_ID_RE.fullmatch(backup_id):
+            raise DatabaseManagerError("Invalid backup identifier")
+        if config.environment != "staging":
+            return (
+                {
+                    "project": project,
+                    "backup_id": backup_id,
+                    "eligible": False,
+                    "preflight_state": "ineligible_environment",
+                },
+                "",
+            )
+
+        project_dir = self._restore_project_dir(project)
+        metadata_path = project_dir / f"{backup_id}.json"
+        dump_path = project_dir / f"{backup_id}.dump"
+        metadata_bytes = self._read_private_file(
+            metadata_path,
+            max_bytes=MAX_BACKUP_METADATA_BYTES,
+        )
+        try:
+            metadata_text = metadata_bytes.decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise DatabaseManagerError("Backup metadata must be UTF-8") from exc
+        raw = self._strict_backup_metadata(metadata_text)
+        if set(raw) != {
+            "backup_id",
+            "project",
+            "kind",
+            "created_at",
+            "size_bytes",
+            "engine",
+        }:
+            raise DatabaseManagerError("Backup metadata has an unsupported shape")
+        if raw["backup_id"] != backup_id or raw["project"] != project:
+            raise DatabaseManagerError("Backup metadata identity mismatch")
+        if raw["kind"] not in {"manual", "pre_migration"}:
+            raise DatabaseManagerError("Backup metadata kind is invalid")
+        if raw["engine"] != "postgresql":
+            raise DatabaseManagerError("Backup metadata engine is invalid")
+        if (
+            not isinstance(raw["size_bytes"], int)
+            or isinstance(raw["size_bytes"], bool)
+            or raw["size_bytes"] <= 0
+        ):
+            raise DatabaseManagerError("Backup metadata size is invalid")
+        if not isinstance(raw["created_at"], str):
+            raise DatabaseManagerError("Backup metadata timestamp is invalid")
+        try:
+            created_at = datetime.fromisoformat(raw["created_at"])
+        except ValueError as exc:
+            raise DatabaseManagerError("Backup metadata timestamp is invalid") from exc
+        if created_at.tzinfo is None:
+            raise DatabaseManagerError("Backup metadata timestamp must include a timezone")
+
+        dump_bytes = self._read_private_file(dump_path)
+        if not dump_bytes or len(dump_bytes) != raw["size_bytes"]:
+            raise DatabaseManagerError("Backup dump size does not match metadata")
+        archive_sha256 = hashlib.sha256(dump_bytes).hexdigest()
+        binding_payload = (
+            f"runner-mcp-restore-preflight:v1:{project}:{backup_id}:"
+            f"{raw['size_bytes']}:{archive_sha256}"
+        ).encode("utf-8")
+        binding_fingerprint = hashlib.sha256(binding_payload).hexdigest()
+
+        executable = self._pg_restore()
+        try:
+            completed = subprocess.run(
+                [str(executable), "--list", str(dump_path)],
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL,
+                stderr=subprocess.DEVNULL,
+                check=False,
+                timeout=RESTORE_PREFLIGHT_TIMEOUT_SECONDS,
+                shell=False,
+                env=dict(SAFE_ENV),
+            )
+        except (OSError, subprocess.TimeoutExpired) as exc:
+            raise DatabaseManagerError("Database restore preflight command failed") from exc
+        if completed.returncode != 0:
+            raise DatabaseManagerError("Database restore preflight archive is invalid")
+
+        return (
+            {
+                "project": project,
+                "backup_id": backup_id,
+                "kind": raw["kind"],
+                "created_at": created_at.astimezone(UTC).isoformat(),
+                "size_bytes": raw["size_bytes"],
+                "engine": "postgresql",
+                "available": True,
+                "eligible": True,
+                "preflight_state": "eligible",
+            },
+            binding_fingerprint,
+        )
+
+    def restore_preflight(self, project: str, backup_id: str) -> dict[str, Any]:
+        if not BACKUP_ID_RE.fullmatch(backup_id):
+            raise DatabaseManagerError("Invalid backup identifier")
+        lock = self._lock_for(project)
+        if not lock.acquire(blocking=False):
+            raise DatabaseManagerError("Another database operation is already in progress")
+        try:
+            public, _binding_fingerprint = self._restore_preflight_locked(
+                project,
+                backup_id,
+            )
+            return public
+        finally:
+            lock.release()
 
     def _safe_cwd(self, root: Path, relative: str) -> Path:
         current = root

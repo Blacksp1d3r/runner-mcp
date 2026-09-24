@@ -694,7 +694,7 @@ Do not modify delivery/runtime code in this review and do not add new execution 
 
 ### Task 25 — private connectivity/TLS onboarding contract review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task25-connectivity-tls-review`. PR: pending.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 

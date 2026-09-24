@@ -1,3 +1,12 @@
+## 2026-09-24 — Task 24 completion-delivery expansion review landed
+
+- Task 24 COMPLETE: PR #81 merged as `d9f7d40f952ab39478d4a0286d317f160d6b46ce`.
+- Exact PR head `22d5e9a7c7e5ab854b81d84b7b9997202837caf4` passed CI run 35915217076 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- Review finding: persisted deployment and rollback jobs are safe candidates for one bounded read-only completion-delivery integration; migration completion is blocked because no dedicated persisted migration-job substrate exists.
+- Task 28 queued from this evidence for deployment/rollback completion delivery only.
+- Task 10 remains externally BLOCKED. Current bounded queue: Tasks 25–28.
+- No tag, release, publication, deployment, migration or database action was performed.
+
 ## 2026-09-23 — Task 23 completion watcher diagnostics landed
 
 - Task 23 COMPLETE: PR #80 merged as `873f905c64cdfbfc0ec6ac4b5091c04877b84d59`.

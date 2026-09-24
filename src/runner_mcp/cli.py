@@ -1484,7 +1484,7 @@ def build_parser() -> argparse.ArgumentParser:
 
     completion_watcher = subparsers.add_parser(
         "completion-watcher",
-        help="Deliver terminal test completion notifications without rerunning tests.",
+        help="Deliver supported terminal job notifications without rerunning work.",
     )
     completion_watcher_sub = completion_watcher.add_subparsers(
         dest="completion_watcher_action",
@@ -1492,7 +1492,7 @@ def build_parser() -> argparse.ArgumentParser:
     )
     completion_watcher_bootstrap = completion_watcher_sub.add_parser(
         "bootstrap",
-        help="Ignore historical completions and notify only future terminal tests.",
+        help="Ignore historical completions and notify only future terminal jobs.",
     )
     completion_watcher_bootstrap.set_defaults(func=cmd_completion_watcher)
     completion_watcher_once = completion_watcher_sub.add_parser(
@@ -1502,7 +1502,7 @@ def build_parser() -> argparse.ArgumentParser:
     completion_watcher_once.set_defaults(func=cmd_completion_watcher)
     completion_watcher_run = completion_watcher_sub.add_parser(
         "run",
-        help="Continuously watch terminal test jobs and deliver notifications.",
+        help="Continuously watch supported terminal jobs and deliver notifications.",
     )
     completion_watcher_run.add_argument(
         "--poll-seconds",

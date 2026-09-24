@@ -671,7 +671,7 @@ Acceptance:
 
 ### Task 24 — asynchronous completion-delivery expansion review — CHAT REVIEW
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task24-completion-expansion-review`. PR: #81. Exact head: `22d5e9a7c7e5ab854b81d84b7b9997202837caf4`.
+Status: `COMPLETE`. PR #81 merged as `d9f7d40f952ab39478d4a0286d317f160d6b46ce`; exact PR head `22d5e9a7c7e5ab854b81d84b7b9997202837caf4`; exact-head CI run 35915217076 fully green (Ruff, whitespace, 1211 pytest tests, built release artifact, clean demo). Review: deployment + rollback are safe candidates for one bounded completion-delivery CODE slice; migration remains blocked pending a durable persisted migration-job source.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 
@@ -760,6 +760,36 @@ Deliverable:
 - identify prerequisites and the smallest future implementation slice, if any.
 
 Do not execute a restore, change database state, add mailbox restore actions or expose credentials/paths.
+
+
+---
+
+### Task 28 — deployment/rollback completion delivery integration — CODE lane
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 24 is `COMPLETE` on main.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK24_COMPLETION_DELIVERY_EXPANSION_REVIEW.md`.
+
+Goal:
+Extend completion delivery to persisted asynchronous deployment and rollback jobs only, using strict read-only scanning and the existing deterministic completion-event/ledger model.
+
+Acceptance:
+- scan deployment job metadata directly; do not instantiate `DeploymentJobRunner` from the notifier;
+- require exact 32-lowercase-hex filename/job-id match, explicit `operation` (`deploy` or `rollback`), safe project identifier, known terminal state and timezone-aware `finished_at`;
+- map deploy -> `DEPLOYMENT_JOB/DEPLOY_STAGING`, rollback -> `ROLLBACK_JOB/ROLLBACK_RELEASE`;
+- map completed -> succeeded, stopped -> cancelled, error/interrupted -> failed; ignore queued/running;
+- preserve the notifier bootstrap cutoff, deterministic event IDs, local delivery ledger and remote marker idempotency;
+- never include job `result`, `error_category`, commit/release/path/URL data in completion events or notification bodies;
+- adjust non-test notification rendering so it omits `Test profile: None` and renders only safe allow-listed operation/state information;
+- reject symlinks, unsafe identifiers, missing/unknown operation, job-id mismatch, malformed/oversized metadata, duplicate keys, NaN/Infinity and invalid terminal timestamps;
+- migration completion remains out of scope until a separate persisted migration-job substrate exists;
+- no deployment/rollback execution authority, MCP/mailbox actions or replay semantics may change.
+
+Required validation:
+focused security/regression tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
 
 
 ## Queue refill rule

@@ -1,3 +1,22 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 28 COMPLETE
+
+Scope:
+Deployment/rollback completion delivery integration.
+
+Message:
+Task 28 is complete. The completion watcher now derives deployment and rollback terminal events from strict read-only persisted metadata without invoking recovery/execution code. Existing bootstrap cutoff, delivery ledger and remote marker deduplication are preserved. Non-test comments render only the allow-listed operation; result/error/commit/release/path metadata is excluded. Migration completion is still not implemented.
+
+Evidence:
+- PR #85 merged as `131e168e02b7d5781441bbc8256e65de434e6166`;
+- exact PR head `87f1d0c8295b059b4504e2971c5ef89ed9dc8422`;
+- CI run 35951310986 fully green: Ruff, whitespace, 1235 tests, built artifact and clean demo.
+
+Requested next action:
+Do not redo Task 28. Reconcile ownership before Tasks 29–31. Do not synthesize migration completion from audit/deployment state.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 27 COMPLETE / TASK 31 QUEUED
 
 Scope:

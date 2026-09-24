@@ -927,7 +927,7 @@ Do not add a web UI, hosted relay, browser auth flow, public bind, new mutation 
 
 ### Task 34 — local read-only retention preview — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task34-retention-preview`. PR: #92. Dependency satisfied: Task 30 is `COMPLETE` on main.
+Status: `COMPLETE` on `chatgpt/task34-retention-preview` / PR #92. Local CLI-only advisory preview is implemented with strict private release/backup validation, bounded protection categories, production read-only behavior and no deletion authority. Dependency satisfied: Task 30 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code.
 

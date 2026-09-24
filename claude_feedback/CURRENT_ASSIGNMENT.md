@@ -766,7 +766,7 @@ Do not execute a restore, change database state, add mailbox restore actions or 
 
 ### Task 28 — deployment/rollback completion delivery integration — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task28-deploy-rollback-completion`. PR: pending. Dependency satisfied: Task 24 is `COMPLETE` on main.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task28-deploy-rollback-completion`. PR: #85. Exact head: `4d8792feff1f26970b77bf8bbff233ca73f3ed2a`. Dependency satisfied: Task 24 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code.
 

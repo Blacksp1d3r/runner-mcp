@@ -978,6 +978,35 @@ Deliverable:
 Do not add arbitrary target selection, multi-step automatic rollback, database restore, production rollback or remote approval bypass.
 
 
+---
+
+### Task 36 — alpha release documentation reconciliation — DOC lane
+
+Status: `UNCLAIMED`. Dependency: Task 32 review must be `COMPLETE` before implementation.
+
+Preferred executor: ChatGPT or Claude Code; documentation changes only.
+
+Source:
+`claude_feedback/TASK32_ALPHA_LAUNCH_READINESS_AUDIT.md`.
+
+Goal:
+Remove the demonstrated public-documentation drift before any first alpha tag is authorized.
+
+Acceptance:
+- reconcile `CHANGELOG.md` with the actual unreleased/tag state and include user-visible changes landed after the earlier 0.1.0 candidate text; do not fabricate a release date;
+- update `SECURITY.md` so it distinguishes the implemented local read-only restore preflight from unimplemented restore execution/PITR/production recovery;
+- update `docs/LAUNCH_COPY.md` so the GitHub mailbox is described as a strict bounded allow-list of configured operational actions, not merely status/test, while retaining the no-shell/no-arbitrary-path/no-approval-grant/no-restore/no-production boundaries;
+- replace the literal `\\n\\n` rendering defect in README with a real paragraph break;
+- replace the unsupported broad “latest privacy scan is clean” wording in `docs/LAUNCH_READINESS.md` with the actual public-example tests, artifact checks and manual release-diff hygiene controls;
+- clarify the changelog connectivity limitation: privacy-safe guidance exists, automatic tunnel/TLS/DNS/firewall/proxy provisioning remains operator-managed;
+- do not change package version, runtime/code, dependencies, release/tag state or repository settings.
+
+Required validation:
+full Ruff/pytest/whitespace, built release artifact and clean five-minute demo on the exact PR head; after merge, require exact-main green CI before any tag/release authorization is requested.
+
+Do not create a tag/GitHub release, publish a package, change GitHub description/topics, submit to a registry/ecosystem, or publish external posts.
+
+
 ## Queue refill rule
 
 When fewer than three prerequisite-safe `UNCLAIMED` tasks remain, the integrator should review the roadmap, current findings and open PRs and add new bounded tasks before the queue drains completely. New work must be dependency-safe and must not be invented merely to keep agents busy.

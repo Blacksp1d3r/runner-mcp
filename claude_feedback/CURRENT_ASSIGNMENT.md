@@ -796,7 +796,7 @@ focused security/regression tests plus full Ruff/pytest/whitespace, built artifa
 
 ### Task 29 — privacy-safe guided connectivity reconciliation — CODE/DOC lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 25 is `COMPLETE` on main.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task29-connectivity-guide`. PR: pending. Dependency satisfied: Task 25 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -872,6 +872,30 @@ Acceptance:
 
 Required validation:
 focused adversarial tests for identity/symlink/permissions/size/pg_restore/output privacy and zero database mutation, plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 32 — alpha launch-readiness gap audit — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no release/tag/publication actions.
+
+Source:
+Phase 3 launch/readiness in `roadmap/ROADMAP.md`: remaining broader-launch items are the first tagged alpha release, public GitHub description/topics, ecosystem/registry submission when packaging requirements are met, and external community publication as a human-controlled action.
+
+Goal:
+Reconcile the current repository against the documented pre-alpha launch checklist without creating a tag, release, registry submission, marketing post or repository-setting mutation.
+
+Deliverable:
+- verify package metadata, release checklist, changelog, security policy, five-minute demo and prepared launch copy are internally consistent with current main;
+- identify any blockers to an exact alpha release candidate and separate code/docs blockers from human-controlled publication/settings actions;
+- verify no private-host proof limitation is hidden by public launch wording;
+- propose a bounded CODE/DOC follow-up only for demonstrated repository defects;
+- record which remaining actions require explicit user authorization.
+
+Do not create a tag/GitHub release, publish a package, change GitHub description/topics, submit to a registry/ecosystem, or publish external posts.
 
 
 ## Queue refill rule

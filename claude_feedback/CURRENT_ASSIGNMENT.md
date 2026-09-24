@@ -718,7 +718,7 @@ Do not change network exposure, firewall state, certificates or deployment confi
 
 ### Task 26 — bounded service journal/log access contract review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task26-service-journal-review`. PR: pending.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 

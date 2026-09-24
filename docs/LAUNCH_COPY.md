@@ -48,7 +48,7 @@ Body:
 >
 > Runner MCP is the result. It is a self-hosted Model Context Protocol service with a deny-by-default model. Projects and test profiles are configured ahead of time, MCP arguments are strict, output is bounded/scrubbed, there is an operator emergency stop, and higher-risk staging actions use short-lived local human approvals.
 >
-> The project also has an optional GitHub mailbox transport for a very small allow-list of status/test actions. That bridge uses a strict request/result protocol and replay protection; it does not accept arbitrary commands or paths.
+> The project also has an optional GitHub mailbox transport for a strict bounded allow-list of configured operational actions. The bridge uses a fixed request/result protocol, replay protection and the same action-specific safety gates; it does not accept arbitrary commands, executable paths, filesystem paths, approval grants, database restore or production mutation requests.
 >
 > The repository includes a Quickstart and a five-minute local demo. I would especially value feedback on the security boundaries, onboarding and places where the configuration model is still too complicated.
 >

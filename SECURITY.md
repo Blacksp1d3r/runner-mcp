@@ -33,7 +33,7 @@ Important boundaries include:
 - trusted project code can still execute with the permissions of the Runner MCP operating-system account when a predefined test profile runs;
 - Runner MCP is not a sandbox for hostile public-fork code;
 - production mutations are currently out of scope;
-- database restore is not implemented;
+- a local read-only PostgreSQL restore preflight can validate one existing private backup, but database restore execution, PITR and production recovery are not implemented;
 - private runtime configuration and credentials must remain outside the public repository;
 - higher-risk staging actions use separate approval and operator-safety controls.
 

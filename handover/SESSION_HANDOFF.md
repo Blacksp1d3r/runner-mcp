@@ -1,20 +1,18 @@
 # Runner MCP — Session Handoff
 
-Last reconciled: 2026-09-23.
+Last reconciled: 2026-09-24.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 23 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
-- Task 21 COMPLETE: PR #78 merged as `22e14fff99a4f02a30f2edf9abffd98a8b1792ea`; exact-head CI 35903107229 green with 1207 tests.
-- Task 22 COMPLETE: PR #79 merged as `1bfeb9e7e8991058fb82a31b6d93b94f77c5ba72`; exact-head CI 35903803377 green with 1208 tests.
-- Task 23 COMPLETE: PR #80 merged as `873f905c64cdfbfc0ec6ac4b5091c04877b84d59`. Exact PR head `595bb6466e7eca50b4b21a9dbc8695a59b248c11` passed CI run 35914643900 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
-- Safe diagnostics now have bounded production integration in GitHub watcher, cron supervisor and completion watcher without broadening execution authority or exposing dynamic private context.
-- Tasks 18, 20, 21, 22 and 23 must not be duplicated.
+- Live GitHub reconciled through Task 24 merge and queue coordination; live GitHub always wins over this recorded checkpoint.
+- Tasks 21–23 remain COMPLETE and must not be duplicated.
+- Task 24 COMPLETE: PR #81 merged as `d9f7d40f952ab39478d4a0286d317f160d6b46ce`. Exact PR head `22d5e9a7c7e5ab854b81d84b7b9997202837caf4` passed CI run 35915217076 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- Task 24 review found deployment + rollback safe for one bounded read-only completion-delivery integration; migration remains blocked on a missing durable persisted migration-job substrate.
+- Task 28 is queued as the implementation follow-up. It may scan deployment/rollback metadata only and must not broaden execution authority or infer migration completion.
 - Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Current bounded public queue: Task 24 asynchronous completion-delivery expansion review; Task 25 private connectivity/TLS onboarding contract review; Task 26 bounded service journal/log access contract review.
-- Tasks 24–26 are read-only review lanes and do not authorize implementation by themselves.
+- Current bounded public queue: Task 25 private connectivity/TLS onboarding review; Task 26 bounded service journal/log access review; Task 27 database restore/recovery boundary review; Task 28 deployment/rollback completion-delivery integration.
 - Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`.
-- No tag, GitHub release, package publication, deployment, migration or external publication has been authorized/performed in this session.
-- Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof therefore remains unresolved.
+- No tag, GitHub release, package publication, deployment, migration, restore or external publication has been authorized/performed in this session.
+- Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof remains unresolved.
 
 ## Purpose
 Runner MCP is a small, auditable, deny-by-default operations interface. GitHub is the code/collaboration surface; Runner MCP is the local execution and safety boundary. It must never become a generic remote shell.

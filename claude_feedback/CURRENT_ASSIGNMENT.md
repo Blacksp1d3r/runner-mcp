@@ -824,7 +824,7 @@ focused guide/privacy tests plus full Ruff/pytest/whitespace, built artifact and
 
 ### Task 30 — automated retention pruning boundary review — CHAT REVIEW
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task30-retention-pruning-review`. PR: #87. Exact head: `0a6e09fe4e4cd403c6ee6c4cc66461694b019a2a`.
+Status: `COMPLETE`. PR #87 merged as `99d081cd242642bfa8346031a22079b7397869bc`; exact PR head `0a6e09fe4e4cd403c6ee6c4cc66461694b019a2a`; exact-head CI run 35958661041 fully green (Ruff, whitespace, 1237 pytest tests, built release artifact, clean demo). Review conclusion: automatic deletion remains deferred; the smallest safe next slice is a local read-only retention preview.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 
@@ -921,6 +921,36 @@ Deliverable:
 - propose a bounded implementation slice only if the review demonstrates a clear safe need.
 
 Do not add a web UI, hosted relay, browser auth flow, public bind, new mutation authority or external dependency.
+
+
+---
+
+### Task 34 — local read-only retention preview — CODE lane
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 30 is `COMPLETE` on main.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK30_RETENTION_PRUNING_REVIEW.md`.
+
+Goal:
+Expose a local read-only preview of release/backup retention state without deleting or rewriting any release, backup or metadata.
+
+Acceptance:
+- report safe bounded protection/eligibility categories for releases and backups;
+- current release and direct rollback target are always protected;
+- existing minimum-count and minimum-age rules are applied only as eligibility inputs, never deletion authority;
+- manual backups are never automatically eligible because no manual-backup retention policy exists;
+- pre-migration backups remain protected while referenced by retained release metadata, regardless of age;
+- strict private metadata validation must fail closed for symlinks, broad permissions, malformed identity/shape, unavailable dump, size mismatch or unsafe release metadata;
+- output contains no filesystem paths, DSN, service units, health URLs, dump contents or private config values;
+- preview is local CLI/read-only and remains available during emergency stop;
+- no unlink/rmtree, metadata rewrite, retention change, approval action, MCP tool or mailbox action is added;
+- actual pruning/deletion remains deferred pending a later execute review.
+
+Required validation:
+focused adversarial preview tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
 
 
 ## Queue refill rule

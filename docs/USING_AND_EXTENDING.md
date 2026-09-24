@@ -64,7 +64,8 @@ Adapters must:
 - never return private filesystem paths;
 - never dynamically import code named by configuration;
 - never accept arbitrary shell command strings;
-- resolve only to allow-listed presets.
+- resolve only to allow-listed presets;
+- materialize each built-in non-custom preset as a typed fixed argv recipe inside the adapter boundary, including project-local executable validation there rather than in generic configuration code.
 
 Keep private/company-specific adapters out of the public repository when their implementation would reveal private infrastructure or deployment details.
 

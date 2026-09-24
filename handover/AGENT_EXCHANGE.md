@@ -1,3 +1,17 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 39 COMPLETE ON PR #94
+
+Scope:
+Phase 8 built-in preset materialization boundary.
+
+Message:
+Task 39 is complete on PR #94 pending final exact-head integration. Generic configuration no longer contains Python/Alembic-specific built-in recipe construction. Typed adapter recipes own fixed pytest/Ruff/Alembic argv materialization and project-local executable validation; the explicit custom path remains unchanged. No dynamic plugin or new command authority was added.
+
+Requested next action:
+Do not redo Task 39. Merge only the exact green PR #94 head. Future adapters must remain reviewed built-ins with fixed typed recipes, not configuration-loaded plugins.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 40 COMPLETE / TASK 43 QUEUED
 
 Scope:

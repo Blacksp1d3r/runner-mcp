@@ -2,7 +2,14 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.adapters import AdapterError, get_adapter, inspect_project, list_adapters
+from runner_mcp.adapters import (
+    AdapterError,
+    get_adapter,
+    inspect_project,
+    list_adapters,
+    materialize_migration_preset,
+    materialize_test_preset,
+)
 from runner_mcp.adapters.generic import GenericAdapter
 from runner_mcp.adapters.python import PythonAdapter
 from runner_mcp.adapters.registry import adapter_ids
@@ -190,3 +197,128 @@ def test_python_adapter_reports_virtualenv_and_django_flags(tmp_path: Path) -> N
     with_extras = inspect_project("python", root)
     assert with_extras["virtualenv_present"] is True
     assert with_extras["django_manage_present"] is True
+
+
+def test_python_test_preset_recipe_is_materialized_behind_adapter(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    executable(root / ".venv" / "bin" / "python")
+
+    recipe = materialize_test_preset(
+        root,
+        "pytest",
+        ("tests/unit", "--maxfail=1"),
+    )
+
+    assert recipe.argv == (
+        str((root / ".venv" / "bin" / "python").resolve()),
+        "-m",
+        "pytest",
+        "-q",
+        "tests/unit",
+        "--maxfail=1",
+    )
+
+
+def test_python_ruff_recipe_preserves_literal_arguments(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    executable(root / ".venv" / "bin" / "ruff")
+
+    recipe = materialize_test_preset(
+        root,
+        "ruff",
+        ("--select=E9", "literal;not-shell"),
+    )
+
+    assert recipe.argv[1:] == (
+        "check",
+        ".",
+        "--select=E9",
+        "literal;not-shell",
+    )
+
+
+def test_python_migration_recipe_is_materialized_behind_adapter(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    executable(root / ".venv" / "bin" / "alembic")
+
+    recipe = materialize_migration_preset(root, "alembic")
+    executable_path = str((root / ".venv" / "bin" / "alembic").resolve())
+
+    assert recipe.status_argv == (executable_path, "current")
+    assert recipe.apply_argv == (executable_path, "upgrade", "head")
+
+
+@pytest.mark.parametrize(
+    ("kind", "preset"),
+    [
+        ("test", "unknown-test"),
+        ("test", "custom"),
+        ("migration", "unknown-migration"),
+        ("migration", "custom"),
+    ],
+)
+def test_unknown_or_custom_recipe_materialization_fails_closed(
+    tmp_path: Path,
+    kind: str,
+    preset: str,
+) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+
+    with pytest.raises(AdapterError):
+        if kind == "test":
+            materialize_test_preset(root, preset)
+        else:
+            materialize_migration_preset(root, preset)
+
+
+def test_test_recipe_rejects_symlinked_python_executable(tmp_path: Path) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    target = tmp_path / "python-real"
+    executable(target)
+    link = root / ".venv" / "bin" / "python"
+    link.parent.mkdir(parents=True)
+    link.symlink_to(target)
+
+    with pytest.raises(
+        AdapterError,
+        match="Could not find a project Python executable",
+    ):
+        materialize_test_preset(root, "pytest")
+
+def test_test_recipe_rejects_symlinked_project_root(tmp_path: Path) -> None:
+    real_root = tmp_path / "real-project"
+    real_root.mkdir()
+    executable(real_root / ".venv" / "bin" / "python")
+    linked_root = tmp_path / "linked-project"
+    linked_root.symlink_to(real_root)
+
+    with pytest.raises(
+        AdapterError,
+        match="Could not find a project Python executable",
+    ):
+        materialize_test_preset(linked_root, "pytest")
+
+
+def test_test_recipe_rejects_symlinked_virtualenv_directory(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "project"
+    root.mkdir()
+    outside = tmp_path / "outside-venv"
+    executable(outside / "bin" / "python")
+    (root / ".venv").symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(
+        AdapterError,
+        match="Could not find a project Python executable",
+    ):
+        materialize_test_preset(root, "pytest")

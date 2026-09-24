@@ -581,15 +581,17 @@ Still deferred:
 
 ## Phase 8 — multi-project adapters
 
-Current state after Task 38 review:
+Implemented core design after Tasks 38–39:
 
 - built-in `generic` and `python` adapters are deny-by-default and expose only bounded capability metadata;
 - execution layers are project-generic after configuration is resolved;
 - no dynamic adapter/plugin loading from project configuration is allowed;
-- one structural seam remains: Python/Alembic preset materialization is still implemented in generic `config_manager.py`;
-- Task 39 is the bounded refactor to move fixed non-custom preset recipes behind the adapter boundary without adding speculative adapters or new execution authority.
+- built-in non-custom test/migration presets are materialized through typed fixed adapter recipes rather than framework-specific branches in generic configuration code;
+- Python-specific project-local executable discovery and fixed pytest/Ruff/Alembic argv construction live behind the Python adapter boundary;
+- `custom` remains the explicit local-operator path with existing executable validation and no shell command string;
+- unknown or ambiguous built-in presets fail closed.
 
-New projects should normally require configuration/adapters rather than core changes. Phase 8 is functionally usable for alpha, but structural completion waits on the bounded Task 39 refactor.
+New projects should normally require configuration/adapters rather than core changes. Additional framework adapters remain separate reviewed additions rather than dynamic plugins.
 
 ## Phase 9 — approval and risk gates
 

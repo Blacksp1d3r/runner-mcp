@@ -982,7 +982,7 @@ Do not add arbitrary target selection, multi-step automatic rollback, database r
 
 ### Task 36 — alpha release documentation reconciliation — DOC lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task36-alpha-docs-reconciliation`. PR: #90. Exact head: `1b3567b5de1f5a4ac5a67db16c609db2edac25dd`. Dependency satisfied: Task 32 is `COMPLETE` on main.
+Status: `COMPLETE`. PR #90 merged as `8c971016e4fc3cd821dc52d28334567c20835ff4`; exact PR head `1b3567b5de1f5a4ac5a67db16c609db2edac25dd`; exact-head CI run 35967550375 fully green (Ruff, whitespace, 1267 pytest tests, built release artifact, clean demo). Six alpha-release documentation drift items are reconciled; no version/tag/release/repository-setting/publication action was performed.
 
 Preferred executor: ChatGPT or Claude Code; documentation changes only.
 

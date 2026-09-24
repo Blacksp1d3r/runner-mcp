@@ -18,6 +18,7 @@ from runner_mcp.completion_delivery import (
     load_github_issue_notifier,
     notification_config_path,
     remove_completion_notifier,
+    scan_deployment_completion_events,
     scan_test_completion_events,
 )
 from runner_mcp.completion_feedback import (
@@ -81,6 +82,34 @@ def _write_job(
     path = jobs_root / f"{job_id}.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
     path.chmod(0o600)
+
+
+def _write_deployment_job(
+    jobs_root: Path,
+    *,
+    job_id: str,
+    operation: str,
+    state: str,
+    finished_at: datetime | None,
+    project: str = "demo",
+    result: dict | None = None,
+    error_category: str | None = None,
+) -> Path:
+    payload = {
+        "job_id": job_id,
+        "project": project,
+        "operation": operation,
+        "state": state,
+        "created_at": (datetime.now(UTC) - timedelta(seconds=2)).isoformat(),
+        "started_at": (datetime.now(UTC) - timedelta(seconds=1)).isoformat(),
+        "finished_at": finished_at.isoformat() if finished_at else None,
+        "result": result,
+        "error_category": error_category,
+    }
+    path = jobs_root / f"{job_id}.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    path.chmod(0o600)
+    return path
 
 
 def test_notification_config_is_private_and_round_trips(tmp_path: Path) -> None:
@@ -316,6 +345,427 @@ def test_scan_rejects_tampered_job_identity(tmp_path: Path) -> None:
             jobs,
             since=datetime.now(UTC) - timedelta(minutes=1),
         )
+
+
+def test_scan_deployment_and_rollback_jobs_maps_terminal_states(
+    tmp_path: Path,
+) -> None:
+    jobs = tmp_path / "deploy-jobs"
+    jobs.mkdir()
+    now = datetime.now(UTC)
+    _write_deployment_job(
+        jobs,
+        job_id="1" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=now,
+        result={"commit": "private-commit", "path": "/private/release"},
+    )
+    _write_deployment_job(
+        jobs,
+        job_id="2" * 32,
+        operation="rollback",
+        state="stopped",
+        finished_at=now + timedelta(milliseconds=1),
+    )
+    _write_deployment_job(
+        jobs,
+        job_id="3" * 32,
+        operation="deploy",
+        state="error",
+        finished_at=now + timedelta(milliseconds=2),
+        error_category="private-error",
+    )
+    _write_deployment_job(
+        jobs,
+        job_id="4" * 32,
+        operation="rollback",
+        state="interrupted",
+        finished_at=now + timedelta(milliseconds=3),
+    )
+    _write_deployment_job(
+        jobs,
+        job_id="5" * 32,
+        operation="deploy",
+        state="queued",
+        finished_at=None,
+    )
+    _write_deployment_job(
+        jobs,
+        job_id="6" * 32,
+        operation="rollback",
+        state="running",
+        finished_at=None,
+    )
+    _write_deployment_job(
+        jobs,
+        job_id="7" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=now - timedelta(minutes=2),
+    )
+
+    events = scan_deployment_completion_events(
+        jobs,
+        since=now - timedelta(seconds=1),
+    )
+
+    assert [(event.source, event.operation, event.state) for event in events] == [
+        (
+            CompletionSource.DEPLOYMENT_JOB,
+            CompletionOperation.DEPLOY_STAGING,
+            CompletionState.SUCCEEDED,
+        ),
+        (
+            CompletionSource.ROLLBACK_JOB,
+            CompletionOperation.ROLLBACK_RELEASE,
+            CompletionState.CANCELLED,
+        ),
+        (
+            CompletionSource.DEPLOYMENT_JOB,
+            CompletionOperation.DEPLOY_STAGING,
+            CompletionState.FAILED,
+        ),
+        (
+            CompletionSource.ROLLBACK_JOB,
+            CompletionOperation.ROLLBACK_RELEASE,
+            CompletionState.FAILED,
+        ),
+    ]
+    rendered = repr(events)
+    assert "private-commit" not in rendered
+    assert "/private/release" not in rendered
+    assert "private-error" not in rendered
+
+
+def test_deployment_source_ids_remain_source_scoped(tmp_path: Path) -> None:
+    deploy = tmp_path / "deploy"
+    rollback = tmp_path / "rollback"
+    deploy.mkdir()
+    rollback.mkdir()
+    now = datetime.now(UTC)
+    job_id = "a" * 32
+    _write_deployment_job(
+        deploy,
+        job_id=job_id,
+        operation="deploy",
+        state="completed",
+        finished_at=now,
+    )
+    _write_deployment_job(
+        rollback,
+        job_id=job_id,
+        operation="rollback",
+        state="completed",
+        finished_at=now,
+    )
+
+    deploy_event = scan_deployment_completion_events(
+        deploy,
+        since=now - timedelta(seconds=1),
+    )[0]
+    rollback_event = scan_deployment_completion_events(
+        rollback,
+        since=now - timedelta(seconds=1),
+    )[0]
+
+    assert deploy_event.event_id != rollback_event.event_id
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [None, "Deploy", "migration", "unknown", {}, []],
+)
+def test_scan_deployment_rejects_missing_or_unknown_operation(
+    tmp_path: Path,
+    operation,
+) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    path = _write_deployment_job(
+        jobs,
+        job_id="b" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=datetime.now(UTC),
+    )
+    payload = json.loads(path.read_text())
+    if operation is None:
+        payload.pop("operation")
+    else:
+        payload["operation"] = operation
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(CompletionDeliveryError):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("job_id", "c" * 31, "identity"),
+        ("project", "../private", "project identifier"),
+        ("state", "COMPLETED", "state"),
+    ],
+)
+def test_scan_deployment_rejects_unsafe_identity_project_or_state(
+    tmp_path: Path,
+    field: str,
+    value: str,
+    message: str,
+) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    path = _write_deployment_job(
+        jobs,
+        job_id="c" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=datetime.now(UTC),
+    )
+    payload = json.loads(path.read_text())
+    payload[field] = value
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(CompletionDeliveryError, match=message):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+def test_scan_deployment_rejects_symlink_without_following_referent(
+    tmp_path: Path,
+) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    job_id = "d" * 32
+    referent = tmp_path / "outside.json"
+    referent.write_text("private-referent", encoding="utf-8")
+    referent.chmod(0o600)
+    (jobs / f"{job_id}.json").symlink_to(referent)
+
+    with pytest.raises(CompletionDeliveryError, match="symlink"):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+    assert referent.read_text(encoding="utf-8") == "private-referent"
+
+
+def test_scan_deployment_rejects_broad_permissions(tmp_path: Path) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    path = _write_deployment_job(
+        jobs,
+        job_id="e" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=datetime.now(UTC),
+    )
+    path.chmod(0o644)
+
+    with pytest.raises(CompletionDeliveryError, match="metadata is invalid"):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_scan_deployment_rejects_nonstandard_json_constants(
+    tmp_path: Path,
+    constant: str,
+) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    path = _write_deployment_job(
+        jobs,
+        job_id="f" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=datetime.now(UTC),
+    )
+    text = path.read_text(encoding="utf-8").replace(
+        '"result": null',
+        f'"result": {{"unsafe": {constant}}}',
+    )
+    path.write_text(text, encoding="utf-8")
+
+    with pytest.raises(CompletionDeliveryError, match="non-standard JSON constant"):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+def test_scan_deployment_rejects_duplicate_json_keys(tmp_path: Path) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    path = _write_deployment_job(
+        jobs,
+        job_id="1" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=datetime.now(UTC),
+    )
+    text = path.read_text(encoding="utf-8").replace(
+        '"operation": "deploy"',
+        '"operation": "deploy", "operation": "rollback"',
+    )
+    path.write_text(text, encoding="utf-8")
+
+    with pytest.raises(CompletionDeliveryError, match="duplicate keys"):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+def test_scan_deployment_rejects_oversized_metadata(tmp_path: Path) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    path = _write_deployment_job(
+        jobs,
+        job_id="2" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=datetime.now(UTC),
+    )
+    path.write_text("{" + (" " * 70_000) + "}", encoding="utf-8")
+    path.chmod(0o600)
+
+    with pytest.raises(CompletionDeliveryError, match="metadata is invalid"):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+@pytest.mark.parametrize(
+    "finished_at",
+    [None, "2026-09-24T03:00:00", "not-a-time"],
+)
+def test_scan_deployment_requires_timezone_aware_terminal_timestamp(
+    tmp_path: Path,
+    finished_at,
+) -> None:
+    jobs = tmp_path / "jobs"
+    jobs.mkdir()
+    path = _write_deployment_job(
+        jobs,
+        job_id="3" * 32,
+        operation="deploy",
+        state="completed",
+        finished_at=datetime.now(UTC),
+    )
+    payload = json.loads(path.read_text())
+    payload["finished_at"] = finished_at
+    path.write_text(json.dumps(payload), encoding="utf-8")
+
+    with pytest.raises(CompletionDeliveryError, match="timestamp|terminal"):
+        scan_deployment_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+def test_deployment_notification_renders_operation_without_private_metadata() -> None:
+    session = FakeSession()
+    notifier = GitHubIssueCompletionNotifier(_config(), session=session)
+    event = make_completion_event(
+        source=CompletionSource.DEPLOYMENT_JOB,
+        source_id="4" * 32,
+        operation=CompletionOperation.DEPLOY_STAGING,
+        project="demo",
+        state=CompletionState.FAILED,
+    )
+
+    assert notifier.deliver(event) is True
+
+    body = session.posts[0][1]["body"]
+    assert "- Operation: `deploy_staging`" in body
+    assert "Test profile:" not in body
+    assert "None" not in body
+    assert "commit" not in body.lower()
+    assert "release" not in body.lower()
+    assert "/private/" not in body
+
+
+def test_test_notification_rendering_keeps_profile_line() -> None:
+    session = FakeSession()
+    notifier = GitHubIssueCompletionNotifier(_config(), session=session)
+    event = make_completion_event(
+        source=CompletionSource.TEST_JOB,
+        source_id="5" * 32,
+        operation=CompletionOperation.RUN_TESTS,
+        project="demo",
+        profile="unit",
+        state=CompletionState.SUCCEEDED,
+    )
+
+    notifier.deliver(event)
+
+    body = session.posts[0][1]["body"]
+    assert "- Test profile: `unit`" in body
+    assert "- Operation:" not in body
+
+
+def test_runtime_delivers_deployment_completion_once(tmp_path: Path) -> None:
+    test_jobs = tmp_path / "test-jobs"
+    deployment_jobs = tmp_path / "deployment-jobs"
+    test_jobs.mkdir()
+    deployment_jobs.mkdir()
+    configure_github_issue_notifier(
+        tmp_path,
+        repository="example/private",
+        issue_number=25,
+        mention=None,
+        token="a" * 40,
+    )
+    bootstrap_completion_notifier(tmp_path)
+    config = load_github_issue_notifier(tmp_path)
+    session = FakeSession()
+    runtime = CompletionNotifierRuntime(
+        config_dir=tmp_path,
+        jobs_root=test_jobs,
+        deployment_jobs_root=deployment_jobs,
+        config=config,
+        notifier=GitHubIssueCompletionNotifier(config, session=session),
+    )
+    _write_deployment_job(
+        deployment_jobs,
+        job_id="6" * 32,
+        operation="rollback",
+        state="completed",
+        finished_at=datetime.now(UTC) + timedelta(milliseconds=10),
+        result={
+            "commit": "secret-commit",
+            "release_id": "secret-release",
+            "path": "/private/release",
+        },
+        error_category="secret-error",
+    )
+
+    first = runtime.run_once()
+    second = runtime.run_once()
+
+    assert first.discovered_events == 1
+    assert first.delivered_events == 1
+    assert first.healthy is True
+    assert second.discovered_events == 1
+    assert second.already_delivered_events == 1
+    assert len(session.posts) == 1
+    body = session.posts[0][1]["body"]
+    assert "rollback_release" in body
+    assert "secret-commit" not in body
+    assert "secret-release" not in body
+    assert "/private/release" not in body
+    assert "secret-error" not in body
 
 
 def test_delivery_ledger_is_idempotent_and_private(tmp_path: Path) -> None:

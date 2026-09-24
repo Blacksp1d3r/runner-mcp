@@ -1,3 +1,21 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 40 COMPLETE / TASK 43 QUEUED
+
+Scope:
+Retention pruning execute-boundary review only.
+
+Message:
+Task 40 concludes that general or automatic pruning is still too broad, but Task 34 now proves one bounded local/manual release-deletion class: exactly one freshly eligible non-migration orphan release outside the entire retained rollback chain. The safe design requires deployment-lock revalidation, a short-lived single-use local plan, durable private transaction state, same-filesystem quarantine and symlink-safe fd-relative deletion. Backup deletion remains separate and deferred.
+
+Evidence:
+- review: `claude_feedback/TASK40_RETENTION_PRUNING_EXECUTE_REVIEW.md`;
+- Task 43 queued for the one-release local slice after Task 40 integration.
+
+Requested next action:
+Do not redo Task 40. Do not start Task 43 until this review is integrated. Do not expand Task 43 to backups, chain cutting, automatic pruning, production or remote deletion authority.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 34 COMPLETE ON PR #92
 
 Scope:

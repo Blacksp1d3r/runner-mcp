@@ -3,16 +3,14 @@
 Last reconciled: 2026-09-24.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 30 merge and queue coordination; live GitHub always wins over this recorded checkpoint.
-- Tasks 21–30 are COMPLETE and must not be duplicated.
-- Task 28 added read-only deployment/rollback completion delivery; migration completion remains blocked on a missing durable migration-job substrate.
-- Task 29 added privacy-safe non-mutating connectivity guidance and reconciled the roadmap; external tunnel/TLS/DNS/firewall/proxy provisioning remains operator-managed.
-- Task 30 COMPLETE: PR #87 merged as `99d081cd242642bfa8346031a22079b7397869bc`; exact PR head `0a6e09fe4e4cd403c6ee6c4cc66461694b019a2a`; CI run 35958661041 fully green with Ruff, whitespace, 1237 tests, built artifact and clean demo.
-- Automatic retention deletion remains deferred. Task 34 is queued for local read-only retention preview only.
-- Task 26 still keeps remote service-journal access deferred pending explicit per-service log-read opt-in and reusable bounded redaction.
-- Task 27 queued Task 31 for local read-only database restore preflight only; actual restore/PITR/production/remote restore remains deferred.
+- Live GitHub reconciled through Task 31 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
+- Tasks 21–31 are COMPLETE and must not be duplicated.
+- Task 29 added privacy-safe non-mutating connectivity guidance; external tunnel/TLS/DNS/firewall/proxy provisioning remains operator-managed.
+- Task 30 defined the fail-closed retention-pruning boundary; automatic deletion remains deferred and Task 34 is read-only preview only.
+- Task 31 COMPLETE: PR #88 merged as `e54a0684bdc9da3a32d062e0e0e45261c1616020`; exact head `fc08b60c6feed85824b6097bf1479e7e41a29844`; CI run 35966414093 fully green with Ruff, whitespace, 1267 tests, built artifact and clean demo.
+- Task 31 adds local read-only PostgreSQL restore preflight only. It does not read the DSN, connect to the database, restore data, add restore approval authority or expose restore through MCP/bridge/mailbox.
 - Task 10 remains BLOCKED on usable private-host self-update/recovery proof.
-- Current bounded public queue: Task 31 local read-only database restore preflight; Task 32 alpha launch-readiness gap audit; Task 33 optional graphical administration boundary review; Task 34 local read-only retention preview.
+- Current bounded public queue: Task 32 alpha launch-readiness gap audit; Task 33 optional graphical administration boundary review; Task 34 local read-only retention preview.
 - No new task is claimed at this checkpoint. Reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md` before the next claim.
 - No tag, GitHub release, package publication, deployment, rollback, migration, restore, deletion, network exposure change or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof remains unresolved.

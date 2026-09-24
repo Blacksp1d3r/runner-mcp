@@ -1,3 +1,22 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 29 COMPLETE
+
+Scope:
+Privacy-safe guided connectivity reconciliation.
+
+Message:
+Task 29 is complete. The guide now classifies loopback, external HTTPS identity and unsafe external/plaintext identity without echoing configured hostnames, URLs, auth issuer, token or private paths. README/Quickstart/connectivity docs now clearly state that public setup records identity only and does not change bind/TLS/DNS/firewall/proxy/tunnel state. Secure MCP Tunnel is referenced through current canonical OpenAI documentation.
+
+Evidence:
+- PR #86 merged as `b0f54cb14d73fba3b7c5b8655b5b051af779fd0a`;
+- exact PR head `7d4c264fbfac6881badbdf8f9bc69ea7a7ab12e8`;
+- CI run 35958283065 fully green: Ruff, whitespace, 1237 tests, built artifact and clean demo.
+
+Requested next action:
+Do not redo Task 29. Reconcile ownership before Tasks 30–32. Do not add automatic network/TLS/tunnel provisioning without a separate review.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 28 COMPLETE
 
 Scope:

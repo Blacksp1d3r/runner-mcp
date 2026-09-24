@@ -8,6 +8,16 @@
 - The user's next Runner-MCP session should focus on finishing the existing bounded queue and getting Runner-MCP to the planned first release, not starting Runner Fabric work here.
 - No tag, GitHub release, package publication or external announcement was performed in this handoff.
 
+## 2026-09-24 — Task 41 bounded redaction complete; Task 43 lock prerequisite found
+
+- Task 41 implementation is COMPLETE on PR #97 pending final exact-head CI/integration.
+- New shared bounded text-redaction primitive handles known secrets, known private paths and the existing bearer/password/token/GitHub-token patterns with explicit input/output byte limits and deterministic truncation.
+- TestRunner now delegates its log scrubbing to the shared primitive; no journal reader or remote log authority was added.
+- Direct implementation prep for Task 43 found a real safety prerequisite: `DeploymentManager._lock_for()` uses in-process `threading.Lock`, while Task 43 is a local CLI process and can therefore race deploy/rollback in the long-lived MCP process.
+- Task 43 is blocked on Task 46 cross-process release-mutation lock review. Do not implement pruning until that boundary is resolved.
+- Task 44 is now prerequisite-safe because Task 42 / PR #96 merged as `82ecef725d828b69e328f8f474553e01ef8548cb`.
+- Task 47 is queued after Task 41 for a local/private service-journal reader with explicit per-service opt-in only; MCP/mailbox log exposure remains deferred.
+
 ## 2026-09-24 — Task 42 durable migration-job substrate review complete
 
 - Task 42 review is COMPLETE on PR #96 pending integration.

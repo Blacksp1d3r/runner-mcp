@@ -16,10 +16,12 @@ Last reconciled: 2026-09-24. GitHub current state wins.
 11. Task 23 had Task 18 as its prerequisite; that prerequisite is satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
 12. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
 13. Task 39 depends on Task 38; that dependency is satisfied by PR #91 merge `11b9a4d4e508ac93cd436037563c09d08cfa43ab`. Task 39 is COMPLETE on PR #94 pending final integration.
-14. Task 41 is a grounded follow-up from completed Task 26 and is prerequisite-safe. Task 42 migration-job review is COMPLETE on PR #96 pending integration; Task 44 depends on that integration.
-15. Task 43 depended on Task 40; that dependency is satisfied by PR #95 merge `83453d9bb56f1bcbb69ccf68563699aab56e777b`. Task 43 is prerequisite-safe but must not include backup deletion or unattended pruning.
+14. Task 41 is COMPLETE on PR #97 pending final integration. Task 42 is COMPLETE on main via PR #96 / merge `82ecef725d828b69e328f8f474553e01ef8548cb`; Task 44 is now prerequisite-safe.
+15. Task 43's Task 40 dependency is satisfied, but Task 43 is now BLOCKED on Task 46 because local CLI pruning cannot safely share the existing process-local DeploymentManager threading lock with the long-lived MCP process.
 16. Task 45 is blocked on Task 44 integration and is the separate review for any future asynchronous MCP/bridge migration contract change.
-17. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
+17. Task 46 is prerequisite-safe and must resolve the cross-process release-mutation lock contract before Task 43 starts.
+18. Task 47 depends on Task 41 integration and is the bounded local service-journal reader; remote log exposure remains separately deferred.
+19. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
 
 
 ## Parallel work that is safe

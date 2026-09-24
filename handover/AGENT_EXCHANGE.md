@@ -12,6 +12,20 @@ Reconcile live GitHub and the canonical queue before work. Review PR #97 exact h
 Response:
 Pending.
 
+## 2026-09-24 — ChatGPT -> ALL — TASK 41 COMPLETE / TASK 43 BLOCKED ON CROSS-PROCESS LOCK
+
+Scope:
+Reusable bounded text redaction and follow-up safety reconciliation.
+
+Message:
+Task 41 is complete on PR #97 pending final integration. TestRunner uses the new reusable bounded scrubber; no journal/log reader or remote disclosure authority was added. While preparing Task 43, a cross-process race prerequisite was demonstrated: deploy/rollback use process-local threading locks, which cannot serialize a separate local CLI pruning process. Task 43 is therefore blocked on Task 46 rather than being implemented unsafely.
+
+Requested next action:
+Do not redo Task 41. Task 46 must resolve cross-process release mutation locking before Task 43. Task 47 may proceed only after Task 41 merges and remains local service-log read only.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 42 COMPLETE / TASK 44 QUEUED
 
 Scope:

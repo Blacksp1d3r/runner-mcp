@@ -1,3 +1,12 @@
+## 2026-09-24 — Task 30 retention-pruning boundary review landed
+
+- Task 30 COMPLETE: PR #87 merged as `99d081cd242642bfa8346031a22079b7397869bc`.
+- Exact PR head `0a6e09fe4e4cd403c6ee6c4cc66461694b019a2a` passed CI run 35958661041 fully green: Ruff, whitespace, 1237 pytest tests, built release artifact and clean demo.
+- Review conclusion: existing age/count predicates are policy inputs, not destructive authorization. Manual backups have no automatic-deletion policy; current/rollback/reference/migration-recovery relationships require additional protection.
+- Automatic deletion remains deferred. Task 34 is queued as the smallest safe follow-up: local read-only retention preview only.
+- Current bounded queue: Tasks 31–34. Task 10 remains externally BLOCKED.
+- No backup/release deletion, metadata rewrite, retention change, approval expansion or mailbox deletion authority was performed.
+
 ## 2026-09-24 — Task 29 privacy-safe connectivity guidance landed
 
 - Task 29 COMPLETE: PR #86 merged as `b0f54cb14d73fba3b7c5b8655b5b051af779fd0a`.

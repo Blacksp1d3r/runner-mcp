@@ -61,6 +61,7 @@ from .cron_autostart import (
     remove_cron_services,
     run_cron_component,
 )
+from .database_manager import DatabaseManager, DatabaseManagerError
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
@@ -585,6 +586,42 @@ def cmd_database_config(args: argparse.Namespace) -> int:
         return 0
 
     raise ConfigManagerError("Unknown database-config action")
+
+
+def _local_readonly_database_manager(config_dir: Path) -> DatabaseManager:
+    _paths, settings, registry = read_private_runtime(config_dir)
+    _, safety = operator_stop_status(config_dir)
+    return DatabaseManager(
+        registry=registry,
+        safety=safety,
+        backup_root=settings.database_backup_root,
+        secret_values={},
+        prepare_storage=False,
+    )
+
+
+def cmd_database(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    if args.database_action == "restore-plan":
+        result = _local_readonly_database_manager(config_dir).restore_preflight(
+            args.project,
+            args.backup_id,
+        )
+        print("Database restore preflight")
+        print(f"Project: {result['project']}")
+        print(f"Backup: {result['backup_id']}")
+        print(f"State: {result['preflight_state']}")
+        print("Eligible: " + ("yes" if result["eligible"] else "no"))
+        if result["eligible"]:
+            print(f"Kind: {result['kind']}")
+            print(f"Created: {result['created_at']}")
+            print(f"Size: {result['size_bytes']} bytes")
+            print(f"Engine: {result['engine']}")
+            print("Archive: parseable")
+        print("No database restore was performed.")
+        return 0
+
+    raise DatabaseManagerError("Unknown database action")
 
 
 def cmd_migration_config(args: argparse.Namespace) -> int:
@@ -1352,6 +1389,22 @@ def build_parser() -> argparse.ArgumentParser:
     database_remove = database_sub.add_parser("remove", help="Remove a database configuration.")
     database_remove.add_argument("project")
     database_remove.set_defaults(func=cmd_database_config)
+
+    database_ops = subparsers.add_parser(
+        "database",
+        help="Inspect local database recovery readiness without restoring data.",
+    )
+    database_ops_sub = database_ops.add_subparsers(
+        dest="database_action",
+        required=True,
+    )
+    restore_plan = database_ops_sub.add_parser(
+        "restore-plan",
+        help="Validate one private PostgreSQL backup without restoring it.",
+    )
+    restore_plan.add_argument("project")
+    restore_plan.add_argument("backup_id")
+    restore_plan.set_defaults(func=cmd_database)
 
     migration = subparsers.add_parser(
         "migration-config",

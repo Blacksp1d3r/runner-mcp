@@ -86,6 +86,7 @@ runner-mcp service-config list PROJECT
 runner-mcp service-config add PROJECT ALIAS --unit UNIT
 runner-mcp database-config list
 runner-mcp database-config add PROJECT
+runner-mcp database restore-plan PROJECT BACKUP_ID
 runner-mcp migration-config add PROJECT --preset alembic
 runner-mcp deployment-config list
 runner-mcp deployment-config add PROJECT --release-root PATH --service ALIAS
@@ -122,6 +123,7 @@ Current implemented foundations include:
 - allow-listed systemd-user staging service status/start/stop/restart;
 - optional private service health checks;
 - private PostgreSQL backups with safe metadata listing;
+- local read-only PostgreSQL restore preflight without database mutation;
 - controlled migration status/apply with mandatory pre-migration backup;
 - staging-only release planning and asynchronous deployment jobs;
 - clean-Git release archives, atomic activation and health-gated rollback;
@@ -147,7 +149,7 @@ Runner MCP is not intended to provide:
 - a general remote shell;
 - arbitrary commands supplied by an AI client;
 - automatic production database restore;
-- any database restore in the current implementation;
+- database restore execution in the current implementation;
 - automatic multi-release rollback cascades;
 - unrestricted service control;
 - untrusted public-fork execution on a privileged persistent runner.

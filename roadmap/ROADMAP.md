@@ -521,7 +521,7 @@ Implemented core design:
 
 Not implemented yet:
 
-- database restore execution;
+- database restore execution remains deferred after Task 37: the current architecture does not prove a separately prepared empty recovery target, complete database-writer quiescence, application cutover, `pre_restore` retention semantics or semantic post-restore verification;
 - WAL archiving/PITR orchestration and verification;
 - automated retention pruning.
 

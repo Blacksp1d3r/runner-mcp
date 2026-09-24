@@ -437,6 +437,39 @@ class DatabaseManager:
         finally:
             os.close(fd)
 
+    @staticmethod
+    def _hash_private_backup_dump(path: Path, *, expected_size: int) -> str:
+        if path.is_symlink():
+            raise DatabaseManagerError("Backup file path is unsafe")
+        flags = os.O_RDONLY
+        if hasattr(os, "O_NOFOLLOW"):
+            flags |= os.O_NOFOLLOW
+        try:
+            fd = os.open(path, flags)
+        except OSError as exc:
+            raise DatabaseManagerError("Backup file is unavailable") from exc
+        try:
+            metadata = os.fstat(fd)
+            if not stat.S_ISREG(metadata.st_mode):
+                raise DatabaseManagerError("Backup file must be a regular file")
+            if stat.S_IMODE(metadata.st_mode) != 0o600:
+                raise DatabaseManagerError("Backup file permissions are unsafe")
+            if metadata.st_size <= 0 or metadata.st_size != expected_size:
+                raise DatabaseManagerError("Backup dump size does not match metadata")
+            digest = hashlib.sha256()
+            total = 0
+            while True:
+                chunk = os.read(fd, 1_048_576)
+                if not chunk:
+                    break
+                digest.update(chunk)
+                total += len(chunk)
+            if total != expected_size:
+                raise DatabaseManagerError("Backup dump size changed during preflight")
+            return digest.hexdigest()
+        finally:
+            os.close(fd)
+
     def _restore_project_dir(self, project: str) -> Path:
         if self.backup_root is None:
             raise DatabaseManagerError("Database backup storage is not configured")
@@ -469,6 +502,8 @@ class DatabaseManager:
         _, database = self._database(project)
         if database.engine != "postgresql":
             raise DatabaseManagerError("Only PostgreSQL restore preflight is supported")
+        if self.backup_root is None:
+            raise DatabaseManagerError("Database backup storage is not configured")
         if not BACKUP_ID_RE.fullmatch(backup_id):
             raise DatabaseManagerError("Invalid backup identifier")
         if config.environment != "staging":
@@ -524,10 +559,10 @@ class DatabaseManager:
         if created_at.tzinfo is None:
             raise DatabaseManagerError("Backup metadata timestamp must include a timezone")
 
-        dump_bytes = self._read_private_file(dump_path)
-        if not dump_bytes or len(dump_bytes) != raw["size_bytes"]:
-            raise DatabaseManagerError("Backup dump size does not match metadata")
-        archive_sha256 = hashlib.sha256(dump_bytes).hexdigest()
+        archive_sha256 = self._hash_private_backup_dump(
+            dump_path,
+            expected_size=raw["size_bytes"],
+        )
         binding_payload = (
             f"runner-mcp-restore-preflight:v1:{project}:{backup_id}:"
             f"{raw['size_bytes']}:{archive_sha256}"

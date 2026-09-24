@@ -1,3 +1,23 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 30 COMPLETE / TASK 34 QUEUED
+
+Scope:
+Automated retention-pruning boundary review.
+
+Message:
+Task 30 is complete. Do not implement automatic deletion from the existing retention booleans. Release count/age and pre-migration backup age are policy inputs only; current/rollback/reference/migration-recovery dependencies and missing manual-backup retention policy must remain fail-closed. Task 34 is the bounded CODE follow-up for read-only retention preview only.
+
+Evidence:
+- PR #87 merged as `99d081cd242642bfa8346031a22079b7397869bc`;
+- exact PR head `0a6e09fe4e4cd403c6ee6c4cc66461694b019a2a`;
+- CI run 35958661041 fully green: Ruff, whitespace, 1237 tests, built artifact and clean demo;
+- review: `claude_feedback/TASK30_RETENTION_PRUNING_REVIEW.md`.
+
+Requested next action:
+Do not redo Task 30. Reconcile ownership before Tasks 31–34. Task 34 may preview only; no unlink/rmtree or retention mutation.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 29 COMPLETE
 
 Scope:

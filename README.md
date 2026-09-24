@@ -51,6 +51,8 @@ runner-mcp status
 
 Start with [QUICKSTART.md](QUICKSTART.md) for the guided installation.
 
+Connectivity remains loopback-first. `runner-mcp setup` in `public` mode records an external HTTPS resource/auth identity only; it does not expose a bind address, install TLS, edit DNS/firewalls, configure a reverse proxy or create a tunnel. `runner-mcp guide` reports only a generic connectivity category without printing the configured hostname or private URL. For supported OpenAI products, private access can use [Secure MCP Tunnel](https://developers.openai.com/api/docs/guides/secure-mcp-tunnels); an external HTTPS reverse proxy remains an operator-managed alternative.
+
 If Runner MCP runs under a dedicated service account while you log in with a separate operator account, install a local operator wrapper. Skip this step when Runner MCP runs under the same account you use interactively:
 
 ```bash
@@ -245,4 +247,4 @@ The current implementation state is tracked in:
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
 
-Runner MCP is under active development. The public GitHub mailbox stack now includes protocol-v1 validation, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor, bounded concurrent request handling, fail-closed missing-result recovery and a private-config runtime/CLI. Shared-watcher migration, exactly-once completion feedback, clean-Linux demo validation and non-root autostart packaging are complete. The current pre-alpha focus is built-artifact/release validation and guided private-connectivity/TLS onboarding.
+Runner MCP is under active development. The public GitHub mailbox stack now includes protocol-v1 validation, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor, bounded concurrent request handling, fail-closed missing-result recovery and a private-config runtime/CLI. Shared-watcher migration, exactly-once completion feedback, clean-Linux demo validation, non-root autostart packaging and privacy-safe connectivity guidance are complete. The remaining pre-alpha work is tracked in the roadmap and release checklist.

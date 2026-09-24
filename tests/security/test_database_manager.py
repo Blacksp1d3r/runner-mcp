@@ -260,7 +260,7 @@ def test_restore_preflight_is_read_only_private_and_uses_fixed_pg_restore(
 
     def fake_run(arguments, **kwargs):
         seen.append((list(arguments), dict(kwargs)))
-        assert kwargs["stdin"] is __import__("subprocess").DEVNULL
+        assert kwargs["stdin"].readable()
         assert kwargs["stdout"] is __import__("subprocess").DEVNULL
         assert kwargs["stderr"] is __import__("subprocess").DEVNULL
         assert kwargs["shell"] is False
@@ -268,6 +268,7 @@ def test_restore_preflight_is_read_only_private_and_uses_fixed_pg_restore(
         assert kwargs["timeout"] == 60
         assert "PGDATABASE" not in kwargs["env"]
         assert SECRET_DSN not in repr(kwargs["env"])
+        assert str(dump) not in repr(arguments)
         return __import__("subprocess").CompletedProcess(arguments, 0)
 
     monkeypatch.setattr("runner_mcp.database_manager.subprocess.run", fake_run)
@@ -294,7 +295,7 @@ def test_restore_preflight_is_read_only_private_and_uses_fixed_pg_restore(
         "preflight_state": "eligible",
     }
     assert len(seen) == 1
-    assert seen[0][0] == [str(pg_restore), "--list", str(dump)]
+    assert seen[0][0] == [str(pg_restore), "--list"]
     assert dump.read_bytes() == before_dump
     assert metadata.read_bytes() == before_metadata
     rendered = repr(result)
@@ -620,6 +621,36 @@ def test_readonly_manager_refuses_broad_storage_without_chmod(tmp_path: Path) ->
     assert stat.S_IMODE(backup_root.stat().st_mode) == 0o750
 
 
+def test_restore_preflight_detects_archive_change_during_parse(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, _metadata = write_restore_backup(backup_root)
+    pg_restore = make_pg_restore(tmp_path)
+    original_size = dump.stat().st_size
+
+    def mutate_archive(arguments, **kwargs):
+        assert arguments == [str(pg_restore), "--list"]
+        assert kwargs["stdin"].readable()
+        dump.write_bytes(b"x" * original_size)
+        dump.chmod(0o600)
+        return __import__("subprocess").CompletedProcess(arguments, 0)
+
+    monkeypatch.setattr("runner_mcp.database_manager.subprocess.run", mutate_archive)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=pg_restore,
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="changed during restore preflight"):
+        manager.restore_preflight("demo", backup_id)
+
+
 def test_restore_preflight_rejects_unparseable_archive_without_output_leak(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -629,6 +660,8 @@ def test_restore_preflight_rejects_unparseable_archive_without_output_leak(
     pg_restore = make_pg_restore(tmp_path)
 
     def invalid_archive(arguments, **kwargs):
+        assert arguments == [str(pg_restore), "--list"]
+        assert kwargs["stdin"].readable()
         assert kwargs["stdout"] is __import__("subprocess").DEVNULL
         assert kwargs["stderr"] is __import__("subprocess").DEVNULL
         return __import__("subprocess").CompletedProcess(

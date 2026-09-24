@@ -878,7 +878,7 @@ focused adversarial tests for identity/symlink/permissions/size/pg_restore/outpu
 
 ### Task 32 — alpha launch-readiness gap audit — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task32-alpha-readiness-audit`. PR: pending.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task32-alpha-readiness-audit`. PR: #89. Exact head: `99c72037eff4ed54cf7e92f7a08b278b48af4e45`.
 
 Preferred executor: Claude Chat or ChatGPT review; no release/tag/publication actions.
 

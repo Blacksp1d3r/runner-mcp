@@ -3,16 +3,15 @@
 Last reconciled: 2026-09-24.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 28 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
-- Tasks 21–28 are COMPLETE and must not be duplicated.
-- Task 28 COMPLETE: PR #85 merged as `131e168e02b7d5781441bbc8256e65de434e6166`; exact PR head `87f1d0c8295b059b4504e2971c5ef89ed9dc8422`; CI run 35951310986 fully green with Ruff, whitespace, 1235 pytest tests, built artifact and clean demo.
-- Deployment/rollback completion delivery is read-only and source-scoped. The watcher scans strict persisted deployment metadata directly, preserves bootstrap/ledger/remote-marker idempotency and never instantiates the deployment runner.
-- Non-test notifications show only the allow-listed operation and omit test-profile rendering. Deployment result/error/commit/release/path data is not emitted.
-- Migration completion remains blocked on a missing durable persisted migration-job substrate.
+- Live GitHub reconciled through Task 29 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
+- Tasks 21–29 are COMPLETE and must not be duplicated.
+- Task 28 added read-only deployment/rollback completion delivery with source-scoped idempotency; migration completion remains blocked on a missing durable migration-job substrate.
+- Task 29 COMPLETE: PR #86 merged as `b0f54cb14d73fba3b7c5b8655b5b051af779fd0a`; exact PR head `7d4c264fbfac6881badbdf8f9bc69ea7a7ab12e8`; CI run 35958283065 fully green with Ruff, whitespace, 1237 pytest tests, built artifact and clean demo.
+- Connectivity onboarding is now privacy-safe and non-mutating. Public setup records external HTTPS identity only; guide output exposes only generic categories/next steps; loopback-first runtime, proxy-header, TLS, DNS/firewall and tunnel provisioning behavior remain unchanged.
 - Task 26 still keeps remote service-journal access deferred pending explicit per-service log-read opt-in and reusable bounded redaction.
 - Task 27 queued Task 31 for local read-only database restore preflight only; actual restore/PITR/production/remote restore remains deferred.
 - Task 10 remains BLOCKED on usable private-host self-update/recovery proof.
-- Current bounded public queue: Task 29 privacy-safe guided connectivity reconciliation; Task 30 automated retention-pruning boundary review; Task 31 local read-only database restore preflight.
+- Current bounded public queue: Task 30 automated retention-pruning boundary review; Task 31 local read-only database restore preflight; Task 32 alpha launch-readiness gap audit.
 - No new task is claimed at this checkpoint. Reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md` before the next claim.
 - No tag, GitHub release, package publication, deployment, rollback, migration, restore, deletion, network exposure change or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof remains unresolved.

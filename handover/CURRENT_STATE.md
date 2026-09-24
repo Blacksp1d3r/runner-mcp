@@ -1,3 +1,13 @@
+## 2026-09-24 — release-track handoff after Runner Fabric split
+
+- Runner Fabric has been split into its own private repository/project. Do not expand Runner-MCP with Runner Fabric's next-generation orchestration scope; Runner-MCP remains the small, auditable execution product intended for release.
+- Live `main` at handoff: `82ecef725d828b69e328f8f474553e01ef8548cb` (PR #96 merged).
+- PR #97 `feat: add reusable bounded text redaction` remains OPEN and mergeable at exact head `899b218f223a4f479bd6fd5ae8fd1624a3edbe88`.
+- PR #97 exact-head validation run `35996927397` completed successfully. Do not rerun it unnecessarily; independently review the exact head before merge.
+- Live issue search returned no open Runner-MCP issues at this checkpoint.
+- The user's next Runner-MCP session should focus on finishing the existing bounded queue and getting Runner-MCP to the planned first release, not starting Runner Fabric work here.
+- No tag, GitHub release, package publication or external announcement was performed in this handoff.
+
 ## 2026-09-24 — Task 42 durable migration-job substrate review complete
 
 - Task 42 review is COMPLETE on PR #96 pending integration.

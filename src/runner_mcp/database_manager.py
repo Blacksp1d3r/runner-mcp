@@ -571,7 +571,7 @@ class DatabaseManager:
         binding_payload = (
             f"runner-mcp-restore-preflight:v1:{project}:{backup_id}:"
             f"{raw['size_bytes']}:{archive_sha256}"
-        ).encode("utf-8")
+        ).encode()
         binding_fingerprint = hashlib.sha256(binding_payload).hexdigest()
 
         executable = self._pg_restore()

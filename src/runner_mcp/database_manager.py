@@ -469,9 +469,16 @@ class DatabaseManager:
     @staticmethod
     def _hash_open_backup_dump(handle, *, expected_size: int) -> str:
         try:
+            metadata = os.fstat(handle.fileno())
             handle.seek(0)
         except OSError as exc:
             raise DatabaseManagerError("Backup file is unavailable") from exc
+        if not stat.S_ISREG(metadata.st_mode):
+            raise DatabaseManagerError("Backup file must be a regular file")
+        if stat.S_IMODE(metadata.st_mode) != 0o600:
+            raise DatabaseManagerError("Backup file permissions are unsafe")
+        if metadata.st_size <= 0 or metadata.st_size != expected_size:
+            raise DatabaseManagerError("Backup dump size does not match metadata")
         digest = hashlib.sha256()
         total = 0
         while True:
@@ -483,8 +490,14 @@ class DatabaseManager:
                 break
             digest.update(chunk)
             total += len(chunk)
-        if total != expected_size:
+        try:
+            final_metadata = os.fstat(handle.fileno())
+        except OSError as exc:
+            raise DatabaseManagerError("Backup file is unavailable") from exc
+        if total != expected_size or final_metadata.st_size != expected_size:
             raise DatabaseManagerError("Backup dump size changed during preflight")
+        if stat.S_IMODE(final_metadata.st_mode) != 0o600:
+            raise DatabaseManagerError("Backup file permissions changed during preflight")
         return digest.hexdigest()
 
     def _restore_project_dir(self, project: str) -> Path:

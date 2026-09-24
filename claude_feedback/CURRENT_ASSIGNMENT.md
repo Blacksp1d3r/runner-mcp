@@ -849,7 +849,7 @@ Do not delete backups/releases, change retention settings, add mailbox deletion 
 
 ### Task 31 — local read-only database restore preflight — CODE lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task31-restore-preflight`. PR: #88. Exact head: `fc08b60c6feed85824b6097bf1479e7e41a29844`. Dependency satisfied: Task 27 is `COMPLETE` on main.
+Status: `COMPLETE`. PR #88 merged as `e54a0684bdc9da3a32d062e0e0e45261c1616020`; exact PR head `fc08b60c6feed85824b6097bf1479e7e41a29844`; exact-head CI run 35966414093 fully green (Ruff, whitespace, 1267 pytest tests, built release artifact, clean demo). Local read-only PostgreSQL restore preflight is implemented; restore execution, approval authority, WAL/PITR, production recovery, MCP/bridge/mailbox exposure remain deferred.
 
 Preferred executor: ChatGPT or Claude Code.
 

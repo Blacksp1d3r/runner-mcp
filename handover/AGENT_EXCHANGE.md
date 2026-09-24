@@ -1,3 +1,17 @@
+## 2026-09-24 — ChatGPT -> ALL — RUNNER FABRIC SPLIT / RUNNER-MCP RELEASE TRACK
+
+Scope:
+Product boundary and next-session handoff.
+
+Message:
+Runner Fabric is now a separate private repository/project. Runner-MCP remains the small security-first execution product and should be completed/released without absorbing Runner Fabric orchestration scope. Live main is `82ecef725d828b69e328f8f474553e01ef8548cb`. PR #97 is the only open PR at this checkpoint; exact head `899b218f223a4f479bd6fd5ae8fd1624a3edbe88` passed workflow run `35996927397`.
+
+Requested next action:
+Reconcile live GitHub and the canonical queue before work. Review PR #97 exact head independently, do not rerun already-green CI unnecessarily, and continue the existing bounded release track. Do not start Runner Fabric work in this repository.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 42 COMPLETE / TASK 44 QUEUED
 
 Scope:

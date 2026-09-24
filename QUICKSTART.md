@@ -322,7 +322,7 @@ Do not run untrusted public-fork code on a privileged persistent runner. Running
 
 The safe staging core now includes service aliases, PostgreSQL backups/migrations, staging deployment, one-step rollback and local approval gates.
 
-The remaining onboarding gaps are mainly:
+Things that remain deliberately outside the one-click path include:
 
 - optional graphical administration;
 - automatic tunnel/proxy/TLS provisioning, which intentionally remains outside Runner MCP's core setup;

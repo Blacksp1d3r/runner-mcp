@@ -11,8 +11,14 @@ from runner_mcp.config import (
     ProjectConfig,
     ProjectRegistry,
 )
-from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
-from runner_mcp.retention_preview import RetentionPreviewError, RetentionPreviewPlanner
+from runner_mcp.operational_safety import (
+    OperatorSafetyGuard,
+    RetentionPolicy,
+)
+from runner_mcp.retention_preview import (
+    RetentionPreviewError,
+    RetentionPreviewPlanner,
+)
 
 
 NOW = datetime(2026, 9, 24, 8, 0, tzinfo=UTC)

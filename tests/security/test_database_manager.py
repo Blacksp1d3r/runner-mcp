@@ -621,6 +621,37 @@ def test_readonly_manager_refuses_broad_storage_without_chmod(tmp_path: Path) ->
     assert stat.S_IMODE(backup_root.stat().st_mode) == 0o750
 
 
+def test_restore_preflight_detects_archive_permission_change_during_parse(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, _metadata = write_restore_backup(backup_root)
+    pg_restore = make_pg_restore(tmp_path)
+
+    def weaken_permissions(arguments, **kwargs):
+        assert arguments == [str(pg_restore), "--list"]
+        assert kwargs["stdin"].readable()
+        dump.chmod(0o640)
+        return __import__("subprocess").CompletedProcess(arguments, 0)
+
+    monkeypatch.setattr(
+        "runner_mcp.database_manager.subprocess.run",
+        weaken_permissions,
+    )
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=pg_restore,
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="permissions"):
+        manager.restore_preflight("demo", backup_id)
+
+
 def test_restore_preflight_detects_archive_change_during_parse(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

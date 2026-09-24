@@ -22,6 +22,7 @@ from .completion_feedback import (
     completion_notification_marker,
     make_completion_event,
 )
+from .deployment_jobs import DeploymentJobState
 from .github_mailbox import GitHubApiSession
 from .onboarding import read_private_runtime
 from .safe_diagnostics import (
@@ -504,6 +505,138 @@ def scan_test_completion_events(
     return [event for _, event in found]
 
 
+def _deployment_completion_state(state: DeploymentJobState) -> CompletionState:
+    if state == DeploymentJobState.COMPLETED:
+        return CompletionState.SUCCEEDED
+    if state == DeploymentJobState.STOPPED:
+        return CompletionState.CANCELLED
+    if state in {DeploymentJobState.ERROR, DeploymentJobState.INTERRUPTED}:
+        return CompletionState.FAILED
+    raise CompletionDeliveryError("deployment job has not reached a terminal state")
+
+
+def _parse_deployment_finished_at(value: Any) -> datetime:
+    if not isinstance(value, str):
+        raise CompletionDeliveryError(
+            "deployment completion metadata has no terminal timestamp"
+        )
+    try:
+        parsed = datetime.fromisoformat(value)
+    except ValueError as exc:
+        raise CompletionDeliveryError(
+            "deployment completion metadata timestamp is invalid"
+        ) from exc
+    if parsed.tzinfo is None:
+        raise CompletionDeliveryError(
+            "deployment completion metadata timestamp must be timezone-aware"
+        )
+    return parsed.astimezone(UTC)
+
+
+def scan_deployment_completion_events(
+    jobs_root: Path,
+    *,
+    since: datetime,
+) -> list[CompletionEvent]:
+    if since.tzinfo is None:
+        raise ValueError("completion scan start must be timezone-aware")
+    if jobs_root.is_symlink() or not jobs_root.is_dir():
+        raise CompletionDeliveryError("deployment job storage is unavailable")
+    paths = list(jobs_root.glob("*.json"))
+    if len(paths) > MAX_JOB_METADATA_FILES:
+        raise CompletionDeliveryError(
+            "deployment job metadata count exceeds notification limit"
+        )
+
+    found: list[tuple[datetime, CompletionEvent]] = []
+    allowed_fields = {
+        "job_id",
+        "project",
+        "operation",
+        "state",
+        "created_at",
+        "started_at",
+        "finished_at",
+        "result",
+        "error_category",
+    }
+    for path in paths:
+        if path.is_symlink():
+            raise CompletionDeliveryError(
+                "deployment job metadata must not be a symlink"
+            )
+        try:
+            metadata = path.stat()
+        except OSError as exc:
+            raise CompletionDeliveryError(
+                "deployment job metadata is unavailable"
+            ) from exc
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or metadata.st_size > MAX_JOB_METADATA_BYTES
+            or metadata.st_mode & 0o077
+        ):
+            raise CompletionDeliveryError("deployment job metadata is invalid")
+        try:
+            raw = _strict_json(path.read_text(encoding="utf-8"))
+        except OSError as exc:
+            raise CompletionDeliveryError(
+                "deployment job metadata is unreadable"
+            ) from exc
+        if not isinstance(raw, dict) or set(raw) != allowed_fields:
+            raise CompletionDeliveryError(
+                "deployment job metadata has an unsupported shape"
+            )
+
+        job_id = raw["job_id"]
+        project = raw["project"]
+        operation = raw["operation"]
+        if (
+            not isinstance(job_id, str)
+            or not re.fullmatch(r"[0-9a-f]{32}", job_id)
+            or path.stem != job_id
+        ):
+            raise CompletionDeliveryError("deployment job metadata identity is invalid")
+        if (
+            not isinstance(project, str)
+            or not COMPLETION_IDENTIFIER_RE.fullmatch(project)
+        ):
+            raise CompletionDeliveryError(
+                "deployment job project identifier is unsafe"
+            )
+        if operation not in {"deploy", "rollback"}:
+            raise CompletionDeliveryError(
+                "deployment job operation is invalid"
+            )
+        try:
+            state = DeploymentJobState(raw["state"])
+        except (TypeError, ValueError) as exc:
+            raise CompletionDeliveryError("deployment job state is invalid") from exc
+        if state in {DeploymentJobState.QUEUED, DeploymentJobState.RUNNING}:
+            continue
+
+        finished_at = _parse_deployment_finished_at(raw["finished_at"])
+        if finished_at < since.astimezone(UTC):
+            continue
+        if operation == "deploy":
+            source = CompletionSource.DEPLOYMENT_JOB
+            completion_operation = CompletionOperation.DEPLOY_STAGING
+        else:
+            source = CompletionSource.ROLLBACK_JOB
+            completion_operation = CompletionOperation.ROLLBACK_RELEASE
+        event = make_completion_event(
+            source=source,
+            source_id=job_id,
+            operation=completion_operation,
+            project=project,
+            state=_deployment_completion_state(state),
+        )
+        found.append((finished_at, event))
+
+    found.sort(key=lambda item: (item[0], item[1].event_id))
+    return [event for _, event in found]
+
+
 class GitHubIssueCompletionNotifier:
     def __init__(
         self,
@@ -520,11 +653,15 @@ class GitHubIssueCompletionNotifier:
             return False
 
         prefix = f"@{self._config.mention} — " if self._config.mention else ""
+        if event.operation == CompletionOperation.RUN_TESTS:
+            detail = f"- Test profile: `{event.profile}`\n"
+        else:
+            detail = f"- Operation: `{event.operation.value}`\n"
         body = (
             f"{marker}\n"
             f"{prefix}Runner-MCP task completed.\n\n"
             f"- Project: `{event.project}`\n"
-            f"- Test profile: `{event.profile}`\n"
+            f"{detail}"
             f"- Status: `{event.state.value}`\n"
             f"- Event: `{event.event_id}`\n\n"
             "Notification delivery did not re-run the task."
@@ -584,11 +721,13 @@ class CompletionNotifierRuntime:
         config_dir: Path,
         jobs_root: Path,
         config: GitHubIssueNotificationConfig,
+        deployment_jobs_root: Path | None = None,
         notifier: GitHubIssueCompletionNotifier | None = None,
         diagnostic_sink: Callable[[str], object] | None = None,
     ) -> None:
         self._config_dir = config_dir.expanduser().resolve()
         self._jobs_root = jobs_root
+        self._deployment_jobs_root = deployment_jobs_root
         self._config = config
         self._notifier = notifier or GitHubIssueCompletionNotifier(config)
         self._ledger = CompletionDeliveryLedger(notification_ledger_path(config_dir))
@@ -603,6 +742,7 @@ class CompletionNotifierRuntime:
         return cls(
             config_dir=config_dir,
             jobs_root=settings.test_jobs_root,
+            deployment_jobs_root=settings.deployment_jobs_root,
             config=load_github_issue_notifier(config_dir),
         )
 
@@ -618,6 +758,13 @@ class CompletionNotifierRuntime:
             )
         since = datetime.fromisoformat(bootstrap["started_at"]).astimezone(UTC)
         events = scan_test_completion_events(self._jobs_root, since=since)
+        if self._deployment_jobs_root is not None:
+            events.extend(
+                scan_deployment_completion_events(
+                    self._deployment_jobs_root,
+                    since=since,
+                )
+            )
 
         delivered = 0
         reconciled = 0

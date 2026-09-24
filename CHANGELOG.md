@@ -2,15 +2,11 @@
 
 All notable user-visible changes to Runner MCP will be documented here.
 
-Runner MCP is under active development. New changes are collected under **Unreleased** until the next release candidate is prepared.
+Runner MCP is under active development. New changes remain under **Unreleased** until an exact validated commit is explicitly tagged and released.
 
-## Unreleased
+## Unreleased — 0.1.0 alpha candidate
 
-No user-visible changes recorded after the v0.1.0 release-candidate cut.
-
-## 0.1.0 - 2026-09-23
-
-First alpha release candidate.
+First public alpha candidate. Version metadata is currently `0.1.0`, but no `v0.1.0` tag or GitHub release is implied by this changelog section.
 
 ### Added
 
@@ -51,7 +47,11 @@ First alpha release candidate.
 - private staged self-update wheels with durable install transactions, verified baseline rollback for caught package failures and fail-closed pending-recovery state for unproven interruption;
 - bounded local self-update install recovery requiring the emergency stop and restoring only the persisted private baseline wheel/source commit, unavailable through MCP/mailbox control;
 - bounded local `status`/`doctor` visibility for self-update install recovery without exposing commits or private artifact paths;
-- a fail-fast local release-check wrapper covering compile, Ruff, pytest, whitespace, built-artifact and clean-demo validation while keeping GitHub CI authoritative.
+- a fail-fast local release-check wrapper covering compile, Ruff, pytest, whitespace, built-artifact and clean-demo validation while keeping GitHub CI authoritative;
+- category-only safe diagnostics for managed cron and completion-watcher failures without leaking private paths or raw exception text;
+- terminal deployment/rollback completion delivery with source-scoped idempotency and no task replay;
+- privacy-safe connectivity categories and current private-tunnel/reverse-proxy guidance without changing bind, TLS, DNS, firewall, proxy or tunnel state;
+- local read-only PostgreSQL restore preflight that validates one private archive without reading the configured DSN, connecting to the database or adding restore execution authority.
 
 ### Fixed
 
@@ -78,11 +78,11 @@ First alpha release candidate.
 - bridge execution cannot target a non-loopback MCP endpoint and never fetches test logs;
 - GitHub mailbox secrets stay in the private 0600 runtime environment and are preserved across setup overwrite;
 - production mutations remain disabled;
-- database restore remains unimplemented rather than being automated unsafely.
+- database restore execution remains unimplemented; the local restore preflight is read-only and adds no restore authority.
 
 ### Known limitations
 
-- guided private-tunnel/reverse-proxy onboarding is not yet one-click;
+- privacy-safe private-tunnel/reverse-proxy guidance is available, but automatic tunnel/TLS/DNS/firewall/proxy provisioning remains operator-managed;
 - untrusted public-fork code is not sandboxed for execution on a privileged persistent runner;
 - PostgreSQL restore/PITR orchestration and automated retention pruning are not implemented;
 - the optional built-in GitHub-issue notifier requires a private destination and GitHub credential; notification transport remains independent from mailbox execution.

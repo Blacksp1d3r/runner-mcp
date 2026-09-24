@@ -982,7 +982,7 @@ Do not add arbitrary target selection, multi-step automatic rollback, database r
 
 ### Task 36 — alpha release documentation reconciliation — DOC lane
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task36-alpha-docs-reconciliation`. PR: pending. Dependency satisfied: Task 32 is `COMPLETE` on main.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task36-alpha-docs-reconciliation`. PR: #90. Exact head: `1b3567b5de1f5a4ac5a67db16c609db2edac25dd`. Dependency satisfied: Task 32 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code; documentation changes only.
 

@@ -135,7 +135,7 @@ Stale-request recovery and heartbeat are tracked separately so a transport outag
 
 ## Built-in private notification runtime
 
-Runner MCP can optionally deliver terminal test notifications directly to a private GitHub issue without relying on a repository-specific Actions runner.
+Runner MCP can optionally deliver terminal test, staging-deployment and one-step rollback notifications directly to a private GitHub issue without relying on a repository-specific Actions runner.
 
 Configuration stays outside the public repository:
 
@@ -149,15 +149,19 @@ runner-mcp completion-watcher run
 
 The token is entered through a hidden prompt by default. Automation may use `--token-stdin`; there is deliberately no command-line token argument.
 
-Bootstrap records the current time for the configured destination and skips historical completions. After bootstrap, the watcher observes only persisted terminal test-job metadata. It never starts, retries or cancels a test.
+Bootstrap records the current time for the configured destination and skips historical completions. After bootstrap, the watcher observes persisted terminal test-job metadata plus configured deployment/rollback job metadata. It never starts, retries, cancels, deploys or rolls back work.
 
-For each terminal test job it:
+For each supported terminal job it:
 
-1. derives the public completion event from the persisted job ID, project, predefined profile and terminal state;
-2. checks a private 0600 delivery ledger;
-3. checks the destination issue for the deterministic event marker;
-4. posts a bounded completion comment only when the marker is absent;
-5. records successful or already-existing delivery locally.
+1. derives the public completion event from the persisted job ID, validated project, allow-listed operation and terminal state;
+2. includes the predefined profile only for test jobs;
+3. ignores deployment/rollback result bodies, error categories, commits, release IDs and paths;
+4. checks a private 0600 delivery ledger;
+5. checks the destination issue for the deterministic event marker;
+6. posts a bounded completion comment only when the marker is absent;
+7. records successful or already-existing delivery locally.
+
+Deployment and rollback metadata are scanned read-only. The completion watcher does not instantiate the deployment job runner and therefore does not recover, execute or mutate jobs. Legacy deployment metadata without an explicit `operation` is not guessed and fails closed. Migration completions remain disabled until a separately reviewed persisted migration-job substrate exists.
 
 A notification transport failure leaves the event undelivered so a later notification cycle can retry. It does not call the test execution path and cannot authorize a task replay.
 

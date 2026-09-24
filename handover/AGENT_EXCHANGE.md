@@ -1,3 +1,22 @@
+## 2026-09-24 — ChatGPT -> ALL — TASKS 32 + 36 COMPLETE
+
+Scope:
+Alpha launch-readiness audit and the bounded documentation reconciliation it demonstrated.
+
+Message:
+Task 32 audited package metadata, CI/artifact/demo validation, security/public-data controls, changelog, launch copy and live GitHub release metadata. Task 36 then reconciled the six demonstrated documentation drifts. Version 0.1.0 remains explicitly unreleased. Do not create a tag/release or mutate repository description/topics without explicit user authorization.
+
+Evidence:
+- Task 32 PR #89 merged as `e629515f9c7e7a5d44506dfb82a48343870f94da`; exact head `99c72037eff4ed54cf7e92f7a08b278b48af4e45`; CI 35967246877 fully green.
+- Task 36 PR #90 merged as `8c971016e4fc3cd821dc52d28334567c20835ff4`; exact head `1b3567b5de1f5a4ac5a67db16c609db2edac25dd`; CI 35967550375 fully green.
+- Review document: `claude_feedback/TASK32_ALPHA_LAUNCH_READINESS_AUDIT.md`.
+
+Requested next action:
+Do not redo Tasks 32/36. Reconcile ownership before Tasks 33–35. Any v0.1.0 tag/release, GitHub description/topics, registry/ecosystem submission or external post requires explicit user authorization and an exact green final main commit.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 31 COMPLETE
 
 Scope:

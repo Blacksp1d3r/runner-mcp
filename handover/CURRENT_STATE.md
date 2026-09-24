@@ -1,3 +1,12 @@
+## 2026-09-24 — Task 27 database restore/recovery review landed
+
+- Task 27 COMPLETE: PR #84 merged as `f1e92bb2997ad8b9d26e978892319289e1b7e4f1`.
+- Exact PR head `a90667259b7dea7d6dcddf1ead26fc982d4fb893` passed CI run 35949363983 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- Review preserves the hard separation between code rollback, one-backup logical restore and WAL/PITR. Automatic/remote restore remains unavailable; production restore remains outside Runner MCP mutation authority.
+- Task 31 queued as the smallest safe follow-up: local read-only restore preflight/plan only, with strict backup identity/privacy and fixed pg_restore parseability checks; no database mutation or MCP/mailbox restore action.
+- Task 10 remains externally BLOCKED. Current bounded queue: Tasks 28–31.
+- No tag, release, publication, deployment, migration, restore, deletion or external database action was performed.
+
 ## 2026-09-24 — Task 26 bounded service-journal review landed
 
 - Task 26 COMPLETE: PR #83 merged as `b08a0b10afcce754440c37025230773da72c6c05`.

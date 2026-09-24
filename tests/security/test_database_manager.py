@@ -30,6 +30,7 @@ def make_executable(path: Path, body: str) -> Path:
 def make_registry(
     root: Path,
     *,
+    environment: str = "staging",
     status_script: Path | None = None,
     apply_script: Path | None = None,
     timeout_seconds: int = 5,
@@ -50,6 +51,7 @@ def make_registry(
             "demo": ProjectConfig(
                 display_name="Demo",
                 repository="example/demo",
+                environment=environment,
                 root=root,
                 database=DatabaseConfig(
                     dsn_env="RUNNER_MCP_DB_DEMO",
@@ -86,6 +88,49 @@ def fake_backup_run(secret: str, seen: list[dict]):
         return __import__("subprocess").CompletedProcess(arguments, 0)
 
     return _run
+
+
+def make_pg_restore(tmp_path: Path, body: str = "exit 0") -> Path:
+    return make_executable(tmp_path / "pg_restore", body)
+
+
+def write_restore_backup(
+    backup_root: Path,
+    *,
+    project: str = "demo",
+    kind: str = "manual",
+    content: bytes = b"fake-postgresql-custom-backup",
+) -> tuple[str, Path, Path]:
+    backup_root.mkdir(mode=0o700, exist_ok=True)
+    backup_root.chmod(0o700)
+    project_dir = backup_root / project
+    project_dir.mkdir(mode=0o700, exist_ok=True)
+    project_dir.chmod(0o700)
+    backup_id = "20260924T050000Z-" + ("a" * 12)
+    dump = project_dir / f"{backup_id}.dump"
+    metadata = project_dir / f"{backup_id}.json"
+    dump.write_bytes(content)
+    dump.chmod(0o600)
+    metadata.write_text(
+        json.dumps(
+            {
+                "backup_id": backup_id,
+                "project": project,
+                "kind": kind,
+                "created_at": "2026-09-24T05:00:00+00:00",
+                "size_bytes": len(content),
+                "engine": "postgresql",
+            }
+        ),
+        encoding="utf-8",
+    )
+    metadata.chmod(0o600)
+    return backup_id, dump, metadata
+
+
+class ExplodingSecrets:
+    def get(self, _name: str):
+        raise AssertionError("restore preflight must not read database credentials")
 
 
 def test_database_dsn_variable_must_use_dedicated_prefix() -> None:
@@ -200,6 +245,349 @@ def test_list_backups_returns_metadata_only(
     }
     assert str(tmp_path) not in repr(results)
     assert SECRET_DSN not in repr(results)
+
+
+def test_restore_preflight_is_read_only_private_and_uses_fixed_pg_restore(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, metadata = write_restore_backup(backup_root)
+    pg_restore = make_pg_restore(tmp_path)
+    before_dump = dump.read_bytes()
+    before_metadata = metadata.read_bytes()
+    seen: list[tuple[list[str], dict]] = []
+
+    def fake_run(arguments, **kwargs):
+        seen.append((list(arguments), dict(kwargs)))
+        assert kwargs["stdin"] is __import__("subprocess").DEVNULL
+        assert kwargs["stdout"] is __import__("subprocess").DEVNULL
+        assert kwargs["stderr"] is __import__("subprocess").DEVNULL
+        assert kwargs["shell"] is False
+        assert kwargs["check"] is False
+        assert kwargs["timeout"] == 60
+        assert "PGDATABASE" not in kwargs["env"]
+        assert SECRET_DSN not in repr(kwargs["env"])
+        return __import__("subprocess").CompletedProcess(arguments, 0)
+
+    monkeypatch.setattr("runner_mcp.database_manager.subprocess.run", fake_run)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path, stopped=True),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=pg_restore,
+        prepare_storage=False,
+    )
+
+    result = manager.restore_preflight("demo", backup_id)
+
+    assert result == {
+        "project": "demo",
+        "backup_id": backup_id,
+        "kind": "manual",
+        "created_at": "2026-09-24T05:00:00+00:00",
+        "size_bytes": len(before_dump),
+        "engine": "postgresql",
+        "available": True,
+        "eligible": True,
+        "preflight_state": "eligible",
+    }
+    assert seen == [
+        (
+            [str(pg_restore), "--list", str(dump)],
+            seen[0][1],
+        )
+    ]
+    assert dump.read_bytes() == before_dump
+    assert metadata.read_bytes() == before_metadata
+    rendered = repr(result)
+    assert str(backup_root) not in rendered
+    assert str(pg_restore) not in rendered
+    assert SECRET_DSN not in rendered
+    assert "sha256" not in rendered.lower()
+
+
+def test_restore_preflight_rejects_invalid_id_before_backup_traversal(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir(mode=0o700)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+    monkeypatch.setattr(
+        manager,
+        "_restore_project_dir",
+        lambda _project: (_ for _ in ()).throw(
+            AssertionError("filesystem traversal reached")
+        ),
+    )
+
+    with pytest.raises(DatabaseManagerError, match="Invalid backup identifier"):
+        manager.restore_preflight("demo", "../private")
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "message"),
+    [
+        ("project", "other", "identity mismatch"),
+        ("engine", "mysql", "engine"),
+        ("kind", "other", "kind"),
+        ("size_bytes", 0, "size"),
+    ],
+)
+def test_restore_preflight_rejects_tampered_metadata(
+    tmp_path: Path,
+    field: str,
+    value,
+    message: str,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, _dump, metadata = write_restore_backup(backup_root)
+    payload = json.loads(metadata.read_text(encoding="utf-8"))
+    payload[field] = value
+    metadata.write_text(json.dumps(payload), encoding="utf-8")
+    metadata.chmod(0o600)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match=message):
+        manager.restore_preflight("demo", backup_id)
+
+
+@pytest.mark.parametrize("constant", ["NaN", "Infinity", "-Infinity"])
+def test_restore_preflight_rejects_nonstandard_metadata_json(
+    tmp_path: Path,
+    constant: str,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, _dump, metadata = write_restore_backup(backup_root)
+    text = metadata.read_text(encoding="utf-8").replace(
+        '"size_bytes": 29',
+        f'"size_bytes": {constant}',
+    )
+    metadata.write_text(text, encoding="utf-8")
+    metadata.chmod(0o600)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="non-standard JSON"):
+        manager.restore_preflight("demo", backup_id)
+
+
+def test_restore_preflight_rejects_duplicate_metadata_keys(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, _dump, metadata = write_restore_backup(backup_root)
+    text = metadata.read_text(encoding="utf-8").replace(
+        '"engine": "postgresql"',
+        '"engine": "postgresql", "engine": "postgresql"',
+    )
+    metadata.write_text(text, encoding="utf-8")
+    metadata.chmod(0o600)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="duplicate keys"):
+        manager.restore_preflight("demo", backup_id)
+
+
+@pytest.mark.parametrize("target", ["metadata", "dump"])
+def test_restore_preflight_rejects_symlink_files_without_following_referent(
+    tmp_path: Path,
+    target: str,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, metadata = write_restore_backup(backup_root)
+    victim = metadata if target == "metadata" else dump
+    original = victim.read_bytes()
+    referent = tmp_path / f"outside-{target}"
+    referent.write_bytes(original)
+    referent.chmod(0o600)
+    victim.unlink()
+    victim.symlink_to(referent)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="unsafe"):
+        manager.restore_preflight("demo", backup_id)
+
+    assert referent.read_bytes() == original
+
+
+@pytest.mark.parametrize("target", ["metadata", "dump"])
+def test_restore_preflight_rejects_broad_file_permissions(
+    tmp_path: Path,
+    target: str,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, metadata = write_restore_backup(backup_root)
+    (metadata if target == "metadata" else dump).chmod(0o640)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="permissions"):
+        manager.restore_preflight("demo", backup_id)
+
+
+def test_restore_preflight_rejects_dump_size_mismatch(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, _metadata = write_restore_backup(backup_root)
+    dump.write_bytes(dump.read_bytes() + b"tamper")
+    dump.chmod(0o600)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="size"):
+        manager.restore_preflight("demo", backup_id)
+
+
+def test_restore_preflight_rejects_untrusted_pg_restore_path(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, _dump, _metadata = write_restore_backup(backup_root)
+    executable = make_pg_restore(tmp_path)
+    link = tmp_path / "pg_restore-link"
+    link.symlink_to(executable)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=link,
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="pg_restore"):
+        manager.restore_preflight("demo", backup_id)
+
+
+def test_restore_preflight_failure_is_bounded_and_hides_private_values(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backup_root = tmp_path / "sensitive-backups"
+    backup_id, _dump, _metadata = write_restore_backup(backup_root)
+    pg_restore = make_pg_restore(tmp_path)
+    sensitive = str(tmp_path / "private-pg-error")
+
+    def fail_run(_arguments, **_kwargs):
+        raise OSError(sensitive)
+
+    monkeypatch.setattr("runner_mcp.database_manager.subprocess.run", fail_run)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=pg_restore,
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError) as captured:
+        manager.restore_preflight("demo", backup_id)
+
+    assert str(captured.value) == "Database restore preflight command failed"
+    assert sensitive not in str(captured.value)
+    assert str(backup_root) not in str(captured.value)
+
+
+def test_restore_preflight_production_is_ineligible_without_subprocess(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir(mode=0o700)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project", environment="production"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.database_manager.subprocess.run",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("pg_restore must not run")
+        ),
+    )
+
+    result = manager.restore_preflight(
+        "demo",
+        "20260924T050000Z-" + ("b" * 12),
+    )
+
+    assert result == {
+        "project": "demo",
+        "backup_id": "20260924T050000Z-" + ("b" * 12),
+        "eligible": False,
+        "preflight_state": "ineligible_environment",
+    }
+
+
+def test_restore_preflight_refuses_concurrent_database_operation(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir(mode=0o700)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+    lock = manager._lock_for("demo")
+    assert lock.acquire(blocking=False)
+    try:
+        with pytest.raises(DatabaseManagerError, match="already in progress"):
+            manager.restore_preflight(
+                "demo",
+                "20260924T050000Z-" + ("c" * 12),
+            )
+    finally:
+        lock.release()
 
 
 def test_migration_status_is_read_only_and_redacts_dsn_and_paths(tmp_path: Path) -> None:

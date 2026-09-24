@@ -796,7 +796,7 @@ focused security/regression tests plus full Ruff/pytest/whitespace, built artifa
 
 ### Task 29 — privacy-safe guided connectivity reconciliation — CODE/DOC lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task29-connectivity-guide`. PR: #86. Exact head: `7d4c264fbfac6881badbdf8f9bc69ea7a7ab12e8`. Dependency satisfied: Task 25 is `COMPLETE` on main.
+Status: `COMPLETE`. PR #86 merged as `b0f54cb14d73fba3b7c5b8655b5b051af779fd0a`; exact PR head `7d4c264fbfac6881badbdf8f9bc69ea7a7ab12e8`; exact-head CI run 35958283065 fully green (Ruff, whitespace, 1237 pytest tests, built release artifact, clean demo). Privacy-safe connectivity guidance is now implemented without changing bind, TLS, DNS, firewall, proxy-header, tunnel or dependency behavior.
 
 Preferred executor: ChatGPT or Claude Code.
 

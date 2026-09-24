@@ -1011,7 +1011,7 @@ Do not create a tag/GitHub release, publish a package, change GitHub description
 
 ### Task 37 — local staging database restore execution boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`. Dependencies satisfied: Tasks 27 and 31 are `COMPLETE`.
+Status: `COMPLETE` on `chatgpt/task37-restore-execution-review` / PR #93. Review conclusion: restore execution remains deferred because Runner MCP cannot yet prove a separately prepared empty recovery target, complete writer quiescence, application cutover, `pre_restore` retention semantics or semantic post-restore verification. Dependencies satisfied: Tasks 27 and 31 are `COMPLETE`.
 
 Preferred executor: Claude Chat or ChatGPT review; no restore/runtime code changes.
 
@@ -1063,7 +1063,7 @@ Do not add speculative framework adapters, arbitrary command execution, untruste
 
 ### Task 39 — move built-in preset materialization behind adapter boundary — CODE lane
 
-Status: `UNCLAIMED`. Dependency: Task 38 review must be merged/accepted first.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task39-adapter-preset-recipes`. PR: #94. Dependency satisfied: Task 38 merged via PR #91.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1085,6 +1085,90 @@ Acceptance:
 
 Required validation:
 focused adapter/config-manager tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 40 — retention pruning execute-boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 34 / PR #92 is merged on main.
+
+Preferred executor: Claude Chat or ChatGPT review; no deletion/runtime code changes.
+
+Source:
+`claude_feedback/TASK30_RETENTION_PRUNING_REVIEW.md` plus the Task 34 read-only retention preview implementation.
+
+Goal:
+Use the strict preview evidence to decide whether any first local pruning execution can be specified without turning advisory eligibility into deletion authority.
+
+Deliverable:
+- resolve manual-backup retention policy before any automatic/manual deletion;
+- resolve rollback-chain boundary semantics after release deletion;
+- define crash-safe paired backup dump/metadata deletion and interruption recovery;
+- define no-symlink recursive release-tree deletion;
+- define deployment-lock -> database-lock ordering and mandatory in-lock state recomputation;
+- define how pruned-release backup references are handled without cascading unexpectedly;
+- define local typed confirmation bound to a fresh immutable prune plan;
+- define bounded audit/result state without private paths;
+- decide whether a smallest local/manual pruning CODE slice is justified.
+
+Do not delete files, rewrite metadata, change retention settings, add unattended pruning, add MCP/mailbox deletion authority or treat `potentially_eligible` as authorization.
+
+
+---
+
+### Task 41 — reusable bounded text-redaction primitive — CODE lane
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 26 is `COMPLETE`.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK26_SERVICE_JOURNAL_REVIEW.md`.
+
+Goal:
+Create the reusable bounded text-redaction prerequisite identified by Task 26 without adding any service-journal reader or remote log authority.
+
+Acceptance:
+- extract or introduce one deterministic text-redaction primitive for known secret values, known private paths and the existing generic secret/token patterns;
+- apply explicit input/output byte limits and deterministic truncation;
+- preserve existing TestRunner scrubbing behavior through the shared primitive or prove equivalent compatibility;
+- secrets embedded inside ordinary text are redacted;
+- known private absolute paths embedded inside ordinary text are redacted;
+- empty/duplicate redaction inputs are handled safely;
+- redaction never returns raw exception text or configured redaction literals;
+- add focused adversarial tests;
+- no journalctl, service-log backend, per-service log exposure, MCP/mailbox action or new external dependency.
+
+Required validation:
+focused redaction/TestRunner regression tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 42 — durable migration-job substrate boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 24 is `COMPLETE`.
+
+Preferred executor: Claude Chat or ChatGPT review; no migration/runtime code changes.
+
+Source:
+`claude_feedback/TASK24_COMPLETION_DELIVERY_EXPANSION_REVIEW.md`, which keeps migration completion blocked because no persisted migration-job identity/state substrate exists.
+
+Goal:
+Determine whether a dedicated asynchronous persisted migration-job model can be added without weakening approval binding, mandatory pre-migration backup, database-operation locking, restart fail-closed behavior or completion-delivery idempotency.
+
+Deliverable:
+- define job identity/state model and private persistence contract;
+- define exactly when approval is consumed relative to enqueue/start;
+- define interaction with the existing per-project database-operation lock and deployment-triggered migrations;
+- define restart behavior for queued/running migration jobs without replaying a potentially partial migration;
+- define safe terminal result/error categories without output/DSN/path leakage;
+- define how completion delivery may consume terminal migration metadata read-only;
+- assess whether direct MCP `apply_migrations` should remain synchronous until migration jobs are proven;
+- propose one bounded CODE follow-up only if the review demonstrates a safe execution model.
+
+Do not infer migration completion from audit/deployment records, replay interrupted migrations, change migration commands, add arbitrary SQL, weaken approval or add production mutation.
 
 
 ## Queue refill rule

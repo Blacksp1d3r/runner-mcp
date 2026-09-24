@@ -1,3 +1,13 @@
+## 2026-09-24 — Task 29 privacy-safe connectivity guidance landed
+
+- Task 29 COMPLETE: PR #86 merged as `b0f54cb14d73fba3b7c5b8655b5b051af779fd0a`.
+- Exact PR head `7d4c264fbfac6881badbdf8f9bc69ea7a7ab12e8` passed CI run 35958283065 fully green: Ruff, whitespace, 1237 pytest tests, built release artifact and clean demo.
+- `runner-mcp guide` now reports only a generic connectivity category and bounded next steps. Configured external hostnames/resource URLs/auth issuers/tokens/private paths are not printed.
+- Public setup is now documented consistently as external HTTPS identity only; it does not bind publicly or configure TLS, DNS, firewall, proxy or tunnel state.
+- Current Secure MCP Tunnel guidance is linked to canonical OpenAI documentation; Runner MCP remains loopback-first and vendor provisioning stays external.
+- Current bounded queue: Tasks 30–32. Task 10 remains externally BLOCKED.
+- No network exposure, TLS/DNS/firewall, tunnel, tag, release or publication action was performed.
+
 ## 2026-09-24 — Task 28 deployment/rollback completion delivery landed
 
 - Task 28 COMPLETE: PR #85 merged as `131e168e02b7d5781441bbc8256e65de434e6166`.

@@ -718,7 +718,7 @@ Do not change network exposure, firewall state, certificates or deployment confi
 
 ### Task 26 — bounded service journal/log access contract review — CHAT REVIEW
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task26-service-journal-review`. PR: #83. Exact head: `faa5126548021c9294e3a395c6b71344505e545d`.
+Status: `COMPLETE`. PR #83 merged as `b08a0b10afcce754440c37025230773da72c6c05`; exact PR head `faa5126548021c9294e3a395c6b71344505e545d`; exact-head CI run 35949004101 fully green (Ruff, whitespace, 1211 pytest tests, built release artifact, clean demo). Review conclusion: remote/MCP service-journal access remains deferred; explicit per-service log-read opt-in plus a reusable bounded text-redaction primitive are prerequisites.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 
@@ -818,6 +818,31 @@ Acceptance:
 
 Required validation:
 focused guide/privacy tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 30 — automated retention pruning boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no code changes.
+
+Source:
+Phase 5 and Phase 6 in `roadmap/ROADMAP.md`: automated backup retention pruning and release pruning remain deferred.
+
+Goal:
+Define a fail-closed retention-pruning contract that cannot delete protected backups/releases or widen remote deletion authority.
+
+Deliverable:
+- inventory current retention-policy invariants and safe metadata available for backups/releases;
+- distinguish preview/eligibility calculation from actual deletion;
+- define minimum count/age, migration-boundary and active-release protections;
+- define what may be automated locally versus what requires explicit operator approval;
+- identify symlink/path/TOCTOU and concurrent deployment/migration hazards;
+- propose a separate implementation slice only if the review demonstrates a bounded safe path.
+
+Do not delete backups/releases, change retention settings, add mailbox deletion actions or modify deployment/database state.
 
 
 ## Queue refill rule

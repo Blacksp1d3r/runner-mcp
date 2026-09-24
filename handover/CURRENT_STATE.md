@@ -1,3 +1,17 @@
+## 2026-09-24 — Task 34 read-only retention preview implementation complete on PR #92
+
+- Task 34 implementation is COMPLETE on PR #92 pending final exact-head CI/integration.
+- New local CLI: `runner-mcp retention preview PROJECT`.
+- Preview is advisory only and explicitly reports `deletion_authorized=false`; no release, backup or metadata deletion/rewrite path was added.
+- Strict scanning fails closed on unsafe/symlink/broad-permission/malformed release or backup metadata, incomplete backup pairs and dump-size mismatch.
+- Current release, direct rollback target, retained release references and migration-recovery references are protected; manual backups are never automatically eligible.
+- Production/non-staging projects remain read-only; preview remains available while the emergency stop is active.
+- Public output contains only bounded project/environment/ID/timestamp/kind/category state and does not expose filesystem paths, DSN, service units, health URLs, dump content or private configuration.
+- Focused tests plus the full suite have passed during implementation; final exact-head PR CI remains authoritative before merge.
+- Actual pruning/deletion remains deferred. A later execute-boundary review must separately resolve locking, crash-safe deletion, rollback-chain semantics and typed confirmation.
+- PR #91 already merged as `11b9a4d4e508ac93cd436037563c09d08cfa43ab`, completing Tasks 33, 35 and 38.
+- Task 37 restore-execution boundary review is proceeding independently on PR #93; Task 39 is now prerequisite-safe after Task 38 integration.
+
 ## 2026-09-24 — Tasks 32 and 36 alpha-readiness work landed
 
 - Task 32 COMPLETE: PR #89 merged as `e629515f9c7e7a5d44506dfb82a48343870f94da`.

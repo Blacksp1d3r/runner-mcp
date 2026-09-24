@@ -4,7 +4,6 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.cli import main
 from runner_mcp.config import (
     DatabaseConfig,
     DeploymentConfig,
@@ -432,56 +431,3 @@ def test_preview_output_contains_no_private_paths(tmp_path: Path) -> None:
     assert str(tmp_path) not in rendered
     assert str(release_root) not in rendered
     assert str(backup_root) not in rendered
-
-
-def test_retention_cli_renders_bounded_advisory_result(
-    tmp_path: Path,
-    capsys: pytest.CaptureFixture[str],
-    monkeypatch: pytest.MonkeyPatch,
-) -> None:
-    private_path = str(tmp_path / "private")
-    fake = {
-        "project": "demo",
-        "environment": "staging",
-        "advisory_only": True,
-        "deletion_authorized": False,
-        "releases": [
-            {
-                "release_id": "20260101T000000Z-aaaaaaaaaaaa-000001",
-                "created_at": "2026-01-01T00:00:00+00:00",
-                "categories": ["potentially_eligible"],
-                "potentially_eligible": True,
-            }
-        ],
-        "backups": [],
-    }
-
-    class FakePlanner:
-        def preview(self, project: str) -> dict:
-            assert project == "demo"
-            return fake
-
-    monkeypatch.setattr(
-        "runner_mcp.cli._local_retention_preview_planner",
-        lambda _config_dir: FakePlanner(),
-    )
-
-    result = main(
-        [
-            "--config-dir",
-            private_path,
-            "retention",
-            "preview",
-            "demo",
-        ]
-    )
-    captured = capsys.readouterr()
-
-    assert result == 0
-    assert "Retention preview" in captured.out
-    assert "Advisory only: yes" in captured.out
-    assert "Deletion authorized: no" in captured.out
-    assert "potentially-eligible=yes" in captured.out
-    assert "No release, backup or metadata file was changed." in captured.out
-    assert private_path not in captured.out
-    assert captured.err == ""

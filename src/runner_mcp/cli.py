@@ -53,7 +53,6 @@ from .config_manager import (
     remove_service_config,
     remove_test_profile,
 )
-from .database_manager import DatabaseManager, DatabaseManagerError
 from .cron_autostart import (
     cron_available,
     cron_status,
@@ -62,6 +61,7 @@ from .cron_autostart import (
     remove_cron_services,
     run_cron_component,
 )
+from .database_manager import DatabaseManager, DatabaseManagerError
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,

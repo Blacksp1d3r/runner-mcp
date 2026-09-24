@@ -849,7 +849,7 @@ Do not delete backups/releases, change retention settings, add mailbox deletion 
 
 ### Task 31 — local read-only database restore preflight — CODE lane
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task31-restore-preflight`. PR: #88. Exact head: `c6923c589fb91555dc0231987582def6e155b9ba`. Dependency satisfied: Task 27 is `COMPLETE` on main.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task31-restore-preflight`. PR: #88. Exact head: `074cd9e8d05bcdc36efd819df5fd60b6a99dcab7`. Dependency satisfied: Task 27 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code.
 

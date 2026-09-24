@@ -1825,4 +1825,3 @@ def test_retention_cli_renders_bounded_advisory_result(
     assert "No release, backup or metadata file was changed." in captured.out
     assert private_path not in captured.out
     assert captured.err == ""
-

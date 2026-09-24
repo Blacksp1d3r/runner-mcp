@@ -3,15 +3,15 @@
 Last reconciled: 2026-09-24.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 24 merge and queue coordination; live GitHub always wins over this recorded checkpoint.
-- Tasks 21–23 remain COMPLETE and must not be duplicated.
-- Task 24 COMPLETE: PR #81 merged as `d9f7d40f952ab39478d4a0286d317f160d6b46ce`. Exact PR head `22d5e9a7c7e5ab854b81d84b7b9997202837caf4` passed CI run 35915217076 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
-- Task 24 review found deployment + rollback safe for one bounded read-only completion-delivery integration; migration remains blocked on a missing durable persisted migration-job substrate.
-- Task 28 is queued as the implementation follow-up. It may scan deployment/rollback metadata only and must not broaden execution authority or infer migration completion.
+- Live GitHub reconciled through Task 25 merge and queue coordination; live GitHub always wins over this recorded checkpoint.
+- Tasks 21–25 are COMPLETE and must not be duplicated.
+- Task 24 review queued Task 28 for deployment/rollback completion delivery; migration completion remains blocked on a missing durable migration-job substrate.
+- Task 25 COMPLETE: PR #82 merged as `f2c1d6a135133033ab1e0059f9a92cfec3021d88`. Exact PR head `38b3143d53d49c58af896adfe96b943e34c2ee5a` passed CI run 35948648167 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- Task 25 confirmed current loopback-first runtime boundaries are sound and queued Task 29 for docs/privacy-safe guided connectivity only.
 - Task 10 remains BLOCKED on a usable private-host self-update/recovery proof path. Never reset replay/cursor/transaction state as a shortcut.
-- Current bounded public queue: Task 25 private connectivity/TLS onboarding review; Task 26 bounded service journal/log access review; Task 27 database restore/recovery boundary review; Task 28 deployment/rollback completion-delivery integration.
+- Current bounded public queue: Task 26 bounded service journal/log access review; Task 27 database restore/recovery boundary review; Task 28 deployment/rollback completion-delivery integration; Task 29 privacy-safe guided connectivity reconciliation.
 - Before claiming any next task, reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md`.
-- No tag, GitHub release, package publication, deployment, migration, restore or external publication has been authorized/performed in this session.
+- No tag, GitHub release, package publication, deployment, migration, restore, network exposure change or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof remains unresolved.
 
 ## Purpose

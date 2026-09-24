@@ -1,3 +1,11 @@
+## 2026-09-24 — release track complete; post-release queue
+
+- `v0.1.0` is published as the first Runner-MCP GitHub pre-release from exact green commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`.
+- PR #98 post-release documentation reconciliation merged as `5647aa8839af90451189d2d943ce393edfacfe78`; exact-head run #514 and merged-main run #515 are green.
+- Release notes remain authoritative for alpha limitations. Do not claim private-host self-update/recovery fault-injection proof until Task 10 is actually completed.
+- The next bounded public-launch work is clean-host install verification plus repository description/topics. Registry/community promotion remains separately controlled.
+- Runner Fabric remains a separate private/proprietary product; no orchestration scope moves into Runner-MCP.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 41 MERGED / RELEASE CANDIDATE GATE
 
 Scope:

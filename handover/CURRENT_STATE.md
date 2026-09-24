@@ -1,3 +1,13 @@
+## 2026-09-24 — v0.1.0 alpha released and public docs reconciled
+
+- GitHub pre-release `v0.1.0` is published from exact validated release commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`; the published notes preserve the alpha limitations and validation provenance.
+- Post-release docs PR #98 merged as `5647aa8839af90451189d2d943ce393edfacfe78`. Exact PR head `adc08c86628aed6256ba44271d0a55cd366ae3e8` passed run #514 / `36041142332`; merged-main run #515 / `36041352332` is fully green.
+- README now links the current alpha, CHANGELOG records the dated 0.1.0 release, and launch-readiness no longer describes the first tag as pending.
+- The immutable release reference remains the earlier exact green commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`; post-release documentation is intentionally later on `main`.
+- GitHub repository metadata still needs the prepared public wording: description `Security-first self-hosted MCP for controlled AI development and staging operations without a general-purpose remote shell.`; topics `mcp`, `model-context-protocol`, `self-hosted`, `ai-tools`, `developer-tools`, `devops`, `staging`, `security`, `python`, `automation`.
+- Runner Fabric remains a separate private/proprietary project and is not part of the Runner-MCP MIT release.
+- Remaining broader-launch gates: clean-host install verification from published `v0.1.0`, repository metadata, then optional ecosystem/registry submission and human-controlled community timing.
+
 ## 2026-09-24 — release-track reconciliation after Task 41 integration
 
 - Runner Fabric remains a separate private repository/project. Runner-MCP stays the small, auditable execution product intended for release and must not absorb Runner Fabric orchestration scope.

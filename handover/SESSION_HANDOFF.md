@@ -1,3 +1,12 @@
+## 2026-09-24 — v0.1.0 published; next session starts post-release
+
+- Runner-MCP `v0.1.0` is now a published GitHub pre-release from exact validated commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`.
+- PR #98 reconciled README, CHANGELOG and launch-readiness after publication and merged as `5647aa8839af90451189d2d943ce393edfacfe78`; exact-head run #514 and merged-main run #515 are fully green.
+- Do not retag or move `v0.1.0`. Post-release `main` being ahead of the release tag is expected.
+- First next actions: reconcile live GitHub; confirm no new blockers; verify a clean-host install from the published tag; set the prepared repository description/topics if still missing.
+- Keep Task 10 private-host self-update/recovery proof as an explicit alpha limitation until actually proven.
+- Runner Fabric stays separate and must not be pulled into Runner-MCP scope.
+
 ## 2026-09-24 — RELEASE-CANDIDATE RECONCILIATION CHECKPOINT
 
 - Runner Fabric is a separate private project/repository. Keep this repository focused on Runner-MCP release work only.

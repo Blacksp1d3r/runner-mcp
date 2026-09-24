@@ -742,7 +742,7 @@ Do not modify service/runtime code and do not add remote process-control capabil
 
 ### Task 27 — database restore/recovery boundary review — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task27-database-restore-review`. PR: pending.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task27-database-restore-review`. PR: #84. Exact head: `a90667259b7dea7d6dcddf1ead26fc982d4fb893`.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 

@@ -15,7 +15,7 @@ Completed:
 - `runner-mcp doctor`, status, guide and emergency-stop workflows are documented;
 - security baseline, threat model, operator-safety rules and test-execution trust boundary are public;
 - root [security reporting policy](../SECURITY.md) is present;
-- the public repository rule forbids real infrastructure details and the latest privacy scan is clean;
+- the public repository rule forbids real infrastructure details, public-example tests verify placeholder/no-secret examples, artifact smoke rejects private/runtime artifact shapes, and the release checklist requires a manual public-data diff review;
 - mailbox transport is documented as optional and bounded rather than a shell bypass;
 - [CHANGELOG](../CHANGELOG.md), [release checklist](RELEASE_CHECKLIST.md) and reusable [launch copy](LAUNCH_COPY.md) are prepared;
 - bug/feature issue forms warn against posting private installation data;

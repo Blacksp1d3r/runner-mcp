@@ -535,6 +535,11 @@ def test_guide_fails_closed_for_unsafe_non_loopback_http_without_echo(
     assert "unsafe-auth.example.invalid" not in captured.out
     assert str(project_root) not in captured.out
 
+    assert main(["--config-dir", str(paths.config_dir), "doctor"]) == 2
+    doctor = capsys.readouterr()
+    assert "unsafe-sensitive.example.invalid" not in doctor.out
+    assert "unsafe-auth.example.invalid" not in doctor.out
+
 
 def test_github_mailbox_cli_configure_uses_hidden_token(
     tmp_path: Path,

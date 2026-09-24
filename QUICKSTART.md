@@ -188,7 +188,15 @@ A custom profile is also possible, but it still uses fixed executables and liter
 
 Before Runner MCP applies a migration, it creates a PostgreSQL pre-migration backup and checks the emergency stop again. A failed migration does not trigger an automatic database restore.
 
-Database restore and PostgreSQL PITR/WAL orchestration are not implemented yet.
+Database restore execution and PostgreSQL PITR/WAL orchestration are not implemented yet.
+
+For an existing private backup, a local operator can perform a read-only archive preflight:
+
+```bash
+runner-mcp database restore-plan myproject BACKUP_ID
+```
+
+The preflight verifies strict backup identity/private-file properties and asks a fixed trusted `pg_restore --list` to parse the archive. It does not connect to the database, does not read the configured DSN, does not restore data and is not exposed through MCP or the GitHub mailbox. Production projects are reported as ineligible.
 
 ### Configure staging deployment
 

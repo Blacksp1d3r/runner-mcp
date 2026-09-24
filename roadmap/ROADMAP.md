@@ -523,7 +523,9 @@ Not implemented yet:
 
 - database restore execution remains deferred after Task 37: the current architecture does not prove a separately prepared empty recovery target, complete database-writer quiescence, application cutover, `pre_restore` retention semantics or semantic post-restore verification;
 - WAL archiving/PITR orchestration and verification;
-- automated retention pruning.
+- automatic/unattended retention pruning;
+- backup pruning remains deferred pending a separate crash-safe pair-deletion contract;
+- Task 43 is the bounded first mutation slice for one local/manual non-migration orphan release per confirmed plan after Task 40 integration.
 
 ## Phase 6 — staging release engine
 
@@ -572,7 +574,7 @@ Implemented core design:
 
 Still deferred:
 
-- automatic release pruning;
+- automatic release pruning remains deferred; Task 43 is limited to one local/manual non-migration orphan release outside the retained rollback chain;
 - arbitrary historical target selection remains deferred after the Task 35 boundary review; older history is reached only through fresh direct-previous one-step approvals with health revalidation;
 - production rollback;
 - database restore/recovery workflow.

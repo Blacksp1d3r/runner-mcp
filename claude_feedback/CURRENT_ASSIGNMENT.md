@@ -694,7 +694,7 @@ Do not modify delivery/runtime code in this review and do not add new execution 
 
 ### Task 25 — private connectivity/TLS onboarding contract review — CHAT REVIEW
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task25-connectivity-tls-review`. PR: #82. Exact head: `38b3143d53d49c58af896adfe96b943e34c2ee5a`.
+Status: `COMPLETE`. PR #82 merged as `f2c1d6a135133033ab1e0059f9a92cfec3021d88`; exact PR head `38b3143d53d49c58af896adfe96b943e34c2ee5a`; exact-head CI run 35948648167 fully green (Ruff, whitespace, 1211 pytest tests, built release artifact, clean demo). Review: runtime/network safety is already loopback-first; remaining gap is privacy-safe guided connectivity/documentation reconciliation without network mutation.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 
@@ -790,6 +790,34 @@ Acceptance:
 
 Required validation:
 focused security/regression tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 29 — privacy-safe guided connectivity reconciliation — CODE/DOC lane
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 25 is `COMPLETE` on main.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK25_CONNECTIVITY_TLS_ONBOARDING_REVIEW.md`.
+
+Goal:
+Close the demonstrated onboarding drift with a non-mutating connectivity guide while preserving Runner MCP's loopback-first network boundary.
+
+Acceptance:
+- reconcile `security/CONNECTIVITY.md`, README and Quickstart so current private-tunnel availability and the meaning of setup `public` mode are consistent;
+- explicitly state that public setup records HTTPS identity only and does not bind publicly, install TLS, edit DNS/firewalls or configure a reverse proxy/tunnel;
+- extend the existing `runner-mcp guide` with a generic connectivity category/next-step section derived from configured resource URL shape only;
+- guide output may report only bounded categories such as loopback or external HTTPS; it must not print configured hostname/resource URL/auth issuer/token/tunnel ID/private path;
+- private-tunnel guidance remains outbound-only where supported and points to canonical vendor documentation rather than embedding credentials or vendor-specific provisioning state;
+- reverse-proxy guidance keeps TLS outside Runner MCP and does not enable proxy-header trust or public bind;
+- `serve`, autostart, firewall, TLS, DNS, dependencies and network exposure remain unchanged;
+- tests inject sensitive public hostname/resource URL/auth/token/path literals and prove guide output cannot leak them.
+
+Required validation:
+focused guide/privacy tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
 
 
 ## Queue refill rule

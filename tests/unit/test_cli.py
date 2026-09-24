@@ -1773,3 +1773,55 @@ def test_doctor_fails_for_invalid_self_update_recovery_state(
     assert "self-update install recovery" in captured.out
     assert "FAIL" in captured.out
     assert "invalid or unsafe" in captured.out
+
+def test_retention_cli_renders_bounded_advisory_result(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_path = str(tmp_path / "private")
+    fake = {
+        "project": "demo",
+        "environment": "staging",
+        "advisory_only": True,
+        "deletion_authorized": False,
+        "releases": [
+            {
+                "release_id": "20260101T000000Z-aaaaaaaaaaaa-000001",
+                "created_at": "2026-01-01T00:00:00+00:00",
+                "categories": ["potentially_eligible"],
+                "potentially_eligible": True,
+            }
+        ],
+        "backups": [],
+    }
+
+    class FakePlanner:
+        def preview(self, project: str) -> dict:
+            assert project == "demo"
+            return fake
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_retention_preview_planner",
+        lambda _config_dir: FakePlanner(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            private_path,
+            "retention",
+            "preview",
+            "demo",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "Retention preview" in captured.out
+    assert "Advisory only: yes" in captured.out
+    assert "Deletion authorized: no" in captured.out
+    assert "potentially-eligible=yes" in captured.out
+    assert "No release, backup or metadata file was changed." in captured.out
+    assert private_path not in captured.out
+    assert captured.err == ""

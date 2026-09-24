@@ -1,3 +1,14 @@
+## 2026-09-24 — Task 31 local read-only restore preflight landed
+
+- Task 31 COMPLETE: PR #88 merged as `e54a0684bdc9da3a32d062e0e0e45261c1616020`.
+- Exact PR head `fc08b60c6feed85824b6097bf1479e7e41a29844` passed CI run 35966414093 fully green: Ruff, whitespace, 1267 pytest tests, built release artifact and clean demo.
+- Local CLI now supports `runner-mcp database restore-plan PROJECT BACKUP_ID` for a read-only PostgreSQL backup preflight.
+- The preflight validates strict backup identity/shape, private regular-file modes, size, symlink-free storage and fixed trusted `pg_restore --list` parseability without reading the configured DSN or connecting to a database.
+- The archive is opened once with no-follow semantics, streamed through SHA-256 privately, passed to `pg_restore` over stdin so the private dump path is not placed in argv, and revalidated/hash-checked after parse to detect content/permission races.
+- Production projects report ineligible. Emergency stop does not block the read-only preflight.
+- Database restore execution, pre-restore backup, restore approval authority, WAL/PITR, production recovery and MCP/bridge/mailbox restore exposure remain deferred.
+- Current bounded queue: Tasks 32–34. Task 10 remains externally BLOCKED.
+
 ## 2026-09-24 — Task 30 retention-pruning boundary review landed
 
 - Task 30 COMPLETE: PR #87 merged as `99d081cd242642bfa8346031a22079b7397869bc`.

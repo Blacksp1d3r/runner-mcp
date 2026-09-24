@@ -1091,7 +1091,7 @@ focused adapter/config-manager tests plus full Ruff/pytest/whitespace, built art
 
 ### Task 40 — retention pruning execute-boundary review — CHAT REVIEW
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task40-retention-pruning-review`. Dependency satisfied: Task 34 / PR #92 is merged on main.
+Status: `COMPLETE` on `chatgpt/task40-retention-pruning-review`. Review conclusion: a first local/manual one-release prune is bounded enough to specify only for freshly eligible non-migration orphan releases outside the entire retained rollback chain; backup deletion and automatic pruning remain deferred. Dependency satisfied: Task 34 / PR #92 is merged on main.
 
 Preferred executor: Claude Chat or ChatGPT review; no deletion/runtime code changes.
 
@@ -1169,6 +1169,38 @@ Deliverable:
 - propose one bounded CODE follow-up only if the review demonstrates a safe execution model.
 
 Do not infer migration completion from audit/deployment records, replay interrupted migrations, change migration commands, add arbitrary SQL, weaken approval or add production mutation.
+
+
+---
+
+### Task 43 — local one-release pruning plan/execute — CODE lane
+
+Status: `BLOCKED_ON_TASK40_INTEGRATION`. Dependency: Task 40 review must be merged/accepted first.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK40_RETENTION_PRUNING_EXECUTE_REVIEW.md`.
+
+Goal:
+Implement the first conservative local retention mutation for exactly one staging release per confirmed plan, without touching backups or creating a rollback-chain boundary.
+
+Acceptance:
+- add local-only `retention prune-plan PROJECT` selecting at most one deterministic oldest release that is freshly `potentially_eligible`;
+- add local-only execute command with a typed confirmation bound to a short-lived private single-use plan;
+- production cannot produce an executable plan;
+- emergency stop blocks execute but does not block read-only preview/plan inspection;
+- acquire the same per-project deployment lock used by deploy/rollback and recompute strict eligibility after lock acquisition;
+- current release, direct rollback target, every retained-reference ancestor, count/age protected release and every migration-boundary release remain non-deletable;
+- plan binding covers project, environment, candidate/current identity, candidate metadata digest and retention-policy fingerprint;
+- mutation starts with a durable private transaction record and same-filesystem atomic rename into a private 0700 quarantine under the release root;
+- recursive removal is allowed only through a symlink-safe fd-relative primitive and fails closed if the platform cannot prove that property;
+- interrupted quarantined transactions remain recoverable/manual-attention state rather than being silently treated as complete;
+- no backup file/metadata is touched;
+- no manual-backup policy change, unattended pruning, arbitrary target/path input, production mutation, MCP/mailbox/bridge action or generic approval expansion.
+
+Required validation:
+focused adversarial plan/staleness/locking/quarantine/interruption tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
 
 
 ## Queue refill rule

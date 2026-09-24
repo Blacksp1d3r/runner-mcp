@@ -824,7 +824,7 @@ focused guide/privacy tests plus full Ruff/pytest/whitespace, built artifact and
 
 ### Task 30 — automated retention pruning boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task30-retention-pruning-review`. PR: pending.
 
 Preferred executor: Claude Chat or ChatGPT review; no code changes.
 
@@ -896,6 +896,31 @@ Deliverable:
 - record which remaining actions require explicit user authorization.
 
 Do not create a tag/GitHub release, publish a package, change GitHub description/topics, submit to a registry/ecosystem, or publish external posts.
+
+
+---
+
+### Task 33 — optional graphical administration boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no UI/runtime code changes.
+
+Source:
+Phase 3.5/3.6 in `roadmap/ROADMAP.md`: optional graphical administration remains planned after privacy-safe guided connectivity.
+
+Goal:
+Determine whether an optional graphical administration surface can be added without weakening Runner MCP's local/private configuration, approval, emergency-stop and deny-by-default boundaries.
+
+Deliverable:
+- inventory which existing CLI/read-only summaries could safely be represented graphically without exposing secrets, paths, units, DSNs or arbitrary commands;
+- separate local-only administration from any remote/hosted control plane;
+- define authentication/session, CSRF/origin, bind and transport constraints for any future local UI;
+- identify actions that must remain local typed-confirmation/CLI-only versus potentially safe read-only UI actions;
+- assess whether the feature should remain deferred for alpha;
+- propose a bounded implementation slice only if the review demonstrates a clear safe need.
+
+Do not add a web UI, hosted relay, browser auth flow, public bind, new mutation authority or external dependency.
 
 
 ## Queue refill rule

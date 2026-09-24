@@ -1007,6 +1007,33 @@ full Ruff/pytest/whitespace, built release artifact and clean five-minute demo o
 Do not create a tag/GitHub release, publish a package, change GitHub description/topics, submit to a registry/ecosystem, or publish external posts.
 
 
+---
+
+### Task 37 — local staging database restore execution boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`. Dependencies satisfied: Tasks 27 and 31 are `COMPLETE`.
+
+Preferred executor: Claude Chat or ChatGPT review; no restore/runtime code changes.
+
+Source:
+`claude_feedback/TASK27_DATABASE_RESTORE_RECOVERY_REVIEW.md`, Task 31 local restore preflight, and Phase 5 in `roadmap/ROADMAP.md` where database restore execution remains deferred.
+
+Goal:
+Use the now-implemented read-only restore preflight as evidence to decide whether a first local-only staging logical-restore execution slice can be specified without weakening emergency-stop, database-operation locking, backup integrity, approval separation or production-read-only guarantees.
+
+Deliverable:
+- resolve the destructive target semantics that Task 27 intentionally left open: restore into an existing database versus a separately prepared empty target, including ownership/ACL/extension implications;
+- define required quiescence and database-operation locking before restore;
+- define the mandatory pre-restore recovery-point semantics and retention identity (for example a distinct `pre_restore` backup kind) without implementing it;
+- define exact emergency-stop behavior: local recovery may require stop ACTIVE while unrelated mutations remain blocked, and restore completion must not clear it;
+- define final pre-execution archive/config revalidation and stable-file/TOCTOU requirements building on Task 31;
+- define fixed `pg_restore` argument, timeout, output and failure semantics with no automatic replay/cascade;
+- define bounded post-restore verification evidence without exposing data, schema/object listings, DSN or private paths;
+- decide whether a bounded CODE follow-up is justified and, if so, specify it explicitly.
+
+Do not execute a restore, create/drop databases, add restore to MCP/bridge/mailbox, add production restore, alter approval authority, or implement WAL/PITR.
+
+
 ## Queue refill rule
 
 When fewer than three prerequisite-safe `UNCLAIMED` tasks remain, the integrator should review the roadmap, current findings and open PRs and add new bounded tasks before the queue drains completely. New work must be dependency-safe and must not be invented merely to keep agents busy.

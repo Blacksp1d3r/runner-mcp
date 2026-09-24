@@ -1034,6 +1034,31 @@ Deliverable:
 Do not execute a restore, create/drop databases, add restore to MCP/bridge/mailbox, add production restore, alter approval authority, or implement WAL/PITR.
 
 
+---
+
+### Task 38 — multi-project adapter boundary completion review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Preferred executor: Claude Chat or ChatGPT review; no adapter/runtime code changes unless a concrete core leak is demonstrated first.
+
+Source:
+Phase 8 in `roadmap/ROADMAP.md`: project-specific behavior should live behind configuration/adapters so new projects normally do not require core changes.
+
+Goal:
+Determine whether the current generic/Python adapter architecture and configuration surfaces satisfy the Phase 8 boundary for the first alpha, or whether project-specific behavior has leaked into core execution paths.
+
+Deliverable:
+- inventory adapter responsibilities versus project-generic core responsibilities;
+- inspect setup/configuration, test, migration, deployment, service and source-control paths for project/framework-specific branching;
+- distinguish legitimate platform support such as PostgreSQL/systemd/Git from project-specific behavior that belongs in an adapter;
+- verify adapter capability summaries do not expose paths, command arrays or private configuration;
+- assess whether more framework adapters are justified by concrete reusable needs;
+- decide whether Phase 8 is alpha-complete, intentionally minimal, or needs one bounded follow-up.
+
+Do not add speculative framework adapters, arbitrary command execution, untrusted project plugin loading, new dependencies or project-specific special cases merely to satisfy the review.
+
+
 ## Queue refill rule
 
 When fewer than three prerequisite-safe `UNCLAIMED` tasks remain, the integrator should review the roadmap, current findings and open PRs and add new bounded tasks before the queue drains completely. New work must be dependency-safe and must not be invented merely to keep agents busy.

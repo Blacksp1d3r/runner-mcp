@@ -19,7 +19,6 @@ from runner_mcp.retention_preview import (
     RetentionPreviewPlanner,
 )
 
-
 NOW = datetime(2026, 9, 24, 8, 0, tzinfo=UTC)
 
 

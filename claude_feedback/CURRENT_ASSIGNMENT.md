@@ -1119,7 +1119,7 @@ Do not delete files, rewrite metadata, change retention settings, add unattended
 
 ### Task 41 — reusable bounded text-redaction primitive — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 26 is `COMPLETE`.
+Status: `COMPLETE` on `chatgpt/task41-bounded-text-redaction` / PR #97. Shared deterministic bounded redaction now covers known secret values, private paths and existing generic token patterns; TestRunner delegates to it without adding any log/journal authority. Dependency satisfied: Task 26 is `COMPLETE`.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1175,7 +1175,7 @@ Do not infer migration completion from audit/deployment records, replay interrup
 
 ### Task 43 — local one-release pruning plan/execute — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 40 merged via PR #95.
+Status: `BLOCKED_ON_TASK46`. Task 40 is merged, but implementation preparation found that DeploymentManager's existing per-project lock is process-local (`threading.Lock`) while Task 43 is local CLI and may race the long-lived MCP process. A cross-process mutation-lock boundary must be resolved first.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1207,7 +1207,7 @@ focused adversarial plan/staleness/locking/quarantine/interruption tests plus fu
 
 ### Task 44 — durable migration-job substrate + completion source — CODE lane
 
-Status: `BLOCKED_ON_TASK42_INTEGRATION`. Dependency: Task 42 review must be merged/accepted first.
+Status: `UNCLAIMED`. Dependency satisfied: Task 42 merged via PR #96.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1260,6 +1260,62 @@ Deliverable:
 - choose a contract only if it can remain fail-closed and backward-compatible enough for the alpha boundary.
 
 Do not change MCP/mailbox actions, approval authority or migration execution during this review.
+
+
+---
+
+### Task 46 — cross-process release-mutation lock boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`. Dependency context: Task 40 is complete; this review is the newly demonstrated prerequisite for Task 43.
+
+Preferred executor: Claude Chat or ChatGPT review; no deployment/pruning mutation code changes.
+
+Source:
+Task 43 implementation preparation plus `DeploymentManager._lock_for()`, which currently uses process-local `threading.Lock` instances.
+
+Goal:
+Define a cross-process project release-mutation lock contract so local CLI pruning cannot race deploy/rollback activity in the long-lived Runner MCP process.
+
+Deliverable:
+- inventory every release-root mutation path that must share the lock, including deploy, rollback and future prune/quarantine recovery;
+- decide the private lock location and ownership model without exposing paths publicly;
+- define non-blocking or bounded-wait behavior and lock ordering relative to database-operation locks;
+- define safe file creation/opening, symlink/permission/ownership checks and process-crash release semantics;
+- define interaction with existing in-process thread locks and background DeploymentJobRunner workers;
+- determine whether a reusable `fcntl.flock`-based primitive is sufficient on supported Linux hosts;
+- specify adversarial multi-process regression tests;
+- queue one bounded CODE follow-up if the review proves a safe contract.
+
+Do not implement pruning, broaden remote authority or silently replace unrelated locks during this review.
+
+
+---
+
+### Task 47 — local bounded service-journal reader — CODE lane
+
+Status: `BLOCKED_ON_TASK41_INTEGRATION`. Dependency: Task 41 must first be merged/accepted.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK26_SERVICE_JOURNAL_REVIEW.md` plus Task 41 shared bounded redaction.
+
+Goal:
+Implement the first local/private service-journal reader with explicit per-service disclosure opt-in, without adding MCP/mailbox log authority.
+
+Acceptance:
+- add private service configuration `allow_log_read: false` by default and expose only a safe boolean capability in service summaries;
+- fixed trusted no-symlink executable discovery for `journalctl`;
+- caller selects only project, public service alias and bounded line count (1–100);
+- fixed argv equivalent to `journalctl --user --unit <private-unit> --no-pager --output=cat --lines=<N>`, `shell=False`, fixed environment and <=10 second timeout;
+- capture at most 32 KiB raw stdout, redact through Task 41's shared primitive with known runtime secrets/private paths, and return at most bounded safe content;
+- never return unit name, hostname metadata, journal cursor, health URL, command argv/path, raw stderr or exception text;
+- read remains available during emergency stop;
+- log-read disabled/unknown alias fails before subprocess execution;
+- local CLI only in this slice; no bridge/MCP/mailbox action.
+
+Required validation:
+focused adversarial service-log privacy/argv/bounds tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
 
 
 ## Queue refill rule

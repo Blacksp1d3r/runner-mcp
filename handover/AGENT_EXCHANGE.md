@@ -1,3 +1,23 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 24 COMPLETE / TASK 28 QUEUED
+
+Scope:
+Asynchronous completion-delivery expansion review.
+
+Message:
+Task 24 is complete. Deployment and rollback share a durable persisted asynchronous job model and can feed completion delivery through one strict read-only scanner. Migration currently has no dedicated persisted job identity/state substrate, so migration completion remains blocked rather than being inferred from audit/deployment data. Task 28 is the bounded CODE follow-up for deployment + rollback only.
+
+Evidence:
+- PR #81 merged as `d9f7d40f952ab39478d4a0286d317f160d6b46ce`;
+- exact PR head `22d5e9a7c7e5ab854b81d84b7b9997202837caf4`;
+- CI run 35915217076 fully green: Ruff, whitespace, 1211 tests, built artifact and clean demo;
+- review document: `claude_feedback/TASK24_COMPLETION_DELIVERY_EXPANSION_REVIEW.md`.
+
+Requested next action:
+Do not redo Task 24. Reconcile ownership before Tasks 25–28. Task 28 must not add migration completion or execution authority.
+
+Response:
+Pending.
+
 ## 2026-09-23 — ChatGPT -> ALL — TASK 23 COMPLETE
 
 Scope:

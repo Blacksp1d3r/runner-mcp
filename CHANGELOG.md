@@ -4,9 +4,13 @@ All notable user-visible changes to Runner MCP will be documented here.
 
 Runner MCP is under active development. New changes remain under **Unreleased** until an exact validated commit is explicitly tagged and released.
 
-## Unreleased — 0.1.0 alpha candidate
+## Unreleased
 
-First public alpha candidate. Version metadata is currently `0.1.0`, but no `v0.1.0` tag or GitHub release is implied by this changelog section.
+No user-visible changes have been recorded after `v0.1.0` yet.
+
+## 0.1.0 — 2026-09-24
+
+First public alpha release, published as GitHub pre-release `v0.1.0`.
 
 ### Added
 

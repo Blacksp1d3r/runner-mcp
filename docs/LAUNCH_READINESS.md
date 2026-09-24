@@ -22,11 +22,12 @@ Completed:
 - pull requests get a security/public-repository hygiene checklist;
 - public CI installs the package and runs compile, Ruff, pytest and whitespace validation;
 - no application telemetry is added for marketing.
+- `v0.1.0` is published as the first GitHub pre-release from exact green commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`;
+- the published release notes preserve the alpha limitations and exact validation provenance.
 
 Still required before a broader launch:
 
-- create the first tagged alpha release from an exact green commit;
-- verify the release installation path and release notes;
+- verify installation from the published `v0.1.0` tag on a clean host;
 - set the GitHub repository description/topics to the prepared wording;
 - prepare an MCP ecosystem/registry submission only after its current packaging requirements are verified;
 - decide the timing of external community posts.

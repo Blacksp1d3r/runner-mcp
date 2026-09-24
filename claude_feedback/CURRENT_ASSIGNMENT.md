@@ -1119,7 +1119,7 @@ Do not delete files, rewrite metadata, change retention settings, add unattended
 
 ### Task 41 — reusable bounded text-redaction primitive — CODE lane
 
-Status: `COMPLETE` on `chatgpt/task41-bounded-text-redaction` / PR #97. Shared deterministic bounded redaction now covers known secret values, private paths and existing generic token patterns; TestRunner delegates to it without adding any log/journal authority. Dependency satisfied: Task 26 is `COMPLETE`.
+Status: `COMPLETE`. PR #97 merged as `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`; exact PR head `91e0c1b1e737ad14a43b31750cfdfbf1bf582f24`; exact-head CI run `36037258558` fully green. Shared deterministic bounded redaction covers known secret values, private paths and existing generic token patterns; TestRunner delegates to it without adding any log/journal authority. Dependency satisfied: Task 26 is `COMPLETE`.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1293,7 +1293,7 @@ Do not implement pruning, broaden remote authority or silently replace unrelated
 
 ### Task 47 — local bounded service-journal reader — CODE lane
 
-Status: `BLOCKED_ON_TASK41_INTEGRATION`. Dependency: Task 41 must first be merged/accepted.
+Status: `UNCLAIMED`. Dependency satisfied: Task 41 merged via PR #97 / `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`.
 
 Preferred executor: ChatGPT or Claude Code.
 

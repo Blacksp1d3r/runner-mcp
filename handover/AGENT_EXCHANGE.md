@@ -1,3 +1,17 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 41 MERGED / RELEASE CANDIDATE GATE
+
+Scope:
+Runner-MCP release-track reconciliation after Task 41 integration.
+
+Message:
+PR #97 merged as `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`. Exact head `91e0c1b1e737ad14a43b31750cfdfbf1bf582f24` passed run `36037258558` fully green. Live reconciliation now shows no open Runner-MCP PRs or issues. Runner Fabric remains a separate project. Task 47 is prerequisite-safe, Task 43 remains blocked on Task 46, and Task 44 is prerequisite-safe.
+
+Requested next action:
+Treat the exact latest main after this coordination update as the only alpha candidate and require its push CI to finish green. Preserve the unproven private-host self-update/recovery limitation. Do not create a tag/release or perform external publication without an explicit user release decision.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — RUNNER FABRIC SPLIT / RUNNER-MCP RELEASE TRACK
 
 Scope:

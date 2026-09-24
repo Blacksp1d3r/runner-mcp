@@ -1,13 +1,13 @@
-## 2026-09-24 — NEW CHAT RESUME CHECKPOINT: finish Runner-MCP toward release
+## 2026-09-24 — RELEASE-CANDIDATE RECONCILIATION CHECKPOINT
 
-- Runner Fabric is now a separate private project/repository. This Runner-MCP project should stay focused on completing and releasing Runner-MCP itself.
-- Live main: `82ecef725d828b69e328f8f474553e01ef8548cb`.
-- Only open PR at reconciliation: #97, `feat: add reusable bounded text redaction`.
-- PR #97 exact head: `899b218f223a4f479bd6fd5ae8fd1624a3edbe88`.
-- Exact-head workflow run `35996927397` is terminal SUCCESS. Do not create a duplicate rerun.
-- First action in the new chat: read the canonical bootstrap files, reconcile live GitHub and `claude_feedback/CURRENT_ASSIGNMENT.md`, independently review PR #97 exact head, and merge only if the demonstrated boundary is still correct.
-- After integration, reconcile remaining release blockers versus the roadmap/release checklist and continue toward the first tagged alpha. Do not overclaim private-host self-update/recovery proof; either prove it safely or preserve the documented limitation.
-- No release/tag/publication was performed here.
+- Runner Fabric is a separate private project/repository. Keep this repository focused on Runner-MCP release work only.
+- PR #97 is merged as `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`; exact PR head `91e0c1b1e737ad14a43b31750cfdfbf1bf582f24` passed run `36037258558` fully green.
+- Live reconciliation after the merge shows no open Runner-MCP PRs and no open Runner-MCP issues.
+- Task 41 is integrated. Task 47 is now prerequisite-safe. Task 43 remains blocked on Task 46 cross-process release-mutation locking. Task 44 is prerequisite-safe; Task 45 remains blocked on Task 44.
+- None of Tasks 43–47 is automatically a blocker for the first tagged alpha; the public release gate remains exact-green candidate + accurate documented limitations.
+- Task 10 private-host self-update/recovery proof is still unproven. Do not claim it in release notes; preserve the limitation unless it is safely proven later.
+- After this coordination commit, require exact-main green CI before any tag/release decision.
+- No tag, GitHub release, package publication, repository-setting mutation, registry submission or external announcement has been performed.
 
 # Runner MCP — Session Handoff
 

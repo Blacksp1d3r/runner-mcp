@@ -577,7 +577,15 @@ Still deferred:
 
 ## Phase 8 — multi-project adapters
 
-Move project-specific behavior behind a common adapter interface. New projects should normally require configuration/adapters rather than core changes.
+Current state after Task 38 review:
+
+- built-in `generic` and `python` adapters are deny-by-default and expose only bounded capability metadata;
+- execution layers are project-generic after configuration is resolved;
+- no dynamic adapter/plugin loading from project configuration is allowed;
+- one structural seam remains: Python/Alembic preset materialization is still implemented in generic `config_manager.py`;
+- Task 39 is the bounded refactor to move fixed non-custom preset recipes behind the adapter boundary without adding speculative adapters or new execution authority.
+
+New projects should normally require configuration/adapters rather than core changes. Phase 8 is functionally usable for alpha, but structural completion waits on the bounded Task 39 refactor.
 
 ## Phase 9 — approval and risk gates
 

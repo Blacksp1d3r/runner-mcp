@@ -1038,7 +1038,7 @@ Do not execute a restore, create/drop databases, add restore to MCP/bridge/mailb
 
 ### Task 38 — multi-project adapter boundary completion review — CHAT REVIEW
 
-Status: `IN_PROGRESS` — claimed by ChatGPT for review only; no adapter/runtime changes.
+Status: `COMPLETE` on branch `chatgpt/task33-graphical-admin-review`. Review found one concrete Phase 8 seam: Python/Alembic preset materialization still lives in core configuration code. One bounded adapter-contract refactor is queued; no speculative adapters are authorized.
 
 Preferred executor: Claude Chat or ChatGPT review; no adapter/runtime code changes unless a concrete core leak is demonstrated first.
 
@@ -1057,6 +1057,34 @@ Deliverable:
 - decide whether Phase 8 is alpha-complete, intentionally minimal, or needs one bounded follow-up.
 
 Do not add speculative framework adapters, arbitrary command execution, untrusted project plugin loading, new dependencies or project-specific special cases merely to satisfy the review.
+
+
+---
+
+### Task 39 — move built-in preset materialization behind adapter boundary — CODE lane
+
+Status: `UNCLAIMED`. Dependency: Task 38 review must be merged/accepted first.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK38_ADAPTER_BOUNDARY_COMPLETION_REVIEW.md`.
+
+Goal:
+Close the concrete Phase 8 seam where core `config_manager.py` still contains Python/Alembic-specific preset materialization.
+
+Acceptance:
+- extend the built-in adapter contract with typed, fixed recipes for supported non-custom test and migration presets;
+- move Python-specific executable discovery and fixed `pytest`, `ruff` and `alembic` recipe construction behind the Python adapter boundary;
+- keep `custom` profiles as the explicit local-operator path with current validation and no arbitrary shell string;
+- adding a future reviewed built-in adapter must not require another framework-specific preset branch in generic core configuration;
+- preserve current symlink/executable validation, argv semantics, timeout/output behavior and public capability-summary privacy;
+- unknown adapters/presets fail closed;
+- no dynamic imports, entry-point loading, project-code plugin execution, new framework dependency or speculative adapter is added;
+- update direct adapter/config-manager regression tests and extension documentation only where behavior demonstrably changes.
+
+Required validation:
+focused adapter/config-manager tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
 
 
 ## Queue refill rule

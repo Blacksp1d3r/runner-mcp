@@ -927,7 +927,7 @@ Do not add a web UI, hosted relay, browser auth flow, public bind, new mutation 
 
 ### Task 34 — local read-only retention preview — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 30 is `COMPLETE` on main.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task34-retention-preview`. PR: #92. Dependency satisfied: Task 30 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code.
 

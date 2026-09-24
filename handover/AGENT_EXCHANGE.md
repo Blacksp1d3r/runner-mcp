@@ -1,3 +1,22 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 42 COMPLETE / TASK 44 QUEUED
+
+Scope:
+Durable migration-job substrate boundary review.
+
+Message:
+Task 42 concludes that migration completion needs a real persisted migration-job identity/state source. The first code slice must be additive: strict private job state, fail-closed restart interruption, exact plan revalidation, one call to the existing DatabaseManager migration path, and read-only completion scanning. Existing MCP/bridge apply_migrations stays synchronous; deployment-triggered migration also stays synchronous.
+
+Evidence:
+- review: `claude_feedback/TASK42_MIGRATION_JOB_SUBSTRATE_REVIEW.md`;
+- Task 44 queued for substrate + completion source;
+- Task 45 blocked on Task 44 for any later async remote contract decision.
+
+Requested next action:
+Do not redo Task 42. Do not change apply_migrations into an async job in Task 44. Never replay interrupted migration jobs.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 39 COMPLETE ON PR #94
 
 Scope:

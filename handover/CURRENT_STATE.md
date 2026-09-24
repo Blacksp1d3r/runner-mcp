@@ -1,3 +1,13 @@
+## 2026-09-24 — Task 42 durable migration-job substrate review complete
+
+- Task 42 review is COMPLETE on PR #96 pending integration.
+- A dedicated persisted migration-job substrate is justified, but it must be additive first: the current MCP/bridge `apply_migrations` path remains synchronous until the substrate is independently proven.
+- Future migration jobs must durably persist queued state before worker start, revalidate the exact approval-bound migration plan, call existing `DatabaseManager.apply_migrations()` at most once, and never replay queued/running work after restart.
+- Restarted queued/running migration jobs become terminal `interrupted`; ambiguous success is reported for attention rather than guessed or retried.
+- Deployment-triggered migrations remain synchronous inside deployment.
+- Task 44 is queued for the private job substrate plus read-only completion scanner. Task 45 is separately blocked on Task 44 for any later remote asynchronous integration decision.
+- Task 43 is prerequisite-safe after Task 40 / PR #95; Task 39 is already integrated on main via PR #94.
+
 ## 2026-09-24 — Task 39 adapter preset boundary refactor complete on PR #94
 
 - Task 39 implementation is COMPLETE on PR #94 pending final exact-head CI/integration.

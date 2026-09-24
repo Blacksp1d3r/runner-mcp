@@ -82,4 +82,3 @@ The following are prohibited:
 AI tools must not change Git author/committer configuration to an AI/provider identity. In owner-operated environments, commits prepared by an AI must be committed under the repository owner's configured maintainer identity; other human/service identities require explicit repository-owner approval.
 
 Before every push, remove prohibited attribution metadata. Do not bypass, weaken, skip, rename, or disable the repository commit-attribution policy check. If an AI tool attempts to add prohibited attribution automatically, strip it before committing or pushing.
-

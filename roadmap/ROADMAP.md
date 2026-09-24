@@ -515,6 +515,7 @@ Implemented core design:
 - pre-migration backup required before migration apply;
 - safety guard rechecked after backup and before migration;
 - failed migration keeps the recovery point and never auto-restores;
+- migration execution remains synchronous while Task 42 defines an additive durable job/completion substrate; Task 44 is the bounded implementation and must not change existing MCP/bridge apply semantics;
 - local read-only restore preflight validates one private PostgreSQL archive without database connection or restore authority;
 - local CLI retention preview strictly validates private release/backup state and reports protected or potentially eligible records without deleting or rewriting data;
 - CLI database and migration configuration without manual YAML editing.

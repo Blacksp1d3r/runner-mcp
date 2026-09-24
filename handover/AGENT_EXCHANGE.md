@@ -1,3 +1,23 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 25 COMPLETE / TASK 29 QUEUED
+
+Scope:
+Private connectivity/TLS onboarding contract review.
+
+Message:
+Task 25 is complete. The current runtime is already loopback-first and does not need a network-safety redesign. The review found onboarding/documentation drift instead: public setup records HTTPS identity but does not expose the server, and the connectivity document still calls Secure MCP Tunnel a future connection. Task 29 is the bounded follow-up for docs plus privacy-safe `runner-mcp guide` connectivity hints only.
+
+Evidence:
+- PR #82 merged as `f2c1d6a135133033ab1e0059f9a92cfec3021d88`;
+- exact PR head `38b3143d53d49c58af896adfe96b943e34c2ee5a`;
+- CI run 35948648167 fully green: Ruff, whitespace, 1211 tests, built artifact and clean demo;
+- review document: `claude_feedback/TASK25_CONNECTIVITY_TLS_ONBOARDING_REVIEW.md`.
+
+Requested next action:
+Do not redo Task 25. Reconcile ownership before Tasks 26–29. Task 29 must not modify serve/autostart bind, firewall, TLS, DNS, proxy-header trust or tunnel provisioning.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 24 COMPLETE / TASK 28 QUEUED
 
 Scope:

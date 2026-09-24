@@ -304,6 +304,90 @@ def test_restore_preflight_is_read_only_private_and_uses_fixed_pg_restore(
     assert "sha256" not in rendered.lower()
 
 
+def test_restore_preflight_rejects_unknown_or_unconfigured_project(
+    tmp_path: Path,
+) -> None:
+    backup_root = tmp_path / "backups"
+    backup_root.mkdir(mode=0o700)
+    registry = make_registry(tmp_path / "project")
+    registry.projects["plain"] = ProjectConfig(
+        display_name="Plain",
+        repository="example/plain",
+        root=tmp_path / "plain",
+    )
+    (tmp_path / "plain").mkdir()
+    manager = DatabaseManager(
+        registry=registry,
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+    backup_id = "20260924T050000Z-" + ("a" * 12)
+
+    with pytest.raises(DatabaseManagerError, match="Unknown or disabled"):
+        manager.restore_preflight("missing", backup_id)
+    with pytest.raises(DatabaseManagerError, match="not configured"):
+        manager.restore_preflight("plain", backup_id)
+
+
+def test_restore_preflight_requires_configured_backup_storage(tmp_path: Path) -> None:
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=None,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="not configured"):
+        manager.restore_preflight(
+            "demo",
+            "20260924T050000Z-" + ("a" * 12),
+        )
+
+
+def test_restore_preflight_rejects_missing_dump(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, _metadata = write_restore_backup(backup_root)
+    dump.unlink()
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="unavailable"):
+        manager.restore_preflight("demo", backup_id)
+
+
+def test_restore_preflight_rejects_empty_dump(tmp_path: Path) -> None:
+    backup_root = tmp_path / "backups"
+    backup_id, dump, metadata = write_restore_backup(backup_root)
+    dump.write_bytes(b"")
+    dump.chmod(0o600)
+    payload = json.loads(metadata.read_text(encoding="utf-8"))
+    payload["size_bytes"] = 1
+    metadata.write_text(json.dumps(payload), encoding="utf-8")
+    metadata.chmod(0o600)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=make_pg_restore(tmp_path),
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError, match="size"):
+        manager.restore_preflight("demo", backup_id)
+
+
 def test_restore_preflight_rejects_invalid_id_before_backup_traversal(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -534,6 +618,43 @@ def test_readonly_manager_refuses_broad_storage_without_chmod(tmp_path: Path) ->
         )
 
     assert stat.S_IMODE(backup_root.stat().st_mode) == 0o750
+
+
+def test_restore_preflight_rejects_unparseable_archive_without_output_leak(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backup_root = tmp_path / "private-backups"
+    backup_id, _dump, _metadata = write_restore_backup(backup_root)
+    pg_restore = make_pg_restore(tmp_path)
+
+    def invalid_archive(arguments, **kwargs):
+        assert kwargs["stdout"] is __import__("subprocess").DEVNULL
+        assert kwargs["stderr"] is __import__("subprocess").DEVNULL
+        return __import__("subprocess").CompletedProcess(
+            arguments,
+            2,
+            stdout="sensitive archive listing",
+            stderr="private path /secret/archive",
+        )
+
+    monkeypatch.setattr("runner_mcp.database_manager.subprocess.run", invalid_archive)
+    manager = DatabaseManager(
+        registry=make_registry(tmp_path / "project"),
+        safety=make_guard(tmp_path),
+        backup_root=backup_root,
+        secret_values=ExplodingSecrets(),
+        pg_restore_path=pg_restore,
+        prepare_storage=False,
+    )
+
+    with pytest.raises(DatabaseManagerError) as captured:
+        manager.restore_preflight("demo", backup_id)
+
+    assert str(captured.value) == "Database restore preflight archive is invalid"
+    assert "sensitive" not in str(captured.value)
+    assert "secret" not in str(captured.value)
+    assert str(backup_root) not in str(captured.value)
 
 
 def test_restore_preflight_failure_is_bounded_and_hides_private_values(

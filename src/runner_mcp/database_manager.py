@@ -116,9 +116,14 @@ class DatabaseManager:
             if prepare_storage:
                 backup_root.mkdir(parents=True, exist_ok=True)
                 os.chmod(backup_root, 0o700)
-            elif not backup_root.exists() or not backup_root.is_dir():
-                raise DatabaseManagerError("Database backup storage is unavailable")
-            self.backup_root = backup_root.resolve(strict=True)
+                self.backup_root = backup_root.resolve(strict=True)
+            else:
+                if not backup_root.exists() or not backup_root.is_dir():
+                    raise DatabaseManagerError("Database backup storage is unavailable")
+                self.backup_root = _path_without_symlinks(
+                    backup_root,
+                    label="Database backup root",
+                )
             if stat.S_IMODE(self.backup_root.stat().st_mode) != 0o700:
                 raise DatabaseManagerError("Database backup root must use mode 0700")
 

@@ -878,7 +878,7 @@ focused adversarial tests for identity/symlink/permissions/size/pg_restore/outpu
 
 ### Task 32 — alpha launch-readiness gap audit — CHAT REVIEW
 
-Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task32-alpha-readiness-audit`. PR: #89. Exact head: `99c72037eff4ed54cf7e92f7a08b278b48af4e45`.
+Status: `COMPLETE`. PR #89 merged as `e629515f9c7e7a5d44506dfb82a48343870f94da`; exact PR head `99c72037eff4ed54cf7e92f7a08b278b48af4e45`; exact-head CI run 35967246877 fully green (Ruff, whitespace, 1267 pytest tests, built release artifact, clean demo). Audit conclusion: code/package validation is alpha-candidate ready, but six bounded documentation drift items must be reconciled before any tag.
 
 Preferred executor: Claude Chat or ChatGPT review; no release/tag/publication actions.
 
@@ -982,7 +982,7 @@ Do not add arbitrary target selection, multi-step automatic rollback, database r
 
 ### Task 36 — alpha release documentation reconciliation — DOC lane
 
-Status: `UNCLAIMED`. Dependency: Task 32 review must be `COMPLETE` before implementation.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task36-alpha-docs-reconciliation`. PR: pending. Dependency satisfied: Task 32 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code; documentation changes only.
 

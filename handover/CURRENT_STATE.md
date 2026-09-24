@@ -1,3 +1,15 @@
+## 2026-09-24 — Task 28 deployment/rollback completion delivery landed
+
+- Task 28 COMPLETE: PR #85 merged as `131e168e02b7d5781441bbc8256e65de434e6166`.
+- Exact PR head `87f1d0c8295b059b4504e2971c5ef89ed9dc8422` passed CI run 35951310986 fully green: Ruff, whitespace, 1235 pytest tests, built release artifact and clean demo.
+- Completion delivery now scans configured deployment/rollback job metadata read-only and never instantiates `DeploymentJobRunner`.
+- Strict validation requires exact lowercase 32-hex job identity, explicit deploy/rollback operation, safe project, known state, private regular metadata and timezone-aware terminal timestamp; malformed/duplicate/non-finite/oversized/unsafe metadata fails closed.
+- Deploy and rollback events use source-scoped deterministic IDs and the existing bootstrap cutoff, local delivery ledger and remote marker idempotency.
+- Notification bodies omit `Test profile: None` for non-test events and expose only validated project, allow-listed operation, state and event ID. Deployment result/error/commit/release/path metadata is not copied.
+- Migration completion remains blocked pending a separately reviewed durable migration-job substrate.
+- Current bounded queue: Tasks 29–31. Task 10 remains externally BLOCKED.
+- No tag, release, publication, deployment, rollback, migration or external mutation was performed by this task.
+
 ## 2026-09-24 — Task 27 database restore/recovery review landed
 
 - Task 27 COMPLETE: PR #84 merged as `f1e92bb2997ad8b9d26e978892319289e1b7e4f1`.

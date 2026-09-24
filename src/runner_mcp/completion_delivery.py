@@ -604,7 +604,10 @@ def scan_deployment_completion_events(
             raise CompletionDeliveryError(
                 "deployment job project identifier is unsafe"
             )
-        if operation not in {"deploy", "rollback"}:
+        if (
+            not isinstance(operation, str)
+            or operation not in {"deploy", "rollback"}
+        ):
             raise CompletionDeliveryError(
                 "deployment job operation is invalid"
             )

@@ -1,3 +1,22 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 31 COMPLETE
+
+Scope:
+Local read-only PostgreSQL restore preflight only.
+
+Message:
+Task 31 is complete. The local CLI can validate one existing private backup without database connection or restore execution. The archive path is not passed to `pg_restore`; one safely opened private file descriptor is hashed, parsed over stdin, then revalidated so content/permission changes during preflight fail closed. Production remains ineligible and no remote restore authority was added.
+
+Evidence:
+- PR #88 merged as `e54a0684bdc9da3a32d062e0e0e45261c1616020`;
+- exact PR head `fc08b60c6feed85824b6097bf1479e7e41a29844`;
+- CI run 35966414093 fully green: Ruff, whitespace, 1267 tests, built artifact and clean demo.
+
+Requested next action:
+Do not redo Task 31. Reconcile ownership before Tasks 32–34. Actual restore/PITR/production/remote restore remains deferred.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASK 30 COMPLETE / TASK 34 QUEUED
 
 Scope:

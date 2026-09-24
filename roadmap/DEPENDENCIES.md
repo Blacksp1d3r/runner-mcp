@@ -6,18 +6,19 @@ Last reconciled: 2026-09-24. GitHub current state wins.
 1. Core safety/protocol invariants remain the base for every later slice.
 2. Task 10 private-host live self-update/recovery proof remains externally blocked; it does not block independent public hardening work.
 3. Tasks 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36 and 38 are complete on main; do not duplicate them.
-4. Task 34 retention preview is COMPLETE on main via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 37 restore-execution review is COMPLETE on PR #93 pending integration. Task 39 adapter-contract refactor is active on PR #94.
+4. Task 34 retention preview is COMPLETE on main via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 37 restore-execution review is COMPLETE on main via PR #93 / merge `81720ce24d6e309c72d6a06155c4e70d3b868dbf`. Task 39 adapter-contract refactor is active on PR #94. Task 40 pruning execute-boundary review is complete on its review branch pending integration.
 5. Task 28 depended on Task 24 and is complete via merge `131e168e02b7d5781441bbc8256e65de434e6166`. Migration completion remains blocked on a separate persisted migration-job substrate.
 6. Task 29 depended on Task 25 and is complete via merge `b0f54cb14d73fba3b7c5b8655b5b051af779fd0a`.
 7. Task 31 depended on Task 27 and is complete via merge `e54a0684bdc9da3a32d062e0e0e45261c1616020`. Actual restore/PITR and remote restore authority remain deferred.
-8. Task 34 depends on Task 30 and is complete via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 40 is the follow-up execute-boundary review; actual pruning/deletion remains deferred.
+8. Task 34 depends on Task 30 and is complete via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 40 resolves the first deletion boundary; Task 43 depends on Task 40 integration and is limited to one local/manual non-migration orphan release. Backup pruning and automatic pruning remain deferred.
 9. Task 32 is complete via review merge `e629515f9c7e7a5d44506dfb82a48343870f94da`; it demonstrated six documentation drift blockers before any alpha tag.
 10. Task 36 depended on Task 32 and is complete via merge `8c971016e4fc3cd821dc52d28334567c20835ff4`; release documentation drift is reconciled, but no tag/release/publication is authorized.
 11. Task 23 had Task 18 as its prerequisite; that prerequisite is satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
 12. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
 13. Task 39 depends on Task 38; that dependency is satisfied by PR #91 merge `11b9a4d4e508ac93cd436037563c09d08cfa43ab`. Task 39 is active on PR #94.
 14. Tasks 41 and 42 are grounded follow-ups from completed Tasks 26 and 24 respectively and are prerequisite-safe.
-15. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
+15. Task 43 depends on Task 40 integration; it must not start from stale main and must not include backup deletion or unattended pruning.
+16. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
 
 
 ## Parallel work that is safe

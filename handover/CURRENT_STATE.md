@@ -1,3 +1,12 @@
+## 2026-09-24 — Task 26 bounded service-journal review landed
+
+- Task 26 COMPLETE: PR #83 merged as `b08a0b10afcce754440c37025230773da72c6c05`.
+- Exact PR head `faa5126548021c9294e3a395c6b71344505e545d` passed CI run 35949004101 fully green: Ruff, whitespace, 1211 pytest tests, built release artifact and clean demo.
+- Review conclusion: remote/MCP service-journal access stays deferred. Current alias/process boundaries are strong, but arbitrary application journal content needs an explicit per-service log-read opt-in and a reusable bounded text-redaction prerequisite before any local reader is justified.
+- Task 30 was added from the roadmap's explicit deferred retention-pruning work to keep the public queue dependency-safe.
+- Task 10 remains externally BLOCKED. Current bounded queue: Tasks 27–30.
+- No tag, release, publication, deployment, migration, restore, log exposure or deletion was performed.
+
 ## 2026-09-24 — Task 25 private connectivity/TLS onboarding review landed
 
 - Task 25 COMPLETE: PR #82 merged as `f2c1d6a135133033ab1e0059f9a92cfec3021d88`.

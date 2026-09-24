@@ -849,7 +849,7 @@ Do not delete backups/releases, change retention settings, add mailbox deletion 
 
 ### Task 31 — local read-only database restore preflight — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 27 is `COMPLETE` on main.
+Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task31-restore-preflight`. PR: pending. Dependency satisfied: Task 27 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code.
 

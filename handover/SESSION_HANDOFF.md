@@ -2,6 +2,17 @@
 
 Last reconciled: 2026-09-24.
 
+## Latest checkpoint — Task 34 PR #92
+
+- PR #91 merged to main as `11b9a4d4e508ac93cd436037563c09d08cfa43ab`; Tasks 33, 35 and 38 are complete and must not be duplicated.
+- Task 34 is COMPLETE on PR #92 pending final exact-head CI/integration.
+- Task 34 adds only local read-only `runner-mcp retention preview PROJECT`; no pruning/deletion, approval, MCP or mailbox authority was added.
+- Retention preview is fail-closed on unsafe release/backup storage and reports advisory categories only. Manual backups remain non-eligible without a dedicated retention policy.
+- Actual pruning remains deferred.
+- Task 37 review is independently active on PR #93; Task 39 adapter refactor is now prerequisite-safe.
+- Task 10 private-host self-update/recovery proof remains externally BLOCKED; no tag/release/publication is authorized.
+- Reconcile live GitHub before any next claim; exact-head CI is authoritative.
+
 ## Current checkpoint
 - Live GitHub reconciled through Tasks 32 and 36 merge plus final coordination; live GitHub always wins over this recorded checkpoint.
 - Tasks 21–32 and Task 36 are COMPLETE and must not be duplicated.

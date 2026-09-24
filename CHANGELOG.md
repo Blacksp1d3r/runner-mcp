@@ -52,6 +52,7 @@ First public alpha candidate. Version metadata is currently `0.1.0`, but no `v0.
 - terminal deployment/rollback completion delivery with source-scoped idempotency and no task replay;
 - privacy-safe connectivity categories and current private-tunnel/reverse-proxy guidance without changing bind, TLS, DNS, firewall, proxy or tunnel state;
 - local read-only PostgreSQL restore preflight that validates one private archive without reading the configured DSN, connecting to the database or adding restore execution authority.
+- local read-only retention preview that strictly validates private release/backup state and reports protected or potentially eligible records without deletion authority.
 
 ### Fixed
 

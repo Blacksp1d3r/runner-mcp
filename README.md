@@ -88,6 +88,7 @@ runner-mcp service-config list PROJECT
 runner-mcp service-config add PROJECT ALIAS --unit UNIT
 runner-mcp database-config list
 runner-mcp database-config add PROJECT
+runner-mcp retention preview PROJECT
 runner-mcp database restore-plan PROJECT BACKUP_ID
 runner-mcp migration-config add PROJECT --preset alembic
 runner-mcp deployment-config list
@@ -117,6 +118,7 @@ Current implemented foundations include:
 - DNS-rebinding protection;
 - external operator emergency stop;
 - rollback-retention policy using both minimum count and minimum age;
+- local read-only retention preview with strict release/backup validation and no deletion authority;
 - explicit separation between code rollback and database restore;
 - controlled asynchronous test jobs;
 - commit-pinned self-update for the canonical Runner MCP project, gated by an unchanged Python/build/dependency compatibility contract, fixed lint/unit validation and internal self-reexec;

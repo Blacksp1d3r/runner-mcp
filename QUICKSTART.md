@@ -87,6 +87,14 @@ The proposed defaults are:
 
 A release may be cleaned up only after both the minimum-count and minimum-age rules allow it.
 
+After setup, you can inspect the current policy result without deleting anything:
+
+```bash
+runner-mcp retention preview myproject
+```
+
+The preview is advisory only. It keeps the current release, direct rollback target and retained release references protected, never treats manual backups as automatically eligible, and does not delete or rewrite release/backup metadata. A `potentially_eligible` category is not deletion authorization.
+
 The wizard requires explicit confirmation before future operator actions can be enabled.
 
 ## 5. Add the first project

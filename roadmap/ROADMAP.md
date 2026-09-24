@@ -68,7 +68,7 @@ Make the safe core usable without reading or editing source code:
 - user-first README and Quickstart;
 - private config permission checks and atomic project-config updates.
 
-Service auto-start packaging is implemented with a preferred non-root systemd-user backend plus a managed cron fallback for headless accounts without a usable user bus. Both keep fixed components, explicit watcher bootstrap, duplicate-supervisor protection and foreign-state protection. Privacy-safe guided connectivity is implemented; external tunnel/TLS/reverse-proxy provisioning remains operator-managed. Optional graphical administration remains planned.
+Service auto-start packaging is implemented with a preferred non-root systemd-user backend plus a managed cron fallback for headless accounts without a usable user bus. Both keep fixed components, explicit watcher bootstrap, duplicate-supervisor protection and foreign-state protection. Privacy-safe guided connectivity is implemented; external tunnel/TLS/reverse-proxy provisioning remains operator-managed. Task 33 reviewed optional graphical administration and keeps it deferred for the first alpha; any later first slice must be a separate loopback-only read-only dashboard over explicitly allow-listed safe summaries, with no new mutation authority.
 
 ## Phase 3.6 — community usability and extension path
 
@@ -85,7 +85,7 @@ Make the existing safe core easier to adopt, understand and extend without chang
 
 Still planned:
 
-- optional graphical administration;
+- optional graphical administration remains post-alpha/deferred after the Task 33 boundary review; revisit only on concrete operator need, starting read-only/local-only;
 - framework adapters only when concrete reusable use cases justify them.
 
 Privacy-safe private-tunnel/TLS/reverse-proxy guidance is implemented. Runner MCP deliberately does not provision external tunnel/TLS/DNS/firewall/proxy state itself.
@@ -571,12 +571,21 @@ Implemented core design:
 Still deferred:
 
 - automatic release pruning;
+- arbitrary historical target selection remains deferred after the Task 35 boundary review; older history is reached only through fresh direct-previous one-step approvals with health revalidation;
 - production rollback;
 - database restore/recovery workflow.
 
 ## Phase 8 — multi-project adapters
 
-Move project-specific behavior behind a common adapter interface. New projects should normally require configuration/adapters rather than core changes.
+Current state after Task 38 review:
+
+- built-in `generic` and `python` adapters are deny-by-default and expose only bounded capability metadata;
+- execution layers are project-generic after configuration is resolved;
+- no dynamic adapter/plugin loading from project configuration is allowed;
+- one structural seam remains: Python/Alembic preset materialization is still implemented in generic `config_manager.py`;
+- Task 39 is the bounded refactor to move fixed non-custom preset recipes behind the adapter boundary without adding speculative adapters or new execution authority.
+
+New projects should normally require configuration/adapters rather than core changes. Phase 8 is functionally usable for alpha, but structural completion waits on the bounded Task 39 refactor.
 
 ## Phase 9 — approval and risk gates
 

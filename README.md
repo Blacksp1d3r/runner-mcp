@@ -8,6 +8,8 @@ Runner MCP is a security-first, self-hosted Model Context Protocol service for c
 
 In one sentence: Runner MCP gives AI clients a narrow, auditable path to self-hosted development and staging work without exposing a general-purpose remote shell.
 
+Current public release: [v0.1.0 — First Alpha](https://github.com/Blacksp1d3r/runner-mcp/releases/tag/v0.1.0) (**pre-release / alpha**).
+
 [Five-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security policy](SECURITY.md) · [Threat model](security/THREAT_MODEL.md) · [Roadmap](roadmap/ROADMAP.md)
 
 ## Why Runner MCP exists
@@ -253,4 +255,4 @@ The current implementation state is tracked in:
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
 
-Runner MCP is under active development. The public GitHub mailbox stack now includes protocol-v1 validation, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor, bounded concurrent request handling, fail-closed missing-result recovery and a private-config runtime/CLI. Shared-watcher migration, exactly-once completion feedback, clean-Linux demo validation, non-root autostart packaging and privacy-safe connectivity guidance are complete. The remaining pre-alpha work is tracked in the roadmap and release checklist.
+Runner MCP v0.1.0 is the first public alpha release. The project remains under active development. The public GitHub mailbox stack now includes protocol-v1 validation, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor, bounded concurrent request handling, fail-closed missing-result recovery and a private-config runtime/CLI. Shared-watcher migration, exactly-once completion feedback, clean-Linux demo validation, non-root autostart packaging and privacy-safe connectivity guidance are complete. Ongoing alpha hardening and post-release work are tracked in the roadmap and release checklist.

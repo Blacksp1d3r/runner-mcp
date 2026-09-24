@@ -3,17 +3,19 @@
 Last reconciled: 2026-09-24.
 
 ## Current checkpoint
-- Live GitHub reconciled through Task 31 merge and handoff coordination; live GitHub always wins over this recorded checkpoint.
-- Tasks 21–31 are COMPLETE and must not be duplicated.
-- Task 29 added privacy-safe non-mutating connectivity guidance; external tunnel/TLS/DNS/firewall/proxy provisioning remains operator-managed.
-- Task 30 defined the fail-closed retention-pruning boundary; automatic deletion remains deferred and Task 34 is read-only preview only.
-- Task 31 COMPLETE: PR #88 merged as `e54a0684bdc9da3a32d062e0e0e45261c1616020`; exact head `fc08b60c6feed85824b6097bf1479e7e41a29844`; CI run 35966414093 fully green with Ruff, whitespace, 1267 tests, built artifact and clean demo.
-- Task 31 adds local read-only PostgreSQL restore preflight only. It does not read the DSN, connect to the database, restore data, add restore approval authority or expose restore through MCP/bridge/mailbox.
-- Task 10 remains BLOCKED on usable private-host self-update/recovery proof.
-- Current bounded public queue: Task 32 alpha launch-readiness gap audit; Task 33 optional graphical administration boundary review; Task 34 local read-only retention preview.
+- Live GitHub reconciled through Tasks 32 and 36 merge plus final coordination; live GitHub always wins over this recorded checkpoint.
+- Tasks 21–32 and Task 36 are COMPLETE and must not be duplicated.
+- Task 31 local read-only PostgreSQL restore preflight is implemented; restore execution, restore approvals, WAL/PITR, production recovery and MCP/bridge/mailbox restore authority remain deferred.
+- Task 32 COMPLETE: PR #89 merged as `e629515f9c7e7a5d44506dfb82a48343870f94da`; exact head `99c72037eff4ed54cf7e92f7a08b278b48af4e45`; CI 35967246877 fully green with Ruff, whitespace, 1267 tests, built artifact and clean demo.
+- Task 36 COMPLETE: PR #90 merged as `8c971016e4fc3cd821dc52d28334567c20835ff4`; exact head `1b3567b5de1f5a4ac5a67db16c609db2edac25dd`; CI 35967550375 fully green with Ruff, whitespace, 1267 tests, built artifact and clean demo.
+- The six demonstrated alpha-release documentation drifts are reconciled. `0.1.0` remains explicitly unreleased; no `v0.1.0` tag or GitHub release exists at the audited checkpoint.
+- Repository description/topics, v0.1.0 tag/GitHub release, package/registry/ecosystem publication and external community posts remain explicit user-controlled actions.
+- Task 10 remains BLOCKED on usable private-host self-update/recovery proof. Public alpha wording must not imply that private-host live proof exists.
+- Current bounded public queue: Task 33 optional graphical administration boundary review; Task 34 local read-only retention preview; Task 35 manual historical rollback selection boundary review.
 - No new task is claimed at this checkpoint. Reconcile live GitHub plus `claude_feedback/CURRENT_ASSIGNMENT.md` before the next claim.
-- No tag, GitHub release, package publication, deployment, rollback, migration, restore, deletion, network exposure change or external publication has been authorized/performed in this session.
+- No tag, GitHub release, package publication, deployment, rollback, migration, restore, deletion, network exposure change, repository-setting mutation or external publication has been authorized/performed in this session.
 - Desktop Commander remains unavailable due the previously reached monthly limit; private-host proof remains unresolved.
+- Before asking for alpha-release authorization, verify full GitHub CI is green on the exact latest `main` commit after these final coordination updates.
 
 ## Purpose
 Runner MCP is a small, auditable, deny-by-default operations interface. GitHub is the code/collaboration surface; Runner MCP is the local execution and safety boundary. It must never become a generic remote shell.

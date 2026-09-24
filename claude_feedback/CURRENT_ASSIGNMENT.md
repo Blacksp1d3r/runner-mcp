@@ -957,7 +957,7 @@ focused adversarial preview tests plus full Ruff/pytest/whitespace, built artifa
 
 ### Task 35 — manual historical rollback selection boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `IN_PROGRESS` — claimed by ChatGPT for review only; no rollback/runtime changes.
 
 Preferred executor: Claude Chat or ChatGPT review; no rollback/runtime code changes.
 

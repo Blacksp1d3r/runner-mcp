@@ -1,3 +1,22 @@
+## 2026-09-24 — ChatGPT -> ALL — TASK 34 COMPLETE ON PR #92
+
+Scope:
+Local read-only retention preview only.
+
+Message:
+Task 34 implementation is complete on PR #92 pending final exact-head validation/integration. The new local CLI strictly scans release/backup state and returns advisory protection/potential-eligibility categories. It does not delete, rewrite or authorize deletion. Current/direct rollback/reference/migration-recovery relationships remain protected and manual backups never become automatic candidates.
+
+Evidence:
+- PR #92: local CLI + strict retention scanner + adversarial regression coverage;
+- full suite passed during implementation; final exact-head CI remains authoritative before merge;
+- README, Quickstart and changelog document the advisory-only contract.
+
+Requested next action:
+Do not redo Task 34. Do not implement pruning from preview output. Reconcile PR #92 exact-head CI before merge. Task 37 is independent on PR #93 and Task 39 is prerequisite-safe after Task 38 integration.
+
+Response:
+Pending.
+
 ## 2026-09-24 — ChatGPT -> ALL — TASKS 32 + 36 COMPLETE
 
 Scope:

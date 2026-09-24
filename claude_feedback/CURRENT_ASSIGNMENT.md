@@ -796,7 +796,7 @@ focused security/regression tests plus full Ruff/pytest/whitespace, built artifa
 
 ### Task 29 — privacy-safe guided connectivity reconciliation — CODE/DOC lane
 
-Status: `CHATGPT_IN_PROGRESS`. Claimed by: ChatGPT. Branch: `chatgpt/task29-connectivity-guide`. PR: pending. Dependency satisfied: Task 25 is `COMPLETE` on main.
+Status: `PR_OPEN`. Claimed by: ChatGPT. Branch: `chatgpt/task29-connectivity-guide`. PR: #86. Exact head: `7d4c264fbfac6881badbdf8f9bc69ea7a7ab12e8`. Dependency satisfied: Task 25 is `COMPLETE` on main.
 
 Preferred executor: ChatGPT or Claude Code.
 

@@ -339,6 +339,106 @@ def test_service_config_cli_hides_private_unit(
     assert "private-web.service" not in captured.out
 
 
+def test_database_restore_plan_cli_is_local_read_only_and_bounded(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    backup_id = "20260924T050000Z-" + ("a" * 12)
+    sensitive_path = str(tmp_path / "private-backup.dump")
+    sensitive_hash = "f" * 64
+
+    class FakeManager:
+        def restore_preflight(self, project: str, selected_backup_id: str):
+            assert project == "demo"
+            assert selected_backup_id == backup_id
+            return {
+                "project": "demo",
+                "backup_id": backup_id,
+                "kind": "pre_migration",
+                "created_at": "2026-09-24T05:00:00+00:00",
+                "size_bytes": 123,
+                "engine": "postgresql",
+                "available": True,
+                "eligible": True,
+                "preflight_state": "eligible",
+                # A real manager never returns these; keep sentinels here to ensure
+                # the CLI only renders its explicit safe allow-list.
+                "private_path": sensitive_path,
+                "archive_sha256": sensitive_hash,
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_readonly_database_manager",
+        lambda _config_dir: FakeManager(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "database",
+            "restore-plan",
+            "demo",
+            backup_id,
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "Database restore preflight" in captured.out
+    assert f"Backup: {backup_id}" in captured.out
+    assert "State: eligible" in captured.out
+    assert "Eligible: yes" in captured.out
+    assert "Kind: pre_migration" in captured.out
+    assert "No database restore was performed." in captured.out
+    assert sensitive_path not in captured.out
+    assert sensitive_hash not in captured.out
+    assert str(paths.config_dir) not in captured.out
+
+
+def test_database_restore_plan_cli_reports_ineligible_without_optional_fields(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    backup_id = "20260924T050000Z-" + ("b" * 12)
+
+    class FakeManager:
+        def restore_preflight(self, _project: str, _backup_id: str):
+            return {
+                "project": "demo",
+                "backup_id": backup_id,
+                "eligible": False,
+                "preflight_state": "ineligible_environment",
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_readonly_database_manager",
+        lambda _config_dir: FakeManager(),
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "database",
+            "restore-plan",
+            "demo",
+            backup_id,
+        ]
+    ) == 0
+    captured = capsys.readouterr()
+
+    assert "State: ineligible_environment" in captured.out
+    assert "Eligible: no" in captured.out
+    assert "Kind:" not in captured.out
+    assert "Archive:" not in captured.out
+    assert "No database restore was performed." in captured.out
+
+
 def test_database_config_cli_uses_hidden_prompt_and_does_not_print_secret(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

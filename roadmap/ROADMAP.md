@@ -515,11 +515,12 @@ Implemented core design:
 - pre-migration backup required before migration apply;
 - safety guard rechecked after backup and before migration;
 - failed migration keeps the recovery point and never auto-restores;
+- local read-only restore preflight validates one private PostgreSQL archive without database connection or restore authority;
 - CLI database and migration configuration without manual YAML editing.
 
 Not implemented yet:
 
-- database restore;
+- database restore execution;
 - WAL archiving/PITR orchestration and verification;
 - automated retention pruning.
 

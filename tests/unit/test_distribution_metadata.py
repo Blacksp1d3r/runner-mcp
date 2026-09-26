@@ -57,3 +57,10 @@ def test_registry_launcher_preserves_safe_local_transport_boundary() -> None:
     assert auth["value"] == "Bearer {token}"
     assert auth["variables"]["token"]["isRequired"] is True
     assert auth["variables"]["token"]["isSecret"] is True
+
+
+def test_glama_ownership_metadata_is_bounded() -> None:
+    metadata = json.loads((ROOT / "glama.json").read_text(encoding="utf-8"))
+
+    assert metadata["$schema"] == "https://glama.ai/mcp/schemas/server.json"
+    assert metadata["maintainers"] == ["Blacksp1d3r"]

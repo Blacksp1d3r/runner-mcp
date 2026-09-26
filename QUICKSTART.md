@@ -8,7 +8,7 @@ Runner MCP gives an AI client a limited, auditable interface to your own develop
 
 - a Linux machine you control;
 - Python 3.12 or newer;
-- Git;
+- `uv` for the recommended v0.1.1+ package install, or Git for the source-install path;
 - one existing project folder;
 - the Git repository name for that project in `owner/name` form.
 

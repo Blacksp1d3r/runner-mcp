@@ -1,6 +1,5 @@
 import json
 import pathlib
-import tomllib
 
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
@@ -12,8 +11,10 @@ def _server_metadata() -> dict:
 
 
 def _project_metadata() -> dict:
-    with (ROOT / "pyproject.toml").open("rb") as handle:
-        return tomllib.load(handle)["project"]
+    text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
+    name = next(line.split("=", 1)[1].strip().strip('"') for line in text.splitlines() if line.startswith("name = "))
+    version = next(line.split("=", 1)[1].strip().strip('"') for line in text.splitlines() if line.startswith("version = "))
+    return {"name": name, "version": version}
 
 
 def test_distribution_versions_stay_in_sync() -> None:

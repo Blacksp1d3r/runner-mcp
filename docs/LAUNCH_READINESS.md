@@ -23,14 +23,16 @@ Completed:
 - public CI installs the package and runs compile, Ruff, pytest and whitespace validation;
 - no application telemetry is added for marketing.
 - `v0.1.0` is published as the first GitHub pre-release from exact green commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`;
-- the published release notes preserve the alpha limitations and exact validation provenance.
+- the published release notes preserve the alpha limitations and exact validation provenance;
+- the GitHub repository description and discovery topics are live with the prepared wording;
+- PyPI Trusted Publishing is live and `aifordable-runner-mcp` `0.1.1` is publicly published.
 
 Still required before a broader launch:
 
-- verify installation from the published `v0.1.0` tag on a clean host;
-- set the GitHub repository description/topics to the prepared wording;
-- prepare an MCP ecosystem/registry submission only after its current packaging requirements are verified;
-- decide the timing of external community posts.
+- publish the corrected `0.1.2` metadata/package set using the exact GitHub-cased Registry identity `io.github.Blacksp1d3r/runner-mcp`;
+- verify the official MCP Registry entry and matching GitHub `v0.1.2` pre-release after publication;
+- verify installation from the published PyPI package in a clean evaluation environment;
+- only then submit to secondary MCP/developer directories and decide the timing of external community posts.
 
 ## Free discovery plan
 

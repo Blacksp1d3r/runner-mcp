@@ -1,3 +1,11 @@
+## 2026-09-26 — distribution/discovery handoff
+
+- Runner MCP remains released at public `v0.1.0`; `v0.1.1` is being prepared on `release/v0.1.1-discovery`.
+- The slice adds PyPI/MCP Registry metadata, tokenless OIDC publishing automation, metadata consistency tests and stronger first-screen/launch copy.
+- Runtime/security authority is unchanged: authenticated Streamable HTTP, local private setup and deny-by-default capability boundaries remain intact.
+- Do not publish 0.1.1 until branch CI is exact-head green, the change is integrated to `main`, and the one-time PyPI Trusted Publisher + GitHub `pypi` environment setup is complete.
+- After those gates, run the human-triggered `Publish Runner MCP` workflow with version `0.1.1`; it publishes PyPI first, then the official MCP Registry, then creates the GitHub pre-release.
+- After Registry publication is verified, proceed to secondary MCP directories and community launch posts using `docs/LAUNCH_COPY.md`.
 ## 2026-09-24 — v0.1.0 published; next session starts post-release
 
 - Runner-MCP `v0.1.0` is now a published GitHub pre-release from exact validated commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`.

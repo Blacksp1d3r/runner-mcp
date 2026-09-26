@@ -1,17 +1,30 @@
 # Runner MCP
 
+<!-- mcp-name: io.github.blacksp1d3r/runner-mcp -->
+
 [![Runner MCP validation](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml/badge.svg?branch=main)](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml)
+[![GitHub release](https://img.shields.io/github/v/release/Blacksp1d3r/runner-mcp?include_prereleases)](https://github.com/Blacksp1d3r/runner-mcp/releases)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
+
+**Let an AI run tests and controlled staging operations on your own server without giving it a general-purpose remote shell.**
+
+Runner MCP is a security-first, self-hosted Model Context Protocol service. You configure the projects and operations that exist; the AI selects from those bounded capabilities instead of supplying arbitrary shell commands, executables, filesystem paths or service names.
 
 _A Fools2Tools project — practical tools from real problems._
 
-Runner MCP is a security-first, self-hosted Model Context Protocol service for controlled development and staging operations.
+Current public release: [v0.1.0 — First Alpha](https://github.com/Blacksp1d3r/runner-mcp/releases/tag/v0.1.0) (**pre-release / alpha**). The v0.1.1 distribution update is being prepared for PyPI and the official MCP Registry.
 
-In one sentence: Runner MCP gives AI clients a narrow, auditable path to self-hosted development and staging work without exposing a general-purpose remote shell.
+**Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
 
-Current public release: [v0.1.0 — First Alpha](https://github.com/Blacksp1d3r/runner-mcp/releases/tag/v0.1.0) (**pre-release / alpha**).
+### The difference in one table
 
-[Five-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security policy](SECURITY.md) · [Threat model](security/THREAT_MODEL.md) · [Roadmap](roadmap/ROADMAP.md)
+| Approach | AI can inspect/run configured work | Arbitrary shell is the normal interface | Explicit audit/safety boundary |
+| --- | --- | --- | --- |
+| SSH / broad remote-control tool | Yes | Yes | Depends on the surrounding setup |
+| Runner MCP | Yes | **No** | **Yes — allow-lists, bounded output, emergency stop and approval gates** |
 
+Runner MCP is intentionally not a sandbox for untrusted code and does not claim to replace every operator maintenance tool. Its goal is narrower: routine AI-assisted development and staging operations should not require handing the AI an unrestricted shell.
 ## Why Runner MCP exists
 
 AI-assisted development becomes much more useful when the assistant can verify changes against real projects. But routine tasks such as reading a safe file, running a known test suite or checking a staging service do not require the authority of a general-purpose remote shell.

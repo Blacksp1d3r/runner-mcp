@@ -47,7 +47,7 @@ First public alpha release, published as GitHub pre-release `v0.1.0`.
 - interactive setup, doctor, guide and configuration-management CLI;
 - managed non-root autostart for the fixed Runner MCP server and explicitly bootstrapped watcher components, using systemd user services when available and a lock-protected managed cron fallback on headless accounts;
 - public CI for this public repository;
-- AIfordable project identity;
+- initial umbrella project identity;
 - five-minute local demo, release checklist and launch-readiness documentation;
 - clean Ubuntu 24.04 / Python 3.12 CI coverage for the documented five-minute demo;
 - short per-job private test temporary directories that avoid Unix-domain socket path exhaustion while preserving restrictive permissions and cleanup;

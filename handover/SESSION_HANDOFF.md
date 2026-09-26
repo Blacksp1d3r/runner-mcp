@@ -1,3 +1,12 @@
+## 2026-09-26 — PyPI pending publisher ready; package-name fix active
+
+- Pending Trusted Publisher is configured for `aifordable-runner-mcp` with GitHub owner `Blacksp1d3r`, repository `runner-mcp`, workflow `publish.yml`, environment `pypi`.
+- `runner-mcp` was rejected by PyPI as too similar to an existing project; do not retry or bypass that protection.
+- Active fix branch: `release/v0.1.1-aifordable-pypi`.
+- Product/CLI remain Runner MCP / `runner-mcp`; only the PyPI distribution identifier changes to `aifordable-runner-mcp`.
+- Fools2Tools public umbrella references are being retired in favor of AIfordable.
+- Next gate: exact-head CI and review on this branch -> merge -> exact-main green -> manually dispatch `Publish Runner MCP` 0.1.1 and approve the `pypi` environment deployment.
+
 ## 2026-09-26 — distribution/discovery handoff
 
 - Runner MCP remains released at public `v0.1.0`; `v0.1.1` is being prepared on `release/v0.1.1-discovery`.

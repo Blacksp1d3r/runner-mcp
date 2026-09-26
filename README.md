@@ -25,6 +25,7 @@ Current public release: [v0.1.0 — First Alpha](https://github.com/Blacksp1d3r/
 | Runner MCP | Yes | **No** | **Yes — allow-lists, bounded output, emergency stop and approval gates** |
 
 Runner MCP is intentionally not a sandbox for untrusted code and does not claim to replace every operator maintenance tool. Its goal is narrower: routine AI-assisted development and staging operations should not require handing the AI an unrestricted shell.
+
 ## Why Runner MCP exists
 
 AI-assisted development becomes much more useful when the assistant can verify changes against real projects. But routine tasks such as reading a safe file, running a known test suite or checking a staging service do not require the authority of a general-purpose remote shell.

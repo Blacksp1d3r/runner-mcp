@@ -46,6 +46,19 @@ jobs:
       - name: Pytest
         run: pytest -q
 
+      - name: Validate MCP Registry metadata
+        env:
+          MCP_PUBLISHER_VERSION: "v1.8.1"
+          MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
+        shell: bash
+        run: |
+          set -euo pipefail
+          url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location "$url" --output mcp-publisher.tar.gz
+          printf '%s  %s\n' "$MCP_PUBLISHER_SHA256" mcp-publisher.tar.gz | sha256sum --check -
+          tar -xzf mcp-publisher.tar.gz mcp-publisher
+          chmod 0755 mcp-publisher
+          ./mcp-publisher validate server.json
       - name: Whitespace check
         shell: bash
         run: |

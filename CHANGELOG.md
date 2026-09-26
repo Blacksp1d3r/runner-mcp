@@ -8,8 +8,9 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ### Distribution and discovery
 
-- prepare the `0.1.1` Python package metadata for PyPI Trusted Publishing under `aifordable-runner-mcp` while preserving the `runner-mcp` CLI;
-- add official MCP Registry metadata under `io.github.blacksp1d3r/runner-mcp`;
+- publish `0.1.1` to PyPI under `aifordable-runner-mcp` while preserving the `runner-mcp` CLI;
+- prepare `0.1.2` as the canonical cross-registry recovery release after the Registry exposed its case-sensitive GitHub namespace requirement;
+- align the official MCP Registry identity and PyPI README ownership marker to `io.github.Blacksp1d3r/runner-mcp`;
 - add release automation that publishes the Python package first, then the MCP Registry entry through GitHub OIDC, and finally creates the GitHub pre-release;
 - add regression checks keeping `pyproject.toml`, `server.json` and the PyPI README ownership marker synchronized;
 - sharpen the README's first-screen positioning and discovery metadata without widening Runner MCP runtime authority.

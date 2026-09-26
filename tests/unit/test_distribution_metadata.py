@@ -12,8 +12,10 @@ def _server_metadata() -> dict:
 
 def _project_metadata() -> dict:
     text = (ROOT / "pyproject.toml").read_text(encoding="utf-8")
-    name = next(line.split("=", 1)[1].strip().strip('"') for line in text.splitlines() if line.startswith("name = "))
-    version = next(line.split("=", 1)[1].strip().strip('"') for line in text.splitlines() if line.startswith("version = "))
+    name_line = next(line for line in text.splitlines() if line.startswith("name = "))
+    version_line = next(line for line in text.splitlines() if line.startswith("version = "))
+    name = name_line.split("=", 1)[1].strip().strip('"')
+    version = version_line.split("=", 1)[1].strip().strip('"')
     return {"name": name, "version": version}
 
 

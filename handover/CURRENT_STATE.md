@@ -1,3 +1,12 @@
+## 2026-09-26 — v0.1.1 AIfordable PyPI identity integrated
+
+- PR #102 merged to `main` as `d948945034e07616d673945467e9b2e44748fa10` after exact-head validation and commit-attribution checks were green with zero review threads.
+- Post-merge `main` validation and attribution were green on the merge commit.
+- Python distribution identity is now `aifordable-runner-mcp`; product/primary CLI remain Runner MCP / `runner-mcp`; `aifordable-runner-mcp` is also exposed as a launcher alias for uvx/Registry compatibility.
+- Pending PyPI Trusted Publisher is configured for `aifordable-runner-mcp`, `Blacksp1d3r/runner-mcp`, `publish.yml`, environment `pypi`; GitHub `pypi` is main-only with required human review and no stored PyPI token.
+- The previous umbrella brand is retired from current project materials; AIfordable is the current umbrella identity.
+- Remaining release action is human-controlled: dispatch `Publish Runner MCP` from `main` with version `0.1.1`, approve the `pypi` environment deployment, then verify PyPI -> MCP Registry -> GitHub pre-release in that fail-closed order.
+
 ## 2026-09-26 — v0.1.1 PyPI identity reconciled
 
 - Active branch: `release/v0.1.1-aifordable-pypi`.

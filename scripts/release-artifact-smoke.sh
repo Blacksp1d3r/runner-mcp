@@ -30,8 +30,8 @@ dist = root / "dist"
 with (root / "pyproject.toml").open("rb") as handle:
     version = tomllib.load(handle)["project"]["version"]
 
-wheel = dist / f"runner_mcp-{version}-py3-none-any.whl"
-sdist = dist / f"runner_mcp-{version}.tar.gz"
+wheel = dist / f"aifordable_runner_mcp-{version}-py3-none-any.whl"
+sdist = dist / f"aifordable_runner_mcp-{version}.tar.gz"
 if not wheel.is_file() or not sdist.is_file():
     raise SystemExit("expected wheel/sdist names were not produced")
 
@@ -73,18 +73,27 @@ with tarfile.open(sdist, "r:gz") as archive:
     sdist_members = archive.getnames()
 validate_members("sdist", sdist_members)
 
-print(f"release artifacts validated for runner-mcp {version}")
+print(f"release artifacts validated for aifordable-runner-mcp {version}")
 PY
 
 python -m venv "$TMP_ROOT/venv"
-"$TMP_ROOT/venv/bin/python" -m pip install --disable-pip-version-check "$DIST_DIR"/runner_mcp-*.whl
+"$TMP_ROOT/venv/bin/python" -m pip install --disable-pip-version-check "$DIST_DIR"/aifordable_runner_mcp-*.whl
 VERSION_OUTPUT="$("$TMP_ROOT/venv/bin/runner-mcp" --version)"
 HELP_OUTPUT="$("$TMP_ROOT/venv/bin/runner-mcp" --help)"
+ALIAS_VERSION_OUTPUT="$("$TMP_ROOT/venv/bin/aifordable-runner-mcp" --version)"
 
 case "$VERSION_OUTPUT" in
   "runner-mcp "*) ;;
   *)
     echo "installed wheel returned unexpected version output" >&2
+    exit 1
+    ;;
+esac
+
+case "$ALIAS_VERSION_OUTPUT" in
+  "runner-mcp "*) ;;
+  *)
+    echo "PyPI-name launcher alias returned unexpected version output" >&2
     exit 1
     ;;
 esac

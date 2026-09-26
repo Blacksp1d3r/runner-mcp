@@ -33,7 +33,7 @@ def test_mcp_registry_identity_matches_pypi_readme_marker() -> None:
 
     assert server["name"] == SERVER_NAME
     assert f"<!-- mcp-name: {SERVER_NAME} -->" in readme
-    assert project["name"] == "runner-mcp"
+    assert project["name"] == "aifordable-runner-mcp"
     assert server["packages"][0]["identifier"] == project["name"]
     assert server["repository"]["url"] == "https://github.com/Blacksp1d3r/runner-mcp"
     assert server["repository"]["source"] == "github"

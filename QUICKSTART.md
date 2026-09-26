@@ -14,26 +14,35 @@ Runner MCP gives an AI client a limited, auditable interface to your own develop
 
 You do not need to know Python to complete the basic setup.
 
-## 1. Get Runner MCP
+## 1. Install Runner MCP
 
-Clone this repository and enter the folder:
+Starting with v0.1.1, the recommended persistent package install is:
+
+```bash
+uv tool install runner-mcp
+```
+
+This keeps the `runner-mcp` command available for setup, service operation and autostart. The MCP Registry may use `uvx` to launch the package for discovery/evaluation, but a persistent tool install is clearer for a self-hosted service with private configuration.
+
+If you prefer to install directly from source, clone the repository and run the non-root installer:
 
 ```bash
 git clone https://github.com/Blacksp1d3r/runner-mcp.git
 cd runner-mcp
+./install.sh
 ```
 
-## 2. Install it
+The source installer uses a private Python virtual environment under your user account. It does not require root access.
+
+If your shell cannot find `runner-mcp` afterwards, ensure the tool/user-local bin directory is on `PATH`.
+
+## 2. Verify the command
 
 Run:
 
 ```bash
-./install.sh
+runner-mcp --help
 ```
-
-The installer uses a private Python virtual environment under your user account. It does not require root access.
-
-If your shell cannot find `runner-mcp` afterwards, add your user-local bin directory to `PATH`.
 
 ## 2.5. Separate operator and service accounts
 

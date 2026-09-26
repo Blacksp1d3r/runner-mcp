@@ -1,3 +1,13 @@
+## 2026-09-26 — v0.1.1 PyPI identity reconciled
+
+- Active branch: `release/v0.1.1-aifordable-pypi`.
+- PyPI rejected the new project name `runner-mcp` as too similar to an existing project; no package was published under that name.
+- The pending Trusted Publisher is now configured for `aifordable-runner-mcp`, repository `Blacksp1d3r/runner-mcp`, workflow `publish.yml`, environment `pypi`.
+- The GitHub `pypi` environment is restricted to `main` and requires the repository owner as reviewer; no long-lived PyPI API token is used.
+- This branch changes only distribution/branding metadata: PyPI package `aifordable-runner-mcp`, CLI/product name remains `runner-mcp` / Runner MCP, official MCP Registry identity remains `io.github.blacksp1d3r/runner-mcp`.
+- Public umbrella branding is being reconciled from Fools2Tools to AIfordable. Runtime/security authority remains unchanged.
+- Publication remains blocked until this branch is exact-head green, reviewed, merged to `main`, and the human-triggered `Publish Runner MCP` workflow is approved/run for version `0.1.1`.
+
 ## 2026-09-26 — v0.1.1 distribution/discovery release prepared
 
 - Active branch: `release/v0.1.1-discovery`.

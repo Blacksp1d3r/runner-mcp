@@ -16,7 +16,7 @@ One paragraph:
 
 Project signature:
 
-> Runner MCP — a Fools2Tools project. Practical tools from real problems.
+> Runner MCP — an AIfordable project. Secure software. Built with AI. Fairly priced.
 
 ## Suggested GitHub description
 
@@ -32,7 +32,7 @@ Suggested topics:
 
 Release intro:
 
-> This is the first public release of Runner MCP, a Fools2Tools project built around a simple constraint: an AI client should be able to help verify and operate real development/staging projects without receiving a general-purpose remote shell.
+> This is the first public release of Runner MCP as an AIfordable project, built around a simple constraint: an AI client should be able to help verify and operate real development/staging projects without receiving a general-purpose remote shell.
 
 Then list the actual release capabilities and validation result. Do not copy the entire roadmap into release notes.
 
@@ -52,7 +52,7 @@ Body:
 >
 > The repository includes a Quickstart and a five-minute local demo. I would especially value feedback on the security boundaries, onboarding and places where the configuration model is still too complicated.
 >
-> Runner MCP is open source under the MIT license and is a Fools2Tools project.
+> Runner MCP is open source under the MIT license and is an AIfordable project.
 
 Before posting, add the released repository link and exact version.
 
@@ -113,7 +113,7 @@ Choose a community whose rules explicitly allow project sharing. Do not cross-po
 >
 > I have been building Runner MCP, an open-source self-hosted MCP service that turns common development and staging operations into explicit, auditable capabilities. Projects and test profiles are allow-listed, output is bounded, there is an external emergency stop, and higher-risk staging actions require local human approval.
 >
-> Runner MCP is part of Fools2Tools: practical tools that grow out of problems encountered while doing the work.
+> Runner MCP is part of AIfordable: secure, practical software built with AI and priced fairly.
 >
 > The focus now is making the safe core simple enough that people can evaluate it without reading the source code first.
 

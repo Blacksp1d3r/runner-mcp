@@ -8,7 +8,7 @@ They are intentionally factual, low-hype and version-neutral. Update the validat
 
 Short:
 
-> Runner MCP gives AI clients a narrow, auditable path to self-hosted development and staging operations without exposing a general-purpose remote shell.
+> Let an AI run tests and controlled staging operations on your own server without giving it a general-purpose remote shell.
 
 One paragraph:
 
@@ -56,6 +56,27 @@ Body:
 
 Before posting, add the released repository link and exact version.
 
+## MCP Registry / directory draft
+
+Registry name:
+
+> io.github.blacksp1d3r/runner-mcp
+
+Title:
+
+> Runner MCP
+
+Tagline:
+
+> Controlled self-hosted AI operations without a general-purpose remote shell.
+
+Short description:
+
+> Security-first self-hosted MCP for configured development and staging operations. Runner MCP exposes bounded project, test, service, database, deployment and rollback capabilities with audit, emergency-stop and approval controls instead of arbitrary remote shell input.
+
+Primary audience:
+
+> Developers and small teams who want AI-assisted work against self-hosted development or staging systems while keeping authority narrower than SSH or a generic remote-control agent.
 ## Developer-tool directory draft
 
 Name:

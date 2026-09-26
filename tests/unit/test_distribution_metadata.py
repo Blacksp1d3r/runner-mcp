@@ -1,9 +1,9 @@
 import json
+import pathlib
 import tomllib
-from pathlib import Path
 
 
-ROOT = Path(__file__).resolve().parents[2]
+ROOT = pathlib.Path(__file__).resolve().parents[2]
 SERVER_NAME = "io.github.blacksp1d3r/runner-mcp"
 
 

@@ -5,6 +5,8 @@ Runner MCP is packaged as a Python project and uses the official MCP Registry as
 ## Release identity
 
 - PyPI project: `aifordable-runner-mcp`
+- primary CLI: `runner-mcp`
+- PyPI/Registry launcher alias: `aifordable-runner-mcp`
 - MCP Registry name: `io.github.blacksp1d3r/runner-mcp`
 - source repository: `Blacksp1d3r/runner-mcp`
 - release workflow: `.github/workflows/publish.yml`

@@ -37,7 +37,7 @@ Only generic placeholders belong in public examples.
 - security documentation matches implemented boundaries;
 - CHANGELOG contains the user-visible changes;
 - upgrade or migration notes exist when configuration semantics changed;
-- Fools2Tools branding remains secondary to the Runner MCP product identity.
+- AIfordable branding remains secondary to the Runner MCP product identity.
 
 ## Package metadata
 

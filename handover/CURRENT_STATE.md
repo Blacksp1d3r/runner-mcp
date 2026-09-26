@@ -5,7 +5,7 @@
 - The pending Trusted Publisher is now configured for `aifordable-runner-mcp`, repository `Blacksp1d3r/runner-mcp`, workflow `publish.yml`, environment `pypi`.
 - The GitHub `pypi` environment is restricted to `main` and requires the repository owner as reviewer; no long-lived PyPI API token is used.
 - This branch changes only distribution/branding metadata: PyPI package `aifordable-runner-mcp`, CLI/product name remains `runner-mcp` / Runner MCP, official MCP Registry identity remains `io.github.blacksp1d3r/runner-mcp`.
-- Public umbrella branding is being reconciled from AIfordable to AIfordable. Runtime/security authority remains unchanged.
+- Public umbrella branding is being reconciled to AIfordable; the previous umbrella brand is retired from current project materials. Runtime/security authority remains unchanged.
 - Publication remains blocked until this branch is exact-head green, reviewed, merged to `main`, and the human-triggered `Publish Runner MCP` workflow is approved/run for version `0.1.1`.
 
 ## 2026-09-26 — v0.1.1 distribution/discovery release prepared
@@ -423,13 +423,13 @@ Phase 3.8 bridge result envelope and replay protection:
 - reusing an existing request ID with changed content fails closed;
 - corrupt, oversized, capacity-exhausted and symlinked replay-ledger states fail closed;
 - replay ledger files are restricted to the service account;
-- AIfordable project identity and a free public-launch-readiness plan were added without changing Runner MCP's product identity or security boundaries;
+- an initial umbrella project identity and a free public-launch-readiness plan were added without changing Runner MCP's product identity or security boundaries;
 - public CI validates pull requests and main on a fresh standard GitHub-hosted runner with read-only repository permissions, pinned official actions and no private secrets; standard runners are free for this public repository.
 
 
 Phase 3.9 public launch readiness:
 - README now leads with a concise problem statement, architecture and safety boundary;
-- AIfordable remains a light umbrella identity; Runner MCP retains its own product/package identity;
+- the umbrella identity remains secondary; Runner MCP retains its own product/package identity;
 - five-minute local evaluation demo added alongside the full Quickstart;
 - root security-reporting policy added;
 - public changelog and release checklist added;

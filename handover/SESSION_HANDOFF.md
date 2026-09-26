@@ -1,3 +1,10 @@
+## 2026-09-26 — v0.1.1 ready for human publication gate
+
+- PR #102 is merged; exact merge commit `d948945034e07616d673945467e9b2e44748fa10` passed post-merge validation and attribution.
+- Final package identity: `aifordable-runner-mcp`; normal command remains `runner-mcp`; the package-name alias exists for `uvx`/MCP Registry launch.
+- PyPI Trusted Publisher and GitHub `pypi` environment are configured with exact environment binding and no API token.
+- Do not create another distribution-fix branch. The next action is the explicit human workflow dispatch/approval for 0.1.1, followed by public verification of all three publication stages.
+
 ## 2026-09-26 — PyPI pending publisher ready; package-name fix active
 
 - Pending Trusted Publisher is configured for `aifordable-runner-mcp` with GitHub owner `Blacksp1d3r`, repository `runner-mcp`, workflow `publish.yml`, environment `pypi`.

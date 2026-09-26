@@ -466,7 +466,7 @@ Prepare Runner MCP for free, responsible discovery without changing its security
 
 Implemented launch-readiness foundation:
 
-- Runner MCP remains the product identity under the Fools2Tools umbrella;
+- Runner MCP remains the product identity under the AIfordable umbrella;
 - README leads with the problem, safety boundary and architecture;
 - Quickstart remains the full guided path while a separate five-minute local demo provides a shorter evaluation path;
 - root security-reporting policy added;

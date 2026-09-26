@@ -15,7 +15,12 @@ def _project_metadata() -> dict:
     version_line = next(line for line in text.splitlines() if line.startswith("version = "))
     name = name_line.split("=", 1)[1].strip().strip('"')
     version = version_line.split("=", 1)[1].strip().strip('"')
-    return {"name": name, "version": version}
+    scripts = {
+        line.split("=", 1)[0].strip(): line.split("=", 1)[1].strip().strip('"')
+        for line in text.split("[project.scripts]", 1)[1].split("[project.urls]", 1)[0].splitlines()
+        if "=" in line
+    }
+    return {"name": name, "version": version, "scripts": scripts}
 
 
 def test_distribution_versions_stay_in_sync() -> None:
@@ -33,8 +38,10 @@ def test_mcp_registry_identity_matches_pypi_readme_marker() -> None:
 
     assert server["name"] == SERVER_NAME
     assert f"<!-- mcp-name: {SERVER_NAME} -->" in readme
-    assert project["name"] == "runner-mcp"
+    assert project["name"] == "aifordable-runner-mcp"
     assert server["packages"][0]["identifier"] == project["name"]
+    assert project["scripts"]["runner-mcp"] == "runner_mcp.cli:main"
+    assert project["scripts"]["aifordable-runner-mcp"] == "runner_mcp.cli:main"
     assert server["repository"]["url"] == "https://github.com/Blacksp1d3r/runner-mcp"
     assert server["repository"]["source"] == "github"
     assert server["repository"]["id"] == "1377580607"

@@ -3,7 +3,7 @@ requires = ["setuptools>=75"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "runner-mcp"
+name = "aifordable-runner-mcp"
 version = "0.1.1"
 description = "Security-first self-hosted MCP for controlled AI development and staging operations."
 readme = "README.md"
@@ -38,6 +38,7 @@ dev = [
 
 [project.scripts]
 runner-mcp = "runner_mcp.cli:main"
+aifordable-runner-mcp = "runner_mcp.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Blacksp1d3r/runner-mcp"

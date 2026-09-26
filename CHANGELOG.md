@@ -8,7 +8,7 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ### Distribution and discovery
 
-- prepare the `0.1.1` Python package metadata for PyPI Trusted Publishing;
+- prepare the `0.1.1` Python package metadata for PyPI Trusted Publishing under `aifordable-runner-mcp` while preserving the `runner-mcp` CLI;
 - add official MCP Registry metadata under `io.github.blacksp1d3r/runner-mcp`;
 - add release automation that publishes the Python package first, then the MCP Registry entry through GitHub OIDC, and finally creates the GitHub pre-release;
 - add regression checks keeping `pyproject.toml`, `server.json` and the PyPI README ownership marker synchronized;
@@ -47,7 +47,7 @@ First public alpha release, published as GitHub pre-release `v0.1.0`.
 - interactive setup, doctor, guide and configuration-management CLI;
 - managed non-root autostart for the fixed Runner MCP server and explicitly bootstrapped watcher components, using systemd user services when available and a lock-protected managed cron fallback on headless accounts;
 - public CI for this public repository;
-- Fools2Tools project identity;
+- initial umbrella project identity;
 - five-minute local demo, release checklist and launch-readiness documentation;
 - clean Ubuntu 24.04 / Python 3.12 CI coverage for the documented five-minute demo;
 - short per-job private test temporary directories that avoid Unix-domain socket path exhaustion while preserving restrictive permissions and cleanup;

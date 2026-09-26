@@ -1,7 +1,6 @@
 import json
 import pathlib
 
-
 ROOT = pathlib.Path(__file__).resolve().parents[2]
 SERVER_NAME = "io.github.blacksp1d3r/runner-mcp"
 

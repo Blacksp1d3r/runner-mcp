@@ -2,7 +2,7 @@ import json
 import pathlib
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]
-SERVER_NAME = "io.github.blacksp1d3r/runner-mcp"
+SERVER_NAME = "io.github.Blacksp1d3r/runner-mcp"
 
 
 def _server_metadata() -> dict:
@@ -29,6 +29,8 @@ def test_distribution_versions_stay_in_sync() -> None:
 
     assert server["version"] == project["version"]
     assert server["packages"][0]["version"] == project["version"]
+    init_text = (ROOT / "src" / "runner_mcp" / "__init__.py").read_text(encoding="utf-8")
+    assert f'__version__ = "{project["version"]}"' in init_text
 
 
 def test_mcp_registry_identity_matches_pypi_readme_marker() -> None:

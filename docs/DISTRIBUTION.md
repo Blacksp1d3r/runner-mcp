@@ -7,12 +7,16 @@ Runner MCP is packaged as a Python project and uses the official MCP Registry as
 - PyPI project: `aifordable-runner-mcp`
 - primary CLI: `runner-mcp`
 - PyPI/Registry launcher alias: `aifordable-runner-mcp`
-- MCP Registry name: `io.github.blacksp1d3r/runner-mcp`
+- MCP Registry name: `io.github.Blacksp1d3r/runner-mcp`
 - source repository: `Blacksp1d3r/runner-mcp`
 - release workflow: `.github/workflows/publish.yml`
 - protected GitHub Environment: `pypi`
 
-The README contains the exact `mcp-name` marker required for PyPI ownership verification by the MCP Registry.
+The README contains the exact `mcp-name` marker required for PyPI ownership verification by the MCP Registry. GitHub-backed Registry namespaces are case-sensitive in the publish authorization path, so the `io.github.Blacksp1d3r/*` prefix must preserve the account casing returned by GitHub authentication.
+
+## First-publication recovery
+
+PyPI `0.1.1` was published successfully, but the first MCP Registry publication attempt was rejected because the server metadata used a lowercase GitHub namespace while Registry OIDC authorized `io.github.Blacksp1d3r/*`. PyPI release files are immutable, including the README ownership marker embedded in package metadata, so `0.1.2` is the first release intended to be published consistently across PyPI, the official MCP Registry and GitHub Releases.
 
 ## One-time PyPI setup
 

@@ -6,7 +6,7 @@ on:
       version:
         description: "Exact release version already recorded in pyproject.toml and server.json"
         required: true
-        default: "0.1.1"
+        default: "0.1.2"
 
 concurrency:
   group: runner-mcp-publish

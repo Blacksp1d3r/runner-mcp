@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aifordable-runner-mcp"
-version = "0.1.1"
+version = "0.1.2"
 description = "Security-first self-hosted MCP for controlled AI development and staging operations."
 readme = "README.md"
 license = { file = "LICENSE" }

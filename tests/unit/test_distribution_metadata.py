@@ -1,8 +1,6 @@
-from __future__ import annotations
-
 import json
+import tomllib
 from pathlib import Path
-from tomllib import load
 
 
 ROOT = Path(__file__).resolve().parents[2]
@@ -15,7 +13,7 @@ def _server_metadata() -> dict:
 
 def _project_metadata() -> dict:
     with (ROOT / "pyproject.toml").open("rb") as handle:
-        return load(handle)["project"]
+        return tomllib.load(handle)["project"]
 
 
 def test_distribution_versions_stay_in_sync() -> None:

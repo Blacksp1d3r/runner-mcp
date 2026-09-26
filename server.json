@@ -2,7 +2,7 @@
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
   "name": "io.github.blacksp1d3r/runner-mcp",
   "title": "Runner MCP",
-  "description": "Security-first self-hosted MCP for controlled AI development and staging operations without a general-purpose remote shell.",
+  "description": "Self-hosted MCP for controlled AI development and staging without a general-purpose remote shell.",
   "version": "0.1.1",
   "websiteUrl": "https://github.com/Blacksp1d3r/runner-mcp",
   "repository": {

@@ -60,7 +60,7 @@ Before posting, add the released repository link and exact version.
 
 Registry name:
 
-> io.github.blacksp1d3r/runner-mcp
+> io.github.Blacksp1d3r/runner-mcp
 
 Title:
 

@@ -1,3 +1,7 @@
+## 2026-09-26 — ChatGPT -> ALL — V0.1.1 PUBLICATION GATE
+
+PR #102 is integrated on `main` as `d948945034e07616d673945467e9b2e44748fa10`; merge-commit validation and attribution are green. Distribution is `aifordable-runner-mcp`, primary CLI remains `runner-mcp`, Registry identity remains `io.github.blacksp1d3r/runner-mcp`. Pending PyPI Trusted Publisher + protected GitHub `pypi` environment are configured. Do not duplicate packaging work. Next step is the owner-controlled `Publish Runner MCP` workflow dispatch for 0.1.1 and environment approval, then public verification.
+
 ## 2026-09-26 — ChatGPT -> ALL — PYPI IDENTITY FIX ACTIVE
 
 Scope: Runner MCP v0.1.1 distribution only.

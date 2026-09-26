@@ -38,6 +38,7 @@ dev = [
 
 [project.scripts]
 runner-mcp = "runner_mcp.cli:main"
+aifordable-runner-mcp = "runner_mcp.cli:main"
 
 [project.urls]
 Homepage = "https://github.com/Blacksp1d3r/runner-mcp"

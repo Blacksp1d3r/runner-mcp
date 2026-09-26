@@ -19,7 +19,7 @@ You do not need to know Python to complete the basic setup.
 Starting with v0.1.1, the recommended persistent package install is:
 
 ```bash
-uv tool install runner-mcp
+uv tool install aifordable-runner-mcp
 ```
 
 This keeps the `runner-mcp` command available for setup, service operation and autostart. The MCP Registry may use `uvx` to launch the package for discovery/evaluation, but a persistent tool install is clearer for a self-hosted service with private configuration.

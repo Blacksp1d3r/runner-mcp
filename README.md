@@ -1,6 +1,6 @@
 # Runner MCP
 
-<!-- mcp-name: io.github.blacksp1d3r/runner-mcp -->
+<!-- mcp-name: io.github.Blacksp1d3r/runner-mcp -->
 
 [![Runner MCP validation](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml/badge.svg?branch=main)](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml)
 [![GitHub release](https://img.shields.io/github/v/release/Blacksp1d3r/runner-mcp?include_prereleases)](https://github.com/Blacksp1d3r/runner-mcp/releases)
@@ -13,7 +13,7 @@ Runner MCP is a security-first, self-hosted Model Context Protocol service. You 
 
 _An AIfordable project — secure software. Built with AI. Fairly priced._
 
-Runner MCP is currently **alpha**. See [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases) for the exact published version and validation notes. PyPI and official MCP Registry distribution starts with v0.1.1.
+Runner MCP is currently **alpha**. See [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases) for the exact published version and validation notes. PyPI distribution started with v0.1.1. Official MCP Registry distribution starts with v0.1.2 after aligning the registry identity with the exact GitHub account casing.
 
 **Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
 

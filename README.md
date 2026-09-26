@@ -11,7 +11,7 @@
 
 Runner MCP is a security-first, self-hosted Model Context Protocol service. You configure the projects and operations that exist; the AI selects from those bounded capabilities instead of supplying arbitrary shell commands, executables, filesystem paths or service names.
 
-_A Fools2Tools project — practical tools from real problems._
+_An AIfordable project — secure software. Built with AI. Fairly priced._
 
 Runner MCP is currently **alpha**. See [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases) for the exact published version and validation notes. PyPI and official MCP Registry distribution starts with v0.1.1.
 
@@ -58,14 +58,14 @@ You do not need to understand the Python source code for the basic workflow.
 Starting with v0.1.1, the shortest persistent install is:
 
 ```bash
-uv tool install runner-mcp
+uv tool install aifordable-runner-mcp
 runner-mcp setup
 runner-mcp doctor
 runner-mcp guide
 runner-mcp status
 ```
 
-`uvx runner-mcp ...` is also suitable for package discovery and short-lived evaluation, but a persistent tool install is the clearer choice for a self-hosted service with private configuration and autostart.
+`uvx aifordable-runner-mcp ...` is also suitable for package discovery and short-lived evaluation, but a persistent tool install is the clearer choice for a self-hosted service with private configuration and autostart.
 
 To install directly from source instead:
 
@@ -94,7 +94,7 @@ For the zero-additional-service-cost GitHub mailbox pattern, see [docs/GITHUB_MA
 
 Dependency/build/interpreter contract changes are deliberately refused by self-update and require a local bootstrap/manual upgrade; see [self-update compatibility](docs/SELF_UPDATE_COMPATIBILITY.md).
 
-Runner MCP is developed as a [Fools2Tools project](docs/FOOLS2TOOLS.md). Public launch readiness is tracked in [docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md). See also the [changelog](CHANGELOG.md), [release checklist](docs/RELEASE_CHECKLIST.md) and prepared [launch copy](docs/LAUNCH_COPY.md).
+Runner MCP is developed as an [AIfordable project](docs/AIFORDABLE.md). Public launch readiness is tracked in [docs/LAUNCH_READINESS.md](docs/LAUNCH_READINESS.md). See also the [changelog](CHANGELOG.md), [release checklist](docs/RELEASE_CHECKLIST.md) and prepared [launch copy](docs/LAUNCH_COPY.md).
 
 Useful commands:
 

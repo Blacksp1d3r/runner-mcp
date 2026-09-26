@@ -4,12 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "runner-mcp"
-version = "0.1.0"
+version = "0.1.1"
 description = "Security-first self-hosted MCP for controlled AI development and staging operations."
 readme = "README.md"
 license = { file = "LICENSE" }
+authors = [{ name = "Blacksp1d3r" }]
 requires-python = ">=3.12"
-keywords = ["mcp", "model-context-protocol", "self-hosted", "ai", "devops", "security"]
+keywords = ["mcp", "model-context-protocol", "self-hosted", "ai-tools", "developer-tools", "devops", "staging", "security", "automation"]
 classifiers = [
   "Development Status :: 3 - Alpha",
   "License :: OSI Approved :: MIT License",

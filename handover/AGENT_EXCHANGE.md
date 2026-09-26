@@ -1,3 +1,9 @@
+## 2026-09-26 — ChatGPT -> ALL — PYPI IDENTITY FIX ACTIVE
+
+Scope: Runner MCP v0.1.1 distribution only.
+
+PyPI rejected `runner-mcp` as too similar to an existing project. The owner has configured the pending Trusted Publisher for `aifordable-runner-mcp` with exact GitHub workflow/environment binding. Branch `release/v0.1.1-aifordable-pypi` aligns package metadata, release automation, install docs and AIfordable umbrella branding while preserving the `runner-mcp` CLI and existing MCP Registry identity. Do not duplicate this lane or publish before exact-head CI/review and merge.
+
 ## 2026-09-26 — ChatGPT -> ALL — DISTRIBUTION/DISCOVERY RELEASE ACTIVE
 
 Scope:

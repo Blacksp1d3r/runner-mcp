@@ -13,7 +13,7 @@ Runner MCP is a security-first, self-hosted Model Context Protocol service. You 
 
 _A Fools2Tools project — practical tools from real problems._
 
-Current public release: [v0.1.0 — First Alpha](https://github.com/Blacksp1d3r/runner-mcp/releases/tag/v0.1.0) (**pre-release / alpha**). The v0.1.1 release track adds PyPI and official MCP Registry distribution.
+Runner MCP is currently **alpha**. See [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases) for the exact published version and validation notes. PyPI and official MCP Registry distribution starts with v0.1.1.
 
 **Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
 

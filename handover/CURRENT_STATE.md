@@ -1,3 +1,12 @@
+## 2026-09-26 — v0.1.1 distribution/discovery release prepared
+
+- Active branch: `release/v0.1.1-discovery`.
+- This slice changes packaging, discovery, release automation and public positioning only; it adds no new Runner MCP runtime authority.
+- Package/version metadata is prepared for `runner-mcp` 0.1.1 and official MCP Registry identity `io.github.blacksp1d3r/runner-mcp`.
+- `server.json`, distribution metadata regression tests, PyPI Trusted Publishing guidance and a human-triggered publish workflow are included.
+- Publication order is fail-closed: exact release validation and artifact build -> PyPI OIDC publication -> PyPI visibility proof -> MCP Registry GitHub-OIDC publication -> GitHub pre-release.
+- External publication is NOT complete yet. The first PyPI release still requires the one-time pending Trusted Publisher configuration plus matching protected GitHub `pypi` environment; then the publish workflow must be explicitly run from merged `main`.
+- README/launch copy now lead with the concrete problem: useful AI development/staging operations without making a general-purpose remote shell the normal interface.
 ## 2026-09-24 — v0.1.0 alpha released and public docs reconciled
 
 - GitHub pre-release `v0.1.0` is published from exact validated release commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`; the published notes preserve the alpha limitations and validation provenance.

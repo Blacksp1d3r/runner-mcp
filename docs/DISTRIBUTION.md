@@ -4,7 +4,7 @@ Runner MCP is packaged as a Python project and uses the official MCP Registry as
 
 ## Release identity
 
-- PyPI project: `runner-mcp`
+- PyPI project: `aifordable-runner-mcp`
 - MCP Registry name: `io.github.blacksp1d3r/runner-mcp`
 - source repository: `Blacksp1d3r/runner-mcp`
 - release workflow: `.github/workflows/publish.yml`
@@ -16,7 +16,7 @@ The README contains the exact `mcp-name` marker required for PyPI ownership veri
 
 PyPI Trusted Publishing is deliberately tokenless. Before the first package publication, create a **pending GitHub publisher** in the maintainer's PyPI account with exactly:
 
-- PyPI project name: `runner-mcp`
+- PyPI project name: `aifordable-runner-mcp`
 - owner: `Blacksp1d3r`
 - repository: `runner-mcp`
 - workflow: `publish.yml`

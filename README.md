@@ -13,7 +13,7 @@ Runner MCP is a security-first, self-hosted Model Context Protocol service. You 
 
 _A Fools2Tools project — practical tools from real problems._
 
-Current public release: [v0.1.0 — First Alpha](https://github.com/Blacksp1d3r/runner-mcp/releases/tag/v0.1.0) (**pre-release / alpha**). The v0.1.1 distribution update is being prepared for PyPI and the official MCP Registry.
+Current public release: [v0.1.0 — First Alpha](https://github.com/Blacksp1d3r/runner-mcp/releases/tag/v0.1.0) (**pre-release / alpha**). The v0.1.1 release track adds PyPI and official MCP Registry distribution.
 
 **Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
 
@@ -54,14 +54,24 @@ The normal authority model is deliberately asymmetric: read-only inspection is e
 
 You do not need to understand the Python source code for the basic workflow.
 
+Starting with v0.1.1, the shortest persistent install is:
+
 ```bash
-git clone https://github.com/Blacksp1d3r/runner-mcp.git
-cd runner-mcp
-./install.sh
+uv tool install runner-mcp
 runner-mcp setup
 runner-mcp doctor
 runner-mcp guide
 runner-mcp status
+```
+
+`uvx runner-mcp ...` is also suitable for package discovery and short-lived evaluation, but a persistent tool install is the clearer choice for a self-hosted service with private configuration and autostart.
+
+To install directly from source instead:
+
+```bash
+git clone https://github.com/Blacksp1d3r/runner-mcp.git
+cd runner-mcp
+./install.sh
 ```
 
 Start with [QUICKSTART.md](QUICKSTART.md) for the guided installation.

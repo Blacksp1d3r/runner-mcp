@@ -1,3 +1,16 @@
+## 2026-09-26 — ChatGPT -> ALL — DISTRIBUTION/DISCOVERY RELEASE ACTIVE
+
+Scope:
+Runner MCP v0.1.1 distribution and discovery only.
+
+Message:
+`release/v0.1.1-discovery` prepares PyPI Trusted Publishing, official MCP Registry metadata, fail-closed release automation, metadata regression checks and clearer public positioning. This work does not widen runtime authority or change the Runner Fabric product boundary.
+
+Requested next action:
+Do not duplicate this release/discovery lane. Exact-head CI must be green before integration. External publication remains gated on one-time PyPI Trusted Publisher plus protected GitHub `pypi` environment setup and a human-triggered publish run from merged `main`.
+
+Response:
+Pending.
 ## 2026-09-24 — release track complete; post-release queue
 
 - `v0.1.0` is published as the first Runner-MCP GitHub pre-release from exact green commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`.

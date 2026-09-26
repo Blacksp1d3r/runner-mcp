@@ -1,9 +1,9 @@
 {
   "$schema": "https://static.modelcontextprotocol.io/schemas/2025-12-11/server.schema.json",
-  "name": "io.github.blacksp1d3r/runner-mcp",
+  "name": "io.github.Blacksp1d3r/runner-mcp",
   "title": "Runner MCP",
   "description": "Self-hosted MCP for controlled AI development and staging without a general-purpose remote shell.",
-  "version": "0.1.1",
+  "version": "0.1.2",
   "websiteUrl": "https://github.com/Blacksp1d3r/runner-mcp",
   "repository": {
     "url": "https://github.com/Blacksp1d3r/runner-mcp",
@@ -15,7 +15,7 @@
       "registryType": "pypi",
       "registryBaseUrl": "https://pypi.org",
       "identifier": "aifordable-runner-mcp",
-      "version": "0.1.1",
+      "version": "0.1.2",
       "runtimeHint": "uvx",
       "packageArguments": [
         {

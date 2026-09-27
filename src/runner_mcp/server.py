@@ -28,6 +28,7 @@ from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
+from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 from .operational_safety import (
@@ -63,6 +64,8 @@ class Settings:
     deployment_jobs_root: Path | None = None
     approval_root: Path | None = None
     approval_ttl_seconds: int = 600
+    fabric_resource_url: str | None = None
+    fabric_bearer_token: str | None = None
 
     @classmethod
     def from_mapping(cls, values: Mapping[str, str]) -> Settings:
@@ -132,6 +135,27 @@ class Settings:
         approval_root_raw = values.get("RUNNER_MCP_APPROVAL_ROOT", "").strip()
         if approval_root_raw and not Path(approval_root_raw).is_absolute():
             raise RuntimeError("RUNNER_MCP_APPROVAL_ROOT must be an absolute path")
+
+        fabric_resource_url = values.get(
+            "RUNNER_MCP_FABRIC_RESOURCE_URL",
+            "",
+        ).strip()
+        fabric_bearer_token = values.get(
+            "RUNNER_MCP_FABRIC_BEARER_TOKEN",
+            "",
+        ).strip()
+        if bool(fabric_resource_url) != bool(fabric_bearer_token):
+            raise RuntimeError(
+                "Runner Fabric resource URL and bearer token must be configured together"
+            )
+        if fabric_resource_url:
+            try:
+                FabricBridgeConfig(
+                    endpoint=fabric_resource_url,
+                    bearer_token=fabric_bearer_token,
+                ).to_mcp_config()
+            except ValueError as exc:
+                raise RuntimeError("Runner Fabric bridge configuration is invalid") from exc
 
         try:
             max_test_jobs = int(values.get("RUNNER_MCP_MAX_TEST_JOBS", "2"))
@@ -213,6 +237,8 @@ class Settings:
             ),
             approval_root=Path(approval_root_raw) if approval_root_raw else None,
             approval_ttl_seconds=approval_ttl_seconds,
+            fabric_resource_url=fabric_resource_url or None,
+            fabric_bearer_token=fabric_bearer_token or None,
         )
 
     @classmethod
@@ -343,6 +369,20 @@ def build_mcp(
         resource_url=settings.resource_url,
     )
 
+    fabric_bridge = (
+        FabricBridgeClient(
+            FabricBridgeConfig(
+                endpoint=settings.fabric_resource_url,
+                bearer_token=settings.fabric_bearer_token,
+            )
+        )
+        if (
+            settings.fabric_resource_url is not None
+            and settings.fabric_bearer_token is not None
+        )
+        else None
+    )
+
     @mcp.tool()
     def runtime_status() -> dict:
         """Return safe Runner MCP runtime state without private host metadata."""
@@ -365,6 +405,7 @@ def build_mcp(
             "database_backups_configured": settings.database_backup_root is not None,
             "deployment_jobs_configured": deployment_jobs is not None,
             "approvals_configured": approval_manager is not None,
+            "fabric_bridge_configured": fabric_bridge is not None,
         }
         try:
             result.update(self_update_manager.runtime_status())
@@ -527,6 +568,92 @@ def build_mcp(
             )
         )
         return result
+
+    def _require_fabric_bridge() -> FabricBridgeClient:
+        if fabric_bridge is None:
+            raise ValueError("Runner Fabric bridge is not configured")
+        return fabric_bridge
+
+    def _audit_fabric(
+        tool_name: str,
+        work_unit_id: str,
+        result: str,
+    ) -> None:
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                tool_name,
+                work_unit_id,
+                "authenticated-client",
+                result,
+                utc_timestamp(),
+            )
+        )
+
+    def fabric_run_work_unit(
+        work_unit_id: str,
+        project_id: str,
+        work_item_id: str,
+        expected_revision: str,
+        change_plan_id: str,
+        validation_profile: str = "foundation",
+        correction_budget: int = 1,
+        landing_mode: str = "managed_branch_push",
+    ) -> dict:
+        """Run or safely join one coarse Runner Fabric work-unit."""
+        try:
+            result = _require_fabric_bridge().run_work_unit(
+                work_unit_id=work_unit_id,
+                project_id=project_id,
+                work_item_id=work_item_id,
+                expected_revision=expected_revision,
+                change_plan_id=change_plan_id,
+                validation_profile=validation_profile,
+                correction_budget=correction_budget,
+                landing_mode=landing_mode,
+            )
+        except FabricBridgeError as exc:
+            _audit_fabric("fabric_run_work_unit", work_unit_id, "denied")
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_run_work_unit",
+            work_unit_id,
+            str(result.get("state", "unknown")),
+        )
+        return result
+
+    def fabric_get_work_unit(work_unit_id: str) -> dict:
+        """Return bounded local Runner Fabric work-unit state."""
+        try:
+            result = _require_fabric_bridge().get_work_unit(work_unit_id)
+        except FabricBridgeError as exc:
+            _audit_fabric("fabric_get_work_unit", work_unit_id, "denied")
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_get_work_unit",
+            work_unit_id,
+            str(result.get("status", "unknown")),
+        )
+        return result
+
+    def fabric_cancel_work_unit(work_unit_id: str) -> dict:
+        """Request bounded cooperative cancellation of one Fabric work-unit."""
+        try:
+            result = _require_fabric_bridge().cancel_work_unit(work_unit_id)
+        except FabricBridgeError as exc:
+            _audit_fabric("fabric_cancel_work_unit", work_unit_id, "denied")
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_cancel_work_unit",
+            work_unit_id,
+            str(result.get("status", "unknown")),
+        )
+        return result
+
+    if fabric_bridge is not None:
+        mcp.tool()(fabric_run_work_unit)
+        mcp.tool()(fabric_get_work_unit)
+        mcp.tool()(fabric_cancel_work_unit)
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:

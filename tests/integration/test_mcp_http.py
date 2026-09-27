@@ -107,6 +107,13 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         ):
             assert tool_name in listed.text
 
+        for tool_name in (
+            "fabric_run_work_unit",
+            "fabric_get_work_unit",
+            "fabric_cancel_work_unit",
+        ):
+            assert tool_name not in listed.text
+
         safety = client.post(
             "/mcp",
             headers=headers,
@@ -1255,3 +1262,165 @@ def test_mcp_adapter_capabilities_are_path_safe(tmp_path: Path) -> None:
     assert "list_project_adapters" in audit_text
     assert "project_capabilities" in audit_text
     assert str(project_root) not in audit_text
+
+
+def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    calls: list[tuple[str, dict]] = []
+
+    class FakeFabricBridge:
+        def __init__(self, _config) -> None:
+            pass
+
+        def run_work_unit(self, **kwargs):
+            calls.append(("run", kwargs))
+            return {
+                "state": "complete",
+                "expected_revision": "a" * 40,
+                "commit_revision": "b" * 40,
+                "pushed_revision": "b" * 40,
+                "change_reference": "change:109",
+                "report_reference": "report:109",
+                "corrections_used": 0,
+                "reported": True,
+                "evidence": [],
+            }
+
+        def get_work_unit(self, work_unit_id: str):
+            calls.append(("get", {"work_unit_id": work_unit_id}))
+            return {
+                "work_unit_id": work_unit_id,
+                "project_id": "project:runner-fabric",
+                "work_item_id": "issue:109",
+                "status": "complete",
+                "result": {
+                    "state": "complete",
+                    "expected_revision": "a" * 40,
+                    "commit_revision": "b" * 40,
+                    "pushed_revision": "b" * 40,
+                    "change_reference": "change:109",
+                    "report_reference": "report:109",
+                    "corrections_used": 0,
+                    "reported": True,
+                    "evidence": [],
+                },
+            }
+
+        def cancel_work_unit(self, work_unit_id: str):
+            calls.append(("cancel", {"work_unit_id": work_unit_id}))
+            return {
+                "work_unit_id": work_unit_id,
+                "project_id": "project:runner-fabric",
+                "work_item_id": "issue:109",
+                "status": "complete",
+                "result": {
+                    "state": "complete",
+                    "expected_revision": "a" * 40,
+                    "commit_revision": "b" * 40,
+                    "pushed_revision": "b" * 40,
+                    "change_reference": "change:109",
+                    "report_reference": "report:109",
+                    "corrections_used": 0,
+                    "reported": True,
+                    "evidence": [],
+                },
+            }
+
+    monkeypatch.setattr("runner_mcp.server.FabricBridgeClient", FakeFabricBridge)
+
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        rate_limit_per_minute=60,
+        fabric_resource_url="http://127.0.0.1:9010/mcp",
+        fabric_bearer_token="f" * 32,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        listed = client.post(
+            "/mcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+        )
+        assert listed.status_code == 200
+        for tool_name in (
+            "fabric_run_work_unit",
+            "fabric_get_work_unit",
+            "fabric_cancel_work_unit",
+        ):
+            assert tool_name in listed.text
+
+        started = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_run_work_unit",
+                    "arguments": {
+                        "work_unit_id": "wu:109",
+                        "project_id": "project:runner-fabric",
+                        "work_item_id": "issue:109",
+                        "expected_revision": "a" * 40,
+                        "change_plan_id": "plan:109",
+                    },
+                },
+            },
+        )
+        payload = parse_tool_json(started)
+        assert payload["state"] == "complete"
+        assert payload["commit_revision"] == "b" * 40
+
+    assert calls == [
+        (
+            "run",
+            {
+                "work_unit_id": "wu:109",
+                "project_id": "project:runner-fabric",
+                "work_item_id": "issue:109",
+                "expected_revision": "a" * 40,
+                "change_plan_id": "plan:109",
+                "validation_profile": "foundation",
+                "correction_budget": 1,
+                "landing_mode": "managed_branch_push",
+            },
+        )
+    ]
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "fabric_run_work_unit" in audit_text
+    assert "wu:109" in audit_text
+    assert "127.0.0.1" not in audit_text
+    assert "f" * 32 not in audit_text

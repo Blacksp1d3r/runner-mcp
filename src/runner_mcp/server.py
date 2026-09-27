@@ -590,7 +590,6 @@ def build_mcp(
             )
         )
 
-    @mcp.tool()
     def fabric_run_work_unit(
         work_unit_id: str,
         project_id: str,
@@ -623,7 +622,6 @@ def build_mcp(
         )
         return result
 
-    @mcp.tool()
     def fabric_get_work_unit(work_unit_id: str) -> dict:
         """Return bounded local Runner Fabric work-unit state."""
         try:
@@ -638,7 +636,6 @@ def build_mcp(
         )
         return result
 
-    @mcp.tool()
     def fabric_cancel_work_unit(work_unit_id: str) -> dict:
         """Request bounded cooperative cancellation of one Fabric work-unit."""
         try:
@@ -652,6 +649,11 @@ def build_mcp(
             str(result.get("status", "unknown")),
         )
         return result
+
+    if fabric_bridge is not None:
+        mcp.tool()(fabric_run_work_unit)
+        mcp.tool()(fabric_get_work_unit)
+        mcp.tool()(fabric_cancel_work_unit)
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:

@@ -6,10 +6,9 @@
   "name": "Runner MCP",
   "description": "Security-first self-hosted MCP for controlled AI development and staging operations without a general-purpose remote shell.",
   "type": "mcp_server",
-  "status": "alpha",
   "version": "0.1.2",
   "transport": [
-    "http"
+    "streamable-http"
   ],
   "keywords": [
     "mcp",

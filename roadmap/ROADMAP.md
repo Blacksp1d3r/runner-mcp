@@ -7,6 +7,51 @@ Handoff policy: `roadmap/ROADMAP.md` is the canonical architectural roadmap; `ro
 
 Status policy: this roadmap is the architectural source of truth for implemented and remaining phases. `handover/CURRENT_STATE.md` is chronological evidence of completed work, while GitHub CI and release records are authoritative for exact validation results such as test counts.
 
+## Cross-cutting — AI fault containment with proportional security gates
+
+Runner MCP assumes that an AI/client can misunderstand instructions, hallucinate, follow prompt
+injection, call the wrong tool, or otherwise request an unsafe action. The model/client is never
+the final authority.
+
+The execution boundary must therefore preserve fast autonomous work where mistakes are contained
+while applying stronger deterministic checks only as blast radius increases.
+
+### Operating zones
+
+- **Green / contained:** read-only inspection, safe file reads, predefined tests, bounded logs and
+  other actions confined to declared project/runtime limits should remain automatic and must not
+  require human approval merely because an AI requested them.
+- **Controlled:** staging mutation, known managed service/release actions, migrations and equivalent
+  bounded operations require deterministic policy, fresh-state validation, exact plan/target
+  binding and replay/fencing protection. Human approval is required only where policy says so.
+- **Protected:** production mutation, database restore/destructive recovery, credential/security
+  policy changes, emergency-stop changes and equivalent high-blast-radius actions require
+  independent operator authority and are not enabled merely by client or agent text.
+
+### Security invariants
+
+- AI/client text expresses intent only; deterministic Runner MCP code decides whether a predefined
+  capability exists and is authorized.
+- Forbidden capabilities must be absent, disabled or technically unreachable, not merely described
+  to the model as "do not call this".
+- Tools accept bounded semantic identifiers, not arbitrary shell, executable, host path, endpoint,
+  environment, service/process or credential input.
+- Mutations revalidate current state immediately before execution and remain bound to the exact
+  approved plan/target/revision.
+- Approval cannot be self-asserted by the requesting AI/client and must be independently derived.
+- Repository/document/tool output is untrusted data and cannot grant capability, weaken policy or
+  satisfy approval through prompt injection.
+- The caller cannot modify the emergency-stop, approval, audit, authentication or policy boundary
+  that governs the caller's own action.
+- Executors receive the minimum OS/network/credential authority needed for the bounded operation.
+- Mutations verify postconditions and preserve recovery/rollback semantics where applicable.
+- **Security friction is proportional to blast radius:** safe read/edit/test loops should remain
+  fast and automatic; expensive/human gates belong at trust boundaries, not on every development
+  step.
+
+This cross-cutting rule strengthens the existing deny-by-default design. It does not add any new
+production, shell, credential or restore authority.
+
 ## Phase 0 — repository and design
 
 Establish repository structure, security baseline, threat model, configuration model, handover notes, dependency policy, and public-repository hygiene controls.

@@ -1,3 +1,12 @@
+## 2026-09-27 — AI fault containment roadmap rule prepared
+
+- Runner MCP now documents AI/client requests as intent rather than execution authority.
+- Security gates are proportional to blast radius: contained read/test work stays automatic,
+  controlled staging/mutation paths use deterministic policy/freshness/fencing, and protected
+  production/credential/destructive actions require independent authority.
+- Prompt-injected content cannot create capabilities, weaken policy or satisfy approval.
+- This documentation change adds no new runtime authority.
+
 ## 2026-09-27 — v0.1.2 canonical distribution published
 
 - Human-approved Publish Runner MCP run #2 completed successfully from exact main `83175f439c60346f92b5759a90993c3b8f5352f8`.

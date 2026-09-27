@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass
 from typing import Any
 
@@ -53,11 +54,8 @@ class FabricBridgeClient:
     def __init__(self, config: FabricBridgeConfig) -> None:
         if not isinstance(config, FabricBridgeConfig):
             raise TypeError("config must be FabricBridgeConfig")
-        self._client = LocalMCPClient(
-            config.to_mcp_config(),
-            allowed_tools=_FABRIC_TOOLS,
-            client_name="runner-mcp-fabric-bridge",
-        )
+        self._mcp_config = config.to_mcp_config()
+        self._local = threading.local()
 
     def run_work_unit(
         self,
@@ -95,13 +93,17 @@ class FabricBridgeClient:
             "correction_budget": correction_budget,
             "landing_mode": landing_mode,
         }
-        return self._call_result("run_work_unit", payload)
+        result = self._call_result("run_work_unit", payload)
+        if result["expected_revision"] != expected_revision:
+            raise FabricBridgeError("Runner Fabric returned a mismatched expected revision")
+        return result
 
     def get_work_unit(self, work_unit_id: str) -> dict[str, Any]:
         _semantic_id(work_unit_id, "work_unit_id")
         result = self._call_view(
             "get_work_unit",
             {"work_unit_id": work_unit_id},
+            expected_work_unit_id=work_unit_id,
         )
         return result
 
@@ -110,25 +112,47 @@ class FabricBridgeClient:
         result = self._call_view(
             "cancel_work_unit",
             {"work_unit_id": work_unit_id},
+            expected_work_unit_id=work_unit_id,
         )
         return result
 
+    def _client(self) -> LocalMCPClient:
+        client = getattr(self._local, "client", None)
+        if client is None:
+            client = LocalMCPClient(
+                self._mcp_config,
+                allowed_tools=_FABRIC_TOOLS,
+                client_name="runner-mcp-fabric-bridge",
+            )
+            self._local.client = client
+        return client
+
     def _call_result(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
         try:
-            result = self._client._call_tool(tool, arguments)
+            result = self._client()._call_tool(tool, arguments)
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric request failed") from exc
         return _validate_result(result)
 
-    def _call_view(self, tool: str, arguments: dict[str, Any]) -> dict[str, Any]:
+    def _call_view(
+        self,
+        tool: str,
+        arguments: dict[str, Any],
+        *,
+        expected_work_unit_id: str,
+    ) -> dict[str, Any]:
         try:
-            result = self._client._call_tool(tool, arguments)
+            result = self._client()._call_tool(tool, arguments)
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric request failed") from exc
-        return _validate_view(result)
+        return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
 
 
-def _validate_view(value: object) -> dict[str, Any]:
+def _validate_view(
+    value: object,
+    *,
+    expected_work_unit_id: str,
+) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise FabricBridgeError("Runner Fabric returned an invalid work-unit view")
     _exact_keys(
@@ -137,14 +161,23 @@ def _validate_view(value: object) -> dict[str, Any]:
         "work-unit view",
     )
     _semantic_id(value["work_unit_id"], "work_unit_id")
+    if value["work_unit_id"] != expected_work_unit_id:
+        raise FabricBridgeError("Runner Fabric returned a mismatched work-unit identifier")
     _semantic_id(value["project_id"], "project_id")
     _semantic_id(value["work_item_id"], "work_item_id")
     status = value["status"]
     if not isinstance(status, str) or status not in _STATUSES:
         raise FabricBridgeError("Runner Fabric returned an invalid work-unit status")
     result = value["result"]
-    if result is not None:
-        _validate_result(result)
+    if status in {"running", "cancel_requested"}:
+        if result is not None:
+            raise FabricBridgeError("Runner Fabric returned inconsistent work-unit state")
+        return value
+    if result is None:
+        raise FabricBridgeError("Runner Fabric returned inconsistent work-unit state")
+    validated_result = _validate_result(result)
+    if validated_result["state"] != status:
+        raise FabricBridgeError("Runner Fabric returned inconsistent work-unit state")
     return value
 
 

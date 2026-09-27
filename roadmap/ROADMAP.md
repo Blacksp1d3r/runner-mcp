@@ -498,12 +498,14 @@ Implemented foundation:
 - protocol validation treats `self_update_status` as an exact job-id-only action, and direct/self-update entry points reject uppercase or abbreviated commit identifiers;
 - arbitrary repository/ref selection, package-manager arguments, install paths, process commands, service identifiers and restart commands remain unavailable.
 
-Next:
+Next live-proof lane (tracked by #108):
 
-- bootstrap the merged rollback-capable package-install baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
-- after the local recovery command is validated in CI, bootstrap the merged recovery-capable baseline on the private host and deliberately fault-inject one package-install interruption to prove the persisted transaction can be recovered without generic package-manager or transaction-reset controls;
+- bootstrap the current recovery-capable baseline once on the private Runner MCP host through the normal dependency-resolving path;
+- prove same-commit/no-op and one forward commit-pinned self-update through the bounded operating model;
+- deliberately fail/retry one activation and fault-inject one package-install interruption only after the recovery-capable baseline is confirmed, proving that durable recovery state blocks overlap and can be cleared only by the existing bounded/local recovery path;
 - keep dependency-set changes explicit because self-update intentionally never resolves or installs dependencies; a dependency-set change still requires an explicit compatible bootstrap path;
-- do not describe in-place pip mutation as atomic: the transaction marker makes interruption detectable and fail-closed, while automatic rollback is claimed only for caught failures where both package and source restoration are verified.
+- do not describe in-place pip mutation as atomic: the transaction marker makes interruption detectable and fail-closed, while automatic rollback is claimed only for caught failures where both package and source restoration are verified;
+- publish only scrubbed categorical evidence and public commit/workflow references; no private host identity, paths, services or credentials.
 
 ## Phase 3.9 — public launch readiness
 

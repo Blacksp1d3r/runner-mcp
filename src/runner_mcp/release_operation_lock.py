@@ -4,6 +4,7 @@ import errno
 import os
 import stat
 from pathlib import Path
+from typing import Self
 
 try:
     import fcntl as _fcntl
@@ -42,7 +43,7 @@ class ReleaseOperationLock:
         except OSError:
             pass
 
-    def __enter__(self) -> ReleaseOperationLock:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, _exc_type, _exc, _tb) -> None:

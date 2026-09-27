@@ -149,11 +149,73 @@ def _decode_mcp_response(raw: bytes) -> dict[str, Any] | None:
         ) from exc
 
 
-class LocalMCPClient:
-    """Minimal loopback-only MCP client used by the GitHub watcher."""
+_RUNNER_MCP_BRIDGE_TOOLS = frozenset(
+    {
+        "list_projects",
+        "safety_status",
+        "project_status",
+        "project_capabilities",
+        "sync_project",
+        "list_test_profiles",
+        "run_tests",
+        "test_status",
+        "queue_status",
+        "worker_status",
+        "job_status",
+        "cancel_job",
+        "get_test_log",
+        "list_services",
+        "service_status",
+        "start_service",
+        "stop_service",
+        "restart_service",
+        "list_backups",
+        "backup_database",
+        "request_action_approval",
+        "approval_status",
+        "migration_status",
+        "apply_migrations",
+        "plan_deploy",
+        "deploy_staging",
+        "deployment_status",
+        "list_releases",
+        "rollback_plan",
+        "rollback_release",
+        "rollback_status",
+        "runtime_status",
+        "runtime_doctor",
+        "self_update",
+        "self_update_status",
+    }
+)
 
-    def __init__(self, config: LocalMCPConfig) -> None:
+
+class LocalMCPClient:
+    """Minimal loopback-only MCP client with a fixed internal tool allow-list."""
+
+    def __init__(
+        self,
+        config: LocalMCPConfig,
+        *,
+        allowed_tools: frozenset[str] = _RUNNER_MCP_BRIDGE_TOOLS,
+        client_name: str = "runner-mcp-github-watcher",
+    ) -> None:
+        if not isinstance(allowed_tools, frozenset) or not allowed_tools:
+            raise ValueError("MCP tool allow-list must be a non-empty frozenset")
+        if any(
+            not isinstance(name, str)
+            or not re.fullmatch(r"[a-z][a-z0-9_]{0,63}", name)
+            for name in allowed_tools
+        ):
+            raise ValueError("MCP tool allow-list contains an invalid tool name")
+        if not isinstance(client_name, str) or not re.fullmatch(
+            r"[a-z][a-z0-9-]{0,63}",
+            client_name,
+        ):
+            raise ValueError("MCP client name is invalid")
         self._config = config
+        self._allowed_tools = allowed_tools
+        self._client_name = client_name
         self._session_id: str | None = None
         self._next_request_id = 1
         self._initialized = False
@@ -171,7 +233,7 @@ class LocalMCPClient:
                     "protocolVersion": "2025-06-18",
                     "capabilities": {},
                     "clientInfo": {
-                        "name": "runner-mcp-github-watcher",
+                        "name": self._client_name,
                         "version": "1",
                     },
                 },
@@ -196,43 +258,7 @@ class LocalMCPClient:
         self._initialized = True
 
     def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
-        if name not in {
-            "list_projects",
-            "safety_status",
-            "project_status",
-            "project_capabilities",
-            "sync_project",
-            "list_test_profiles",
-            "run_tests",
-            "test_status",
-            "queue_status",
-            "worker_status",
-            "job_status",
-            "cancel_job",
-            "get_test_log",
-            "list_services",
-            "service_status",
-            "start_service",
-            "stop_service",
-            "restart_service",
-            "list_backups",
-            "backup_database",
-            "request_action_approval",
-            "approval_status",
-            "migration_status",
-            "apply_migrations",
-            "plan_deploy",
-            "deploy_staging",
-            "deployment_status",
-            "list_releases",
-            "rollback_plan",
-            "rollback_release",
-            "rollback_status",
-            "runtime_status",
-            "runtime_doctor",
-            "self_update",
-            "self_update_status",
-        }:
+        if name not in self._allowed_tools:
             raise BridgeExecutionAdapterError(
                 "local MCP executor rejected an unsupported tool"
             )
@@ -321,7 +347,7 @@ class LocalMCPClient:
             "Authorization": f"Bearer {self._config.bearer_token}",
             "Accept": "application/json, text/event-stream",
             "Content-Type": "application/json",
-            "User-Agent": "runner-mcp-github-watcher",
+            "User-Agent": self._client_name,
         }
         if self._session_id is not None:
             headers["Mcp-Session-Id"] = self._session_id

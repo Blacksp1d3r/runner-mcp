@@ -3,6 +3,7 @@
 Canonical record of durable project-wide decisions. Keep entries concise and append new decisions; do not put secrets or private infrastructure values here.
 
 ## Current durable decisions
+- AI/client text is intent, never execution authority; security gates are deterministic and proportional to blast radius, keeping contained read/edit/test work automatic while protected mutations require independent authority.
 - Runner Fabric is a separate product/repository; Runner-MCP remains the small security-first execution core and does not absorb Runner Fabric orchestration scope.
 - Runner MCP is deny-by-default and project-agnostic.
 - Arbitrary remote shell/process/package-manager control is not a supported feature.

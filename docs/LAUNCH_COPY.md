@@ -91,6 +91,77 @@ Description:
 
 > Runner MCP is an open-source MCP service for AI-assisted development and staging. It exposes configured projects and predefined operations through a deny-by-default interface, with audit logging, bounded output, an emergency stop and human approval gates for higher-risk staging actions.
 
+## Secondary directory submission packet — v0.1.2
+
+Use these canonical values for secondary MCP directories. Do not invent a hosted public endpoint:
+Runner MCP is self-hosted and loopback-first.
+
+- **Name:** Runner MCP
+- **Repository:** https://github.com/Blacksp1d3r/runner-mcp
+- **License:** MIT
+- **Version:** 0.1.2
+- **PyPI:** `aifordable-runner-mcp`
+- **Official MCP Registry:** `io.github.Blacksp1d3r/runner-mcp`
+- **Transport:** Streamable HTTP
+- **Runtime:** Python 3.12+
+- **Install:** `uv tool install aifordable-runner-mcp`
+- **Setup:** `runner-mcp setup`
+- **Start:** `runner-mcp serve`
+- **Categories:** Developer Tools; Security; Testing & QA Tools; CI/CD & DevOps
+- **Tags:** mcp, model-context-protocol, self-hosted, developer-tools, devops, staging, security, testing, python, automation
+
+Short description:
+
+> Security-first self-hosted MCP for controlled AI development and staging operations without a general-purpose remote shell.
+
+### mcp.so community issue
+
+Current free/community discovery uses the public `chatmcp/mcpso` GitHub issue route. The paid
+mcp.so form is not required for normal community submission.
+
+Suggested issue title:
+
+> Submit MCP Server: Runner MCP — controlled self-hosted AI development and staging operations
+
+Suggested body:
+
+> **Name:** Runner MCP
+>
+> **Type:** Self-hosted MCP server (Streamable HTTP)
+>
+> **Repository:** https://github.com/Blacksp1d3r/runner-mcp
+>
+> **PyPI:** `aifordable-runner-mcp`
+>
+> **Install:** `uv tool install aifordable-runner-mcp`
+>
+> **Official MCP Registry:** `io.github.Blacksp1d3r/runner-mcp`
+>
+> **License:** MIT
+>
+> **Description:** Security-first self-hosted MCP for controlled AI development and staging operations without a general-purpose remote shell. Operators configure projects and bounded capabilities locally; the AI selects from those capabilities instead of supplying arbitrary shell commands, executables, filesystem paths or service names. Runner MCP adds audit logging, an external emergency stop, bounded output and approval gates for higher-risk staging actions.
+>
+> **Categories:** Developer Tools, Security, Testing & QA Tools, CI/CD & DevOps
+>
+> **Tags:** mcp, self-hosted, developer-tools, devops, staging, security, testing, python, automation
+>
+> Runner MCP is alpha and self-hosted. It does not provide a public hosted MCP endpoint.
+
+### Glama
+
+The repository root contains `glama.json`. After metadata changes are merged, use Glama's **Add
+MCP Server** flow with the canonical GitHub repository and then repeat the ownership/claim flow so
+Glama refreshes the file. Keep **Developer Tools** as the primary positioning; Security, Testing &
+QA Tools and CI/CD & DevOps are secondary categories.
+
+### Smithery
+
+Smithery publication requires an authenticated publisher/namespace flow. Publish the canonical
+self-hosted package/repository identity only. Do not register Runner MCP as a Smithery-hosted or
+external hosted endpoint unless such a service is actually deployed and separately approved.
+Preserve the same product name, package name, version, self-hosted wording and security boundaries
+used by PyPI and the official MCP Registry.
+
 ## Reddit/community draft
 
 Suggested title:

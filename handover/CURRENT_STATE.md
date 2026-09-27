@@ -1,3 +1,13 @@
+## 2026-09-27 — v0.1.2 canonical distribution published
+
+- Human-approved Publish Runner MCP run #2 completed successfully from exact main `83175f439c60346f92b5759a90993c3b8f5352f8`.
+- PyPI published `aifordable-runner-mcp==0.1.2` successfully and the workflow verified that exact version became publicly visible.
+- Official MCP Registry validation, GitHub OIDC authentication and publication all succeeded for `io.github.Blacksp1d3r/runner-mcp` version `0.1.2`.
+- GitHub pre-release `v0.1.2` was created with wheel and sdist assets; tag `v0.1.2` points exactly to `83175f439c60346f92b5759a90993c3b8f5352f8`.
+- Repository description and discovery topics are already live; README/distribution follow-up is moving canonical PyPI/Registry links and one consistent directory-submission packet into the first-party docs.
+- Secondary discovery: Glama, Smithery, mcp.so and optional AllMCPs are the next channels. The current GitHub App cannot write to the external `chatmcp/mcpso` submission thread, so that submission needs a user-authenticated browser/CLI path rather than an integration bypass.
+- Do not republish or overwrite PyPI 0.1.1. It remains historical evidence of the first PyPI-only attempt; 0.1.2 is the canonical cross-registry release.
+
 ## 2026-09-26 — v0.1.1 AIfordable PyPI identity integrated
 
 - PR #102 merged to `main` as `d948945034e07616d673945467e9b2e44748fa10` after exact-head validation and commit-attribution checks were green with zero review threads.

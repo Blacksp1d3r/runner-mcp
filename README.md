@@ -52,6 +52,17 @@ Runner MCP is the local safety boundary. GitHub can be used for source collabora
 
 The normal authority model is deliberately asymmetric: read-only inspection is easier, mutating staging actions are narrower, higher-risk actions require short-lived local approval, and production mutations remain disabled.
 
+
+### Optional Runner Fabric work-unit bridge
+
+Runner Fabric remains a separate product and orchestration/control-plane owner. When both products
+run on the same host, Runner MCP can optionally expose a loopback-only transport bridge with three
+coarse tools — run, inspect and cancel a bounded Fabric work-unit. This lets an AI hand off a whole
+repository-change workflow without receiving generic GitHub/Git/shell primitives.
+
+The bridge is disabled by default and does not change Runner MCP's authority model. See
+[Optional Runner Fabric bridge](docs/RUNNER_FABRIC_BRIDGE.md).
+
 ## I just want to use it
 
 You do not need to understand the Python source code for the basic workflow.

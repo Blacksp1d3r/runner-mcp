@@ -498,12 +498,14 @@ Implemented foundation:
 - protocol validation treats `self_update_status` as an exact job-id-only action, and direct/self-update entry points reject uppercase or abbreviated commit identifiers;
 - arbitrary repository/ref selection, package-manager arguments, install paths, process commands, service identifiers and restart commands remain unavailable.
 
-Next:
+Next live-proof lane (tracked by #108):
 
-- bootstrap the merged rollback-capable package-install baseline once on the private Runner MCP host, then prove a same-commit/no-op update, a forward update and one deliberately failed/retried activation path through the live GitHub mailbox;
-- after the local recovery command is validated in CI, bootstrap the merged recovery-capable baseline on the private host and deliberately fault-inject one package-install interruption to prove the persisted transaction can be recovered without generic package-manager or transaction-reset controls;
+- bootstrap the current recovery-capable baseline once on the private Runner MCP host through the normal dependency-resolving path;
+- prove same-commit/no-op and one forward commit-pinned self-update through the bounded operating model;
+- deliberately fail/retry one activation and fault-inject one package-install interruption only after the recovery-capable baseline is confirmed, proving that durable recovery state blocks overlap and can be cleared only by the existing bounded/local recovery path;
 - keep dependency-set changes explicit because self-update intentionally never resolves or installs dependencies; a dependency-set change still requires an explicit compatible bootstrap path;
-- do not describe in-place pip mutation as atomic: the transaction marker makes interruption detectable and fail-closed, while automatic rollback is claimed only for caught failures where both package and source restoration are verified.
+- do not describe in-place pip mutation as atomic: the transaction marker makes interruption detectable and fail-closed, while automatic rollback is claimed only for caught failures where both package and source restoration are verified;
+- publish only scrubbed categorical evidence and public commit/workflow references; no private host identity, paths, services or credentials.
 
 ## Phase 3.9 — public launch readiness
 
@@ -523,12 +525,22 @@ Implemented launch-readiness foundation:
 - no paid advertising, paid hosted CI or paid hosted infrastructure is a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
 - clean Ubuntu 24.04 / Python 3.12 CI now exercises the documented five-minute demo end to end, including installation, setup, doctor, predefined test-profile configuration, emergency stop and loopback health check;
 
-Remaining before a broader launch:
+Canonical publication completed:
 
-- create the first tagged alpha release with exact release notes;
-- set the public GitHub description/topics to the prepared values;
-- prepare an MCP ecosystem/registry submission only when packaging requirements are met;
-- publish external community posts only as a separate human-controlled action.
+- PyPI package `aifordable-runner-mcp==0.1.2` is published;
+- official MCP Registry identity `io.github.Blacksp1d3r/runner-mcp` version `0.1.2` is published;
+- GitHub pre-release `v0.1.2` is aligned with the canonical release commit and carries wheel + sdist assets;
+- public GitHub description/topics and first-party canonical discovery links are live;
+- secondary directories must reuse the canonical identity/install/auth metadata rather than inventing alternatives.
+
+Remaining discovery work:
+
+- allow Registry-driven indexing time to propagate before changing package identity or metadata for search visibility;
+- submit/claim Glama through maintainer-authenticated GitHub flow;
+- publish to Smithery only through maintainer-authenticated flow with the canonical self-hosted/auth wording;
+- submit mcp.so through its free community route; do not pay for expedited listing merely for backlinks;
+- optional additional directories are acceptable only when they do not require divergent metadata or paid placement;
+- publish one technical launch post as a separate human-controlled action, then adapt later outreach from real feedback instead of mass cross-posting.
 
 ## Phase 4 — staging service management
 

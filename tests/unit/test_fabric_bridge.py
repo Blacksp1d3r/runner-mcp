@@ -6,11 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from runner_mcp.fabric_bridge import (
-    FabricBridgeClient,
-    FabricBridgeConfig,
-    FabricBridgeError,
-)
+from runner_mcp.fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 
 
 BASE = "a" * 40

@@ -765,4 +765,3 @@ def test_existing_thread_lock_still_blocks_same_process_deploy(tmp_path: Path) -
         lock.release()
 
     assert list((tmp_path / "staging" / "releases").iterdir()) == []
-

@@ -1,3 +1,26 @@
+## 2026-09-27 — Runner Fabric coarse bridge handoff
+
+- Live `main` at handoff: `619d6533ec2f7a5a102d7220ebd0e5832c1f1d5f`.
+- Issue #109 / PR #111 owns the optional Runner MCP -> Runner Fabric bridge.
+- Latest observed PR #111 head: `b0b8bd8ba2f796f62c86889f48565a69f6a3fff4`.
+- Commit attribution run #36334563890 is green; Runner MCP validation run #36334563887 is failing on that exact head.
+- The bridge is intentionally transport-only. Runner Fabric remains orchestration/control-plane owner.
+- When private Fabric loopback configuration is absent, the three Fabric tools are not registered and the normal Runner MCP surface remains unchanged.
+- When configured, the only Fabric-facing tools are intended to be:
+  - `fabric_run_work_unit`
+  - `fabric_get_work_unit`
+  - `fabric_cancel_work_unit`
+- The bridge uses a fixed three-tool allow-list, loopback-only MCP transport, strong private bearer auth and bounded response revalidation. Endpoint/token/provider details must never be emitted.
+- Do not add generic GitHub/Git/shell/filesystem/provider proxies and do not duplicate Fabric orchestration in this public repository.
+- This lane is separate from release/discovery and self-update proof work.
+
+Immediate resume order:
+1. reconcile live GitHub first because PR/main moved during parallel work;
+2. diagnose Runner MCP validation run #36334563887 on exact head `b0b8bd8...`;
+3. fix only the exact blocker, require attribution + validation + 0 review threads, then merge #111;
+4. after Fabric #258/#266 are green/merged and privately deployed, configure the local bridge and prove one end-to-end coarse work-unit from Runner MCP to Fabric;
+5. benchmark coarse Fabric handoff against the previous many-call GitHub workflow without weakening existing Runner MCP safety/approval boundaries.
+
 ## 2026-09-27 — AI fault-containment regression proof merged
 
 - PR #106 merged to `main` as `affc2c054b3072f480822675718baefedc2db619` after exact-head Runner MCP validation and commit-attribution policy both passed, with zero review-thread blockers.

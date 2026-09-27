@@ -70,6 +70,10 @@ def test_registry_launcher_preserves_safe_local_transport_boundary() -> None:
 
 def test_glama_ownership_metadata_is_bounded() -> None:
     metadata = json.loads((ROOT / "glama.json").read_text(encoding="utf-8"))
+    project = _project_metadata()
 
     assert metadata["$schema"] == "https://glama.ai/mcp/schemas/server.json"
     assert metadata["maintainers"] == ["Blacksp1d3r"]
+    assert metadata["name"] == "Runner MCP"
+    assert metadata["version"] == project["version"]
+    assert metadata["transport"] == ["streamable-http"]

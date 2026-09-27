@@ -523,12 +523,22 @@ Implemented launch-readiness foundation:
 - no paid advertising, paid hosted CI or paid hosted infrastructure is a hidden dependency; standard free CI for this public repository is acceptable when it carries no private secrets.
 - clean Ubuntu 24.04 / Python 3.12 CI now exercises the documented five-minute demo end to end, including installation, setup, doctor, predefined test-profile configuration, emergency stop and loopback health check;
 
-Remaining before a broader launch:
+Canonical publication completed:
 
-- create the first tagged alpha release with exact release notes;
-- set the public GitHub description/topics to the prepared values;
-- prepare an MCP ecosystem/registry submission only when packaging requirements are met;
-- publish external community posts only as a separate human-controlled action.
+- PyPI package `aifordable-runner-mcp==0.1.2` is published;
+- official MCP Registry identity `io.github.Blacksp1d3r/runner-mcp` version `0.1.2` is published;
+- GitHub pre-release `v0.1.2` is aligned with the canonical release commit and carries wheel + sdist assets;
+- public GitHub description/topics and first-party canonical discovery links are live;
+- secondary directories must reuse the canonical identity/install/auth metadata rather than inventing alternatives.
+
+Remaining discovery work:
+
+- allow Registry-driven indexing time to propagate before changing package identity or metadata for search visibility;
+- submit/claim Glama through maintainer-authenticated GitHub flow;
+- publish to Smithery only through maintainer-authenticated flow with the canonical self-hosted/auth wording;
+- submit mcp.so through its free community route; do not pay for expedited listing merely for backlinks;
+- optional additional directories are acceptable only when they do not require divergent metadata or paid placement;
+- publish one technical launch post as a separate human-controlled action, then adapt later outreach from real feedback instead of mass cross-posting.
 
 ## Phase 4 — staging service management
 

@@ -93,26 +93,13 @@ Description:
 
 ## Secondary directory submission packet — v0.1.2
 
-Use these canonical values for secondary MCP directories. Do not invent a hosted public endpoint:
-Runner MCP is self-hosted and loopback-first.
+`docs/DISTRIBUTION.md` is the canonical source for product identity, package/Registry names,
+installation wording, categories, tags, authentication and hosting model. Reuse that packet rather
+than maintaining another copy here.
 
-- **Name:** Runner MCP
-- **Repository:** https://github.com/Blacksp1d3r/runner-mcp
-- **License:** MIT
-- **Version:** 0.1.2
-- **PyPI:** `aifordable-runner-mcp`
-- **Official MCP Registry:** `io.github.Blacksp1d3r/runner-mcp`
-- **Transport:** Streamable HTTP
-- **Runtime:** Python 3.12+
-- **Install:** `uv tool install aifordable-runner-mcp`
-- **Setup:** `runner-mcp setup`
-- **Start:** `runner-mcp serve`
-- **Categories:** Developer Tools; Security; Testing & QA Tools; CI/CD & DevOps
-- **Tags:** mcp, model-context-protocol, self-hosted, developer-tools, devops, staging, security, testing, python, automation
-
-Short description:
-
-> Security-first self-hosted MCP for controlled AI development and staging operations without a general-purpose remote shell.
+The platform-specific drafts below add only the fields or cautions needed by each directory. Runner
+MCP is self-hosted and loopback-first; never invent a public hosted endpoint for directory
+convenience.
 
 ### mcp.so community issue
 

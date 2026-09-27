@@ -2,5 +2,31 @@
   "$schema": "https://glama.ai/mcp/schemas/server.json",
   "maintainers": [
     "Blacksp1d3r"
+  ],
+  "name": "Runner MCP",
+  "description": "Security-first self-hosted MCP for controlled AI development and staging operations without a general-purpose remote shell.",
+  "type": "mcp_server",
+  "status": "alpha",
+  "version": "0.1.2",
+  "transport": [
+    "http"
+  ],
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "self-hosted",
+    "developer-tools",
+    "devops",
+    "staging",
+    "security",
+    "testing",
+    "python",
+    "automation"
+  ],
+  "categories": [
+    "developer-tools",
+    "security",
+    "testing-and-qa-tools",
+    "ci-cd-and-devops"
   ]
 }

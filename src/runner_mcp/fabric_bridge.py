@@ -35,6 +35,10 @@ class FabricBridgeConfig:
     bearer_token: str
     request_timeout_seconds: float = 120.0
 
+    def __post_init__(self) -> None:
+        if not isinstance(self.bearer_token, str) or len(self.bearer_token) < 32:
+            raise ValueError("Runner Fabric bearer token must contain at least 32 characters")
+
     def to_mcp_config(self) -> LocalMCPConfig:
         return LocalMCPConfig(
             endpoint=self.endpoint,

@@ -52,6 +52,30 @@ while applying stronger deterministic checks only as blast radius increases.
 This cross-cutting rule strengthens the existing deny-by-default design. It does not add any new
 production, shell, credential or restore authority.
 
+## Cross-cutting — optional Runner Fabric coarse work-unit transport
+
+The transport foundation is implemented on `main` via PR #111. Runner MCP may expose exactly three
+coarse Runner Fabric tools when private loopback configuration is present:
+`fabric_run_work_unit`, `fabric_get_work_unit` and `fabric_cancel_work_unit`.
+
+This integration preserves the product boundary:
+
+- Runner MCP owns MCP authentication/transport, bounded request/response validation, rate limiting,
+  existing operator/safety gates and bounded audit;
+- Runner Fabric owns orchestration, work-unit policy/state, capability/fencing decisions, change
+  plans, validation/repair, commit/push, provider/API-budget behavior, idempotency and recovery;
+- the bridge is absent when unconfigured and may not introduce generic shell, Git, GitHub,
+  filesystem, provider or arbitrary polling primitives;
+- endpoint/token/provider/private-host details remain private and may not escape through tool
+  output, audit detail or exceptions;
+- transport sessions are isolated per calling thread and response identity/revision/state
+  relationships fail closed.
+
+Live activation and end-to-end proof are tracked separately in issue #110. They remain gated on the
+required Runner Fabric durable work-unit and private loopback MCP service lanes being green,
+integrated and privately deployable. The merged transport layer must not be rebuilt merely because
+the upstream activation gate is still open.
+
 ## Phase 0 — repository and design
 
 Establish repository structure, security baseline, threat model, configuration model, handover notes, dependency policy, and public-repository hygiene controls.

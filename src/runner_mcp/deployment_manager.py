@@ -15,6 +15,12 @@ from uuid import uuid4
 from .config import DeploymentConfig, ProjectConfig, ProjectRegistry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .operational_safety import ActionClass, OperatorSafetyGuard, OperatorStopActive
+from .release_operation_lock import (
+    ReleaseOperationBusy,
+    ReleaseOperationLock,
+    ReleaseOperationLockError,
+    acquire_release_operation_lock,
+)
 from .service_manager import ServiceManager, ServiceManagerError
 from .test_runner import TestRunner, TestRunnerError
 
@@ -85,6 +91,15 @@ class DeploymentManager:
                 lock = threading.Lock()
                 self._locks[project] = lock
             return lock
+
+    @staticmethod
+    def _release_operation_lock_for(release_root: Path) -> ReleaseOperationLock:
+        try:
+            return acquire_release_operation_lock(release_root)
+        except ReleaseOperationBusy:
+            raise DeploymentError("release_operation_busy") from None
+        except ReleaseOperationLockError:
+            raise DeploymentError("Release operation lock is unavailable") from None
 
     def _project(self, project: str) -> tuple[ProjectConfig, DeploymentConfig]:
         config = self.registry.projects.get(project)
@@ -684,7 +699,15 @@ class DeploymentManager:
         lock = self._lock_for(project)
         if not lock.acquire(blocking=False):
             raise DeploymentError("Another deployment or rollback is already in progress")
+        release_lock: ReleaseOperationLock | None = None
         try:
+            config, deployment = self._project(project)
+            self._validate_configuration(project, config, deployment)
+            release_root, releases = self._prepare_release_root(
+                deployment,
+                create=False,
+            )
+            release_lock = self._release_operation_lock_for(release_root)
             plan = self.rollback_plan(project)
             if (
                 expected_current_release is not None
@@ -700,11 +723,6 @@ class DeploymentManager:
                 raise DeploymentError(
                     "Code rollback is blocked across a database migration boundary"
                 )
-            _, deployment = self._project(project)
-            release_root, releases = self._prepare_release_root(
-                deployment,
-                create=False,
-            )
             current = plan["current_release"]
             target = plan["target_release"]
 
@@ -781,6 +799,8 @@ class DeploymentManager:
                 "health": recovered_health,
             }
         finally:
+            if release_lock is not None:
+                release_lock.close()
             lock.release()
 
     def deploy(
@@ -793,6 +813,7 @@ class DeploymentManager:
         lock = self._lock_for(project)
         if not lock.acquire(blocking=False):
             raise DeploymentError("Another deployment is already in progress")
+        release_lock: ReleaseOperationLock | None = None
         try:
             config, deployment = self._project(project)
             self._validate_configuration(project, config, deployment)
@@ -800,6 +821,7 @@ class DeploymentManager:
                 deployment,
                 create=True,
             )
+            release_lock = self._release_operation_lock_for(release_root)
             commit, short_commit = self._source_state(config.root, release_root)
             if expected_commit is not None and commit != expected_commit:
                 raise DeploymentError("Deployment commit changed after approval")
@@ -1013,4 +1035,6 @@ class DeploymentManager:
                 "current_release": previous_release,
             }
         finally:
+            if release_lock is not None:
+                release_lock.close()
             lock.release()

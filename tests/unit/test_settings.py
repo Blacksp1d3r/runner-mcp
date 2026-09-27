@@ -281,3 +281,54 @@ def test_transport_security_accepts_valid_https_url() -> None:
     assert result.enable_dns_rebinding_protection is True
     assert result.allowed_hosts == ["mcp.example.invalid"]
     assert result.allowed_origins == ["https://mcp.example.invalid"]
+
+
+def test_fabric_bridge_defaults_to_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.delenv("RUNNER_MCP_FABRIC_RESOURCE_URL", raising=False)
+    monkeypatch.delenv("RUNNER_MCP_FABRIC_BEARER_TOKEN", raising=False)
+
+    settings = Settings.from_env()
+
+    assert settings.fabric_resource_url is None
+    assert settings.fabric_bearer_token is None
+
+
+def test_fabric_bridge_accepts_loopback_private_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv(
+        "RUNNER_MCP_FABRIC_RESOURCE_URL",
+        "http://127.0.0.1:9010/mcp",
+    )
+    monkeypatch.setenv("RUNNER_MCP_FABRIC_BEARER_TOKEN", "f" * 32)
+
+    settings = Settings.from_env()
+
+    assert settings.fabric_resource_url == "http://127.0.0.1:9010/mcp"
+    assert settings.fabric_bearer_token == "f" * 32
+
+
+@pytest.mark.parametrize(
+    ("url", "token"),
+    [
+        ("http://127.0.0.1:9010/mcp", ""),
+        ("", "f" * 32),
+        ("https://fabric.example.invalid/mcp", "f" * 32),
+        ("http://127.0.0.1:9010/mcp", "short"),
+    ],
+)
+def test_invalid_fabric_bridge_configuration_fails_startup(
+    monkeypatch: pytest.MonkeyPatch,
+    url: str,
+    token: str,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_FABRIC_RESOURCE_URL", url)
+    monkeypatch.setenv("RUNNER_MCP_FABRIC_BEARER_TOKEN", token)
+
+    with pytest.raises(RuntimeError, match="Runner Fabric"):
+        Settings.from_env()

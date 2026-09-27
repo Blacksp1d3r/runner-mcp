@@ -1,25 +1,22 @@
-## 2026-09-27 — Runner Fabric coarse bridge handoff
+## 2026-09-27 — Runner Fabric coarse bridge transport merged
 
-- Live `main` at handoff: `619d6533ec2f7a5a102d7220ebd0e5832c1f1d5f`.
-- Issue #109 / PR #111 owns the optional Runner MCP -> Runner Fabric bridge.
-- Latest observed PR #111 head: `b0b8bd8ba2f796f62c86889f48565a69f6a3fff4`.
-- Commit attribution run #36334563890 is green; Runner MCP validation run #36334563887 is failing on that exact head.
-- The bridge is intentionally transport-only. Runner Fabric remains orchestration/control-plane owner.
-- When private Fabric loopback configuration is absent, the three Fabric tools are not registered and the normal Runner MCP surface remains unchanged.
-- When configured, the only Fabric-facing tools are intended to be:
-  - `fabric_run_work_unit`
-  - `fabric_get_work_unit`
-  - `fabric_cancel_work_unit`
-- The bridge uses a fixed three-tool allow-list, loopback-only MCP transport, strong private bearer auth and bounded response revalidation. Endpoint/token/provider details must never be emitted.
-- Do not add generic GitHub/Git/shell/filesystem/provider proxies and do not duplicate Fabric orchestration in this public repository.
-- This lane is separate from release/discovery and self-update proof work.
+- Runner MCP transport integration is merged on `main` as `3ebd39981c358c307fa66afa32ad2f5fc32731cf` via PR #111; issue #109 closed automatically as completed.
+- Exact PR head `872798831403515bc6944b62efaac5992897b253` passed Runner MCP validation run #571 and commit-attribution run #54 with zero review threads.
+- The PR validation checked GitHub's synthetic merge `cd60179b8d8f7c5d8895beef6164a7cb932937fe`, combining #111 with then-current `main` `776b5d0fd3499ca6ed6674806b2075167fc59f9e`; current-main compatibility was therefore validated before merge.
+- Post-merge commit-attribution run #55 is green. Post-merge validation run #572 must be terminal green before this coordination update is integrated.
+- The bridge remains optional and fail-closed: without private loopback Fabric configuration, no Fabric tools are registered and normal Runner MCP behavior is unchanged.
+- When configured, the only Fabric-facing tools are `fabric_run_work_unit`, `fabric_get_work_unit` and `fabric_cancel_work_unit`; no generic GitHub, Git, shell, filesystem, provider or status-polling proxy was added.
+- Additional hardening on #111 gives each calling thread an independent local MCP session and fails closed on mismatched expected revision, mismatched work-unit identity, or inconsistent status/result pairs.
+- Runner Fabric remains the orchestration/control-plane owner. Runner MCP only authenticates, bounds, audits and transports the coarse request/result.
+- Issue #110 remains the live activation/end-to-end follow-up. Do not duplicate the merged transport work from #109/#111.
+- At this checkpoint Runner Fabric prerequisites are not ready for live activation: #258 and #266 still have failing Foundation CI, #266 is not mergeable, and #268 remains open. Reconcile upstream live state before acting.
 
 Immediate resume order:
-1. reconcile live GitHub first because PR/main moved during parallel work;
-2. diagnose Runner MCP validation run #36334563887 on exact head `b0b8bd8...`;
-3. fix only the exact blocker, require attribution + validation + 0 review threads, then merge #111;
-4. after Fabric #258/#266 are green/merged and privately deployed, configure the local bridge and prove one end-to-end coarse work-unit from Runner MCP to Fabric;
-5. benchmark coarse Fabric handoff against the previous many-call GitHub workflow without weakening existing Runner MCP safety/approval boundaries.
+1. confirm post-merge Runner MCP validation #572 is terminal green;
+2. keep #110 blocked until the required Runner Fabric work-unit service/MCP/startup lanes are green, integrated and privately deployable;
+3. once upstream is ready, configure only the private loopback bridge and prove one bounded end-to-end coarse work-unit without exposing infrastructure details;
+4. benchmark the coarse handoff against the former many-call GitHub workflow without weakening existing Runner MCP approval, operator-stop or fault-containment boundaries;
+5. independent open lanes remain #108 (private-host self-update recovery proof) and #101 (external discovery/authenticated submissions); do not use either to bypass their human/private-environment gates.
 
 ## 2026-09-26 — ChatGPT -> ALL — V0.1.1 PUBLICATION GATE
 

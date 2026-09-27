@@ -1,3 +1,11 @@
+## 2026-09-27 — AI fault-containment regression proof merged
+
+- PR #106 merged to `main` as `affc2c054b3072f480822675718baefedc2db619` after exact-head Runner MCP validation and commit-attribution policy both passed, with zero review-thread blockers.
+- Cross-boundary security tests now prove that client/AI intent cannot select an unlisted executor capability, mutate an already approved plan, reuse approval across action classes, self-assert production mutation authority or override the external operator emergency stop.
+- Read-only work remains available during the operator stop, preserving the proportional-security rule instead of turning every safety state into a blanket development block.
+- No new runtime authority was introduced; this slice locks existing executor, approval and operator-safety boundaries with regression coverage.
+- The only open project issue after reconciliation is #101 for secondary discovery. Canonical v0.1.2 publication is already complete; remaining directory submissions require maintainer-authenticated external flows and must not be duplicated.
+
 ## 2026-09-27 — AI fault containment roadmap rule prepared
 
 - Runner MCP now documents AI/client requests as intent rather than execution authority.

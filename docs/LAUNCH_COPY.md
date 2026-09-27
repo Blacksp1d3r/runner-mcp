@@ -154,6 +154,17 @@ MCP Server** flow with the canonical GitHub repository and then repeat the owner
 Glama refreshes the file. Keep **Developer Tools** as the primary positioning; Security, Testing &
 QA Tools and CI/CD & DevOps are secondary categories.
 
+### AllMCPs
+
+AllMCPs has a normal pending-review submission path; paid boost/featured placement is optional and
+separate. Its current submission tool requires the server name, public repository/website URL and a
+submitter email address, with description/category/tags as optional enrichment.
+
+Use the canonical packet above and submit the repository URL
+`https://github.com/Blacksp1d3r/runner-mcp`. Do not guess, commit or publish an email address on the
+user's behalf. Do not buy a boost merely to obtain the normal directory listing. If AllMCPs returns
+a claim URL or README badge, review that claim artifact before adding it to the repository.
+
 ### Smithery
 
 Smithery publication requires an authenticated publisher/namespace flow. Publish the canonical

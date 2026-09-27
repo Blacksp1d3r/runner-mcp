@@ -8,7 +8,6 @@ import pytest
 
 from runner_mcp.fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 
-
 BASE = "a" * 40
 COMMIT = "b" * 40
 

@@ -1,3 +1,11 @@
+## 2026-09-27 — v0.1.2 published; discovery phase active
+
+- Canonical release is now `v0.1.2` on exact commit `83175f439c60346f92b5759a90993c3b8f5352f8`.
+- Publish run #2 succeeded end-to-end: PyPI `aifordable-runner-mcp==0.1.2` -> official MCP Registry `io.github.Blacksp1d3r/runner-mcp` 0.1.2 -> GitHub pre-release v0.1.2.
+- The failed 0.1.1 Registry attempt was recovered by PR #103; do not reopen the lowercase Registry identity or attempt to mutate immutable PyPI 0.1.1.
+- Current focus is discoverability/distribution with no runtime-authority changes: first-party links/metadata, then Glama, Smithery, mcp.so and selected developer directories.
+- External directory writes that require a separate account/OAuth/browser remain human-controlled. Do not replace them with paid submission shortcuts or spammy bulk-directory tooling.
+
 ## 2026-09-26 — v0.1.1 ready for human publication gate
 
 - PR #102 is merged; exact merge commit `d948945034e07616d673945467e9b2e44748fa10` passed post-merge validation and attribution.

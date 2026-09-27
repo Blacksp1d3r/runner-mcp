@@ -1,5 +1,9 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+from threading import Barrier
+from types import SimpleNamespace
+
 import pytest
 
 from runner_mcp.fabric_bridge import (\n    FabricBridgeClient,\n    FabricBridgeConfig,\n    FabricBridgeError,\n)
@@ -48,8 +52,29 @@ def result_payload() -> dict:
 def bridge_with_responses(*responses: object) -> tuple[FabricBridgeClient, FakeMCPClient]:
     bridge = FabricBridgeClient.__new__(FabricBridgeClient)
     fake = FakeMCPClient(list(responses))
-    bridge._client = fake
+    bridge._local = SimpleNamespace(client=fake)
     return bridge, fake
+
+
+def test_bridge_uses_independent_local_mcp_clients_per_thread() -> None:
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:9010/mcp",
+            bearer_token="x" * 32,
+        )
+    )
+    barrier = Barrier(2)
+
+    def resolve_client_id() -> int:
+        client = bridge._client()
+        barrier.wait(timeout=2)
+        return id(client)
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        futures = [executor.submit(resolve_client_id) for _ in range(2)]
+        client_ids = [future.result(timeout=3) for future in futures]
+
+    assert client_ids[0] != client_ids[1]
 
 
 def test_config_requires_strong_token_and_loopback_mcp_endpoint() -> None:
@@ -102,6 +127,21 @@ def test_run_work_unit_forwards_only_bounded_coarse_arguments() -> None:
     ]
 
 
+def test_run_work_unit_rejects_mismatched_expected_revision() -> None:
+    payload = result_payload()
+    payload["expected_revision"] = "c" * 40
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError, match="mismatched expected revision"):
+        bridge.run_work_unit(
+            work_unit_id="wu:247",
+            project_id="project:runner-fabric",
+            work_item_id="issue:247",
+            expected_revision=BASE,
+            change_plan_id="plan:247",
+        )
+
+
 @pytest.mark.parametrize(
     ("field", "value"),
     [
@@ -146,6 +186,46 @@ def test_status_and_cancel_forward_only_work_unit_id() -> None:
         ("get_work_unit", {"work_unit_id": "wu:247"}),
         ("cancel_work_unit", {"work_unit_id": "wu:247"}),
     ]
+
+
+@pytest.mark.parametrize(
+    "view",
+    [
+        {
+            "work_unit_id": "wu:other",
+            "project_id": "project:runner-fabric",
+            "work_item_id": "issue:247",
+            "status": "running",
+            "result": None,
+        },
+        {
+            "work_unit_id": "wu:247",
+            "project_id": "project:runner-fabric",
+            "work_item_id": "issue:247",
+            "status": "running",
+            "result": result_payload(),
+        },
+        {
+            "work_unit_id": "wu:247",
+            "project_id": "project:runner-fabric",
+            "work_item_id": "issue:247",
+            "status": "complete",
+            "result": None,
+        },
+        {
+            "work_unit_id": "wu:247",
+            "project_id": "project:runner-fabric",
+            "work_item_id": "issue:247",
+            "status": "complete",
+            "result": {**result_payload(), "state": "failed"},
+        },
+    ],
+)
+def test_work_unit_view_identity_and_state_relationships_fail_closed(view: dict) -> None:
+    bridge, _ = bridge_with_responses(view)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.get_work_unit("wu:247")
 
 
 def test_fabric_response_unknown_field_fails_closed() -> None:

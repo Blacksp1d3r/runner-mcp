@@ -1,6 +1,20 @@
 # Runner MCP — Dependency / Integration Order
 
-Last reconciled: 2026-09-24. GitHub current state wins.
+Last reconciled: 2026-09-27. GitHub current state wins.
+
+## Current cross-product gates
+
+- Runner Fabric transport foundation is COMPLETE on Runner MCP `main` via PR #111 / merge
+  `3ebd39981c358c307fa66afa32ad2f5fc32731cf`; issue #109 is complete. Do not duplicate this work.
+- Issue #110 is the remaining activation/end-to-end lane. It is BLOCKED until the required Runner
+  Fabric work-unit service, loopback MCP adapter and startable private service are exact-head green,
+  integrated and privately deployable. Reconcile Runner Fabric live state before acting.
+- At the 2026-09-27 checkpoint, Runner Fabric #258 and #266 had failing Foundation CI, #266 was not
+  mergeable, and #268 remained open. These are checkpoint facts, not permanent assumptions.
+- Issue #108 remains an independent private-host recovery proof and may proceed only through the
+  existing bounded interfaces without exposing private infrastructure.
+- Issue #101 remains an independent external-discovery lane; account/OAuth/browser submission gates
+  remain human-controlled and must not be bypassed.
 
 ## Current build order
 1. Core safety/protocol invariants remain the base for every later slice.

@@ -5,11 +5,8 @@ from pathlib import Path
 import pytest
 
 from runner_mcp.approval_manager import ApprovalError, ApprovalManager
-from runner_mcp.bridge_mcp_executor import (
-    BridgeExecutionAdapterError,
-    LocalMCPClient,
-    LocalMCPConfig,
-)
+from runner_mcp.bridge_mcp_executor import LocalMCPClient, LocalMCPConfig
+from runner_mcp.bridge_processor import BridgeExecutionAdapterError
 from runner_mcp.operational_safety import (
     ActionClass,
     OperatorSafetyGuard,

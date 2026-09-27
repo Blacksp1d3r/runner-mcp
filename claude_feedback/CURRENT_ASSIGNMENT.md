@@ -1175,7 +1175,7 @@ Do not infer migration completion from audit/deployment records, replay interrup
 
 ### Task 43 — local one-release pruning plan/execute — CODE lane
 
-Status: `BLOCKED_ON_TASK46`. Task 40 is merged, but implementation preparation found that DeploymentManager's existing per-project lock is process-local (`threading.Lock`) while Task 43 is local CLI and may race the long-lived MCP process. A cross-process mutation-lock boundary must be resolved first.
+Status: `BLOCKED_ON_TASK48`. Task 40 is merged and Task 46 completed the cross-process lock review. Task 48 must first integrate the shared release-operation lock into deploy/rollback before Task 43 may mutate release storage.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1266,7 +1266,7 @@ Do not change MCP/mailbox actions, approval authority or migration execution dur
 
 ### Task 46 — cross-process release-mutation lock boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`. Dependency context: Task 40 is complete; this review is the newly demonstrated prerequisite for Task 43.
+Status: `COMPLETE`. Review integrated after reconciliation against current `main`; conclusion: a fixed private release-root `fcntl.flock` primitive plus the existing in-process thread lock is required before Task 43. The separate CODE follow-up is Task 48.
 
 Preferred executor: Claude Chat or ChatGPT review; no deployment/pruning mutation code changes.
 
@@ -1316,6 +1316,44 @@ Acceptance:
 
 Required validation:
 focused adversarial service-log privacy/argv/bounds tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 48 — cross-process release-operation lock — CODE lane
+
+Status: `UNCLAIMED`. Dependency satisfied: Task 46 review is complete.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK46_CROSS_PROCESS_RELEASE_LOCK_REVIEW.md`.
+
+Goal:
+Add the smallest reusable cross-process release-operation lock and integrate it into deploy/rollback without adding pruning or new remote authority.
+
+Acceptance:
+- add a private Linux `fcntl.flock` helper using one fixed lock object below the validated deployment release root;
+- caller cannot select a lock path, filename, timeout, host, PID or lock backend;
+- require a private 0700 non-symlink release root and a regular current-UID 0600 lock file opened without following symlinks;
+- use exclusive non-blocking acquisition and map contention to one bounded public `release_operation_busy` category without path/PID/raw OSError leakage;
+- keep the lock file persistent and zero-content; kernel lock state is the only authority;
+- keep the existing per-project `threading.Lock` and acquire in fixed order: thread lock -> release flock -> existing database-operation path;
+- `DeploymentManager.deploy()` holds the release flock across source/test/release/migration/activation/service-health/recovery work once the validated release root exists;
+- `DeploymentManager.rollback_one()` holds the same release flock across fresh plan recomputation, activation, restart, health and recovery;
+- read-only plan/list/preview operations remain unlocked, but mutation paths must revalidate after lock acquisition;
+- unsupported `fcntl`/unsafe lock object/root fails closed; no process-local-only fallback;
+- no pruning implementation, database-lock redesign, arbitrary filesystem locking, MCP/mailbox lock action or production authority is added.
+
+Required validation:
+- separate processes cannot both hold the same release-root lock;
+- contention returns only the bounded busy category;
+- normal close and holder-process exit release the kernel lock while the persistent lock file remains reusable;
+- symlink/non-regular/broad-mode/wrong-owner lock objects fail closed;
+- unsafe release roots fail closed and different roots do not block each other;
+- deploy/rollback acquire the file lock before release-tree mutation and preserve release -> database lock ordering;
+- existing same-process exclusion remains covered;
+- full Ruff/pytest/whitespace, built artifact and clean demo remain green.
 
 
 ## Queue refill rule

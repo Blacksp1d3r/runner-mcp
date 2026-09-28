@@ -80,6 +80,7 @@ from .onboarding import (
     run_doctor,
 )
 from .retention_preview import RetentionPreviewPlanner
+from .retention_pruning import RetentionPruner
 from .self_update import SelfUpdateManager
 from .self_update_install import install_recovery_state
 from .server import create_app
@@ -613,44 +614,95 @@ def _local_retention_preview_planner(
     )
 
 
+def _local_retention_pruner(config_dir: Path) -> RetentionPruner:
+    paths, settings, registry = read_private_runtime(config_dir)
+    _, safety = operator_stop_status(config_dir)
+    return RetentionPruner(
+        config_dir=paths.config_dir,
+        registry=registry,
+        safety=safety,
+        backup_root=settings.database_backup_root,
+    )
+
+
 def cmd_retention(args: argparse.Namespace) -> int:
-    if args.retention_action != "preview":
-        raise RuntimeError("Unknown retention action")
+    config_dir = _config_dir(args.config_dir)
+    if args.retention_action == "preview":
+        result = _local_retention_preview_planner(config_dir).preview(args.project)
 
-    result = _local_retention_preview_planner(
-        _config_dir(args.config_dir)
-    ).preview(args.project)
+        print("Retention preview")
+        print(f"Project: {result['project']}")
+        print(f"Environment: {result['environment']}")
+        print("Advisory only: yes")
+        print("Deletion authorized: no")
 
-    print("Retention preview")
-    print(f"Project: {result['project']}")
-    print(f"Environment: {result['environment']}")
-    print("Advisory only: yes")
-    print("Deletion authorized: no")
+        print("Releases:")
+        if not result["releases"]:
+            print("  none")
+        for row in result["releases"]:
+            categories = ",".join(row["categories"]) or "none"
+            eligible = "yes" if row["potentially_eligible"] else "no"
+            print(
+                f"  {row['release_id']}  {row['created_at']}  "
+                f"categories={categories}  potentially-eligible={eligible}"
+            )
 
-    print("Releases:")
-    if not result["releases"]:
-        print("  none")
-    for row in result["releases"]:
-        categories = ",".join(row["categories"]) or "none"
-        eligible = "yes" if row["potentially_eligible"] else "no"
+        print("Backups:")
+        if not result["backups"]:
+            print("  none")
+        for row in result["backups"]:
+            categories = ",".join(row["categories"]) or "none"
+            eligible = "yes" if row["potentially_eligible"] else "no"
+            print(
+                f"  {row['backup_id']}  {row['kind']}  {row['created_at']}  "
+                f"categories={categories}  potentially-eligible={eligible}"
+            )
+
+        print("No release, backup or metadata file was changed.")
+        return 0
+
+    pruner = _local_retention_pruner(config_dir)
+    if args.retention_action == "prune-plan":
+        result = pruner.plan(args.project)
+        if not result["planned"]:
+            print("No release is currently eligible for local pruning.")
+            return 0
+        print("Retention prune plan")
+        print(f"Project: {result['project']}")
+        print(f"Plan: {result['plan_id']}")
+        print(f"Candidate: {result['candidate_release']}")
+        print(f"Created: {result['created_at']}")
+        print(f"Expires: {result['expires_at']}")
+        print("Single release only: yes")
+        print("Backups affected: no")
+        print("Execute locally with:")
         print(
-            f"  {row['release_id']}  {row['created_at']}  "
-            f"categories={categories}  potentially-eligible={eligible}"
+            f"  runner-mcp retention prune-release {result['project']} "
+            f"{result['plan_id']}"
         )
+        return 0
 
-    print("Backups:")
-    if not result["backups"]:
-        print("  none")
-    for row in result["backups"]:
-        categories = ",".join(row["categories"]) or "none"
-        eligible = "yes" if row["potentially_eligible"] else "no"
+    if args.retention_action == "prune-release":
+        plan = pruner._read_plan(args.plan_id)
+        if plan["project"] != args.project:
+            raise RuntimeError("Prune plan does not match this project")
+        phrase = f"PRUNE RELEASE {args.project} {plan['candidate_release']}"
+        print("This permanently removes exactly one already-eligible staging release.")
+        print("No backup will be deleted.")
+        confirmation = input(f"Type {phrase} to continue: ").strip()
+        result = pruner.execute(
+            args.project,
+            args.plan_id,
+            confirmation=confirmation,
+        )
         print(
-            f"  {row['backup_id']}  {row['kind']}  {row['created_at']}  "
-            f"categories={categories}  potentially-eligible={eligible}"
+            "Release pruning completed: "
+            f"project={result['project']} release={result['release_id']}"
         )
+        print("Backups affected: no")
+        return 0
 
-    print("No release, backup or metadata file was changed.")
-    return 0
+    raise RuntimeError("Unknown retention action")
 
 
 def cmd_database(args: argparse.Namespace) -> int:
@@ -1457,6 +1509,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     retention_preview.add_argument("project")
     retention_preview.set_defaults(func=cmd_retention)
+    retention_plan = retention_sub.add_parser(
+        "prune-plan",
+        help="Create one short-lived local plan for the oldest eligible staging release.",
+    )
+    retention_plan.add_argument("project")
+    retention_plan.set_defaults(func=cmd_retention)
+    retention_execute = retention_sub.add_parser(
+        "prune-release",
+        help="Execute one short-lived local release-pruning plan after typed confirmation.",
+    )
+    retention_execute.add_argument("project")
+    retention_execute.add_argument("plan_id")
+    retention_execute.set_defaults(func=cmd_retention)
 
     database_ops = subparsers.add_parser(
         "database",

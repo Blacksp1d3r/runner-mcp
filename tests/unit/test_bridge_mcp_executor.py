@@ -493,8 +493,27 @@ def test_executor_exposes_bounded_operational_calls() -> None:
     executor = LocalMCPBridgeExecutor(_config())
     test_job = "a" * 32
     approval_id = "b" * 32
+    migration_job = "f" * 32
     deploy_job = "c" * 32
     rollback_job = "d" * 32
+    migration_queued = {
+        "job_id": migration_job,
+        "project": "demo",
+        "operation": "migration",
+        "state": "queued",
+        "created_at": "2026-09-28T20:00:00+00:00",
+        "started_at": None,
+        "finished_at": None,
+        "migration_state": None,
+        "error_category": None,
+        "pre_migration_backup_created": False,
+        "output_truncated": False,
+    }
+    migration_running = {
+        **migration_queued,
+        "state": "running",
+        "started_at": "2026-09-28T20:00:01+00:00",
+    }
     fake = FakeClient(
         [
             {"content": "safe"},
@@ -509,6 +528,8 @@ def test_executor_exposes_bounded_operational_calls() -> None:
             {"approval_id": approval_id, "state": "approved"},
             {"status": "clean"},
             {"status": "completed"},
+            migration_queued,
+            migration_running,
             {"commit": "e" * 40},
             {"job_id": deploy_job, "state": "queued"},
             {"job_id": deploy_job, "state": "running"},
@@ -535,6 +556,11 @@ def test_executor_exposes_bounded_operational_calls() -> None:
     assert executor.approval_status(approval_id)["state"] == "approved"
     assert executor.migration_status("demo")["status"] == "clean"
     assert executor.apply_migrations("demo", approval_id)["status"] == "completed"
+    assert (
+        executor.start_migration_job("demo", approval_id)["job_id"]
+        == migration_job
+    )
+    assert executor.migration_job_status(migration_job)["state"] == "running"
     assert executor.plan_deploy("demo")["commit"] == "e" * 40
     assert executor.deploy_staging("demo", approval_id)["job_id"] == deploy_job
     assert executor.deployment_status(deploy_job)["state"] == "running"
@@ -562,6 +588,11 @@ def test_executor_exposes_bounded_operational_calls() -> None:
             "apply_migrations",
             {"project": "demo", "approval_id": approval_id},
         ),
+        (
+            "start_migration_job",
+            {"project": "demo", "approval_id": approval_id},
+        ),
+        ("migration_job_status", {"job_id": migration_job}),
         ("plan_deploy", {"project": "demo"}),
         (
             "deploy_staging",
@@ -587,6 +618,7 @@ def test_executor_exposes_bounded_operational_calls() -> None:
         ("list_releases", ("demo", 0)),
         ("request_action_approval", ("demo", "shell")),
         ("approval_status", ("bad-id",)),
+        ("migration_job_status", ("bad-id",)),
     ],
 )
 def test_executor_rejects_unbounded_operational_arguments(
@@ -604,6 +636,8 @@ def test_executor_rejects_unbounded_operational_arguments(
             executor.list_releases(args[0], limit=args[1])
         elif method == "request_action_approval":
             executor.request_action_approval(args[0], args[1])
+        elif method == "migration_job_status":
+            executor.migration_job_status(args[0])
         else:
             executor.approval_status(args[0])
 
@@ -814,3 +848,77 @@ def test_executor_sync_project_rejects_non_commit_reference() -> None:
 
     with pytest.raises(BridgeExecutionAdapterError, match="commit"):
         executor.sync_project("demo", "main")
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "job_id": "a" * 32,
+            "project": "other",
+            "operation": "migration",
+            "state": "queued",
+            "created_at": "2026-09-28T20:00:00+00:00",
+            "started_at": None,
+            "finished_at": None,
+            "migration_state": None,
+            "error_category": None,
+            "pre_migration_backup_created": False,
+            "output_truncated": False,
+        },
+        {
+            "job_id": "not-a-job",
+            "project": "demo",
+            "operation": "migration",
+            "state": "queued",
+            "created_at": "2026-09-28T20:00:00+00:00",
+            "started_at": None,
+            "finished_at": None,
+            "migration_state": None,
+            "error_category": None,
+            "pre_migration_backup_created": False,
+            "output_truncated": False,
+        },
+        {
+            "job_id": "a" * 32,
+            "project": "demo",
+            "operation": "migration",
+            "state": "completed",
+            "created_at": "2026-09-28T20:00:00+00:00",
+            "started_at": None,
+            "finished_at": None,
+            "migration_state": None,
+            "error_category": None,
+            "pre_migration_backup_created": False,
+            "output_truncated": False,
+        },
+    ],
+)
+def test_async_migration_start_rejects_invalid_or_noninitial_result(payload) -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    executor._local.client = FakeClient([payload])
+
+    with pytest.raises(BridgeExecutionAdapterError):
+        executor.start_migration_job("demo", "b" * 32)
+
+
+def test_migration_job_status_rejects_mismatched_job_identity() -> None:
+    requested = "a" * 32
+    payload = {
+        "job_id": "b" * 32,
+        "project": "demo",
+        "operation": "migration",
+        "state": "running",
+        "created_at": "2026-09-28T20:00:00+00:00",
+        "started_at": "2026-09-28T20:00:01+00:00",
+        "finished_at": None,
+        "migration_state": None,
+        "error_category": None,
+        "pre_migration_backup_created": False,
+        "output_truncated": False,
+    }
+    executor = LocalMCPBridgeExecutor(_config())
+    executor._local.client = FakeClient([payload])
+
+    with pytest.raises(BridgeExecutionAdapterError, match="mismatched"):
+        executor.migration_job_status(requested)

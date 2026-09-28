@@ -137,6 +137,7 @@ class BridgeRequest(BaseModel):
 
         if self.operation is not None and self.operation not in {
             "migration",
+            "migration_async",
             "deploy",
             "code_rollback",
         }:

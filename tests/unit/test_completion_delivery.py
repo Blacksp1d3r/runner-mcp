@@ -6,6 +6,7 @@ import pytest
 
 from runner_mcp import completion_delivery as completion_delivery_module
 from runner_mcp import secure_io as secure_io_module
+from runner_mcp import migration_jobs as migration_jobs_module
 from runner_mcp.completion_delivery import (
     CompletionDeliveryError,
     CompletionDeliveryLedger,
@@ -1220,3 +1221,35 @@ def test_runtime_delivers_migration_completion_once_without_private_binding(
     assert "apply_migration" in body
     assert "e" * 64 not in body
     assert "a" * 40 not in body
+
+
+def test_migration_completion_scanner_never_instantiates_mutation_runner(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jobs = tmp_path / "migration-jobs"
+    jobs.mkdir(mode=0o700)
+    finished_at = datetime.now(UTC)
+    _write_migration_job(
+        jobs,
+        job_id="b" * 32,
+        state="completed",
+        finished_at=finished_at,
+        migration_state="applied",
+    )
+
+    monkeypatch.setattr(
+        migration_jobs_module.MigrationJobRunner,
+        "__init__",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("mutation runner must not be instantiated")
+        ),
+    )
+
+    events = scan_migration_completion_events(
+        jobs,
+        since=finished_at - timedelta(seconds=1),
+    )
+
+    assert len(events) == 1
+    assert events[0].source == CompletionSource.MIGRATION_JOB

@@ -111,12 +111,11 @@ def _validate_jobs_root(
         raise MigrationJobError("Migration jobs root must be absolute")
     if root.exists() and root.is_symlink():
         raise MigrationJobError("Migration jobs root must not be a symlink")
-    if create:
+    if create and not root.exists():
         try:
-            root.mkdir(parents=False, mode=0o700, exist_ok=True)
+            root.mkdir(parents=False, mode=0o700)
         except OSError as exc:
             raise MigrationJobError("Migration jobs root is unavailable") from exc
-        os.chmod(root, 0o700)
     current = Path(root.anchor)
     try:
         for part in root.parts[1:]:
@@ -394,6 +393,9 @@ class MigrationJobRunner:
         return self.jobs_root / f"{job_id}.json"
 
     def _persist(self, job: MigrationJob) -> None:
+        path = self._metadata_path(job.job_id)
+        if path.exists() or path.is_symlink():
+            _strict_json(path)
         content = (
             json.dumps(
                 job.persisted_dict(),
@@ -407,7 +409,7 @@ class MigrationJobRunner:
         if len(content) > MAX_MIGRATION_JOB_METADATA_BYTES:
             raise MigrationJobError("Migration job metadata exceeds size limit")
         try:
-            atomic_replace_private(self._metadata_path(job.job_id), content)
+            atomic_replace_private(path, content)
         except PrivateAtomicWriteError as exc:
             raise MigrationJobError("Migration job metadata could not be written") from exc
         _fsync_directory(self.jobs_root)

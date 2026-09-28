@@ -31,7 +31,12 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
-from .migration_planning import migration_plan_material
+from .migration_jobs import MigrationJobError, MigrationJobRunner
+from .migration_planning import (
+    async_migration_approval_material,
+    migration_binding_fingerprint,
+    migration_plan_material,
+)
 from .operational_safety import (
     OperatorSafetyGuard,
     OperatorStopActive,
@@ -352,6 +357,16 @@ def build_mcp(
         backup_root=settings.database_backup_root,
         secret_values=secret_values or os.environ,
     )
+    migration_jobs = (
+        MigrationJobRunner(
+            manager=database_manager,
+            registry=registry,
+            safety=safety,
+            jobs_root=settings.migration_jobs_root,
+        )
+        if settings.migration_jobs_root is not None
+        else None
+    )
     deployment_manager = DeploymentManager(
         registry=registry,
         safety=safety,
@@ -421,6 +436,7 @@ def build_mcp(
             "mailbox_inflight_limit": settings.mailbox_max_inflight,
             "database_backups_configured": settings.database_backup_root is not None,
             "deployment_jobs_configured": deployment_jobs is not None,
+            "migration_jobs_configured": migration_jobs is not None,
             "approvals_configured": approval_manager is not None,
             "fabric_bridge_configured": fabric_bridge is not None,
         }
@@ -503,6 +519,7 @@ def build_mcp(
             ("test_storage", settings.test_jobs_root),
             ("database_backup_storage", settings.database_backup_root),
             ("deployment_job_storage", settings.deployment_jobs_root),
+            ("migration_job_storage", settings.migration_jobs_root),
             ("approval_storage", settings.approval_root),
         ):
             state, detail = storage_state(value)
@@ -1233,6 +1250,11 @@ def build_mcp(
     def _migration_approval_material(project: str) -> tuple[dict, dict]:
         return migration_plan_material(registry, project)
 
+    def _migration_async_approval_material(
+        project: str,
+    ) -> tuple[dict, dict, dict]:
+        return async_migration_approval_material(registry, project)
+
     def _deploy_approval_material(project: str) -> tuple[dict, dict]:
         plan = deployment_manager.plan(project)
         cfg = registry.projects.get(project)
@@ -1265,6 +1287,11 @@ def build_mcp(
     def _approval_material(project: str, action: str) -> tuple[dict, dict]:
         if action == "migration":
             return _migration_approval_material(project)
+        if action == "migration_async":
+            _migration_binding, approval_binding, summary = (
+                _migration_async_approval_material(project)
+            )
+            return approval_binding, summary
         if action == "deploy":
             return _deploy_approval_material(project)
         if action == "code_rollback":
@@ -1290,7 +1317,7 @@ def build_mcp(
 
     @mcp.tool()
     def request_action_approval(project: str, action: str) -> dict:
-        """Create a short-lived human approval plan for migration, deploy or rollback."""
+        """Create a short-lived human approval plan for a supported staging action."""
         try:
             binding, summary = _approval_material(project, action)
             result = _require_approval_manager().request(
@@ -1381,6 +1408,72 @@ def build_mcp(
             tool_name="apply_migrations",
             project=project,
             result=str(result.get("status", "unknown")),
+        )
+        return result
+
+    def _require_migration_jobs() -> MigrationJobRunner:
+        if migration_jobs is None:
+            raise ValueError("Migration jobs are not configured")
+        return migration_jobs
+
+    @mcp.tool()
+    def start_migration_job(project: str, approval_id: str) -> dict:
+        """Start one durable asynchronous migration after matching human approval."""
+        try:
+            jobs = _require_migration_jobs()
+            migration_binding, approval_binding, summary = (
+                _migration_async_approval_material(project)
+            )
+            _require_approval_manager().consume(
+                approval_id,
+                action="migration_async",
+                project=project,
+                binding=approval_binding,
+            )
+            result = jobs.start(
+                project,
+                expected_binding_fingerprint=migration_binding_fingerprint(
+                    migration_binding
+                ),
+                expected_commit=str(summary["commit"]),
+            )
+        except (
+            ApprovalError,
+            MigrationJobError,
+            SourceControlError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+            ValueError,
+        ) as exc:
+            _audit_database_result(
+                tool_name="start_migration_job",
+                project=project,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_database_result(
+            tool_name="start_migration_job",
+            project=project,
+            result="started",
+        )
+        return result
+
+    @mcp.tool()
+    def migration_job_status(job_id: str) -> dict:
+        """Return safe persisted status for one asynchronous migration job."""
+        try:
+            result = _require_migration_jobs().status(job_id)
+        except (MigrationJobError, ValueError) as exc:
+            _audit_database_result(
+                tool_name="migration_job_status",
+                project=None,
+                result="denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_database_result(
+            tool_name="migration_job_status",
+            project=str(result.get("project")),
+            result=str(result.get("state", "unknown")),
         )
         return result
 

@@ -596,7 +596,7 @@ Implemented core design:
 - pre-migration backup required before migration apply;
 - safety guard rechecked after backup and before migration;
 - failed migration keeps the recovery point and never auto-restores;
-- Task 44 adds a strict private durable migration-job substrate and `MIGRATION_JOB` completion source while preserving existing synchronous MCP/bridge `apply_migrations` and deployment-triggered migrations; Task 45 selects a separate future `start_migration_job` / `migration_job_status` contract with distinct `migration_async` human approval, implemented only if Task 49 lands;
+- Task 44 adds the strict private durable migration-job substrate and `MIGRATION_JOB` completion source; Task 49 now exposes it additively through explicit `start_migration_job` / `migration_job_status` MCP+bridge actions with distinct `migration_async` human approval, while synchronous `apply_migrations`, direct `migration_status` and deployment-triggered migrations remain unchanged;
 - local read-only restore preflight validates one private PostgreSQL archive without database connection or restore authority;
 - local CLI retention preview strictly validates private release/backup state and reports protected or potentially eligible records without deleting or rewriting data;
 - CLI database and migration configuration without manual YAML editing.
@@ -604,7 +604,6 @@ Implemented core design:
 Not implemented yet:
 
 - database restore execution remains deferred after Task 37: the current architecture does not prove a separately prepared empty recovery target, complete database-writer quiescence, application cutover, `pre_restore` retention semantics or semantic post-restore verification;
-- remote asynchronous migration start/status is not yet implemented; Task 49 is the bounded additive follow-up and must not change synchronous `apply_migrations`;
 - WAL archiving/PITR orchestration and verification;
 - automatic/unattended retention pruning;
 - backup pruning remains deferred pending a separate crash-safe pair-deletion contract;

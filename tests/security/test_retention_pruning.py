@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.config import (
+from runner_mcp import retention_pruning as retention_pruning_module\nfrom runner_mcp.config import (
     DatabaseConfig,
     DeploymentConfig,
     ProjectConfig,
@@ -429,7 +429,7 @@ def test_missing_fd_safe_rmtree_fails_before_mutation(
     candidate, _rollback_target, _current = populate_eligible_release(release_root)
     plan = pruner.plan("demo", now=NOW)
     monkeypatch.setattr(
-        pruner.__class__.__module__ and __import__("runner_mcp.retention_pruning", fromlist=["shutil"]).shutil.rmtree,
+        retention_pruning_module.shutil.rmtree,
         "avoids_symlink_attacks",
         False,
     )

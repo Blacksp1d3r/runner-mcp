@@ -31,6 +31,7 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
+from .migration_planning import migration_plan_material
 from .operational_safety import (
     OperatorSafetyGuard,
     OperatorStopActive,
@@ -1214,28 +1215,7 @@ def build_mcp(
         return approval_manager
 
     def _migration_approval_material(project: str) -> tuple[dict, dict]:
-        cfg = registry.projects.get(project)
-        if cfg is None:
-            raise ValueError("Unknown or disabled project")
-        if cfg.environment != "staging":
-            raise ValueError("Mutating project actions are enabled only for staging environments")
-        if cfg.database is None or cfg.database.migrations is None:
-            raise ValueError("Migration profile is not configured")
-        source = clean_head(cfg.root)
-        binding = {
-            "environment": cfg.environment,
-            "repository": cfg.repository,
-            "database": cfg.database.model_dump(mode="json"),
-            "source": source,
-        }
-        summary = {
-            "action": "migration",
-            "environment": cfg.environment,
-            "commit": source["commit"],
-            "pre_migration_backup_required": True,
-            "automatic_database_restore": False,
-        }
-        return binding, summary
+        return migration_plan_material(registry, project)
 
     def _deploy_approval_material(project: str) -> tuple[dict, dict]:
         plan = deployment_manager.plan(project)

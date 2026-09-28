@@ -329,6 +329,10 @@ def parse_migration_job_metadata(path: Path) -> MigrationJob:
         raise MigrationJobError("Stopped migration job state is inconsistent")
     if state == MigrationJobState.ERROR and error_category is None:
         raise MigrationJobError("Failed migration job has no error category")
+    if migration_state in {"applied", "failed", "timed_out"} and not raw[
+        "pre_migration_backup_created"
+    ]:
+        raise MigrationJobError("Migration job backup evidence is inconsistent")
     if migration_state == "failed" and error_category != "migration_failed":
         raise MigrationJobError("Failed migration result category is inconsistent")
     if migration_state == "timed_out" and error_category != "migration_timed_out":

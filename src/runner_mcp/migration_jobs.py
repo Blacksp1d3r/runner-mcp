@@ -13,7 +13,7 @@ from typing import Any
 from uuid import uuid4
 
 from .config import ProjectRegistry
-from .database_manager import DatabaseManager, DatabaseManagerError
+from .database_manager import BACKUP_ID_RE, DatabaseManager, DatabaseManagerError
 from .migration_planning import migration_binding_fingerprint, migration_plan_material
 from .operational_safety import (
     ActionClass,
@@ -329,6 +329,10 @@ def parse_migration_job_metadata(path: Path) -> MigrationJob:
         raise MigrationJobError("Stopped migration job state is inconsistent")
     if state == MigrationJobState.ERROR and error_category is None:
         raise MigrationJobError("Failed migration job has no error category")
+    if migration_state == "failed" and error_category != "migration_failed":
+        raise MigrationJobError("Failed migration result category is inconsistent")
+    if migration_state == "timed_out" and error_category != "migration_timed_out":
+        raise MigrationJobError("Timed-out migration result category is inconsistent")
     if state == MigrationJobState.INTERRUPTED and (
         error_category != "runner_restart" or migration_state is not None
     ):
@@ -651,16 +655,24 @@ class MigrationJobRunner:
             return
 
         migration_state = result.get("status")
-        if migration_state not in {"applied", "failed", "timed_out"}:
+        backup = result.get("pre_migration_backup")
+        backup_id = backup.get("backup_id") if isinstance(backup, dict) else None
+        output_truncated = result.get("output_truncated")
+        if (
+            migration_state not in {"applied", "failed", "timed_out"}
+            or result.get("project") != project
+            or result.get("database_restore_performed") is not False
+            or not isinstance(backup_id, str)
+            or not BACKUP_ID_RE.fullmatch(backup_id)
+            or not isinstance(output_truncated, bool)
+        ):
             self._finish_failure(
                 job_id,
                 state=MigrationJobState.ERROR,
                 category="unexpected_error",
             )
             return
-        backup = result.get("pre_migration_backup")
-        backup_created = isinstance(backup, dict) and bool(backup.get("backup_id"))
-        output_truncated = result.get("output_truncated") is True
+        backup_created = True
         if migration_state == "applied":
             self._update(
                 job_id,

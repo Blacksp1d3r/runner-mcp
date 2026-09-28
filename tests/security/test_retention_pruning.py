@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp import retention_pruning as retention_pruning_module\nfrom runner_mcp.config import (
+from runner_mcp import retention_pruning as retention_pruning_module
+from runner_mcp.config import (
     DatabaseConfig,
     DeploymentConfig,
     ProjectConfig,

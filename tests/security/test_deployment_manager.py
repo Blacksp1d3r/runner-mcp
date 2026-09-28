@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp import deployment_manager as deployment_manager_module
 from runner_mcp.config import (
     DatabaseConfig,
     DeploymentConfig,
@@ -22,6 +23,7 @@ from runner_mcp.operational_safety import (
     OperatorStopActive,
     RetentionPolicy,
 )
+from runner_mcp.release_operation_lock import ReleaseOperationBusy
 from runner_mcp.service_manager import ServiceManagerError
 
 
@@ -615,3 +617,151 @@ def test_release_metadata_permission_tampering_fails_closed(tmp_path: Path) -> N
 
     with pytest.raises(DeploymentError, match="permissions"):
         deployer.list_releases("demo")
+
+def test_release_lock_contention_is_bounded_before_deploy_mutation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    sensitive = str(tmp_path / "private-lock")
+
+    def busy(_release_root: Path):
+        raise ReleaseOperationBusy("release_operation_busy")
+
+    monkeypatch.setattr(
+        deployment_manager_module,
+        "acquire_release_operation_lock",
+        busy,
+    )
+
+    with pytest.raises(DeploymentError) as captured:
+        deployer.deploy("demo")
+
+    assert str(captured.value) == "release_operation_busy"
+    assert sensitive not in str(captured.value)
+    assert list((tmp_path / "staging" / "releases").iterdir()) == []
+
+
+def test_deploy_holds_release_lock_through_release_creation_and_migration(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = make_repo(tmp_path)
+    events: list[str] = []
+    state: dict[str, object] = {}
+
+    class FakeReleaseLock:
+        active = True
+
+        def close(self) -> None:
+            self.active = False
+            events.append("unlock")
+
+    class CheckingDatabase(FakeDatabase):
+        def apply_migrations(self, project: str) -> dict:
+            lock = state["lock"]
+            assert isinstance(lock, FakeReleaseLock)
+            assert lock.active is True
+            events.append("migration")
+            return super().apply_migrations(project)
+
+    database = CheckingDatabase(status="applied")
+    deployer = manager(
+        tmp_path,
+        root,
+        run_migrations=True,
+        database=database,
+    )
+    original_create = deployer._create_release
+
+    def acquire(_release_root: Path) -> FakeReleaseLock:
+        lock = FakeReleaseLock()
+        state["lock"] = lock
+        events.append("lock")
+        return lock
+
+    def create_release(**kwargs):
+        lock = state["lock"]
+        assert isinstance(lock, FakeReleaseLock)
+        assert lock.active is True
+        events.append("create_release")
+        return original_create(**kwargs)
+
+    monkeypatch.setattr(
+        deployment_manager_module,
+        "acquire_release_operation_lock",
+        acquire,
+    )
+    monkeypatch.setattr(deployer, "_create_release", create_release)
+
+    result = deployer.deploy("demo")
+
+    assert result["status"] == "deployed"
+    assert events.index("lock") < events.index("create_release") < events.index("migration")
+    assert events[-1] == "unlock"
+    lock = state["lock"]
+    assert isinstance(lock, FakeReleaseLock)
+    assert lock.active is False
+
+
+def test_rollback_recomputes_plan_after_cross_process_lock(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    deployer.deploy("demo")
+    commit_text(root, "v2\n", "second")
+    deployer.deploy("demo")
+
+    events: list[str] = []
+    state: dict[str, object] = {}
+    original_plan = deployer.rollback_plan
+
+    class FakeReleaseLock:
+        active = True
+
+        def close(self) -> None:
+            self.active = False
+            events.append("unlock")
+
+    def acquire(_release_root: Path) -> FakeReleaseLock:
+        lock = FakeReleaseLock()
+        state["lock"] = lock
+        events.append("lock")
+        return lock
+
+    def locked_plan(project: str) -> dict:
+        lock = state["lock"]
+        assert isinstance(lock, FakeReleaseLock)
+        assert lock.active is True
+        events.append("plan")
+        return original_plan(project)
+
+    monkeypatch.setattr(
+        deployment_manager_module,
+        "acquire_release_operation_lock",
+        acquire,
+    )
+    monkeypatch.setattr(deployer, "rollback_plan", locked_plan)
+
+    result = deployer.rollback_one("demo")
+
+    assert result["status"] == "rolled_back"
+    assert events[:2] == ["lock", "plan"]
+    assert events[-1] == "unlock"
+
+
+def test_existing_thread_lock_still_blocks_same_process_deploy(tmp_path: Path) -> None:
+    root = make_repo(tmp_path)
+    deployer = manager(tmp_path, root)
+    lock = deployer._lock_for("demo")
+    assert lock.acquire(blocking=False)
+    try:
+        with pytest.raises(DeploymentError, match="already in progress"):
+            deployer.deploy("demo")
+    finally:
+        lock.release()
+
+    assert list((tmp_path / "staging" / "releases").iterdir()) == []

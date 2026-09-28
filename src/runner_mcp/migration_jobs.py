@@ -25,6 +25,7 @@ from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 from .source_control import SourceControlError
 
 MIGRATION_JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+_PROJECT_RE = re.compile(r"^[a-z0-9][a-z0-9_-]{0,79}$")
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _FINGERPRINT_RE = re.compile(r"^[0-9a-f]{64}$")
 MAX_MIGRATION_JOB_METADATA_BYTES = 16_384
@@ -112,10 +113,18 @@ def _validate_jobs_root(
         raise MigrationJobError("Migration jobs root must not be a symlink")
     if create:
         try:
-            root.mkdir(parents=True, mode=0o700, exist_ok=True)
+            root.mkdir(parents=False, mode=0o700, exist_ok=True)
         except OSError as exc:
             raise MigrationJobError("Migration jobs root is unavailable") from exc
         os.chmod(root, 0o700)
+    current = Path(root.anchor)
+    try:
+        for part in root.parts[1:]:
+            current = current / part
+            if current.is_symlink():
+                raise MigrationJobError("Migration jobs root contains a symlink")
+    except OSError as exc:
+        raise MigrationJobError("Migration jobs root is unavailable") from exc
     try:
         resolved = root.resolve(strict=True)
         metadata = os.stat(resolved, follow_symlinks=False)
@@ -268,7 +277,7 @@ def parse_migration_job_metadata(path: Path) -> MigrationJob:
     if raw["job_id"] != job_id or raw["operation"] != "migration":
         raise MigrationJobError("Migration job metadata identity is invalid")
     project = raw["project"]
-    if not isinstance(project, str) or not project or len(project) > 80:
+    if not isinstance(project, str) or not _PROJECT_RE.fullmatch(project):
         raise MigrationJobError("Migration job project is invalid")
     try:
         state = MigrationJobState(raw["state"])
@@ -301,14 +310,28 @@ def parse_migration_job_metadata(path: Path) -> MigrationJob:
         raise MigrationJobError("Active migration job has a finished timestamp")
     if state == MigrationJobState.QUEUED and started_at is not None:
         raise MigrationJobError("Queued migration job has a started timestamp")
+    if state == MigrationJobState.RUNNING and started_at is None:
+        raise MigrationJobError("Running migration job has no started timestamp")
+    if state in {MigrationJobState.QUEUED, MigrationJobState.RUNNING} and (
+        migration_state is not None
+        or error_category is not None
+        or raw["pre_migration_backup_created"]
+        or raw["output_truncated"]
+    ):
+        raise MigrationJobError("Active migration job state is inconsistent")
     if state == MigrationJobState.COMPLETED:
         if migration_state != "applied" or error_category is not None:
             raise MigrationJobError("Completed migration job state is inconsistent")
-    if state == MigrationJobState.STOPPED and error_category != "operator_stop":
+    if state == MigrationJobState.STOPPED and (
+        error_category != "operator_stop" or migration_state is not None
+    ):
         raise MigrationJobError("Stopped migration job state is inconsistent")
-    if state in {MigrationJobState.ERROR, MigrationJobState.INTERRUPTED}:
-        if error_category is None:
-            raise MigrationJobError("Failed migration job has no error category")
+    if state == MigrationJobState.ERROR and error_category is None:
+        raise MigrationJobError("Failed migration job has no error category")
+    if state == MigrationJobState.INTERRUPTED and (
+        error_category != "runner_restart" or migration_state is not None
+    ):
+        raise MigrationJobError("Interrupted migration job state is inconsistent")
 
     return MigrationJob(
         job_id=job_id,
@@ -414,6 +437,8 @@ class MigrationJobRunner:
         expected_binding_fingerprint: str,
         expected_commit: str,
     ) -> dict[str, Any]:
+        if not _PROJECT_RE.fullmatch(project):
+            raise MigrationJobError("Migration job project is invalid")
         if not _FINGERPRINT_RE.fullmatch(expected_binding_fingerprint):
             raise MigrationJobError("Expected migration binding is invalid")
         if not _COMMIT_RE.fullmatch(expected_commit):
@@ -438,7 +463,15 @@ class MigrationJobRunner:
             name=f"runner-mcp-migration-{job.job_id[:8]}",
             daemon=True,
         )
-        worker.start()
+        try:
+            worker.start()
+        except RuntimeError as exc:
+            self._finish_failure(
+                job.job_id,
+                state=MigrationJobState.ERROR,
+                category="unexpected_error",
+            )
+            raise MigrationJobError("Migration worker could not start") from exc
         return job.public_dict()
 
     def _update(

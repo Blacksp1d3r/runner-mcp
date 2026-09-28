@@ -437,6 +437,26 @@ def test_sync_and_test_requests_reject_extra_or_unpinned_input(payload: str) -> 
         ),
         (
             {
+                "request_id": "ops-migration-start",
+                "action": "start_migration_job",
+                "project": "demo",
+                "approval_id": "d" * 32,
+            },
+            (
+                "start_migration_job",
+                {"project": "demo", "approval_id": "d" * 32},
+            ),
+        ),
+        (
+            {
+                "request_id": "ops-migration-status",
+                "action": "migration_job_status",
+                "job_id": "e" * 32,
+            },
+            ("migration_job_status", {"job_id": "e" * 32}),
+        ),
+        (
+            {
                 "request_id": "ops-007",
                 "action": "list_releases",
                 "project": "demo",
@@ -465,6 +485,8 @@ def test_operational_bridge_maps_only_bounded_arguments(
         '{"request_id":"ops-bad-07","action":"apply_migrations","project":"demo","approval_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","operation":"migration"}',
         '{"request_id":"ops-bad-08","action":"list_backups","project":"demo","limit":101}',
         '{"request_id":"ops-bad-09","action":"deploy_staging","project":"demo"}',
+        '{"request_id":"ops-bad-10","action":"start_migration_job","project":"demo","approval_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","commit":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}',
+        '{"request_id":"ops-bad-11","action":"migration_job_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","project":"demo"}',
     ],
 )
 def test_operational_bridge_rejects_unbounded_or_extra_arguments(payload: str) -> None:
@@ -634,6 +656,17 @@ _VALID_REQUEST_BY_ACTION: dict[BridgeAction, dict[str, object]] = {
         "action": "apply_migrations",
         "project": "demo",
         "approval_id": "5" * 32,
+    },
+    BridgeAction.START_MIGRATION_JOB: {
+        "request_id": "matrix-start-migration-job",
+        "action": "start_migration_job",
+        "project": "demo",
+        "approval_id": "a" * 32,
+    },
+    BridgeAction.MIGRATION_JOB_STATUS: {
+        "request_id": "matrix-migration-job-status",
+        "action": "migration_job_status",
+        "job_id": "b" * 32,
     },
     BridgeAction.PLAN_DEPLOY: {
         "request_id": "matrix-plan-deploy",

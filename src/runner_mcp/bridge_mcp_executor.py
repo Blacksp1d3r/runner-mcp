@@ -27,6 +27,71 @@ _TERMINAL_TEST_STATES = {
     "interrupted",
 }
 _NONTERMINAL_TEST_STATES = {"queued", "claimed", "running"}
+_MIGRATION_JOB_STATES = {
+    "queued",
+    "running",
+    "completed",
+    "stopped",
+    "error",
+    "interrupted",
+}
+_MIGRATION_JOB_KEYS = {
+    "job_id",
+    "project",
+    "operation",
+    "state",
+    "created_at",
+    "started_at",
+    "finished_at",
+    "migration_state",
+    "error_category",
+    "pre_migration_backup_created",
+    "output_truncated",
+}
+
+
+def _validate_migration_job_payload(
+    payload: Any,
+    *,
+    expected_project: str | None = None,
+    require_initial: bool = False,
+) -> dict[str, Any]:
+    if not isinstance(payload, dict) or set(payload) != _MIGRATION_JOB_KEYS:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration job result"
+        )
+    job_id = payload.get("job_id")
+    project = payload.get("project")
+    state = payload.get("state")
+    if not isinstance(job_id, str) or not _JOB_ID_RE.fullmatch(job_id):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration job identifier"
+        )
+    if (
+        not isinstance(project, str)
+        or not re.fullmatch(r"[a-z0-9][a-z0-9_-]{0,79}", project)
+        or (expected_project is not None and project != expected_project)
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration job project"
+        )
+    if payload.get("operation") != "migration" or state not in _MIGRATION_JOB_STATES:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration job state"
+        )
+    if require_initial and state != "queued":
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid initial migration job state"
+        )
+    if not isinstance(payload.get("pre_migration_backup_created"), bool):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned invalid migration backup evidence"
+        )
+    if not isinstance(payload.get("output_truncated"), bool):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned invalid migration output state"
+        )
+    return payload
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +240,8 @@ _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
         "approval_status",
         "migration_status",
         "apply_migrations",
+        "start_migration_job",
+        "migration_job_status",
         "plan_deploy",
         "deploy_staging",
         "deployment_status",
@@ -547,7 +614,12 @@ class LocalMCPBridgeExecutor:
         return self._client()._call_tool("backup_database", {"project": project})
 
     def request_action_approval(self, project: str, operation: str) -> Any:
-        if operation not in {"migration", "deploy", "code_rollback"}:
+        if operation not in {
+            "migration",
+            "migration_async",
+            "deploy",
+            "code_rollback",
+        }:
             raise BridgeExecutionAdapterError("Invalid approval operation")
         return self._client()._call_tool(
             "request_action_approval",
@@ -572,6 +644,33 @@ class LocalMCPBridgeExecutor:
             "apply_migrations",
             {"project": project, "approval_id": approval_id},
         )
+
+    def start_migration_job(self, project: str, approval_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(approval_id):
+            raise BridgeExecutionAdapterError("Invalid approval identifier")
+        result = self._client()._call_tool(
+            "start_migration_job",
+            {"project": project, "approval_id": approval_id},
+        )
+        return _validate_migration_job_payload(
+            result,
+            expected_project=project,
+            require_initial=True,
+        )
+
+    def migration_job_status(self, job_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError("Invalid migration job identifier")
+        result = self._client()._call_tool(
+            "migration_job_status",
+            {"job_id": job_id},
+        )
+        validated = _validate_migration_job_payload(result)
+        if validated["job_id"] != job_id:
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned a mismatched migration job identifier"
+            )
+        return validated
 
     def plan_deploy(self, project: str) -> Any:
         return self._client()._call_tool("plan_deploy", {"project": project})

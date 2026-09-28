@@ -109,6 +109,12 @@ class FakeExecutor:
     def apply_migrations(self, project: str, approval_id: str):
         return self._result("apply_migrations", project, approval_id)
 
+    def start_migration_job(self, project: str, approval_id: str):
+        return self._result("start_migration_job", project, approval_id)
+
+    def migration_job_status(self, job_id: str):
+        return self._result("migration_job_status", job_id)
+
     def plan_deploy(self, project: str):
         return self._result("plan_deploy", project)
 
@@ -346,6 +352,8 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         '{"request_id":"req-429","action":"approval_status","approval_id":"cccccccccccccccccccccccccccccccc"}',
         '{"request_id":"req-430","action":"migration_status","project":"demo"}',
         '{"request_id":"req-431","action":"apply_migrations","project":"demo","approval_id":"dddddddddddddddddddddddddddddddd"}',
+        '{"request_id":"req-migration-start","action":"start_migration_job","project":"demo","approval_id":"44444444444444444444444444444444"}',
+        '{"request_id":"req-migration-job-status","action":"migration_job_status","job_id":"55555555555555555555555555555555"}',
         '{"request_id":"req-432","action":"plan_deploy","project":"demo"}',
         '{"request_id":"req-433","action":"deploy_staging","project":"demo","approval_id":"eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"}',
         '{"request_id":"req-434","action":"deployment_status","job_id":"ffffffffffffffffffffffffffffffff"}',
@@ -386,6 +394,8 @@ def test_all_allow_listed_actions_dispatch_only_to_explicit_methods(tmp_path) ->
         "approval_status",
         "migration_status",
         "apply_migrations",
+        "start_migration_job",
+        "migration_job_status",
         "plan_deploy",
         "deploy_staging",
         "deployment_status",
@@ -468,3 +478,62 @@ def test_sync_project_dispatches_only_project_and_commit(tmp_path) -> None:
 
     assert outcome.state == BridgeProcessState.COMPLETED
     assert executor.calls == [("sync_project", ("demo", commit))]
+
+
+def test_migration_start_persistence_failure_never_enqueues_twice(tmp_path) -> None:
+    ledger = BridgeReplayLedger(tmp_path / "migration-replay.json")
+    executor = FakeExecutor()
+    sink = FakeSink()
+    sink.fail = True
+    processor = _processor(
+        tmp_path,
+        ledger=ledger,
+        executor=executor,
+        sink=sink,
+    )
+    payload = (
+        '{"request_id":"migration-ambiguous-01","action":"start_migration_job",'
+        '"project":"demo","approval_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"}'
+    )
+
+    first = processor.process(payload)
+    second = processor.process(payload)
+
+    assert first.state == BridgeProcessState.PERSISTENCE_FAILED
+    assert first.requires_recovery is True
+    assert second.state == BridgeProcessState.AMBIGUOUS
+    assert executor.calls == [
+        (
+            "start_migration_job",
+            ("demo", "a" * 32),
+        )
+    ]
+
+
+def test_migration_start_finalize_failure_never_enqueues_twice(tmp_path) -> None:
+    ledger = FinalizeFailLedger(tmp_path / "migration-finalize-replay.json")
+    executor = FakeExecutor()
+    sink = FakeSink()
+    processor = _processor(
+        tmp_path,
+        ledger=ledger,
+        executor=executor,
+        sink=sink,
+    )
+    payload = (
+        '{"request_id":"migration-ambiguous-02","action":"start_migration_job",'
+        '"project":"demo","approval_id":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}'
+    )
+
+    first = processor.process(payload)
+    second = processor.process(payload)
+
+    assert first.state == BridgeProcessState.FINALIZE_FAILED
+    assert first.requires_recovery is True
+    assert second.state == BridgeProcessState.AMBIGUOUS
+    assert executor.calls == [
+        (
+            "start_migration_job",
+            ("demo", "b" * 32),
+        )
+    ]

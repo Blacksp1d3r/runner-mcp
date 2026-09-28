@@ -473,6 +473,23 @@ def test_operational_bridge_maps_only_bounded_arguments(
     assert bridge_tool_call(request) == expected
 
 
+def test_async_migration_approval_operation_is_explicitly_bounded() -> None:
+    request = parse_bridge_request(
+        json.dumps(
+            {
+                "request_id": "ops-async-approval",
+                "action": "request_action_approval",
+                "project": "demo",
+                "operation": "migration_async",
+            }
+        )
+    )
+    assert bridge_tool_call(request) == (
+        "request_action_approval",
+        {"project": "demo", "action": "migration_async"},
+    )
+
+
 @pytest.mark.parametrize(
     "payload",
     [

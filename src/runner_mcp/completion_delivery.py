@@ -828,8 +828,6 @@ class CompletionNotifierRuntime:
                     since=since,
                 )
             )
-        events.sort(key=lambda event: event.event_id)
-
         delivered = 0
         reconciled = 0
         already = 0

@@ -1,3 +1,25 @@
+## 2026-09-28 — Task 49 explicit async migration integration complete
+
+- Runner MCP `main` checkpoint for this handoff: `da367081f88d6d2342cf938a9b67ec59d9d10de0`.
+- Task 49 is COMPLETE via PR #124 / merge `da367081f88d6d2342cf938a9b67ec59d9d10de0`.
+- Validation evidence: synthetic PR merge `6cfb7139d261ec04d16756afab4b1b176f500193` explicitly merged Task 49 head `3627970ad1668b6ca08afa41e906398466ab0a65` into then-current main `bbcbeb6193a127c12e62ad2b648f97aac69254e7`; exact validation #622 and attribution #107 are green. Post-merge validation #623 and attribution #109 are green.
+- Async migration is additive and explicit: `start_migration_job(project, approval_id)` + `migration_job_status(job_id)` are available over MCP and the strict bridge actions `START_MIGRATION_JOB` / `MIGRATION_JOB_STATUS`.
+- Human authority is separated: async uses `migration_async` approval bound to canonical migration state plus fixed execution mode `durable_async_v1`. Sync `migration` approvals and async approvals are non-interchangeable.
+- The client cannot supply commit, binding fingerprint, DSN, path, executable, storage root or other private expected evidence. Server computes and revalidates it.
+- Start ordering is fail-closed: require configured migration runner -> recompute canonical state -> pre-enqueue safety check -> consume async approval -> durable Task 44 queue -> worker start. The worker rechecks canonical state and safety before database mutation.
+- Emergency stop present at start blocks before approval consumption; a later stop is rechecked by the worker.
+- Bridge result-persistence or replay-finalization ambiguity never enqueues the migration job twice. Immediate bridge success means durable acceptance/queueing, not migration completion.
+- Existing synchronous MCP/bridge `apply_migrations`, direct `migration_status`, deployment-triggered migrations and terminal completion delivery are unchanged.
+- No migration cancel/kill, automatic retry/resume, arbitrary SQL/executable/cwd, production mutation, automatic restore, job listing/search or generic async framework was added.
+- Task 47 local bounded service-journal reader is the preferred next independent CODE lane. Task 41 shared bounded redaction is already integrated; remote/MCP/mailbox journal exposure remains separately deferred.
+- #108 remains externally blocked by the authorized private-host connector quota; #110 remains Fabric-upstream gated; #101 remains externally gated for actual secondary-directory submissions/claims.
+
+Immediate resume order:
+1. integrate this coordination-only Task 49 status update after exact-head CI;
+2. implement Task 47 local/private service-journal reader only, with explicit per-service opt-in and no MCP/mailbox/bridge action;
+3. after Task 47, perform a separate privacy/remote-exposure review before considering any service-log transport action;
+4. keep #108/#110/#101 gates honest and do not broaden authority to work around them.
+
 ## 2026-09-28 — Task 44 integrated; Task 45 async migration boundary decided
 
 - Runner MCP `main` checkpoint before this review branch: `6053b7c3d5aef757055c453d2fd5b7f581248e53`.

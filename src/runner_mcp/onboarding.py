@@ -32,6 +32,7 @@ class PrivatePaths:
     jobs_dir: Path
     database_backups_dir: Path
     deployment_jobs_dir: Path
+    migration_jobs_dir: Path
     approvals_dir: Path
     audit_log: Path
 
@@ -46,6 +47,7 @@ class PrivatePaths:
             jobs_dir=root / "jobs",
             database_backups_dir=root / "database-backups",
             deployment_jobs_dir=root / "deployment-jobs",
+            migration_jobs_dir=root / "migration-jobs",
             approvals_dir=root / "approvals",
             audit_log=root / "audit.jsonl",
         )
@@ -185,6 +187,7 @@ def render_env_file(
         "RUNNER_MCP_MAILBOX_MAX_INFLIGHT": "32",
         "RUNNER_MCP_DATABASE_BACKUP_ROOT": str(paths.database_backups_dir),
         "RUNNER_MCP_DEPLOY_JOBS_ROOT": str(paths.deployment_jobs_dir),
+        "RUNNER_MCP_MIGRATION_JOBS_ROOT": str(paths.migration_jobs_dir),
         "RUNNER_MCP_APPROVAL_ROOT": str(paths.approvals_dir),
         "RUNNER_MCP_APPROVAL_TTL_SECONDS": "600",
     }
@@ -269,6 +272,11 @@ def install_private_configuration(
     if paths.deployment_jobs_dir.is_symlink():
         raise OnboardingError("Deployment jobs directory must not be a symlink")
     os.chmod(paths.deployment_jobs_dir, 0o700)
+
+    paths.migration_jobs_dir.mkdir(parents=True, exist_ok=True)
+    if paths.migration_jobs_dir.is_symlink():
+        raise OnboardingError("Migration jobs directory must not be a symlink")
+    os.chmod(paths.migration_jobs_dir, 0o700)
 
     paths.approvals_dir.mkdir(parents=True, exist_ok=True)
     if paths.approvals_dir.is_symlink():

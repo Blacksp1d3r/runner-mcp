@@ -82,6 +82,17 @@ def install_config(
     return paths, project_root
 
 
+def test_setup_creates_private_migration_job_storage(
+    tmp_path: Path,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    values = load_env_file(paths.env_file)
+
+    assert paths.migration_jobs_dir.is_dir()
+    assert (paths.migration_jobs_dir.stat().st_mode & 0o777) == 0o700
+    assert values["RUNNER_MCP_MIGRATION_JOBS_ROOT"] == str(paths.migration_jobs_dir)
+
+
 def test_status_does_not_print_private_paths_or_bearer_value(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

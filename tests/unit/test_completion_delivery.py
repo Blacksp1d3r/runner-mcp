@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from runner_mcp import completion_delivery as completion_delivery_module
+from runner_mcp import migration_jobs as migration_jobs_module
 from runner_mcp import secure_io as secure_io_module
 from runner_mcp.completion_delivery import (
     CompletionDeliveryError,
@@ -19,6 +20,7 @@ from runner_mcp.completion_delivery import (
     notification_config_path,
     remove_completion_notifier,
     scan_deployment_completion_events,
+    scan_migration_completion_events,
     scan_test_completion_events,
 )
 from runner_mcp.completion_feedback import (
@@ -105,6 +107,42 @@ def _write_deployment_job(
         "finished_at": finished_at.isoformat() if finished_at else None,
         "result": result,
         "error_category": error_category,
+    }
+    path = jobs_root / f"{job_id}.json"
+    path.write_text(json.dumps(payload), encoding="utf-8")
+    path.chmod(0o600)
+    return path
+
+
+def _write_migration_job(
+    jobs_root: Path,
+    *,
+    job_id: str,
+    state: str,
+    finished_at: datetime | None,
+    project: str = "demo",
+    migration_state: str | None = None,
+    error_category: str | None = None,
+) -> Path:
+    jobs_root.chmod(0o700)
+    payload = {
+        "job_id": job_id,
+        "project": project,
+        "operation": "migration",
+        "state": state,
+        "created_at": (datetime.now(UTC) - timedelta(seconds=2)).isoformat(),
+        "started_at": (
+            None
+            if state == "queued"
+            else (datetime.now(UTC) - timedelta(seconds=1)).isoformat()
+        ),
+        "finished_at": finished_at.isoformat() if finished_at else None,
+        "migration_state": migration_state,
+        "error_category": error_category,
+        "pre_migration_backup_created": migration_state in {"applied", "failed", "timed_out"},
+        "output_truncated": migration_state == "timed_out",
+        "expected_binding_fingerprint": "e" * 64,
+        "expected_commit": "a" * 40,
     }
     path = jobs_root / f"{job_id}.json"
     path.write_text(json.dumps(payload), encoding="utf-8")
@@ -1060,3 +1098,158 @@ def test_runtime_forever_restart_failure_diagnostic_is_bounded(
     assert sensitive not in rendered
     assert str(tmp_path) not in rendered
     assert "example.invalid" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("state", "migration_state", "error_category", "expected"),
+    [
+        ("completed", "applied", None, CompletionState.SUCCEEDED),
+        ("stopped", None, "operator_stop", CompletionState.CANCELLED),
+        ("error", "failed", "migration_failed", CompletionState.FAILED),
+        ("interrupted", None, "runner_restart", CompletionState.FAILED),
+    ],
+)
+def test_migration_completion_scanner_maps_terminal_states(
+    tmp_path: Path,
+    state: str,
+    migration_state: str | None,
+    error_category: str | None,
+    expected: CompletionState,
+) -> None:
+    jobs = tmp_path / "migration-jobs"
+    jobs.mkdir(mode=0o700)
+    finished_at = datetime.now(UTC)
+    _write_migration_job(
+        jobs,
+        job_id="7" * 32,
+        state=state,
+        finished_at=finished_at,
+        migration_state=migration_state,
+        error_category=error_category,
+    )
+
+    events = scan_migration_completion_events(
+        jobs,
+        since=finished_at - timedelta(seconds=1),
+    )
+
+    assert len(events) == 1
+    event = events[0]
+    assert event.source == CompletionSource.MIGRATION_JOB
+    assert event.operation == CompletionOperation.APPLY_MIGRATION
+    assert event.project == "demo"
+    assert event.state == expected
+
+
+def test_migration_completion_scanner_ignores_active_jobs(tmp_path: Path) -> None:
+    jobs = tmp_path / "migration-jobs"
+    jobs.mkdir(mode=0o700)
+    _write_migration_job(
+        jobs,
+        job_id="8" * 32,
+        state="queued",
+        finished_at=None,
+    )
+
+    assert scan_migration_completion_events(
+        jobs,
+        since=datetime.now(UTC) - timedelta(minutes=1),
+    ) == []
+
+
+def test_migration_completion_scanner_rejects_unsafe_metadata(
+    tmp_path: Path,
+) -> None:
+    jobs = tmp_path / "migration-jobs"
+    jobs.mkdir(mode=0o700)
+    path = _write_migration_job(
+        jobs,
+        job_id="9" * 32,
+        state="completed",
+        finished_at=datetime.now(UTC),
+        migration_state="applied",
+    )
+    path.chmod(0o644)
+
+    with pytest.raises(CompletionDeliveryError, match="migration job metadata"):
+        scan_migration_completion_events(
+            jobs,
+            since=datetime.now(UTC) - timedelta(minutes=1),
+        )
+
+
+def test_runtime_delivers_migration_completion_once_without_private_binding(
+    tmp_path: Path,
+) -> None:
+    test_jobs = tmp_path / "test-jobs"
+    migration_jobs = tmp_path / "migration-jobs"
+    test_jobs.mkdir()
+    migration_jobs.mkdir(mode=0o700)
+    configure_github_issue_notifier(
+        tmp_path,
+        repository="example/private",
+        issue_number=25,
+        mention=None,
+        token="a" * 40,
+    )
+    bootstrap_completion_notifier(tmp_path)
+    config = load_github_issue_notifier(tmp_path)
+    session = FakeSession()
+    runtime = CompletionNotifierRuntime(
+        config_dir=tmp_path,
+        jobs_root=test_jobs,
+        migration_jobs_root=migration_jobs,
+        config=config,
+        notifier=GitHubIssueCompletionNotifier(config, session=session),
+    )
+    _write_migration_job(
+        migration_jobs,
+        job_id="a" * 32,
+        state="completed",
+        finished_at=datetime.now(UTC) + timedelta(milliseconds=10),
+        migration_state="applied",
+    )
+
+    first = runtime.run_once()
+    second = runtime.run_once()
+
+    assert first.discovered_events == 1
+    assert first.delivered_events == 1
+    assert second.already_delivered_events == 1
+    assert len(session.posts) == 1
+    body = session.posts[0][1]["body"]
+    assert "apply_migration" in body
+    assert "e" * 64 not in body
+    assert "a" * 40 not in body
+
+
+def test_migration_completion_scanner_never_instantiates_mutation_runner(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    jobs = tmp_path / "migration-jobs"
+    jobs.mkdir(mode=0o700)
+    finished_at = datetime.now(UTC)
+    _write_migration_job(
+        jobs,
+        job_id="b" * 32,
+        state="completed",
+        finished_at=finished_at,
+        migration_state="applied",
+    )
+
+    monkeypatch.setattr(
+        migration_jobs_module.MigrationJobRunner,
+        "__init__",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("mutation runner must not be instantiated")
+        ),
+    )
+
+    events = scan_migration_completion_events(
+        jobs,
+        since=finished_at - timedelta(seconds=1),
+    )
+
+    assert len(events) == 1
+    assert events[0].source == CompletionSource.MIGRATION_JOB

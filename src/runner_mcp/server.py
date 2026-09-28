@@ -31,6 +31,7 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
+from .migration_planning import migration_plan_material
 from .operational_safety import (
     OperatorSafetyGuard,
     OperatorStopActive,
@@ -39,7 +40,7 @@ from .operational_safety import (
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
-from .source_control import SourceControlError, SourceSynchronizer, clean_head
+from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
 
 
@@ -62,6 +63,7 @@ class Settings:
     mailbox_max_inflight: int = 32
     database_backup_root: Path | None = None
     deployment_jobs_root: Path | None = None
+    migration_jobs_root: Path | None = None
     approval_root: Path | None = None
     approval_ttl_seconds: int = 600
     fabric_resource_url: str | None = None
@@ -131,6 +133,18 @@ class Settings:
             and not Path(deployment_jobs_root_raw).is_absolute()
         ):
             raise RuntimeError("RUNNER_MCP_DEPLOY_JOBS_ROOT must be an absolute path")
+
+        migration_jobs_root_raw = values.get(
+            "RUNNER_MCP_MIGRATION_JOBS_ROOT",
+            "",
+        ).strip()
+        if (
+            migration_jobs_root_raw
+            and not Path(migration_jobs_root_raw).is_absolute()
+        ):
+            raise RuntimeError(
+                "RUNNER_MCP_MIGRATION_JOBS_ROOT must be an absolute path"
+            )
 
         approval_root_raw = values.get("RUNNER_MCP_APPROVAL_ROOT", "").strip()
         if approval_root_raw and not Path(approval_root_raw).is_absolute():
@@ -234,6 +248,9 @@ class Settings:
             ),
             deployment_jobs_root=(
                 Path(deployment_jobs_root_raw) if deployment_jobs_root_raw else None
+            ),
+            migration_jobs_root=(
+                Path(migration_jobs_root_raw) if migration_jobs_root_raw else None
             ),
             approval_root=Path(approval_root_raw) if approval_root_raw else None,
             approval_ttl_seconds=approval_ttl_seconds,
@@ -1214,28 +1231,7 @@ def build_mcp(
         return approval_manager
 
     def _migration_approval_material(project: str) -> tuple[dict, dict]:
-        cfg = registry.projects.get(project)
-        if cfg is None:
-            raise ValueError("Unknown or disabled project")
-        if cfg.environment != "staging":
-            raise ValueError("Mutating project actions are enabled only for staging environments")
-        if cfg.database is None or cfg.database.migrations is None:
-            raise ValueError("Migration profile is not configured")
-        source = clean_head(cfg.root)
-        binding = {
-            "environment": cfg.environment,
-            "repository": cfg.repository,
-            "database": cfg.database.model_dump(mode="json"),
-            "source": source,
-        }
-        summary = {
-            "action": "migration",
-            "environment": cfg.environment,
-            "commit": source["commit"],
-            "pre_migration_backup_required": True,
-            "automatic_database_restore": False,
-        }
-        return binding, summary
+        return migration_plan_material(registry, project)
 
     def _deploy_approval_material(project: str) -> tuple[dict, dict]:
         plan = deployment_manager.plan(project)

@@ -564,7 +564,7 @@ def test_mcp_database_backup_and_migration_flow(
     import subprocess
 
     monkeypatch.setattr(
-        "runner_mcp.server.clean_head",
+        "runner_mcp.migration_planning.clean_head",
         lambda root: {"commit": "c" * 40, "clean": True},
     )
 

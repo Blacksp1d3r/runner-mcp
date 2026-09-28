@@ -304,7 +304,7 @@ class RetentionPruner:
         return self.plan_root / f"{plan_id}.json"
 
     def _read_plan(self, plan_id: str) -> dict[str, Any]:
-        root = _private_directory(
+        _private_directory(
             self.plan_root,
             create=False,
             label="retention prune plan directory",

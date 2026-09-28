@@ -45,6 +45,7 @@ GITHUB_MAILBOX_ENV_KEYS = frozenset(
 MAX_GITHUB_RESPONSE_BYTES = 1_048_576
 MAX_MAILBOX_ENTRIES = 1_000
 MAX_COMPARE_FILES = 300
+MAX_RATE_LIMIT_WAIT_SECONDS = 7_200
 MAILBOX_ROOT = ".runner-control"
 REQUESTS_PATH = f"{MAILBOX_ROOT}/requests"
 RESULTS_PATH = f"{MAILBOX_ROOT}/results"
@@ -248,6 +249,7 @@ class GitHubApiSession:
 
         raw: bytes | None = None
         delay_before_attempt = 0
+        rate_limit_waited = False
         while True:
             if delay_before_attempt:
                 time.sleep(delay_before_attempt)
@@ -262,6 +264,16 @@ class GitHubApiSession:
                 if allow_not_found and exc.code == 404:
                     return None
                 error = _http_error(exc)
+                if error.kind == TransportFailureKind.RATE_LIMITED:
+                    if rate_limit_waited:
+                        raise error from None
+                    wait_seconds = _rate_limit_wait_seconds(exc)
+                    if wait_seconds is None:
+                        raise error from None
+                    rate_limit_waited = True
+                    time.sleep(wait_seconds)
+                    delay_before_attempt = 0
+                    continue
             except TimeoutError:
                 error = GitHubMailboxTransportError(
                     "GitHub mailbox transport timed out",
@@ -303,6 +315,35 @@ class GitHubApiSession:
                 "GitHub mailbox returned invalid JSON",
                 kind=TransportFailureKind.INVALID_RESPONSE,
             ) from exc
+
+
+def _rate_limit_wait_seconds(exc: urllib.error.HTTPError) -> float | None:
+    retry_after = exc.headers.get("Retry-After")
+    if retry_after is not None:
+        try:
+            wait_seconds = float(retry_after)
+        except (TypeError, ValueError):
+            return None
+        if 1 <= wait_seconds <= MAX_RATE_LIMIT_WAIT_SECONDS:
+            return wait_seconds
+        return None
+
+    if exc.headers.get("X-RateLimit-Remaining") == "0":
+        reset = exc.headers.get("X-RateLimit-Reset")
+        if reset is None:
+            return None
+        try:
+            reset_epoch = int(reset)
+        except (TypeError, ValueError):
+            return None
+        wait_seconds = max(1.0, float(reset_epoch) - time.time() + 1.0)
+        if wait_seconds <= MAX_RATE_LIMIT_WAIT_SECONDS:
+            return wait_seconds
+        return None
+
+    if exc.code == 429:
+        return 60.0
+    return None
 
 
 def _http_error(exc: urllib.error.HTTPError) -> GitHubMailboxTransportError:

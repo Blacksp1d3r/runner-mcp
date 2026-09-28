@@ -355,6 +355,67 @@ def test_api_session_classifies_http_failures(
     assert "safe-token" not in str(caught.value)
 
 
+def test_api_session_waits_for_primary_rate_limit_reset_before_retry(
+    monkeypatch,
+) -> None:
+    sleeps: list[float] = []
+    calls = 0
+    error = _http_error(
+        403,
+        {
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": "1100",
+        },
+    )
+
+    def rate_limited_once(request, timeout):
+        nonlocal calls
+        calls += 1
+        if calls == 1:
+            raise error
+        return FakeResponse(b'{"ok":true}')
+
+    monkeypatch.setattr(urllib.request, "urlopen", rate_limited_once)
+    monkeypatch.setattr("runner_mcp.github_mailbox.time.time", lambda: 1000.0)
+    monkeypatch.setattr("runner_mcp.github_mailbox.time.sleep", sleeps.append)
+
+    session = GitHubApiSession(token="safe-token")
+    result = session.get_json("/repos/example/repo/contents/file.json")
+
+    assert result == {"ok": True}
+    assert calls == 2
+    assert sleeps == [101.0]
+
+
+def test_api_session_does_not_spin_after_rate_limit_wait(monkeypatch) -> None:
+    sleeps: list[float] = []
+    calls = 0
+    error = _http_error(
+        403,
+        {
+            "X-RateLimit-Remaining": "0",
+            "X-RateLimit-Reset": "1100",
+        },
+    )
+
+    def always_rate_limited(request, timeout):
+        nonlocal calls
+        calls += 1
+        raise error
+
+    monkeypatch.setattr(urllib.request, "urlopen", always_rate_limited)
+    monkeypatch.setattr("runner_mcp.github_mailbox.time.time", lambda: 1000.0)
+    monkeypatch.setattr("runner_mcp.github_mailbox.time.sleep", sleeps.append)
+
+    session = GitHubApiSession(token="safe-token")
+    with pytest.raises(GitHubMailboxTransportError) as caught:
+        session.get_json("/repos/example/repo/contents/file.json")
+
+    assert caught.value.kind == TransportFailureKind.RATE_LIMITED
+    assert calls == 2
+    assert sleeps == [101.0]
+
+
 def test_api_session_allows_explicit_not_found(monkeypatch) -> None:
     def fail(request, timeout):
         raise _http_error(404)

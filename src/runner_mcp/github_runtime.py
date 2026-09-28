@@ -42,7 +42,7 @@ from .self_update import (
 
 DEFAULT_REQUEST_REF = "runner-control"
 DEFAULT_RESULT_REF = "runner-results"
-DEFAULT_POLL_SECONDS = 5.0
+DEFAULT_POLL_SECONDS = 30.0
 DEFAULT_HEARTBEAT_SECONDS = 300.0
 
 

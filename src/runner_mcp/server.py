@@ -405,7 +405,7 @@ def build_mcp(
         """Return safe Runner MCP runtime state without private host metadata."""
         status = safety.status()
         try:
-            package = version("runner-mcp")
+            package = version("aifordable-runner-mcp")
         except PackageNotFoundError:
             package = "development"
         result = {

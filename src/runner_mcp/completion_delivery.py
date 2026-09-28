@@ -24,6 +24,11 @@ from .completion_feedback import (
 )
 from .deployment_jobs import DeploymentJobState
 from .github_mailbox import GitHubApiSession
+from .migration_jobs import (
+    MigrationJobError,
+    MigrationJobState,
+    scan_migration_job_metadata,
+)
 from .onboarding import read_private_runtime
 from .safe_diagnostics import (
     DiagnosticComponent,
@@ -640,6 +645,51 @@ def scan_deployment_completion_events(
     return [event for _, event in found]
 
 
+def _migration_completion_state(state: MigrationJobState) -> CompletionState:
+    if state == MigrationJobState.COMPLETED:
+        return CompletionState.SUCCEEDED
+    if state == MigrationJobState.STOPPED:
+        return CompletionState.CANCELLED
+    if state in {MigrationJobState.ERROR, MigrationJobState.INTERRUPTED}:
+        return CompletionState.FAILED
+    raise CompletionDeliveryError("migration job has not reached a terminal state")
+
+
+def scan_migration_completion_events(
+    jobs_root: Path,
+    *,
+    since: datetime,
+) -> list[CompletionEvent]:
+    if since.tzinfo is None:
+        raise ValueError("completion scan start must be timezone-aware")
+    try:
+        jobs = scan_migration_job_metadata(jobs_root)
+    except MigrationJobError as exc:
+        raise CompletionDeliveryError("migration job metadata is invalid") from exc
+
+    found: list[tuple[datetime, CompletionEvent]] = []
+    for job in jobs:
+        if job.state in {MigrationJobState.QUEUED, MigrationJobState.RUNNING}:
+            continue
+        if job.finished_at is None:
+            raise CompletionDeliveryError(
+                "migration completion metadata has no terminal timestamp"
+            )
+        if job.finished_at < since.astimezone(UTC):
+            continue
+        event = make_completion_event(
+            source=CompletionSource.MIGRATION_JOB,
+            source_id=job.job_id,
+            operation=CompletionOperation.APPLY_MIGRATION,
+            project=job.project,
+            state=_migration_completion_state(job.state),
+        )
+        found.append((job.finished_at, event))
+
+    found.sort(key=lambda item: (item[0], item[1].event_id))
+    return [event for _, event in found]
+
+
 class GitHubIssueCompletionNotifier:
     def __init__(
         self,
@@ -725,12 +775,14 @@ class CompletionNotifierRuntime:
         jobs_root: Path,
         config: GitHubIssueNotificationConfig,
         deployment_jobs_root: Path | None = None,
+        migration_jobs_root: Path | None = None,
         notifier: GitHubIssueCompletionNotifier | None = None,
         diagnostic_sink: Callable[[str], object] | None = None,
     ) -> None:
         self._config_dir = config_dir.expanduser().resolve()
         self._jobs_root = jobs_root
         self._deployment_jobs_root = deployment_jobs_root
+        self._migration_jobs_root = migration_jobs_root
         self._config = config
         self._notifier = notifier or GitHubIssueCompletionNotifier(config)
         self._ledger = CompletionDeliveryLedger(notification_ledger_path(config_dir))
@@ -746,6 +798,7 @@ class CompletionNotifierRuntime:
             config_dir=config_dir,
             jobs_root=settings.test_jobs_root,
             deployment_jobs_root=settings.deployment_jobs_root,
+            migration_jobs_root=settings.migration_jobs_root,
             config=load_github_issue_notifier(config_dir),
         )
 
@@ -768,6 +821,14 @@ class CompletionNotifierRuntime:
                     since=since,
                 )
             )
+        if self._migration_jobs_root is not None:
+            events.extend(
+                scan_migration_completion_events(
+                    self._migration_jobs_root,
+                    since=since,
+                )
+            )
+        events.sort(key=lambda event: event.event_id)
 
         delivered = 0
         reconciled = 0

@@ -1825,3 +1825,125 @@ def test_retention_cli_renders_bounded_advisory_result(
     assert "No release, backup or metadata file was changed." in captured.out
     assert private_path not in captured.out
     assert captured.err == ""
+
+
+def test_retention_prune_plan_cli_renders_one_local_candidate(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_path = str(tmp_path / "private")
+    candidate = "20260101T000000Z-aaaaaaaaaaaa-000001"
+
+    class FakePruner:
+        def plan(self, project: str) -> dict:
+            assert project == "demo"
+            return {
+                "planned": True,
+                "plan_id": "a" * 32,
+                "project": "demo",
+                "candidate_release": candidate,
+                "candidate_created_at": "2026-01-01T00:00:00+00:00",
+                "created_at": "2026-09-24T08:00:00+00:00",
+                "expires_at": "2026-09-24T08:10:00+00:00",
+                "single_use": True,
+                "confirmation": f"PRUNE RELEASE demo {candidate}",
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_retention_pruner",
+        lambda _config_dir: FakePruner(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            private_path,
+            "retention",
+            "prune-plan",
+            "demo",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "Retention prune plan" in captured.out
+    assert f"Candidate: {candidate}" in captured.out
+    assert "Single release only: yes" in captured.out
+    assert "Backups affected: no" in captured.out
+    assert private_path not in captured.out
+    assert captured.err == ""
+
+
+def test_retention_prune_release_cli_requires_typed_candidate_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    private_path = str(tmp_path / "private")
+    candidate = "20260101T000000Z-aaaaaaaaaaaa-000001"
+    plan_id = "a" * 32
+    observed: dict[str, str] = {}
+
+    class FakePruner:
+        def inspect_plan(self, value: str) -> dict:
+            assert value == plan_id
+            return {
+                "plan_id": plan_id,
+                "project": "demo",
+                "candidate_release": candidate,
+                "state": "pending",
+                "expires_at": "2026-09-24T08:10:00+00:00",
+                "single_use": True,
+            }
+
+        def execute(
+            self,
+            project: str,
+            value: str,
+            *,
+            confirmation: str,
+        ) -> dict:
+            observed["project"] = project
+            observed["plan_id"] = value
+            observed["confirmation"] = confirmation
+            return {
+                "project": project,
+                "plan_id": value,
+                "release_id": candidate,
+                "state": "completed",
+                "single_release": True,
+                "backup_mutation_performed": False,
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_retention_pruner",
+        lambda _config_dir: FakePruner(),
+    )
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: f"PRUNE RELEASE demo {candidate}",
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            private_path,
+            "retention",
+            "prune-release",
+            "demo",
+            plan_id,
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert observed == {
+        "project": "demo",
+        "plan_id": plan_id,
+        "confirmation": f"PRUNE RELEASE demo {candidate}",
+    }
+    assert f"release={candidate}" in captured.out
+    assert "Backups affected: no" in captured.out
+    assert private_path not in captured.out
+    assert captured.err == ""

@@ -1360,7 +1360,7 @@ Required validation:
 
 ### Task 49 — explicit asynchronous migration start/status integration — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied after Task 44 integration and Task 45 review.
+Status: `COMPLETE` on PR #124 / merge `da367081f88d6d2342cf938a9b67ec59d9d10de0`. Exact synthetic-merge validation #622, attribution #107, post-merge validation #623 and attribution #109 are green.
 
 Preferred executor: ChatGPT or Claude Code.
 

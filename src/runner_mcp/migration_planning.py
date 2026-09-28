@@ -7,7 +7,6 @@ from typing import Any
 from .config import ProjectRegistry
 from .source_control import clean_head
 
-
 ASYNC_MIGRATION_EXECUTION_MODE = "durable_async_v1"
 
 

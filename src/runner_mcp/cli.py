@@ -683,7 +683,7 @@ def cmd_retention(args: argparse.Namespace) -> int:
         return 0
 
     if args.retention_action == "prune-release":
-        plan = pruner._read_plan(args.plan_id)
+        plan = pruner.inspect_plan(args.plan_id)
         if plan["project"] != args.project:
             raise RuntimeError("Prune plan does not match this project")
         phrase = f"PRUNE RELEASE {args.project} {plan['candidate_release']}"

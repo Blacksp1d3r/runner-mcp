@@ -152,9 +152,17 @@ def _strict_json_file(
             raise RetentionPruneError(f"{label} is unsafe")
         if metadata.st_size <= 0 or metadata.st_size > max_bytes:
             raise RetentionPruneError(f"{label} size is unsafe")
-        raw_bytes = os.read(fd, metadata.st_size + 1)
+        remaining = metadata.st_size
+        chunks: list[bytes] = []
+        while remaining:
+            chunk = os.read(fd, min(65_536, remaining))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            remaining -= len(chunk)
+        raw_bytes = b"".join(chunks)
         after = os.fstat(fd)
-        if len(raw_bytes) != metadata.st_size or after.st_size != metadata.st_size:
+        if remaining or after.st_size != metadata.st_size:
             raise RetentionPruneError(f"{label} changed while being read")
     finally:
         os.close(fd)
@@ -504,6 +512,10 @@ class RetentionPruner:
             ) != plan["candidate_metadata_sha256"]:
                 raise RetentionPruneError("prune plan became stale")
 
+            self.safety.assert_project_action_allowed(
+                ActionClass.RETENTION_PRUNE,
+                environment=config.environment,
+            )
             self._validate_fd_safe_delete()
             quarantine, transactions = self._prepare_transaction_dirs(release_root)
             transaction_path = transactions / f"{plan_id}.json"
@@ -536,25 +548,35 @@ class RetentionPruner:
                 or candidate_path.parent != releases
             ):
                 raise RetentionPruneError("release prune candidate is unsafe")
+            moved_to_quarantine = False
             try:
                 os.rename(candidate_path, quarantine_target)
+                moved_to_quarantine = True
                 _fsync_directory(releases)
                 _fsync_directory(quarantine)
-            except OSError as exc:
-                raise RetentionPruneError("release quarantine failed") from exc
-
-            transaction["state"] = "quarantined"
-            transaction["updated_at"] = _utc_now().isoformat()
-            try:
+                transaction["state"] = "quarantined"
+                transaction["updated_at"] = _utc_now().isoformat()
                 _write_private_json(
                     transaction_path,
                     transaction,
                     parent=transactions,
                 )
-            except RetentionPruneError as exc:
-                raise RetentionPruneError(
-                    "release pruning requires manual attention"
-                ) from exc
+            except (OSError, RetentionPruneError) as exc:
+                if moved_to_quarantine:
+                    transaction["state"] = "manual_attention_required"
+                    transaction["updated_at"] = _utc_now().isoformat()
+                    try:
+                        _write_private_json(
+                            transaction_path,
+                            transaction,
+                            parent=transactions,
+                        )
+                    except RetentionPruneError:
+                        pass
+                    raise RetentionPruneError(
+                        "release pruning requires manual attention"
+                    ) from exc
+                raise RetentionPruneError("release quarantine failed") from exc
 
             try:
                 self._delete_quarantined(quarantine, plan_id)

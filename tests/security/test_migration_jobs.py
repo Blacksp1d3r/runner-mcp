@@ -194,6 +194,7 @@ def test_success_calls_existing_database_manager_once_and_persists_no_output(
     assert finished["pre_migration_backup_created"] is True
     assert "output" not in finished
     assert "expected_binding_fingerprint" not in finished
+    assert "expected_commit" not in finished
     raw = (tmp_path / "migration-jobs" / f"{started['job_id']}.json").read_text()
     assert "sensitive output" not in raw
 
@@ -503,3 +504,58 @@ def test_symlink_or_broad_metadata_fails_closed(tmp_path: Path) -> None:
             safety=guard(tmp_path),
             jobs_root=root,
         )
+
+
+def test_existing_broad_jobs_root_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "migration-jobs"
+    root.mkdir(mode=0o755)
+    root.chmod(0o755)
+    monkeypatch.setattr(migration_jobs_module, "migration_plan_material", material)
+
+    with pytest.raises(MigrationJobError, match="permissions"):
+        MigrationJobRunner(
+            manager=FakeDatabaseManager(),
+            registry=registry(tmp_path),
+            safety=guard(tmp_path),
+            jobs_root=root,
+        )
+
+    assert stat.S_IMODE(root.stat().st_mode) == 0o755
+
+
+def test_invalid_terminal_manager_evidence_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class InvalidEvidenceManager(FakeDatabaseManager):
+        def apply_migrations(self, project: str) -> dict:
+            self.calls.append(project)
+            return {
+                "project": project,
+                "status": "applied",
+                "exit_code": 0,
+                "pre_migration_backup": None,
+                "output": "must not persist",
+                "output_truncated": False,
+                "database_restore_performed": False,
+            }
+
+    manager = InvalidEvidenceManager()
+    active = runner(tmp_path, monkeypatch, manager=manager)
+
+    started = active.start(
+        "demo",
+        expected_binding_fingerprint=expected_fingerprint(),
+        expected_commit=COMMIT,
+    )
+    finished = wait_terminal(active, started["job_id"])
+
+    assert manager.calls == ["demo"]
+    assert finished["state"] == "error"
+    assert finished["error_category"] == "unexpected_error"
+    assert finished["migration_state"] is None
+    raw = (tmp_path / "migration-jobs" / f"{started['job_id']}.json").read_text()
+    assert "must not persist" not in raw

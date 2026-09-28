@@ -63,6 +63,7 @@ class Settings:
     mailbox_max_inflight: int = 32
     database_backup_root: Path | None = None
     deployment_jobs_root: Path | None = None
+    migration_jobs_root: Path | None = None
     approval_root: Path | None = None
     approval_ttl_seconds: int = 600
     fabric_resource_url: str | None = None
@@ -132,6 +133,18 @@ class Settings:
             and not Path(deployment_jobs_root_raw).is_absolute()
         ):
             raise RuntimeError("RUNNER_MCP_DEPLOY_JOBS_ROOT must be an absolute path")
+
+        migration_jobs_root_raw = values.get(
+            "RUNNER_MCP_MIGRATION_JOBS_ROOT",
+            "",
+        ).strip()
+        if (
+            migration_jobs_root_raw
+            and not Path(migration_jobs_root_raw).is_absolute()
+        ):
+            raise RuntimeError(
+                "RUNNER_MCP_MIGRATION_JOBS_ROOT must be an absolute path"
+            )
 
         approval_root_raw = values.get("RUNNER_MCP_APPROVAL_ROOT", "").strip()
         if approval_root_raw and not Path(approval_root_raw).is_absolute():
@@ -235,6 +248,9 @@ class Settings:
             ),
             deployment_jobs_root=(
                 Path(deployment_jobs_root_raw) if deployment_jobs_root_raw else None
+            ),
+            migration_jobs_root=(
+                Path(migration_jobs_root_raw) if migration_jobs_root_raw else None
             ),
             approval_root=Path(approval_root_raw) if approval_root_raw else None,
             approval_ttl_seconds=approval_ttl_seconds,

@@ -75,21 +75,114 @@ def _validate_migration_job_payload(
         raise BridgeExecutionAdapterError(
             "Runner MCP returned an invalid migration job project"
         )
-    if payload.get("operation") != "migration" or state not in _MIGRATION_JOB_STATES:
+    if payload.get("operation") != "migration":
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration job operation"
+        )
+    if not isinstance(state, str) or state not in _MIGRATION_JOB_STATES:
         raise BridgeExecutionAdapterError(
             "Runner MCP returned an invalid migration job state"
         )
+
+    created_at = payload.get("created_at")
+    started_at = payload.get("started_at")
+    finished_at = payload.get("finished_at")
+    migration_state = payload.get("migration_state")
+    error_category = payload.get("error_category")
+    backup_created = payload.get("pre_migration_backup_created")
+    output_truncated = payload.get("output_truncated")
+
+    if not isinstance(created_at, str) or not 1 <= len(created_at) <= 64:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration job timestamp"
+        )
+    for value in (started_at, finished_at):
+        if value is not None and (
+            not isinstance(value, str) or not 1 <= len(value) <= 64
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned an invalid migration job timestamp"
+            )
+    if migration_state not in {None, "applied", "failed", "timed_out"}:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration result state"
+        )
+    if error_category not in {
+        None,
+        "operator_stop",
+        "safety_configuration",
+        "plan_changed",
+        "database_busy",
+        "migration_failed",
+        "migration_timed_out",
+        "runner_restart",
+        "unexpected_error",
+    }:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned an invalid migration error category"
+        )
+    if not isinstance(backup_created, bool) or not isinstance(output_truncated, bool):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned invalid migration job evidence"
+        )
+
+    if state == "queued":
+        if any(
+            value is not None
+            for value in (started_at, finished_at, migration_state, error_category)
+        ) or backup_created or output_truncated:
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned inconsistent queued migration state"
+            )
+    elif state == "running":
+        if (
+            started_at is None
+            or finished_at is not None
+            or migration_state is not None
+            or error_category is not None
+            or backup_created
+            or output_truncated
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned inconsistent running migration state"
+            )
+    elif state == "completed":
+        if (
+            started_at is None
+            or finished_at is None
+            or migration_state != "applied"
+            or error_category is not None
+            or not backup_created
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned inconsistent completed migration state"
+            )
+    elif state == "stopped":
+        if (
+            finished_at is None
+            or migration_state is not None
+            or error_category != "operator_stop"
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned inconsistent stopped migration state"
+            )
+    elif state == "interrupted":
+        if (
+            finished_at is None
+            or migration_state is not None
+            or error_category != "runner_restart"
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned inconsistent interrupted migration state"
+            )
+    elif finished_at is None or error_category is None:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP returned inconsistent failed migration state"
+        )
+
     if require_initial and state != "queued":
         raise BridgeExecutionAdapterError(
             "Runner MCP returned an invalid initial migration job state"
-        )
-    if not isinstance(payload.get("pre_migration_backup_created"), bool):
-        raise BridgeExecutionAdapterError(
-            "Runner MCP returned invalid migration backup evidence"
-        )
-    if not isinstance(payload.get("output_truncated"), bool):
-        raise BridgeExecutionAdapterError(
-            "Runner MCP returned invalid migration output state"
         )
     return payload
 

@@ -7,6 +7,7 @@ from runner_mcp.bridge_replay import ReplayState
 from runner_mcp.bridge_resilience import WatcherHeartbeat, WatcherState
 from runner_mcp.config_manager import configure_github_mailbox
 from runner_mcp.github_runtime import (
+    DEFAULT_POLL_SECONDS,
     GitHubWatcherRuntime,
     GitHubWatcherRuntimeError,
     _validate_intervals,
@@ -144,6 +145,10 @@ def _private_config(
         ),
     )
     return paths
+
+
+def test_default_mailbox_poll_interval_limits_rest_api_pressure() -> None:
+    assert DEFAULT_POLL_SECONDS == 30.0
 
 
 def test_runtime_requires_complete_private_github_config(tmp_path: Path) -> None:

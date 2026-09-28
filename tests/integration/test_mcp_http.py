@@ -765,6 +765,384 @@ def test_mcp_database_backup_and_migration_flow(
     assert "apply_migrations" in audit_text
 
 
+
+
+def test_mcp_explicit_async_migration_flow_preserves_sync_contract(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from runner_mcp.migration_jobs import MigrationJobError
+    from runner_mcp.migration_planning import migration_binding_fingerprint
+
+    commit = "c" * 40
+    monkeypatch.setattr(
+        "runner_mcp.migration_planning.clean_head",
+        lambda _root: {"commit": commit, "clean": True},
+    )
+
+    project_root = tmp_path / "async-migration-project"
+    project_root.mkdir()
+    approval_root = tmp_path / "async-migration-approvals"
+    migration_jobs_root = tmp_path / "async-migration-jobs"
+    holder: dict[str, object] = {}
+
+    class FakeMigrationJobRunner:
+        def __init__(self, **kwargs) -> None:
+            assert kwargs["jobs_root"] == migration_jobs_root
+            self.starts: list[tuple[str, str, str]] = []
+            self.fail_next = False
+            self.jobs: dict[str, dict] = {}
+            holder["runner"] = self
+
+        def start(
+            self,
+            project: str,
+            *,
+            expected_binding_fingerprint: str,
+            expected_commit: str,
+        ) -> dict:
+            approval_id = holder["approval_id"]
+            assert isinstance(approval_id, str)
+            approval = ApprovalManager(root=approval_root).status(approval_id)
+            assert approval["state"] == "consumed"
+            assert expected_commit == commit
+            assert len(expected_binding_fingerprint) == 64
+            self.starts.append(
+                (project, expected_binding_fingerprint, expected_commit)
+            )
+            if self.fail_next:
+                self.fail_next = False
+                raise MigrationJobError("simulated durable enqueue failure")
+
+            job_id = "f" * 32
+            payload = {
+                "job_id": job_id,
+                "project": project,
+                "operation": "migration",
+                "state": "queued",
+                "created_at": "2026-09-28T20:00:00+00:00",
+                "started_at": None,
+                "finished_at": None,
+                "migration_state": None,
+                "error_category": None,
+                "pre_migration_backup_created": False,
+                "output_truncated": False,
+            }
+            self.jobs[job_id] = {
+                **payload,
+                "state": "running",
+                "started_at": "2026-09-28T20:00:01+00:00",
+            }
+            return payload
+
+        def status(self, job_id: str) -> dict:
+            return self.jobs[job_id]
+
+    monkeypatch.setattr(
+        "runner_mcp.server.MigrationJobRunner",
+        FakeMigrationJobRunner,
+    )
+
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused-async-migration.yml",
+        audit_log=tmp_path / "async-migration-audit.jsonl",
+        operator_stop_file=tmp_path / "async-migration-operator.stop",
+        retention_confirmed=True,
+        database_backup_root=tmp_path / "async-migration-backups",
+        migration_jobs_root=migration_jobs_root,
+        approval_root=approval_root,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                environment="staging",
+                root=project_root,
+                database=DatabaseConfig(
+                    dsn_env="RUNNER_MCP_DB_DEMO",
+                    migrations=MigrationConfig(
+                        status_argv=["/bin/true"],
+                        apply_argv=["/bin/true"],
+                        dsn_target_env="DATABASE_URL",
+                    ),
+                ),
+            )
+        }
+    )
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values={
+            "RUNNER_MCP_DB_DEMO": "postgresql://user:private@example.invalid/app"
+        },
+    )
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        async_request = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 160,
+                "method": "tools/call",
+                "params": {
+                    "name": "request_action_approval",
+                    "arguments": {
+                        "project": "demo",
+                        "action": "migration_async",
+                    },
+                },
+            },
+        )
+        async_plan = parse_tool_json(async_request)
+        assert async_plan["action"] == "migration_async"
+        assert async_plan["summary"]["execution_mode"] == "durable_async_v1"
+        assert async_plan["summary"]["asynchronous"] is True
+        assert async_plan["summary"]["commit"] == commit
+        ApprovalManager(root=approval_root).approve(async_plan["approval_id"])
+        holder["approval_id"] = async_plan["approval_id"]
+
+        rejected_private_evidence = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 161,
+                "method": "tools/call",
+                "params": {
+                    "name": "start_migration_job",
+                    "arguments": {
+                        "project": "demo",
+                        "approval_id": async_plan["approval_id"],
+                        "expected_commit": commit,
+                    },
+                },
+            },
+        )
+        assert '"isError":true' in rejected_private_evidence.text
+        assert (
+            ApprovalManager(root=approval_root)
+            .status(async_plan["approval_id"])["state"]
+            == "approved"
+        )
+
+        started = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 162,
+                "method": "tools/call",
+                "params": {
+                    "name": "start_migration_job",
+                    "arguments": {
+                        "project": "demo",
+                        "approval_id": async_plan["approval_id"],
+                    },
+                },
+            },
+        )
+        started_payload = parse_tool_json(started)
+        assert started_payload["job_id"] == "f" * 32
+        assert started_payload["state"] == "queued"
+        assert "expected_binding_fingerprint" not in started_payload
+        assert "expected_commit" not in started_payload
+
+        base_binding = {
+            "environment": "staging",
+            "repository": "example/demo",
+            "database": registry.projects["demo"].database.model_dump(mode="json"),
+            "source": {"commit": commit, "clean": True},
+        }
+        fake_runner = holder["runner"]
+        assert isinstance(fake_runner, FakeMigrationJobRunner)
+        assert fake_runner.starts == [
+            (
+                "demo",
+                migration_binding_fingerprint(base_binding),
+                commit,
+            )
+        ]
+
+        status = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 163,
+                "method": "tools/call",
+                "params": {
+                    "name": "migration_job_status",
+                    "arguments": {"job_id": "f" * 32},
+                },
+            },
+        )
+        status_payload = parse_tool_json(status)
+        assert status_payload["state"] == "running"
+        assert status_payload["project"] == "demo"
+
+        sync_request = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 164,
+                "method": "tools/call",
+                "params": {
+                    "name": "request_action_approval",
+                    "arguments": {"project": "demo", "action": "migration"},
+                },
+            },
+        )
+        sync_plan = parse_tool_json(sync_request)
+        ApprovalManager(root=approval_root).approve(sync_plan["approval_id"])
+        holder["approval_id"] = sync_plan["approval_id"]
+        sync_cannot_start_async = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 165,
+                "method": "tools/call",
+                "params": {
+                    "name": "start_migration_job",
+                    "arguments": {
+                        "project": "demo",
+                        "approval_id": sync_plan["approval_id"],
+                    },
+                },
+            },
+        )
+        assert '"isError":true' in sync_cannot_start_async.text
+        assert len(fake_runner.starts) == 1
+
+        async_for_sync = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 166,
+                "method": "tools/call",
+                "params": {
+                    "name": "request_action_approval",
+                    "arguments": {
+                        "project": "demo",
+                        "action": "migration_async",
+                    },
+                },
+            },
+        )
+        async_for_sync_plan = parse_tool_json(async_for_sync)
+        ApprovalManager(root=approval_root).approve(
+            async_for_sync_plan["approval_id"]
+        )
+        async_cannot_apply_sync = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 167,
+                "method": "tools/call",
+                "params": {
+                    "name": "apply_migrations",
+                    "arguments": {
+                        "project": "demo",
+                        "approval_id": async_for_sync_plan["approval_id"],
+                    },
+                },
+            },
+        )
+        assert '"isError":true' in async_cannot_apply_sync.text
+
+        failing_request = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 168,
+                "method": "tools/call",
+                "params": {
+                    "name": "request_action_approval",
+                    "arguments": {
+                        "project": "demo",
+                        "action": "migration_async",
+                    },
+                },
+            },
+        )
+        failing_plan = parse_tool_json(failing_request)
+        ApprovalManager(root=approval_root).approve(failing_plan["approval_id"])
+        holder["approval_id"] = failing_plan["approval_id"]
+        fake_runner.fail_next = True
+        failed_start = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 169,
+                "method": "tools/call",
+                "params": {
+                    "name": "start_migration_job",
+                    "arguments": {
+                        "project": "demo",
+                        "approval_id": failing_plan["approval_id"],
+                    },
+                },
+            },
+        )
+        assert '"isError":true' in failed_start.text
+        assert (
+            ApprovalManager(root=approval_root)
+            .status(failing_plan["approval_id"])["state"]
+            == "consumed"
+        )
+        starts_after_failure = len(fake_runner.starts)
+
+        retry_consumed = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 170,
+                "method": "tools/call",
+                "params": {
+                    "name": "start_migration_job",
+                    "arguments": {
+                        "project": "demo",
+                        "approval_id": failing_plan["approval_id"],
+                    },
+                },
+            },
+        )
+        assert '"isError":true' in retry_consumed.text
+        assert len(fake_runner.starts) == starts_after_failure
+
+    audit_text = (tmp_path / "async-migration-audit.jsonl").read_text(
+        encoding="utf-8"
+    )
+    assert "start_migration_job" in audit_text
+    assert "migration_job_status" in audit_text
+    assert "durable_async_v1" not in audit_text
+    assert str(tmp_path) not in audit_text
+
+
 def test_mcp_async_staging_deployment_flow(
     tmp_path: Path,
     monkeypatch,

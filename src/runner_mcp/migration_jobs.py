@@ -318,9 +318,11 @@ def parse_migration_job_metadata(path: Path) -> MigrationJob:
         or raw["output_truncated"]
     ):
         raise MigrationJobError("Active migration job state is inconsistent")
-    if state == MigrationJobState.COMPLETED:
-        if migration_state != "applied" or error_category is not None:
-            raise MigrationJobError("Completed migration job state is inconsistent")
+    if (
+        state == MigrationJobState.COMPLETED
+        and (migration_state != "applied" or error_category is not None)
+    ):
+        raise MigrationJobError("Completed migration job state is inconsistent")
     if state == MigrationJobState.STOPPED and (
         error_category != "operator_stop" or migration_state is not None
     ):

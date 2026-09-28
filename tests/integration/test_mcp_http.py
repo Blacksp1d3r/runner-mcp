@@ -1071,6 +1071,52 @@ def test_mcp_explicit_async_migration_flow_preserves_sync_contract(
         )
         assert '"isError":true' in async_cannot_apply_sync.text
 
+        stopped_request = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1671,
+                "method": "tools/call",
+                "params": {
+                    "name": "request_action_approval",
+                    "arguments": {
+                        "project": "demo",
+                        "action": "migration_async",
+                    },
+                },
+            },
+        )
+        stopped_plan = parse_tool_json(stopped_request)
+        ApprovalManager(root=approval_root).approve(stopped_plan["approval_id"])
+        holder["approval_id"] = stopped_plan["approval_id"]
+        settings.operator_stop_file.write_text("stop\n", encoding="utf-8")
+        starts_before_stop = len(fake_runner.starts)
+        blocked_by_stop = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 1672,
+                "method": "tools/call",
+                "params": {
+                    "name": "start_migration_job",
+                    "arguments": {
+                        "project": "demo",
+                        "approval_id": stopped_plan["approval_id"],
+                    },
+                },
+            },
+        )
+        assert '"isError":true' in blocked_by_stop.text
+        assert len(fake_runner.starts) == starts_before_stop
+        assert (
+            ApprovalManager(root=approval_root)
+            .status(stopped_plan["approval_id"])["state"]
+            == "approved"
+        )
+        settings.operator_stop_file.unlink()
+
         failing_request = client.post(
             "/mcp",
             headers=headers,

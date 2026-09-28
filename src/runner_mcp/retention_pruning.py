@@ -341,9 +341,9 @@ class RetentionPruner:
             raise RetentionPruneError("release pruning is available only for staging projects")
         status = self.safety.status()
         if not self.safety.retention_confirmed:
-            raise RetentionPruneError("retention policy must be confirmed before pruning can be planned")
+            raise RetentionPruneError(\n                "retention policy must be confirmed before pruning can be planned"\n            )
         if not status.configured:
-            raise RetentionPruneError("operator stop must be configured before pruning can be planned")
+            raise RetentionPruneError(\n                "operator stop must be configured before pruning can be planned"\n            )
 
         current_time = (now or _utc_now()).astimezone(UTC)
         preview = self.preview_planner.preview(project, now=current_time)

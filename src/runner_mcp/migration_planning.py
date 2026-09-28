@@ -8,6 +8,9 @@ from .config import ProjectRegistry
 from .source_control import clean_head
 
 
+ASYNC_MIGRATION_EXECUTION_MODE = "durable_async_v1"
+
+
 def migration_plan_material(
     registry: ProjectRegistry,
     project: str,
@@ -47,3 +50,22 @@ def migration_binding_fingerprint(binding: dict[str, Any]) -> str:
         allow_nan=False,
     ).encode("utf-8")
     return hashlib.sha256(encoded).hexdigest()
+
+
+def async_migration_approval_material(
+    registry: ProjectRegistry,
+    project: str,
+) -> tuple[dict[str, Any], dict[str, Any], dict[str, Any]]:
+    """Bind human approval to canonical migration state plus async execution mode."""
+    migration_binding, migration_summary = migration_plan_material(registry, project)
+    approval_binding = {
+        "migration": migration_binding,
+        "execution_mode": ASYNC_MIGRATION_EXECUTION_MODE,
+    }
+    approval_summary = {
+        **migration_summary,
+        "action": "migration_async",
+        "execution_mode": ASYNC_MIGRATION_EXECUTION_MODE,
+        "asynchronous": True,
+    }
+    return migration_binding, approval_binding, approval_summary

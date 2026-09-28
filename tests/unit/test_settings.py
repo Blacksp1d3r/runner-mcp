@@ -186,6 +186,23 @@ def test_deployment_jobs_root_must_be_absolute(
         Settings.from_env()
 
 
+def test_migration_jobs_root_defaults_to_unconfigured(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.delenv("RUNNER_MCP_MIGRATION_JOBS_ROOT", raising=False)
+    assert Settings.from_env().migration_jobs_root is None
+
+
+def test_migration_jobs_root_must_be_absolute(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    required_env(monkeypatch)
+    monkeypatch.setenv("RUNNER_MCP_MIGRATION_JOBS_ROOT", "relative/migration-jobs")
+    with pytest.raises(RuntimeError, match="MIGRATION_JOBS_ROOT.*absolute"):
+        Settings.from_env()
+
+
 def test_approval_root_defaults_to_unconfigured(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:

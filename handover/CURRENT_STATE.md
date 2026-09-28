@@ -1,3 +1,26 @@
+## 2026-09-28 — Task 44 integrated; Task 45 async migration boundary decided
+
+- Runner MCP `main` checkpoint before this review branch: `6053b7c3d5aef757055c453d2fd5b7f581248e53`.
+- Task 44 is COMPLETE via PR #118 / merge `6053b7c3d5aef757055c453d2fd5b7f581248e53`.
+- Task 44 evidence is fully green: exact-head validation #607 + attribution #91 and post-merge validation #609 + attribution #94; full pytest, Registry/whitespace, release artifact and clean demo are green.
+- The durable migration substrate is additive only: private strict migration-job storage, queued/running/terminal state, restart -> interrupted without replay, canonical plan revalidation, bounded public status and read-only `MIGRATION_JOB` completion delivery. Existing synchronous `apply_migrations`, direct `migration_status`, bridge `APPLY_MIGRATIONS` and deployment-triggered migrations remain unchanged.
+- Task 45 review is COMPLETE in `claude_feedback/TASK45_ASYNC_MIGRATION_INTEGRATION_REVIEW.md`.
+- Task 45 decision: do not version or silently change synchronous `apply_migrations`. If async remote execution is integrated, add explicit `start_migration_job` + `migration_job_status` tools / bridge actions.
+- Async execution must use a separate human approval operation `migration_async`, with a fixed async execution discriminator in the approval binding, so sync and async approvals are not interchangeable.
+- Required start ordering: require configured runner -> recompute canonical migration state -> consume async approval -> durable queued persistence -> worker start. A consumed approval with no job is safer than durable execution intent without consumed approval.
+- Bridge persistence/finalize ambiguity after a job starts must never replay/enqueue a second job. Immediate start result means durable acceptance/queueing, not migration completion.
+- Task 49 is the bounded CODE follow-up. It must not add cancellation, automatic retry/resume, arbitrary SQL/executable/cwd, production mutation, automatic restore, generic async execution, job listing or change the current synchronous path.
+- Task 47 local bounded service-journal reader remains independently prerequisite-safe.
+- PR #120 package-version identity fix is separate from this review; it is being revalidated against the Task-44 main before merge.
+- Issues #108/#110/#101 retain their existing external/upstream gates.
+
+Immediate resume order:
+1. integrate this Task-45 review after exact-head CI;
+2. Task 49 may implement only the explicit additive async migration start/status contract;
+3. Task 47 remains a separate safe local-only lane and may proceed independently;
+4. preserve synchronous `apply_migrations` until/unless Task 49 is separately green and integrated;
+5. do not infer completion from bridge/audit records; terminal migration completion comes only from durable migration-job metadata.
+
 ## 2026-09-28 — Tasks 48 and 43 complete; migration-job substrate next
 
 - Runner MCP `main` is `a95e75739bb71bcbaf653244e0ebf9c9bee7b0ee`.

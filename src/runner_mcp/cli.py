@@ -89,7 +89,7 @@ from .source_control import SourceSynchronizer
 
 def package_version() -> str:
     try:
-        return version("runner-mcp")
+        return version("aifordable-runner-mcp")
     except PackageNotFoundError:
         return "development"
 

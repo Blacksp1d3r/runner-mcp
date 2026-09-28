@@ -17,6 +17,7 @@ from typing import Any, Mapping
 from .bridge_processor import (
     BridgeProcessor,
     BridgeProcessOutcome,
+    BridgeProcessState,
     BridgeResultSink,
     BridgeResultSinkError,
 )
@@ -393,7 +394,6 @@ class AIfordableRelayResultSink(BridgeResultSink):
             elif existing != pending:
                 raise AIfordableRelayError("relay pending result conflict")
             self._transport.publish(pending)
-            self._pending_store.clear()
         except AIfordableRelayError as exc:
             raise BridgeResultSinkError("relay result could not be persisted") from exc
 
@@ -418,6 +418,12 @@ class AIfordableRelayWorker:
         pending = self._pending_store.load()
         if pending is not None:
             self._transport.publish(pending)
+            result = parse_bridge_result(pending.result_json)
+            request = BridgeRequest(
+                request_id=pending.request_id,
+                action=result.action,
+            )
+            self._ledger.complete(request)
             self._pending_store.clear()
             return None
 
@@ -435,9 +441,12 @@ class AIfordableRelayWorker:
             executor=self._executor,
             result_sink=sink,
         )
-        return processor.process(
+        outcome = processor.process(
             request.model_dump_json(exclude_none=True),
         )
+        if outcome.state is BridgeProcessState.COMPLETED:
+            self._pending_store.clear()
+        return outcome
 
 
 def _parse_claim(

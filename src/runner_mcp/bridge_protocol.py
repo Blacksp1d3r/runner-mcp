@@ -75,6 +75,8 @@ class BridgeAction(StrEnum):
     APPROVAL_STATUS = "approval_status"
     MIGRATION_STATUS = "migration_status"
     APPLY_MIGRATIONS = "apply_migrations"
+    START_MIGRATION_JOB = "start_migration_job"
+    MIGRATION_JOB_STATUS = "migration_job_status"
     PLAN_DEPLOY = "plan_deploy"
     DEPLOY_STAGING = "deploy_staging"
     DEPLOYMENT_STATUS = "deployment_status"
@@ -135,6 +137,7 @@ class BridgeRequest(BaseModel):
 
         if self.operation is not None and self.operation not in {
             "migration",
+            "migration_async",
             "deploy",
             "code_rollback",
         }:
@@ -353,6 +356,7 @@ class BridgeRequest(BaseModel):
 
         if self.action in {
             BridgeAction.APPLY_MIGRATIONS,
+            BridgeAction.START_MIGRATION_JOB,
             BridgeAction.DEPLOY_STAGING,
             BridgeAction.ROLLBACK_RELEASE,
         }:
@@ -376,6 +380,7 @@ class BridgeRequest(BaseModel):
             return self
 
         if self.action in {
+            BridgeAction.MIGRATION_JOB_STATUS,
             BridgeAction.DEPLOYMENT_STATUS,
             BridgeAction.ROLLBACK_STATUS,
         }:
@@ -651,6 +656,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
     if request.action in {
         BridgeAction.JOB_STATUS,
         BridgeAction.CANCEL_JOB,
+        BridgeAction.MIGRATION_JOB_STATUS,
         BridgeAction.DEPLOYMENT_STATUS,
         BridgeAction.ROLLBACK_STATUS,
         BridgeAction.SELF_UPDATE_STATUS,
@@ -711,6 +717,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
 
     if request.action in {
         BridgeAction.APPLY_MIGRATIONS,
+        BridgeAction.START_MIGRATION_JOB,
         BridgeAction.DEPLOY_STAGING,
         BridgeAction.ROLLBACK_RELEASE,
     }:

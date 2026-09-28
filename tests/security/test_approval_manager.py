@@ -173,3 +173,47 @@ def test_approval_write_failure_is_bounded_and_cleans_temp(
     assert sensitive not in str(captured.value)
     assert list(approvals.root.glob("*.json")) == []
     assert list(approvals.root.glob(".*.tmp")) == []
+
+
+def test_sync_and_async_migration_approvals_are_not_interchangeable(
+    tmp_path: Path,
+) -> None:
+    approvals = manager(tmp_path)
+    migration_binding = {"commit": "a" * 40}
+    async_binding = {
+        "migration": migration_binding,
+        "execution_mode": "durable_async_v1",
+    }
+
+    sync_plan = approvals.request(
+        action="migration",
+        project="demo",
+        binding=migration_binding,
+        summary={"action": "migration"},
+    )
+    approvals.approve(sync_plan["approval_id"])
+    with pytest.raises(ApprovalError, match="does not match"):
+        approvals.consume(
+            sync_plan["approval_id"],
+            action="migration_async",
+            project="demo",
+            binding=async_binding,
+        )
+
+    async_plan = approvals.request(
+        action="migration_async",
+        project="demo",
+        binding=async_binding,
+        summary={
+            "action": "migration_async",
+            "execution_mode": "durable_async_v1",
+        },
+    )
+    approvals.approve(async_plan["approval_id"])
+    with pytest.raises(ApprovalError, match="does not match"):
+        approvals.consume(
+            async_plan["approval_id"],
+            action="migration",
+            project="demo",
+            binding=migration_binding,
+        )

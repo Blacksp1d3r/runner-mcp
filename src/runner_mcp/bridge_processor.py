@@ -86,6 +86,10 @@ class BridgeExecutor(Protocol):
 
     def apply_migrations(self, project: str, approval_id: str) -> Any: ...
 
+    def start_migration_job(self, project: str, approval_id: str) -> Any: ...
+
+    def migration_job_status(self, job_id: str) -> Any: ...
+
     def plan_deploy(self, project: str) -> Any: ...
 
     def deploy_staging(self, project: str, approval_id: str) -> Any: ...
@@ -342,6 +346,18 @@ class BridgeProcessor:
                 request.project,
                 request.approval_id,
             )
+
+        if request.action == BridgeAction.START_MIGRATION_JOB:
+            assert request.project is not None
+            assert request.approval_id is not None
+            return self._executor.start_migration_job(
+                request.project,
+                request.approval_id,
+            )
+
+        if request.action == BridgeAction.MIGRATION_JOB_STATUS:
+            assert request.job_id is not None
+            return self._executor.migration_job_status(request.job_id)
 
         if request.action == BridgeAction.PLAN_DEPLOY:
             assert request.project is not None

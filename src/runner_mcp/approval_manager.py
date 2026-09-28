@@ -21,7 +21,7 @@ class ApprovalError(RuntimeError):
 
 
 APPROVAL_ID_RE = re.compile(r"^[0-9a-f]{32}$")
-ALLOWED_ACTIONS = {"migration", "deploy", "code_rollback"}
+ALLOWED_ACTIONS = {"migration", "migration_async", "deploy", "code_rollback"}
 
 
 def utc_now() -> datetime:

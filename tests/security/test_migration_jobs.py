@@ -559,3 +559,20 @@ def test_invalid_terminal_manager_evidence_fails_closed(
     assert finished["migration_state"] is None
     raw = (tmp_path / "migration-jobs" / f"{started['job_id']}.json").read_text()
     assert "must not persist" not in raw
+
+
+def test_oversize_metadata_fails_closed(tmp_path: Path) -> None:
+    root = tmp_path / "migration-jobs"
+    root.mkdir(mode=0o700)
+    job_id = "1" * 32
+    path = root / f"{job_id}.json"
+    path.write_bytes(b"{" + (b"x" * 20_000) + b"}")
+    path.chmod(0o600)
+
+    with pytest.raises(MigrationJobError, match="size"):
+        MigrationJobRunner(
+            manager=FakeDatabaseManager(),
+            registry=registry(tmp_path),
+            safety=guard(tmp_path),
+            jobs_root=root,
+        )

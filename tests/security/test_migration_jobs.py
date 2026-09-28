@@ -23,7 +23,7 @@ COMMIT = "a" * 40
 
 def registry(tmp_path: Path) -> ProjectRegistry:
     root = tmp_path / "project"
-    root.mkdir()
+    root.mkdir(exist_ok=True)
     return ProjectRegistry(
         projects={
             "demo": ProjectConfig(

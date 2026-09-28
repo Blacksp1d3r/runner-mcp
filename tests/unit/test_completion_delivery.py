@@ -5,8 +5,8 @@ from pathlib import Path
 import pytest
 
 from runner_mcp import completion_delivery as completion_delivery_module
-from runner_mcp import secure_io as secure_io_module
 from runner_mcp import migration_jobs as migration_jobs_module
+from runner_mcp import secure_io as secure_io_module
 from runner_mcp.completion_delivery import (
     CompletionDeliveryError,
     CompletionDeliveryLedger,

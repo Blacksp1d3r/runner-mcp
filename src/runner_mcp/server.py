@@ -38,6 +38,7 @@ from .migration_planning import (
     migration_plan_material,
 )
 from .operational_safety import (
+    ActionClass,
     OperatorSafetyGuard,
     OperatorStopActive,
     RetentionPolicy,
@@ -1423,6 +1424,10 @@ def build_mcp(
             jobs = _require_migration_jobs()
             migration_binding, approval_binding, summary = (
                 _migration_async_approval_material(project)
+            )
+            safety.assert_project_action_allowed(
+                ActionClass.MIGRATION,
+                environment=str(migration_binding["environment"]),
             )
             _require_approval_manager().consume(
                 approval_id,

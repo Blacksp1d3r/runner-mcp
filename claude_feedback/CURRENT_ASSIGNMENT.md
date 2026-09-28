@@ -1207,7 +1207,7 @@ focused adversarial plan/staleness/locking/quarantine/interruption tests plus fu
 
 ### Task 44 — durable migration-job substrate + completion source — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 42 merged via PR #96.
+Status: `COMPLETE` on PR #118 / merge `6053b7c3d5aef757055c453d2fd5b7f581248e53`. Task 44 is integrated with exact-head validation #607 and post-merge validation #609 green; attribution #91/#94, build artifact and clean demo are green.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1242,7 +1242,7 @@ focused state/persistence/restart/binding/lock/privacy/completion tests plus ful
 
 ### Task 45 — asynchronous migration integration boundary review — CHAT REVIEW
 
-Status: `BLOCKED_ON_TASK44_INTEGRATION`. Dependency: Task 44 must first prove the substrate.
+Status: `COMPLETE` in `claude_feedback/TASK45_ASYNC_MIGRATION_INTEGRATION_REVIEW.md`. Task 44 is integrated and green. Decision: preserve synchronous `apply_migrations`; any async remote path must be additive via explicit `start_migration_job` / `migration_job_status` plus a distinct `migration_async` human approval.
 
 Preferred executor: Claude Chat or ChatGPT review; no execution-contract changes.
 
@@ -1354,6 +1354,48 @@ Required validation:
 - deploy/rollback acquire the file lock before release-tree mutation and preserve release -> database lock ordering;
 - existing same-process exclusion remains covered;
 - full Ruff/pytest/whitespace, built artifact and clean demo remain green.
+
+
+---
+
+### Task 49 — explicit asynchronous migration start/status integration — CODE lane
+
+Status: `UNCLAIMED`. Dependency satisfied after Task 44 integration and Task 45 review.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK45_ASYNC_MIGRATION_INTEGRATION_REVIEW.md`.
+
+Goal:
+Expose the proven Task 44 migration-job substrate through a new explicit async start/status contract without changing the existing synchronous migration path.
+
+Acceptance:
+- add a distinct human approval operation `migration_async`; a normal `migration` approval cannot authorize async start and an async approval cannot authorize synchronous `apply_migrations`;
+- async approval binding wraps the canonical migration binding with one fixed execution discriminator such as `durable_async_v1`;
+- instantiate `MigrationJobRunner` only when private migration-job storage is configured;
+- add MCP tools `start_migration_job(project, approval_id)` and `migration_job_status(job_id)`;
+- public start accepts no commit, fingerprint, path, command, DSN or job-storage selector; server computes private binding/commit evidence;
+- order is require configured runner -> recompute binding -> consume `migration_async` approval -> durably queue through Task 44 runner -> worker start;
+- crash/enqueue failure after approval consumption never reuses the approval or guesses execution;
+- add bridge actions `START_MIGRATION_JOB` and `MIGRATION_JOB_STATUS` with strict project/approval or job-id-only argument shapes;
+- bridge replay/result-persistence ambiguity must never enqueue a second migration job;
+- immediate bridge result means durable job accepted/queued, never migration completed;
+- audit start as started only after durable queue persistence; audit job status using resolved project + bounded state;
+- existing synchronous MCP/bridge `apply_migrations`, direct `migration_status`, deployment-triggered migrations and completion-delivery mapping remain unchanged;
+- no cancellation, retry/resume, arbitrary SQL/executable/cwd, production mutation, automatic restore, job listing or generic async framework.
+
+Required validation:
+- sync and async approvals are mutually non-interchangeable;
+- approval is consumed before durable enqueue is attempted;
+- storage/start failure leaves no unauthorized second execution path;
+- one successful start yields one bounded 32-hex job ID and nonterminal state;
+- client cannot provide private expected evidence;
+- bridge duplicate/ambiguous replay does not start twice;
+- status accepts only job ID and exposes no private fields;
+- synchronous migration and deployment migration regressions remain green;
+- completion remains separate/idempotent;
+- full AI fault-containment, Ruff/pytest/whitespace, built artifact and clean demo remain green.
 
 
 ## Queue refill rule

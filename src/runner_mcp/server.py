@@ -40,7 +40,7 @@ from .operational_safety import (
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
-from .source_control import SourceControlError, SourceSynchronizer, clean_head
+from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
 
 

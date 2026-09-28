@@ -5,7 +5,7 @@ import os
 import re
 import stat
 import threading
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
@@ -220,7 +220,7 @@ def _strict_json(path: Path) -> dict[str, Any]:
     return raw
 
 
-@dataclass
+@dataclass(frozen=True)
 class MigrationJob:
     job_id: str
     project: str
@@ -392,10 +392,23 @@ class MigrationJobRunner:
             raise MigrationJobError("Invalid migration job identifier")
         return self.jobs_root / f"{job_id}.json"
 
-    def _persist(self, job: MigrationJob) -> None:
+    def _persist(
+        self,
+        job: MigrationJob,
+        *,
+        previous: MigrationJob | None = None,
+    ) -> None:
         path = self._metadata_path(job.job_id)
-        if path.exists() or path.is_symlink():
-            _strict_json(path)
+        exists = path.exists() or path.is_symlink()
+        if previous is None:
+            if exists:
+                raise MigrationJobError("Migration job metadata already exists")
+        else:
+            if not exists:
+                raise MigrationJobError("Migration job metadata disappeared")
+            persisted = parse_migration_job_metadata(path)
+            if persisted != previous:
+                raise MigrationJobError("Migration job metadata changed unexpectedly")
         content = (
             json.dumps(
                 job.persisted_dict(),
@@ -418,11 +431,15 @@ class MigrationJobRunner:
         jobs = scan_migration_job_metadata(self.jobs_root)
         for job in jobs:
             if job.state in {MigrationJobState.QUEUED, MigrationJobState.RUNNING}:
-                job.state = MigrationJobState.INTERRUPTED
-                job.finished_at = utc_now()
-                job.error_category = "runner_restart"
-                job.migration_state = None
-                self._persist(job)
+                interrupted = replace(
+                    job,
+                    state=MigrationJobState.INTERRUPTED,
+                    finished_at=utc_now(),
+                    error_category="runner_restart",
+                    migration_state=None,
+                )
+                self._persist(interrupted, previous=job)
+                job = interrupted
             self._jobs[job.job_id] = job
 
     def _project_has_active_job(self, project: str) -> bool:
@@ -456,8 +473,8 @@ class MigrationJobRunner:
                 expected_binding_fingerprint=expected_binding_fingerprint,
                 expected_commit=expected_commit,
             )
-            self._jobs[job.job_id] = job
             self._persist(job)
+            self._jobs[job.job_id] = job
 
         worker = threading.Thread(
             target=self._run_job,
@@ -489,23 +506,26 @@ class MigrationJobRunner:
         output_truncated: bool | None = None,
     ) -> MigrationJob:
         with self._lock:
-            job = self._jobs[job_id]
+            previous = self._jobs[job_id]
+            changes: dict[str, Any] = {}
             if state is not None:
-                job.state = state
+                changes["state"] = state
             if started_at is not None:
-                job.started_at = started_at
+                changes["started_at"] = started_at
             if finished_at is not None:
-                job.finished_at = finished_at
+                changes["finished_at"] = finished_at
             if migration_state is not None:
-                job.migration_state = migration_state
+                changes["migration_state"] = migration_state
             if error_category is not None:
-                job.error_category = error_category
+                changes["error_category"] = error_category
             if pre_migration_backup_created is not None:
-                job.pre_migration_backup_created = pre_migration_backup_created
+                changes["pre_migration_backup_created"] = pre_migration_backup_created
             if output_truncated is not None:
-                job.output_truncated = output_truncated
-            self._persist(job)
-            return job
+                changes["output_truncated"] = output_truncated
+            updated = replace(previous, **changes)
+            self._persist(updated, previous=previous)
+            self._jobs[job_id] = updated
+            return updated
 
     def _finish_failure(
         self,

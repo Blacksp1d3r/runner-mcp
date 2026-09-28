@@ -27,6 +27,7 @@ class ActionClass(StrEnum):
     MIGRATION = "migration"
     DEPLOY = "deploy"
     CODE_ROLLBACK = "code_rollback"
+    RETENTION_PRUNE = "retention_prune"
     DATABASE_RESTORE = "database_restore"
 
 

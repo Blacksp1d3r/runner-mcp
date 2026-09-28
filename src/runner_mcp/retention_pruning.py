@@ -317,6 +317,17 @@ class RetentionPruner:
         )
         _write_private_json(self._plan_path(plan["plan_id"]), plan, parent=root)
 
+    def inspect_plan(self, plan_id: str) -> dict[str, Any]:
+        plan = self._read_plan(plan_id)
+        return {
+            "plan_id": plan["plan_id"],
+            "project": plan["project"],
+            "candidate_release": plan["candidate_release"],
+            "state": plan["state"],
+            "expires_at": plan["expires_at"],
+            "single_use": True,
+        }
+
     def plan(
         self,
         project: str,

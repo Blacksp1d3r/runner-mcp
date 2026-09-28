@@ -215,7 +215,7 @@ Implemented public contract:
 
 Implemented notification runtime and private proof:
 
-- an optional private GitHub-issue notifier observes persisted terminal test jobs without calling the execution path;
+- an optional private GitHub-issue notifier observes strict persisted terminal test, deployment/rollback and migration jobs without calling any execution path;
 - notifier bootstrap deliberately skips historical completions;
 - deterministic event IDs are used both in a private 0600 delivery ledger and as remote notification markers;
 - existing remote markers are reconciled instead of posted again;
@@ -226,7 +226,7 @@ Implemented notification runtime and private proof:
 Next:
 
 - keep heartbeat/stale-request recovery separate from notification delivery;
-- map other existing asynchronous Runner MCP job classes to the same completion-delivery runtime only when their persisted terminal metadata can be consumed without widening execution authority.
+- map any future asynchronous Runner MCP job class to the same completion-delivery runtime only when its persisted terminal metadata can be consumed without widening execution authority.
 
 ## Phase 3.8.2 — watcher resilience and restart recovery
 
@@ -596,7 +596,7 @@ Implemented core design:
 - pre-migration backup required before migration apply;
 - safety guard rechecked after backup and before migration;
 - failed migration keeps the recovery point and never auto-restores;
-- migration execution remains synchronous while Task 42 defines an additive durable job/completion substrate; Task 44 is the bounded implementation and must not change existing MCP/bridge apply semantics;
+- Task 44 adds a strict private durable migration-job substrate and `MIGRATION_JOB` completion source while preserving existing synchronous MCP/bridge `apply_migrations` and deployment-triggered migrations; Task 45 selects a separate future `start_migration_job` / `migration_job_status` contract with distinct `migration_async` human approval, implemented only if Task 49 lands;
 - local read-only restore preflight validates one private PostgreSQL archive without database connection or restore authority;
 - local CLI retention preview strictly validates private release/backup state and reports protected or potentially eligible records without deleting or rewriting data;
 - CLI database and migration configuration without manual YAML editing.
@@ -604,6 +604,7 @@ Implemented core design:
 Not implemented yet:
 
 - database restore execution remains deferred after Task 37: the current architecture does not prove a separately prepared empty recovery target, complete database-writer quiescence, application cutover, `pre_restore` retention semantics or semantic post-restore verification;
+- remote asynchronous migration start/status is not yet implemented; Task 49 is the bounded additive follow-up and must not change synchronous `apply_migrations`;
 - WAL archiving/PITR orchestration and verification;
 - automatic/unattended retention pruning;
 - backup pruning remains deferred pending a separate crash-safe pair-deletion contract;

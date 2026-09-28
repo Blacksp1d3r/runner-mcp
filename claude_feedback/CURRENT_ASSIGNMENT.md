@@ -1175,7 +1175,7 @@ Do not infer migration completion from audit/deployment records, replay interrup
 
 ### Task 43 — local one-release pruning plan/execute — CODE lane
 
-Status: `BLOCKED_ON_TASK48`. Task 40 is merged and Task 46 completed the cross-process lock review. Task 48 must first integrate the shared release-operation lock into deploy/rollback before Task 43 may mutate release storage.
+Status: `COMPLETE` on PR #116 / merge `a95e75739bb71bcbaf653244e0ebf9c9bee7b0ee`. The local one-release plan/execute flow is integrated with fresh retention/current/metadata/policy revalidation under the shared Task 48 release lock, durable quarantine transactions, fd-safe deletion, typed confirmation and no backup/remote deletion authority.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1322,7 +1322,7 @@ focused adversarial service-log privacy/argv/bounds tests plus full Ruff/pytest/
 
 ### Task 48 — cross-process release-operation lock — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 46 review is complete.
+Status: `COMPLETE` on PR #115 / merge `02475b4c5aa1f103b55f9e4ca6a71e0d09892c7c`. Dependency satisfied: Task 46 review is complete; exact-head and post-merge validation are green.
 
 Preferred executor: ChatGPT or Claude Code.
 

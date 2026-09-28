@@ -607,7 +607,7 @@ Not implemented yet:
 - WAL archiving/PITR orchestration and verification;
 - automatic/unattended retention pruning;
 - backup pruning remains deferred pending a separate crash-safe pair-deletion contract;
-- Task 43 is the bounded first mutation slice for one local/manual non-migration orphan release, but is blocked on Task 46 because the existing deployment lock is process-local while the prune command is local CLI.
+- local one-release pruning is implemented by Task 43 after Task 48 added the shared cross-process release lock: local CLI only, one freshly eligible non-migration orphan per short-lived plan, typed confirmation, durable quarantine transaction and fd-safe deletion; backups and automatic pruning remain deferred.
 
 ## Phase 6 — staging release engine
 
@@ -656,7 +656,7 @@ Implemented core design:
 
 Still deferred:
 
-- automatic release pruning remains deferred; Task 43 is limited to one local/manual non-migration orphan release outside the retained rollback chain;
+- automatic release pruning remains deferred; Task 43 implements only one local/manual non-migration orphan release outside the retained rollback chain per confirmed plan;
 - arbitrary historical target selection remains deferred after the Task 35 boundary review; older history is reached only through fresh direct-previous one-step approvals with health revalidation;
 - production rollback;
 - database restore/recovery workflow.

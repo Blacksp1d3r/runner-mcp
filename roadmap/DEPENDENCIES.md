@@ -26,16 +26,16 @@ Last reconciled: 2026-09-27. GitHub current state wins.
 5. Task 28 depended on Task 24 and is complete via merge `131e168e02b7d5781441bbc8256e65de434e6166`. Migration completion remains blocked on a separate persisted migration-job substrate.
 6. Task 29 depended on Task 25 and is complete via merge `b0f54cb14d73fba3b7c5b8655b5b051af779fd0a`.
 7. Task 31 depended on Task 27 and is complete via merge `e54a0684bdc9da3a32d062e0e0e45261c1616020`. Actual restore/PITR and remote restore authority remain deferred.
-8. Task 34 depends on Task 30 and is complete via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 40 resolves the first deletion boundary; Task 43 depends on Task 40 integration and is limited to one local/manual non-migration orphan release. Backup pruning and automatic pruning remain deferred.
+8. Task 34 depends on Task 30 and is complete via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 40 resolved the first deletion boundary; Task 48 supplied the required shared release lock; Task 43 is COMPLETE via PR #116 / merge `a95e75739bb71bcbaf653244e0ebf9c9bee7b0ee` for one local/manual non-migration orphan release. Backup pruning and automatic pruning remain deferred.
 9. Task 32 is complete via review merge `e629515f9c7e7a5d44506dfb82a48343870f94da`; it demonstrated six documentation drift blockers before any alpha tag.
 10. Task 36 depended on Task 32 and is complete via merge `8c971016e4fc3cd821dc52d28334567c20835ff4`; release documentation drift is reconciled, but no tag/release/publication is authorized.
 11. Task 23 had Task 18 as its prerequisite; that prerequisite is satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
 12. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
 13. Task 39 depends on Task 38; that dependency is satisfied by PR #91 merge `11b9a4d4e508ac93cd436037563c09d08cfa43ab`. Task 39 is COMPLETE on main via PR #94 / merge `163c5e0597cb8a6cc70f32fd3d8c99e30d08f7aa`.
 14. Task 41 is COMPLETE on main via PR #97 / merge `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`. Task 42 is COMPLETE on main via PR #96 / merge `82ecef725d828b69e328f8f474553e01ef8548cb`; Task 44 is prerequisite-safe.
-15. Task 43's Task 40 dependency is satisfied, but Task 43 is BLOCKED on Task 48. Task 46 proved that the existing process-local DeploymentManager threading lock cannot safely coordinate local CLI pruning with the long-lived MCP process.
+15. Task 43 is COMPLETE on main via PR #116 after Task 48 integration. The first release-pruning mutation remains local-only, one release per short-lived plan, and preserves backups plus the retained rollback/reference/migration boundary.
 16. Task 45 is blocked on Task 44 integration and is the separate review for any future asynchronous MCP/bridge migration contract change.
-17. Task 46 review is COMPLETE and specifies a fixed private release-root `fcntl.flock` contract. Task 48 is the prerequisite-safe CODE implementation that must land before Task 43 starts.
+17. Task 46 review is COMPLETE. Task 48 is COMPLETE on main via PR #115 / merge `02475b4c5aa1f103b55f9e4ca6a71e0d09892c7c`, providing the shared release-root `fcntl.flock` contract now used by deploy/rollback and Task 43.
 18. Task 47 is prerequisite-safe after Task 41 integration and is the bounded local service-journal reader; remote log exposure remains separately deferred.
 19. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
 

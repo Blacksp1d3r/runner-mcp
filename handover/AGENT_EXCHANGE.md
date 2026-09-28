@@ -1,3 +1,22 @@
+## 2026-09-28 — Tasks 48 and 43 complete; migration-job substrate next
+
+- Runner MCP `main` is `a95e75739bb71bcbaf653244e0ebf9c9bee7b0ee`.
+- Task 48 is COMPLETE via PR #115 / merge `02475b4c5aa1f103b55f9e4ca6a71e0d09892c7c`: deploy/rollback now share one fixed private release-root `fcntl.flock` boundary in addition to the existing in-process thread lock. Exact-head and post-merge validation are green.
+- Task 43 is COMPLETE via PR #116 / merge `a95e75739bb71bcbaf653244e0ebf9c9bee7b0ee`: local-only `retention prune-plan` / `retention prune-release` can remove exactly one freshly eligible staging orphan release per short-lived single-use plan after fresh current/metadata/policy revalidation under the shared release lock.
+- Task 43 preserves the retained rollback/reference closure and migration boundaries, never deletes backups, never adds automatic pruning, and adds no MCP/mailbox/bridge deletion authority.
+- Quarantine/transaction state is private and durable; post-quarantine failure is reported as manual-attention state rather than guessed success or replay.
+- Exact-head Task 43 validation #592, attribution #76, build artifact and clean demo are green; post-merge validation #593 and attribution #77 are green.
+- Task 44 durable migration-job substrate is now the preferred next independent CODE lane. Its scope remains additive: persisted migration jobs + read-only completion source only; existing synchronous MCP/bridge `apply_migrations` and deployment-triggered migrations remain unchanged.
+- Task 47 local bounded service-journal reader remains independently prerequisite-safe.
+- Issue #108 remains externally blocked by the authorized private-host connector quota. Issue #110 remains gated on upstream Fabric durable gateway/startup readiness. Issue #101 remains externally gated for actual secondary-directory submissions/claims.
+
+Immediate resume order:
+1. integrate this coordination-only status update after exact-head CI;
+2. implement Task 44 from its Task 42 review with a separate private migration-jobs root and strict restart-no-replay semantics;
+3. after Task 44 integration, perform Task 45 review before any remote async migration contract change;
+4. Task 47 may proceed independently if Task 44 blocks;
+5. keep backup pruning, automatic pruning, restore execution and all remote deletion authority deferred.
+
 ## 2026-09-27 — Task 46 reconciled; Task 48 release-lock prerequisite queued
 
 - Live Runner MCP `main` before this coordination branch: `37c78fd0d2a0e2f620dc225f81e72843413ef3c3`; PR #113 discovery hardening is merged and post-merge validation #582 / attribution #66 are green.

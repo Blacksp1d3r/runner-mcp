@@ -353,14 +353,16 @@ def test_release_lock_contention_fails_before_plan_consumption(
     candidate, _rollback_target, _current = populate_eligible_release(release_root)
     plan = pruner.plan("demo", now=NOW)
 
-    with acquire_release_operation_lock(release_root):
-        with pytest.raises(RetentionPruneError, match="release_operation_busy"):
-            pruner.execute(
-                "demo",
-                plan["plan_id"],
-                confirmation=confirmation(plan),
-                now=NOW,
-            )
+    with (
+        acquire_release_operation_lock(release_root),
+        pytest.raises(RetentionPruneError, match="release_operation_busy"),
+    ):
+        pruner.execute(
+            "demo",
+            plan["plan_id"],
+            confirmation=confirmation(plan),
+            now=NOW,
+        )
 
     assert (release_root / "releases" / candidate).is_dir()
     assert pruner.inspect_plan(plan["plan_id"])["state"] == "pending"

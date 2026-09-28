@@ -89,3 +89,55 @@ def test_contained_read_only_work_remains_available_during_stop(tmp_path: Path) 
     guard = OperatorSafetyGuard(stop, RetentionPolicy(), retention_confirmed=True)
 
     guard.assert_project_action_allowed(ActionClass.READ_ONLY, environment="staging")
+
+
+def test_ai_cannot_reuse_sync_migration_approval_for_async_mode(
+    tmp_path: Path,
+) -> None:
+    manager = ApprovalManager(root=tmp_path / "approvals")
+    migration_binding = {"commit": "a" * 40}
+    async_binding = {
+        "migration": migration_binding,
+        "execution_mode": "durable_async_v1",
+    }
+    plan = manager.request(
+        action="migration",
+        project="demo",
+        binding=migration_binding,
+        summary={"action": "migration"},
+    )
+    manager.approve(plan["approval_id"])
+
+    with pytest.raises(ApprovalError, match="does not match"):
+        manager.consume(
+            plan["approval_id"],
+            action="migration_async",
+            project="demo",
+            binding=async_binding,
+        )
+
+
+def test_ai_cannot_reuse_async_migration_approval_for_sync_mode(
+    tmp_path: Path,
+) -> None:
+    manager = ApprovalManager(root=tmp_path / "approvals")
+    migration_binding = {"commit": "a" * 40}
+    async_binding = {
+        "migration": migration_binding,
+        "execution_mode": "durable_async_v1",
+    }
+    plan = manager.request(
+        action="migration_async",
+        project="demo",
+        binding=async_binding,
+        summary={"action": "migration_async"},
+    )
+    manager.approve(plan["approval_id"])
+
+    with pytest.raises(ApprovalError, match="does not match"):
+        manager.consume(
+            plan["approval_id"],
+            action="migration",
+            project="demo",
+            binding=migration_binding,
+        )

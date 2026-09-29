@@ -814,6 +814,178 @@ def test_github_mailbox_cli_remove_requires_explicit_confirmation(
     assert status.out.strip() == "not configured"
 
 
+
+def test_agent_bus_cli_configure_uses_hidden_credential(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    credential = "r" * 48
+    origin = "https://relay.example.invalid"
+    subject = "runner:one"
+    monkeypatch.setattr("runner_mcp.cli.getpass.getpass", lambda _: credential)
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "configure",
+            "--origin",
+            origin,
+            "--subject",
+            subject,
+        ]
+    )
+    configured = capsys.readouterr()
+
+    assert result == 0
+    assert credential not in configured.out
+    assert credential not in configured.err
+    assert origin not in configured.out
+    assert subject not in configured.out
+    assert "stored privately" in configured.out
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "status",
+        ]
+    )
+    status = capsys.readouterr()
+    assert result == 0
+    assert status.out.strip() == "configured"
+    assert credential not in status.out
+    assert origin not in status.out
+    assert subject not in status.out
+
+
+def test_agent_bus_cli_can_read_credential_from_stdin_without_echo(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    credential = "s" * 48
+    monkeypatch.setattr("sys.stdin", io.StringIO(credential + "\n"))
+    monkeypatch.setattr(
+        "runner_mcp.cli.getpass.getpass",
+        lambda _: (_ for _ in ()).throw(AssertionError("hidden prompt used")),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "configure",
+            "--origin",
+            "https://relay.example.invalid",
+            "--subject",
+            "runner:stdin",
+            "--credential-stdin",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert credential not in captured.out
+    assert credential not in captured.err
+    assert (
+        load_env_file(paths.env_file)["RUNNER_FABRIC_RELAY_CREDENTIAL"]
+        == credential
+    )
+
+
+def test_agent_bus_cli_rejects_empty_stdin_credential(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr("sys.stdin", io.StringIO("\n"))
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "configure",
+            "--origin",
+            "https://relay.example.invalid",
+            "--subject",
+            "runner:one",
+            "--credential-stdin",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "credential is required" in captured.err.lower()
+
+
+def test_agent_bus_cli_remove_requires_explicit_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(
+        "runner_mcp.cli.getpass.getpass",
+        lambda _: "r" * 48,
+    )
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "configure",
+            "--origin",
+            "https://relay.example.invalid",
+            "--subject",
+            "runner:one",
+        ]
+    ) == 0
+    capsys.readouterr()
+
+    monkeypatch.setattr("builtins.input", lambda _: "no")
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "remove",
+        ]
+    ) == 2
+    denied = capsys.readouterr()
+    assert "cancelled" in denied.err.lower()
+
+    monkeypatch.setattr("builtins.input", lambda _: "REMOVE AGENT BUS")
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "remove",
+        ]
+    ) == 0
+    removed = capsys.readouterr()
+    assert "configuration removed" in removed.out.lower()
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "status",
+        ]
+    ) == 0
+    status = capsys.readouterr()
+    assert status.out.strip() == "not configured"
+
 def test_github_watcher_cli_bootstrap_and_once_are_safe(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

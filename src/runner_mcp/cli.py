@@ -518,6 +518,7 @@ def cmd_service_config(args: argparse.Namespace) -> int:
                     ("start", service["can_start"]),
                     ("stop", service["can_stop"]),
                     ("restart", service["can_restart"]),
+                    ("log-read", service["log_read"]),
                 )
                 if enabled
             ]
@@ -536,6 +537,7 @@ def cmd_service_config(args: argparse.Namespace) -> int:
             allow_start=args.allow_start,
             allow_stop=args.allow_stop,
             allow_restart=args.allow_restart,
+            allow_log_read=args.allow_log_read,
         )
         print(f"Service alias added: {result['name']}")
         return 0
@@ -1579,6 +1581,11 @@ def build_parser() -> argparse.ArgumentParser:
     service_add.add_argument("--allow-start", action="store_true")
     service_add.add_argument("--allow-stop", action="store_true")
     service_add.add_argument("--allow-restart", action="store_true")
+    service_add.add_argument(
+        "--allow-log-read",
+        action="store_true",
+        help="Explicitly allow bounded local service-journal reads.",
+    )
     service_add.set_defaults(func=cmd_service_config)
 
     service_remove = service_sub.add_parser("remove", help="Remove a service alias.")

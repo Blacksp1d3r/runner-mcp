@@ -433,27 +433,51 @@ def test_service_log_cli_renders_only_safe_reader_result(
     assert str(paths.config_dir) not in captured.out
 
 
-def test_service_log_cli_remains_callable_during_emergency_stop(
+def test_service_log_cli_remains_available_during_stop_and_redacts_runtime_values(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    from runner_mcp.service_journal import JournalCapture
+
     paths, _ = install_config(tmp_path)
+    token = load_env_file(paths.env_file)["RUNNER_MCP_BEARER_TOKEN"]
+    assert (
+        main(
+            [
+                "--config-dir",
+                str(paths.config_dir),
+                "service-config",
+                "add",
+                "demo",
+                "web",
+                "--unit",
+                "private-web.service",
+                "--allow-log-read",
+            ]
+        )
+        == 0
+    )
+    capsys.readouterr()
     paths.stop_file.write_text("stop\n", encoding="utf-8")
 
-    class FakeReader:
-        def tail(self, project: str, service: str, *, lines: int):
-            return {
-                "project": project,
-                "service": service,
-                "line_count": 1,
-                "truncated": False,
-                "content": "safe\n",
-            }
+    class FakeJournalBackend:
+        def tail(self, unit: str, *, lines: int) -> JournalCapture:
+            assert unit == "private-web.service"
+            assert lines == 50
+            return JournalCapture(
+                text=(
+                    f"token={token}\n"
+                    f"path={paths.config_dir}\n"
+                    f"unit={unit}\n"
+                    "safe\n"
+                ),
+                truncated=False,
+            )
 
     monkeypatch.setattr(
-        "runner_mcp.cli._local_service_journal_reader",
-        lambda _config_dir: FakeReader(),
+        "runner_mcp.service_journal.SystemdJournalBackend",
+        FakeJournalBackend,
     )
 
     result = main(
@@ -469,6 +493,12 @@ def test_service_log_cli_remains_callable_during_emergency_stop(
 
     assert result == 0
     assert "safe" in captured.out
+    assert "[REDACTED]" in captured.out
+    assert "[PRIVATE_PATH]" in captured.out
+    assert token not in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert "private-web.service" not in captured.out
+    assert paths.stop_file.exists()
 
 
 def test_database_restore_plan_cli_is_local_read_only_and_bounded(

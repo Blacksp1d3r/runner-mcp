@@ -1,6 +1,6 @@
 # Runner MCP — Dependency / Integration Order
 
-Last reconciled: 2026-09-28. GitHub current state wins.
+Last reconciled: 2026-09-29. GitHub current state wins.
 
 ## Current cross-product gates
 
@@ -32,12 +32,15 @@ Last reconciled: 2026-09-28. GitHub current state wins.
 11. Task 23 had Task 18 as its prerequisite; that prerequisite is satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
 12. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
 13. Task 39 depends on Task 38; that dependency is satisfied by PR #91 merge `11b9a4d4e508ac93cd436037563c09d08cfa43ab`. Task 39 is COMPLETE on main via PR #94 / merge `163c5e0597cb8a6cc70f32fd3d8c99e30d08f7aa`.
-14. Task 41 is COMPLETE on main via PR #97 / merge `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`. Task 42 is COMPLETE on main via PR #96 / merge `82ecef725d828b69e328f8f474553e01ef8548cb`. Task 44 is COMPLETE via PR #118 / merge `6053b7c3d5aef757055c453d2fd5b7f581248e53`; Task 45 review is complete and Task 49 is the bounded additive async-integration follow-up.
+14. Task 41 is COMPLETE on main via PR #97 / merge `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`. Task 42 is COMPLETE via PR #96, Task 44 via PR #118, Task 45 review is complete, and Task 49 is COMPLETE via PR #124 / merge `da367081f88d6d2342cf938a9b67ec59d9d10de0`.
 15. Task 43 is COMPLETE on main via PR #116 after Task 48 integration. The first release-pruning mutation remains local-only, one release per short-lived plan, and preserves backups plus the retained rollback/reference/migration boundary.
-16. Task 45 is COMPLETE: keep `apply_migrations` synchronous and use a new explicit async `start_migration_job` / `migration_job_status` contract with separate `migration_async` human approval. Task 49 is prerequisite-safe; no remote async migration authority exists until that code lane is separately integrated.
+16. Task 45 is COMPLETE and Task 49 is COMPLETE via PR #124: synchronous `apply_migrations` remains unchanged while the additive `start_migration_job` / `migration_job_status` path uses separate `migration_async` human approval and durable Task 44 state.
 17. Task 46 review is COMPLETE. Task 48 is COMPLETE on main via PR #115 / merge `02475b4c5aa1f103b55f9e4ca6a71e0d09892c7c`, providing the shared release-root `fcntl.flock` contract now used by deploy/rollback and Task 43.
-18. Task 47 is prerequisite-safe after Task 41 integration and is the bounded local service-journal reader; remote log exposure remains separately deferred.
-19. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
+18. Task 47 is COMPLETE via PR #145 / merge `67954dea2117cce3a1819132f6d3c7480dd34c82`. Local `service-log` is bounded, redacted and opt-in; no MCP/mailbox/Agent-Bus log action exists. Task 51 is the separate remote-disclosure review.
+19. Issue #143 remains open only for the production packaging-capability preflight; PR #142 already made the environment-dependent wheel smoke conditional. Task 50 is the bounded CODE follow-up.
+20. Issue #144 remains high-risk first-install Runner Fabric bootstrap design; Task 52 is review-only before any code or new bootstrap authority.
+21. PR #127 and PR #129 remain open with unique Agent-Bus transport/runtime work. Later merged #131/#132/#134 do not make those branches safe to duplicate blindly; reconcile/rebase them separately.
+22. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
 
 
 ## Parallel work that is safe

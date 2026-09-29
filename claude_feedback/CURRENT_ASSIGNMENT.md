@@ -1293,7 +1293,7 @@ Do not implement pruning, broaden remote authority or silently replace unrelated
 
 ### Task 47 — local bounded service-journal reader — CODE lane
 
-Status: `CLAIMED` by ChatGPT on branch `task47-local-service-journal`. Dependency satisfied: Task 41 merged via PR #97 / `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`.
+Status: `COMPLETE` via PR #145 / merge `67954dea2117cce3a1819132f6d3c7480dd34c82`. Exact-head validation #654 and attribution #140 are green; post-merge validation #655 and attribution #142 are green.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1360,7 +1360,7 @@ Required validation:
 
 ### Task 49 — explicit asynchronous migration start/status integration — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied after Task 44 integration and Task 45 review.
+Status: `COMPLETE` via PR #124 / merge `da367081f88d6d2342cf938a9b67ec59d9d10de0`. Exact-head validation #622 and attribution #107/#108 are green; post-merge validation #623 and attribution #109 are green.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1397,6 +1397,77 @@ Required validation:
 - completion remains separate/idempotent;
 - full AI fault-containment, Ruff/pytest/whitespace, built artifact and clean demo remain green.
 
+
+### Task 50 — self-update packaging capability preflight — CODE lane
+
+Status: `UNCLAIMED`. Tracked by issue #143; prerequisite-safe on current main.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Goal:
+Fail self-update wheel staging before any per-job artifact mutation when the installed Runner MCP Python runtime cannot provide the fixed offline packaging prerequisites.
+
+Acceptance:
+- add a deterministic preflight using only the configured Runner MCP Python executable;
+- prove `pip` is importable/usable and `setuptools.build_meta` is importable before creating the wheel-stage job directory;
+- fixed argv only, `shell=False`, fixed installer environment, bounded timeout and no caller-supplied module/argv/env/path;
+- failures map only to bounded categories such as `pip_unavailable` and `build_backend_unavailable`; no stdout/stderr/path/raw exception leakage;
+- a failed preflight leaves no new per-job wheel-stage directory and no install transaction;
+- the real offline wheel staging test remains conditional on the test interpreter's build capability, while deterministic preflight/security tests run everywhere;
+- no dependency auto-install, network/index fallback or production authority expansion.
+
+Required validation:
+focused ordering/failure/privacy tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 51 — remote service-journal disclosure boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`. Dependency satisfied by Task 47 / PR #145.
+
+Preferred executor: ChatGPT review.
+
+Source:
+`claude_feedback/TASK26_SERVICE_JOURNAL_REVIEW.md` plus the integrated local Task 47 evidence.
+
+Goal:
+Decide whether any remote MCP/Agent-Bus service-journal read can be justified after the local implementation, without treating redaction as proof that arbitrary application logs are privacy-safe.
+
+Deliverable:
+- review the exact Task 47 result schema, redaction limits and opt-in semantics;
+- assess whether remote disclosure needs a second independent per-service flag distinct from local `allow_log_read`;
+- define strict project/service/line-limit authorization if remote exposure is justified;
+- define audit/rate-limit/result-envelope semantics and emergency-stop behavior;
+- explicitly consider personal/customer data that generic redaction cannot classify;
+- queue a separate CODE task only if a fail-closed remote contract is actually justified.
+
+Do not add an MCP, bridge, mailbox or Agent-Bus log action during this review.
+
+
+---
+
+### Task 52 — Runner Fabric first-install bootstrap boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`. Tracked by issue #144; review is prerequisite-safe and must precede any bootstrap code.
+
+Preferred executor: ChatGPT review.
+
+Goal:
+Define the smallest safe first-install-only Runner Fabric bootstrap contract without introducing generic package, VCS, shell or filesystem authority.
+
+Deliverable:
+- reconcile issue #144 against current self-update installer/recovery and Agent Bus architecture;
+- define canonical repository/commit trust, fixed Python/launcher targets and offline/no-deps/no-build-isolation rules;
+- define preflight requirements, first-install conflict detection, durable install state, emergency-stop interaction and rollback/recovery semantics;
+- define what must be proven before exposing any bootstrap MCP/Agent-Bus action;
+- keep future Fabric updates under the separate Forgejo/artifact-custody plan;
+- queue a separate CODE task only after the review proves the first-install mutation can fail closed.
+
+Do not implement Fabric installation in this review.
+
+
+---
 
 ## Queue refill rule
 

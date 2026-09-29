@@ -2,7 +2,7 @@
 
 Date documented: 2026-09-20
 
-Runner MCP can be used with a private GitHub mailbox pattern when a direct private MCP connection is not available or is not the preferred transport.
+Runner MCP can use a private GitHub mailbox as a bootstrap or degraded-mode fallback transport. It is not the primary runtime control path. Normal control is moving to the AIfordable-owned outbound Agent Bus so GitHub availability or API budget cannot block private runtime operations.
 
 The intended chain is:
 
@@ -230,7 +230,7 @@ See [WATCHER_RESILIENCE.md](WATCHER_RESILIENCE.md) for heartbeat, stale-request 
 
 ## When to use the bridge
 
-Use the GitHub mailbox bridge for routine project inspection, predefined tests and configured operational work when the AI client cannot directly reach the private Runner MCP service.
+Use the GitHub mailbox bridge only when the primary AIfordable Agent Bus is unavailable, not yet deployed, or deliberately disabled for recovery/testing. Routine runtime control must not require GitHub.
 
 For source changes, use GitHub directly. Do not send source code through the operational mailbox.
 
@@ -400,4 +400,4 @@ The update runs asynchronously and exposes only an opaque job ID plus safe statu
 
 After a successful installation, server, GitHub watcher and completion watcher activate the new installation through fixed component-specific self-reexec arguments. The mailbox cannot choose an executable, process, service, path, repository, branch, dependency or package-manager argument.
 
-This means the GitHub mailbox can become the normal transport for future Runner MCP upgrades without becoming a general remote-control channel.
+This means the GitHub mailbox remains a bounded bootstrap/fallback path for Runner MCP upgrades without becoming a general remote-control channel. It must not be required for normal runtime control.

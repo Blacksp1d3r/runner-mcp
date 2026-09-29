@@ -759,8 +759,10 @@ Phase 9 human approval gates:
 - migration approval binds a clean Git HEAD;
 - deployment and rollback jobs are pinned to their approved commit/release targets;
 - production project mutations are blocked; staging remains the only mutable environment;
-- OpenAI Secure MCP Tunnel is the preferred future private ChatGPT connectivity path;
-- a hosted public relay remains optional and outside the MVP.
+- AIfordable-owned Agent Bus is the required primary runtime control path;
+- GitHub mailbox is bootstrap/fallback only and must be independently disable-able;
+- Desktop Commander remains break-glass only;
+- optional third-party client tunnels do not become control authority.
 
 ## Validation
 
@@ -972,3 +974,11 @@ Immediate priority:
 4. bootstrap/prove the newest recovery-capable self-update baseline on the private host.
 
 Current blocker: watcher heartbeat is degraded by four recovery-attention items, so cursor advancement is intentionally withheld. Desktop Commander is unavailable; use GitHub plus the bounded Runner-MCP bridge.
+
+
+## Agent Bus architecture correction — 2026-09-29
+
+A GitHub primary-rate-limit incident proved that the mailbox cannot remain operationally primary.
+The required target is now explicit: AIfordable-owned durable relay + outbound-only Runner Fabric
+Agent Bus. GitHub remains source/CI during migration and later optional mirror/bootstrap/fallback.
+Runner MCP #125/#130 and Runner Fabric #356 track the implementation and live cutover.

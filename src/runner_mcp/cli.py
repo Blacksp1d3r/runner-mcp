@@ -36,6 +36,8 @@ from .config_manager import (
     add_project,
     add_service_config,
     add_test_profile,
+    agent_bus_config_status,
+    configure_agent_bus,
     configure_github_mailbox,
     configure_project_test_capacity,
     github_mailbox_config_status,
@@ -46,6 +48,7 @@ from .config_manager import (
     list_service_configs,
     list_test_profiles,
     project_capabilities,
+    remove_agent_bus,
     remove_database_config,
     remove_deployment_config,
     remove_github_mailbox,
@@ -1096,6 +1099,49 @@ def cmd_completion_watcher(args: argparse.Namespace) -> int:
     raise CompletionDeliveryError("unknown completion watcher action")
 
 
+def cmd_agent_bus(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.agent_bus_action == "status":
+        result = agent_bus_config_status(config_dir)
+        print("configured" if result["configured"] else "not configured")
+        return 0
+
+    if args.agent_bus_action == "configure":
+        origin = args.origin or input("AIfordable relay HTTPS origin: ").strip()
+        subject = args.subject or input("Runner subject (runner:...): ").strip()
+        if not origin:
+            raise ConfigManagerError("Agent Bus relay origin is required")
+        if not subject:
+            raise ConfigManagerError("Agent Bus runner subject is required")
+        if args.credential_stdin:
+            credential = sys.stdin.readline(4098).strip()
+        else:
+            credential = getpass.getpass("Agent Bus relay credential: ").strip()
+        if not credential:
+            raise ConfigManagerError("Agent Bus relay credential is required")
+        configure_agent_bus(
+            config_dir,
+            origin=origin,
+            subject=subject,
+            credential=credential,
+        )
+        print("Agent Bus configured.")
+        print("The relay credential was stored privately and was not displayed.")
+        return 0
+
+    if args.agent_bus_action == "remove":
+        _require_removal_confirmation(
+            "REMOVE AGENT BUS",
+            ConfigManagerError("Agent Bus removal cancelled"),
+        )
+        remove_agent_bus(config_dir)
+        print("Agent Bus configuration removed.")
+        return 0
+
+    raise ConfigManagerError("Unknown Agent Bus configuration action")
+
+
 def cmd_github_mailbox(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
 
@@ -1767,6 +1813,37 @@ def build_parser() -> argparse.ArgumentParser:
         default=5.0,
     )
     completion_watcher_run.set_defaults(func=cmd_completion_watcher)
+
+    agent_bus = subparsers.add_parser(
+        "agent-bus",
+        help="Configure the private AIfordable Agent Bus relay.",
+    )
+    agent_bus_sub = agent_bus.add_subparsers(
+        dest="agent_bus_action",
+        required=True,
+    )
+    agent_bus_status = agent_bus_sub.add_parser(
+        "status",
+        help="Show whether the private Agent Bus relay is configured.",
+    )
+    agent_bus_status.set_defaults(func=cmd_agent_bus)
+    agent_bus_configure = agent_bus_sub.add_parser(
+        "configure",
+        help="Configure Agent Bus without exposing its relay credential.",
+    )
+    agent_bus_configure.add_argument("--origin")
+    agent_bus_configure.add_argument("--subject")
+    agent_bus_configure.add_argument(
+        "--credential-stdin",
+        action="store_true",
+        help="Read the relay credential from standard input instead of prompting.",
+    )
+    agent_bus_configure.set_defaults(func=cmd_agent_bus)
+    agent_bus_remove = agent_bus_sub.add_parser(
+        "remove",
+        help="Remove only the private Agent Bus relay configuration.",
+    )
+    agent_bus_remove.set_defaults(func=cmd_agent_bus)
 
     github_mailbox = subparsers.add_parser(
         "github-mailbox",

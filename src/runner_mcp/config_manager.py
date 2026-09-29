@@ -8,6 +8,7 @@ from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 import yaml
 
@@ -44,6 +45,15 @@ from .onboarding import (
     read_private_runtime,
 )
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
+
+AGENT_BUS_RELAY_ORIGIN_ENV = "RUNNER_FABRIC_RELAY_ORIGIN"
+AGENT_BUS_RELAY_SUBJECT_ENV = "RUNNER_FABRIC_RELAY_SUBJECT"
+AGENT_BUS_RELAY_CREDENTIAL_ENV = "RUNNER_FABRIC_RELAY_CREDENTIAL"
+AGENT_BUS_ENV_KEYS = (
+    AGENT_BUS_RELAY_ORIGIN_ENV,
+    AGENT_BUS_RELAY_SUBJECT_ENV,
+    AGENT_BUS_RELAY_CREDENTIAL_ENV,
+)
 
 
 class ConfigManagerError(RuntimeError):
@@ -653,6 +663,103 @@ def remove_github_mailbox(config_dir: Path) -> None:
         values.pop(key, None)
     with _configuration_lock(paths):
         _write_private_environment(paths, values)
+
+
+def agent_bus_config_status(config_dir: Path) -> dict[str, bool]:
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    present = {
+        key: bool(values.get(key, "").strip())
+        for key in AGENT_BUS_ENV_KEYS
+    }
+    if not any(present.values()):
+        return {"configured": False}
+    if not all(present.values()):
+        raise ConfigManagerError("Agent Bus private configuration is incomplete")
+
+    _validate_agent_bus_relay(
+        origin=values[AGENT_BUS_RELAY_ORIGIN_ENV],
+        subject=values[AGENT_BUS_RELAY_SUBJECT_ENV],
+        credential=values[AGENT_BUS_RELAY_CREDENTIAL_ENV],
+    )
+    return {"configured": True}
+
+
+def configure_agent_bus(
+    config_dir: Path,
+    *,
+    origin: str,
+    subject: str,
+    credential: str,
+) -> dict[str, bool]:
+    _validate_agent_bus_relay(
+        origin=origin,
+        subject=subject,
+        credential=credential,
+    )
+
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    values[AGENT_BUS_RELAY_ORIGIN_ENV] = origin.rstrip("/")
+    values[AGENT_BUS_RELAY_SUBJECT_ENV] = subject
+    values[AGENT_BUS_RELAY_CREDENTIAL_ENV] = credential
+
+    with _configuration_lock(paths):
+        _write_private_environment(paths, values)
+    return {"configured": True}
+
+
+def remove_agent_bus(config_dir: Path) -> None:
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    for key in AGENT_BUS_ENV_KEYS:
+        values.pop(key, None)
+    with _configuration_lock(paths):
+        _write_private_environment(paths, values)
+
+
+def _validate_agent_bus_relay(
+    *,
+    origin: object,
+    subject: object,
+    credential: object,
+) -> None:
+    if not isinstance(origin, str) or not origin:
+        raise ConfigManagerError("Agent Bus relay configuration is invalid")
+    try:
+        parsed = urlsplit(origin)
+    except ValueError as exc:
+        raise ConfigManagerError("Agent Bus relay configuration is invalid") from exc
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        raise ConfigManagerError("Agent Bus relay configuration is invalid")
+
+    if not isinstance(subject, str) or not subject.startswith("runner:"):
+        raise ConfigManagerError("Agent Bus relay configuration is invalid")
+    suffix = subject.removeprefix("runner:")
+    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789._:-")
+    if (
+        not suffix
+        or len(subject) > 127
+        or suffix[0] not in "abcdefghijklmnopqrstuvwxyz0123456789"
+        or any(char not in allowed for char in suffix)
+    ):
+        raise ConfigManagerError("Agent Bus relay configuration is invalid")
+
+    if (
+        not isinstance(credential, str)
+        or not 32 <= len(credential) <= 4096
+        or not credential.isascii()
+        or any(ord(char) < 33 or ord(char) == 127 for char in credential)
+    ):
+        raise ConfigManagerError("Agent Bus relay configuration is invalid")
 
 
 def list_database_configs(config_dir: Path) -> list[dict[str, Any]]:

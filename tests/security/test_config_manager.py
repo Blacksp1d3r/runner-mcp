@@ -10,17 +10,25 @@ from runner_mcp.config_manager import (
     add_project,
     add_service_config,
     add_test_profile,
+    agent_bus_config_status,
+    configure_agent_bus,
     configure_github_mailbox,
     github_mailbox_config_status,
     list_projects,
     list_service_configs,
     list_test_profiles,
+    remove_agent_bus,
     remove_github_mailbox,
     remove_project,
     remove_service_config,
     remove_test_profile,
 )
-from runner_mcp.onboarding import SetupAnswers, install_private_configuration, read_private_runtime
+from runner_mcp.onboarding import (
+    SetupAnswers,
+    install_private_configuration,
+    load_env_file,
+    read_private_runtime,
+)
 
 
 def installed(tmp_path: Path):
@@ -695,3 +703,104 @@ def test_explicit_alembic_preset_keeps_legacy_generic_project_path(
     assert migration is not None
     assert migration.status_argv[1:] == ["current"]
     assert migration.apply_argv[1:] == ["upgrade", "head"]
+
+
+
+def test_agent_bus_config_stays_private_and_preserves_other_secrets(
+    tmp_path: Path,
+) -> None:
+    paths, _ = installed(tmp_path)
+    credential = "r" * 48
+
+    configure_github_mailbox(
+        paths.config_dir,
+        repository="example/private-mailbox",
+        request_ref="runner-control",
+        result_ref="runner-results",
+        token="g" * 48,
+    )
+    result = configure_agent_bus(
+        paths.config_dir,
+        origin="https://relay.example.invalid",
+        subject="runner:one",
+        credential=credential,
+    )
+
+    values = load_env_file(paths.env_file)
+    assert result == {"configured": True}
+    assert agent_bus_config_status(paths.config_dir) == {"configured": True}
+    assert values["RUNNER_FABRIC_RELAY_ORIGIN"] == "https://relay.example.invalid"
+    assert values["RUNNER_FABRIC_RELAY_SUBJECT"] == "runner:one"
+    assert values["RUNNER_FABRIC_RELAY_CREDENTIAL"] == credential
+    assert values["RUNNER_MCP_GITHUB_TOKEN"] == "g" * 48
+    assert credential not in repr(result)
+    assert paths.env_file.stat().st_mode & 0o077 == 0
+
+
+def test_agent_bus_remove_only_removes_agent_bus_values(
+    tmp_path: Path,
+) -> None:
+    paths, _ = installed(tmp_path)
+    configure_github_mailbox(
+        paths.config_dir,
+        repository="example/private-mailbox",
+        request_ref="runner-control",
+        result_ref="runner-results",
+        token="g" * 48,
+    )
+    configure_agent_bus(
+        paths.config_dir,
+        origin="https://relay.example.invalid",
+        subject="runner:one",
+        credential="r" * 48,
+    )
+
+    remove_agent_bus(paths.config_dir)
+
+    values = load_env_file(paths.env_file)
+    assert agent_bus_config_status(paths.config_dir) == {"configured": False}
+    assert values["RUNNER_MCP_GITHUB_TOKEN"] == "g" * 48
+    assert "RUNNER_FABRIC_RELAY_ORIGIN" not in values
+    assert "RUNNER_FABRIC_RELAY_SUBJECT" not in values
+    assert "RUNNER_FABRIC_RELAY_CREDENTIAL" not in values
+
+
+def test_agent_bus_status_fails_closed_on_partial_config(
+    tmp_path: Path,
+) -> None:
+    paths, _ = installed(tmp_path)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n")
+
+    with pytest.raises(ConfigManagerError, match="incomplete"):
+        agent_bus_config_status(paths.config_dir)
+
+
+@pytest.mark.parametrize(
+    ("origin", "subject", "credential"),
+    [
+        ("http://relay.example.invalid", "runner:one", "r" * 48),
+        ("https://user:pass@relay.example.invalid", "runner:one", "r" * 48),
+        ("https://relay.example.invalid/path", "runner:one", "r" * 48),
+        ("https://relay.example.invalid", "not-a-runner", "r" * 48),
+        ("https://relay.example.invalid", "runner:one", "short"),
+    ],
+)
+def test_agent_bus_config_rejects_invalid_values_without_write(
+    tmp_path: Path,
+    origin: str,
+    subject: str,
+    credential: str,
+) -> None:
+    paths, _ = installed(tmp_path)
+    before = paths.env_file.read_text(encoding="utf-8")
+
+    with pytest.raises(ConfigManagerError):
+        configure_agent_bus(
+            paths.config_dir,
+            origin=origin,
+            subject=subject,
+            credential=credential,
+        )
+
+    assert paths.env_file.read_text(encoding="utf-8") == before

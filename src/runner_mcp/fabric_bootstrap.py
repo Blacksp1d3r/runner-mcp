@@ -423,7 +423,7 @@ class FabricBootstrapManager:
             wheel = wheel_files[0].resolve(strict=True)
 
             release = self.releases_root / job.commit
-            if release.exists():
+            if release.exists() or release.is_symlink():
                 raise FabricBootstrapError("release_conflict")
             staged = self.releases_root / f".{job.commit}-{job.job_id}.staged"
             if staged.exists() or staged.is_symlink():
@@ -478,36 +478,51 @@ class FabricBootstrapManager:
             shutil.rmtree(work, ignore_errors=True)
 
     def _activate_release(self, release: Path, job: FabricBootstrapJob) -> None:
+        previous_current = _safe_link_target(self.current_link, self.data_root)
+        if self.launcher.exists() and not self.launcher.is_symlink():
+            raise FabricBootstrapError("activation_failed")
+        if self.launcher.is_symlink():
+            _safe_link_target(self.launcher, self.data_root)
+
         current_tmp = self.data_root / f".current-{job.job_id}"
+        launcher_tmp = self.launcher.parent / f".runner-fabric-{job.job_id}"
+        launcher_created = False
         try:
             current_tmp.symlink_to(release)
             os.replace(current_tmp, self.current_link)
-        except OSError as exc:
-            current_tmp.unlink(missing_ok=True)
-            raise FabricBootstrapError("activation_failed") from exc
 
-        bin_dir = self.launcher.parent
-        bin_dir.mkdir(mode=0o700, parents=True, exist_ok=True)
-        launcher_tmp = bin_dir / f".runner-fabric-{job.job_id}"
-        try:
+            self.launcher.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+            if not self.launcher.parent.is_dir() or self.launcher.parent.is_symlink():
+                raise FabricBootstrapError("activation_failed")
             launcher_tmp.symlink_to(self.current_link / "runner-fabric")
             os.replace(launcher_tmp, self.launcher)
-        except OSError as exc:
-            launcher_tmp.unlink(missing_ok=True)
-            raise FabricBootstrapError("activation_failed") from exc
+            launcher_created = True
 
-        state = (
-            json.dumps(
-                {"schemaVersion": _STATE_SCHEMA, "commit": job.commit},
-                sort_keys=True,
-                separators=(",", ":"),
-            )
-            + "\n"
-        ).encode("utf-8")
-        try:
+            state = (
+                json.dumps(
+                    {"schemaVersion": _STATE_SCHEMA, "commit": job.commit},
+                    sort_keys=True,
+                    separators=(",", ":"),
+                )
+                + "\n"
+            ).encode("utf-8")
             atomic_replace_private(self.state_path, state)
-        except PrivateAtomicWriteError as exc:
-            raise FabricBootstrapError("activation_state_failed") from exc
+        except (OSError, PrivateAtomicWriteError, FabricBootstrapError) as exc:
+            current_tmp.unlink(missing_ok=True)
+            launcher_tmp.unlink(missing_ok=True)
+            _restore_link(
+                self.current_link,
+                previous_current,
+                self.data_root,
+            )
+            if previous_current is None and launcher_created:
+                self.launcher.unlink(missing_ok=True)
+            category = (
+                "activation_state_failed"
+                if isinstance(exc, PrivateAtomicWriteError)
+                else "activation_failed"
+            )
+            raise FabricBootstrapError(category) from exc
 
     def _write_release_launcher(self, staged: Path) -> None:
         launcher = staged / "runner-fabric"
@@ -598,6 +613,34 @@ class FabricBootstrapManager:
         if capture:
             return completed.stdout
         return ""
+
+
+def _safe_link_target(path: Path, root: Path) -> Path | None:
+    if not path.exists() and not path.is_symlink():
+        return None
+    if not path.is_symlink():
+        raise FabricBootstrapError("activation_failed")
+    try:
+        target = path.resolve(strict=True)
+    except OSError as exc:
+        raise FabricBootstrapError("activation_failed") from exc
+    if not target.is_relative_to(root):
+        raise FabricBootstrapError("activation_failed")
+    return target
+
+
+def _restore_link(path: Path, target: Path | None, root: Path) -> None:
+    try:
+        path.unlink(missing_ok=True)
+        if target is not None:
+            if not target.is_relative_to(root):
+                raise FabricBootstrapError("activation_failed")
+            temp = path.parent / f".{path.name}.restore"
+            temp.unlink(missing_ok=True)
+            temp.symlink_to(target)
+            os.replace(temp, path)
+    except OSError as exc:
+        raise FabricBootstrapError("activation_failed") from exc
 
 
 def _private_dir(path: Path, *, create: bool, parents: bool = False) -> Path:

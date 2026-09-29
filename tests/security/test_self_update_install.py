@@ -109,7 +109,7 @@ def test_build_wheel_uses_fixed_offline_arguments(tmp_path: Path) -> None:
     )
 
     assert [call[0][1:] for call in calls[:2]] == [
-        ["-c", "import pip"],
+        ["-m", "pip", "--version"],
         ["-c", "import setuptools.build_meta"],
     ]
     command, kwargs = calls[2]
@@ -168,13 +168,13 @@ def test_wheel_failure_is_safely_classified(
 @pytest.mark.parametrize(
     ("failed_import", "category"),
     [
-        ("import pip", "pip_unavailable"),
-        ("import setuptools.build_meta", "build_backend_unavailable"),
+        ("pip", "pip_unavailable"),
+        ("setuptools", "build_backend_unavailable"),
     ],
 )
 def test_packaging_preflight_fails_before_job_stage_or_transaction(
     tmp_path: Path,
-    failed_import: str,
+    failed_check: str,
     category: str,
 ) -> None:
     source = tmp_path / "source"
@@ -184,7 +184,13 @@ def test_packaging_preflight_fails_before_job_stage_or_transaction(
 
     def runner(command, **kwargs):
         calls.append(list(command))
-        if command[1:] == ["-c", failed_import]:
+        if (
+            failed_check == "pip"
+            and command[1:] == ["-m", "pip", "--version"]
+        ) or (
+            failed_check == "setuptools"
+            and command[1:] == ["-c", "import setuptools.build_meta"]
+        ):
             return subprocess.CompletedProcess(
                 command,
                 1,
@@ -273,7 +279,7 @@ def test_packaging_preflight_runs_before_any_wheel_stage_mutation(
         label="target",
     )
 
-    assert observed[0][0][1:] == ["-c", "import pip"]
+    assert observed[0][0][1:] == ["-m", "pip", "--version"]
     assert observed[1][0][1:] == ["-c", "import setuptools.build_meta"]
     assert observed[0][1] is False
     assert observed[1][1] is False

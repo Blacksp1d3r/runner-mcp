@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 import uvicorn
 
+from .aifordable_runtime import AIfordableWatcherRuntime
 from .approval_manager import ApprovalError, ApprovalManager
 from .autostart import (
     AutostartError,
@@ -35,6 +36,8 @@ from .config_manager import (
     add_project,
     add_service_config,
     add_test_profile,
+    aifordable_relay_config_status,
+    configure_aifordable_relay,
     configure_github_mailbox,
     configure_project_test_capacity,
     github_mailbox_config_status,
@@ -45,6 +48,7 @@ from .config_manager import (
     list_service_configs,
     list_test_profiles,
     project_capabilities,
+    remove_aifordable_relay,
     remove_database_config,
     remove_deployment_config,
     remove_github_mailbox,
@@ -1081,6 +1085,81 @@ def cmd_completion_watcher(args: argparse.Namespace) -> int:
             return 0
 
     raise CompletionDeliveryError("unknown completion watcher action")
+
+
+def cmd_aifordable_relay(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+
+    if args.aifordable_relay_action == "status":
+        result = aifordable_relay_config_status(config_dir)
+        print("configured" if result["configured"] else "not configured")
+        return 0
+
+    if args.aifordable_relay_action == "configure":
+        origin = args.origin or input(
+            "AIfordable control relay HTTPS origin: "
+        ).strip()
+        subject = args.subject or input(
+            "Managed runner subject (runner:...): "
+        ).strip()
+        if args.credential_stdin:
+            credential = sys.stdin.readline(4098).strip()
+        else:
+            credential = getpass.getpass(
+                "AIfordable runner credential: "
+            ).strip()
+        if not origin or not subject or not credential:
+            raise ConfigManagerError(
+                "AIfordable relay origin, subject and credential are required"
+            )
+        configure_aifordable_relay(
+            config_dir,
+            origin=origin,
+            subject=subject,
+            credential=credential,
+        )
+        print("AIfordable relay configured.")
+        print("The credential was stored privately and was not displayed.")
+        return 0
+
+    if args.aifordable_relay_action == "remove":
+        _require_removal_confirmation(
+            "REMOVE AIFORDABLE RELAY",
+            ConfigManagerError("AIfordable relay removal cancelled"),
+        )
+        remove_aifordable_relay(config_dir)
+        print("AIfordable relay configuration removed.")
+        return 0
+
+    raise ConfigManagerError("Unknown AIfordable relay configuration action")
+
+
+def cmd_aifordable_watcher(args: argparse.Namespace) -> int:
+    runtime = AIfordableWatcherRuntime.from_private_config(
+        _config_dir(args.config_dir)
+    )
+
+    if args.aifordable_watcher_action == "once":
+        outcome = runtime.run_once()
+        print(f"state={outcome.state.value}")
+        return 0 if outcome.state.value in {
+            "idle",
+            "completed",
+            "replayed",
+            "deferred",
+        } else 2
+
+    if args.aifordable_watcher_action == "run":
+        print("Runner MCP AIfordable watcher running.")
+        try:
+            runtime.run_forever(
+                idle_sleep_seconds=args.idle_sleep_seconds,
+            )
+        except KeyboardInterrupt:
+            print("Runner MCP AIfordable watcher stopped.")
+            return 0
+
+    raise RuntimeError("Unknown AIfordable watcher action")
 
 
 def cmd_github_mailbox(args: argparse.Namespace) -> int:

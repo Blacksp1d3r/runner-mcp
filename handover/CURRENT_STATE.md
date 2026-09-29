@@ -1,3 +1,35 @@
+## 2026-09-29 — Tasks 47 and 49 integrated; bounded queue refilled
+
+- Runner MCP `main` checkpoint: `67954dea2117cce3a1819132f6d3c7480dd34c82`.
+- Task 47 is COMPLETE via PR #145 / merge `67954dea2117cce3a1819132f6d3c7480dd34c82`.
+  - local/private only: `runner-mcp service-log PROJECT ALIAS --lines N`;
+  - per-service `allow_log_read: false` opt-in;
+  - fixed no-symlink `journalctl`, fixed argv/env, 1–100 entries, <=10s, <=32 KiB retained stdout;
+  - Task-41 redaction receives known local runtime secrets/private paths plus private unit/health URL;
+  - disabled/unknown service fails before subprocess;
+  - read remains available during emergency stop;
+  - no MCP, bridge, mailbox or Agent-Bus log action exists.
+  - exact-head validation #654 + attribution #140 and post-merge validation #655 + attribution #142 are green.
+- Task 49 is COMPLETE via PR #124 / merge `da367081f88d6d2342cf938a9b67ec59d9d10de0`.
+  - explicit additive async migration start/status exists;
+  - `migration_async` approval is distinct from synchronous `migration`;
+  - synchronous `apply_migrations` and deployment-triggered migrations remain unchanged;
+  - exact-head validation #622 and post-merge validation #623 are green.
+- Task 50 is the next small CODE lane: close the remaining issue #143 gap by preflighting installed-runtime `pip` + `setuptools.build_meta` before wheel-stage mutation.
+- Task 51 is review-only: decide whether any remote service-journal disclosure is justified after Task 47; do not add remote log authority during the review.
+- Task 52 is review-only: define the first-install Runner Fabric bootstrap safety boundary for issue #144 before any bootstrap mutation/tool is implemented.
+- PR #127 and PR #129 remain open and contain unique Agent-Bus work. Do not duplicate or close them merely because #131/#132/#134 later merged; reconcile/rebase those PRs separately.
+- Issue #130 remains open because its live activation proof is broader than the merged lifecycle code.
+- Issue #143 remains open until Task 50 production preflight is integrated.
+- Issue #144 remains open and high risk; Task 52 review comes first.
+
+Immediate resume order:
+1. integrate this coordination update after exact-head CI;
+2. implement Task 50 as the next bounded CODE lane;
+3. Task 51 and Task 52 can proceed as independent reviews if code work blocks;
+4. do not duplicate PR #127/#129 Agent-Bus work;
+5. keep remote service logs, generic package install, arbitrary VCS/package/shell authority and production mutation out of scope.
+
 ## 2026-09-28 — Task 44 integrated; Task 45 async migration boundary decided
 
 - Runner MCP `main` checkpoint before this review branch: `6053b7c3d5aef757055c453d2fd5b7f581248e53`.

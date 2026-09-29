@@ -44,6 +44,10 @@ class BridgeExecutor(Protocol):
 
     def self_update_status(self, job_id: str) -> Any: ...
 
+    def fabric_bootstrap(self, commit: str) -> Any: ...
+
+    def fabric_bootstrap_status(self, job_id: str) -> Any: ...
+
     def project_status(self, project: str) -> Any: ...
 
     def project_capabilities(self, project: str) -> Any: ...
@@ -240,6 +244,14 @@ class BridgeProcessor:
         if request.action == BridgeAction.SELF_UPDATE_STATUS:
             assert request.job_id is not None
             return self._executor.self_update_status(request.job_id)
+
+        if request.action == BridgeAction.FABRIC_BOOTSTRAP:
+            assert request.commit is not None
+            return self._executor.fabric_bootstrap(request.commit)
+
+        if request.action == BridgeAction.FABRIC_BOOTSTRAP_STATUS:
+            assert request.job_id is not None
+            return self._executor.fabric_bootstrap_status(request.job_id)
 
         if request.action == BridgeAction.PROJECT_STATUS:
             assert request.project is not None

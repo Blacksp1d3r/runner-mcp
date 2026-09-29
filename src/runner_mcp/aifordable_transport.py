@@ -30,6 +30,9 @@ _ID_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _CODE_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,63}$")
 _FINGERPRINT_RE = re.compile(r"^[0-9a-f]{64}$")
 _MAX_BODY_BYTES = 64 * 1024
+_MAX_TTL_SECONDS = 3_600
+_MAX_ATTEMPT = 10
+_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 
 
 class AIfordableTransportError(RuntimeError):
@@ -122,9 +125,14 @@ class AIfordableEnvelope:
         _nonnegative_int(self.expires_at, "expires_at")
         if self.expires_at <= self.issued_at:
             raise AIfordableTransportError("control envelope lifetime is invalid")
+        if self.expires_at - self.issued_at > _MAX_TTL_SECONDS:
+            raise AIfordableTransportError("control envelope lifetime is invalid")
         _nonnegative_int(self.attempt, "attempt")
+        if self.attempt > _MAX_ATTEMPT:
+            raise AIfordableTransportError("control envelope attempt is invalid")
         if not isinstance(self.payload, Mapping):
             raise AIfordableTransportError("control envelope payload is invalid")
+        _validate_operation_payload(self.operation, self.payload)
 
     @property
     def fingerprint(self) -> str:
@@ -399,6 +407,101 @@ def _decode_claim(raw: bytes) -> AIfordableClaim:
         )
     except (TypeError, ValueError, AIfordableTransportError) as exc:
         raise AIfordableTransportError("relay response is invalid") from exc
+
+
+
+def _validate_operation_payload(
+    operation: AIfordableControlOperation,
+    payload: Mapping[str, object],
+) -> None:
+    keys = set(payload)
+    forbidden = {
+        "shell",
+        "command",
+        "argv",
+        "executable",
+        "path",
+        "url",
+        "token",
+        "secret",
+        "credential",
+        "approval",
+        "provider",
+    }
+    if any(
+        fragment in key.casefold()
+        for key in keys
+        for fragment in forbidden
+    ):
+        raise AIfordableTransportError("control envelope payload is invalid")
+
+    if operation in {
+        AIfordableControlOperation.RUNTIME_STATUS,
+        AIfordableControlOperation.RUNTIME_DOCTOR,
+    }:
+        if keys:
+            raise AIfordableTransportError("control envelope payload is invalid")
+        return
+
+    if operation in {
+        AIfordableControlOperation.FABRIC_GET_WORK_UNIT,
+        AIfordableControlOperation.FABRIC_CANCEL_WORK_UNIT,
+    }:
+        if keys != {"work_unit_id"}:
+            raise AIfordableTransportError("control envelope payload is invalid")
+        _identifier(payload["work_unit_id"], "work_unit_id")
+        return
+
+    if operation is AIfordableControlOperation.FABRIC_RUN_WORK_UNIT:
+        allowed = {
+            "work_unit_id",
+            "project_id",
+            "work_item_id",
+            "expected_revision",
+            "change_plan_id",
+            "validation_profile",
+            "correction_budget",
+            "landing_mode",
+        }
+        required = {
+            "work_unit_id",
+            "project_id",
+            "work_item_id",
+            "expected_revision",
+            "change_plan_id",
+        }
+        if not required <= keys or not keys <= allowed:
+            raise AIfordableTransportError("control envelope payload is invalid")
+        for field in (
+            "work_unit_id",
+            "project_id",
+            "work_item_id",
+            "change_plan_id",
+        ):
+            _identifier(payload[field], field)
+        revision = payload["expected_revision"]
+        if (
+            not isinstance(revision, str)
+            or _REVISION_RE.fullmatch(revision) is None
+        ):
+            raise AIfordableTransportError("control envelope payload is invalid")
+        if payload.get("validation_profile", "foundation") != "foundation":
+            raise AIfordableTransportError("control envelope payload is invalid")
+        correction_budget = payload.get("correction_budget", 1)
+        if (
+            isinstance(correction_budget, bool)
+            or not isinstance(correction_budget, int)
+            or not 0 <= correction_budget <= 3
+        ):
+            raise AIfordableTransportError("control envelope payload is invalid")
+        if (
+            payload.get("landing_mode", "managed_branch_push")
+            != "managed_branch_push"
+        ):
+            raise AIfordableTransportError("control envelope payload is invalid")
+        return
+
+    raise AIfordableTransportError("control envelope operation is invalid")
 
 
 def _safe_result_payload(value: Mapping[str, object]) -> dict[str, object]:

@@ -1293,7 +1293,7 @@ Do not implement pruning, broaden remote authority or silently replace unrelated
 
 ### Task 47 — local bounded service-journal reader — CODE lane
 
-Status: `UNCLAIMED`. Dependency satisfied: Task 41 merged via PR #97 / `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`.
+Status: `CLAIMED` by ChatGPT on branch `task47-local-service-journal`. Dependency satisfied: Task 41 merged via PR #97 / `9ce5fe94f417e4e7f910c9945727f70cffd33ecb`.
 
 Preferred executor: ChatGPT or Claude Code.
 

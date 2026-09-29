@@ -97,6 +97,7 @@ def test_service_listing_hides_private_unit_and_health_url(tmp_path: Path) -> No
             "can_start": False,
             "can_stop": False,
             "can_restart": True,
+            "log_read": False,
             "health_check": True,
         }
     ]

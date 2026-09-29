@@ -125,7 +125,6 @@ def test_build_wheel_uses_fixed_offline_arguments(tmp_path: Path) -> None:
     assert stat.S_IMODE(wheel.stat().st_mode) == 0o600
 
 
-
 @pytest.mark.parametrize(
     ("stderr", "category"),
     [
@@ -147,9 +146,10 @@ def test_wheel_failure_is_safely_classified(
     source.mkdir()
 
     def runner(command, **kwargs):
-        if command[1:3] == ["-c", "import"]:
-            raise AssertionError("unexpected split import command")
-        if command[1] == "-c":
+        if command[1:] in (
+            ["-m", "pip", "--version"],
+            ["-c", "import setuptools.build_meta"],
+        ):
             return subprocess.CompletedProcess(command, 0, "", "")
         return subprocess.CompletedProcess(command, 1, "private stdout", stderr)
 
@@ -166,7 +166,7 @@ def test_wheel_failure_is_safely_classified(
     assert "private" not in str(exc_info.value)
 
 @pytest.mark.parametrize(
-    ("failed_import", "category"),
+    ("failed_check", "category"),
     [
         ("pip", "pip_unavailable"),
         ("setuptools", "build_backend_unavailable"),

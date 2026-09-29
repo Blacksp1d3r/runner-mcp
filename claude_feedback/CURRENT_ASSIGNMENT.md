@@ -1400,7 +1400,7 @@ Required validation:
 
 ### Task 50 — self-update packaging capability preflight — CODE lane
 
-Status: `UNCLAIMED`. Tracked by issue #143; prerequisite-safe on current main.
+Status: `CLAIMED` by ChatGPT on branch `task50-self-update-packaging-preflight`. Tracked by issue #143; prerequisite-safe on current main.
 
 Preferred executor: ChatGPT or Claude Code.
 

@@ -80,6 +80,12 @@ def run_agent_bus_worker_process(
     if not agent_bus_worker_configured(paths.config_dir):
         raise AgentBusWorkerError("Agent Bus worker is not configured")
 
+    relay_origin, relay_subject, relay_credential = validate_agent_bus_relay_config(
+        origin=values["RUNNER_FABRIC_RELAY_ORIGIN"],
+        subject=values["RUNNER_FABRIC_RELAY_SUBJECT"],
+        credential=values["RUNNER_FABRIC_RELAY_CREDENTIAL"],
+    )
+
     runner_mcp_token = values.get("RUNNER_MCP_BEARER_TOKEN", "")
     if not _valid_secret(runner_mcp_token):
         raise AgentBusWorkerError("Agent Bus worker configuration is invalid")
@@ -97,11 +103,9 @@ def run_agent_bus_worker_process(
         "HOME": str(Path.home()),
         "PATH": "/usr/bin:/bin",
         "LANG": "C.UTF-8",
-        "RUNNER_FABRIC_RELAY_ORIGIN": values["RUNNER_FABRIC_RELAY_ORIGIN"],
-        "RUNNER_FABRIC_RELAY_SUBJECT": values["RUNNER_FABRIC_RELAY_SUBJECT"],
-        "RUNNER_FABRIC_RELAY_CREDENTIAL": values[
-            "RUNNER_FABRIC_RELAY_CREDENTIAL"
-        ],
+        "RUNNER_FABRIC_RELAY_ORIGIN": relay_origin,
+        "RUNNER_FABRIC_RELAY_SUBJECT": relay_subject,
+        "RUNNER_FABRIC_RELAY_CREDENTIAL": relay_credential,
         "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": endpoint,
         "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": runner_mcp_token,
         "RUNNER_FABRIC_AGENT_BUS_STATE_ROOT": str(state_root),

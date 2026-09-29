@@ -180,6 +180,48 @@ class SelfUpdatePackageInstaller:
             raise PackageInstallError("Invalid self-update install job identifier")
         return self.artifacts_root / job_id
 
+    def _preflight_packaging(self) -> None:
+        checks = (
+            (
+                [
+                    str(self.python_executable),
+                    "-c",
+                    "import pip",
+                ],
+                "pip_unavailable",
+            ),
+            (
+                [
+                    str(self.python_executable),
+                    "-c",
+                    "import setuptools.build_meta",
+                ],
+                "build_backend_unavailable",
+            ),
+        )
+        for command, category in checks:
+            try:
+                completed = self._runner(
+                    command,
+                    cwd=str(self.artifacts_root),
+                    env=self._environment(),
+                    stdin=subprocess.DEVNULL,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True,
+                    timeout=30,
+                    check=False,
+                    shell=False,
+                )
+            except (OSError, subprocess.SubprocessError) as exc:
+                raise PackageInstallError(
+                    f"Runner MCP wheel staging failed ({category})"
+                ) from exc
+            if completed.returncode != 0:
+                raise PackageInstallError(
+                    f"Runner MCP wheel staging failed ({category})"
+                )
+
     def build_wheel(self, *, source_root: Path, job_id: str, label: str) -> Path:
         if label not in _WHEEL_LABELS:
             raise PackageInstallError("Invalid self-update wheel stage")
@@ -191,6 +233,8 @@ class SelfUpdatePackageInstaller:
             raise PackageInstallError("Self-update source is unavailable") from exc
         if not source.is_dir():
             raise PackageInstallError("Self-update source is unsafe")
+
+        self._preflight_packaging()
 
         job_root = self._job_root(job_id)
         if job_root.is_symlink():

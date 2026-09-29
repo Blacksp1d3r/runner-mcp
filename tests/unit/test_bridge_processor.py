@@ -46,6 +46,12 @@ class FakeExecutor:
     def self_update_status(self, job_id: str):
         return self._result("self_update_status", job_id)
 
+    def fabric_bootstrap(self, commit: str):
+        return self._result("fabric_bootstrap", commit)
+
+    def fabric_bootstrap_status(self, job_id: str):
+        return self._result("fabric_bootstrap_status", job_id)
+
     def project_status(self, project: str):
         return self._result("project_status", project)
 
@@ -210,6 +216,33 @@ def test_completed_duplicate_never_executes_or_persists_again(tmp_path) -> None:
     assert second.state == BridgeProcessState.ALREADY_COMPLETED
     assert second.serialized_result is None
     assert executor.calls == [("list_projects", ())]
+    assert len(sink.records) == 1
+
+
+def test_fabric_bootstrap_duplicate_never_reexecutes(tmp_path) -> None:
+    ledger = BridgeReplayLedger(tmp_path / "replay.json")
+    executor = FakeExecutor()
+    sink = FakeSink()
+    processor = _processor(
+        tmp_path,
+        ledger=ledger,
+        executor=executor,
+        sink=sink,
+    )
+    payload = json.dumps(
+        {
+            "request_id": "fabric-processor-001",
+            "action": "fabric_bootstrap",
+            "commit": "d" * 40,
+        }
+    )
+
+    first = processor.process(payload)
+    second = processor.process(payload)
+
+    assert first.state == BridgeProcessState.COMPLETED
+    assert second.state == BridgeProcessState.ALREADY_COMPLETED
+    assert executor.calls == [("fabric_bootstrap", ("d" * 40,))]
     assert len(sink.records) == 1
 
 

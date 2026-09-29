@@ -154,6 +154,7 @@ class ServiceConfig(BaseModel):
     allow_start: bool = False
     allow_stop: bool = False
     allow_restart: bool = False
+    allow_log_read: bool = False
 
     @field_validator("unit")
     @classmethod

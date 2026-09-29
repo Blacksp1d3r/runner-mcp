@@ -79,6 +79,7 @@ class FabricBootstrapManager:
         config_dir: Path,
         safety: OperatorSafetyGuard,
         runner=subprocess.run,
+        data_root: Path | None = None,
     ) -> None:
         if not isinstance(config_dir, Path) or not config_dir.is_absolute():
             raise FabricBootstrapError("Fabric bootstrap config root is invalid")
@@ -93,7 +94,9 @@ class FabricBootstrapManager:
             create=True,
         )
         self.data_root = _private_dir(
-            Path.home() / ".local" / "share" / "runner-fabric",
+            data_root
+            if data_root is not None
+            else Path.home() / ".local" / "share" / "runner-fabric",
             create=True,
             parents=True,
         )
@@ -103,7 +106,11 @@ class FabricBootstrapManager:
         )
         self.state_path = self.config_dir / "fabric-bootstrap-state.json"
         self.current_link = self.data_root / "current"
-        self.launcher = Path.home() / ".local" / "bin" / "runner-fabric"
+        self.launcher = (
+            self.data_root.parent.parent / "bin" / "runner-fabric"
+            if data_root is not None
+            else Path.home() / ".local" / "bin" / "runner-fabric"
+        )
         self._lock = threading.RLock()
         self._jobs: dict[str, FabricBootstrapJob] = {}
         self._load_existing()

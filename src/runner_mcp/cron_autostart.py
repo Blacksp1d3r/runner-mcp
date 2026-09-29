@@ -18,7 +18,12 @@ from .safe_diagnostics import (
 
 CRON_BEGIN = "# BEGIN RUNNER MCP AUTOSTART v1"
 CRON_END = "# END RUNNER MCP AUTOSTART v1"
-CRON_COMPONENTS = ("server", "github-watcher", "completion-watcher")
+CRON_COMPONENTS = (
+    "server",
+    "github-watcher",
+    "completion-watcher",
+    "agent-bus-worker",
+)
 
 
 class CronAutostartError(RuntimeError):
@@ -157,6 +162,7 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
                 " serve ",
                 " github-watcher ",
                 " completion-watcher ",
+                " agent-bus-worker ",
                 "ensure-running",
             )
         ):
@@ -384,8 +390,10 @@ def run_cron_component(
             )
         elif component == "github-watcher":
             argv.extend(["github-watcher", "run"])
-        else:
+        elif component == "completion-watcher":
             argv.extend(["completion-watcher", "run"])
+        else:
+            argv.extend(["agent-bus-worker", "run"])
 
         _diagnose_cron_supervisor(
             diagnostic_sink,

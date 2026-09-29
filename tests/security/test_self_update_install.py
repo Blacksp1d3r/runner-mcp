@@ -179,6 +179,11 @@ def test_install_rejects_wheel_outside_private_artifacts(tmp_path: Path) -> None
 
 
 def test_real_project_wheel_can_stage_without_index(tmp_path: Path) -> None:
+    try:
+        import setuptools.build_meta  # noqa: F401
+    except ImportError:
+        pytest.skip("test interpreter has no setuptools build backend")
+
     installer = make_installer(tmp_path)
     repository_root = Path(__file__).resolve().parents[2]
 

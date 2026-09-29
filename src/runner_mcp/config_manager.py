@@ -46,7 +46,6 @@ from .onboarding import (
 )
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
-
 AGENT_BUS_RELAY_ORIGIN_ENV = "RUNNER_FABRIC_RELAY_ORIGIN"
 AGENT_BUS_RELAY_SUBJECT_ENV = "RUNNER_FABRIC_RELAY_SUBJECT"
 AGENT_BUS_RELAY_CREDENTIAL_ENV = "RUNNER_FABRIC_RELAY_CREDENTIAL"

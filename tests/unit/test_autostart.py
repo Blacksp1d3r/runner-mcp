@@ -8,6 +8,7 @@ import pytest
 from runner_mcp import autostart as autostart_module
 from runner_mcp import secure_io as secure_io_module
 from runner_mcp.autostart import (
+    AGENT_BUS_WORKER_UNIT,
     COMPLETION_WATCHER_UNIT,
     GITHUB_WATCHER_UNIT,
     MANAGED_MARKER,
@@ -296,6 +297,12 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
         },
         {
             "component": "completion-watcher",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
+        {
+            "component": "agent-bus-worker",
             "installed": False,
             "enabled": False,
             "active": False,

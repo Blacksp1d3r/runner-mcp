@@ -720,7 +720,7 @@ def _parse_optional_time(value: object) -> datetime | None:
     if value is None:
         return None
     if not isinstance(value, str):
-        raise ValueError("timestamp is invalid")
+        raise TypeError("timestamp is invalid")
     parsed = datetime.fromisoformat(value)
     if parsed.tzinfo is None:
         raise ValueError("timestamp must be timezone aware")

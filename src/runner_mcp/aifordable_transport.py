@@ -35,6 +35,10 @@ _MAX_BODY_BYTES = 64 * 1024
 class AIfordableTransportError(RuntimeError):
     """Bounded transport failure without private endpoint or credential detail."""
 
+    def __init__(self, message: str, *, status: int | None = None) -> None:
+        self.status = status
+        super().__init__(message)
+
 
 class AIfordableControlOperation(StrEnum):
     RUNTIME_STATUS = "runtime_status"
@@ -480,7 +484,8 @@ def _require_status(response: AIfordableResponse, expected: int) -> None:
         503: "AIfordable relay identity service is unavailable",
     }
     raise AIfordableTransportError(
-        messages.get(response.status, "relay response is invalid")
+        messages.get(response.status, "relay response is invalid"),
+        status=response.status,
     )
 
 

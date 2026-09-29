@@ -709,7 +709,7 @@ def test_explicit_alembic_preset_keeps_legacy_generic_project_path(
 def test_agent_bus_config_stays_private_and_preserves_other_secrets(
     tmp_path: Path,
 ) -> None:
-    paths = installed(tmp_path)
+    paths, _ = installed(tmp_path)
     credential = "r" * 48
 
     configure_github_mailbox(
@@ -740,7 +740,7 @@ def test_agent_bus_config_stays_private_and_preserves_other_secrets(
 def test_agent_bus_remove_only_removes_agent_bus_values(
     tmp_path: Path,
 ) -> None:
-    paths = installed(tmp_path)
+    paths, _ = installed(tmp_path)
     configure_github_mailbox(
         paths.config_dir,
         repository="example/private-mailbox",
@@ -768,7 +768,7 @@ def test_agent_bus_remove_only_removes_agent_bus_values(
 def test_agent_bus_status_fails_closed_on_partial_config(
     tmp_path: Path,
 ) -> None:
-    paths = installed(tmp_path)
+    paths, _ = installed(tmp_path)
     with paths.env_file.open("a", encoding="utf-8") as handle:
         handle.write("RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n")
 
@@ -792,7 +792,7 @@ def test_agent_bus_config_rejects_invalid_values_without_write(
     subject: str,
     credential: str,
 ) -> None:
-    paths = installed(tmp_path)
+    paths, _ = installed(tmp_path)
     before = paths.env_file.read_text(encoding="utf-8")
 
     with pytest.raises(ConfigManagerError):

@@ -618,7 +618,7 @@ class SelfUpdateManager:
 
     def runtime_status(self) -> dict[str, Any]:
         try:
-            package_version = version("runner-mcp")
+            package_version = version("aifordable-runner-mcp")
         except PackageNotFoundError:
             package_version = "development"
 

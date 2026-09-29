@@ -116,6 +116,42 @@ def test_build_wheel_uses_fixed_offline_arguments(tmp_path: Path) -> None:
     assert stat.S_IMODE(wheel.stat().st_mode) == 0o600
 
 
+
+@pytest.mark.parametrize(
+    ("stderr", "category"),
+    [
+        ("python: No module named pip", "pip_unavailable"),
+        ("BackendUnavailable: Cannot import 'setuptools.build_meta'", "build_backend_unavailable"),
+        ("error: invalid command 'bdist_wheel'", "build_tooling_incompatible"),
+        ("Permission denied: private path", "permission_denied"),
+        ("No space left on device: private path", "storage_exhausted"),
+        ("invalid pyproject.toml configuration error: private detail", "invalid_project_metadata"),
+        ("private unknown build failure", "unknown"),
+    ],
+)
+def test_wheel_failure_is_safely_classified(
+    tmp_path: Path,
+    stderr: str,
+    category: str,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+
+    def runner(command, **kwargs):
+        return subprocess.CompletedProcess(command, 1, "private stdout", stderr)
+
+    installer = make_installer(tmp_path, runner=runner)
+
+    with pytest.raises(PackageInstallError) as exc_info:
+        installer.build_wheel(
+            source_root=source,
+            job_id="7" * 32,
+            label="target",
+        )
+
+    assert str(exc_info.value) == f"Runner MCP wheel staging failed ({category})"
+    assert "private" not in str(exc_info.value)
+
 def test_runtime_verification_uses_fixed_python_import(tmp_path: Path) -> None:
     calls: list[tuple[list[str], dict]] = []
 

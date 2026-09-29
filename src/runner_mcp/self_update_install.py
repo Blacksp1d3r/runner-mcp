@@ -15,6 +15,57 @@ _WHEEL_LABELS = {"baseline", "target"}
 _TRANSACTION_FILENAME = "self-update-install-transaction.json"
 
 
+def _wheel_failure_category(
+    completed: subprocess.CompletedProcess[str],
+) -> str:
+    """Map private pip output to one bounded, non-sensitive category."""
+
+    output = "\n".join(
+        part
+        for part in (completed.stdout, completed.stderr)
+        if isinstance(part, str)
+    ).casefold()
+
+    if "no module named pip" in output:
+        return "pip_unavailable"
+    if any(
+        marker in output
+        for marker in (
+            "no module named 'setuptools'",
+            'no module named "setuptools"',
+            "cannot import 'setuptools.build_meta'",
+            'cannot import "setuptools.build_meta"',
+            "backendunavailable",
+        )
+    ):
+        return "build_backend_unavailable"
+    if any(
+        marker in output
+        for marker in (
+            "invalid command 'bdist_wheel'",
+            'invalid command "bdist_wheel"',
+            "setuptools is too old",
+            "requires setuptools>=",
+            "unsupported metadata version",
+        )
+    ):
+        return "build_tooling_incompatible"
+    if "permission denied" in output:
+        return "permission_denied"
+    if "no space left on device" in output or "disk quota exceeded" in output:
+        return "storage_exhausted"
+    if any(
+        marker in output
+        for marker in (
+            "invalid pyproject.toml",
+            "pyproject.toml configuration error",
+            "configuration error:",
+        )
+    ):
+        return "invalid_project_metadata"
+    return "unknown"
+
+
 class PackageInstallError(RuntimeError):
     """Safe package-install failure without private path or process output."""
 
@@ -193,7 +244,10 @@ class SelfUpdatePackageInstaller:
         except (OSError, subprocess.SubprocessError) as exc:
             raise PackageInstallError("Runner MCP wheel staging failed") from exc
         if completed.returncode != 0:
-            raise PackageInstallError("Runner MCP wheel staging failed")
+            category = _wheel_failure_category(completed)
+            raise PackageInstallError(
+                f"Runner MCP wheel staging failed ({category})"
+            )
 
         try:
             wheels = [

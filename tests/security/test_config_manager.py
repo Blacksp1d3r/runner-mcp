@@ -23,7 +23,12 @@ from runner_mcp.config_manager import (
     remove_service_config,
     remove_test_profile,
 )
-from runner_mcp.onboarding import SetupAnswers, install_private_configuration, read_private_runtime
+from runner_mcp.onboarding import (
+    SetupAnswers,
+    install_private_configuration,
+    load_env_file,
+    read_private_runtime,
+)
 
 
 def installed(tmp_path: Path):
@@ -721,10 +726,7 @@ def test_agent_bus_config_stays_private_and_preserves_other_secrets(
         credential=credential,
     )
 
-    values = __import__(
-        "runner_mcp.onboarding",
-        fromlist=["load_env_file"],
-    ).load_env_file(paths.env_file)
+    values = load_env_file(paths.env_file)
     assert result == {"configured": True}
     assert agent_bus_config_status(paths.config_dir) == {"configured": True}
     assert values["RUNNER_FABRIC_RELAY_ORIGIN"] == "https://relay.example.invalid"
@@ -755,10 +757,7 @@ def test_agent_bus_remove_only_removes_agent_bus_values(
 
     remove_agent_bus(paths.config_dir)
 
-    values = __import__(
-        "runner_mcp.onboarding",
-        fromlist=["load_env_file"],
-    ).load_env_file(paths.env_file)
+    values = load_env_file(paths.env_file)
     assert agent_bus_config_status(paths.config_dir) == {"configured": False}
     assert values["RUNNER_MCP_GITHUB_TOKEN"] == "g" * 48
     assert "RUNNER_FABRIC_RELAY_ORIGIN" not in values

@@ -424,6 +424,25 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
 
 
 
+
+def test_runtime_status_uses_canonical_distribution_identity(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    names: list[str] = []
+
+    def fake_version(name: str) -> str:
+        names.append(name)
+        return "0.1.2"
+
+    monkeypatch.setattr("runner_mcp.self_update.version", fake_version)
+
+    status = manager.runtime_status()
+
+    assert status["version"] == "0.1.2"
+    assert names == ["aifordable-runner-mcp"]
+
 def test_same_installed_commit_is_noop(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

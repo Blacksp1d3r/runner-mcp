@@ -96,8 +96,9 @@ def test_build_wheel_uses_fixed_offline_arguments(tmp_path: Path) -> None:
 
     def runner(command, **kwargs):
         calls.append((list(command), dict(kwargs)))
-        wheel_dir = Path(command[command.index("--wheel-dir") + 1])
-        (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
+        if "--wheel-dir" in command:
+            wheel_dir = Path(command[command.index("--wheel-dir") + 1])
+            (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
         return subprocess.CompletedProcess(command, 0, "", "")
 
     installer = make_installer(tmp_path, runner=runner)
@@ -107,10 +108,18 @@ def test_build_wheel_uses_fixed_offline_arguments(tmp_path: Path) -> None:
         label="target",
     )
 
-    command, kwargs = calls[0]
+    assert [call[0][1:] for call in calls[:2]] == [
+        ["-c", "import pip"],
+        ["-c", "import setuptools.build_meta"],
+    ]
+    command, kwargs = calls[2]
     assert command[1:4] == ["-m", "pip", "wheel"]
     assert "--no-deps" in command
     assert "--no-build-isolation" in command
+    for _preflight_command, preflight_kwargs in calls[:2]:
+        assert preflight_kwargs["shell"] is False
+        assert preflight_kwargs["timeout"] == 30
+        assert preflight_kwargs["env"]["PIP_NO_INDEX"] == "1"
     assert kwargs["shell"] is False
     assert kwargs["env"]["PIP_NO_INDEX"] == "1"
     assert stat.S_IMODE(wheel.stat().st_mode) == 0o600
@@ -138,6 +147,10 @@ def test_wheel_failure_is_safely_classified(
     source.mkdir()
 
     def runner(command, **kwargs):
+        if command[1:3] == ["-c", "import"]:
+            raise AssertionError("unexpected split import command")
+        if command[1] == "-c":
+            return subprocess.CompletedProcess(command, 0, "", "")
         return subprocess.CompletedProcess(command, 1, "private stdout", stderr)
 
     installer = make_installer(tmp_path, runner=runner)
@@ -151,6 +164,121 @@ def test_wheel_failure_is_safely_classified(
 
     assert str(exc_info.value) == f"Runner MCP wheel staging failed ({category})"
     assert "private" not in str(exc_info.value)
+
+@pytest.mark.parametrize(
+    ("failed_import", "category"),
+    [
+        ("import pip", "pip_unavailable"),
+        ("import setuptools.build_meta", "build_backend_unavailable"),
+    ],
+)
+def test_packaging_preflight_fails_before_job_stage_or_transaction(
+    tmp_path: Path,
+    failed_import: str,
+    category: str,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    sensitive = str(tmp_path / "private-runtime-detail")
+    calls: list[list[str]] = []
+
+    def runner(command, **kwargs):
+        calls.append(list(command))
+        if command[1:] == ["-c", failed_import]:
+            return subprocess.CompletedProcess(
+                command,
+                1,
+                "private stdout",
+                sensitive,
+            )
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    installer = make_installer(tmp_path, runner=runner)
+    job_id = "6" * 32
+
+    with pytest.raises(PackageInstallError) as captured:
+        installer.build_wheel(
+            source_root=source,
+            job_id=job_id,
+            label="target",
+        )
+
+    assert str(captured.value) == (
+        f"Runner MCP wheel staging failed ({category})"
+    )
+    assert sensitive not in str(captured.value)
+    assert not (installer.artifacts_root / job_id).exists()
+    assert installer.pending_transaction() is None
+    assert all("--wheel-dir" not in command for command in calls)
+
+
+def test_packaging_preflight_subprocess_error_is_bounded_and_non_mutating(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    sensitive = str(tmp_path / "private-python-error")
+
+    def runner(command, **kwargs):
+        raise OSError(sensitive)
+
+    installer = make_installer(tmp_path, runner=runner)
+    job_id = "5" * 32
+
+    with pytest.raises(PackageInstallError) as captured:
+        installer.build_wheel(
+            source_root=source,
+            job_id=job_id,
+            label="baseline",
+        )
+
+    assert str(captured.value) == (
+        "Runner MCP wheel staging failed (pip_unavailable)"
+    )
+    assert sensitive not in str(captured.value)
+    assert not (installer.artifacts_root / job_id).exists()
+    assert installer.pending_transaction() is None
+
+
+def test_packaging_preflight_runs_before_any_wheel_stage_mutation(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source"
+    source.mkdir()
+    job_id = "4" * 32
+    observed: list[tuple[list[str], bool]] = []
+    installer_holder: dict[str, SelfUpdatePackageInstaller] = {}
+
+    def runner(command, **kwargs):
+        installer = installer_holder["installer"]
+        observed.append(
+            (
+                list(command),
+                (installer.artifacts_root / job_id).exists(),
+            )
+        )
+        if "--wheel-dir" in command:
+            wheel_dir = Path(command[command.index("--wheel-dir") + 1])
+            (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(
+                b"wheel"
+            )
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    installer = make_installer(tmp_path, runner=runner)
+    installer_holder["installer"] = installer
+
+    installer.build_wheel(
+        source_root=source,
+        job_id=job_id,
+        label="target",
+    )
+
+    assert observed[0][0][1:] == ["-c", "import pip"]
+    assert observed[1][0][1:] == ["-c", "import setuptools.build_meta"]
+    assert observed[0][1] is False
+    assert observed[1][1] is False
+    assert observed[2][1] is True
+
 
 def test_runtime_verification_uses_fixed_python_import(tmp_path: Path) -> None:
     calls: list[tuple[list[str], dict]] = []
@@ -215,8 +343,9 @@ def test_cleanup_rejects_symlinked_job_root(tmp_path: Path) -> None:
 
 def test_staged_wheel_returns_only_private_named_stage(tmp_path: Path) -> None:
     def runner(command, **kwargs):
-        wheel_dir = Path(command[command.index("--wheel-dir") + 1])
-        (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
+        if "--wheel-dir" in command:
+            wheel_dir = Path(command[command.index("--wheel-dir") + 1])
+            (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(b"wheel")
         return subprocess.CompletedProcess(command, 0, "", "")
 
     installer = make_installer(tmp_path, runner=runner)

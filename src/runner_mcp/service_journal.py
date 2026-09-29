@@ -217,7 +217,11 @@ class ServiceJournalReader:
         secret_values = list(self.secret_values)
         secret_values.append(service.unit)
         if service.health_url is not None:
-            secret_values.append(str(service.health_url))
+            health_url = str(service.health_url)
+            secret_values.append(health_url)
+            stripped_health_url = health_url.rstrip("/")
+            if stripped_health_url:
+                secret_values.append(stripped_health_url)
 
         private_paths = list(self.private_paths)
         private_paths.append(str(project_config.root))

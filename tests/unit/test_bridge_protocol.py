@@ -529,6 +529,22 @@ def test_operational_bridge_rejects_unbounded_or_extra_arguments(payload: str) -
             },
             ("self_update_status", {"job_id": "b" * 32}),
         ),
+        (
+            {
+                "request_id": "fabric-001",
+                "action": "fabric_bootstrap",
+                "commit": "c" * 40,
+            },
+            ("fabric_bootstrap", {"commit": "c" * 40}),
+        ),
+        (
+            {
+                "request_id": "fabric-002",
+                "action": "fabric_bootstrap_status",
+                "job_id": "d" * 32,
+            },
+            ("fabric_bootstrap_status", {"job_id": "d" * 32}),
+        ),
     ],
 )
 def test_self_operations_map_only_fixed_arguments(
@@ -546,6 +562,10 @@ def test_self_operations_map_only_fixed_arguments(
         '{"request_id":"self-bad-04","action":"self_update_status","job_id":"bad"}',
         '{"request_id":"self-bad-05","action":"self_update_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","commit":"bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"}',
         '{"request_id":"self-bad-06","action":"self_update","commit":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA"}',
+        '{"request_id":"fabric-bad-01","action":"fabric_bootstrap","commit":"main"}',
+        '{"request_id":"fabric-bad-02","action":"fabric_bootstrap","commit":"CCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCCC"}',
+        '{"request_id":"fabric-bad-03","action":"fabric_bootstrap_status","job_id":"bad"}',
+        '{"request_id":"fabric-bad-04","action":"fabric_bootstrap","commit":"cccccccccccccccccccccccccccccccccccccccc","project":"runner-fabric"}',
     ],
 )
 def test_self_operations_reject_extra_or_unpinned_input(payload: str) -> None:
@@ -739,6 +759,16 @@ _VALID_REQUEST_BY_ACTION: dict[BridgeAction, dict[str, object]] = {
         "request_id": "matrix-self-update-status",
         "action": "self_update_status",
         "job_id": "a" * 32,
+    },
+    BridgeAction.FABRIC_BOOTSTRAP: {
+        "request_id": "matrix-fabric-bootstrap",
+        "action": "fabric_bootstrap",
+        "commit": "d" * 40,
+    },
+    BridgeAction.FABRIC_BOOTSTRAP_STATUS: {
+        "request_id": "matrix-fabric-bootstrap-status",
+        "action": "fabric_bootstrap_status",
+        "job_id": "e" * 32,
     },
 }
 

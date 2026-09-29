@@ -485,6 +485,7 @@ def list_service_configs(
             "can_start": service.allow_start,
             "can_stop": service.allow_stop,
             "can_restart": service.allow_restart,
+            "log_read": service.allow_log_read,
             "health_check": service.health_url is not None,
         }
         for name, service in sorted(cfg.services.items())
@@ -501,6 +502,7 @@ def add_service_config(
     allow_start: bool = False,
     allow_stop: bool = False,
     allow_restart: bool = False,
+    allow_log_read: bool = False,
 ) -> dict[str, Any]:
     paths, project_file, registry = _load_for_edit(config_dir)
     cfg = registry.projects.get(project)
@@ -516,6 +518,7 @@ def add_service_config(
             allow_start=allow_start,
             allow_stop=allow_stop,
             allow_restart=allow_restart,
+            allow_log_read=allow_log_read,
         )
         services = {
             **cfg.services,
@@ -543,6 +546,7 @@ def add_service_config(
         "can_start": service.allow_start,
         "can_stop": service.allow_stop,
         "can_restart": service.allow_restart,
+        "log_read": service.allow_log_read,
         "health_check": service.health_url is not None,
     }
 

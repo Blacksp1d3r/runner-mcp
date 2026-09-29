@@ -185,8 +185,9 @@ class SelfUpdatePackageInstaller:
             (
                 [
                     str(self.python_executable),
-                    "-c",
-                    "import pip",
+                    "-m",
+                    "pip",
+                    "--version",
                 ],
                 "pip_unavailable",
             ),
@@ -234,11 +235,12 @@ class SelfUpdatePackageInstaller:
         if not source.is_dir():
             raise PackageInstallError("Self-update source is unsafe")
 
-        self._preflight_packaging()
-
         job_root = self._job_root(job_id)
         if job_root.is_symlink():
             raise PackageInstallError("Self-update install artifact storage is unsafe")
+
+        self._preflight_packaging()
+
         try:
             job_root.mkdir(mode=0o700, parents=False, exist_ok=True)
             if not job_root.is_dir():

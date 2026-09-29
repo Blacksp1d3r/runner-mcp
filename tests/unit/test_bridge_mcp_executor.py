@@ -694,6 +694,45 @@ def test_executor_rejects_invalid_self_operation_identifiers(
         getattr(executor, method)(value)
 
 
+
+
+def test_executor_exposes_fixed_fabric_bootstrap_operations() -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    job_id = "c" * 32
+    commit = "d" * 40
+    fake = FakeClient(
+        [
+            {"job_id": job_id, "commit": commit, "state": "queued"},
+            {"job_id": job_id, "commit": commit, "state": "running"},
+        ]
+    )
+    executor._local.client = fake
+
+    assert executor.fabric_bootstrap(commit)["job_id"] == job_id
+    assert executor.fabric_bootstrap_status(job_id)["state"] == "running"
+    assert fake.calls == [
+        ("fabric_bootstrap", {"commit": commit}),
+        ("fabric_bootstrap_status", {"job_id": job_id}),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("method", "value"),
+    [
+        ("fabric_bootstrap", "main"),
+        ("fabric_bootstrap", "D" * 40),
+        ("fabric_bootstrap_status", "bad-id"),
+    ],
+)
+def test_executor_rejects_invalid_fabric_bootstrap_identifiers(
+    method: str,
+    value: str,
+) -> None:
+    executor = LocalMCPBridgeExecutor(_config())
+    with pytest.raises(BridgeExecutionAdapterError):
+        getattr(executor, method)(value)
+
+
 def test_run_tests_returns_job_immediately_without_polling() -> None:
     executor = LocalMCPBridgeExecutor(_config())
     job_id = "b" * 32

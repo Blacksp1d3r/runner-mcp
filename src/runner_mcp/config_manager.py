@@ -3,13 +3,11 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import os
-import re
 import shlex
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlsplit
 
 import yaml
 
@@ -21,6 +19,7 @@ from .adapters import (
     materialize_migration_preset,
     materialize_test_preset,
 )
+from .agent_bus_worker import AgentBusWorkerError, validate_agent_bus_relay_config
 from .config import (
     DatabaseConfig,
     DeploymentConfig,
@@ -56,7 +55,6 @@ AGENT_BUS_ENV_KEYS = (
     AGENT_BUS_RELAY_SUBJECT_ENV,
     AGENT_BUS_RELAY_CREDENTIAL_ENV,
 )
-_AGENT_BUS_SUBJECT_RE = re.compile(r"^runner:[a-z0-9][a-z0-9._:-]{0,119}$")
 
 
 class ConfigManagerError(RuntimeError):
@@ -727,33 +725,14 @@ def _validate_agent_bus_relay(
     subject: object,
     credential: object,
 ) -> None:
-    if not isinstance(origin, str) or not origin:
-        raise ConfigManagerError("Agent Bus relay origin is invalid")
     try:
-        parsed = urlsplit(origin)
-    except ValueError as exc:
-        raise ConfigManagerError("Agent Bus relay origin is invalid") from exc
-    if (
-        parsed.scheme != "https"
-        or not parsed.hostname
-        or parsed.username is not None
-        or parsed.password is not None
-        or parsed.query
-        or parsed.fragment
-        or parsed.path not in {"", "/"}
-    ):
-        raise ConfigManagerError("Agent Bus relay origin is invalid")
-
-    if not isinstance(subject, str) or _AGENT_BUS_SUBJECT_RE.fullmatch(subject) is None:
-        raise ConfigManagerError("Agent Bus runner subject is invalid")
-
-    if (
-        not isinstance(credential, str)
-        or not 32 <= len(credential) <= 4096
-        or not credential.isascii()
-        or any(ord(char) < 33 or ord(char) == 127 for char in credential)
-    ):
-        raise ConfigManagerError("Agent Bus relay credential is invalid")
+        validate_agent_bus_relay_config(
+            origin=origin,
+            subject=subject,
+            credential=credential,
+        )
+    except AgentBusWorkerError as exc:
+        raise ConfigManagerError("Agent Bus relay configuration is invalid") from exc
 
 
 def list_database_configs(config_dir: Path) -> list[dict[str, Any]]:

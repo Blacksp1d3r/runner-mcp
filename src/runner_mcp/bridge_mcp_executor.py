@@ -346,6 +346,8 @@ _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
         "runtime_doctor",
         "self_update",
         "self_update_status",
+        "fabric_bootstrap",
+        "fabric_bootstrap_status",
     }
 )
 
@@ -586,6 +588,26 @@ class LocalMCPBridgeExecutor:
             raise BridgeExecutionAdapterError("Invalid self-update job identifier")
         return self._client()._call_tool(
             "self_update_status",
+            {"job_id": job_id},
+        )
+
+    def fabric_bootstrap(self, commit: str) -> Any:
+        if not re.fullmatch(r"[0-9a-f]{40}", commit):
+            raise BridgeExecutionAdapterError(
+                "Invalid Runner Fabric bootstrap commit identifier"
+            )
+        return self._client()._call_tool(
+            "fabric_bootstrap",
+            {"commit": commit},
+        )
+
+    def fabric_bootstrap_status(self, job_id: str) -> Any:
+        if not _JOB_ID_RE.fullmatch(job_id):
+            raise BridgeExecutionAdapterError(
+                "Invalid Runner Fabric bootstrap job identifier"
+            )
+        return self._client()._call_tool(
+            "fabric_bootstrap_status",
             {"job_id": job_id},
         )
 

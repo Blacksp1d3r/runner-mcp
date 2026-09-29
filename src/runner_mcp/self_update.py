@@ -75,6 +75,21 @@ def _compatibility_record_path(config_dir: Path) -> Path:
     return config_dir / _COMPATIBILITY_FILENAME
 
 
+def _source_package_version(source_root: Path) -> str:
+    path = source_root / _PYPROJECT_FILENAME
+    if path.is_symlink() or not path.is_file():
+        raise SelfUpdateError("Self-update package metadata is unavailable")
+    try:
+        with path.open("rb") as handle:
+            raw = tomllib.load(handle)
+        candidate = raw["project"]["version"]
+    except (OSError, tomllib.TOMLDecodeError, KeyError, TypeError) as exc:
+        raise SelfUpdateError("Self-update package metadata is invalid") from exc
+    if not isinstance(candidate, str) or not 1 <= len(candidate) <= 64:
+        raise SelfUpdateError("Self-update package metadata is invalid")
+    return candidate
+
+
 class SelfUpdateError(RuntimeError):
     """Safe self-update failure without private path or process output."""
 
@@ -518,6 +533,76 @@ class SelfUpdateManager:
         if config.environment == "production":
             raise SelfUpdateError("Runner MCP self-update is disabled for production projects")
         return config
+
+    def bootstrap_baseline(self, expected_commit: str) -> dict[str, Any]:
+        if not _COMMIT_RE.fullmatch(expected_commit):
+            raise SelfUpdateError(
+                "Self-update baseline requires a full lowercase commit ID"
+            )
+        if not self.safety.status().stop_active:
+            raise SelfUpdateError(
+                "Self-update baseline bootstrap requires the operator emergency stop"
+            )
+
+        config = self._project_config()
+        if self._pending_install_transaction() is not None:
+            raise SelfUpdateError(
+                "Self-update installation recovery is still pending"
+            )
+        if restart_pending_count(self.config_dir):
+            raise SelfUpdateError(
+                "Self-update activation is still pending"
+            )
+
+        with self._lock:
+            if any(
+                job.state not in _TERMINAL_SELF_UPDATE_STATES
+                for job in self._jobs.values()
+            ):
+                raise SelfUpdateError("A Runner MCP self-update is already active")
+
+            root = config.root.resolve(strict=True)
+            source_state = clean_head(root)
+            if source_state["commit"] != expected_commit:
+                raise SelfUpdateError(
+                    "Self-update source does not match the requested baseline"
+                )
+
+            try:
+                installed_version = version("aifordable-runner-mcp")
+            except PackageNotFoundError as exc:
+                raise SelfUpdateError(
+                    "Installed Runner MCP package metadata is unavailable"
+                ) from exc
+            if installed_version != _source_package_version(root):
+                raise SelfUpdateError(
+                    "Installed Runner MCP version does not match the baseline source"
+                )
+
+            contract = _compatibility_contract(root)
+            installed_commit = self._installed_commit()
+            existing_contract = self._compatibility_record()
+
+            if installed_commit is not None and installed_commit != expected_commit:
+                raise SelfUpdateError(
+                    "A different self-update baseline is already recorded"
+                )
+            if existing_contract is not None and existing_contract != contract:
+                raise SelfUpdateError(
+                    "A different self-update compatibility baseline is already recorded"
+                )
+            if installed_commit is not None and existing_contract is not None:
+                raise SelfUpdateError("Self-update baseline is already bootstrapped")
+
+            if existing_contract is None:
+                self._write_compatibility_record(contract)
+            if installed_commit is None:
+                self._record_installed_commit(expected_commit)
+
+            return {
+                "bootstrapped": True,
+                "commit": expected_commit,
+            }
 
     def _required_profiles_available(self) -> bool:
         if self.tests is None:

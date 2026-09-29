@@ -112,6 +112,29 @@ def test_worker_execs_only_fixed_runner_fabric_command_and_env(
     assert "RUNNER_MCP_GITHUB_REPOSITORY" not in environment
 
 
+
+def test_worker_rejects_tampered_relay_config_before_exec(
+    tmp_path: Path,
+) -> None:
+    paths = private_config(tmp_path)
+    append_env(
+        paths.env_file,
+        {
+            "RUNNER_FABRIC_RELAY_ORIGIN": "http://relay.example.invalid",
+            "RUNNER_FABRIC_RELAY_SUBJECT": "runner:one",
+            "RUNNER_FABRIC_RELAY_CREDENTIAL": "r" * 48,
+        },
+    )
+    called: list[bool] = []
+
+    with pytest.raises(AgentBusWorkerError, match="relay configuration is invalid"):
+        run_agent_bus_worker_process(
+            paths.config_dir,
+            execve=lambda *_args: called.append(True),
+        )
+
+    assert called == []
+
 def test_worker_rejects_non_loopback_local_endpoint(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

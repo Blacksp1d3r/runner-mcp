@@ -290,6 +290,7 @@ def test_service_config_add_list_and_remove_hides_private_unit(tmp_path: Path) -
 
     assert added["name"] == "web"
     assert added["can_restart"] is True
+    assert added["log_read"] is False
     assert listed == [added]
     assert "private-web.service" not in repr(listed)
     assert "127.0.0.1" not in repr(listed)
@@ -311,6 +312,24 @@ def test_service_config_is_read_only_by_default(tmp_path: Path) -> None:
     assert added["can_start"] is False
     assert added["can_stop"] is False
     assert added["can_restart"] is False
+    assert added["log_read"] is False
+
+
+def test_service_config_log_read_requires_explicit_opt_in(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+
+    added = add_service_config(
+        paths.config_dir,
+        project="first",
+        name="web",
+        unit="private-web.service",
+        allow_log_read=True,
+    )
+    listed = list_service_configs(paths.config_dir, project="first")
+
+    assert added["log_read"] is True
+    assert listed[0]["log_read"] is True
+    assert "private-web.service" not in repr(listed)
 
 
 def test_database_config_secret_stays_out_of_project_yaml(tmp_path: Path) -> None:

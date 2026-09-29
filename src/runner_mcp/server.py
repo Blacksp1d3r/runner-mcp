@@ -28,6 +28,7 @@ from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
+from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
@@ -401,6 +402,10 @@ def build_mcp(
         source=source_sync,
         resource_url=settings.resource_url,
     )
+    fabric_bootstrap_manager = FabricBootstrapManager(
+        config_dir=settings.projects_config.parent,
+        safety=safety,
+    )
 
     fabric_bridge = (
         FabricBridgeClient(
@@ -443,7 +448,8 @@ def build_mcp(
         }
         try:
             result.update(self_update_manager.runtime_status())
-        except SelfUpdateError as exc:
+            result.update(fabric_bootstrap_manager.runtime_status())
+        except (SelfUpdateError, FabricBootstrapError) as exc:
             audit.append(
                 AuditEvent(
                     current_request_id(),
@@ -541,6 +547,64 @@ def build_mcp(
                 None,
                 "authenticated-client",
                 result["state"],
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_bootstrap(commit: str) -> dict:
+        """Start one bounded canonical Runner Fabric bootstrap job."""
+        try:
+            result = fabric_bootstrap_manager.start(commit)
+        except FabricBootstrapError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_bootstrap",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_bootstrap",
+                "runner-fabric",
+                "authenticated-client",
+                "started",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_bootstrap_status(job_id: str) -> dict:
+        """Return bounded status for one Runner Fabric bootstrap job."""
+        try:
+            result = fabric_bootstrap_manager.status(job_id)
+        except FabricBootstrapError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_bootstrap_status",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_bootstrap_status",
+                "runner-fabric",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
                 utc_timestamp(),
             )
         )

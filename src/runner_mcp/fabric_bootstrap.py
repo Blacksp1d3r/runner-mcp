@@ -4,6 +4,7 @@ import json
 import os
 import re
 import shutil
+import shlex
 import stat
 import subprocess
 import sys
@@ -15,7 +16,6 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .onboarding import load_env_file, read_private_runtime
 from .operational_safety import OperatorSafetyGuard
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
@@ -542,12 +542,12 @@ class FabricBootstrapManager:
             raise FabricBootstrapError("install_failed") from exc
 
     def _github_token(self) -> str:
-        paths, _settings, _registry = read_private_runtime(self.config_dir)
-        values = load_env_file(paths.env_file)
-        token = values.get(_GITHUB_TOKEN_ENV, "")
+        token = _private_env_value(
+            self.config_dir / "runner-mcp.env",
+            _GITHUB_TOKEN_ENV,
+        )
         if (
-            not isinstance(token, str)
-            or not 20 <= len(token) <= 4096
+            not 20 <= len(token) <= 4096
             or not token.isascii()
             or any(ord(char) < 33 or ord(char) == 127 for char in token)
         ):
@@ -641,6 +641,55 @@ def _restore_link(path: Path, target: Path | None, root: Path) -> None:
             os.replace(temp, path)
     except OSError as exc:
         raise FabricBootstrapError("activation_failed") from exc
+
+
+def _private_env_value(path: Path, key: str) -> str:
+    if (
+        not path.is_absolute()
+        or path.is_symlink()
+        or not path.is_file()
+    ):
+        raise FabricBootstrapError("source_auth_unavailable")
+    try:
+        metadata = path.stat()
+    except OSError as exc:
+        raise FabricBootstrapError("source_auth_unavailable") from exc
+    if (
+        stat.S_IMODE(metadata.st_mode) != 0o600
+        or metadata.st_uid != os.getuid()
+        or metadata.st_size <= 0
+        or metadata.st_size > 1_048_576
+    ):
+        raise FabricBootstrapError("source_auth_unavailable")
+
+    found: str | None = None
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except (OSError, UnicodeDecodeError) as exc:
+        raise FabricBootstrapError("source_auth_unavailable") from exc
+    for raw in lines:
+        line = raw.strip()
+        if not line or line.startswith("#"):
+            continue
+        name, separator, encoded = line.partition("=")
+        if (
+            not separator
+            or not re.fullmatch(r"[A-Z_][A-Z0-9_]*", name)
+        ):
+            raise FabricBootstrapError("source_auth_unavailable")
+        try:
+            parts = shlex.split(encoded, posix=True)
+        except ValueError as exc:
+            raise FabricBootstrapError("source_auth_unavailable") from exc
+        if len(parts) > 1:
+            raise FabricBootstrapError("source_auth_unavailable")
+        if name == key:
+            if found is not None:
+                raise FabricBootstrapError("source_auth_unavailable")
+            found = parts[0] if parts else ""
+    if found is None:
+        raise FabricBootstrapError("source_auth_unavailable")
+    return found
 
 
 def _private_dir(path: Path, *, create: bool, parents: bool = False) -> Path:

@@ -370,9 +370,16 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert result["restart_required"] is True
     assert source.calls == [("runner-mcp", commit)]
     assert tests.started == ["lint", "unit"]
-    assert len(installs) == 3
+    assert len(installs) == 5
 
-    wheel_command, wheel_kwargs = installs[0]
+    assert installs[0][0][1:] == ["-m", "pip", "--version"]
+    assert installs[1][0][1:] == ["-c", "import setuptools.build_meta"]
+    for _command, preflight_kwargs in installs[:2]:
+        assert preflight_kwargs["shell"] is False
+        assert preflight_kwargs["timeout"] == 30
+        assert preflight_kwargs["env"]["PIP_NO_INDEX"] == "1"
+
+    wheel_command, wheel_kwargs = installs[2]
     assert wheel_command[1:4] == ["-m", "pip", "wheel"]
     assert "--no-deps" in wheel_command
     assert "--no-build-isolation" in wheel_command
@@ -382,7 +389,7 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert wheel_kwargs["timeout"] == 300
     assert wheel_kwargs["env"]["PIP_NO_INDEX"] == "1"
 
-    install_command, install_kwargs = installs[1]
+    install_command, install_kwargs = installs[3]
     assert install_command[1:4] == ["-m", "pip", "install"]
     assert "--no-index" in install_command
     assert "--no-deps" in install_command
@@ -397,7 +404,7 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert install_kwargs["env"]["PIP_NO_INDEX"] == "1"
     assert "PIP_INDEX_URL" not in install_kwargs["env"]
 
-    verify_command, verify_kwargs = installs[2]
+    verify_command, verify_kwargs = installs[4]
     assert verify_command[1] == "-c"
     assert "runner_mcp.self_update" in verify_command[2]
     assert verify_kwargs["shell"] is False
@@ -523,15 +530,27 @@ def test_failed_target_install_rolls_back_known_baseline(
     assert result["restart_required"] is False
     assert source.calls == [("runner-mcp", target), ("runner-mcp", baseline)]
     assert current["commit"] == baseline
-    assert [
-        command[3] if len(command) > 3 else command[1]
-        for command in installs
-    ] == [
+    def operation(command: list[str]) -> str:
+        if command[1:] == ["-m", "pip", "--version"]:
+            return "preflight-pip"
+        if command[1:] == ["-c", "import setuptools.build_meta"]:
+            return "preflight-build-backend"
+        if len(command) > 3 and command[3] in {"wheel", "install"}:
+            return command[3]
+        if command[1] == "-c":
+            return "verify"
+        raise AssertionError(f"unexpected installer command shape: {command!r}")
+
+    assert [operation(command) for command in installs] == [
+        "preflight-pip",
+        "preflight-build-backend",
         "wheel",
+        "preflight-pip",
+        "preflight-build-backend",
         "wheel",
         "install",
         "install",
-        "-c",
+        "verify",
     ]
     status = manager.runtime_status()
     assert status["last_installed_commit"] == baseline
@@ -556,6 +575,11 @@ def test_failed_first_install_requires_explicit_recovery(
 
     def installer(command, **kwargs):
         command = list(command)
+        if command[1:] in (
+            ["-m", "pip", "--version"],
+            ["-c", "import setuptools.build_meta"],
+        ):
+            return subprocess.CompletedProcess(command, 0, "", "")
         if len(command) > 3 and command[3] == "wheel":
             stage_fake_wheel(command)
             return subprocess.CompletedProcess(command, 0, "", "")

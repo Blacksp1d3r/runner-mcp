@@ -10,6 +10,7 @@ from urllib.parse import urlsplit
 
 import uvicorn
 
+from .agent_bus_worker import run_agent_bus_worker_process
 from .approval_manager import ApprovalError, ApprovalManager
 from .autostart import (
     AutostartError,
@@ -928,7 +929,12 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             )
         else:
             print("backend: none")
-            for component in ("server", "github-watcher", "completion-watcher"):
+            for component in (
+                "server",
+                "github-watcher",
+                "completion-watcher",
+                "agent-bus-worker",
+            ):
                 print(
                     f"{component}: installed=no, enabled=no, active=no"
                 )
@@ -990,6 +996,13 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         return 0
 
     raise AutostartError("unknown autostart action")
+
+
+def cmd_agent_bus_worker(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    if args.agent_bus_worker_action == "run":
+        return run_agent_bus_worker_process(config_dir)
+    raise RuntimeError("unknown Agent Bus worker action")
 
 
 def cmd_completion_notifier(args: argparse.Namespace) -> int:
@@ -1664,7 +1677,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     autostart_cron_run.add_argument(
         "component",
-        choices=("server", "github-watcher", "completion-watcher"),
+        choices=(
+            "server",
+            "github-watcher",
+            "completion-watcher",
+            "agent-bus-worker",
+        ),
     )
     autostart_cron_run.add_argument(
         "--port",
@@ -1674,6 +1692,20 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PORT",
     )
     autostart_cron_run.set_defaults(func=cmd_autostart)
+
+    agent_bus_worker = subparsers.add_parser(
+        "agent-bus-worker",
+        help="Run the outbound-only AIfordable Agent Bus worker.",
+    )
+    agent_bus_worker_sub = agent_bus_worker.add_subparsers(
+        dest="agent_bus_worker_action",
+        required=True,
+    )
+    agent_bus_worker_run = agent_bus_worker_sub.add_parser(
+        "run",
+        help="Run the fixed Runner Fabric Agent Bus worker.",
+    )
+    agent_bus_worker_run.set_defaults(func=cmd_agent_bus_worker)
 
     completion_notifier = subparsers.add_parser(
         "completion-notifier",

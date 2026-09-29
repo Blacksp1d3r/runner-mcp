@@ -6,6 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .agent_bus_worker import agent_bus_worker_configured
 from .completion_delivery import completion_notifier_status
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
@@ -16,7 +17,13 @@ MANAGED_MARKER = "# Managed by Runner MCP autostart."
 SERVER_UNIT = "runner-mcp.service"
 GITHUB_WATCHER_UNIT = "runner-mcp-github-watcher.service"
 COMPLETION_WATCHER_UNIT = "runner-mcp-completion-watcher.service"
-KNOWN_UNITS = (SERVER_UNIT, GITHUB_WATCHER_UNIT, COMPLETION_WATCHER_UNIT)
+AGENT_BUS_WORKER_UNIT = "runner-mcp-agent-bus-worker.service"
+KNOWN_UNITS = (
+    SERVER_UNIT,
+    GITHUB_WATCHER_UNIT,
+    COMPLETION_WATCHER_UNIT,
+    AGENT_BUS_WORKER_UNIT,
+)
 
 
 class AutostartError(RuntimeError):
@@ -126,6 +133,9 @@ def configured_autostart_components(config_dir: Path) -> tuple[str, ...]:
             )
         components.append("github-watcher")
 
+    if agent_bus_worker_configured(config_dir):
+        components.append("agent-bus-worker")
+
     notifier = completion_notifier_status(config_dir)
     if notifier["configured"]:
         if not notifier["initialized"]:
@@ -210,6 +220,14 @@ def render_user_units(
             executable=executable,
             config_dir=config_dir,
             arguments=("github-watcher", "run"),
+            requires_server=True,
+        )
+    if "agent-bus-worker" in components:
+        units[AGENT_BUS_WORKER_UNIT] = _unit(
+            description="Runner MCP AIfordable Agent Bus worker",
+            executable=executable,
+            config_dir=config_dir,
+            arguments=("agent-bus-worker", "run"),
             requires_server=True,
         )
     if "completion-watcher" in components:
@@ -337,6 +355,7 @@ def user_service_status(
         ("server", SERVER_UNIT),
         ("github-watcher", GITHUB_WATCHER_UNIT),
         ("completion-watcher", COMPLETION_WATCHER_UNIT),
+        ("agent-bus-worker", AGENT_BUS_WORKER_UNIT),
     )
     for component, unit_name in names:
         path = target / unit_name

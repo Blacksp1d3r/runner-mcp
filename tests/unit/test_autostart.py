@@ -8,6 +8,7 @@ import pytest
 from runner_mcp import autostart as autostart_module
 from runner_mcp import secure_io as secure_io_module
 from runner_mcp.autostart import (
+    AGENT_BUS_WORKER_UNIT,
     COMPLETION_WATCHER_UNIT,
     GITHUB_WATCHER_UNIT,
     MANAGED_MARKER,
@@ -95,6 +96,25 @@ def test_render_server_unit_contains_no_credentials(tmp_path: Path) -> None:
     assert "Authorization" not in units[SERVER_UNIT]
     assert "token" not in units[SERVER_UNIT].lower()
 
+
+
+def test_agent_bus_worker_unit_is_added_only_when_configured(
+    tmp_path: Path,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n")
+        handle.write("RUNNER_FABRIC_RELAY_SUBJECT=runner:one\n")
+        handle.write(f"RUNNER_FABRIC_RELAY_CREDENTIAL={'r' * 48}\n")
+
+    units = render_user_units(
+        config_dir=paths.config_dir,
+        executable=executable,
+    )
+
+    assert set(units) == {SERVER_UNIT, AGENT_BUS_WORKER_UNIT}
+    assert "agent-bus-worker" in units[AGENT_BUS_WORKER_UNIT]
+    assert "r" * 48 not in units[AGENT_BUS_WORKER_UNIT]
 
 def test_mailbox_autostart_requires_explicit_bootstrap(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
@@ -296,6 +316,12 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
         },
         {
             "component": "completion-watcher",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
+        {
+            "component": "agent-bus-worker",
             "installed": False,
             "enabled": False,
             "active": False,

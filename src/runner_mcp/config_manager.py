@@ -11,6 +11,7 @@ from typing import Any
 
 import yaml
 
+from .agent_bus_worker import AgentBusWorkerError, validate_agent_bus_relay_config
 from .adapters import (
     AdapterError,
     get_adapter,
@@ -19,7 +20,6 @@ from .adapters import (
     materialize_migration_preset,
     materialize_test_preset,
 )
-from .agent_bus_worker import AgentBusWorkerError, validate_agent_bus_relay_config
 from .config import (
     DatabaseConfig,
     DeploymentConfig,

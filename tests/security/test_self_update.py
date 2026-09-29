@@ -108,6 +108,7 @@ def make_manager(
     tests=None,
     source=None,
     installer_runner=subprocess.run,
+    seed_compatibility: bool = True,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -133,7 +134,8 @@ def make_manager(
         """[build-system]\nrequires = ["setuptools>=75"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "runner-mcp"\nversion = "0.1.0"\nrequires-python = ">=3.12"\ndependencies = ["mcp>=2.0,<3"]\n\n[project.optional-dependencies]\ndev = ["pytest>=8,<9", "ruff>=0.13,<1"]\n""",
         encoding="utf-8",
     )
-    manager._write_compatibility_record(_compatibility_contract(project))
+    if seed_compatibility:
+        manager._write_compatibility_record(_compatibility_contract(project))
     return manager, project, exits
 
 
@@ -152,6 +154,112 @@ def stage_fake_wheel(command: list[str]) -> None:
     wheel_dir.mkdir(parents=True, exist_ok=True)
     (wheel_dir / "runner_mcp-0.1.0-py3-none-any.whl").write_bytes(b"synthetic wheel")
 
+
+
+def test_bootstrap_baseline_requires_emergency_stop_and_exact_source(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        seed_compatibility=False,
+    )
+    monkeypatch.setattr("runner_mcp.self_update.version", lambda _name: "0.1.0")
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": "a" * 40, "clean": True},
+    )
+
+    with pytest.raises(SelfUpdateError, match="emergency stop"):
+        manager.bootstrap_baseline("a" * 40)
+
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.write_text("stop\n", encoding="utf-8")
+
+    with pytest.raises(SelfUpdateError, match="requested baseline"):
+        manager.bootstrap_baseline("b" * 40)
+
+    assert manager._installed_commit() is None
+    assert manager._compatibility_record() is None
+
+
+def test_bootstrap_baseline_records_verified_existing_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, project, _exits = make_manager(
+        tmp_path,
+        seed_compatibility=False,
+    )
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.write_text("stop\n", encoding="utf-8")
+    monkeypatch.setattr("runner_mcp.self_update.version", lambda _name: "0.1.0")
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": "a" * 40, "clean": True},
+    )
+
+    result = manager.bootstrap_baseline("a" * 40)
+
+    assert result == {"bootstrapped": True, "commit": "a" * 40}
+    assert manager._installed_commit() == "a" * 40
+    assert manager._compatibility_record() == _compatibility_contract(project)
+    assert stat.S_IMODE(
+        (manager.config_dir / "self-update-state.json").stat().st_mode
+    ) == 0o600
+    assert stat.S_IMODE(
+        (manager.config_dir / "self-update-compatibility.json").stat().st_mode
+    ) == 0o600
+
+    with pytest.raises(SelfUpdateError, match="already bootstrapped"):
+        manager.bootstrap_baseline("a" * 40)
+
+
+def test_bootstrap_baseline_rejects_installed_version_mismatch(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        seed_compatibility=False,
+    )
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.write_text("stop\n", encoding="utf-8")
+    monkeypatch.setattr("runner_mcp.self_update.version", lambda _name: "9.9.9")
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": "a" * 40, "clean": True},
+    )
+
+    with pytest.raises(SelfUpdateError, match="version does not match"):
+        manager.bootstrap_baseline("a" * 40)
+
+    assert manager._installed_commit() is None
+    assert manager._compatibility_record() is None
+
+
+def test_bootstrap_baseline_resumes_matching_partial_record(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, project, _exits = make_manager(
+        tmp_path,
+        seed_compatibility=False,
+    )
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.write_text("stop\n", encoding="utf-8")
+    monkeypatch.setattr("runner_mcp.self_update.version", lambda _name: "0.1.0")
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": "a" * 40, "clean": True},
+    )
+    manager._write_compatibility_record(_compatibility_contract(project))
+
+    result = manager.bootstrap_baseline("a" * 40)
+
+    assert result["bootstrapped"] is True
+    assert manager._installed_commit() == "a" * 40
+    assert manager._compatibility_record() == _compatibility_contract(project)
 
 def test_self_update_rejects_noncanonical_repository(tmp_path: Path) -> None:
     manager, _root, _exits = make_manager(

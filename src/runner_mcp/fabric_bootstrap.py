@@ -342,16 +342,10 @@ class FabricBootstrapManager:
                 category="source_unavailable",
                 timeout=180,
             )
-            try:
-                token_file.unlink(missing_ok=True)
-                askpass.unlink(missing_ok=True)
-            except OSError as exc:
-                raise FabricBootstrapError("secret_cleanup_failed") from exc
-
             self._run(
                 ["git", "-C", str(source), "fetch", "--depth=1", "origin", job.commit],
                 cwd=work,
-                env=self._base_environment(),
+                env=git_env,
                 category="source_unavailable",
                 timeout=120,
             )
@@ -362,6 +356,11 @@ class FabricBootstrapManager:
                 category="source_unavailable",
                 timeout=60,
             )
+            try:
+                token_file.unlink(missing_ok=True)
+                askpass.unlink(missing_ok=True)
+            except OSError as exc:
+                raise FabricBootstrapError("secret_cleanup_failed") from exc
             head = self._run(
                 ["git", "-C", str(source), "rev-parse", "HEAD"],
                 cwd=work,

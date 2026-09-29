@@ -195,6 +195,7 @@ class ServiceManager:
                 "can_start": service.allow_start,
                 "can_stop": service.allow_stop,
                 "can_restart": service.allow_restart,
+                "log_read": service.allow_log_read,
                 "health_check": service.health_url is not None,
             }
             for alias, service in sorted(config.services.items())

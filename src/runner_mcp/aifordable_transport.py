@@ -288,17 +288,38 @@ class AIfordableRelayClient:
     ) -> None:
         if claim.envelope.target_subject != self._config.subject:
             raise AIfordableTransportError("relay claim target is invalid")
+        self.submit_terminal_result(
+            request_id=claim.envelope.request_id,
+            expected_version=claim.version,
+            owner_generation=claim.owner_generation,
+            action=action,
+            result_code=result_code,
+            result_payload=result_payload,
+        )
+
+    def submit_terminal_result(
+        self,
+        *,
+        request_id: str,
+        expected_version: int,
+        owner_generation: int,
+        action: str,
+        result_code: str,
+        result_payload: Mapping[str, object],
+    ) -> None:
+        request_id = _identifier(request_id, "request_id")
+        _positive_int(expected_version, "expected_version")
+        _positive_int(owner_generation, "owner_generation")
+        if action not in {"complete", "fail"}:
+            raise AIfordableTransportError("terminal action is invalid")
         code = _result_code(result_code)
         payload = _safe_result_payload(result_payload)
         response = self._post(
-            (
-                f"/internal/control-relay/{claim.envelope.request_id}/"
-                f"{action}"
-            ),
+            f"/internal/control-relay/{request_id}/{action}",
             _json_bytes(
                 {
-                    "expected_version": claim.version,
-                    "owner_generation": claim.owner_generation,
+                    "expected_version": expected_version,
+                    "owner_generation": owner_generation,
                     "result_code": code,
                     "result_payload": payload,
                 }

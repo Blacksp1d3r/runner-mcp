@@ -12,6 +12,7 @@ from urllib.parse import urlsplit
 
 import yaml
 
+from .aifordable_transport import AIFORDABLE_RELAY_ENV_KEYS
 from .config import ProjectConfig, ProjectRegistry
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .operational_safety import OperatorSafetyGuard
@@ -195,6 +196,7 @@ def render_env_file(
         if (
             key.startswith("RUNNER_MCP_DB_")
             or key in GITHUB_MAILBOX_ENV_KEYS
+            or key in AIFORDABLE_RELAY_ENV_KEYS
             or key == "RUNNER_MCP_RATE_LIMIT_PER_MINUTE"
             or key == "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH"
         ):
@@ -297,6 +299,7 @@ def install_private_configuration(
             for key, value in existing.items()
             if key.startswith("RUNNER_MCP_DB_")
             or key in GITHUB_MAILBOX_ENV_KEYS
+            or key in AIFORDABLE_RELAY_ENV_KEYS
             or key == "RUNNER_MCP_RATE_LIMIT_PER_MINUTE"
             or key == "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH"
         }

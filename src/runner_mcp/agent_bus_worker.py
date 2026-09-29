@@ -20,6 +20,46 @@ class AgentBusWorkerError(RuntimeError):
     """Safe Agent Bus worker wrapper failure without private values."""
 
 
+def validate_agent_bus_relay_config(
+    *,
+    origin: object,
+    subject: object,
+    credential: object,
+) -> tuple[str, str, str]:
+    if not isinstance(origin, str) or not origin:
+        raise AgentBusWorkerError("Agent Bus relay configuration is invalid")
+    try:
+        parsed = urlsplit(origin)
+    except ValueError as exc:
+        raise AgentBusWorkerError("Agent Bus relay configuration is invalid") from exc
+    if (
+        parsed.scheme != "https"
+        or not parsed.hostname
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path not in {"", "/"}
+    ):
+        raise AgentBusWorkerError("Agent Bus relay configuration is invalid")
+
+    if not isinstance(subject, str) or not subject.startswith("runner:"):
+        raise AgentBusWorkerError("Agent Bus relay configuration is invalid")
+    suffix = subject.removeprefix("runner:")
+    allowed = set("abcdefghijklmnopqrstuvwxyz0123456789._:-")
+    if (
+        not suffix
+        or len(subject) > 127
+        or suffix[0] not in "abcdefghijklmnopqrstuvwxyz0123456789"
+        or any(char not in allowed for char in suffix)
+    ):
+        raise AgentBusWorkerError("Agent Bus relay configuration is invalid")
+
+    if not _valid_secret(credential):
+        raise AgentBusWorkerError("Agent Bus relay configuration is invalid")
+    return origin.rstrip("/"), subject, credential
+
+
 def agent_bus_worker_configured(config_dir: Path) -> bool:
     paths, _settings, _registry = read_private_runtime(config_dir)
     values = load_env_file(paths.env_file)

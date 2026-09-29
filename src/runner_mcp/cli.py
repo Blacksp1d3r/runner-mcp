@@ -1303,6 +1303,39 @@ def _local_self_update_manager(config_dir: Path) -> SelfUpdateManager:
     )
 
 
+def cmd_self_update_bootstrap(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    commit = args.commit
+    if (
+        len(commit) != 40
+        or commit.lower() != commit
+        or any(char not in "0123456789abcdef" for char in commit)
+    ):
+        raise RuntimeError(
+            "Self-update baseline requires a full lowercase commit ID"
+        )
+
+    _, safety = operator_stop_status(config_dir)
+    if not safety.status().stop_active:
+        raise RuntimeError(
+            "Self-update baseline bootstrap requires the operator emergency stop to be active"
+        )
+
+    phrase = f"BOOTSTRAP SELF UPDATE {commit}"
+    print(
+        "This records the already-installed Runner MCP runtime as the initial "
+        "self-update rollback baseline. It does not install or change the runtime."
+    )
+    confirmation = input(f"Type {phrase} to continue: ").strip()
+    if confirmation != phrase:
+        raise RuntimeError("Self-update baseline bootstrap cancelled")
+
+    result = _local_self_update_manager(config_dir).bootstrap_baseline(commit)
+    print("Runner MCP self-update baseline recorded.")
+    print(f"Baseline commit: {result['commit'][:12]}")
+    return 0
+
+
 def cmd_self_update_recovery(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     _, safety = operator_stop_status(config_dir)
@@ -1416,6 +1449,19 @@ def build_parser() -> argparse.ArgumentParser:
     )
     stop.add_argument("stop_action", choices=("on", "status", "off"))
     stop.set_defaults(func=cmd_emergency_stop)
+
+    self_update_bootstrap = subparsers.add_parser(
+        "self-update-bootstrap",
+        help=(
+            "Locally record an already-verified installed Runner MCP commit "
+            "as the initial self-update rollback baseline."
+        ),
+    )
+    self_update_bootstrap.add_argument(
+        "commit",
+        help="Exact full lowercase commit of the already-installed runtime.",
+    )
+    self_update_bootstrap.set_defaults(func=cmd_self_update_bootstrap)
 
     self_update_recovery = subparsers.add_parser(
         "self-update-recovery",

@@ -88,6 +88,7 @@ from .retention_pruning import RetentionPruner
 from .self_update import SelfUpdateManager
 from .self_update_install import install_recovery_state
 from .server import create_app
+from .service_journal import ServiceJournalReader
 from .source_control import SourceSynchronizer
 
 
@@ -557,6 +558,56 @@ def cmd_service_config(args: argparse.Namespace) -> int:
         return 0
 
     raise ConfigManagerError("Unknown service-config action")
+
+
+def _local_service_journal_reader(config_dir: Path) -> ServiceJournalReader:
+    paths, _settings, registry = read_private_runtime(config_dir)
+    values = load_env_file(paths.env_file)
+
+    private_paths = {
+        str(paths.config_dir),
+        str(paths.env_file),
+        str(paths.projects_file),
+        str(paths.stop_file),
+        str(paths.jobs_dir),
+        str(paths.database_backups_dir),
+        str(paths.deployment_jobs_dir),
+        str(paths.migration_jobs_dir),
+        str(paths.approvals_dir),
+        str(paths.audit_log),
+    }
+    secret_values: set[str] = set()
+    for value in values.values():
+        if not value:
+            continue
+        if Path(value).is_absolute():
+            private_paths.add(value)
+        elif len(value) >= 8:
+            secret_values.add(value)
+
+    return ServiceJournalReader(
+        registry=registry,
+        secret_values=secret_values,
+        private_paths=private_paths,
+    )
+
+
+def cmd_service_log(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    result = _local_service_journal_reader(config_dir).tail(
+        args.project,
+        args.service,
+        lines=args.lines,
+    )
+    print(f"Service journal: {result['project']}/{result['service']}")
+    print(
+        f"Lines: {result['line_count']}; "
+        f"truncated: {'yes' if result['truncated'] else 'no'}"
+    )
+    content = str(result["content"])
+    if content:
+        print(content, end="" if content.endswith("\n") else "\n")
+    return 0
 
 
 def cmd_database_config(args: argparse.Namespace) -> int:
@@ -1592,6 +1643,20 @@ def build_parser() -> argparse.ArgumentParser:
     service_remove.add_argument("project")
     service_remove.add_argument("name")
     service_remove.set_defaults(func=cmd_service_config)
+
+    service_log = subparsers.add_parser(
+        "service-log",
+        help="Read a bounded redacted local service journal tail.",
+    )
+    service_log.add_argument("project")
+    service_log.add_argument("service")
+    service_log.add_argument(
+        "--lines",
+        type=int,
+        default=50,
+        help="Tail 1-100 configured service journal entries.",
+    )
+    service_log.set_defaults(func=cmd_service_log)
 
     database = subparsers.add_parser(
         "database-config",

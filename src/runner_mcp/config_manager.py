@@ -11,6 +11,13 @@ from typing import Any
 
 import yaml
 
+from .aifordable_transport import (
+    AIFORDABLE_RELAY_CREDENTIAL_ENV,
+    AIFORDABLE_RELAY_ENV_KEYS,
+    AIFORDABLE_RELAY_ORIGIN_ENV,
+    AIFORDABLE_RELAY_SUBJECT_ENV,
+    AIfordableRelayConfig,
+)
 from .adapters import (
     AdapterError,
     get_adapter,
@@ -650,6 +657,64 @@ def remove_github_mailbox(config_dir: Path) -> None:
     paths, _project_file, _registry = _load_for_edit(config_dir)
     values = load_env_file(paths.env_file)
     for key in GITHUB_MAILBOX_ENV_KEYS:
+        values.pop(key, None)
+    with _configuration_lock(paths):
+        _write_private_environment(paths, values)
+
+
+def aifordable_relay_config_status(config_dir: Path) -> dict[str, bool]:
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    present = {
+        key: bool(values.get(key, "").strip())
+        for key in AIFORDABLE_RELAY_ENV_KEYS
+    }
+    if not any(present.values()):
+        return {"configured": False}
+    if not all(present.values()):
+        raise ConfigManagerError(
+            "AIfordable relay private configuration is incomplete"
+        )
+    try:
+        AIfordableRelayConfig.from_mapping(values)
+    except ValueError as exc:
+        raise ConfigManagerError(
+            "AIfordable relay private configuration is invalid"
+        ) from exc
+    return {"configured": True}
+
+
+def configure_aifordable_relay(
+    config_dir: Path,
+    *,
+    origin: str,
+    subject: str,
+    credential: str,
+) -> dict[str, bool]:
+    try:
+        AIfordableRelayConfig(
+            origin=origin,
+            subject=subject,
+            credential=credential,
+        )
+    except ValueError as exc:
+        raise ConfigManagerError(str(exc)) from exc
+
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    values[AIFORDABLE_RELAY_ORIGIN_ENV] = origin
+    values[AIFORDABLE_RELAY_SUBJECT_ENV] = subject
+    values[AIFORDABLE_RELAY_CREDENTIAL_ENV] = credential
+
+    with _configuration_lock(paths):
+        _write_private_environment(paths, values)
+    return {"configured": True}
+
+
+def remove_aifordable_relay(config_dir: Path) -> None:
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    for key in AIFORDABLE_RELAY_ENV_KEYS:
         values.pop(key, None)
     with _configuration_lock(paths):
         _write_private_environment(paths, values)

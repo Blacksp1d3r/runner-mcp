@@ -1815,6 +1815,61 @@ def build_parser() -> argparse.ArgumentParser:
     )
     completion_watcher_run.set_defaults(func=cmd_completion_watcher)
 
+    aifordable_relay = subparsers.add_parser(
+        "aifordable-relay",
+        help="Configure the primary AIfordable control relay.",
+    )
+    aifordable_relay_sub = aifordable_relay.add_subparsers(
+        dest="aifordable_relay_action",
+        required=True,
+    )
+    aifordable_relay_status = aifordable_relay_sub.add_parser(
+        "status",
+        help="Show whether the private AIfordable relay is configured.",
+    )
+    aifordable_relay_status.set_defaults(func=cmd_aifordable_relay)
+    aifordable_relay_configure = aifordable_relay_sub.add_parser(
+        "configure",
+        help="Configure AIfordable relay credentials without exposing them.",
+    )
+    aifordable_relay_configure.add_argument("--origin")
+    aifordable_relay_configure.add_argument("--subject")
+    aifordable_relay_configure.add_argument(
+        "--credential-stdin",
+        action="store_true",
+        help="Read the private runner credential from standard input.",
+    )
+    aifordable_relay_configure.set_defaults(func=cmd_aifordable_relay)
+    aifordable_relay_remove = aifordable_relay_sub.add_parser(
+        "remove",
+        help="Remove the private AIfordable relay configuration.",
+    )
+    aifordable_relay_remove.set_defaults(func=cmd_aifordable_relay)
+
+    aifordable_watcher = subparsers.add_parser(
+        "aifordable-watcher",
+        help="Run the primary outbound AIfordable control watcher.",
+    )
+    aifordable_watcher_sub = aifordable_watcher.add_subparsers(
+        dest="aifordable_watcher_action",
+        required=True,
+    )
+    aifordable_watcher_once = aifordable_watcher_sub.add_parser(
+        "once",
+        help="Process one AIfordable control cycle.",
+    )
+    aifordable_watcher_once.set_defaults(func=cmd_aifordable_watcher)
+    aifordable_watcher_run = aifordable_watcher_sub.add_parser(
+        "run",
+        help="Continuously consume the outbound AIfordable control relay.",
+    )
+    aifordable_watcher_run.add_argument(
+        "--idle-sleep-seconds",
+        type=float,
+        default=1.0,
+    )
+    aifordable_watcher_run.set_defaults(func=cmd_aifordable_watcher)
+
     github_mailbox = subparsers.add_parser(
         "github-mailbox",
         help="Configure the private GitHub mailbox transport.",

@@ -350,6 +350,127 @@ def test_service_config_cli_hides_private_unit(
     assert "private-web.service" not in captured.out
 
 
+def test_service_config_cli_can_explicitly_enable_log_read(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "service-config",
+            "add",
+            "demo",
+            "web",
+            "--unit",
+            "private-web.service",
+            "--allow-log-read",
+        ]
+    )
+    assert result == 0
+    capsys.readouterr()
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "service-config",
+            "list",
+            "demo",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "web: log-read" in captured.out
+    assert "private-web.service" not in captured.out
+
+
+def test_service_log_cli_renders_only_safe_reader_result(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls: list[tuple[str, str, int]] = []
+
+    class FakeReader:
+        def tail(self, project: str, service: str, *, lines: int):
+            calls.append((project, service, lines))
+            return {
+                "project": project,
+                "service": service,
+                "line_count": 2,
+                "truncated": False,
+                "content": "safe line 1\nsafe line 2\n",
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_service_journal_reader",
+        lambda _config_dir: FakeReader(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "service-log",
+            "demo",
+            "web",
+            "--lines",
+            "20",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert calls == [("demo", "web", 20)]
+    assert "Service journal: demo/web" in captured.out
+    assert "Lines: 2; truncated: no" in captured.out
+    assert "safe line 1" in captured.out
+    assert str(paths.config_dir) not in captured.out
+
+
+def test_service_log_cli_remains_callable_during_emergency_stop(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    paths.stop_file.write_text("stop\n", encoding="utf-8")
+
+    class FakeReader:
+        def tail(self, project: str, service: str, *, lines: int):
+            return {
+                "project": project,
+                "service": service,
+                "line_count": 1,
+                "truncated": False,
+                "content": "safe\n",
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.cli._local_service_journal_reader",
+        lambda _config_dir: FakeReader(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "service-log",
+            "demo",
+            "web",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "safe" in captured.out
+
+
 def test_database_restore_plan_cli_is_local_read_only_and_bounded(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

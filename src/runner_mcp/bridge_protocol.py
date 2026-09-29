@@ -88,6 +88,8 @@ class BridgeAction(StrEnum):
     RUNTIME_DOCTOR = "runtime_doctor"
     SELF_UPDATE = "self_update"
     SELF_UPDATE_STATUS = "self_update_status"
+    FABRIC_BOOTSTRAP = "fabric_bootstrap"
+    FABRIC_BOOTSTRAP_STATUS = "fabric_bootstrap_status"
 
 
 class BridgeResultState(StrEnum):
@@ -197,18 +199,23 @@ class BridgeRequest(BaseModel):
                 raise ValueError("sync_project accepts only project and commit")
             return self
 
-        if self.action == BridgeAction.SELF_UPDATE:
+        if self.action in {
+            BridgeAction.SELF_UPDATE,
+            BridgeAction.FABRIC_BOOTSTRAP,
+        }:
             if self.commit is None:
-                raise ValueError("self_update requires commit")
+                raise ValueError(f"{self.action.value} requires commit")
             if not re.fullmatch(r"[0-9a-f]{40}", self.commit):
-                raise ValueError("self_update requires a full lowercase commit")
+                raise ValueError(
+                    f"{self.action.value} requires a full lowercase commit"
+                )
             if (
                 self.project is not None
                 or self.profile is not None
                 or self.job_id is not None
                 or any(value is not None for value in extra_operational)
             ):
-                raise ValueError("self_update accepts only commit")
+                raise ValueError(f"{self.action.value} accepts only commit")
             return self
 
         if self.action == BridgeAction.RUN_TESTS:
@@ -226,6 +233,7 @@ class BridgeRequest(BaseModel):
             BridgeAction.JOB_STATUS,
             BridgeAction.CANCEL_JOB,
             BridgeAction.SELF_UPDATE_STATUS,
+            BridgeAction.FABRIC_BOOTSTRAP_STATUS,
         }:
             if self.job_id is None:
                 raise ValueError(f"{self.action.value} requires job_id")
@@ -641,7 +649,10 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
             "commit": request.commit,
         }
 
-    if request.action == BridgeAction.SELF_UPDATE:
+    if request.action in {
+        BridgeAction.SELF_UPDATE,
+        BridgeAction.FABRIC_BOOTSTRAP,
+    }:
         assert request.commit is not None
         return request.action.value, {"commit": request.commit}
 
@@ -660,6 +671,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
         BridgeAction.DEPLOYMENT_STATUS,
         BridgeAction.ROLLBACK_STATUS,
         BridgeAction.SELF_UPDATE_STATUS,
+        BridgeAction.FABRIC_BOOTSTRAP_STATUS,
     }:
         assert request.job_id is not None
         return request.action.value, {"job_id": request.job_id}

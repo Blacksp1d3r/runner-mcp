@@ -9,6 +9,7 @@ import stat
 import subprocess
 import sys
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -80,6 +81,7 @@ class FabricBootstrapManager:
         safety: OperatorSafetyGuard,
         runner=subprocess.run,
         data_root: Path | None = None,
+        self_update_status_provider: Callable[[], dict[str, Any]] | None = None,
     ) -> None:
         if not isinstance(config_dir, Path) or not config_dir.is_absolute():
             raise FabricBootstrapError("Fabric bootstrap config root is invalid")
@@ -89,6 +91,7 @@ class FabricBootstrapManager:
             raise FabricBootstrapError("Fabric bootstrap config root is unavailable") from exc
         self.safety = safety
         self._runner = runner
+        self._self_update_status_provider = self_update_status_provider
         self.jobs_root = _private_dir(
             self.config_dir / "fabric-bootstrap-jobs",
             create=True,
@@ -155,23 +158,35 @@ class FabricBootstrapManager:
             ]
             if active:
                 raise FabricBootstrapError("A Fabric bootstrap job is already active")
+
             current = self.installed_commit()
+            if current == commit:
+                job = FabricBootstrapJob(
+                    job_id=uuid4().hex,
+                    commit=commit,
+                    state=FabricBootstrapState.COMPLETED,
+                    created_at=_now(),
+                    finished_at=_now(),
+                    already_installed=True,
+                )
+                self._persist(job)
+                self._jobs[job.job_id] = job
+                return job.public_dict()
+            if current is not None:
+                raise FabricBootstrapError("already_installed_conflict")
+
+            self._assert_first_install_clean()
+            self._assert_self_update_safe()
+            self._preflight_runtime()
+
             job = FabricBootstrapJob(
                 job_id=uuid4().hex,
                 commit=commit,
-                state=(
-                    FabricBootstrapState.COMPLETED
-                    if current == commit
-                    else FabricBootstrapState.QUEUED
-                ),
+                state=FabricBootstrapState.QUEUED,
                 created_at=_now(),
-                finished_at=_now() if current == commit else None,
-                already_installed=current == commit,
             )
             self._persist(job)
             self._jobs[job.job_id] = job
-            if current == commit:
-                return job.public_dict()
 
         worker = threading.Thread(
             target=self._run_job,
@@ -189,6 +204,82 @@ class FabricBootstrapManager:
             )
             raise FabricBootstrapError("Fabric bootstrap worker could not start") from exc
         return job.public_dict()
+
+    def _assert_first_install_clean(self) -> None:
+        if (
+            self.current_link.exists()
+            or self.current_link.is_symlink()
+            or self.launcher.exists()
+            or self.launcher.is_symlink()
+        ):
+            raise FabricBootstrapError("already_installed_conflict")
+        try:
+            if any(self.releases_root.iterdir()):
+                raise FabricBootstrapError("already_installed_conflict")
+        except OSError as exc:
+            raise FabricBootstrapError(
+                "Fabric bootstrap storage is unavailable"
+            ) from exc
+
+    def _assert_self_update_safe(self) -> None:
+        provider = self._self_update_status_provider
+        if provider is None:
+            raise FabricBootstrapError("runner_mcp_state_unavailable")
+        try:
+            status = provider()
+        except Exception as exc:
+            raise FabricBootstrapError("runner_mcp_state_unavailable") from exc
+        if not isinstance(status, dict):
+            raise FabricBootstrapError("runner_mcp_state_unavailable")
+
+        gates = (
+            ("active_update", "runner_mcp_self_update_active"),
+            ("restart_pending", "runner_mcp_restart_pending"),
+            ("install_recovery_pending", "runner_mcp_install_recovery_pending"),
+        )
+        for key, category in gates:
+            value = status.get(key)
+            if not isinstance(value, bool):
+                raise FabricBootstrapError("runner_mcp_state_unavailable")
+            if value:
+                raise FabricBootstrapError(category)
+
+    def _preflight_runtime(self) -> None:
+        environment = self._base_environment()
+        environment.update(
+            {
+                "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+                "PIP_NO_INPUT": "1",
+                "PIP_NO_INDEX": "1",
+                "PYTHONNOUSERSITE": "1",
+            }
+        )
+        checks = (
+            (
+                [sys.executable, "-m", "pip", "--version"],
+                "pip_unavailable",
+            ),
+            (
+                [sys.executable, "-c", "import setuptools.build_meta"],
+                "build_backend_unavailable",
+            ),
+            (
+                [
+                    sys.executable,
+                    "-c",
+                    "import mcp; import pydantic; import starlette; import uvicorn",
+                ],
+                "runtime_dependency_unavailable",
+            ),
+        )
+        for command, category in checks:
+            self._run(
+                command,
+                cwd=self.config_dir,
+                env=environment,
+                category=category,
+                timeout=15,
+            )
 
     def status(self, job_id: str) -> dict[str, Any]:
         if not isinstance(job_id, str) or _JOB_ID_RE.fullmatch(job_id) is None:
@@ -746,6 +837,14 @@ def _category(exc: FabricBootstrapError) -> str:
         "secret_cleanup_failed",
         "activation_failed",
         "activation_state_failed",
+        "already_installed_conflict",
+        "runner_mcp_state_unavailable",
+        "runner_mcp_self_update_active",
+        "runner_mcp_restart_pending",
+        "runner_mcp_install_recovery_pending",
+        "pip_unavailable",
+        "build_backend_unavailable",
+        "runtime_dependency_unavailable",
     }
     return value if value in allowed else "bootstrap_failed"
 

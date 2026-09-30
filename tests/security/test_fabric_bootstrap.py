@@ -48,6 +48,14 @@ def safety(tmp_path: Path) -> OperatorSafetyGuard:
     )
 
 
+def healthy_self_update_status() -> dict[str, object]:
+    return {
+        "active_update": False,
+        "restart_pending": False,
+        "install_recovery_pending": False,
+    }
+
+
 class FakeRunner:
     def __init__(self, *, fail_on: str | None = None) -> None:
         self.calls: list[tuple[list[str], dict]] = []
@@ -88,6 +96,8 @@ class FakeRunner:
 def manager(
     tmp_path: Path,
     runner: FakeRunner,
+    *,
+    self_update_status_provider=healthy_self_update_status,
 ) -> tuple[FabricBootstrapManager, Path]:
     paths = private_config(tmp_path)
     data_root = tmp_path / "local" / "share" / "runner-fabric"
@@ -96,6 +106,7 @@ def manager(
         safety=safety(tmp_path),
         runner=runner,
         data_root=data_root,
+        self_update_status_provider=self_update_status_provider,
     )
     return result, paths.config_dir
 
@@ -115,6 +126,104 @@ def wait_terminal(
             return status
         time.sleep(0.005)
     raise AssertionError("bootstrap job did not finish")
+
+
+def test_runtime_preflight_is_fixed_and_runs_before_git(
+    tmp_path: Path,
+) -> None:
+    fake = FakeRunner()
+    bootstrap, _config_dir = manager(tmp_path, fake)
+
+    started = bootstrap.start(COMMIT)
+    assert wait_terminal(bootstrap, started["job_id"])["state"] == "completed"
+
+    assert fake.calls[0][0][1:] == ["-m", "pip", "--version"]
+    assert fake.calls[1][0][1:] == ["-c", "import setuptools.build_meta"]
+    assert fake.calls[2][0][1:] == [
+        "-c",
+        "import mcp; import pydantic; import starlette; import uvicorn",
+    ]
+    assert fake.calls[3][0][:2] == ["git", "clone"]
+    for _argv, kwargs in fake.calls[:3]:
+        assert kwargs["shell"] is False
+        assert kwargs["timeout"] == 15
+        assert kwargs["env"]["PIP_NO_INDEX"] == "1"
+        assert kwargs["env"]["PYTHONNOUSERSITE"] == "1"
+
+
+@pytest.mark.parametrize(
+    ("state_key", "category"),
+    [
+        ("active_update", "runner_mcp_self_update_active"),
+        ("restart_pending", "runner_mcp_restart_pending"),
+        ("install_recovery_pending", "runner_mcp_install_recovery_pending"),
+    ],
+)
+def test_runner_mcp_state_blocks_bootstrap_before_subprocess(
+    tmp_path: Path,
+    state_key: str,
+    category: str,
+) -> None:
+    fake = FakeRunner()
+    state = healthy_self_update_status()
+    state[state_key] = True
+    bootstrap, _config_dir = manager(
+        tmp_path,
+        fake,
+        self_update_status_provider=lambda: state,
+    )
+
+    with pytest.raises(FabricBootstrapError, match=category):
+        bootstrap.start(COMMIT)
+
+    assert fake.calls == []
+
+
+def test_unavailable_runner_mcp_state_fails_closed_before_subprocess(
+    tmp_path: Path,
+) -> None:
+    fake = FakeRunner()
+
+    def unavailable():
+        raise RuntimeError("private self-update state detail")
+
+    bootstrap, _config_dir = manager(
+        tmp_path,
+        fake,
+        self_update_status_provider=unavailable,
+    )
+
+    with pytest.raises(FabricBootstrapError) as captured:
+        bootstrap.start(COMMIT)
+
+    assert str(captured.value) == "runner_mcp_state_unavailable"
+    assert "private" not in str(captured.value)
+    assert fake.calls == []
+
+
+@pytest.mark.parametrize(
+    ("failure_marker", "category"),
+    [
+        ("pip --version", "pip_unavailable"),
+        ("setuptools.build_meta", "build_backend_unavailable"),
+        ("import mcp", "runtime_dependency_unavailable"),
+    ],
+)
+def test_runtime_preflight_failure_is_bounded_before_git(
+    tmp_path: Path,
+    failure_marker: str,
+    category: str,
+) -> None:
+    fake = FakeRunner(fail_on=failure_marker)
+    bootstrap, _config_dir = manager(tmp_path, fake)
+
+    with pytest.raises(FabricBootstrapError) as captured:
+        bootstrap.start(COMMIT)
+
+    assert str(captured.value) == category
+    assert all(argv[:2] != ["git", "clone"] for argv, _kwargs in fake.calls)
+    assert bootstrap.installed_commit() is None
+    assert not list(bootstrap.jobs_root.glob("*.json"))
 
 
 def test_bootstrap_installs_exact_canonical_commit_without_token_in_argv_or_env(
@@ -173,6 +282,37 @@ def test_bootstrap_is_blocked_by_operator_stop(tmp_path: Path) -> None:
     with pytest.raises(FabricBootstrapError, match="emergency stop"):
         bootstrap.start(COMMIT)
 
+    assert fake.calls == []
+
+
+def test_different_installed_commit_fails_before_subprocess(
+    tmp_path: Path,
+) -> None:
+    fake = FakeRunner()
+    bootstrap, _config_dir = manager(tmp_path, fake)
+    first = bootstrap.start(COMMIT)
+    assert wait_terminal(bootstrap, first["job_id"])["state"] == "completed"
+    call_count = len(fake.calls)
+
+    with pytest.raises(FabricBootstrapError) as captured:
+        bootstrap.start("e" * 40)
+
+    assert str(captured.value) == "already_installed_conflict"
+    assert len(fake.calls) == call_count
+
+
+def test_unmanaged_launcher_conflict_fails_before_preflight(
+    tmp_path: Path,
+) -> None:
+    fake = FakeRunner()
+    bootstrap, _config_dir = manager(tmp_path, fake)
+    bootstrap.launcher.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+    bootstrap.launcher.write_text("unmanaged\n", encoding="utf-8")
+
+    with pytest.raises(FabricBootstrapError) as captured:
+        bootstrap.start(COMMIT)
+
+    assert str(captured.value) == "already_installed_conflict"
     assert fake.calls == []
 
 

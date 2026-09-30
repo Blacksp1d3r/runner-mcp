@@ -82,7 +82,9 @@ class HostRuntimeIntegrityGate:
                 return HostIntegrityState.DIAGNOSTICS_UNAVAILABLE
             if not isinstance(event.process_class, FatalProcessClass):
                 return HostIntegrityState.DIAGNOSTICS_UNAVAILABLE
-            if since <= event.observed_at <= until:
+            if event.observed_at > until:
+                return HostIntegrityState.DIAGNOSTICS_UNAVAILABLE
+            if event.observed_at >= since:
                 return HostIntegrityState.RECENT_PROCESS_CRASH_EVIDENCE
 
         return HostIntegrityState.CLEAR

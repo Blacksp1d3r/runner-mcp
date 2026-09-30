@@ -10,12 +10,22 @@ on:
 
 permissions:
   contents: read
+  statuses: write
 
 jobs:
   system-python:
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     steps:
+      - name: Mark diagnostic pending
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state=pending \
+            -f context='diag/ubuntu-system-python' \
+            -f description='Ubuntu system Python qualification is running'
+
       - name: Record host and distro Python
         shell: bash
         run: |
@@ -106,3 +116,24 @@ jobs:
             done
             echo "PASS: $module 200/200"
           done
+
+
+      - name: Mark diagnostic success
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state=success \
+            -f context='diag/ubuntu-system-python' \
+            -f description='Exact lab stack passed on Ubuntu system Python'
+
+      - name: Mark diagnostic failure
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+            -f state=failure \
+            -f context='diag/ubuntu-system-python' \
+            -f description='Ubuntu system Python qualification failed'

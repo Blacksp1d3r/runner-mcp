@@ -227,6 +227,7 @@ def test_spawn_exception_fails_closed_without_detail() -> None:
             since=SINCE, until=NOW
         )
     assert str(caught.value) == "host diagnostics unavailable"
+    assert caught.value.__cause__ is None
 
 
 @pytest.mark.parametrize(

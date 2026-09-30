@@ -1471,7 +1471,7 @@ Do not implement Fabric installation in this review.
 
 ### Task 53 — complete first-install Fabric bootstrap guards — CODE lane
 
-Status: `COMPLETE` via PR #157 / merge `227944eac3c1b57a8b814aaba3fa931fd9c054c1`. Issue #144 is closed; exact-head validation #682 / attribution #170 and post-merge validation #683 / attribution #172 are green.
+Status: `COMPLETE` via PR #157 / merge `227944eac3c1b57a8b814aaba3fa931fd9c054c1`. Issue #144 is closed.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1498,7 +1498,7 @@ focused before-subprocess adversarial tests plus full Ruff/pytest/whitespace, bu
 
 ### Task 54 — reconcile refreshed Agent-Bus relay core — INTEGRATION lane
 
-Status: `CLAIMED` by ChatGPT on branch `task54-refresh-agent-bus-relay-core`. PR #153 supplied the two-file unique implementation being refreshed onto current main.
+Status: `CLAIMED` on PR #164 as the current-main refresh of the bounded relay-core comparison. PR #153 remains a stale-base green reference only.
 
 Goal:
 Reconcile PR #153 against current `main`; merge only if exact-head CI is green, mergeable and review-clean. After successful merge/post-merge proof, close obsolete PR #127 as superseded without duplicating its implementation.
@@ -1510,10 +1510,10 @@ Do not widen beyond outbound runtime_status/runtime_doctor relay transport, dura
 
 ### Task 55 — reconcile primary AIfordable control watcher — INTEGRATION lane
 
-Status: `UNCLAIMED`. PR #129 remains open with unique watcher work.
+Status: `RETIRED`. PR #129 is closed after architecture reconciliation: a second direct Runner-MCP primary watcher would duplicate the canonical Runner Fabric Agent Bus route.
 
 Goal:
-After Task 54, reconcile PR #129 against the new `main`. Refresh/rebase only if necessary, preserve unique read-only watcher scope, and merge only after exact-head green CI and review-clean status.
+Preserve any useful historical watcher evidence only as reference. Do not refresh or merge the direct watcher implementation. Primary runtime transport ownership is AIfordable relay -> Runner Fabric Agent Bus -> bounded Runner MCP capabilities; GitHub remains fallback/bootstrap rather than a competing primary worker.
 
 Do not duplicate already merged Agent-Bus lifecycle/autostart work and do not expand to generic remote execution.
 

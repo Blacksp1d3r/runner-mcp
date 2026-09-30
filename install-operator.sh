@@ -25,6 +25,10 @@ if [[ "$(id -un)" != "$SERVICE_USER" ]] && ! command -v sudo >/dev/null 2>&1; th
 fi
 
 RUNNER_BIN="${RUNNER_MCP_SERVICE_BIN:-$SERVICE_HOME/.local/bin/runner-mcp}"
+if [[ "$RUNNER_BIN" != "$SERVICE_HOME/"* ]]; then
+  echo "Error: Runner MCP service executable must be installed under the service user's home." >&2
+  exit 2
+fi
 CONFIG_DIR="${RUNNER_MCP_SERVICE_CONFIG_DIR:-$SERVICE_HOME/.config/runner-mcp}"
 BIN_DIR="${RUNNER_MCP_OPERATOR_BIN_DIR:-$HOME/.local/bin}"
 WRAPPER="$BIN_DIR/runner-mcp"

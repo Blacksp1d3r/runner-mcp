@@ -163,3 +163,154 @@ def test_installer_rejects_missing_venv_support_before_install_root_mutation(
     assert "Installing Runner MCP..." not in result.stdout
     assert not (install_root / "venv").exists()
     assert not (bin_dir / "runner-mcp").exists()
+
+
+def test_installer_reports_pip_sigsegv_without_activating_launcher(tmp_path: Path) -> None:
+    fake_python = tmp_path / "python3"
+    _fake_python(fake_python)
+    script = fake_python.read_text(encoding="utf-8")
+    fake_python.write_text(
+        script.replace(
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" ]]; then\n  exit 0\nfi',
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" ]]; then\n  exit 139\nfi',
+        ),
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    install_root = tmp_path / "install"
+    bin_dir = tmp_path / "bin"
+    env = os.environ.copy()
+    env.update(
+        {
+            "RUNNER_MCP_PYTHON": str(fake_python),
+            "RUNNER_MCP_INSTALL_ROOT": str(install_root),
+            "RUNNER_MCP_BIN_DIR": str(bin_dir),
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "install.sh"],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    assert result.returncode != 0
+    assert "SIGSEGV (rc=139)" in result.stderr
+    assert "dependency/package installation" in result.stderr
+    assert "Do not loop reinstall" in result.stderr
+    assert not (bin_dir / "runner-mcp").exists()
+
+
+def test_installer_times_out_stalled_pip_without_activating_launcher(tmp_path: Path) -> None:
+    fake_python = tmp_path / "python3"
+    _fake_python(fake_python)
+    script = fake_python.read_text(encoding="utf-8")
+    fake_python.write_text(
+        script.replace(
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" ]]; then\n  exit 0\nfi',
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "pip" && "${3:-}" == "install" ]]; then\n  exec sleep 30\nfi',
+        ),
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    install_root = tmp_path / "install"
+    bin_dir = tmp_path / "bin"
+    env = os.environ.copy()
+    env.update(
+        {
+            "RUNNER_MCP_PYTHON": str(fake_python),
+            "RUNNER_MCP_INSTALL_ROOT": str(install_root),
+            "RUNNER_MCP_BIN_DIR": str(bin_dir),
+            "RUNNER_MCP_PIP_INSTALL_TIMEOUT_SECONDS": "1",
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "install.sh"],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    assert result.returncode != 0
+    assert "timed out after 1s (rc=124)" in result.stderr
+    assert "Do not loop reinstall" in result.stderr
+    assert not (bin_dir / "runner-mcp").exists()
+
+
+def test_installer_reports_import_stress_sigsegv_without_activating_launcher(
+    tmp_path: Path,
+) -> None:
+    fake_python = tmp_path / "python3"
+    _fake_python(fake_python)
+    script = fake_python.read_text(encoding="utf-8")
+    fake_python.write_text(
+        script.replace(
+            'echo "ValueError: bad marshal data" >&2\n    exit 1',
+            'echo "simulated native crash" >&2\n    exit 139',
+        ),
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    install_root = tmp_path / "install"
+    bin_dir = tmp_path / "bin"
+    env = os.environ.copy()
+    env.update(
+        {
+            "RUNNER_MCP_PYTHON": str(fake_python),
+            "RUNNER_MCP_INSTALL_ROOT": str(install_root),
+            "RUNNER_MCP_BIN_DIR": str(bin_dir),
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "install.sh"],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    assert result.returncode != 0
+    assert "SIGSEGV (rc=139)" in result.stderr
+    assert "installation integrity check failed" in result.stderr
+    assert "simulated native crash" in result.stderr
+    assert not (bin_dir / "runner-mcp").exists()
+
+
+def test_installer_rejects_unbounded_timeout_configuration_before_venv_creation(
+    tmp_path: Path,
+) -> None:
+    fake_python = tmp_path / "python3"
+    _fake_python(fake_python)
+    install_root = tmp_path / "install"
+    bin_dir = tmp_path / "bin"
+    env = os.environ.copy()
+    env.update(
+        {
+            "RUNNER_MCP_PYTHON": str(fake_python),
+            "RUNNER_MCP_INSTALL_ROOT": str(install_root),
+            "RUNNER_MCP_BIN_DIR": str(bin_dir),
+            "RUNNER_MCP_PIP_INSTALL_TIMEOUT_SECONDS": "0",
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "install.sh"],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+        timeout=10,
+    )
+
+    assert result.returncode != 0
+    assert "must be an integer between 1 and 3600 seconds" in result.stderr
+    assert not (install_root / "venv").exists()
+    assert not (bin_dir / "runner-mcp").exists()

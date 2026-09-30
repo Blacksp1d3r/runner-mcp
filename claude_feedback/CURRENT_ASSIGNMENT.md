@@ -1400,7 +1400,7 @@ Required validation:
 
 ### Task 50 — self-update packaging capability preflight — CODE lane
 
-Status: `CLAIMED` by ChatGPT on branch `task50-self-update-packaging-preflight`. Tracked by issue #143; prerequisite-safe on current main.
+Status: `COMPLETE` via PR #149 / merge `469138077066b7b924ba867456ad44dc6372c85d`. Issue #143 is closed. Exact-head validation #663 / attribution #150 and post-merge validation #665 / attribution #153 are green.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1424,7 +1424,7 @@ focused ordering/failure/privacy tests plus full Ruff/pytest/whitespace, built a
 
 ### Task 51 — remote service-journal disclosure boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`. Dependency satisfied by Task 47 / PR #145.
+Status: `COMPLETE` in `claude_feedback/TASK51_REMOTE_SERVICE_JOURNAL_BOUNDARY_REVIEW.md`. Decision: keep service-journal disclosure local-only; no remote MCP/bridge/mailbox/Agent-Bus log action is justified yet.
 
 Preferred executor: ChatGPT review.
 
@@ -1449,7 +1449,7 @@ Do not add an MCP, bridge, mailbox or Agent-Bus log action during this review.
 
 ### Task 52 — Runner Fabric first-install bootstrap boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`. Tracked by issue #144; review is prerequisite-safe and must precede any bootstrap code.
+Status: `COMPLETE` in `claude_feedback/TASK52_FABRIC_BOOTSTRAP_BOUNDARY_REVIEW.md`. PR #150 provides the bounded bootstrap foundation, but issue #144 remains open pending the three hardening guards queued as Task 53.
 
 Preferred executor: ChatGPT review.
 
@@ -1465,6 +1465,57 @@ Deliverable:
 - queue a separate CODE task only after the review proves the first-install mutation can fail closed.
 
 Do not implement Fabric installation in this review.
+
+
+---
+
+### Task 53 — complete first-install Fabric bootstrap guards — CODE lane
+
+Status: `UNCLAIMED`. Tracked by issue #144. Dependency satisfied by Task 52 review and PR #150 integration.
+
+Preferred executor: ChatGPT or Claude Code.
+
+Source:
+`claude_feedback/TASK52_FABRIC_BOOTSTRAP_BOUNDARY_REVIEW.md`.
+
+Goal:
+Close the remaining #144 safety gaps without widening the existing `fabric_bootstrap(commit)` / `fabric_bootstrap_status(job_id)` authority.
+
+Acceptance:
+- refuse before Git/network/build subprocess work while Runner MCP self-update is active, restart activation is pending, or install recovery is pending/invalid;
+- run fixed local runtime preflight before source clone/build for usable `python -m pip --version`, importable `setuptools.build_meta`, `mcp`, `pydantic`, `starlette` and `uvicorn`;
+- preflight failures return only bounded categories; no stdout/stderr/path/raw exception leakage and no dependency auto-install;
+- preserve same-commit idempotence with zero subprocess calls;
+- if a different Fabric commit is already installed, fail closed before subprocess as `already_installed_conflict`;
+- preserve emergency-stop checks, durable restart->interrupted/no-replay state, private askpass handling and activation rollback;
+- no generic update mechanism, repository/package/path/argv/env selector, rollback target or production authority.
+
+Required validation:
+focused before-subprocess adversarial tests plus full Ruff/pytest/whitespace, built artifact and clean demo.
+
+
+---
+
+### Task 54 — reconcile refreshed Agent-Bus relay core — INTEGRATION lane
+
+Status: `UNCLAIMED`. PR #153 is the clean refresh of unique PR #127 work.
+
+Goal:
+Reconcile PR #153 against current `main`; merge only if exact-head CI is green, mergeable and review-clean. After successful merge/post-merge proof, close obsolete PR #127 as superseded without duplicating its implementation.
+
+Do not widen beyond outbound runtime_status/runtime_doctor relay transport, durable single-flight result delivery and replay protection.
+
+
+---
+
+### Task 55 — reconcile primary AIfordable control watcher — INTEGRATION lane
+
+Status: `UNCLAIMED`. PR #129 remains open with unique watcher work.
+
+Goal:
+After Task 54, reconcile PR #129 against the new `main`. Refresh/rebase only if necessary, preserve unique read-only watcher scope, and merge only after exact-head green CI and review-clean status.
+
+Do not duplicate already merged Agent-Bus lifecycle/autostart work and do not expand to generic remote execution.
 
 
 ---

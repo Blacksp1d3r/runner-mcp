@@ -1,3 +1,21 @@
+## 2026-09-30 — Tasks 50–52 reconciled
+
+- Current reviewed main checkpoint: `0bade0af6ee574b09de42bb493f5ecffa41657d5`.
+- Task 50 is COMPLETE via PR #149 / `469138077066b7b924ba867456ad44dc6372c85d`; issue #143 closed.
+- Issue #151 is COMPLETE via PR #152 / `0bade0af6ee574b09de42bb493f5ecffa41657d5`; exact-head #669/#157 and post-merge #671/#159 are green; issue closed.
+- Task 51 review is COMPLETE: keep service-journal output local-only. Generic redaction cannot prove arbitrary application/customer/personal data safe for remote disclosure. No remote log action is authorized.
+- Task 52 review is COMPLETE: PR #150 provides a bounded Fabric bootstrap foundation, but #144 remains open because three explicit guards are still missing.
+- Task 53 must add: self-update/restart/recovery exclusion; fixed installed-runtime preflight; different-installed-commit first-install conflict before subprocess.
+- PR #153 refreshes unique PR #127 relay-core work; do not duplicate it. Task 54 owns integration/closure.
+- PR #129 remains unique primary watcher work; Task 55 owns reconciliation after Task 54.
+
+Immediate resume order:
+1. integrate this review/coordination PR after exact-head CI;
+2. implement Task 53 and close #144 only after exact-head + post-merge proof;
+3. reconcile #153 and close #127 only after #153 is integrated;
+4. then reconcile #129 against the new main;
+5. keep remote service logs deferred.
+
 ## 2026-09-29 — Tasks 47 and 49 integrated; bounded queue refilled
 
 - Runner MCP `main` checkpoint: `67954dea2117cce3a1819132f6d3c7480dd34c82`.

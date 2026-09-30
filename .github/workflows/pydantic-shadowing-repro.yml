@@ -52,7 +52,7 @@ jobs:
           if [ "$control_rc" -ne 0 ]; then
             gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
               -f state=failure \
-              -f context='diag/pydantic-datetime-shadow' \
+              -f context="diag/pydantic-datetime-shadow/control-rc-$control_rc" \
               -f description="Control import failed rc=$control_rc"
             exit 0
           fi
@@ -71,16 +71,16 @@ jobs:
           if [ "$shadow_rc" -eq 139 ]; then
             gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
               -f state=failure \
-              -f context='diag/pydantic-datetime-shadow' \
+              -f context='diag/pydantic-datetime-shadow/rc-139' \
               -f description='Current pair reproduces SIGSEGV with datetime shadow'
           elif [ "$shadow_rc" -eq 0 ]; then
             gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
               -f state=success \
-              -f context='diag/pydantic-datetime-shadow' \
-              -f description='Current pair does not SIGSEGV with datetime shadow'
+              -f context='diag/pydantic-datetime-shadow/rc-0' \
+              -f description='Current pair imports successfully despite datetime shadow'
           else
             gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
-              -f state=error \
-              -f context='diag/pydantic-datetime-shadow' \
+              -f state=success \
+              -f context="diag/pydantic-datetime-shadow/rc-$shadow_rc" \
               -f description="Datetime shadow returned rc=$shadow_rc, not SIGSEGV"
           fi

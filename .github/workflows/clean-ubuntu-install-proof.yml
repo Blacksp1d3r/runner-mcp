@@ -52,8 +52,9 @@ jobs:
               # itself never receives package-manager authority.
               apt-get install -y --no-install-recommends python3-venv
 
-              mkdir -p "$HOME"
-              bash /workspace/install.sh
+              mkdir -p "$HOME" /tmp/workspace
+              cp -a /workspace/. /tmp/workspace/
+              bash /tmp/workspace/install.sh
 
               test -L "$RUNNER_MCP_BIN_DIR/runner-mcp"
               test -x "$RUNNER_MCP_INSTALL_ROOT/venv/bin/runner-mcp"

@@ -1471,7 +1471,7 @@ Do not implement Fabric installation in this review.
 
 ### Task 53 — complete first-install Fabric bootstrap guards — CODE lane
 
-Status: `CLAIMED` by ChatGPT on branch `task53-complete-fabric-bootstrap-guards`. Tracked by issue #144. Dependency satisfied by Task 52 review and PR #150 integration.
+Status: `COMPLETE` via PR #157 / merge `227944eac3c1b57a8b814aaba3fa931fd9c054c1`. Issue #144 is closed; exact-head validation #682 / attribution #170 and post-merge validation #683 / attribution #172 are green.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1498,7 +1498,7 @@ focused before-subprocess adversarial tests plus full Ruff/pytest/whitespace, bu
 
 ### Task 54 — reconcile refreshed Agent-Bus relay core — INTEGRATION lane
 
-Status: `UNCLAIMED`. PR #153 is the clean refresh of unique PR #127 work.
+Status: `CLAIMED` by ChatGPT on branch `task54-refresh-agent-bus-relay-core`. PR #153 supplied the two-file unique implementation being refreshed onto current main.
 
 Goal:
 Reconcile PR #153 against current `main`; merge only if exact-head CI is green, mergeable and review-clean. After successful merge/post-merge proof, close obsolete PR #127 as superseded without duplicating its implementation.

@@ -115,3 +115,43 @@ def test_installer_rejects_unsupported_pip_before_package_install(tmp_path: Path
     assert "pip 23.2 or newer is required" in result.stderr
     assert "Installing Runner MCP..." not in result.stdout
     assert not (bin_dir / "runner-mcp").exists()
+
+
+def test_installer_rejects_missing_venv_support_before_install_root_mutation(
+    tmp_path: Path,
+) -> None:
+    fake_python = tmp_path / "python3"
+    _fake_python(fake_python)
+    script = fake_python.read_text(encoding="utf-8")
+    fake_python.write_text(
+        script.replace(
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then\n  exit 0',
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then\n  exit 1',
+        ),
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    install_root = tmp_path / "install"
+    bin_dir = tmp_path / "bin"
+    env = os.environ.copy()
+    env.update(
+        {
+            "RUNNER_MCP_PYTHON": str(fake_python),
+            "RUNNER_MCP_INSTALL_ROOT": str(install_root),
+            "RUNNER_MCP_BIN_DIR": str(bin_dir),
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "install.sh"],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "Python venv support is required" in result.stderr
+    assert "Installing Runner MCP..." not in result.stdout
+    assert not (install_root / "venv").exists()
+    assert not (bin_dir / "runner-mcp").exists()

@@ -122,3 +122,19 @@ def test_naive_event_timestamp_fails_closed() -> None:
         gate(adapter).evaluate(runtime_smoke_passed=True)
         == hi.HostIntegrityState.DIAGNOSTICS_UNAVAILABLE
     )
+
+
+def test_future_crash_evidence_is_malformed_and_fails_closed() -> None:
+    adapter = FakeDiagnostics(
+        (
+            hi.FatalProcessEvidence(
+                hi.FatalProcessClass.PYTHON_RUNTIME,
+                NOW + datetime.timedelta(seconds=1),
+            ),
+        )
+    )
+
+    assert (
+        gate(adapter).evaluate(runtime_smoke_passed=True)
+        == hi.HostIntegrityState.DIAGNOSTICS_UNAVAILABLE
+    )

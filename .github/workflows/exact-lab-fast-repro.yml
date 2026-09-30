@@ -1,0 +1,66 @@
+name: Exact lab fast repro
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "diag/issue-194-mcp-runtime-matrix"
+    paths:
+      - ".github/workflows/exact-lab-fast-repro.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  repro:
+    name: ${{ matrix.runtime }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        runtime: ["setup-python-3.12.3", "ubuntu-system-python"]
+
+    steps:
+      - name: Set up CPython 3.12.3
+        if: matrix.runtime == 'setup-python-3.12.3'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12.3"
+
+      - name: Select interpreter
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${{ matrix.runtime }}" == "setup-python-3.12.3" ]]; then
+            echo "BASE_PY=$(command -v python)" >> "$GITHUB_ENV"
+          else
+            echo "BASE_PY=/usr/bin/python3" >> "$GITHUB_ENV"
+          fi
+
+      - name: Build exact lab venv
+        shell: bash
+        run: |
+          set -euo pipefail
+          "$BASE_PY" --version
+          "$BASE_PY" -m venv /tmp/lab
+          /tmp/lab/bin/python -m pip install -q --upgrade pip
+          /tmp/lab/bin/python -m pip install -q --only-binary=:all:             "mcp==2.2.0"             "mcp-types==2.2.0"             "pydantic==2.13.5"             "pydantic-core==2.46.5"             "starlette==0.52.1"             "httpx2==2.13.1"             "cryptography==50.0.2"             "cffi==2.1.1"             "rpds-py==2026.6.3"
+          /tmp/lab/bin/python -m pip check
+
+      - name: Repro mcp.server 40 fresh processes
+        shell: bash
+        run: |
+          set -u
+          PY=/tmp/lab/bin/python
+          for i in $(seq 1 40); do
+            "$PY" -X faulthandler -c 'import mcp.server' >/tmp/out 2>/tmp/err
+            rc=$?
+            if [[ $rc -ne 0 ]]; then
+              echo "FAIL: mcp.server iteration=$i rc=$rc"
+              cat /tmp/err || true
+              exit $rc
+            fi
+            if (( i % 10 == 0 )); then echo "mcp.server $i/40 OK"; fi
+          done
+          echo "PASS: mcp.server 40/40"

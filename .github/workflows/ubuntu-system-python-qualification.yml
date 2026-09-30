@@ -1,0 +1,108 @@
+name: Ubuntu system Python qualification
+
+on:
+  push:
+    branches:
+      - diag/issue-194-mcp-runtime-matrix
+    paths:
+      - .github/workflows/ubuntu-system-python-qualification.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  system-python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - name: Record host and distro Python
+        shell: bash
+        run: |
+          set -euxo pipefail
+          uname -a
+          cat /etc/os-release
+          /usr/bin/python3.12 --version
+          dpkg-query -W -f='${Package} ${Version}\n' python3.12 python3.12-minimal libpython3.12-minimal libpython3.12-stdlib || true
+          ldd /usr/bin/python3.12 || true
+
+      - name: Create venv from Ubuntu system Python
+        shell: bash
+        run: |
+          set -euxo pipefail
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends python3.12-venv
+          /usr/bin/python3.12 -m venv "$RUNNER_TEMP/system-py"
+          "$RUNNER_TEMP/system-py/bin/python" -m pip install --upgrade pip
+
+      - name: Install exact known lab stack
+        shell: bash
+        run: |
+          set -euxo pipefail
+          PY="$RUNNER_TEMP/system-py/bin/python"
+          "$PY" -m pip install --only-binary=:all: \
+            "mcp==2.2.0" \
+            "mcp-types==2.2.0" \
+            "pydantic==2.13.5" \
+            "pydantic-core==2.46.5" \
+            "starlette==0.52.1" \
+            "httpx2==2.13.1" \
+            "cryptography==50.0.2" \
+            "cffi==2.1.1" \
+            "rpds-py==2026.6.3"
+          "$PY" -m pip check
+          "$PY" - <<'PY'
+          import importlib.metadata as md
+          import platform, sys
+          print("executable", sys.executable)
+          print("python", sys.version)
+          print("platform", platform.platform())
+          for package in (
+              "mcp","mcp-types","pydantic","pydantic-core","starlette",
+              "httpx2","cryptography","cffi","rpds-py",
+          ):
+              print(package, md.version(package))
+          PY
+
+      - name: Fresh-process import stress on exact crash boundary
+        shell: bash
+        run: |
+          set -u
+          PY="$RUNNER_TEMP/system-py/bin/python"
+          for module in \
+            mcp.server \
+            mcp.server.mcpserver.utilities.func_metadata
+          do
+            echo "=== TEST: $module ==="
+            for i in $(seq 1 200); do
+              "$PY" -X faulthandler -c "import importlib; importlib.import_module('$module')" >/tmp/out 2>/tmp/err
+              rc=$?
+              if [ "$rc" -ne 0 ]; then
+                echo "FAIL: $module iteration=$i rc=$rc"
+                cat /tmp/out || true
+                cat /tmp/err || true
+                exit "$rc"
+              fi
+            done
+            echo "PASS: $module 200/200"
+          done
+
+      - name: Native extension process churn
+        shell: bash
+        run: |
+          set -u
+          PY="$RUNNER_TEMP/system-py/bin/python"
+          for module in pydantic_core _cffi_backend rpds.rpds cryptography.hazmat.bindings._rust; do
+            echo "=== TEST: $module ==="
+            for i in $(seq 1 200); do
+              "$PY" -X faulthandler -c "import importlib; importlib.import_module('$module')" >/tmp/out 2>/tmp/err
+              rc=$?
+              if [ "$rc" -ne 0 ]; then
+                echo "FAIL: $module iteration=$i rc=$rc"
+                cat /tmp/out || true
+                cat /tmp/err || true
+                exit "$rc"
+              fi
+            done
+            echo "PASS: $module 200/200"
+          done

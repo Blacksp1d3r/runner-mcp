@@ -1,0 +1,86 @@
+name: Pydantic stdlib shadowing repro
+
+on:
+  push:
+    branches:
+      - diag/issue-194-mcp-runtime-matrix
+    paths:
+      - .github/workflows/pydantic-shadowing-repro.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  statuses: write
+
+jobs:
+  datetime-shadow:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Set up Python 3.12.3
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12.3"
+
+      - name: Install current lab Pydantic pair
+        run: |
+          set -euxo pipefail
+          python -m pip install --only-binary=:all: \
+            "pydantic==2.13.5" \
+            "pydantic-core==2.46.5"
+          python -m pip check
+
+      - name: Control import then datetime shadow repro
+        id: repro
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -uo pipefail
+
+          work="$RUNNER_TEMP/pydantic-shadow-repro"
+          rm -rf "$work"
+          mkdir -p "$work/control" "$work/shadow"
+
+          cd "$work/control"
+          python -X faulthandler -c "from pydantic import BaseModel; print('CONTROL_OK')" \
+            >/tmp/control.out 2>/tmp/control.err
+          control_rc=$?
+          cat /tmp/control.out || true
+          cat /tmp/control.err || true
+
+          if [ "$control_rc" -ne 0 ]; then
+            gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -f state=failure \
+              -f context='diag/pydantic-datetime-shadow' \
+              -f description="Control import failed rc=$control_rc"
+            exit 0
+          fi
+
+          : > "$work/shadow/datetime.py"
+          cd "$work/shadow"
+          set +e
+          python -X faulthandler -c "from pydantic import BaseModel; print('SHADOW_IMPORT_OK')" \
+            >/tmp/shadow.out 2>/tmp/shadow.err
+          shadow_rc=$?
+          set -e
+          cat /tmp/shadow.out || true
+          cat /tmp/shadow.err || true
+          echo "shadow_rc=$shadow_rc"
+
+          if [ "$shadow_rc" -eq 139 ]; then
+            gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -f state=failure \
+              -f context='diag/pydantic-datetime-shadow' \
+              -f description='Current pair reproduces SIGSEGV with datetime shadow'
+          elif [ "$shadow_rc" -eq 0 ]; then
+            gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -f state=success \
+              -f context='diag/pydantic-datetime-shadow' \
+              -f description='Current pair does not SIGSEGV with datetime shadow'
+          else
+            gh api "repos/${{ github.repository }}/statuses/${{ github.sha }}" \
+              -f state=error \
+              -f context='diag/pydantic-datetime-shadow' \
+              -f description="Datetime shadow returned rc=$shadow_rc, not SIGSEGV"
+          fi

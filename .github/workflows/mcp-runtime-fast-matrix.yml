@@ -1,0 +1,66 @@
+name: MCP runtime fast qualification
+
+on:
+  push:
+    branches:
+      - "diag/issue-194-mcp-runtime-matrix"
+    paths:
+      - ".github/workflows/mcp-runtime-fast-matrix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  fast-import:
+    name: py ${{ matrix.python }} / pydantic ${{ matrix.pydantic }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 8
+    strategy:
+      fail-fast: false
+      matrix:
+        python: ["3.12.3", "3.12"]
+        pydantic: ["2.12.5", "2.13.5"]
+
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: Install exact pair
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: "1"
+        run: |
+          set -euo pipefail
+          python -m pip install --only-binary=:all: "mcp==2.2.0" "pydantic==${{ matrix.pydantic }}"
+          python -m pip check
+          python - <<'PY'
+          import importlib.metadata as m
+          import sys
+          print(sys.version)
+          for p in ("mcp","mcp-types","pydantic","pydantic-core","starlette","httpx2","cryptography","cffi","rpds-py"):
+              try:
+                  print(p, m.version(p))
+              except m.PackageNotFoundError:
+                  print(p, "unavailable")
+          PY
+
+      - name: Stress proven crash boundary
+        shell: bash
+        run: |
+          set -u
+          for module in             mcp.server             mcp.server.mcpserver.utilities.func_metadata
+          do
+            echo "=== $module ==="
+            for i in $(seq 1 80); do
+              python -X faulthandler -c "import importlib; importlib.import_module('$module')" >/tmp/out 2>/tmp/err
+              rc=$?
+              if [[ $rc -ne 0 ]]; then
+                echo "FAIL module=$module iteration=$i rc=$rc"
+                cat /tmp/out || true
+                cat /tmp/err || true
+                exit $rc
+              fi
+            done
+            echo "PASS: $module 80/80"
+          done

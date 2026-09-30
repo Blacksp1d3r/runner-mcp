@@ -405,6 +405,7 @@ def build_mcp(
     fabric_bootstrap_manager = FabricBootstrapManager(
         config_dir=settings.projects_config.parent,
         safety=safety,
+        self_update_status_provider=self_update_manager.runtime_status,
     )
 
     fabric_bridge = (

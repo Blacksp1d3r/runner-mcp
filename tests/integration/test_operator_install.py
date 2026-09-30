@@ -15,7 +15,9 @@ def test_operator_installer_creates_working_local_wrapper(tmp_path: Path) -> Non
         capture_output=True,
         text=True,
     ).stdout.strip()
-    fake_runner = tmp_path / "fake-runner"
+    service_home = Path.home()
+    fake_runner = service_home / ".local" / "bin" / "runner-mcp-operator-test"
+    fake_runner.parent.mkdir(parents=True, exist_ok=True)
     fake_runner.write_text(
         "#!/usr/bin/env bash\nprintf '%s\\n' \"$@\"\n",
         encoding="utf-8",
@@ -42,17 +44,20 @@ def test_operator_installer_creates_working_local_wrapper(tmp_path: Path) -> Non
     assert wrapper.exists()
     assert wrapper.stat().st_mode & 0o777 == 0o700
 
-    result = subprocess.run(
-        [str(wrapper), "guide"],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
-    assert result.stdout.splitlines() == [
-        "--config-dir",
-        str(config_dir),
-        "guide",
-    ]
+    try:
+        result = subprocess.run(
+            [str(wrapper), "guide"],
+            check=True,
+            capture_output=True,
+            text=True,
+        )
+        assert result.stdout.splitlines() == [
+            "--config-dir",
+            str(config_dir),
+            "guide",
+        ]
+    finally:
+        fake_runner.unlink(missing_ok=True)
 
 
 def test_operator_installer_rejects_invalid_service_user(tmp_path: Path) -> None:
@@ -125,3 +130,34 @@ def test_operator_installer_requires_sudo_for_a_different_account(tmp_path: Path
     assert result.returncode == 2
     assert "sudo is required" in result.stderr
     assert not (tmp_path / "bin").exists()
+
+
+def test_operator_installer_rejects_service_binary_outside_service_home(
+    tmp_path: Path,
+) -> None:
+    service_user = subprocess.run(
+        ["id", "-un"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    foreign_runner = tmp_path / "other-home" / ".local" / "bin" / "runner-mcp"
+    foreign_runner.parent.mkdir(parents=True)
+    foreign_runner.write_text("#!/usr/bin/env bash\nexit 0\n", encoding="utf-8")
+    foreign_runner.chmod(0o755)
+
+    env = os.environ.copy()
+    env["RUNNER_MCP_SERVICE_BIN"] = str(foreign_runner)
+    env["RUNNER_MCP_OPERATOR_BIN_DIR"] = str(tmp_path / "operator-bin")
+
+    result = subprocess.run(
+        ["bash", "install-operator.sh", service_user],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode == 2
+    assert "must be installed under the service user's home" in result.stderr
+    assert not (tmp_path / "operator-bin" / "runner-mcp").exists()

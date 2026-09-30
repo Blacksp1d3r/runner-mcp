@@ -1,0 +1,106 @@
+name: MCP runtime import matrix
+
+on:
+  push:
+    branches:
+      - "diag/issue-194-mcp-runtime-matrix"
+    paths:
+      - ".github/workflows/mcp-runtime-import-matrix.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  import-stress:
+    name: py ${{ matrix.python }} / pydantic ${{ matrix.pydantic }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        python:
+          - "3.12.3"
+          - "3.12"
+        pydantic:
+          - "2.12.5"
+          - "2.13.5"
+
+    steps:
+      - name: Check out repository revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "${{ matrix.python }}"
+
+      - name: Install exact MCP/Pydantic pair
+        env:
+          PIP_DISABLE_PIP_VERSION_CHECK: "1"
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip install --only-binary=:all:             "mcp==2.2.0"             "pydantic==${{ matrix.pydantic }}"
+          python -m pip check
+
+      - name: Record exact runtime
+        shell: bash
+        run: |
+          set -euo pipefail
+          python - <<'PY'
+          import importlib.metadata as m
+          import platform
+          import sys
+
+          print("executable:", sys.executable)
+          print("python:", sys.version)
+          print("platform:", platform.platform())
+          for name in (
+              "mcp",
+              "mcp-types",
+              "pydantic",
+              "pydantic-core",
+              "starlette",
+              "httpx2",
+              "cryptography",
+              "cffi",
+              "rpds-py",
+          ):
+              try:
+                  print(f"{name}: {m.version(name)}")
+              except m.PackageNotFoundError:
+                  print(f"{name}: unavailable")
+          PY
+
+      - name: Fresh-process import stress
+        shell: bash
+        run: |
+          set -u
+          modules=(
+            "mcp.server"
+            "mcp.server.mcpserver.utilities.func_metadata"
+            "mcp.server.auth.provider"
+            "mcp.server.auth.settings"
+            "mcp.server.transport_security"
+          )
+
+          for module in "${modules[@]}"; do
+            echo "=== $module ==="
+            ok=0
+            for i in $(seq 1 200); do
+              python -X faulthandler -c "import importlib; importlib.import_module('$module')" >/tmp/mcp-import.out 2>/tmp/mcp-import.err
+              rc=$?
+              if [[ $rc -ne 0 ]]; then
+                echo "FAIL module=$module iteration=$i rc=$rc"
+                cat /tmp/mcp-import.out || true
+                cat /tmp/mcp-import.err || true
+                exit $rc
+              fi
+              ok=$i
+            done
+            echo "PASS: $module $ok/200"
+          done

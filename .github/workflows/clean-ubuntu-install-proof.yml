@@ -1,0 +1,62 @@
+name: Clean Ubuntu installer proof
+
+on:
+  pull_request:
+    paths:
+      - "install.sh"
+      - "pyproject.toml"
+      - "docs/CLEAN_UBUNTU_INSTALL_PROOF.md"
+      - ".github/workflows/clean-ubuntu-install-proof.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  clean-ubuntu-install:
+    name: Missing venv bootstrap and install
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Check out repository revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 1
+
+      - name: Prove fixed clean-image bootstrap
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run --rm \
+            --mount "type=bind,src=$PWD,dst=/workspace,readonly" \
+            ubuntu:24.04 \
+            bash -euo pipefail -c '
+              export DEBIAN_FRONTEND=noninteractive
+              export HOME=/tmp/runner-mcp-home
+              export RUNNER_MCP_INSTALL_ROOT="$HOME/.local/share/runner-mcp"
+              export RUNNER_MCP_BIN_DIR="$HOME/.local/bin"
+
+              # Fixture setup only: provide the supported system Python while
+              # intentionally leaving its venv package absent.
+              apt-get update
+              apt-get install -y --no-install-recommends python3-minimal ca-certificates
+
+              if python3 -m venv /tmp/must-not-exist >/dev/null 2>&1; then
+                echo "Error: fixture unexpectedly had Python venv support." >&2
+                exit 1
+              fi
+              rm -rf /tmp/must-not-exist
+
+              # Fixed CI bootstrap from the reviewed proof boundary. Runner MCP
+              # itself never receives package-manager authority.
+              apt-get install -y --no-install-recommends python3-venv
+
+              mkdir -p "$HOME" /tmp/workspace
+              cp -a /workspace/. /tmp/workspace/
+              bash /tmp/workspace/install.sh
+
+              test -L "$RUNNER_MCP_BIN_DIR/runner-mcp"
+              test -x "$RUNNER_MCP_INSTALL_ROOT/venv/bin/runner-mcp"
+              "$RUNNER_MCP_BIN_DIR/runner-mcp" --help >/dev/null
+            '

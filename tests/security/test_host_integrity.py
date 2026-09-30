@@ -3,10 +3,10 @@ from __future__ import annotations
 from datetime import UTC, datetime, timedelta
 
 from runner_mcp.host_integrity import (
-    HOST_INTEGRITY_LOOKBACK,
     FatalProcessClass,
     FatalProcessEvidence,
     HostDiagnosticError,
+    HOST_INTEGRITY_LOOKBACK,
     HostIntegrityState,
     HostRuntimeIntegrityGate,
 )

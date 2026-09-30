@@ -3,9 +3,8 @@ from __future__ import annotations
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
-from typing import Protocol
-
 from enum import StrEnum
+from typing import Protocol
 
 
 HOST_INTEGRITY_LOOKBACK = timedelta(minutes=30)

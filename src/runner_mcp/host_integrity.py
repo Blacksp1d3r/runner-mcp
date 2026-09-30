@@ -1,30 +1,30 @@
 from __future__ import annotations
 
-from collections.abc import Callable
-from dataclasses import dataclass
-from datetime import UTC, datetime, timedelta
-from enum import StrEnum
+import collections.abc
+import dataclasses
+import datetime
+import enum
 
 
-HOST_INTEGRITY_LOOKBACK = timedelta(minutes=30)
+HOST_INTEGRITY_LOOKBACK = datetime.timedelta(minutes=30)
 
 
-class HostIntegrityState(StrEnum):
+class HostIntegrityState(enum.StrEnum):
     CLEAR = "host_integrity_clear"
     RUNTIME_SMOKE_FAILED = "runtime_smoke_failed"
     RECENT_PROCESS_CRASH_EVIDENCE = "recent_process_crash_evidence"
     DIAGNOSTICS_UNAVAILABLE = "diagnostics_unavailable"
 
 
-class FatalProcessClass(StrEnum):
+class FatalProcessClass(enum.StrEnum):
     PYTHON_RUNTIME = "python_runtime"
     UNRELATED_SYSTEM_PROCESS = "unrelated_system_process"
 
 
-@dataclass(frozen=True)
+@dataclasses.dataclass(frozen=True)
 class FatalProcessEvidence:
     process_class: FatalProcessClass
-    observed_at: datetime
+    observed_at: datetime.datetime
 
 
 class HostDiagnosticError(RuntimeError):
@@ -35,8 +35,8 @@ class HostDiagnosticAdapter:
     def recent_fatal_process_classes(
         self,
         *,
-        since: datetime,
-        until: datetime,
+        since: datetime.datetime,
+        until: datetime.datetime,
     ) -> tuple[FatalProcessEvidence, ...]: ...
 
 
@@ -51,10 +51,10 @@ class HostRuntimeIntegrityGate:
         self,
         *,
         diagnostics: HostDiagnosticAdapter,
-        now: Callable[[], datetime] | None = None,
+        now: collections.abc.Callable[[], datetime.datetime] | None = None,
     ) -> None:
         self._diagnostics = diagnostics
-        self._now = now or (lambda: datetime.now(UTC))
+        self._now = now or (lambda: datetime.datetime.now(datetime.UTC))
 
     def evaluate(self, *, runtime_smoke_passed: bool) -> HostIntegrityState:
         if runtime_smoke_passed is not True:

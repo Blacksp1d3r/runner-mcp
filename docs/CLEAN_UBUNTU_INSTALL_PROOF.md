@@ -8,6 +8,22 @@ Normal validation proves the installer fails closed when venv support is unavail
 
 Those deterministic tests are not evidence that an arbitrary private host is healthy.
 
+## Bounded installer execution
+
+The source installer now treats package installation and post-install runtime
+smoke checks as bounded operations.
+
+- package installation has a 600-second default wall-clock limit;
+- each runtime import/CLI smoke process has a 30-second default wall-clock limit;
+- local operators may lower or raise those limits only within 1..3600 seconds;
+- timeout exit 124 is reported explicitly as a timeout;
+- exit 139 is reported explicitly as `SIGSEGV`, with guidance to stop reinstall
+  loops and verify runtime/host integrity;
+- a failed or timed-out install never creates the public `runner-mcp` launcher.
+
+These bounds do not turn an unstable host into a healthy one. They make failure
+finite and unambiguous enough for the operator to stop before activation.
+
 ## Separate clean-image proof
 
 A clean-image validation may use an ephemeral Ubuntu 24.04 CI/container environment to prove the documented operator bootstrap sequence when `python3-venv` is initially absent.

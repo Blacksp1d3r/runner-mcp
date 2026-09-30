@@ -47,16 +47,25 @@ if ! "$PYTHON_BIN" -m venv "$VENV_DIR"; then
 fi
 
 echo "Checking isolated installer runtime..."
-if ! "$VENV_DIR/bin/python" -m pip --version >/dev/null 2>&1; then
-  echo "Error: pip is unavailable in the isolated Python environment." >&2
+PIP_VERSION_OUTPUT="$("$VENV_DIR/bin/python" -m pip --version 2>/dev/null || true)"
+if [[ ! "$PIP_VERSION_OUTPUT" =~ ^pip[[:space:]]+([0-9]+)\.([0-9]+)(\.([0-9]+))?([[:space:]]|$) ]]; then
+  echo "Error: pip is unavailable or its version could not be verified in the isolated Python environment." >&2
+  exit 1
+fi
+PIP_MAJOR="${BASH_REMATCH[1]}"
+PIP_MINOR="${BASH_REMATCH[2]}"
+if (( PIP_MAJOR < 23 || (PIP_MAJOR == 23 && PIP_MINOR < 2) )); then
+  echo "Error: pip 23.2 or newer is required in the isolated Python environment." >&2
   exit 1
 fi
 
 echo "Installing Runner MCP..."
 "$VENV_DIR/bin/python" -m pip install --disable-pip-version-check "$ROOT_DIR"
 
-echo "Verifying installed Python runtime..."
-if ! "$VENV_DIR/bin/python" - <<'PY'
+echo "Stress-verifying installed Python runtime..."
+for attempt in {1..32}; do
+  if ! PYTHONPYCACHEPREFIX="$INSTALL_ROOT/.integrity-smoke-pycache" \
+    "$VENV_DIR/bin/python" -B -X faulthandler - <<'PY'
 import importlib
 
 for module_name in (
@@ -70,18 +79,21 @@ for module_name in (
 ):
     importlib.import_module(module_name)
 PY
-then
-  echo "Error: Runner MCP installation integrity check failed." >&2
-  echo "The isolated environment may contain incompatible or corrupted Python bytecode." >&2
-  echo "Remove the isolated Runner MCP venv and reinstall without reusing package caches or stale __pycache__ files." >&2
-  echo "Do not enable Runner MCP autostart until this check succeeds." >&2
-  exit 1
-fi
+  then
+    echo "Error: Runner MCP installation integrity check failed during repeated import stress." >&2
+    echo "The Python runtime may be incompatible, corrupted, or unstable." >&2
+    echo "Do not loop reinstall. Do not enable Runner MCP autostart until runtime/host integrity is verified." >&2
+    exit 1
+  fi
+done
 
-if ! "$VENV_DIR/bin/runner-mcp" --help >/dev/null 2>&1; then
-  echo "Error: Runner MCP installation self-check failed." >&2
-  exit 1
-fi
+for attempt in {1..8}; do
+  if ! PYTHONDONTWRITEBYTECODE=1 "$VENV_DIR/bin/runner-mcp" --help >/dev/null 2>&1; then
+    echo "Error: Runner MCP installation self-check failed during repeated CLI stress." >&2
+    echo "Do not enable Runner MCP autostart until runtime/host integrity is verified." >&2
+    exit 1
+  fi
+done
 
 ln -sfn "$VENV_DIR/bin/runner-mcp" "$BIN_DIR/runner-mcp"
 

@@ -1498,7 +1498,7 @@ focused before-subprocess adversarial tests plus full Ruff/pytest/whitespace, bu
 
 ### Task 54 — reconcile refreshed Agent-Bus relay core — INTEGRATION lane
 
-Status: `CLAIMED` by ChatGPT on branch `task54-refresh-agent-bus-relay-core`. PR #153 supplied the two-file unique implementation being refreshed onto current main.
+Status: `COMPLETE` via refreshed PR #164 / merge `6a889e369b1f0eabdaf60999df7fe10bbe4ae461`. Obsolete PR #153 and issue #126 are closed.
 
 Goal:
 Reconcile PR #153 against current `main`; merge only if exact-head CI is green, mergeable and review-clean. After successful merge/post-merge proof, close obsolete PR #127 as superseded without duplicating its implementation.
@@ -1510,7 +1510,7 @@ Do not widen beyond outbound runtime_status/runtime_doctor relay transport, dura
 
 ### Task 55 — reconcile primary AIfordable control watcher — INTEGRATION lane
 
-Status: `UNCLAIMED`. PR #129 remains open with unique watcher work.
+Status: `RETIRED`. The direct watcher architecture was superseded by the managed Agent Bus worker/relay path; issue #128 and stale direct PRs #127/#129 are closed rather than duplicated.
 
 Goal:
 After Task 54, reconcile PR #129 against the new `main`. Refresh/rebase only if necessary, preserve unique read-only watcher scope, and merge only after exact-head green CI and review-clean status.
@@ -1524,7 +1524,7 @@ Do not duplicate already merged Agent-Bus lifecycle/autostart work and do not ex
 
 ### Task 56 — bounded host-runtime activation gate implementation — CODE lane
 
-Status: `UNCLAIMED`. Design is merged in `docs/HOST_RUNTIME_INTEGRITY_GATE.md`; live host proof remains separate.
+Status: `COMPLETE` via PR #178 / merge `239fbe5603a6ebaccb7c93cd726475fd07fffc71`. The local four-state decision model and injected adapter boundary are merged; production journal access/autostart wiring remain separate review work.
 
 Goal:
 Implement only the local decision model and injected diagnostic-adapter boundary defined by the merged design. Do not expose host diagnostics through MCP, bridge, mailbox or Agent Bus.
@@ -1541,7 +1541,7 @@ Acceptance:
 
 ### Task 57 — disposable clean-Ubuntu missing-venv proof — CI lane
 
-Status: `BLOCKED` until the proof boundary document lands on current main.
+Status: `INTEGRATION`. The proof boundary is merged via #173; exact-head clean-image implementation is in PR #180.
 
 Goal:
 Add a disposable Ubuntu 24.04 validation that first proves venv creation is unavailable, bootstraps only the fixed OS venv prerequisite in CI setup, then runs the normal installer and launcher smoke. Runner MCP itself must continue to fail with guidance rather than invoking a package manager.
@@ -1555,7 +1555,7 @@ Acceptance:
 
 ### Task 58 — live Agent-Bus cutover proof packet — LIVE/OPERATOR lane
 
-Status: `BLOCKED` until private-host access is available and Runner Fabric current state is reconciled.
+Status: `BLOCKED` on private-host access and Fabric durability/gateway integration. Fabric startup is now proven through merged #355, but Fabric #256/#264 remain open with failing Foundation CI; see Runner MCP #110 reconciliation.
 
 Goal:
 Close the remaining proof portions of #125/#130/#110 without widening Runner MCP authority.
@@ -1573,3 +1573,48 @@ Acceptance:
 When fewer than three prerequisite-safe `UNCLAIMED` tasks remain, the integrator should review the roadmap, current findings and open PRs and add new bounded tasks before the queue drains completely. New work must be dependency-safe and must not be invented merely to keep agents busy.
 
 When a CHAT REVIEW demonstrates a real defect, add a separate CODE task with explicit files, acceptance criteria and ownership rather than silently expanding the review.
+
+
+### Task 59 — host-integrity production adapter boundary review — CHAT REVIEW
+
+Status: `UNCLAIMED`.
+
+Goal:
+Define the smallest production Linux diagnostic adapter for Task 56 before any journal subprocess or autostart wiring is added.
+
+Acceptance:
+- fixed reviewed process identifiers/classes in code; no caller-supplied query/process/path/window;
+- fixed 30-minute evidence window remains owned by the gate;
+- bounded subprocess timeout and byte cap, with malformed/oversized/nonzero/timeout mapped only to `diagnostics_unavailable`;
+- no raw stdout/stderr/journal records, PID/user/path/host/kernel address/stack or `str(exc)` in public results;
+- tests use injected output/runner and CI never depends on its own journal;
+- explicitly decide whether `journalctl` is sufficiently portable/available for supported Linux hosts and how absence fails closed;
+- do not implement the adapter or autostart wiring in this review.
+
+### Task 60 — autostart host-integrity enforcement review — CHAT REVIEW
+
+Status: `BLOCKED` until Task 59 is complete.
+
+Goal:
+Map the merged Task 56 state into the existing local `install_user_services` activation path without turning status, MCP, Agent Bus or Fabric into a force bypass.
+
+Acceptance:
+- identify the exact local call site and runtime-smoke evidence source;
+- only `host_integrity_clear` may reach `systemctl --user enable --now`;
+- blocked states must not partially enable managed units;
+- existing managed-unit ownership, emergency-stop and recovery semantics stay authoritative;
+- no remote force flag, arbitrary diagnostic selector or package/repair action;
+- implementation, if justified, becomes a separate CODE task.
+
+### Task 61 — clean-install proof closure and operator evidence — INTEGRATION lane
+
+Status: `BLOCKED` until PR #180 exact-head validation is green.
+
+Goal:
+Close Task 57 after exact-head proof, record only public CI evidence, and keep the clean-image result explicitly separate from private-host health/recovery proof.
+
+Acceptance:
+- PR #180 exact-head attribution, normal validation and clean-Ubuntu proof all green;
+- mergeable and review-clean before merge;
+- no claim that CI clears #108 or the private-host integrity incident;
+- update queue/roadmap state only after merge.

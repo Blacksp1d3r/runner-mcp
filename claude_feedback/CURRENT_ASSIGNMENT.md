@@ -1520,6 +1520,54 @@ Do not duplicate already merged Agent-Bus lifecycle/autostart work and do not ex
 
 ---
 
+---
+
+### Task 56 — bounded host-runtime activation gate implementation — CODE lane
+
+Status: `UNCLAIMED`. Design is merged in `docs/HOST_RUNTIME_INTEGRITY_GATE.md`; live host proof remains separate.
+
+Goal:
+Implement only the local decision model and injected diagnostic-adapter boundary defined by the merged design. Do not expose host diagnostics through MCP, bridge, mailbox or Agent Bus.
+
+Acceptance:
+- exactly the four documented public states;
+- fixed 30-minute window and fixed reviewed process classes;
+- injected adapter for deterministic tests; CI never reads its host journal;
+- malformed/oversized/timeout/unavailable diagnostics fail as `diagnostics_unavailable` without raw output or exception leakage;
+- failed runtime stress dominates later successes as `runtime_smoke_failed`;
+- no autostart enablement can follow a blocked state;
+- no apt/sudo/package repair, arbitrary command/query/path/process/time-window authority or remote force flag.
+
+
+### Task 57 — disposable clean-Ubuntu missing-venv proof — CI lane
+
+Status: `BLOCKED` until the proof boundary document lands on current main.
+
+Goal:
+Add a disposable Ubuntu 24.04 validation that first proves venv creation is unavailable, bootstraps only the fixed OS venv prerequisite in CI setup, then runs the normal installer and launcher smoke. Runner MCP itself must continue to fail with guidance rather than invoking a package manager.
+
+Acceptance:
+- no private infrastructure/credentials;
+- fixed CI bootstrap only, no runtime package-manager authority;
+- installer stress gates must pass before launcher activation;
+- result must not be presented as proof that the private host is healthy.
+
+
+### Task 58 — live Agent-Bus cutover proof packet — LIVE/OPERATOR lane
+
+Status: `BLOCKED` until private-host access is available and Runner Fabric current state is reconciled.
+
+Goal:
+Close the remaining proof portions of #125/#130/#110 without widening Runner MCP authority.
+
+Acceptance:
+- GitHub credentials/network unavailable during primary runtime_status/runtime_doctor proof;
+- restart/interruption proves durable replay without duplicate execution;
+- bounded primary/fallback/degraded state is truthful;
+- one bounded Fabric work-unit roundtrip only after current Fabric durability/gateway/startup prerequisites are integrated;
+- scrubbed evidence only; no private endpoints, credentials, paths or host identifiers in the public repo.
+
+
 ## Queue refill rule
 
 When fewer than three prerequisite-safe `UNCLAIMED` tasks remain, the integrator should review the roadmap, current findings and open PRs and add new bounded tasks before the queue drains completely. New work must be dependency-safe and must not be invented merely to keep agents busy.

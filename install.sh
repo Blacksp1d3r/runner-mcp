@@ -82,7 +82,7 @@ PY
   then
     echo "Error: Runner MCP installation integrity check failed during repeated import stress." >&2
     echo "The Python runtime may be incompatible, corrupted, or unstable." >&2
-    echo "Do not loop reinstall or enable Runner MCP autostart until runtime/host integrity is verified." >&2
+    echo "Do not loop reinstall. Do not enable Runner MCP autostart until runtime/host integrity is verified." >&2
     exit 1
   fi
 done

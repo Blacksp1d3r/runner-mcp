@@ -28,6 +28,10 @@ class FatalProcessEvidence:
     observed_at: datetime
 
 
+class HostDiagnosticError(RuntimeError):
+    pass
+
+
 class HostDiagnosticAdapter(Protocol):
     def recent_fatal_process_classes(
         self,
@@ -67,7 +71,7 @@ class HostRuntimeIntegrityGate:
                 since=since,
                 until=until,
             )
-        except Exception:
+        except (HostDiagnosticError, OSError, TimeoutError, ValueError):
             return HostIntegrityState.DIAGNOSTICS_UNAVAILABLE
 
         if not isinstance(evidence, tuple):

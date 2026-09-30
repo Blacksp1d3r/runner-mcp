@@ -33,6 +33,14 @@ if [[ "${1:-}" == "-" ]]; then
   fi
   exit 0
 fi
+if [[ "${1:-}" == "-B" && "${2:-}" == "-X" && "${3:-}" == "faulthandler" && "${4:-}" == "-" ]]; then
+  source_text="$(cat)"
+  if [[ "$source_text" == *"importlib.import_module"* ]]; then
+    echo "ValueError: bad marshal data" >&2
+    exit 1
+  fi
+  exit 0
+fi
 exit 1
 INNER
   chmod +x "${venv}/bin/python"
@@ -80,4 +88,78 @@ def test_installer_fails_closed_on_post_install_import_corruption(tmp_path: Path
     assert "installation integrity check failed" in result.stderr
     assert "bad marshal data" in result.stderr
     assert "Do not enable Runner MCP autostart" in result.stderr
+    assert not (bin_dir / "runner-mcp").exists()
+
+
+def test_installer_rejects_unsupported_pip_before_package_install(tmp_path: Path) -> None:
+    fake_python = tmp_path / "python3"
+    _fake_python(fake_python)
+    script = fake_python.read_text(encoding="utf-8")
+    fake_python.write_text(
+        script.replace('echo "pip 24.0"', 'echo "pip 22.3"'),
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    install_root = tmp_path / "install"
+    bin_dir = tmp_path / "bin"
+    env = os.environ.copy()
+    env.update(
+        {
+            "RUNNER_MCP_PYTHON": str(fake_python),
+            "RUNNER_MCP_INSTALL_ROOT": str(install_root),
+            "RUNNER_MCP_BIN_DIR": str(bin_dir),
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "install.sh"],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "pip 23.2 or newer is required" in result.stderr
+    assert "Installing Runner MCP..." not in result.stdout
+    assert not (bin_dir / "runner-mcp").exists()
+
+
+def test_installer_rejects_missing_venv_support_before_install_root_mutation(
+    tmp_path: Path,
+) -> None:
+    fake_python = tmp_path / "python3"
+    _fake_python(fake_python)
+    script = fake_python.read_text(encoding="utf-8")
+    fake_python.write_text(
+        script.replace(
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then\n  exit 0',
+            'if [[ "${1:-}" == "-m" && "${2:-}" == "venv" && "${3:-}" == "--help" ]]; then\n  exit 1',
+        ),
+        encoding="utf-8",
+    )
+    fake_python.chmod(0o755)
+    install_root = tmp_path / "install"
+    bin_dir = tmp_path / "bin"
+    env = os.environ.copy()
+    env.update(
+        {
+            "RUNNER_MCP_PYTHON": str(fake_python),
+            "RUNNER_MCP_INSTALL_ROOT": str(install_root),
+            "RUNNER_MCP_BIN_DIR": str(bin_dir),
+        }
+    )
+
+    result = subprocess.run(
+        ["bash", "install.sh"],
+        check=False,
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "Python venv support is required" in result.stderr
+    assert "Installing Runner MCP..." not in result.stdout
+    assert not (install_root / "venv").exists()
     assert not (bin_dir / "runner-mcp").exists()

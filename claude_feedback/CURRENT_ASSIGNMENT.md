@@ -1471,7 +1471,7 @@ Do not implement Fabric installation in this review.
 
 ### Task 53 — complete first-install Fabric bootstrap guards — CODE lane
 
-Status: `COMPLETE` via PR #157 / merge `227944eac3c1b57a8b814aaba3fa931fd9c054c1`. Issue #144 is closed.
+Status: `COMPLETE` via PR #157 / merge `227944eac3c1b57a8b814aaba3fa931fd9c054c1`. Issue #144 is closed; exact-head validation #682 / attribution #170 and post-merge validation #683 / attribution #172 are green.
 
 Preferred executor: ChatGPT or Claude Code.
 
@@ -1498,7 +1498,7 @@ focused before-subprocess adversarial tests plus full Ruff/pytest/whitespace, bu
 
 ### Task 54 — reconcile refreshed Agent-Bus relay core — INTEGRATION lane
 
-Status: `CLAIMED` on PR #164 as the current-main refresh of the bounded relay-core comparison. PR #153 remains a stale-base green reference only.
+Status: `CLAIMED` by ChatGPT on branch `task54-refresh-agent-bus-relay-core`. PR #153 supplied the two-file unique implementation being refreshed onto current main.
 
 Goal:
 Reconcile PR #153 against current `main`; merge only if exact-head CI is green, mergeable and review-clean. After successful merge/post-merge proof, close obsolete PR #127 as superseded without duplicating its implementation.
@@ -1510,15 +1510,63 @@ Do not widen beyond outbound runtime_status/runtime_doctor relay transport, dura
 
 ### Task 55 — reconcile primary AIfordable control watcher — INTEGRATION lane
 
-Status: `RETIRED`. PR #129 is closed after architecture reconciliation: a second direct Runner-MCP primary watcher would duplicate the canonical Runner Fabric Agent Bus route.
+Status: `UNCLAIMED`. PR #129 remains open with unique watcher work.
 
 Goal:
-Preserve any useful historical watcher evidence only as reference. Do not refresh or merge the direct watcher implementation. Primary runtime transport ownership is AIfordable relay -> Runner Fabric Agent Bus -> bounded Runner MCP capabilities; GitHub remains fallback/bootstrap rather than a competing primary worker.
+After Task 54, reconcile PR #129 against the new `main`. Refresh/rebase only if necessary, preserve unique read-only watcher scope, and merge only after exact-head green CI and review-clean status.
 
 Do not duplicate already merged Agent-Bus lifecycle/autostart work and do not expand to generic remote execution.
 
 
 ---
+
+---
+
+### Task 56 — bounded host-runtime activation gate implementation — CODE lane
+
+Status: `UNCLAIMED`. Design is merged in `docs/HOST_RUNTIME_INTEGRITY_GATE.md`; live host proof remains separate.
+
+Goal:
+Implement only the local decision model and injected diagnostic-adapter boundary defined by the merged design. Do not expose host diagnostics through MCP, bridge, mailbox or Agent Bus.
+
+Acceptance:
+- exactly the four documented public states;
+- fixed 30-minute window and fixed reviewed process classes;
+- injected adapter for deterministic tests; CI never reads its host journal;
+- malformed/oversized/timeout/unavailable diagnostics fail as `diagnostics_unavailable` without raw output or exception leakage;
+- failed runtime stress dominates later successes as `runtime_smoke_failed`;
+- no autostart enablement can follow a blocked state;
+- no apt/sudo/package repair, arbitrary command/query/path/process/time-window authority or remote force flag.
+
+
+### Task 57 — disposable clean-Ubuntu missing-venv proof — CI lane
+
+Status: `BLOCKED` until the proof boundary document lands on current main.
+
+Goal:
+Add a disposable Ubuntu 24.04 validation that first proves venv creation is unavailable, bootstraps only the fixed OS venv prerequisite in CI setup, then runs the normal installer and launcher smoke. Runner MCP itself must continue to fail with guidance rather than invoking a package manager.
+
+Acceptance:
+- no private infrastructure/credentials;
+- fixed CI bootstrap only, no runtime package-manager authority;
+- installer stress gates must pass before launcher activation;
+- result must not be presented as proof that the private host is healthy.
+
+
+### Task 58 — live Agent-Bus cutover proof packet — LIVE/OPERATOR lane
+
+Status: `BLOCKED` until private-host access is available and Runner Fabric current state is reconciled.
+
+Goal:
+Close the remaining proof portions of #125/#130/#110 without widening Runner MCP authority.
+
+Acceptance:
+- GitHub credentials/network unavailable during primary runtime_status/runtime_doctor proof;
+- restart/interruption proves durable replay without duplicate execution;
+- bounded primary/fallback/degraded state is truthful;
+- one bounded Fabric work-unit roundtrip only after current Fabric durability/gateway/startup prerequisites are integrated;
+- scrubbed evidence only; no private endpoints, credentials, paths or host identifiers in the public repo.
+
 
 ## Queue refill rule
 

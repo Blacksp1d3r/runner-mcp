@@ -1,0 +1,63 @@
+name: Exact lab runtime qualification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "diag/issue-194-mcp-runtime-matrix"
+    paths:
+      - ".github/workflows/exact-lab-runtime.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  exact-lab:
+    name: starlette ${{ matrix.starlette }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    strategy:
+      fail-fast: false
+      matrix:
+        starlette: ["0.52.1", "1.7.0"]
+
+    steps:
+      - uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97
+        with:
+          python-version: "3.12.3"
+
+      - name: Install frozen known lab stack
+        run: |
+          set -euo pipefail
+          python -m pip install --only-binary=:all:             "mcp==2.2.0"             "mcp-types==2.2.0"             "pydantic==2.13.5"             "pydantic-core==2.46.5"             "starlette==${{ matrix.starlette }}"             "httpx2==2.13.1"             "cryptography==50.0.2"             "cffi==2.1.1"             "rpds-py==2026.6.3"
+          python -m pip check
+          python - <<'PY'
+          import importlib.metadata as m
+          import sys
+          print(sys.version)
+          for p in ("mcp","mcp-types","pydantic","pydantic-core","starlette","httpx2","cryptography","cffi","rpds-py"):
+              print(p, m.version(p))
+          PY
+
+      - name: Stress isolated imports
+        shell: bash
+        run: |
+          set -u
+          for module in             mcp_types             mcp.server             mcp.server.mcpserver.utilities.func_metadata
+          do
+            echo "=== TEST: $module ==="
+            for i in $(seq 1 120); do
+              python -X faulthandler -c "import importlib; importlib.import_module('$module')" >/tmp/out 2>/tmp/err
+              rc=$?
+              if [[ $rc -ne 0 ]]; then
+                echo "FAIL: $module iteration=$i rc=$rc"
+                cat /tmp/out || true
+                cat /tmp/err || true
+                exit $rc
+              fi
+              if (( i % 20 == 0 )); then
+                echo "$module $i/120 OK"
+              fi
+            done
+            echo "PASS: $module 120/120"
+          done

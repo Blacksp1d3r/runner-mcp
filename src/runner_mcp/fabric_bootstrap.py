@@ -9,11 +9,11 @@ import stat
 import subprocess
 import sys
 import threading
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from collections.abc import Callable
 from typing import Any
 from uuid import uuid4
 
@@ -227,7 +227,7 @@ class FabricBootstrapManager:
             raise FabricBootstrapError("runner_mcp_state_unavailable")
         try:
             status = provider()
-        except Exception as exc:  # noqa: BLE001 - fail closed on private state errors
+        except Exception as exc:
             raise FabricBootstrapError("runner_mcp_state_unavailable") from exc
         if not isinstance(status, dict):
             raise FabricBootstrapError("runner_mcp_state_unavailable")

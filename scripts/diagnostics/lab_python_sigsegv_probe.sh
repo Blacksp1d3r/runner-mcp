@@ -52,6 +52,57 @@ for package in (
     except md.PackageNotFoundError:
         print(package, "<missing>")
 PY
+
+echo
+echo "=== PYTHON MODULE ORIGINS / SHADOWING ==="
+"$PY" - <<'PY'
+import importlib.util
+import os
+import sys
+
+print("cwd", os.getcwd())
+print("PYTHONPATH", os.environ.get("PYTHONPATH", "<unset>"))
+for index, entry in enumerate(sys.path):
+    print(f"sys.path[{index}]={entry!r}")
+
+for name in (
+    "datetime",
+    "typing",
+    "types",
+    "enum",
+    "json",
+    "inspect",
+    "pathlib",
+    "uuid",
+    "asyncio",
+    "ssl",
+    "socket",
+    "logging",
+    "email",
+    "http",
+):
+    spec = importlib.util.find_spec(name)
+    if spec is None:
+        print(f"ORIGIN {name}: <not found>")
+        continue
+    print(
+        f"ORIGIN {name}: origin={spec.origin!r} "
+        f"locations={list(spec.submodule_search_locations or [])!r}"
+    )
+PY
+
+echo "--- suspicious stdlib-name files near current working directory ---"
+find . -maxdepth 3 \( -type f -o -type d \) \
+  \( -name 'datetime.py' -o -name 'datetime' \
+     -o -name 'typing.py' -o -name 'typing' \
+     -o -name 'types.py' -o -name 'types' \
+     -o -name 'enum.py' -o -name 'enum' \
+     -o -name 'json.py' -o -name 'json' \
+     -o -name 'inspect.py' -o -name 'inspect' \
+     -o -name 'pathlib.py' -o -name 'pathlib' \
+     -o -name 'uuid.py' -o -name 'uuid' \) \
+  -print 2>/dev/null | head -n 100 || true
+
 readlink -f "$PY" || true
 ldd "$(readlink -f "$PY")" || true
 "$PY" -m pip check || true

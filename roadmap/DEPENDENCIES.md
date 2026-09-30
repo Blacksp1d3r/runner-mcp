@@ -1,6 +1,6 @@
 # Runner MCP — Dependency / Integration Order
 
-Last reconciled: 2026-09-29. GitHub current state wins.
+Last reconciled: 2026-09-30. GitHub current state wins.
 
 ## Current cross-product gates
 
@@ -57,3 +57,14 @@ Last reconciled: 2026-09-29. GitHub current state wins.
 
 ## Do not parallelize blindly
 Avoid overlapping edits to self-update/restart/transaction code from multiple agents. Coordinate through `handover/AGENT_EXCHANGE.md`.
+
+
+## 2026-09-30 reconciliation
+
+- Task 50 is COMPLETE via PR #149 / merge `469138077066b7b924ba867456ad44dc6372c85d`; issue #143 is closed.
+- Task 51 is COMPLETE as a review: local Task-47 service logs remain local-only. A future remote path would require a second independent remote-disclosure opt-in and a separate privacy justification; no remote log CODE task is queued.
+- Task 52 is COMPLETE as a review. PR #150 / merge `00ce316124ebc13c65e8a26762f7ea1f69404f50` provides the bounded async Runner Fabric bootstrap foundation, but issue #144 is not complete.
+- Task 53 is the bounded #144 hardening prerequisite: self-update/recovery exclusion, installed-runtime preflight, and strict first-install conflict behavior.
+- PR #153 is the clean refresh of unique PR #127 relay-core work; Task 54 owns its reconciliation.
+- PR #129 remains unique watcher work; Task 55 owns its reconciliation after Task 54.
+- Issue #151 is COMPLETE via PR #152 / merge `0bade0af6ee574b09de42bb493f5ecffa41657d5` and is closed.

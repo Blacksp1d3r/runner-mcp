@@ -33,6 +33,14 @@ if [[ "${1:-}" == "-" ]]; then
   fi
   exit 0
 fi
+if [[ "${1:-}" == "-B" && "${2:-}" == "-X" && "${3:-}" == "faulthandler" && "${4:-}" == "-" ]]; then
+  source_text="$(cat)"
+  if [[ "$source_text" == *"importlib.import_module"* ]]; then
+    echo "ValueError: bad marshal data" >&2
+    exit 1
+  fi
+  exit 0
+fi
 exit 1
 INNER
   chmod +x "${venv}/bin/python"

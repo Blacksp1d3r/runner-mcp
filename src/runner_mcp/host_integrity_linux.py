@@ -69,8 +69,8 @@ class LinuxJournalDiagnosticAdapter:
                 timeout=JOURNALCTL_TIMEOUT_SECONDS,
                 check=False,
             )
-        except (OSError, subprocess.SubprocessError) as exc:
-            raise HostDiagnosticError("host diagnostics unavailable") from exc
+        except (OSError, subprocess.SubprocessError):
+            raise HostDiagnosticError("host diagnostics unavailable") from None
 
         if completed.returncode != 0:
             raise HostDiagnosticError("host diagnostics unavailable")
@@ -111,8 +111,8 @@ class LinuxJournalDiagnosticAdapter:
                 int(timestamp) / 1_000_000,
                 tz=datetime.UTC,
             )
-        except (OverflowError, OSError, ValueError) as exc:
-            raise HostDiagnosticError("host diagnostics unavailable") from exc
+        except (OverflowError, OSError, ValueError):
+            raise HostDiagnosticError("host diagnostics unavailable") from None
         if observed_at > until:
             raise HostDiagnosticError("host diagnostics unavailable")
         return observed_at

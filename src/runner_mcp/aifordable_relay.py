@@ -17,8 +17,8 @@ from typing import Any
 
 from .bridge_processor import (
     BridgeProcessOutcome,
-    BridgeProcessState,
     BridgeProcessor,
+    BridgeProcessState,
     BridgeResultSink,
     BridgeResultSinkError,
 )

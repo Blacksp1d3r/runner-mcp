@@ -32,6 +32,13 @@ fi
 mkdir -p "$INSTALL_ROOT" "$BIN_DIR"
 chmod 700 "$INSTALL_ROOT"
 
+echo "Checking Python venv support..."
+if ! "$PYTHON_BIN" -m venv --help >/dev/null 2>&1; then
+  echo "Error: Python venv support is required." >&2
+  echo "Install venv support for this Python 3.12+ interpreter (for Debian/Ubuntu, typically python3-venv)." >&2
+  exit 1
+fi
+
 echo "Creating isolated Python environment..."
 if ! "$PYTHON_BIN" -m venv "$VENV_DIR"; then
   echo "Error: could not create the Python virtual environment." >&2

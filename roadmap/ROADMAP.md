@@ -136,6 +136,8 @@ Make the safe core usable without reading or editing source code:
 - non-root `install.sh`;
 - user-first README and Quickstart;
 - private config permission checks and atomic project-config updates.
+- install/runtime preflight must verify the exact Python interpreter, venv support, pip usability/version, packaging backend availability, dependency compatibility and post-install import/bytecode integrity before enabling the installed command; known-bad or incompatible environments fail closed before service activation.
+- clean-install validation must cover a minimal Ubuntu-like host where `python3-venv` may be absent and must exercise the real installed CLI after dependency resolution, including detection/recovery guidance for corrupted or incompatible `.pyc`/marshal state.
 
 Service auto-start packaging is implemented with a preferred non-root systemd-user backend plus a managed cron fallback for headless accounts without a usable user bus. Both keep fixed components, explicit watcher bootstrap, duplicate-supervisor protection and foreign-state protection. Privacy-safe guided connectivity is implemented; external tunnel/TLS/reverse-proxy provisioning remains operator-managed. Task 33 reviewed optional graphical administration and keeps it deferred for the first alpha; any later first slice must be a separate loopback-only read-only dashboard over explicitly allow-listed safe summaries, with no new mutation authority.
 

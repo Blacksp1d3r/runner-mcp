@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import UTC, datetime, timedelta
+import datetime
 
 import runner_mcp.host_integrity as hi
 
 
-NOW = datetime(2026, 9, 30, 8, 0, tzinfo=UTC)
+NOW = datetime.datetime(2026, 9, 30, 8, 0, tzinfo=datetime.UTC)
 
 
 class FakeDiagnostics:
@@ -50,7 +50,7 @@ def test_recent_python_crash_blocks_activation() -> None:
         (
             hi.FatalProcessEvidence(
                 hi.FatalProcessClass.PYTHON_RUNTIME,
-                NOW - timedelta(minutes=2),
+                NOW - datetime.timedelta(minutes=2),
             ),
         )
     )
@@ -66,7 +66,7 @@ def test_recent_unrelated_system_crash_blocks_activation() -> None:
         (
             hi.FatalProcessEvidence(
                 hi.FatalProcessClass.UNRELATED_SYSTEM_PROCESS,
-                NOW - timedelta(minutes=29),
+                NOW - datetime.timedelta(minutes=29),
             ),
         )
     )
@@ -82,7 +82,7 @@ def test_old_crash_does_not_block_after_clean_window() -> None:
         (
             hi.FatalProcessEvidence(
                 hi.FatalProcessClass.PYTHON_RUNTIME,
-                NOW - timedelta(minutes=31),
+                NOW - datetime.timedelta(minutes=31),
             ),
         )
     )
@@ -114,7 +114,7 @@ def test_naive_event_timestamp_fails_closed() -> None:
         (
             hi.FatalProcessEvidence(
                 hi.FatalProcessClass.PYTHON_RUNTIME,
-                datetime(2026, 9, 30, 7, 59).replace(tzinfo=None),  # noqa: DTZ001
+                datetime.datetime(2026, 9, 30, 7, 59).replace(tzinfo=None),  # noqa: DTZ001
             ),
         )
     )

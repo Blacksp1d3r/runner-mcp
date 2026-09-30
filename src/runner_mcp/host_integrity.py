@@ -5,7 +5,6 @@ import dataclasses
 import datetime
 import enum
 
-
 HOST_INTEGRITY_LOOKBACK = datetime.timedelta(minutes=30)
 
 

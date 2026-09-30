@@ -47,8 +47,15 @@ if ! "$PYTHON_BIN" -m venv "$VENV_DIR"; then
 fi
 
 echo "Checking isolated installer runtime..."
-if ! "$VENV_DIR/bin/python" -m pip --version >/dev/null 2>&1; then
-  echo "Error: pip is unavailable in the isolated Python environment." >&2
+PIP_VERSION_OUTPUT="$("$VENV_DIR/bin/python" -m pip --version 2>/dev/null || true)"
+if [[ ! "$PIP_VERSION_OUTPUT" =~ ^pip[[:space:]]+([0-9]+)\.([0-9]+)(\.([0-9]+))?([[:space:]]|$) ]]; then
+  echo "Error: pip is unavailable or its version could not be verified in the isolated Python environment." >&2
+  exit 1
+fi
+PIP_MAJOR="${BASH_REMATCH[1]}"
+PIP_MINOR="${BASH_REMATCH[2]}"
+if (( PIP_MAJOR < 23 || (PIP_MAJOR == 23 && PIP_MINOR < 2) )); then
+  echo "Error: pip 23.2 or newer is required in the isolated Python environment." >&2
   exit 1
 fi
 

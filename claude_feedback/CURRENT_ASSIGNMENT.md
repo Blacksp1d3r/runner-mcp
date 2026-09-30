@@ -1541,7 +1541,7 @@ Acceptance:
 
 ### Task 57 — disposable clean-Ubuntu missing-venv proof — CI lane
 
-Status: `INTEGRATION`. The proof boundary is merged via #173; exact-head clean-image implementation is in PR #180.
+Status: `COMPLETE` via PR #180 / merge `99ae5e0ee084acc26795804d9e50996591f2290f`. The disposable clean-image proof is CI evidence only and does not prove private-host health.
 
 Goal:
 Add a disposable Ubuntu 24.04 validation that first proves venv creation is unavailable, bootstraps only the fixed OS venv prerequisite in CI setup, then runs the normal installer and launcher smoke. Runner MCP itself must continue to fail with guidance rather than invoking a package manager.
@@ -1577,7 +1577,7 @@ When a CHAT REVIEW demonstrates a real defect, add a separate CODE task with exp
 
 ### Task 59 — host-integrity production adapter boundary review — CHAT REVIEW
 
-Status: `UNCLAIMED`.
+Status: `COMPLETE` review via PR #185 / merge `a126a71f544c56217370f2cb61114e93dc382364`. Production adapter implementation is tracked separately and must preserve this boundary.
 
 Goal:
 Define the smallest production Linux diagnostic adapter for Task 56 before any journal subprocess or autostart wiring is added.
@@ -1593,7 +1593,7 @@ Acceptance:
 
 ### Task 60 — autostart host-integrity enforcement review — CHAT REVIEW
 
-Status: `BLOCKED` until Task 59 is complete.
+Status: `INTEGRATION` via refreshed review PR #187. Task 59 review is complete; implementation remains separate.
 
 Goal:
 Map the merged Task 56 state into the existing local `install_user_services` activation path without turning status, MCP, Agent Bus or Fabric into a force bypass.
@@ -1608,7 +1608,7 @@ Acceptance:
 
 ### Task 61 — clean-install proof closure and operator evidence — INTEGRATION lane
 
-Status: `BLOCKED` until PR #180 exact-head validation is green.
+Status: `COMPLETE` via PR #180 / merge `99ae5e0ee084acc26795804d9e50996591f2290f`; exact-head clean-Ubuntu proof was green. This does not clear #108 or private-host recovery.
 
 Goal:
 Close Task 57 after exact-head proof, record only public CI evidence, and keep the clean-image result explicitly separate from private-host health/recovery proof.
@@ -1618,3 +1618,55 @@ Acceptance:
 - mergeable and review-clean before merge;
 - no claim that CI clears #108 or the private-host integrity incident;
 - update queue/roadmap state only after merge.
+
+
+### Task 62 — production Linux host-integrity adapter — CODE lane
+
+Status: `INTEGRATION` via refreshed PR #189.
+
+Source:
+`claude_feedback/TASK59_HOST_INTEGRITY_ADAPTER_REVIEW.md`.
+
+Goal:
+Implement only the fixed local Linux diagnostic adapter behind the merged Task 56 boundary.
+
+Acceptance:
+- fixed journal query and fixed reviewed Python executable class only;
+- 5-second subprocess timeout, 256 KiB output ceiling and 512-record ceiling;
+- malformed/nonzero/timeout/unavailable diagnostics fail closed without raw output or exception leakage;
+- no caller-controlled query/process/path/window and no remote action;
+- no autostart wiring, repair, sudo or package authority.
+
+
+### Task 63 — fixed autostart runtime smoke — CODE lane
+
+Status: `INTEGRATION` via PR #190.
+
+Source:
+`claude_feedback/TASK60_AUTOSTART_HOST_INTEGRITY_REVIEW.md`.
+
+Goal:
+Provide fresh local runtime evidence at autostart time instead of trusting an installer-era boolean or marker.
+
+Acceptance:
+- fixed current-interpreter/launcher targets;
+- 32 fresh-process critical import checks plus 8 launcher help checks;
+- fixed argv, bounded per-process timeout, suppressed stdout/stderr and no caller-controlled modules/arguments/environment;
+- first failure returns false without retry/repair loops;
+- no autostart mutation or activation authority in this slice.
+
+
+### Task 64 — shared fail-closed autostart activation gate — CODE lane
+
+Status: `BLOCKED` until Tasks 62 and 63 are merged.
+
+Goal:
+Require fresh runtime smoke plus production host diagnostics before either systemd or cron can persist/enable Runner MCP autostart.
+
+Acceptance:
+- one shared local decision before either backend mutation;
+- only `host_integrity_clear` may reach systemd unit writes/daemon-reload/enable or crontab writes;
+- systemd and cron direct installer entry points also reject missing/non-clear activation permit;
+- emergency stop and self-update/install recovery remain authoritative;
+- blocked state creates no unit directory/file and does not alter crontab;
+- no remote force flag, diagnostic selector, repair or package authority.

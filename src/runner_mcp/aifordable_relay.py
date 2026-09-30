@@ -23,10 +23,10 @@ from .bridge_processor import (
     BridgeResultSinkError,
 )
 from .bridge_protocol import (
+    REQUEST_ID_RE,
     BridgeAction,
     BridgeRequest,
     BridgeResultState,
-    REQUEST_ID_RE,
     parse_bridge_result,
 )
 from .bridge_replay import BridgeReplayLedger

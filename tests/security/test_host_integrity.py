@@ -6,6 +6,7 @@ from runner_mcp.host_integrity import (
     HOST_INTEGRITY_LOOKBACK,
     FatalProcessClass,
     FatalProcessEvidence,
+    HostDiagnosticError,
     HostIntegrityState,
     HostRuntimeIntegrityGate,
 )
@@ -97,7 +98,7 @@ def test_old_crash_does_not_block_after_clean_window() -> None:
 
 
 def test_unavailable_diagnostics_fail_closed_without_leaking_exception() -> None:
-    adapter = FakeDiagnostics(RuntimeError("private host path / secret detail"))
+    adapter = FakeDiagnostics(HostDiagnosticError("private host path / secret detail"))
 
     result = gate(adapter).evaluate(runtime_smoke_passed=True)
 
@@ -120,7 +121,7 @@ def test_naive_event_timestamp_fails_closed() -> None:
         (
             FatalProcessEvidence(
                 FatalProcessClass.PYTHON_RUNTIME,
-                datetime(2026, 9, 30, 7, 59),
+                datetime(2026, 9, 30, 7, 59).replace(tzinfo=None),  # noqa: DTZ001
             ),
         )
     )

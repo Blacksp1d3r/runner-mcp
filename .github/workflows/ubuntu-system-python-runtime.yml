@@ -1,0 +1,60 @@
+name: Ubuntu system Python runtime qualification
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - "diag/issue-194-mcp-runtime-matrix"
+    paths:
+      - ".github/workflows/ubuntu-system-python-runtime.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  system-python:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Record system Python
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 --version
+          /usr/bin/python3 - <<'PY'
+          import platform, sys, sysconfig
+          print(sys.executable)
+          print(sys.version)
+          print(platform.platform())
+          print(sysconfig.get_config_var("CONFIG_ARGS"))
+          PY
+
+      - name: Create isolated venv from Ubuntu system Python
+        run: |
+          set -euo pipefail
+          /usr/bin/python3 -m venv /tmp/exact-lab
+          /tmp/exact-lab/bin/python -m pip install --upgrade pip
+          /tmp/exact-lab/bin/python -m pip install --only-binary=:all:             "mcp==2.2.0"             "mcp-types==2.2.0"             "pydantic==2.13.5"             "pydantic-core==2.46.5"             "starlette==0.52.1"             "httpx2==2.13.1"             "cryptography==50.0.2"             "cffi==2.1.1"             "rpds-py==2026.6.3"
+          /tmp/exact-lab/bin/python -m pip check
+
+      - name: Stress exact crash boundary
+        shell: bash
+        run: |
+          set -u
+          PY=/tmp/exact-lab/bin/python
+          for module in mcp_types mcp.server mcp.server.mcpserver.utilities.func_metadata; do
+            echo "=== TEST: $module ==="
+            for i in $(seq 1 80); do
+              "$PY" -X faulthandler -c "import importlib; importlib.import_module('$module')" >/tmp/out 2>/tmp/err
+              rc=$?
+              if [[ $rc -ne 0 ]]; then
+                echo "FAIL: $module iteration=$i rc=$rc"
+                cat /tmp/out || true
+                cat /tmp/err || true
+                exit $rc
+              fi
+              if (( i % 20 == 0 )); then
+                echo "$module $i/80 OK"
+              fi
+            done
+            echo "PASS: $module 80/80"
+          done

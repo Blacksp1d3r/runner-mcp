@@ -16,8 +16,17 @@ class HostIntegrityState(enum.StrEnum):
 
 
 class FatalProcessClass(enum.StrEnum):
+    """Sanitized fatal host evidence classes.
+
+    The historical name is retained for API compatibility. Hardware, memory and
+    storage classes are host-fault evidence rather than literal process classes.
+    """
+
     PYTHON_RUNTIME = "python_runtime"
     UNRELATED_SYSTEM_PROCESS = "unrelated_system_process"
+    HARDWARE_MACHINE_CHECK = "hardware_machine_check"
+    MEMORY_ERROR = "memory_error"
+    STORAGE_IO_OR_FILESYSTEM = "storage_io_or_filesystem"
 
 
 @dataclasses.dataclass(frozen=True)

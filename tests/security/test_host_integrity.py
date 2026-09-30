@@ -2,6 +2,8 @@ from __future__ import annotations
 
 import datetime
 
+import pytest
+
 import runner_mcp.host_integrity as hi
 
 NOW = datetime.datetime(2026, 9, 30, 8, 0, tzinfo=datetime.UTC)
@@ -66,6 +68,32 @@ def test_recent_unrelated_system_crash_blocks_activation() -> None:
             hi.FatalProcessEvidence(
                 hi.FatalProcessClass.UNRELATED_SYSTEM_PROCESS,
                 NOW - datetime.timedelta(minutes=29),
+            ),
+        )
+    )
+
+    assert (
+        gate(adapter).evaluate(runtime_smoke_passed=True)
+        == hi.HostIntegrityState.RECENT_PROCESS_CRASH_EVIDENCE
+    )
+
+
+@pytest.mark.parametrize(
+    "process_class",
+    [
+        hi.FatalProcessClass.HARDWARE_MACHINE_CHECK,
+        hi.FatalProcessClass.MEMORY_ERROR,
+        hi.FatalProcessClass.STORAGE_IO_OR_FILESYSTEM,
+    ],
+)
+def test_recent_host_fault_evidence_blocks_activation(
+    process_class: hi.FatalProcessClass,
+) -> None:
+    adapter = FakeDiagnostics(
+        (
+            hi.FatalProcessEvidence(
+                process_class,
+                NOW - datetime.timedelta(minutes=1),
             ),
         )
     )

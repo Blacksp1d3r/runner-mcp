@@ -1,0 +1,143 @@
+from __future__ import annotations
+
+import datetime
+import json
+import subprocess
+
+import pytest
+
+from runner_mcp.host_integrity import FatalProcessClass, HostDiagnosticError
+from runner_mcp.host_integrity_linux import (
+    JOURNALCTL_MAX_BYTES,
+    JOURNALCTL_MAX_RECORDS,
+    LinuxJournalDiagnosticAdapter,
+)
+
+NOW = datetime.datetime(2026, 9, 30, 12, 0, tzinfo=datetime.UTC)
+SINCE = NOW - datetime.timedelta(minutes=30)
+
+
+class FakeRunner:
+    def __init__(self, *, stdout: bytes = b"", stderr: bytes = b"", returncode: int = 0):
+        self.completed = subprocess.CompletedProcess(
+            args=[],
+            returncode=returncode,
+            stdout=stdout,
+            stderr=stderr,
+        )
+        self.calls = []
+
+    def __call__(self, argv, **kwargs):
+        self.calls.append((argv, kwargs))
+        return self.completed
+
+
+def row(executable: str, observed_at: datetime.datetime) -> bytes:
+    micros = int(observed_at.timestamp() * 1_000_000)
+    return (json.dumps({"_EXE": executable, "__REALTIME_TIMESTAMP": str(micros)}) + "\n").encode()
+
+
+def test_fixed_query_classifies_python_without_exposing_path() -> None:
+    runner = FakeRunner(stdout=row("/usr/bin/python3.12", NOW - datetime.timedelta(minutes=2)))
+    adapter = LinuxJournalDiagnosticAdapter(runner=runner)
+
+    result = adapter.recent_fatal_process_classes(since=SINCE, until=NOW)
+
+    assert len(result) == 1
+    assert result[0].process_class == FatalProcessClass.PYTHON_RUNTIME
+    argv, kwargs = runner.calls[0]
+    assert argv[:5] == [
+        "journalctl",
+        "--no-pager",
+        "--output=json",
+        "--output-fields=_EXE,__REALTIME_TIMESTAMP",
+        "--priority=0..3",
+    ]
+    assert kwargs["timeout"] == 5
+    assert kwargs["check"] is False
+    assert "shell" not in kwargs
+
+
+def test_irrelevant_executable_is_ignored() -> None:
+    runner = FakeRunner(stdout=row("/usr/bin/example-safe-process", NOW))
+    assert LinuxJournalDiagnosticAdapter(runner=runner).recent_fatal_process_classes(
+        since=SINCE, until=NOW
+    ) == ()
+
+
+@pytest.mark.parametrize("returncode", [1, 127])
+def test_nonzero_journalctl_fails_closed_without_stderr(returncode: int) -> None:
+    secret = b"/private/host/path token-super-secret"
+    runner = FakeRunner(stderr=secret, returncode=returncode)
+    with pytest.raises(HostDiagnosticError) as caught:
+        LinuxJournalDiagnosticAdapter(runner=runner).recent_fatal_process_classes(
+            since=SINCE, until=NOW
+        )
+    assert "private" not in str(caught.value)
+    assert "secret" not in str(caught.value)
+
+
+def test_spawn_exception_fails_closed_without_detail() -> None:
+    def fail(*_args, **_kwargs):
+        raise OSError("/private/host/path token-super-secret")
+
+    with pytest.raises(HostDiagnosticError) as caught:
+        LinuxJournalDiagnosticAdapter(runner=fail).recent_fatal_process_classes(
+            since=SINCE, until=NOW
+        )
+    assert str(caught.value) == "host diagnostics unavailable"
+
+
+def test_oversized_output_fails_closed() -> None:
+    runner = FakeRunner(stdout=b"x" * (JOURNALCTL_MAX_BYTES + 1))
+    with pytest.raises(HostDiagnosticError):
+        LinuxJournalDiagnosticAdapter(runner=runner).recent_fatal_process_classes(
+            since=SINCE, until=NOW
+        )
+
+
+def test_too_many_records_fail_closed() -> None:
+    runner = FakeRunner(stdout=b"{}\n" * (JOURNALCTL_MAX_RECORDS + 1))
+    with pytest.raises(HostDiagnosticError):
+        LinuxJournalDiagnosticAdapter(runner=runner).recent_fatal_process_classes(
+            since=SINCE, until=NOW
+        )
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        b"not-json\n",
+        b'{"_EXE":"/usr/bin/python3"}\n',
+        b'{"_EXE":123,"__REALTIME_TIMESTAMP":"1"}\n',
+        b'{"_EXE":"/usr/bin/python3","__REALTIME_TIMESTAMP":"not-a-time"}\n',
+        b"\xff\n",
+    ],
+)
+def test_malformed_output_fails_closed(payload: bytes) -> None:
+    runner = FakeRunner(stdout=payload)
+    with pytest.raises(HostDiagnosticError):
+        LinuxJournalDiagnosticAdapter(runner=runner).recent_fatal_process_classes(
+            since=SINCE, until=NOW
+        )
+
+
+def test_future_event_fails_closed() -> None:
+    runner = FakeRunner(stdout=row("/usr/bin/python3", NOW + datetime.timedelta(seconds=1)))
+    with pytest.raises(HostDiagnosticError):
+        LinuxJournalDiagnosticAdapter(runner=runner).recent_fatal_process_classes(
+            since=SINCE, until=NOW
+        )
+
+
+def test_naive_or_reversed_window_fails_closed_without_running() -> None:
+    runner = FakeRunner()
+    adapter = LinuxJournalDiagnosticAdapter(runner=runner)
+    with pytest.raises(HostDiagnosticError):
+        adapter.recent_fatal_process_classes(
+            since=SINCE.replace(tzinfo=None),
+            until=NOW,
+        )
+    with pytest.raises(HostDiagnosticError):
+        adapter.recent_fatal_process_classes(since=NOW, until=SINCE)
+    assert runner.calls == []

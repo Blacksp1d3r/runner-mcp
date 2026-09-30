@@ -4,7 +4,6 @@ import datetime
 
 import runner_mcp.host_integrity as hi
 
-
 NOW = datetime.datetime(2026, 9, 30, 8, 0, tzinfo=datetime.UTC)
 
 

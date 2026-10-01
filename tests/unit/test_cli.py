@@ -1730,17 +1730,23 @@ def test_autostart_cli_install_and_status_are_path_safe(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from runner_mcp.autostart import SERVER_UNIT, AutostartStatus
+    from runner_mcp.host_integrity import HostIntegrityState
 
     paths, _ = install_config(tmp_path)
     captured_install = {}
 
-    def fake_install(config_dir, *, executable, port):
+    def fake_install(config_dir, *, executable, activation_state, port):
         captured_install["config_dir"] = config_dir
         captured_install["executable"] = executable
+        captured_install["activation_state"] = activation_state
         captured_install["port"] = port
         return [SERVER_UNIT]
 
     monkeypatch.setattr("runner_mcp.cli.install_user_services", fake_install)
+    monkeypatch.setattr(
+        "runner_mcp.cli._autostart_activation_state",
+        lambda **_: HostIntegrityState.CLEAR,
+    )
     monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: False)
     monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: False)
     monkeypatch.setattr(
@@ -1774,6 +1780,7 @@ def test_autostart_cli_install_and_status_are_path_safe(
 
     assert result == 0
     assert captured_install["config_dir"] == paths.config_dir
+    assert captured_install["activation_state"] is HostIntegrityState.CLEAR
     assert captured_install["port"] == 8123
     assert "server" in installed.out
     assert str(paths.config_dir) not in installed.out
@@ -1843,6 +1850,7 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from runner_mcp.cron_autostart import CronComponentStatus
+    from runner_mcp.host_integrity import HostIntegrityState
 
     paths, _ = install_config(tmp_path)
     captured = {}
@@ -1859,11 +1867,19 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
         lambda _config_dir: ("server", "github-watcher"),
     )
 
-    def fake_install_cron(*, executable, config_dir, components, port):
+    def fake_install_cron(
+        *,
+        executable,
+        config_dir,
+        components,
+        activation_state,
+        port,
+    ):
         captured.update(
             executable=executable,
             config_dir=config_dir,
             components=components,
+            activation_state=activation_state,
             port=port,
         )
         return components
@@ -1871,6 +1887,10 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
     monkeypatch.setattr(
         "runner_mcp.cli.install_cron_services",
         fake_install_cron,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli._autostart_activation_state",
+        lambda **_: HostIntegrityState.CLEAR,
     )
     monkeypatch.setattr(
         "runner_mcp.cli.cron_status",
@@ -1893,6 +1913,7 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
 
     assert captured["config_dir"] == paths.config_dir
     assert captured["components"] == ("server", "github-watcher")
+    assert captured["activation_state"] is HostIntegrityState.CLEAR
     assert captured["port"] == 8000
     assert "managed cron supervision" in installed.out
     assert str(paths.config_dir) not in installed.out

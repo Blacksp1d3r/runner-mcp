@@ -6,14 +6,48 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ## Unreleased
 
+### Added
+
+- proportional AI fault-containment regression coverage and deterministic security-gate boundaries;
+- optional coarse Runner Fabric work-unit transport plus bounded first-install Fabric bootstrap guards;
+- durable asynchronous migration-job storage with explicit async start/status integration;
+- cross-process release-operation locking and bounded local one-release retention pruning;
+- local-only bounded service-journal reads behind explicit per-service opt-in;
+- AIfordable Agent Bus private configuration, managed worker lifecycle, outbound relay core and one-shot qualification;
+- local host-runtime integrity decision model, fixed Linux diagnostic adapter and sanitized hardware/runtime fault evidence;
+- fresh fixed autostart runtime smoke plus shared fail-closed activation gating for systemd and managed cron;
+- local read-only `runner-mcp autostart preflight` using the same activation decision as installation.
+
+### Changed
+
+- clean Ubuntu install proof now exercises the current installer/runtime integrity path;
+- installer/runtime probes classify bounded timeout/native-crash outcomes instead of leaking raw process details;
+- self-update wheel staging now preflights offline packaging capability before per-job artifact mutation;
+- self-update baseline/bootstrap and distribution identity handling were hardened while preserving the no-dependency compatibility contract;
+- Agent Bus is the preferred future runtime-control direction while GitHub mailbox remains a bounded fallback path.
+
+### Security
+
+- autostart cannot persist/enable managed startup unless emergency-stop, recovery, restart-pending, fresh runtime-smoke and host-integrity gates all clear;
+- direct systemd/cron installer entry points independently reject missing activation permits;
+- host diagnostics remain local-only and expose bounded categories rather than raw journal records;
+- Runner Fabric live activation remains gated until its durable service/resume chain is integrated and privately proven.
+
+## 0.1.2 — 2026-09-26
+
+Canonical cross-registry recovery release.
+
 ### Distribution and discovery
 
-- publish `0.1.1` to PyPI under `aifordable-runner-mcp` while preserving the `runner-mcp` CLI;
-- prepare `0.1.2` as the canonical cross-registry recovery release after the Registry exposed its case-sensitive GitHub namespace requirement;
-- align the official MCP Registry identity and PyPI README ownership marker to `io.github.Blacksp1d3r/runner-mcp`;
-- add release automation that publishes the Python package first, then the MCP Registry entry through GitHub OIDC, and finally creates the GitHub pre-release;
-- add regression checks keeping `pyproject.toml`, `server.json` and the PyPI README ownership marker synchronized;
-- sharpen the README's first-screen positioning and discovery metadata without widening Runner MCP runtime authority.
+- corrected the official MCP Registry identity to the case-sensitive `io.github.Blacksp1d3r/runner-mcp`;
+- published `aifordable-runner-mcp==0.1.2` to PyPI;
+- published matching `0.1.2` metadata to the official MCP Registry;
+- created GitHub pre-release `v0.1.2` from exact commit `83175f439c60346f92b5759a90993c3b8f5352f8`;
+- aligned public PyPI / MCP Registry / GitHub discovery links.
+
+## 0.1.1 — 2026-09-26
+
+First public PyPI package upload under `aifordable-runner-mcp` while preserving Runner MCP as the product name and `runner-mcp` as the primary CLI.
 
 ## 0.1.0 — 2026-09-24
 

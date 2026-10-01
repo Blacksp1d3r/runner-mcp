@@ -1,0 +1,47 @@
+name: Exact wheel artifact
+
+on:
+  workflow_dispatch:
+  push:
+    paths:
+      - ".github/workflows/exact-wheel-artifact.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout exact revision
+        uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Build exact wheel
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m pip wheel . --no-deps --wheel-dir dist
+          printf '%s\n' "$GITHUB_SHA" > dist/COMMIT_SHA
+          (
+            cd dist
+            sha256sum *.whl > SHA256SUMS
+          )
+
+      - name: Upload exact wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: runner-mcp-wheel-${{ github.sha }}
+          path: |
+            dist/*.whl
+            dist/COMMIT_SHA
+            dist/SHA256SUMS
+          if-no-files-found: error
+          retention-days: 3

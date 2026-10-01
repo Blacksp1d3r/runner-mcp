@@ -12,7 +12,6 @@ import uvicorn
 
 from .agent_bus_worker import run_agent_bus_worker_process
 from .approval_manager import ApprovalError, ApprovalManager
-from .autostart_activation import AutostartActivationPermit
 from .autostart import (
     AutostartError,
     configured_autostart_components,
@@ -22,6 +21,7 @@ from .autostart import (
     systemd_user_available,
     user_service_status,
 )
+from .autostart_activation import AutostartActivationPermit
 from .completion_delivery import (
     CompletionDeliveryError,
     CompletionNotifierRuntime,
@@ -67,14 +67,13 @@ from .cron_autostart import (
     run_cron_component,
 )
 from .database_manager import DatabaseManager, DatabaseManagerError
-from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
-from .host_integrity_linux import LinuxJournalDiagnosticAdapter
-from .runtime_smoke import run_autostart_runtime_smoke
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
     GitHubWatcherRuntime,
 )
+from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
+from .host_integrity_linux import LinuxJournalDiagnosticAdapter
 from .onboarding import (
     OnboardingError,
     default_config_dir,
@@ -89,6 +88,7 @@ from .onboarding import (
 )
 from .retention_preview import RetentionPreviewPlanner
 from .retention_pruning import RetentionPruner
+from .runtime_smoke import run_autostart_runtime_smoke
 from .self_update import SelfUpdateManager, restart_pending_count
 from .self_update_install import install_recovery_state
 from .server import create_app

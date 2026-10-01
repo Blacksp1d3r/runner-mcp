@@ -25,14 +25,16 @@ Completed:
 - `v0.1.0` is published as the first GitHub pre-release from exact green commit `f00ac3fd03df234cb186a4dfcd804136501c0cf7`;
 - the published release notes preserve the alpha limitations and exact validation provenance;
 - the GitHub repository description and discovery topics are live with the prepared wording;
-- PyPI Trusted Publishing is live and `aifordable-runner-mcp` `0.1.1` is publicly published.
+- PyPI Trusted Publishing is live and `aifordable-runner-mcp` `0.1.1` was publicly published;
+- canonical `0.1.2` publication completed from exact commit `83175f439c60346f92b5759a90993c3b8f5352f8`;
+- PyPI `aifordable-runner-mcp==0.1.2`, the official MCP Registry entry `io.github.Blacksp1d3r/runner-mcp`, and GitHub pre-release `v0.1.2` were verified through issue #101;
+- the GitHub `v0.1.2` tag points to the exact validated release commit.
 
 Still required before a broader launch:
 
-- publish the corrected `0.1.2` metadata/package set using the exact GitHub-cased Registry identity `io.github.Blacksp1d3r/runner-mcp`;
-- verify the official MCP Registry entry and matching GitHub `v0.1.2` pre-release after publication;
-- verify installation from the published PyPI package in a clean evaluation environment;
-- only then submit to secondary MCP/developer directories and decide the timing of external community posts.
+- keep clean published-package installation verification current for each release candidate;
+- complete the remaining free secondary-directory submissions tracked in issue #101;
+- publish one technical launch post only when the current release/docs are ready, then adapt later outreach from real feedback rather than mass cross-posting.
 
 ## Free discovery plan
 

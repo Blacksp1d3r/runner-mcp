@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp.autostart_activation import AutostartActivationPermit
 from runner_mcp.cron_autostart import (
     CRON_BEGIN,
     CRON_END,
@@ -79,12 +80,14 @@ def test_install_preserves_unrelated_lines_and_is_idempotent(
         config_dir=config,
         components=("server",),
         runner=crontab,
+        activation_permit=AutostartActivationPermit.clear(),
     )
     second = install_cron_services(
         executable=executable,
         config_dir=config,
         components=("server", "github-watcher"),
         runner=crontab,
+        activation_permit=AutostartActivationPermit.clear(),
     )
 
     assert first == ("server",)
@@ -110,6 +113,7 @@ def test_install_rejects_unmanaged_runner_mcp_cron(
             config_dir=tmp_path / "private",
             components=("server",),
             runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
         )
 
     assert len(crontab.calls) == 1
@@ -137,6 +141,7 @@ def test_malformed_managed_block_fails_closed(
             config_dir=tmp_path / "private",
             components=("server",),
             runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
         )
 
 
@@ -370,3 +375,22 @@ def test_cron_status_reports_only_managed_components(
             "active": False,
         },
     ]
+
+
+def test_install_without_clear_permit_does_not_read_or_write_crontab(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+) -> None:
+    crontab = FakeCrontab("17 2 * * * /usr/bin/backup\n")
+    original = crontab.content
+
+    with pytest.raises(CronAutostartError, match="activation is blocked"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=crontab,
+        )
+
+    assert crontab.calls == []
+    assert crontab.content == original

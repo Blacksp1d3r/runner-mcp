@@ -21,6 +21,7 @@ from .autostart import (
     systemd_user_available,
     user_service_status,
 )
+from .autostart_activation import AutostartActivationPermit
 from .completion_delivery import (
     CompletionDeliveryError,
     CompletionNotifierRuntime,
@@ -71,6 +72,8 @@ from .github_runtime import (
     DEFAULT_POLL_SECONDS,
     GitHubWatcherRuntime,
 )
+from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
+from .host_integrity_linux import LinuxJournalDiagnosticAdapter
 from .onboarding import (
     OnboardingError,
     default_config_dir,
@@ -85,7 +88,8 @@ from .onboarding import (
 )
 from .retention_preview import RetentionPreviewPlanner
 from .retention_pruning import RetentionPruner
-from .self_update import SelfUpdateManager
+from .runtime_smoke import run_autostart_runtime_smoke
+from .self_update import SelfUpdateManager, restart_pending_count
 from .self_update_install import install_recovery_state
 from .server import create_app
 from .service_journal import ServiceJournalReader
@@ -1001,6 +1005,28 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             raise AutostartError(
                 "managed autostart is already installed; remove it before changing backend"
             )
+        _, guard = operator_stop_status(config_dir)
+        if guard.status().stop_active:
+            raise AutostartError("autostart activation is blocked")
+        if install_recovery_state(config_dir) != "clear":
+            raise AutostartError("autostart activation is blocked")
+        try:
+            if restart_pending_count(config_dir):
+                raise AutostartError("autostart activation is blocked")
+        except RuntimeError as exc:
+            raise AutostartError("autostart activation is blocked") from exc
+
+        runtime_ok = run_autostart_runtime_smoke(
+            python_executable=Path(sys.executable),
+            runner_mcp_executable=executable,
+        )
+        integrity = HostRuntimeIntegrityGate(
+            diagnostics=LinuxJournalDiagnosticAdapter(),
+        ).evaluate(runtime_smoke_passed=runtime_ok)
+        if integrity is not HostIntegrityState.CLEAR:
+            raise AutostartError(f"autostart activation is blocked ({integrity.value})")
+        activation_permit = AutostartActivationPermit.clear()
+
         backend = args.backend
         if backend == "auto":
             backend = "systemd" if systemd_user_available() else "cron"
@@ -1014,6 +1040,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 config_dir,
                 executable=executable,
                 port=args.port,
+                activation_permit=activation_permit,
             )
             print("Runner MCP autostart installed with systemd user services.")
             for unit_name in installed:
@@ -1030,6 +1057,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 config_dir=config_dir,
                 components=components,
                 port=args.port,
+                activation_permit=activation_permit,
             )
             print("Runner MCP autostart installed with managed cron supervision.")
             for component in installed:

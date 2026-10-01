@@ -1734,13 +1734,27 @@ def test_autostart_cli_install_and_status_are_path_safe(
     paths, _ = install_config(tmp_path)
     captured_install = {}
 
-    def fake_install(config_dir, *, executable, port):
+    def fake_install(config_dir, *, executable, port, activation_permit):
         captured_install["config_dir"] = config_dir
         captured_install["executable"] = executable
         captured_install["port"] = port
+        captured_install["activation_permit"] = activation_permit
         return [SERVER_UNIT]
 
     monkeypatch.setattr("runner_mcp.cli.install_user_services", fake_install)
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: True,
+    )
+
+    class ClearDiagnostics:
+        def recent_fatal_process_classes(self, *, since, until):
+            return ()
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.LinuxJournalDiagnosticAdapter",
+        ClearDiagnostics,
+    )
     monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: False)
     monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: False)
     monkeypatch.setattr(
@@ -1775,6 +1789,7 @@ def test_autostart_cli_install_and_status_are_path_safe(
     assert result == 0
     assert captured_install["config_dir"] == paths.config_dir
     assert captured_install["port"] == 8123
+    assert captured_install["activation_permit"].is_clear
     assert "server" in installed.out
     assert str(paths.config_dir) not in installed.out
 
@@ -1790,6 +1805,161 @@ def test_autostart_cli_install_and_status_are_path_safe(
     assert "server: installed=yes, enabled=yes, active=yes" in status.out
     assert str(paths.config_dir) not in status.out
 
+
+
+def test_autostart_cli_emergency_stop_blocks_before_runtime_smoke(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class StopStatus:
+        stop_active = True
+
+    class StopGuard:
+        def status(self):
+            return StopStatus()
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.operator_stop_status",
+        lambda _config_dir: (None, StopGuard()),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: (_ for _ in ()).throw(AssertionError("runtime smoke reached")),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_user_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("mutation reached")),
+    )
+
+    assert main(
+        ["--config-dir", str(paths.config_dir), "autostart", "install"]
+    ) == 2
+    captured = capsys.readouterr()
+    assert "autostart activation is blocked" in captured.err
+
+
+def test_autostart_cli_install_recovery_blocks_before_runtime_smoke(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_recovery_state",
+        lambda _config_dir: "pending",
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: (_ for _ in ()).throw(AssertionError("runtime smoke reached")),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_user_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("mutation reached")),
+    )
+
+    assert main(
+        ["--config-dir", str(paths.config_dir), "autostart", "install"]
+    ) == 2
+    captured = capsys.readouterr()
+    assert "autostart activation is blocked" in captured.err
+
+
+def test_autostart_cli_pending_restart_blocks_before_runtime_smoke(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(
+        "runner_mcp.cli.restart_pending_count",
+        lambda _config_dir: 1,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: (_ for _ in ()).throw(AssertionError("runtime smoke reached")),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_user_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("mutation reached")),
+    )
+
+    assert main(
+        ["--config-dir", str(paths.config_dir), "autostart", "install"]
+    ) == 2
+    captured = capsys.readouterr()
+    assert "autostart activation is blocked" in captured.err
+
+
+def test_autostart_cli_runtime_smoke_failure_skips_diagnostics_and_mutation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class DiagnosticsMustNotRun:
+        def recent_fatal_process_classes(self, *, since, until):
+            raise AssertionError("diagnostics reached")
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.LinuxJournalDiagnosticAdapter",
+        DiagnosticsMustNotRun,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_user_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("mutation reached")),
+    )
+
+    assert main(
+        ["--config-dir", str(paths.config_dir), "autostart", "install"]
+    ) == 2
+    captured = capsys.readouterr()
+    assert "runtime_smoke_failed" in captured.err
+
+
+def test_autostart_cli_unavailable_diagnostics_block_all_backend_mutation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.host_integrity import HostDiagnosticError
+
+    paths, _ = install_config(tmp_path)
+
+    class UnavailableDiagnostics:
+        def recent_fatal_process_classes(self, *, since, until):
+            raise HostDiagnosticError("private diagnostic detail")
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: True,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.LinuxJournalDiagnosticAdapter",
+        UnavailableDiagnostics,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_user_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("systemd mutation reached")),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_cron_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("cron mutation reached")),
+    )
+
+    assert main(
+        ["--config-dir", str(paths.config_dir), "autostart", "install"]
+    ) == 2
+    captured = capsys.readouterr()
+    assert "diagnostics_unavailable" in captured.err
+    assert "private diagnostic detail" not in captured.err
 
 def test_autostart_cli_remove_requires_explicit_confirmation(
     tmp_path: Path,
@@ -1859,18 +2029,32 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
         lambda _config_dir: ("server", "github-watcher"),
     )
 
-    def fake_install_cron(*, executable, config_dir, components, port):
+    def fake_install_cron(*, executable, config_dir, components, port, activation_permit):
         captured.update(
             executable=executable,
             config_dir=config_dir,
             components=components,
             port=port,
+            activation_permit=activation_permit,
         )
         return components
 
     monkeypatch.setattr(
         "runner_mcp.cli.install_cron_services",
         fake_install_cron,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: True,
+    )
+
+    class ClearDiagnostics:
+        def recent_fatal_process_classes(self, *, since, until):
+            return ()
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.LinuxJournalDiagnosticAdapter",
+        ClearDiagnostics,
     )
     monkeypatch.setattr(
         "runner_mcp.cli.cron_status",
@@ -1894,6 +2078,7 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
     assert captured["config_dir"] == paths.config_dir
     assert captured["components"] == ("server", "github-watcher")
     assert captured["port"] == 8000
+    assert captured["activation_permit"].is_clear
     assert "managed cron supervision" in installed.out
     assert str(paths.config_dir) not in installed.out
 

@@ -26,6 +26,7 @@ from runner_mcp.completion_delivery import (
 )
 from runner_mcp.config_manager import configure_github_mailbox
 from runner_mcp.github_watcher import GitHubWatcherCursorStore
+from runner_mcp.host_integrity import HostIntegrityState
 from runner_mcp.onboarding import SetupAnswers, install_private_configuration
 
 
@@ -177,6 +178,24 @@ def test_optional_watchers_are_added_only_after_bootstrap(tmp_path: Path) -> Non
     assert "completion-watcher" in units[COMPLETION_WATCHER_UNIT]
 
 
+def test_install_without_clear_integrity_state_does_not_touch_systemd(
+    tmp_path: Path,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    systemctl = FakeSystemctl()
+
+    with pytest.raises(AutostartError, match="clear host-integrity permit"):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=tmp_path / "units",
+            runner=systemctl,
+        )
+
+    assert systemctl.calls == []
+    assert not (tmp_path / "units").exists()
+
+
 def test_install_uses_fixed_systemctl_arrays_and_managed_files(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
     unit_dir = tmp_path / "units"
@@ -185,6 +204,7 @@ def test_install_uses_fixed_systemctl_arrays_and_managed_files(tmp_path: Path) -
     installed = install_user_services(
         paths.config_dir,
         executable=executable,
+        activation_state=HostIntegrityState.CLEAR,
         unit_dir=unit_dir,
         runner=systemctl,
     )
@@ -214,6 +234,7 @@ def test_install_refuses_to_replace_foreign_unit(tmp_path: Path) -> None:
         install_user_services(
             paths.config_dir,
             executable=executable,
+            activation_state=HostIntegrityState.CLEAR,
             unit_dir=unit_dir,
             runner=systemctl,
         )

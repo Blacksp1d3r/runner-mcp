@@ -1045,16 +1045,17 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         if backend == "auto":
             backend = "systemd" if systemd_user_available() else "cron"
 
+        if backend == "systemd" and not systemd_user_available():
+            raise AutostartError(
+                "systemd user manager is unavailable; use --backend cron"
+            )
+
         activation_state = _autostart_activation_state(
             config_dir=config_dir,
             executable=executable,
         )
 
         if backend == "systemd":
-            if not systemd_user_available():
-                raise AutostartError(
-                    "systemd user manager is unavailable; use --backend cron"
-                )
             installed = install_user_services(
                 config_dir,
                 executable=executable,

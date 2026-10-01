@@ -72,6 +72,7 @@ def agent_bus_worker_configured(config_dir: Path) -> bool:
 def run_agent_bus_worker_process(
     config_dir: Path,
     *,
+    once: bool = False,
     execve: Callable[[str, list[str], dict[str, str]], object] = os.execve,
 ) -> int:
     paths, _settings, _registry = read_private_runtime(config_dir)
@@ -96,6 +97,8 @@ def run_agent_bus_worker_process(
     ).strip()
     _validate_loopback_endpoint(endpoint)
 
+    if not isinstance(once, bool):
+        raise TypeError("once must be a boolean")
     executable = _fixed_runner_fabric_executable()
     state_root = _private_state_root(paths.config_dir / "agent-bus-state")
 
@@ -114,7 +117,10 @@ def run_agent_bus_worker_process(
     try:
         execve(
             str(executable),
-            [str(executable), "agent-bus-run"],
+            [
+                str(executable),
+                "agent-bus-run-once" if once else "agent-bus-run",
+            ],
             environment,
         )
     except OSError as exc:

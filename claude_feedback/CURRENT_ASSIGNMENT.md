@@ -1674,7 +1674,7 @@ Acceptance:
 
 ### Task 65 — local read-only autostart activation preflight — CODE lane
 
-Status: `CHATGPT_IN_PROGRESS`. Branch: `task65-autostart-preflight`.
+Status: `COMPLETE` via PR #206 / merge `5d2616b559825a46b196376b49f4ddb516fa369e`. Exact-head attribution #261 and validation #768 are green, including Ruff/pytest, built release artifact and clean five-minute demo.
 
 Goal:
 Expose the exact Task-64 activation decision as a local read-only operator preflight so host readiness can be checked without attempting to persist or enable autostart.
@@ -1688,3 +1688,37 @@ Acceptance:
 - return success only for clear readiness and nonzero for any blocked state;
 - preserve status/remove semantics and direct backend permit guards;
 - no remote action, force flag, repair, package-manager or production authority.
+
+
+### Task 66 — Runner MCP 0.1.3 release-readiness review — CHAT REVIEW
+
+Status: `COMPLETE` in `claude_feedback/TASK66_RELEASE_013_READINESS_REVIEW.md`.
+
+Goal:
+Reconcile the 0.1.2 released baseline against current main and decide whether a 0.1.3 release candidate is justified without confusing public CI with private-host readiness.
+
+Result:
+- current main is 55 commits ahead of the exact 0.1.2 release commit;
+- Python/build/runtime dependency contract is unchanged from 0.1.2;
+- the delta contains substantial user-visible safety, Agent Bus, Fabric bridge/bootstrap, migration, release-lock/pruning, service-journal and host-integrity work;
+- release metadata/changelog/launch-readiness documentation is stale;
+- 0.1.3 candidate preparation is justified, but publication remains separate.
+
+### Task 67 — prepare Runner MCP 0.1.3 release candidate — CODE/DOC lane
+
+Status: `READY`; Task 66 review is complete.
+
+Source:
+`claude_feedback/TASK66_RELEASE_013_READINESS_REVIEW.md`.
+
+Goal:
+Prepare an exact, internally consistent 0.1.3 release candidate without publishing it.
+
+Acceptance:
+- bump `pyproject.toml`, `server.json` and publish-workflow default to `0.1.3`;
+- reconcile CHANGELOG so already-published 0.1.1/0.1.2 work is no longer represented as unreleased;
+- add explicit 0.1.3 release notes covering security-relevant behavior and known activation boundaries;
+- update stale launch-readiness statements now proven complete by issue #101;
+- preserve the exact 0.1.2 dependency/interpreter/build contract;
+- no tag, PyPI upload, MCP Registry publication or GitHub release in this task;
+- full exact-head attribution, Ruff/pytest/whitespace, built artifact and clean demo must be green before candidate completion.

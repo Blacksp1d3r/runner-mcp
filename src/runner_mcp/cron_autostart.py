@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .host_integrity import HostIntegrityState
 from .safe_diagnostics import (
     DiagnosticComponent,
     DiagnosticErrorCategory,
@@ -228,9 +229,15 @@ def install_cron_services(
     executable: Path,
     config_dir: Path,
     components: tuple[str, ...],
+    activation_state: HostIntegrityState | None = None,
     port: int = 8000,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> tuple[str, ...]:
+    if activation_state is not HostIntegrityState.CLEAR:
+        raise CronAutostartError(
+            "autostart activation requires a clear host-integrity permit"
+        )
+
     existing = read_crontab(runner=runner)
     lines = existing.splitlines()
     if _has_unmanaged_runner_mcp_entries(lines):

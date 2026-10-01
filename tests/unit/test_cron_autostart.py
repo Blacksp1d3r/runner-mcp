@@ -6,7 +6,6 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.host_integrity import HostIntegrityState
 from runner_mcp.cron_autostart import (
     CRON_BEGIN,
     CRON_END,
@@ -18,6 +17,7 @@ from runner_mcp.cron_autostart import (
     render_cron_block,
     run_cron_component,
 )
+from runner_mcp.host_integrity import HostIntegrityState
 
 
 class FakeCrontab:

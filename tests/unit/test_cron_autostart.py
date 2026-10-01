@@ -113,6 +113,7 @@ def test_install_rejects_unmanaged_runner_mcp_cron(
             config_dir=tmp_path / "private",
             components=("server",),
             runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
         )
 
     assert len(crontab.calls) == 1
@@ -140,6 +141,7 @@ def test_malformed_managed_block_fails_closed(
             config_dir=tmp_path / "private",
             components=("server",),
             runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
         )
 
 

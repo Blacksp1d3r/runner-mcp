@@ -1734,10 +1734,11 @@ def test_autostart_cli_install_and_status_are_path_safe(
     paths, _ = install_config(tmp_path)
     captured_install = {}
 
-    def fake_install(config_dir, *, executable, port):
+    def fake_install(config_dir, *, executable, port, activation_permit):
         captured_install["config_dir"] = config_dir
         captured_install["executable"] = executable
         captured_install["port"] = port
+        captured_install["activation_permit"] = activation_permit
         return [SERVER_UNIT]
 
     monkeypatch.setattr("runner_mcp.cli.install_user_services", fake_install)
@@ -1859,12 +1860,13 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
         lambda _config_dir: ("server", "github-watcher"),
     )
 
-    def fake_install_cron(*, executable, config_dir, components, port):
+    def fake_install_cron(*, executable, config_dir, components, port, activation_permit):
         captured.update(
             executable=executable,
             config_dir=config_dir,
             components=components,
             port=port,
+            activation_permit=activation_permit,
         )
         return components
 

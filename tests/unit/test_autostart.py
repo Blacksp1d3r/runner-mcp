@@ -7,6 +7,7 @@ import pytest
 
 from runner_mcp import autostart as autostart_module
 from runner_mcp import secure_io as secure_io_module
+from runner_mcp.autostart_activation import AutostartActivationPermit
 from runner_mcp.autostart import (
     AGENT_BUS_WORKER_UNIT,
     COMPLETION_WATCHER_UNIT,
@@ -187,6 +188,7 @@ def test_install_uses_fixed_systemctl_arrays_and_managed_files(tmp_path: Path) -
         executable=executable,
         unit_dir=unit_dir,
         runner=systemctl,
+        activation_permit=AutostartActivationPermit.clear(),
     )
 
     assert installed == [SERVER_UNIT]
@@ -216,6 +218,7 @@ def test_install_refuses_to_replace_foreign_unit(tmp_path: Path) -> None:
             executable=executable,
             unit_dir=unit_dir,
             runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
         )
 
     assert unit_path.read_text(encoding="utf-8") == foreign_content
@@ -353,3 +356,20 @@ def test_remove_refuses_foreign_unit(tmp_path: Path) -> None:
 
     with pytest.raises(AutostartError, match="not managed"):
         remove_user_services(unit_dir=unit_dir, runner=systemctl)
+
+
+def test_install_without_clear_permit_has_zero_systemd_or_file_mutation(tmp_path: Path) -> None:
+    paths, executable = _private_config(tmp_path)
+    unit_dir = tmp_path / "must-not-exist"
+    systemctl = FakeSystemctl()
+
+    with pytest.raises(AutostartError, match="activation is blocked"):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+        )
+
+    assert systemctl.calls == []
+    assert not unit_dir.exists()

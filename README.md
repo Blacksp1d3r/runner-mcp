@@ -118,6 +118,8 @@ runner-mcp status
 runner-mcp emergency-stop on
 runner-mcp emergency-stop status
 runner-mcp emergency-stop off
+runner-mcp autostart preflight
+runner-mcp autostart status
 runner-mcp project list
 runner-mcp project add ...
 runner-mcp test-profile list PROJECT
@@ -291,4 +293,4 @@ The current implementation state is tracked in:
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
 
-Runner MCP v0.1.0 is the first public alpha release. The project remains under active development. The public GitHub mailbox stack now includes protocol-v1 validation, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor, bounded concurrent request handling, fail-closed missing-result recovery and a private-config runtime/CLI. Shared-watcher migration, exactly-once completion feedback, clean-Linux demo validation, non-root autostart packaging and privacy-safe connectivity guidance are complete. Ongoing alpha hardening and post-release work are tracked in the roadmap and release checklist.
+Runner MCP v0.1.2 is the current canonical cross-registry alpha release. The project remains under active development, and 0.1.3 is being prepared as the next candidate. The public GitHub mailbox stack now includes protocol-v1 validation, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor, bounded concurrent request handling, fail-closed missing-result recovery and a private-config runtime/CLI. Shared-watcher migration, exactly-once completion feedback, clean-Linux demo validation, non-root autostart packaging and privacy-safe connectivity guidance are complete. Ongoing alpha hardening and post-release work are tracked in the roadmap and release checklist.

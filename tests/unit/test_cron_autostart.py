@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp.host_integrity import HostIntegrityState
 from runner_mcp.cron_autostart import (
     CRON_BEGIN,
     CRON_END,
@@ -66,6 +67,24 @@ def test_render_cron_block_is_fixed_and_bounded(tmp_path: Path) -> None:
     assert " >/dev/null 2>&1" in block[2]
 
 
+def test_install_without_clear_integrity_state_does_not_touch_crontab(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+) -> None:
+    crontab = FakeCrontab("17 2 * * * /usr/bin/backup\n")
+
+    with pytest.raises(CronAutostartError, match="clear host-integrity permit"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=crontab,
+        )
+
+    assert crontab.calls == []
+    assert crontab.content == "17 2 * * * /usr/bin/backup\n"
+
+
 def test_install_preserves_unrelated_lines_and_is_idempotent(
     tmp_path: Path,
     fake_crontab_executable: None,
@@ -78,12 +97,14 @@ def test_install_preserves_unrelated_lines_and_is_idempotent(
         executable=executable,
         config_dir=config,
         components=("server",),
+        activation_state=HostIntegrityState.CLEAR,
         runner=crontab,
     )
     second = install_cron_services(
         executable=executable,
         config_dir=config,
         components=("server", "github-watcher"),
+        activation_state=HostIntegrityState.CLEAR,
         runner=crontab,
     )
 
@@ -109,6 +130,7 @@ def test_install_rejects_unmanaged_runner_mcp_cron(
             executable=tmp_path / "runner-mcp",
             config_dir=tmp_path / "private",
             components=("server",),
+            activation_state=HostIntegrityState.CLEAR,
             runner=crontab,
         )
 
@@ -136,6 +158,7 @@ def test_malformed_managed_block_fails_closed(
             executable=tmp_path / "runner-mcp",
             config_dir=tmp_path / "private",
             components=("server",),
+            activation_state=HostIntegrityState.CLEAR,
             runner=crontab,
         )
 
@@ -341,6 +364,7 @@ def test_cron_status_reports_only_managed_components(
     rows = cron_status(
         config_dir=config,
         components=("server",),
+        activation_state=HostIntegrityState.CLEAR,
         runner=crontab,
     )
 

@@ -56,7 +56,10 @@ Run:
 
 ```bash
 runner-mcp doctor
+runner-mcp autostart preflight
 ```
+
+`autostart preflight` is read-only. It executes the same fresh activation checks used immediately before installation and returns only a bounded readiness category. A blocked result does not create unit files, call the managed backend installer, or alter crontab state.
 
 If you use the GitHub mailbox, configure and bootstrap it first:
 
@@ -78,7 +81,13 @@ Again, autostart will not reinterpret historical completions.
 
 ## Install and inspect
 
-Install and start the applicable managed services:
+Confirm the activation gate first:
+
+```bash
+runner-mcp autostart preflight
+```
+
+Only a clear result is eligible for installation. Then install and start the applicable managed services:
 
 ```bash
 runner-mcp autostart install

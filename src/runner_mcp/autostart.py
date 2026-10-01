@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from pathlib import Path
 
 from .agent_bus_worker import agent_bus_worker_configured
+from .autostart_activation import AutostartActivationPermit, require_clear_autostart_permit
 from .completion_delivery import completion_notifier_status
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
@@ -305,7 +306,12 @@ def install_user_services(
     port: int = 8000,
     unit_dir: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    activation_permit: AutostartActivationPermit | None = None,
 ) -> list[str]:
+    try:
+        require_clear_autostart_permit(activation_permit)
+    except PermissionError as exc:
+        raise AutostartError("autostart activation is blocked") from exc
     # Verify a user manager before touching service files.
     _run_systemctl(["show-environment"], runner=runner)
     units = render_user_units(

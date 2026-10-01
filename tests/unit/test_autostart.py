@@ -7,7 +7,6 @@ import pytest
 
 from runner_mcp import autostart as autostart_module
 from runner_mcp import secure_io as secure_io_module
-from runner_mcp.autostart_activation import AutostartActivationPermit
 from runner_mcp.autostart import (
     AGENT_BUS_WORKER_UNIT,
     COMPLETION_WATCHER_UNIT,
@@ -21,6 +20,7 @@ from runner_mcp.autostart import (
     render_user_units,
     user_service_status,
 )
+from runner_mcp.autostart_activation import AutostartActivationPermit
 from runner_mcp.completion_delivery import (
     bootstrap_completion_notifier,
     configure_github_issue_notifier,

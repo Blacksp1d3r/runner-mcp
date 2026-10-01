@@ -9,6 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
+from .autostart_activation import AutostartActivationPermit, require_clear_autostart_permit
 from .safe_diagnostics import (
     DiagnosticComponent,
     DiagnosticErrorCategory,
@@ -230,7 +231,12 @@ def install_cron_services(
     components: tuple[str, ...],
     port: int = 8000,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+    activation_permit: AutostartActivationPermit | None = None,
 ) -> tuple[str, ...]:
+    try:
+        require_clear_autostart_permit(activation_permit)
+    except PermissionError as exc:
+        raise CronAutostartError("autostart activation is blocked") from exc
     existing = read_crontab(runner=runner)
     lines = existing.splitlines()
     if _has_unmanaged_runner_mcp_entries(lines):

@@ -18,7 +18,7 @@ class AutostartActivationPermit:
     _state: AutostartActivationState
 
     @classmethod
-    def clear(cls) -> "AutostartActivationPermit":
+    def clear(cls) -> AutostartActivationPermit:
         return cls(AutostartActivationState.CLEAR)
 
     @property

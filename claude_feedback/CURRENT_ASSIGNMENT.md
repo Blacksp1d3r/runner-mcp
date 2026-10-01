@@ -1706,7 +1706,7 @@ Result:
 
 ### Task 67 — prepare Runner MCP 0.1.3 release candidate — CODE/DOC lane
 
-Status: `READY`; Task 66 review is complete.
+Status: `CHATGPT_IN_PROGRESS`. Branch: `task67-release-013-candidate-refresh`; Task 66 review is integrated.
 
 Source:
 `claude_feedback/TASK66_RELEASE_013_READINESS_REVIEW.md`.

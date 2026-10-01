@@ -314,9 +314,12 @@ For externally reachable HTTPS use, keep Runner MCP on loopback and put it behin
 On a Linux host, Runner MCP can install its fixed non-root autostart:
 
 ```bash
+runner-mcp autostart preflight
 runner-mcp autostart install
 runner-mcp autostart status
 ```
+
+`autostart preflight` runs the same fresh local runtime and host-integrity activation gate as installation, but performs no service/crontab mutation. It reports only a bounded readiness state.
 
 The server remains loopback-only. The GitHub mailbox watcher and completion watcher are added only when each feature is privately configured and explicitly bootstrapped. Autostart prefers systemd user services and falls back to a managed user crontab when the user systemd bus is unavailable. It does not create watcher cursors, replay historical work, install system services or use sudo.
 

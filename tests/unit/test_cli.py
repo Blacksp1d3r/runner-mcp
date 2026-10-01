@@ -1808,6 +1808,95 @@ def test_autostart_cli_install_and_status_are_path_safe(
 
 
 
+def test_autostart_cli_preflight_reports_ready_without_backend_mutation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class ClearDiagnostics:
+        def recent_fatal_process_classes(self, *, since, until):
+            return ()
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.restart_pending_count",
+        lambda _config_dir: 0,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: True,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.LinuxJournalDiagnosticAdapter",
+        ClearDiagnostics,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.cron_available",
+        lambda: (_ for _ in ()).throw(AssertionError("backend inspection reached")),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.has_managed_user_units",
+        lambda: (_ for _ in ()).throw(AssertionError("backend inspection reached")),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_user_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("mutation reached")),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.install_cron_services",
+        lambda *args, **kwargs: (_ for _ in ()).throw(AssertionError("mutation reached")),
+    )
+
+    assert main(
+        ["--config-dir", str(paths.config_dir), "autostart", "preflight"]
+    ) == 0
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == (
+        "Autostart activation: ready (autostart_activation_clear)"
+    )
+    assert str(paths.config_dir) not in captured.out
+    assert captured.err == ""
+
+
+def test_autostart_cli_preflight_reports_bounded_runtime_failure_only(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class DiagnosticsMustNotRun:
+        def recent_fatal_process_classes(self, *, since, until):
+            raise AssertionError("private diagnostic detail")
+
+    monkeypatch.setattr(
+        "runner_mcp.cli.restart_pending_count",
+        lambda _config_dir: 0,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: False,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.LinuxJournalDiagnosticAdapter",
+        DiagnosticsMustNotRun,
+    )
+
+    assert main(
+        ["--config-dir", str(paths.config_dir), "autostart", "preflight"]
+    ) == 2
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == (
+        "Autostart activation: blocked (runtime_smoke_failed)"
+    )
+    assert "private diagnostic detail" not in captured.out
+    assert str(paths.config_dir) not in captured.out
+    assert captured.err == ""
+
+
 def test_autostart_cli_emergency_stop_blocks_before_runtime_smoke(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

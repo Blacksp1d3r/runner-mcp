@@ -943,6 +943,36 @@ def _print_autostart_rows(backend: str, rows) -> None:
         )
 
 
+def _autostart_activation_preflight(
+    config_dir: Path,
+    executable: Path,
+) -> tuple[str, AutostartActivationPermit | None]:
+    _, guard = operator_stop_status(config_dir)
+    if guard.status().stop_active:
+        return "emergency_stop_active", None
+
+    if install_recovery_state(config_dir) != "clear":
+        return "install_recovery_blocked", None
+
+    try:
+        if restart_pending_count(config_dir):
+            return "self_update_restart_pending", None
+    except RuntimeError:
+        return "self_update_restart_pending", None
+
+    runtime_ok = run_autostart_runtime_smoke(
+        python_executable=Path(sys.executable),
+        runner_mcp_executable=executable,
+    )
+    integrity = HostRuntimeIntegrityGate(
+        diagnostics=LinuxJournalDiagnosticAdapter(),
+    ).evaluate(runtime_smoke_passed=runtime_ok)
+    if integrity is not HostIntegrityState.CLEAR:
+        return integrity.value, None
+
+    return "autostart_activation_clear", AutostartActivationPermit.clear()
+
+
 def cmd_autostart(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     executable = (Path(sys.executable).parent / "runner-mcp").resolve()
@@ -954,6 +984,17 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             component=args.component,
             port=args.port,
         )
+
+    if args.autostart_action == "preflight":
+        state, activation_permit = _autostart_activation_preflight(
+            config_dir,
+            executable,
+        )
+        if activation_permit is None:
+            print(f"Autostart activation: blocked ({state})")
+            return 2
+        print(f"Autostart activation: ready ({state})")
+        return 0
 
     managed_cron = has_managed_cron() if cron_available() else False
     managed_systemd = has_managed_user_units()
@@ -1005,27 +1046,12 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             raise AutostartError(
                 "managed autostart is already installed; remove it before changing backend"
             )
-        _, guard = operator_stop_status(config_dir)
-        if guard.status().stop_active:
-            raise AutostartError("autostart activation is blocked")
-        if install_recovery_state(config_dir) != "clear":
-            raise AutostartError("autostart activation is blocked")
-        try:
-            if restart_pending_count(config_dir):
-                raise AutostartError("autostart activation is blocked")
-        except RuntimeError as exc:
-            raise AutostartError("autostart activation is blocked") from exc
-
-        runtime_ok = run_autostart_runtime_smoke(
-            python_executable=Path(sys.executable),
-            runner_mcp_executable=executable,
+        state, activation_permit = _autostart_activation_preflight(
+            config_dir,
+            executable,
         )
-        integrity = HostRuntimeIntegrityGate(
-            diagnostics=LinuxJournalDiagnosticAdapter(),
-        ).evaluate(runtime_smoke_passed=runtime_ok)
-        if integrity is not HostIntegrityState.CLEAR:
-            raise AutostartError(f"autostart activation is blocked ({integrity.value})")
-        activation_permit = AutostartActivationPermit.clear()
+        if activation_permit is None:
+            raise AutostartError(f"autostart activation is blocked ({state})")
 
         backend = args.backend
         if backend == "auto":
@@ -1842,6 +1868,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show safe Runner MCP user-service state.",
     )
     autostart_status.set_defaults(func=cmd_autostart)
+    autostart_preflight = autostart_sub.add_parser(
+        "preflight",
+        help="Run the local read-only autostart activation gate.",
+    )
+    autostart_preflight.set_defaults(func=cmd_autostart)
     autostart_install = autostart_sub.add_parser(
         "install",
         help="Install and start managed loopback Runner MCP user services.",

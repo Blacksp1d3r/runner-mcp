@@ -1670,3 +1670,21 @@ Acceptance:
 - emergency stop and self-update/install recovery remain authoritative;
 - blocked state creates no unit directory/file and does not alter crontab;
 - no remote force flag, diagnostic selector, repair or package authority.
+
+
+### Task 65 — local read-only autostart activation preflight — CODE lane
+
+Status: `CHATGPT_IN_PROGRESS`. Branch: `task65-autostart-preflight`.
+
+Goal:
+Expose the exact Task-64 activation decision as a local read-only operator preflight so host readiness can be checked without attempting to persist or enable autostart.
+
+Acceptance:
+- add `runner-mcp autostart preflight` as a local CLI-only action;
+- use the same shared evaluation path for preflight and actual install so policy cannot drift;
+- preflight performs no systemd/crontab mutation and does not inspect/install a backend before the gate result;
+- bounded result states only: emergency stop, install recovery, restart pending, runtime smoke, host-integrity categories, or clear;
+- no raw journal records, paths, PIDs, host identifiers, exception text or private configuration values;
+- return success only for clear readiness and nonzero for any blocked state;
+- preserve status/remove semantics and direct backend permit guards;
+- no remote action, force flag, repair, package-manager or production authority.

@@ -209,3 +209,58 @@ def test_worker_start_error_is_bounded(
 
     assert str(captured.value) == "Agent Bus worker could not start"
     assert sensitive not in str(captured.value)
+
+
+def test_worker_once_execs_only_fixed_one_shot_runner_fabric_command(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = private_config(tmp_path)
+    append_env(paths.env_file, relay_values())
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        worker_module,
+        "_fixed_runner_fabric_executable",
+        lambda: executable.resolve(),
+    )
+
+    captured: dict[str, object] = {}
+
+    def fake_execve(
+        path: str,
+        argv: list[str],
+        environment: dict[str, str],
+    ) -> object:
+        captured["path"] = path
+        captured["argv"] = argv
+        captured["environment"] = environment
+        return object()
+
+    assert run_agent_bus_worker_process(
+        paths.config_dir,
+        once=True,
+        execve=fake_execve,
+    ) == 0
+
+    assert captured["path"] == str(executable.resolve())
+    assert captured["argv"] == [
+        str(executable.resolve()),
+        "agent-bus-run-once",
+    ]
+    environment = captured["environment"]
+    assert environment["RUNNER_FABRIC_RELAY_SUBJECT"] == "runner:one"
+    assert "RUNNER_MCP_GITHUB_TOKEN" not in environment
+
+
+def test_worker_rejects_non_boolean_once(tmp_path: Path) -> None:
+    paths = private_config(tmp_path)
+    append_env(paths.env_file, relay_values())
+
+    with pytest.raises(TypeError, match="once must be a boolean"):
+        run_agent_bus_worker_process(
+            paths.config_dir,
+            once="yes",  # type: ignore[arg-type]
+            execve=lambda *_args: object(),
+        )

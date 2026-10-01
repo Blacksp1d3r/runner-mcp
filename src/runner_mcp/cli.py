@@ -1086,6 +1086,8 @@ def cmd_agent_bus_worker(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     if args.agent_bus_worker_action == "run":
         return run_agent_bus_worker_process(config_dir)
+    if args.agent_bus_worker_action == "once":
+        return run_agent_bus_worker_process(config_dir, once=True)
     raise RuntimeError("unknown Agent Bus worker action")
 
 
@@ -1898,6 +1900,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the fixed Runner Fabric Agent Bus worker.",
     )
     agent_bus_worker_run.set_defaults(func=cmd_agent_bus_worker)
+    agent_bus_worker_once = agent_bus_worker_sub.add_parser(
+        "once",
+        help="Run exactly one fixed Runner Fabric Agent Bus iteration.",
+    )
+    agent_bus_worker_once.set_defaults(func=cmd_agent_bus_worker)
 
     completion_notifier = subparsers.add_parser(
         "completion-notifier",

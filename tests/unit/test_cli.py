@@ -4,6 +4,7 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp import cli
 from runner_mcp.cli import _require_removal_confirmation, main
 from runner_mcp.onboarding import (
     SetupAnswers,
@@ -2589,3 +2590,51 @@ def test_retention_prune_release_cli_requires_typed_candidate_confirmation(
     assert "Backups affected: no" in captured.out
     assert private_path not in captured.out
     assert captured.err == ""
+
+
+def test_agent_bus_worker_once_cli_selects_one_shot_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls: list[tuple[Path, bool]] = []
+
+    def fake_run(config_dir: Path, *, once: bool = False) -> int:
+        calls.append((config_dir, once))
+        return 0
+
+    monkeypatch.setattr(cli, "run_agent_bus_worker_process", fake_run)
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus-worker",
+            "once",
+        ]
+    ) == 0
+    assert calls == [(paths.config_dir.resolve(), True)]
+
+
+def test_agent_bus_worker_run_cli_preserves_continuous_runtime(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls: list[tuple[Path, bool]] = []
+
+    def fake_run(config_dir: Path, *, once: bool = False) -> int:
+        calls.append((config_dir, once))
+        return 0
+
+    monkeypatch.setattr(cli, "run_agent_bus_worker_process", fake_run)
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus-worker",
+            "run",
+        ]
+    ) == 0
+    assert calls == [(paths.config_dir.resolve(), False)]

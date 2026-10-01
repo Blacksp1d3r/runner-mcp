@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-import runner_mcp.cli as cli
+from runner_mcp import cli
 from runner_mcp.cli import _require_removal_confirmation, main
 from runner_mcp.onboarding import (
     SetupAnswers,

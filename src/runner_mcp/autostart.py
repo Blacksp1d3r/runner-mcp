@@ -10,6 +10,7 @@ from .agent_bus_worker import agent_bus_worker_configured
 from .completion_delivery import completion_notifier_status
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
+from .host_integrity import HostIntegrityState
 from .onboarding import load_env_file, read_private_runtime
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
@@ -302,10 +303,14 @@ def install_user_services(
     config_dir: Path,
     *,
     executable: Path,
+    activation_state: HostIntegrityState | None = None,
     port: int = 8000,
     unit_dir: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[str]:
+    if activation_state is not HostIntegrityState.CLEAR:
+        raise AutostartError("autostart activation requires a clear host-integrity permit")
+
     # Verify a user manager before touching service files.
     _run_systemctl(["show-environment"], runner=runner)
     units = render_user_units(

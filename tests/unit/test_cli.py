@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.cli import _require_removal_confirmation, main
+from runner_mcp.cli import _autostart_activation_state, _require_removal_confirmation, main
 from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
@@ -1722,6 +1722,97 @@ def test_completion_watcher_cli_once_returns_nonzero_on_delivery_failure(
     assert "state=degraded" in captured.out
     assert "failures=1" in captured.out
 
+
+
+def test_autostart_activation_runtime_smoke_failure_is_bounded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from runner_mcp.autostart import AutostartError
+
+    paths, _ = install_config(tmp_path)
+    executable = tmp_path / "runner-mcp"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+
+    guard = SimpleNamespace(status=lambda: SimpleNamespace(stop_active=False))
+    monkeypatch.setattr("runner_mcp.cli.install_recovery_state", lambda _path: "clear")
+    monkeypatch.setattr("runner_mcp.cli.operator_stop_status", lambda _path: (None, guard))
+    monkeypatch.setattr("runner_mcp.cli.restart_pending_count", lambda _path: 0)
+    monkeypatch.setattr("runner_mcp.cli.run_autostart_runtime_smoke", lambda **_: False)
+
+    with pytest.raises(AutostartError, match="runtime_smoke_failed"):
+        _autostart_activation_state(
+            config_dir=paths.config_dir,
+            executable=executable,
+        )
+
+
+def test_autostart_activation_recent_host_evidence_is_bounded(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from runner_mcp.autostart import AutostartError
+    from runner_mcp.host_integrity import HostIntegrityState
+
+    paths, _ = install_config(tmp_path)
+    executable = tmp_path / "runner-mcp"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+
+    guard = SimpleNamespace(status=lambda: SimpleNamespace(stop_active=False))
+    monkeypatch.setattr("runner_mcp.cli.install_recovery_state", lambda _path: "clear")
+    monkeypatch.setattr("runner_mcp.cli.operator_stop_status", lambda _path: (None, guard))
+    monkeypatch.setattr("runner_mcp.cli.restart_pending_count", lambda _path: 0)
+    monkeypatch.setattr("runner_mcp.cli.run_autostart_runtime_smoke", lambda **_: True)
+    monkeypatch.setattr(
+        "runner_mcp.cli.HostRuntimeIntegrityGate",
+        lambda **_: SimpleNamespace(
+            evaluate=lambda **__: HostIntegrityState.RECENT_PROCESS_CRASH_EVIDENCE
+        ),
+    )
+
+    with pytest.raises(AutostartError, match="recent_process_crash_evidence"):
+        _autostart_activation_state(
+            config_dir=paths.config_dir,
+            executable=executable,
+        )
+
+
+def test_autostart_activation_clear_returns_backend_permit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from types import SimpleNamespace
+
+    from runner_mcp.host_integrity import HostIntegrityState
+
+    paths, _ = install_config(tmp_path)
+    executable = tmp_path / "runner-mcp"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+
+    guard = SimpleNamespace(status=lambda: SimpleNamespace(stop_active=False))
+    monkeypatch.setattr("runner_mcp.cli.install_recovery_state", lambda _path: "clear")
+    monkeypatch.setattr("runner_mcp.cli.operator_stop_status", lambda _path: (None, guard))
+    monkeypatch.setattr("runner_mcp.cli.restart_pending_count", lambda _path: 0)
+    monkeypatch.setattr("runner_mcp.cli.run_autostart_runtime_smoke", lambda **_: True)
+    monkeypatch.setattr(
+        "runner_mcp.cli.HostRuntimeIntegrityGate",
+        lambda **_: SimpleNamespace(evaluate=lambda **__: HostIntegrityState.CLEAR),
+    )
+
+    assert (
+        _autostart_activation_state(
+            config_dir=paths.config_dir,
+            executable=executable,
+        )
+        is HostIntegrityState.CLEAR
+    )
 
 
 def test_autostart_cli_install_and_status_are_path_safe(

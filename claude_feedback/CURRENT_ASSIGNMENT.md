@@ -1706,7 +1706,7 @@ Result:
 
 ### Task 67 — prepare Runner MCP 0.1.3 release candidate — CODE/DOC lane
 
-Status: `CHATGPT_IN_PROGRESS`. Branch: `task67-release-013-candidate-refresh`; Task 66 review is integrated.
+Status: `COMPLETE` via PR #208 / merge `ee6ab95bec9be4d8d2f7b75854e1b2a17503da76`. Exact candidate head `6e5f7ddb28c8d9dfe1a1cabe5a7f1153a854c5f9`: attribution #265, validation #772, built artifact and Clean Ubuntu proof #5 are green; the clean-demo rerun passed on the same SHA after one external PyPI read timeout.
 
 Source:
 `claude_feedback/TASK66_RELEASE_013_READINESS_REVIEW.md`.
@@ -1722,3 +1722,23 @@ Acceptance:
 - preserve the exact 0.1.2 dependency/interpreter/build contract;
 - no tag, PyPI upload, MCP Registry publication or GitHub release in this task;
 - full exact-head attribution, Ruff/pytest/whitespace, built artifact and clean demo must be green before candidate completion.
+
+
+### Task 68 — publish Runner MCP 0.1.3 — RELEASE / OPERATOR lane
+
+Status: `READY`, but publication is not part of Task 67 and must not be inferred from candidate preparation.
+
+Prerequisites:
+- final exact-main release check remains green;
+- package, Registry and Glama metadata all remain `0.1.3`;
+- no newer main commit invalidates the candidate evidence;
+- public-repository hygiene remains clean.
+
+Release action:
+- dispatch the existing protected `Publish Runner MCP` workflow for exact version `0.1.3`;
+- require PyPI publication success before MCP Registry publication;
+- require Registry success before immutable GitHub pre-release/tag creation;
+- never move an existing release tag;
+- verify PyPI, MCP Registry and GitHub release visibility after publication.
+
+Do not publish automatically merely because this task is READY. Keep publication as an explicit release/operator action.

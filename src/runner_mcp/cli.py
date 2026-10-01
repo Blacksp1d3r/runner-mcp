@@ -71,6 +71,8 @@ from .github_runtime import (
     DEFAULT_POLL_SECONDS,
     GitHubWatcherRuntime,
 )
+from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
+from .host_integrity_linux import LinuxJournalDiagnosticAdapter
 from .onboarding import (
     OnboardingError,
     default_config_dir,
@@ -85,7 +87,8 @@ from .onboarding import (
 )
 from .retention_preview import RetentionPreviewPlanner
 from .retention_pruning import RetentionPruner
-from .self_update import SelfUpdateManager
+from .runtime_smoke import run_autostart_runtime_smoke
+from .self_update import SelfUpdateError, SelfUpdateManager, restart_pending_count
 from .self_update_install import install_recovery_state
 from .server import create_app
 from .service_journal import ServiceJournalReader
@@ -939,6 +942,43 @@ def _print_autostart_rows(backend: str, rows) -> None:
         )
 
 
+def _autostart_activation_state(
+    *,
+    config_dir: Path,
+    executable: Path,
+) -> HostIntegrityState:
+    recovery_state = install_recovery_state(config_dir)
+    if recovery_state != "clear":
+        raise AutostartError(
+            "autostart activation blocked: self_update_install_recovery"
+        )
+
+    _, guard = operator_stop_status(config_dir)
+    if guard.status().stop_active:
+        raise AutostartError("autostart activation blocked: emergency_stop_active")
+
+    try:
+        if restart_pending_count(config_dir):
+            raise AutostartError(
+                "autostart activation blocked: self_update_restart_pending"
+            )
+    except SelfUpdateError:
+        raise AutostartError(
+            "autostart activation blocked: self_update_state_unavailable"
+        ) from None
+
+    smoke_passed = run_autostart_runtime_smoke(
+        python_executable=Path(sys.executable),
+        runner_mcp_executable=executable,
+    )
+    state = HostRuntimeIntegrityGate(
+        diagnostics=LinuxJournalDiagnosticAdapter(),
+    ).evaluate(runtime_smoke_passed=smoke_passed)
+    if state is not HostIntegrityState.CLEAR:
+        raise AutostartError(f"autostart activation blocked: {state.value}")
+    return state
+
+
 def cmd_autostart(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     executable = (Path(sys.executable).parent / "runner-mcp").resolve()
@@ -1005,6 +1045,11 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         if backend == "auto":
             backend = "systemd" if systemd_user_available() else "cron"
 
+        activation_state = _autostart_activation_state(
+            config_dir=config_dir,
+            executable=executable,
+        )
+
         if backend == "systemd":
             if not systemd_user_available():
                 raise AutostartError(
@@ -1013,6 +1058,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             installed = install_user_services(
                 config_dir,
                 executable=executable,
+                activation_state=activation_state,
                 port=args.port,
             )
             print("Runner MCP autostart installed with systemd user services.")
@@ -1029,6 +1075,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 executable=executable,
                 config_dir=config_dir,
                 components=components,
+                activation_state=activation_state,
                 port=args.port,
             )
             print("Runner MCP autostart installed with managed cron supervision.")

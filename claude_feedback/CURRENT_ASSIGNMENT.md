@@ -1658,7 +1658,7 @@ Acceptance:
 
 ### Task 64 — shared fail-closed autostart activation gate — CODE lane
 
-Status: `READY`; Tasks 62 and 63 are merged.
+Status: `COMPLETE` via PR #202 / merge `f666876ac3096fdd6663b368b2f1fe4ecbbed279`. Exact-head attribution #253 and validation #761 are green, including Ruff/pytest, built release artifact and clean five-minute demo. Obsolete overlapping PRs #199/#201 are closed as superseded.
 
 Goal:
 Require fresh runtime smoke plus production host diagnostics before either systemd or cron can persist/enable Runner MCP autostart.

@@ -7,6 +7,7 @@ import pytest
 import runner_mcp.agent_bus_worker as worker_module
 from runner_mcp.agent_bus_worker import (
     AgentBusWorkerError,
+    agent_bus_convergence_status,
     agent_bus_worker_configured,
     run_agent_bus_worker_process,
 )
@@ -322,3 +323,84 @@ def test_worker_rejects_invalid_agent_mcp_token_before_exec(
         )
 
     assert called == []
+
+
+def test_convergence_is_not_initialized_before_worker_state_exists(
+    tmp_path: Path,
+) -> None:
+    paths = private_config(tmp_path)
+
+    assert agent_bus_convergence_status(paths.config_dir) == {
+        "state": "not_initialized",
+        "pending_results": 0,
+    }
+
+
+def test_convergence_reports_clear_private_results_directory(
+    tmp_path: Path,
+) -> None:
+    paths = private_config(tmp_path)
+    state_root = paths.config_dir / "agent-bus-state"
+    results = state_root / "results"
+    state_root.mkdir(mode=0o700)
+    results.mkdir(mode=0o700)
+
+    assert agent_bus_convergence_status(paths.config_dir) == {
+        "state": "clear",
+        "pending_results": 0,
+    }
+
+
+def test_convergence_reports_pending_count_without_reading_payloads(
+    tmp_path: Path,
+) -> None:
+    paths = private_config(tmp_path)
+    state_root = paths.config_dir / "agent-bus-state"
+    results = state_root / "results"
+    state_root.mkdir(mode=0o700)
+    results.mkdir(mode=0o700)
+    for name in ("a.json", "b.json"):
+        target = results / name
+        target.write_text("not parsed", encoding="utf-8")
+        target.chmod(0o600)
+
+    assert agent_bus_convergence_status(paths.config_dir) == {
+        "state": "pending",
+        "pending_results": 2,
+    }
+
+
+def test_convergence_fails_closed_on_unexpected_state_entry(
+    tmp_path: Path,
+) -> None:
+    paths = private_config(tmp_path)
+    state_root = paths.config_dir / "agent-bus-state"
+    results = state_root / "results"
+    state_root.mkdir(mode=0o700)
+    results.mkdir(mode=0o700)
+    unexpected = results / ".control-result-interrupted"
+    unexpected.write_text("partial", encoding="utf-8")
+    unexpected.chmod(0o600)
+
+    assert agent_bus_convergence_status(paths.config_dir) == {
+        "state": "invalid",
+        "pending_results": 0,
+    }
+
+
+def test_convergence_fails_closed_on_symlinked_result(
+    tmp_path: Path,
+) -> None:
+    paths = private_config(tmp_path)
+    state_root = paths.config_dir / "agent-bus-state"
+    results = state_root / "results"
+    state_root.mkdir(mode=0o700)
+    results.mkdir(mode=0o700)
+    outside = tmp_path / "outside"
+    outside.write_text("private", encoding="utf-8")
+    (results / "a.json").symlink_to(outside)
+
+    assert agent_bus_convergence_status(paths.config_dir) == {
+        "state": "invalid",
+        "pending_results": 0,
+    }

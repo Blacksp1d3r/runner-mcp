@@ -1742,3 +1742,24 @@ Release action:
 - verify PyPI, MCP Registry and GitHub release visibility after publication.
 
 Do not publish automatically merely because this task is READY. Keep publication as an explicit release/operator action.
+
+
+### Task 69 — hermetic self-update host validation and pre-install source rollback — CODE lane
+
+Status: `COMPLETE` via issue #217 / PR #219 / merge `4b5351de6e03ab8938ebb799e2847e2195e8ee3a`. Exact-head attribution #285 and validation #790 are green, including Ruff/pytest, built release artifact and clean five-minute demo.
+
+Goal:
+Close the two gaps found by live `github-runner` self-update qualification: host-dependent autostart CLI tests and a target checkout left ahead of the installed baseline after a pre-install failure.
+
+Result:
+- all autostart CLI tests are isolated from real user systemd/cron state and real runtime smoke/diagnostics;
+- any target-source sync attempt that fails before an install transaction is authoritative re-checks the checkout and restores the starting/installed main commit when needed;
+- the original bounded failure category is preserved when source rollback succeeds;
+- rollback failure reports only bounded `source_recovery_required`;
+- a persisted/unreadable install transaction remains install-recovery authority and keeps artifacts;
+- existing package-install rollback, emergency-stop recovery and post-install activation semantics remain unchanged;
+- regression tests cover validation failure, partial target-sync failure, rollback failure and dependency-contract rejection;
+- issue #217 is closed.
+
+Queue state:
+No additional prerequisite-safe Runner-MCP code lane is currently justified. Remaining open work is operator/live or upstream-gated: #108 private-host self-update proof, #198 host replacement/qualification, #110/#125 live Agent-Bus/Fabric proof (Fabric #479), plus public discovery follow-up #101. Do not invent duplicate code while those gates remain authoritative.

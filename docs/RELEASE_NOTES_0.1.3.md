@@ -1,10 +1,10 @@
-# Runner MCP 0.1.3 release candidate notes
+# Runner MCP 0.1.3 release notes
 
-Status: release candidate preparation only. This document does not mean that 0.1.3 has been tagged or published.
+Status: published on 2026-10-02 from exact commit `0aa013c279128e22fbd53be32c35bced3ae26834`. Protected workflow run `36962568072` passed the full release check, published the package to PyPI with OIDC, published matching metadata to the official MCP Registry, and created GitHub pre-release tag `v0.1.3` at the same commit.
 
 ## What changed
 
-Runner MCP 0.1.3 consolidates the post-0.1.2 hardening and control-plane work into one alpha candidate.
+Runner MCP 0.1.3 consolidates the post-0.1.2 hardening and control-plane work into one published alpha release.
 
 ### Safer autonomous execution
 
@@ -89,13 +89,13 @@ before installation to obtain the bounded local readiness category without mutat
 - Agent Bus primary cutover remains gated on live private restart/replay/no-duplicate proof.
 - Automatic tunnel/TLS/DNS/firewall/reverse-proxy provisioning remains operator-managed.
 
-## Candidate validation
+## Release validation
 
-Before 0.1.3 publication:
+For the published 0.1.3 release:
 - version metadata must match in `pyproject.toml` and `server.json`;
 - exact candidate-head attribution and full Runner MCP validation must be green;
 - built wheel/sdist smoke and clean five-minute demo must be green;
 - the public-repository hygiene review must find no private installation values;
 - publication must use the exact green main commit and must not move an existing tag.
 
-The publication action itself is deliberately outside this candidate-preparation task.
+Publication completed in protected workflow run `36962568072`; the GitHub `v0.1.3` tag and release assets are pinned to the exact validated main commit and must not be moved.

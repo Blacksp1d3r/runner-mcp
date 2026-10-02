@@ -1555,7 +1555,7 @@ Acceptance:
 
 ### Task 58 — live Agent-Bus cutover proof packet — LIVE/OPERATOR lane
 
-Status: `BLOCKED` on private-host qualification plus the current Runner Fabric live work-unit proof. The old #256/#264 blockers are superseded: Fabric #258/#266/#355/#357 and the Agent-Bus work-unit bridge are integrated. Fabric issue #479 now owns the remaining GitHub-denied live work-unit qualification. Current `AgentWorkUnitService` still keeps active work-unit state in its in-memory `_records` map rather than consuming `FilesystemWorkUnitJournal`, so restart-safe service-level durability must not be inferred from the merged journal substrate. Fabric #486 adds source-write adapters but explicitly does not activate live execution. See Runner MCP #110.
+Status: `BLOCKED` on controlled live-runtime update plus Fabric #479, not on basic runner reachability. A bounded live check on 2026-10-02 showed the runner operational, emergency stop inactive, self-update install recovery clear, `doctor` with no failures/warnings, and Agent Bus configured. The installed Runner MCP runtime still reports 0.1.2 and the deployed Runner Fabric CLI predates merged #482/#483 because it does not expose `agent-serve-qualification`. The remaining GitHub-denied synthetic work-unit proof must wait for the normal bounded Runner MCP/Fabric update/bootstrap path; do not bypass that gate with manual package/source mutation. Current Fabric `AgentWorkUnitService` durability limitations and #486's non-activation scope remain as previously recorded. See Runner MCP #110 and Fabric #479.
 
 Goal:
 Close the remaining proof portions of #125/#130/#110 without widening Runner MCP authority.

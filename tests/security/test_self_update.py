@@ -321,6 +321,143 @@ def test_self_update_failure_stops_before_install(
     assert not restart_marker_path(manager.config_dir, "github-watcher").exists()
 
 
+def test_preinstall_validation_failure_restores_installed_baseline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "1" * 40
+    target = "2" * 40
+    current = {"commit": baseline}
+
+    class StatefulSource(FakeSource):
+        def sync_project_main_commit(self, project: str, commit: str):
+            result = super().sync_project_main_commit(project, commit)
+            current["commit"] = commit
+            return result
+
+    source = StatefulSource()
+    tests = FakeTests(fail_profile="lint")
+    manager, root, _exits = make_manager(
+        tmp_path,
+        tests=tests,
+        source=source,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        manager._package_installer,
+        "build_wheel",
+        lambda **kwargs: root / "baseline.whl",
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda project_root: {"commit": current["commit"], "clean": True},
+    )
+
+    result = wait_terminal(manager, manager.start(target)["job_id"])
+
+    assert result["state"] == "failed"
+    assert result["error_category"] == "self_update_failed"
+    assert tests.started == ["lint"]
+    assert source.calls == [
+        ("runner-mcp", target),
+        ("runner-mcp", baseline),
+    ]
+    assert current["commit"] == baseline
+    assert manager._package_installer.pending_transaction() is None
+    assert manager.runtime_status()["install_recovery_pending"] is False
+
+
+def test_partial_target_sync_failure_restores_installed_baseline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "5" * 40
+    target = "6" * 40
+    current = {"commit": baseline}
+
+    class PartialSyncSource(FakeSource):
+        def sync_project_main_commit(self, project: str, commit: str):
+            self.calls.append((project, commit))
+            current["commit"] = commit
+            if commit == target:
+                raise RuntimeError("synthetic failure after checkout")
+            return {"project": project, "commit": commit, "changed": True}
+
+    source = PartialSyncSource()
+    manager, root, _exits = make_manager(
+        tmp_path,
+        source=source,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        manager._package_installer,
+        "build_wheel",
+        lambda **kwargs: root / "baseline.whl",
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda project_root: {"commit": current["commit"], "clean": True},
+    )
+
+    result = wait_terminal(manager, manager.start(target)["job_id"])
+
+    assert result["state"] == "failed"
+    assert result["error_category"] == "self_update_failed"
+    assert source.calls == [
+        ("runner-mcp", target),
+        ("runner-mcp", baseline),
+    ]
+    assert current["commit"] == baseline
+    assert manager._package_installer.pending_transaction() is None
+
+
+def test_preinstall_source_rollback_failure_requires_bounded_recovery(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "3" * 40
+    target = "4" * 40
+    current = {"commit": baseline}
+
+    class RollbackFailingSource(FakeSource):
+        def sync_project_main_commit(self, project: str, commit: str):
+            self.calls.append((project, commit))
+            if commit == baseline:
+                raise RuntimeError("synthetic private rollback failure")
+            current["commit"] = commit
+            return {"project": project, "commit": commit, "changed": True}
+
+    source = RollbackFailingSource()
+    tests = FakeTests(fail_profile="lint")
+    manager, root, _exits = make_manager(
+        tmp_path,
+        tests=tests,
+        source=source,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        manager._package_installer,
+        "build_wheel",
+        lambda **kwargs: root / "baseline.whl",
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda project_root: {"commit": current["commit"], "clean": True},
+    )
+
+    result = wait_terminal(manager, manager.start(target)["job_id"])
+
+    assert result["state"] == "failed"
+    assert result["error_category"] == "source_recovery_required"
+    assert source.calls == [
+        ("runner-mcp", target),
+        ("runner-mcp", baseline),
+    ]
+    assert current["commit"] == target
+    assert manager._package_installer.pending_transaction() is None
+    assert manager.runtime_status()["install_recovery_pending"] is False
+
+
 def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -914,14 +1051,26 @@ def test_self_update_fails_closed_when_dependency_contract_changes(
     baseline = "1" * 40
     target = "2" * 40
     manager._record_installed_commit(baseline)
+    baseline_pyproject = (root / "pyproject.toml").read_text(encoding="utf-8")
+    current = {"commit": baseline}
 
-    monkeypatch.setattr(manager._package_installer, "build_wheel", lambda **kwargs: root / "baseline.whl")
+    monkeypatch.setattr(
+        manager._package_installer,
+        "build_wheel",
+        lambda **kwargs: root / "baseline.whl",
+    )
 
     def sync(_project: str, commit: str):
         source.calls.append((_project, commit))
+        current["commit"] = commit
         if commit == target:
             (root / "pyproject.toml").write_text(
                 """[build-system]\nrequires = ["setuptools>=75"]\nbuild-backend = "setuptools.build_meta"\n\n[project]\nname = "runner-mcp"\nversion = "0.1.0"\nrequires-python = ">=3.12"\ndependencies = ["mcp>=2.0,<3", "new-runtime>=1"]\n\n[project.optional-dependencies]\ndev = ["pytest>=8,<9", "ruff>=0.13,<1"]\n""",
+                encoding="utf-8",
+            )
+        elif commit == baseline:
+            (root / "pyproject.toml").write_text(
+                baseline_pyproject,
                 encoding="utf-8",
             )
         return {"project": _project, "commit": commit, "changed": True}
@@ -929,20 +1078,18 @@ def test_self_update_fails_closed_when_dependency_contract_changes(
     source.sync_project_main_commit = sync
     monkeypatch.setattr(
         "runner_mcp.self_update.clean_head",
-        lambda project_root: {
-            "commit": (
-                target
-                if any(call[1] == target for call in source.calls)
-                else baseline
-            ),
-            "clean": True,
-        },
+        lambda project_root: {"commit": current["commit"], "clean": True},
     )
 
     result = wait_terminal(manager, manager.start(target)["job_id"])
 
     assert result["state"] == "failed"
     assert result["error_category"] == "dependency_contract_changed"
+    assert source.calls == [
+        ("runner-mcp", target),
+        ("runner-mcp", baseline),
+    ]
+    assert current["commit"] == baseline
     assert manager._package_installer.pending_transaction() is None
 
 

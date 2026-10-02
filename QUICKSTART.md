@@ -59,6 +59,20 @@ The generated operator command lives under your own `~/.local/bin` and delegates
 
 Your operator account must be allowed to use `sudo -u SERVICE_USER`. Do not relax private configuration permissions just to make the CLI visible to another account.
 
+### Verify a dedicated service-user runtime before activation
+
+On a host where Runner MCP is installed under a dedicated service account, keep operator and service-user runtimes separate. Do not make the service account's private virtual environment or configuration readable by the operator merely for troubleshooting.
+
+Use the delegated operator launcher created by `install-operator.sh` where possible. For direct local qualification, run the public CLI in the service-user context allowed by your host policy:
+
+```bash
+sudo -iu SERVICE_USER runner-mcp status
+sudo -iu SERVICE_USER runner-mcp doctor
+sudo -iu SERVICE_USER runner-mcp autostart preflight
+```
+
+Before running the preflight, confirm the intended packaged runtime is active. If `status` reports `development`, or the installed CLI does not expose `autostart preflight`, stop and reconcile/update that service-user installation first. Do not substitute an operator-account Runner MCP installation and do not bypass the activation gate.
+
 ## 3. Run the setup wizard
 
 Run:

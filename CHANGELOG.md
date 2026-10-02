@@ -6,6 +6,12 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ## Unreleased
 
+No unreleased user-visible changes yet.
+
+## 0.1.3 — 2026-10-02
+
+Published from exact commit `0aa013c279128e22fbd53be32c35bced3ae26834` through the protected release workflow after the full release check passed.
+
 ### Added
 
 - proportional AI fault-containment regression coverage and deterministic security-gate boundaries;

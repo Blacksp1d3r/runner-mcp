@@ -1,3 +1,12 @@
+## 2026-10-02 — Fabric live-cutover dependency reconciled
+
+- Runner Fabric was reconciled against current main after the 0.1.3 release.
+- The former #256/#264 checkpoint is obsolete: coarse work-unit service/MCP, reserved loopback runtime and durable journal substrate are integrated through Fabric #258/#266/#355/#357, with Agent-Bus work-unit bridging also present.
+- Fabric issue #479 now owns the remaining live bounded work-unit qualification with GitHub credentials/network denied, including exactly-once replay/restart/fencing evidence.
+- Current Fabric `AgentWorkUnitService` still keeps active request/result ownership in its in-memory `_records` map and does not consume `FilesystemWorkUnitJournal`; do not infer service-level restart durability merely because the journal substrate exists.
+- Fabric #486 adds concrete source-write adapters but explicitly does not activate live work-unit execution.
+- Runner MCP #110 has been updated to this checkpoint. Task 58 remains blocked on the private-host qualification plus the live Fabric proof; no duplicate Runner-MCP implementation is justified.
+
 ## 2026-10-02 — Runner MCP 0.1.3 published
 
 - Task 68 is COMPLETE.

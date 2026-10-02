@@ -910,6 +910,10 @@ class SelfUpdateManager:
         installed = False
         failure_category = "self_update_failed"
         preserve_artifacts = False
+        source_root: Path | None = None
+        source_restore_commit: str | None = None
+        target_source_synced = False
+        install_transaction_started = False
         try:
             if self.tests is None:
                 raise SelfUpdateError("Runner MCP test runner is unavailable")
@@ -917,11 +921,13 @@ class SelfUpdateManager:
             with self.tests.project_source_guard(SELF_PROJECT):
                 config = self._project_config()
                 root = config.root.resolve(strict=True)
+                source_root = root
                 source_state = clean_head(root)
                 current_commit = source_state["commit"]
                 if not isinstance(current_commit, str):
                     raise SelfUpdateError("Self-update source state is invalid")
                 baseline_commit = self._installed_commit()
+                source_restore_commit = baseline_commit or current_commit
                 if baseline_commit is not None and current_commit != baseline_commit:
                     raise SelfUpdateError(
                         "Self-update source does not match the installed baseline"
@@ -978,6 +984,7 @@ class SelfUpdateManager:
                 source_state = clean_head(root)
                 if source_state["commit"] != job.commit:
                     raise SelfUpdateError("Self-update source changed before validation")
+                target_source_synced = source_restore_commit != job.commit
 
                 baseline_contract = self._compatibility_record()
                 if baseline_contract is None:
@@ -1031,6 +1038,7 @@ class SelfUpdateManager:
                         target_commit=job.commit,
                         baseline_commit=baseline_commit,
                     )
+                    install_transaction_started = True
                 except PackageInstallError as exc:
                     raise SelfUpdateError(
                         "Self-update install transaction could not start"
@@ -1122,6 +1130,29 @@ class SelfUpdateManager:
             TypeError,
             OSError,
         ):
+            if (
+                target_source_synced
+                and not install_transaction_started
+                and source_restore_commit is not None
+                and source_root is not None
+            ):
+                try:
+                    self.source.sync_project_main_commit(
+                        SELF_PROJECT,
+                        source_restore_commit,
+                    )
+                    restored = clean_head(source_root)
+                    if restored["commit"] != source_restore_commit:
+                        raise SelfUpdateError(
+                            "Self-update source rollback verification failed"
+                        )
+                except (
+                    SelfUpdateError,
+                    SourceControlError,
+                    RuntimeError,
+                    OSError,
+                ):
+                    failure_category = "source_recovery_required"
             if installed and failure_category == "self_update_failed":
                 failure_category = "activation_failed"
             self._set_job(

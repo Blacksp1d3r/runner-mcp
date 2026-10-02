@@ -1762,4 +1762,4 @@ Result:
 - issue #217 is closed.
 
 Queue state:
-No additional prerequisite-safe Runner-MCP code lane is currently justified. Remaining open work is operator/live or upstream-gated: #108 private-host self-update proof, #198 host replacement/qualification, #110/#125 live Agent-Bus/Fabric proof (Fabric #479), plus public discovery follow-up #101. Do not invent duplicate code while those gates remain authoritative.
+No additional prerequisite-safe Runner-MCP code lane is currently justified. #108 now has live forward-update and same-commit no-op proof; its deliberate activation/package-interruption recovery drill is deferred to a stable replacement host. #198 remains the persistent-activation gate because fresh `autostart preflight` returns `runtime_smoke_failed`. #110/#125/Fabric #479 have the updated Fabric runtime and local bridge in place but still require a legitimate authenticated AIfordable Control Center command submission before one-shot work-unit replay/fencing proof. Public discovery #101 remains optional. Do not invent duplicate code or bypass the control plane.

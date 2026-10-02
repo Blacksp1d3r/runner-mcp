@@ -17,6 +17,22 @@ Build Runner MCP as a small, auditable, deny-by-default operations interface. Pr
 9. All operational actions must be auditable.
 10. Security tests are part of the definition of done.
 
+## External discovery and independence — hard rule
+
+Runner MCP must remain installable, operable, updateable and supportable without any secondary MCP directory, marketplace, gateway or hosted catalog.
+
+Canonical authority is limited to:
+- source and releases: `Blacksp1d3r/runner-mcp` on GitHub;
+- Python distribution: `aifordable-runner-mcp` on PyPI;
+- official MCP identity: `io.github.Blacksp1d3r/runner-mcp`;
+- first-party documentation and security policy in this repository.
+
+Glama, Smithery, mcp.so, AllMCPs, getmcp, MCP Find and similar services are optional discovery/marketing surfaces only. They are never runtime dependencies, release gates, sources of truth, required gateways, required hosting providers or reasons to change package identity, authentication, transport, security boundaries or the self-hosted architecture.
+
+Do not add a public hosted endpoint, third-party gateway, alternate package identity, alternate registry identity, provider-specific runtime integration, paid listing/boost, or special deployment mode merely to satisfy an external directory. If a directory changes requirements, becomes unavailable or cannot index the canonical self-hosted project as-is, skip or remove that listing and keep Runner MCP unchanged.
+
+A future first-party AIfordable discovery page may mirror canonical metadata, releases, hashes, install instructions and supported clients, but it must also point back to the canonical sources above and must not become required for runtime operation.
+
 ## Public examples
 
 Use environment-variable placeholders and reserved example domains. Do not publish actual paths, ports, service names, database names, usernames, hostnames, or network addresses.

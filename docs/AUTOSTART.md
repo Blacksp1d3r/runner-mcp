@@ -50,6 +50,30 @@ Changing the local server port is an explicit local installation choice:
 runner-mcp autostart install --port 8000
 ```
 
+## Dedicated service-user hosts
+
+When Runner MCP is installed under a dedicated service account, qualify the runtime as that account. Do not inspect or execute the service account's private virtual environment directly from a different operator account, and do not relax private home/configuration permissions merely to make that possible.
+
+From an authorized local operator account, prefer the existing delegated operator launcher installed by `install-operator.sh`. For direct local diagnosis where that launcher is not yet available, use the host's normal account-switching policy and run the public CLI as the service user, for example:
+
+```bash
+sudo -iu SERVICE_USER runner-mcp status
+sudo -iu SERVICE_USER runner-mcp doctor
+sudo -iu SERVICE_USER runner-mcp autostart preflight
+```
+
+Use the literal local service-account name in place of `SERVICE_USER`; never copy credentials or private configuration into the operator account.
+
+Apply a capability/version fence before activation:
+
+1. `runner-mcp status` must identify the intended installed runtime and must not report `development` for a packaged persistent install.
+2. `runner-mcp --help` / `runner-mcp autostart --help` must expose the expected command surface. If `autostart preflight` is absent, treat the runtime as stale and update/bootstrap it before continuing.
+3. `runner-mcp doctor` must complete against the same service-user runtime.
+4. Only then run `runner-mcp autostart preflight`.
+5. A blocked preflight remains a hard activation gate; do not bypass it by installing autostart manually.
+
+For repository diagnostic scripts, invoke them explicitly with `bash scripts/diagnostics/...` when appropriate instead of relying on executable-bit state after checkout. Run any private-runtime probe in the service-user context it is intended to qualify.
+
 ## Before installing
 
 Run:

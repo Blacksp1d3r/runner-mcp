@@ -13,6 +13,13 @@ _RELAY_KEYS = (
     "RUNNER_FABRIC_RELAY_SUBJECT",
     "RUNNER_FABRIC_RELAY_CREDENTIAL",
 )
+_AGENT_MCP_RESOURCE_URL_KEY = "RUNNER_FABRIC_AGENT_RESOURCE_URL"
+_AGENT_MCP_BEARER_TOKEN_KEY = "RUNNER_FABRIC_AGENT_BEARER_TOKEN"
+_AGENT_BUS_KEYS = (
+    *_RELAY_KEYS,
+    _AGENT_MCP_RESOURCE_URL_KEY,
+    _AGENT_MCP_BEARER_TOKEN_KEY,
+)
 _LOCAL_ENDPOINT_KEY = "RUNNER_MCP_AGENT_BUS_LOCAL_ENDPOINT"
 
 
@@ -63,7 +70,7 @@ def validate_agent_bus_relay_config(
 def agent_bus_worker_configured(config_dir: Path) -> bool:
     paths, _settings, _registry = read_private_runtime(config_dir)
     values = load_env_file(paths.env_file)
-    present = tuple(bool(values.get(key, "").strip()) for key in _RELAY_KEYS)
+    present = tuple(bool(values.get(key, "").strip()) for key in _AGENT_BUS_KEYS)
     if any(present) and not all(present):
         raise AgentBusWorkerError("Agent Bus worker configuration is incomplete")
     return all(present)
@@ -97,6 +104,12 @@ def run_agent_bus_worker_process(
     ).strip()
     _validate_loopback_endpoint(endpoint)
 
+    agent_mcp_endpoint = values.get(_AGENT_MCP_RESOURCE_URL_KEY, "").strip()
+    agent_mcp_token = values.get(_AGENT_MCP_BEARER_TOKEN_KEY, "")
+    _validate_agent_mcp_endpoint(agent_mcp_endpoint)
+    if not _valid_secret(agent_mcp_token):
+        raise AgentBusWorkerError("Agent Bus worker configuration is invalid")
+
     if not isinstance(once, bool):
         raise TypeError("once must be a boolean")
     executable = _fixed_runner_fabric_executable()
@@ -111,6 +124,8 @@ def run_agent_bus_worker_process(
         "RUNNER_FABRIC_RELAY_CREDENTIAL": relay_credential,
         "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": endpoint,
         "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": runner_mcp_token,
+        "RUNNER_FABRIC_AGENT_RESOURCE_URL": agent_mcp_endpoint,
+        "RUNNER_FABRIC_AGENT_BEARER_TOKEN": agent_mcp_token,
         "RUNNER_FABRIC_AGENT_BUS_STATE_ROOT": str(state_root),
     }
 
@@ -168,6 +183,25 @@ def _validate_loopback_endpoint(value: str) -> None:
         or parsed.query
         or parsed.fragment
         or parsed.path.rstrip("/") != "/mcp"
+    ):
+        raise AgentBusWorkerError("Agent Bus worker configuration is invalid")
+
+
+def _validate_agent_mcp_endpoint(value: str) -> None:
+    try:
+        parsed = urlsplit(value)
+        port = parsed.port
+    except ValueError as exc:
+        raise AgentBusWorkerError("Agent Bus worker configuration is invalid") from exc
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname not in {"127.0.0.1", "::1", "localhost"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path.rstrip("/") != "/mcp"
+        or (port is not None and not 1 <= port <= 65535)
     ):
         raise AgentBusWorkerError("Agent Bus worker configuration is invalid")
 

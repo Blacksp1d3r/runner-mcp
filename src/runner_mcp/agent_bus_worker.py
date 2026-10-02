@@ -143,6 +143,57 @@ def run_agent_bus_worker_process(
     return 0
 
 
+
+def agent_bus_convergence_status(config_dir: Path) -> dict[str, object]:
+    """Return bounded durable-result convergence state without reading result payloads."""
+
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    state_root = paths.config_dir / "agent-bus-state"
+    results = state_root / "results"
+    if not state_root.exists() or not results.exists():
+        return {"state": "not_initialized", "pending_results": 0}
+    try:
+        _assert_private_directory(state_root)
+        _assert_private_directory(results)
+        pending = 0
+        for entry in results.iterdir():
+            if entry.name == ".control-results.lock":
+                _assert_private_regular_file(entry, allow_empty=True)
+                continue
+            if not entry.name.endswith(".json"):
+                return {"state": "invalid", "pending_results": 0}
+            _assert_private_regular_file(entry, allow_empty=False)
+            pending += 1
+            if pending > 10_000:
+                return {"state": "invalid", "pending_results": 0}
+    except OSError:
+        return {"state": "invalid", "pending_results": 0}
+    return {
+        "state": "pending" if pending else "clear",
+        "pending_results": pending,
+    }
+
+
+def _assert_private_directory(path: Path) -> None:
+    if path.is_symlink():
+        raise OSError("unsafe Agent Bus state")
+    metadata = path.stat()
+    if not stat.S_ISDIR(metadata.st_mode) or metadata.st_mode & 0o077:
+        raise OSError("unsafe Agent Bus state")
+
+
+def _assert_private_regular_file(path: Path, *, allow_empty: bool) -> None:
+    if path.is_symlink():
+        raise OSError("unsafe Agent Bus state")
+    metadata = path.stat()
+    if (
+        not stat.S_ISREG(metadata.st_mode)
+        or metadata.st_mode & 0o077
+        or metadata.st_size > 96 * 1024
+        or (metadata.st_size == 0 and not allow_empty)
+    ):
+        raise OSError("unsafe Agent Bus state")
+
 def _fixed_runner_fabric_executable() -> Path:
     launcher = Path.home() / ".local" / "bin" / "runner-fabric"
     try:

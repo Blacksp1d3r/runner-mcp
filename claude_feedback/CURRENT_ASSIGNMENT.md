@@ -1555,7 +1555,7 @@ Acceptance:
 
 ### Task 58 — live Agent-Bus cutover proof packet — LIVE/OPERATOR lane
 
-Status: `BLOCKED` on private-host access and Fabric durability/gateway integration. Fabric startup is now proven through merged #355, but Fabric #256/#264 remain open with failing Foundation CI; see Runner MCP #110 reconciliation.
+Status: `BLOCKED` on private-host qualification plus the current Runner Fabric live work-unit proof. The old #256/#264 blockers are superseded: Fabric #258/#266/#355/#357 and the Agent-Bus work-unit bridge are integrated. Fabric issue #479 now owns the remaining GitHub-denied live work-unit qualification. Current `AgentWorkUnitService` still keeps active work-unit state in its in-memory `_records` map rather than consuming `FilesystemWorkUnitJournal`, so restart-safe service-level durability must not be inferred from the merged journal substrate. Fabric #486 adds source-write adapters but explicitly does not activate live execution. See Runner MCP #110.
 
 Goal:
 Close the remaining proof portions of #125/#130/#110 without widening Runner MCP authority.
@@ -1564,7 +1564,7 @@ Acceptance:
 - GitHub credentials/network unavailable during primary runtime_status/runtime_doctor proof;
 - restart/interruption proves durable replay without duplicate execution;
 - bounded primary/fallback/degraded state is truthful;
-- one bounded Fabric work-unit roundtrip only after current Fabric durability/gateway/startup prerequisites are integrated;
+- one bounded Fabric work-unit roundtrip only after Fabric #479 (or equivalent later proof) demonstrates exactly-once/restart/fencing behavior on the integrated live path;
 - scrubbed evidence only; no private endpoints, credentials, paths or host identifiers in the public repo.
 
 

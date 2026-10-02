@@ -43,6 +43,19 @@ def _run_fixed(
     return completed.returncode == 0
 
 
+def _validated_execution_path(executable: Path) -> Path | None:
+    candidate = executable.expanduser()
+    if not candidate.is_absolute():
+        return None
+    try:
+        resolved = candidate.resolve(strict=True)
+    except OSError:
+        return None
+    if not resolved.is_file():
+        return None
+    return candidate
+
+
 def run_autostart_runtime_smoke(
     *,
     python_executable: Path,
@@ -51,12 +64,9 @@ def run_autostart_runtime_smoke(
 ) -> bool:
     """Repeat fixed fresh-process runtime checks before autostart activation."""
 
-    try:
-        python = python_executable.expanduser().resolve(strict=True)
-        launcher = runner_mcp_executable.expanduser().resolve(strict=True)
-    except OSError:
-        return False
-    if not python.is_file() or not launcher.is_file():
+    python = _validated_execution_path(python_executable)
+    launcher = _validated_execution_path(runner_mcp_executable)
+    if python is None or launcher is None:
         return False
 
     import_argv = [str(python), "-B", "-X", "faulthandler", "-"]

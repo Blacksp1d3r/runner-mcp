@@ -107,6 +107,10 @@ def test_agent_bus_worker_unit_is_added_only_when_configured(
         handle.write("RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n")
         handle.write("RUNNER_FABRIC_RELAY_SUBJECT=runner:one\n")
         handle.write(f"RUNNER_FABRIC_RELAY_CREDENTIAL={'r' * 48}\n")
+        handle.write(
+            "RUNNER_FABRIC_AGENT_RESOURCE_URL=http://127.0.0.1:9020/mcp\n"
+        )
+        handle.write(f"RUNNER_FABRIC_AGENT_BEARER_TOKEN={'a' * 48}\n")
 
     units = render_user_units(
         config_dir=paths.config_dir,

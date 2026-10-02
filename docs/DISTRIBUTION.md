@@ -95,17 +95,31 @@ Use this exact identity when a directory requires manually entered metadata:
 
 Do not substitute `aifordable-runner-mcp` for the Runner MCP product name and do not create a second Registry identity.
 
-## Secondary directories
+## Secondary discovery — optional only
 
-Use the official Registry, PyPI and GitHub as the canonical sources. Secondary listings add reach but must not become a second source of install/auth truth.
+The official MCP Registry, PyPI and GitHub are the canonical public sources. Everything else is optional discovery/marketing and must be treated as replaceable.
 
-Preferred order after canonical publication:
+A secondary directory may index or link Runner MCP only if it can preserve the canonical project unchanged:
 
-1. Glama — submit the public GitHub repository through its Add MCP Server flow and claim with the maintainer GitHub identity; the repository already contains `glama.json`.
-2. Smithery — publish only after maintainer authentication and keep the canonical package, auth and self-hosted wording unchanged.
-3. mcp.so — use its free community/GitHub submission route; do not pay merely for expedited indexing or a promotional backlink.
-4. AllMCPs — optional additional discovery; use the normal listing/review path and skip paid boost/featured placement unless a later explicit marketing decision justifies it.
+- product: `Runner MCP`;
+- package: `aifordable-runner-mcp`;
+- official MCP identity: `io.github.Blacksp1d3r/runner-mcp`;
+- repository: `Blacksp1d3r/runner-mcp`;
+- hosting: self-hosted;
+- existing authentication, transport and security boundaries.
+
+Secondary services must never become runtime dependencies, launch gates, release gates or sources of install/auth truth. Do not route normal Runner MCP traffic through their gateways or hosting merely to obtain a listing.
+
+Directory policy:
+
+1. Glama — optional listing only. It may point at the canonical public repository and read repository metadata. Do not use Glama hosting/gateway as a Runner MCP requirement.
+2. Smithery — optional and non-blocking. Publish/list only if its current flow accepts the canonical self-hosted project without inventing a public endpoint, MCPB bundle, alternate package identity or provider-specific deployment. Otherwise skip it.
+3. mcp.so — optional free community discovery only; never pay merely for expedited indexing or backlinks.
+4. AllMCPs — optional normal review path only; skip if it requires unnecessary identity, hosting or paid-placement changes.
+5. getmcp, MCP Find and similar indexes — passive discovery is welcome, but no product change is justified for indexing.
+
+If any external directory changes its rules, disappears, delists Runner MCP or conflicts with this policy, Runner MCP must continue to install, run, update and be supported normally from the canonical sources. The correct response is to update or drop the external listing, not to redesign Runner MCP around it.
 
 Avoid bulk-submission services, backlink schemes, duplicated listings and low-quality catalogs whose main value is paid SEO rather than developer discovery.
 
-Directory copy should use `docs/LAUNCH_COPY.md` and the packet above. Never publish private infrastructure screenshots, hostnames, paths, tokens or project/customer names.
+Directory copy should use `docs/LAUNCH_COPY.md` and the canonical packet above. Never publish private infrastructure screenshots, hostnames, paths, tokens or project/customer names.

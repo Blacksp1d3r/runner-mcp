@@ -57,6 +57,7 @@ from .config_manager import (
     remove_project,
     remove_service_config,
     remove_test_profile,
+    upgrade_agent_bus_local_bridge,
 )
 from .cron_autostart import (
     cron_available,
@@ -1234,9 +1235,22 @@ def cmd_agent_bus(args: argparse.Namespace) -> int:
             origin=origin,
             subject=subject,
             credential=credential,
+            agent_resource_url=args.agent_resource_url,
         )
         print("Agent Bus configured.")
-        print("The relay credential was stored privately and was not displayed.")
+        print("Relay and local bridge credentials were stored privately.")
+        return 0
+
+    if args.agent_bus_action == "upgrade-local-bridge":
+        result = upgrade_agent_bus_local_bridge(
+            config_dir,
+            agent_resource_url=args.agent_resource_url,
+        )
+        print(
+            "Agent Bus local bridge "
+            + ("upgraded." if result["upgraded"] else "already configured.")
+        )
+        print("The local bridge credential was not displayed.")
         return 0
 
     if args.agent_bus_action == "remove":
@@ -2018,11 +2032,26 @@ def build_parser() -> argparse.ArgumentParser:
     agent_bus_configure.add_argument("--origin")
     agent_bus_configure.add_argument("--subject")
     agent_bus_configure.add_argument(
+        "--agent-resource-url",
+        default="http://127.0.0.1:9020/mcp",
+        help="Private loopback Runner Fabric Agent-MCP resource URL.",
+    )
+    agent_bus_configure.add_argument(
         "--credential-stdin",
         action="store_true",
         help="Read the relay credential from standard input instead of prompting.",
     )
     agent_bus_configure.set_defaults(func=cmd_agent_bus)
+    agent_bus_upgrade = agent_bus_sub.add_parser(
+        "upgrade-local-bridge",
+        help="Add the private local Agent-MCP bridge to an existing relay config.",
+    )
+    agent_bus_upgrade.add_argument(
+        "--agent-resource-url",
+        default="http://127.0.0.1:9020/mcp",
+        help="Private loopback Runner Fabric Agent-MCP resource URL.",
+    )
+    agent_bus_upgrade.set_defaults(func=cmd_agent_bus)
     agent_bus_remove = agent_bus_sub.add_parser(
         "remove",
         help="Remove only the private Agent Bus relay configuration.",

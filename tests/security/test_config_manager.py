@@ -22,6 +22,7 @@ from runner_mcp.config_manager import (
     remove_project,
     remove_service_config,
     remove_test_profile,
+    upgrade_agent_bus_local_bridge,
 )
 from runner_mcp.onboarding import (
     SetupAnswers,
@@ -751,6 +752,12 @@ def test_agent_bus_config_stays_private_and_preserves_other_secrets(
     assert values["RUNNER_FABRIC_RELAY_ORIGIN"] == "https://relay.example.invalid"
     assert values["RUNNER_FABRIC_RELAY_SUBJECT"] == "runner:one"
     assert values["RUNNER_FABRIC_RELAY_CREDENTIAL"] == credential
+    assert values["RUNNER_FABRIC_AGENT_RESOURCE_URL"] == (
+        "http://127.0.0.1:9020/mcp"
+    )
+    agent_token = values["RUNNER_FABRIC_AGENT_BEARER_TOKEN"]
+    assert len(agent_token) >= 32
+    assert agent_token != credential
     assert values["RUNNER_MCP_GITHUB_TOKEN"] == "g" * 48
     assert credential not in repr(result)
     assert paths.env_file.stat().st_mode & 0o077 == 0
@@ -782,6 +789,35 @@ def test_agent_bus_remove_only_removes_agent_bus_values(
     assert "RUNNER_FABRIC_RELAY_ORIGIN" not in values
     assert "RUNNER_FABRIC_RELAY_SUBJECT" not in values
     assert "RUNNER_FABRIC_RELAY_CREDENTIAL" not in values
+    assert "RUNNER_FABRIC_AGENT_RESOURCE_URL" not in values
+    assert "RUNNER_FABRIC_AGENT_BEARER_TOKEN" not in values
+
+
+def test_agent_bus_legacy_relay_config_can_upgrade_without_reentering_secret(
+    tmp_path: Path,
+) -> None:
+    paths, _ = installed(tmp_path)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n"
+            "RUNNER_FABRIC_RELAY_SUBJECT=runner:one\n"
+            f"RUNNER_FABRIC_RELAY_CREDENTIAL={'r' * 48}\n"
+        )
+
+    result = upgrade_agent_bus_local_bridge(paths.config_dir)
+    values = load_env_file(paths.env_file)
+
+    assert result == {"configured": True, "upgraded": True}
+    assert values["RUNNER_FABRIC_RELAY_CREDENTIAL"] == "r" * 48
+    assert values["RUNNER_FABRIC_AGENT_RESOURCE_URL"] == (
+        "http://127.0.0.1:9020/mcp"
+    )
+    assert len(values["RUNNER_FABRIC_AGENT_BEARER_TOKEN"]) >= 32
+    assert agent_bus_config_status(paths.config_dir) == {"configured": True}
+
+    second = upgrade_agent_bus_local_bridge(paths.config_dir)
+    assert second == {"configured": True, "upgraded": False}
+    assert load_env_file(paths.env_file) == values
 
 
 def test_agent_bus_status_fails_closed_on_partial_config(
@@ -823,3 +859,45 @@ def test_agent_bus_config_rejects_invalid_values_without_write(
         )
 
     assert paths.env_file.read_text(encoding="utf-8") == before
+
+
+@pytest.mark.parametrize(
+    "resource_url",
+    [
+        "https://127.0.0.1:9020/mcp",
+        "http://fabric.example.invalid:9020/mcp",
+        "http://127.0.0.1:9020/other",
+        "http://user:pass@127.0.0.1:9020/mcp",
+    ],
+)
+def test_agent_bus_config_rejects_unsafe_local_bridge_without_write(
+    tmp_path: Path,
+    resource_url: str,
+) -> None:
+    paths, _ = installed(tmp_path)
+    before = paths.env_file.read_text(encoding="utf-8")
+
+    with pytest.raises(ConfigManagerError, match="local bridge"):
+        configure_agent_bus(
+            paths.config_dir,
+            origin="https://relay.example.invalid",
+            subject="runner:one",
+            credential="r" * 48,
+            agent_resource_url=resource_url,
+        )
+
+    assert paths.env_file.read_text(encoding="utf-8") == before
+
+
+def test_agent_bus_upgrade_rejects_partial_local_bridge(tmp_path: Path) -> None:
+    paths, _ = installed(tmp_path)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n"
+            "RUNNER_FABRIC_RELAY_SUBJECT=runner:one\n"
+            f"RUNNER_FABRIC_RELAY_CREDENTIAL={'r' * 48}\n"
+            "RUNNER_FABRIC_AGENT_RESOURCE_URL=http://127.0.0.1:9020/mcp\n"
+        )
+
+    with pytest.raises(ConfigManagerError, match="incomplete"):
+        upgrade_agent_bus_local_bridge(paths.config_dir)

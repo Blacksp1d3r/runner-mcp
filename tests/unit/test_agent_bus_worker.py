@@ -42,6 +42,8 @@ def relay_values() -> dict[str, str]:
         "RUNNER_FABRIC_RELAY_ORIGIN": "https://relay.example.invalid",
         "RUNNER_FABRIC_RELAY_SUBJECT": "runner:one",
         "RUNNER_FABRIC_RELAY_CREDENTIAL": "r" * 48,
+        "RUNNER_FABRIC_AGENT_RESOURCE_URL": "http://127.0.0.1:9020/mcp",
+        "RUNNER_FABRIC_AGENT_BEARER_TOKEN": "a" * 48,
     }
 
 
@@ -105,6 +107,10 @@ def test_worker_execs_only_fixed_runner_fabric_command_and_env(
         "http://127.0.0.1:8000/mcp"
     )
     assert environment["RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN"]
+    assert environment["RUNNER_FABRIC_AGENT_RESOURCE_URL"] == (
+        "http://127.0.0.1:9020/mcp"
+    )
+    assert environment["RUNNER_FABRIC_AGENT_BEARER_TOKEN"] == "a" * 48
     assert environment["RUNNER_FABRIC_AGENT_BUS_STATE_ROOT"].endswith(
         "/agent-bus-state"
     )
@@ -123,6 +129,8 @@ def test_worker_rejects_tampered_relay_config_before_exec(
             "RUNNER_FABRIC_RELAY_ORIGIN": "http://relay.example.invalid",
             "RUNNER_FABRIC_RELAY_SUBJECT": "runner:one",
             "RUNNER_FABRIC_RELAY_CREDENTIAL": "r" * 48,
+            "RUNNER_FABRIC_AGENT_RESOURCE_URL": "http://127.0.0.1:9020/mcp",
+            "RUNNER_FABRIC_AGENT_BEARER_TOKEN": "a" * 48,
         },
     )
     called: list[bool] = []
@@ -264,3 +272,53 @@ def test_worker_rejects_non_boolean_once(tmp_path: Path) -> None:
             once="yes",  # type: ignore[arg-type]
             execve=lambda *_args: object(),
         )
+
+
+def test_worker_rejects_non_loopback_agent_mcp_endpoint_before_exec(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = private_config(tmp_path)
+    values = relay_values()
+    values["RUNNER_FABRIC_AGENT_RESOURCE_URL"] = (
+        "http://fabric.example.invalid:9020/mcp"
+    )
+    append_env(paths.env_file, values)
+    monkeypatch.setattr(
+        worker_module,
+        "_fixed_runner_fabric_executable",
+        lambda: tmp_path / "unused",
+    )
+    called: list[bool] = []
+
+    with pytest.raises(AgentBusWorkerError, match="configuration is invalid"):
+        run_agent_bus_worker_process(
+            paths.config_dir,
+            execve=lambda *_args: called.append(True),
+        )
+
+    assert called == []
+
+
+def test_worker_rejects_invalid_agent_mcp_token_before_exec(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = private_config(tmp_path)
+    values = relay_values()
+    values["RUNNER_FABRIC_AGENT_BEARER_TOKEN"] = "short"
+    append_env(paths.env_file, values)
+    monkeypatch.setattr(
+        worker_module,
+        "_fixed_runner_fabric_executable",
+        lambda: tmp_path / "unused",
+    )
+    called: list[bool] = []
+
+    with pytest.raises(AgentBusWorkerError, match="configuration is invalid"):
+        run_agent_bus_worker_process(
+            paths.config_dir,
+            execve=lambda *_args: called.append(True),
+        )
+
+    assert called == []

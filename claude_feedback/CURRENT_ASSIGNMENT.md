@@ -1726,7 +1726,7 @@ Acceptance:
 
 ### Task 68 — publish Runner MCP 0.1.3 — RELEASE / OPERATOR lane
 
-Status: `READY`, but publication is not part of Task 67 and must not be inferred from candidate preparation.
+Status: `COMPLETE`. Protected workflow run `36962568072` published 0.1.3 from exact main `0aa013c279128e22fbd53be32c35bced3ae26834`. The final release check/build passed; PyPI OIDC publication passed; PyPI visibility was confirmed before the official MCP Registry publish; Registry publication passed; GitHub pre-release/tag `v0.1.3` was created at the exact same commit with wheel and sdist assets.
 
 Prerequisites:
 - final exact-main release check remains green;

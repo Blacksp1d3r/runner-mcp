@@ -1,3 +1,13 @@
+## 2026-10-02 — Runner MCP 0.1.3 published
+
+- Task 68 is COMPLETE.
+- Protected workflow run `36962568072` ran against exact main `0aa013c279128e22fbd53be32c35bced3ae26834`.
+- Final version-metadata verification, full release check, wheel/sdist build and immutable workflow artifact all passed before publication.
+- PyPI publication via OIDC passed and the workflow confirmed exact version `0.1.3` became visible before continuing.
+- Official MCP Registry publication passed using the pinned publisher and GitHub OIDC.
+- GitHub pre-release `v0.1.3` was created with wheel and sdist assets; the tag resolves exactly to `0aa013c279128e22fbd53be32c35bced3ae26834`, matching current main at release time.
+- Do not rerun publication or move `v0.1.3`. Subsequent work starts from post-release hardening/live-proof lanes (#198, #108, #110/#125) or a new bounded task.
+
 ## 2026-10-01 — Runner MCP 0.1.3 release candidate integrated
 
 - Current reviewed main checkpoint: `ee6ab95bec9be4d8d2f7b75854e1b2a17503da76`.

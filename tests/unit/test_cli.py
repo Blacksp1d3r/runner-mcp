@@ -1760,6 +1760,28 @@ def test_completion_watcher_cli_once_returns_nonzero_on_delivery_failure(
 
 
 
+
+@pytest.fixture
+def isolated_autostart_cli_host(monkeypatch: pytest.MonkeyPatch) -> None:
+    class ClearDiagnostics:
+        def recent_fatal_process_classes(self, *, since, until):
+            return ()
+
+    monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_user_units", lambda: False)
+    monkeypatch.setattr("runner_mcp.cli.systemd_user_available", lambda: False)
+    monkeypatch.setattr(
+        "runner_mcp.cli.run_autostart_runtime_smoke",
+        lambda **_: True,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.LinuxJournalDiagnosticAdapter",
+        ClearDiagnostics,
+    )
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_install_and_status_are_path_safe(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1843,6 +1865,7 @@ def test_autostart_cli_install_and_status_are_path_safe(
 
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_preflight_reports_ready_without_backend_mutation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1895,6 +1918,7 @@ def test_autostart_cli_preflight_reports_ready_without_backend_mutation(
     assert captured.err == ""
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_preflight_reports_bounded_runtime_failure_only(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1932,6 +1956,7 @@ def test_autostart_cli_preflight_reports_bounded_runtime_failure_only(
     assert captured.err == ""
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_emergency_stop_blocks_before_runtime_smoke(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1966,6 +1991,7 @@ def test_autostart_cli_emergency_stop_blocks_before_runtime_smoke(
     assert "autostart activation is blocked" in captured.err
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_install_recovery_blocks_before_runtime_smoke(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -1992,6 +2018,7 @@ def test_autostart_cli_install_recovery_blocks_before_runtime_smoke(
     assert "autostart activation is blocked" in captured.err
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_pending_restart_blocks_before_runtime_smoke(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -2018,6 +2045,7 @@ def test_autostart_cli_pending_restart_blocks_before_runtime_smoke(
     assert "autostart activation is blocked" in captured.err
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_runtime_smoke_failure_skips_diagnostics_and_mutation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -2049,6 +2077,7 @@ def test_autostart_cli_runtime_smoke_failure_skips_diagnostics_and_mutation(
     assert "runtime_smoke_failed" in captured.err
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_unavailable_diagnostics_block_all_backend_mutation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -2086,6 +2115,7 @@ def test_autostart_cli_unavailable_diagnostics_block_all_backend_mutation(
     assert "diagnostics_unavailable" in captured.err
     assert "private diagnostic detail" not in captured.err
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_remove_requires_explicit_confirmation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -2132,6 +2162,7 @@ def test_autostart_cli_remove_requires_explicit_confirmation(
 
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_auto_falls_back_to_managed_cron(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -2221,6 +2252,7 @@ def test_autostart_cli_auto_falls_back_to_managed_cron(
     assert str(paths.config_dir) not in status.out
 
 
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_explicit_systemd_fails_when_user_manager_missing(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

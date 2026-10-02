@@ -912,7 +912,7 @@ class SelfUpdateManager:
         preserve_artifacts = False
         source_root: Path | None = None
         source_restore_commit: str | None = None
-        target_source_synced = False
+        target_source_sync_attempted = False
         install_transaction_started = False
         try:
             if self.tests is None:
@@ -980,12 +980,11 @@ class SelfUpdateManager:
                     state=SelfUpdateJobState.SYNCING,
                     current_step="sync",
                 )
+                target_source_sync_attempted = source_restore_commit != job.commit
                 self.source.sync_project_main_commit(SELF_PROJECT, job.commit)
                 source_state = clean_head(root)
                 if source_state["commit"] != job.commit:
                     raise SelfUpdateError("Self-update source changed before validation")
-                target_source_synced = source_restore_commit != job.commit
-
                 baseline_contract = self._compatibility_record()
                 if baseline_contract is None:
                     failure_category = "bootstrap_required"
@@ -1040,6 +1039,14 @@ class SelfUpdateManager:
                     )
                     install_transaction_started = True
                 except PackageInstallError as exc:
+                    try:
+                        transaction = self._package_installer.pending_transaction()
+                    except PackageInstallError:
+                        transaction = {"unreadable": True}
+                    if transaction is not None:
+                        install_transaction_started = True
+                        preserve_artifacts = True
+                        failure_category = "install_recovery_required"
                     raise SelfUpdateError(
                         "Self-update install transaction could not start"
                     ) from exc
@@ -1131,17 +1138,19 @@ class SelfUpdateManager:
             OSError,
         ):
             if (
-                target_source_synced
+                target_source_sync_attempted
                 and not install_transaction_started
                 and source_restore_commit is not None
                 and source_root is not None
             ):
                 try:
-                    self.source.sync_project_main_commit(
-                        SELF_PROJECT,
-                        source_restore_commit,
-                    )
                     restored = clean_head(source_root)
+                    if restored["commit"] != source_restore_commit:
+                        self.source.sync_project_main_commit(
+                            SELF_PROJECT,
+                            source_restore_commit,
+                        )
+                        restored = clean_head(source_root)
                     if restored["commit"] != source_restore_commit:
                         raise SelfUpdateError(
                             "Self-update source rollback verification failed"

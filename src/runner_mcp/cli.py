@@ -10,7 +10,10 @@ from urllib.parse import urlsplit
 
 import uvicorn
 
-from .agent_bus_worker import run_agent_bus_worker_process
+from .agent_bus_worker import (
+    agent_bus_convergence_status,
+    run_agent_bus_worker_process,
+)
 from .approval_manager import ApprovalError, ApprovalManager
 from .autostart import (
     AutostartError,
@@ -1217,6 +1220,14 @@ def cmd_agent_bus(args: argparse.Namespace) -> int:
         print("configured" if result["configured"] else "not configured")
         return 0
 
+    if args.agent_bus_action == "convergence":
+        result = agent_bus_convergence_status(config_dir)
+        print(
+            f"state={result['state']} "
+            f"pending_results={result['pending_results']}"
+        )
+        return 0 if result["state"] != "invalid" else 2
+
     if args.agent_bus_action == "configure":
         origin = args.origin or input("AIfordable relay HTTPS origin: ").strip()
         subject = args.subject or input("Runner subject (runner:...): ").strip()
@@ -2025,6 +2036,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show whether the private Agent Bus relay is configured.",
     )
     agent_bus_status.set_defaults(func=cmd_agent_bus)
+    agent_bus_convergence = agent_bus_sub.add_parser(
+        "convergence",
+        help="Show bounded durable-result convergence without private result details.",
+    )
+    agent_bus_convergence.set_defaults(func=cmd_agent_bus)
     agent_bus_configure = agent_bus_sub.add_parser(
         "configure",
         help="Configure Agent Bus without exposing its relay credential.",

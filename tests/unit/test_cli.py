@@ -1079,6 +1079,41 @@ def test_agent_bus_cli_rejects_empty_stdin_credential(
     assert "credential is required" in captured.err.lower()
 
 
+def test_agent_bus_cli_upgrades_legacy_local_bridge_without_secret_echo(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    relay_secret = "r" * 48
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n"
+            "RUNNER_FABRIC_RELAY_SUBJECT=runner:one\n"
+            f"RUNNER_FABRIC_RELAY_CREDENTIAL={relay_secret}\n"
+        )
+
+    result = main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "agent-bus",
+            "upgrade-local-bridge",
+        ]
+    )
+    captured = capsys.readouterr()
+    values = load_env_file(paths.env_file)
+
+    assert result == 0
+    assert "upgraded" in captured.out.lower()
+    assert relay_secret not in captured.out
+    assert relay_secret not in captured.err
+    assert values["RUNNER_FABRIC_RELAY_CREDENTIAL"] == relay_secret
+    assert values["RUNNER_FABRIC_AGENT_RESOURCE_URL"] == (
+        "http://127.0.0.1:9020/mcp"
+    )
+    assert len(values["RUNNER_FABRIC_AGENT_BEARER_TOKEN"]) >= 32
+
+
 def test_agent_bus_cli_remove_requires_explicit_confirmation(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

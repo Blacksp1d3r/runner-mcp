@@ -1,3 +1,15 @@
+## 2026-10-02 — Task 69 self-update hardening integrated
+
+- Current reviewed Runner MCP main checkpoint: `4b5351de6e03ab8938ebb799e2847e2195e8ee3a`.
+- Issue #217 is COMPLETE via PR #219.
+- Exact-head attribution #285 and validation #790 are green, including Ruff/pytest, built release artifact and clean five-minute demo.
+- Autostart CLI tests no longer observe real systemd/cron state or the host's runtime-smoke result.
+- Pre-install self-update failures now restore the clean source checkout to the starting/installed main commit before any install transaction becomes authoritative.
+- A successful source rollback preserves the original bounded failure category; source rollback failure becomes `source_recovery_required`.
+- If an install transaction was persisted or became unreadable, install-recovery remains authoritative and artifacts are preserved; post-install recovery behavior is unchanged.
+- The remaining Runner MCP lanes are not safe autonomous code work: #108 is a private-host proof, #198 waits on replacement-host/CPU qualification, and #110/#125 depend on Fabric #479 plus live Agent-Bus proof. #101 is external/public discovery follow-up.
+- Do not reactivate the unreliable i9 host or duplicate Fabric durability/live-proof work from Runner MCP.
+
 ## 2026-10-02 — Fabric live-cutover dependency reconciled
 
 - Runner Fabric was reconciled against current main after the 0.1.3 release.

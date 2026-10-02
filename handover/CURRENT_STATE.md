@@ -1,3 +1,49 @@
+## 2026-10-02 — Agent Bus live proof + replacement-host reconciliation
+
+Canonical Runner MCP main at this checkpoint:
+`c2ef4a348a126867f07777b162d913efa3a97edd`.
+
+Important correction to older handoff sections below:
+- live `runtime_status` and `runtime_doctor` over the AIfordable Agent Bus have completed successfully;
+- one real bounded Runner Fabric work-unit completed over Agent Bus on `runner:aifordable-lab`;
+- the work-unit reached terminal execution before a real HTTP 413 blocked completion delivery; the result remained durable in the local outbox and replayed successfully after the scoped AIfordable/nginx 64 KiB relay-body fix without work-unit re-execution;
+- relay restart durability and stale-generation fencing are already proven;
+- Runner Fabric repository tests prove a restarted worker/coordinator replays a pending terminal result after lost acknowledgement while executor call count remains exactly one, then converges the outbox to empty.
+
+Runner MCP state now landed:
+- #226 fixed runtime-smoke behavior for the service-user virtualenv symlink layout.
+- #227 -> `70609a216e5b279a7a191a83f78eb0f876a15ae0`: deterministic dedicated service-user qualification guidance; do not weaken private home/config permissions or qualify an operator-account substitute.
+- #229 -> `c2ef4a348a126867f07777b162d913efa3a97edd`: read-only `runner-mcp agent-bus convergence` status. It exposes only `not_initialized|clear|pending|invalid` plus pending-result count and performs no acknowledgement/deletion/mutation.
+- Live service-user verification after the runtime-smoke fix reported doctor 0 failures / 0 warnings and autostart preflight ready.
+
+Runner Fabric dependency now landed:
+- Fabric #590 -> `98ea725a965ce4fbc94474df63738b2be296e3b0`: `agent-bus-qualify-isolated-work-unit`.
+- The qualifier proves GitHub/source-control credential environment absent and fixed GitHub HTTPS probes blocked before using relay configuration, then submits only the synthetic qualification work-unit contract.
+- It exposes no generic project/work-item/change-plan/provider/path/command authority and does not activate production Agent MCP.
+
+Remaining #110/#125/#198-adjacent work is live-host specific:
+1. regain local reachability to the `aifordable-lab` VM;
+2. run `runner-mcp status`, `runner-mcp doctor`, `runner-mcp agent-bus status`, and `runner-mcp agent-bus convergence` in the dedicated service-user runtime;
+3. require convergence to become `clear` before/after the next proof;
+4. run Fabric #590's bounded work-unit while GitHub credentials are absent and GitHub network access is explicitly blocked;
+5. perform one real Agent Bus worker-process restart/replay confirmation;
+6. only after the Agent Bus primary path is green, register/qualify the separate GitHub runner fallback identity/pool and prove it can be disabled independently;
+7. persistent activation remains gated until these proofs complete.
+
+Do not regress:
+- Agent Bus is primary runtime control; GitHub is fallback/CI/source integration only.
+- Do not reconstruct a control credential on the runner.
+- Do not inspect/delete private outbox files to manufacture convergence.
+- Do not replace the qualification-only Agent MCP with production `agent-serve`.
+- Do not add another Runner MCP bridge/recovery path for behavior already owned and proven by Runner Fabric.
+
+Immediate resume:
+1. use the AIfordable AF-22.6 live runbook/checkpoint;
+2. resume at host reachability and service-user runtime checks;
+3. use `runner-mcp agent-bus convergence` instead of manual private-state inspection;
+4. complete the live isolated work-unit + worker restart proof;
+5. only then proceed to fallback registration/drain/persistent activation.
+
 ## 2026-10-02 — Live update paths proven; remaining gates narrowed
 
 - Current reviewed Runner MCP main checkpoint: `61da54c38b150ac1c04bd4b78da47833cf72260c`.

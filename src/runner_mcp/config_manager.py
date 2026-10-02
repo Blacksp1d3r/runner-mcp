@@ -3,6 +3,7 @@ from __future__ import annotations
 import fcntl
 import hashlib
 import os
+import secrets
 import shlex
 from collections.abc import Iterator
 from contextlib import contextmanager
@@ -49,11 +50,19 @@ from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 AGENT_BUS_RELAY_ORIGIN_ENV = "RUNNER_FABRIC_RELAY_ORIGIN"
 AGENT_BUS_RELAY_SUBJECT_ENV = "RUNNER_FABRIC_RELAY_SUBJECT"
 AGENT_BUS_RELAY_CREDENTIAL_ENV = "RUNNER_FABRIC_RELAY_CREDENTIAL"
-AGENT_BUS_ENV_KEYS = (
+AGENT_BUS_AGENT_RESOURCE_URL_ENV = "RUNNER_FABRIC_AGENT_RESOURCE_URL"
+AGENT_BUS_AGENT_BEARER_TOKEN_ENV = "RUNNER_FABRIC_AGENT_BEARER_TOKEN"
+DEFAULT_AGENT_BUS_AGENT_RESOURCE_URL = "http://127.0.0.1:9020/mcp"
+AGENT_BUS_RELAY_ENV_KEYS = (
     AGENT_BUS_RELAY_ORIGIN_ENV,
     AGENT_BUS_RELAY_SUBJECT_ENV,
     AGENT_BUS_RELAY_CREDENTIAL_ENV,
 )
+AGENT_BUS_AGENT_ENV_KEYS = (
+    AGENT_BUS_AGENT_RESOURCE_URL_ENV,
+    AGENT_BUS_AGENT_BEARER_TOKEN_ENV,
+)
+AGENT_BUS_ENV_KEYS = (*AGENT_BUS_RELAY_ENV_KEYS, *AGENT_BUS_AGENT_ENV_KEYS)
 
 
 class ConfigManagerError(RuntimeError):
@@ -686,6 +695,10 @@ def agent_bus_config_status(config_dir: Path) -> dict[str, bool]:
         subject=values[AGENT_BUS_RELAY_SUBJECT_ENV],
         credential=values[AGENT_BUS_RELAY_CREDENTIAL_ENV],
     )
+    _validate_agent_bus_local_bridge(
+        resource_url=values[AGENT_BUS_AGENT_RESOURCE_URL_ENV],
+        bearer_token=values[AGENT_BUS_AGENT_BEARER_TOKEN_ENV],
+    )
     return {"configured": True}
 
 
@@ -695,11 +708,22 @@ def configure_agent_bus(
     origin: str,
     subject: str,
     credential: str,
+    agent_resource_url: str = DEFAULT_AGENT_BUS_AGENT_RESOURCE_URL,
+    agent_bearer_token: str | None = None,
 ) -> dict[str, bool]:
     _validate_agent_bus_relay(
         origin=origin,
         subject=subject,
         credential=credential,
+    )
+    token = (
+        secrets.token_urlsafe(48)
+        if agent_bearer_token is None
+        else agent_bearer_token
+    )
+    _validate_agent_bus_local_bridge(
+        resource_url=agent_resource_url,
+        bearer_token=token,
     )
 
     paths, _project_file, _registry = _load_for_edit(config_dir)
@@ -707,10 +731,55 @@ def configure_agent_bus(
     values[AGENT_BUS_RELAY_ORIGIN_ENV] = origin.rstrip("/")
     values[AGENT_BUS_RELAY_SUBJECT_ENV] = subject
     values[AGENT_BUS_RELAY_CREDENTIAL_ENV] = credential
+    values[AGENT_BUS_AGENT_RESOURCE_URL_ENV] = agent_resource_url
+    values[AGENT_BUS_AGENT_BEARER_TOKEN_ENV] = token
 
     with _configuration_lock(paths):
         _write_private_environment(paths, values)
     return {"configured": True}
+
+
+def upgrade_agent_bus_local_bridge(
+    config_dir: Path,
+    *,
+    agent_resource_url: str = DEFAULT_AGENT_BUS_AGENT_RESOURCE_URL,
+) -> dict[str, bool]:
+    paths, _project_file, _registry = _load_for_edit(config_dir)
+    values = load_env_file(paths.env_file)
+    relay_present = tuple(
+        bool(values.get(key, "").strip())
+        for key in AGENT_BUS_RELAY_ENV_KEYS
+    )
+    agent_present = tuple(
+        bool(values.get(key, "").strip())
+        for key in AGENT_BUS_AGENT_ENV_KEYS
+    )
+    if not all(relay_present):
+        raise ConfigManagerError("Agent Bus relay configuration is incomplete")
+    _validate_agent_bus_relay(
+        origin=values[AGENT_BUS_RELAY_ORIGIN_ENV],
+        subject=values[AGENT_BUS_RELAY_SUBJECT_ENV],
+        credential=values[AGENT_BUS_RELAY_CREDENTIAL_ENV],
+    )
+    if all(agent_present):
+        _validate_agent_bus_local_bridge(
+            resource_url=values[AGENT_BUS_AGENT_RESOURCE_URL_ENV],
+            bearer_token=values[AGENT_BUS_AGENT_BEARER_TOKEN_ENV],
+        )
+        return {"configured": True, "upgraded": False}
+    if any(agent_present):
+        raise ConfigManagerError("Agent Bus private configuration is incomplete")
+
+    token = secrets.token_urlsafe(48)
+    _validate_agent_bus_local_bridge(
+        resource_url=agent_resource_url,
+        bearer_token=token,
+    )
+    values[AGENT_BUS_AGENT_RESOURCE_URL_ENV] = agent_resource_url
+    values[AGENT_BUS_AGENT_BEARER_TOKEN_ENV] = token
+    with _configuration_lock(paths):
+        _write_private_environment(paths, values)
+    return {"configured": True, "upgraded": True}
 
 
 def remove_agent_bus(config_dir: Path) -> None:
@@ -764,6 +833,40 @@ def _validate_agent_bus_relay(
         or any(ord(char) < 33 or ord(char) == 127 for char in credential)
     ):
         raise ConfigManagerError("Agent Bus relay configuration is invalid")
+
+
+def _validate_agent_bus_local_bridge(
+    *,
+    resource_url: object,
+    bearer_token: object,
+) -> None:
+    if not isinstance(resource_url, str) or not resource_url:
+        raise ConfigManagerError("Agent Bus local bridge configuration is invalid")
+    try:
+        parsed = urlsplit(resource_url)
+        port = parsed.port
+    except ValueError as exc:
+        raise ConfigManagerError(
+            "Agent Bus local bridge configuration is invalid"
+        ) from exc
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname not in {"127.0.0.1", "::1", "localhost"}
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+        or parsed.path.rstrip("/") != "/mcp"
+        or (port is not None and not 1 <= port <= 65535)
+    ):
+        raise ConfigManagerError("Agent Bus local bridge configuration is invalid")
+    if (
+        not isinstance(bearer_token, str)
+        or not 32 <= len(bearer_token) <= 4096
+        or not bearer_token.isascii()
+        or any(ord(char) < 33 or ord(char) == 127 for char in bearer_token)
+    ):
+        raise ConfigManagerError("Agent Bus local bridge configuration is invalid")
 
 
 def list_database_configs(config_dir: Path) -> list[dict[str, Any]]:

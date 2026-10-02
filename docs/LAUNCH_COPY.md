@@ -1,8 +1,8 @@
 # Launch copy
 
-These are reusable drafts for a future Runner MCP release.
+These are reusable drafts for Runner MCP release and discovery posts.
 
-They are intentionally factual, low-hype and version-neutral. Update the validation numbers and release version before posting. External posting remains a human-controlled action.
+They are intentionally factual and low-hype. The current public release is `v0.1.3`, published from exact commit `0aa013c279128e22fbd53be32c35bced3ae26834`. External posting remains a human-controlled action.
 
 ## Core positioning
 
@@ -32,7 +32,7 @@ Suggested topics:
 
 Release intro:
 
-> This is the first public release of Runner MCP as an AIfordable project, built around a simple constraint: an AI client should be able to help verify and operate real development/staging projects without receiving a general-purpose remote shell.
+> Runner MCP is an AIfordable open-source project built around a simple constraint: an AI client should be able to help verify and operate real development/staging projects without receiving a general-purpose remote shell.
 
 Then list the actual release capabilities and validation result. Do not copy the entire roadmap into release notes.
 
@@ -54,7 +54,7 @@ Body:
 >
 > Runner MCP is open source under the MIT license and is an AIfordable project.
 
-Before posting, add the released repository link and exact version.
+For the current launch post, reference release `v0.1.3` and the canonical repository. Keep private installation details out of screenshots and examples.
 
 ## MCP Registry / directory draft
 
@@ -91,7 +91,7 @@ Description:
 
 > Runner MCP is an open-source MCP service for AI-assisted development and staging. It exposes configured projects and predefined operations through a deny-by-default interface, with audit logging, bounded output, an emergency stop and human approval gates for higher-risk staging actions.
 
-## Secondary directory submission packet — v0.1.2
+## Secondary directory submission packet — v0.1.3
 
 `docs/DISTRIBUTION.md` is the canonical source for product identity, package/Registry names,
 installation wording, categories, tags, authentication and hosting model. Reuse that packet rather
@@ -186,7 +186,7 @@ Choose a community whose rules explicitly allow project sharing. Do not cross-po
 >
 > The focus now is making the safe core simple enough that people can evaluate it without reading the source code first.
 
-Add the release link only when a public release is ready.
+For the current post, use the public `v0.1.3` release and canonical repository links.
 
 ## What not to claim
 

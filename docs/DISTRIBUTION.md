@@ -18,12 +18,15 @@ The README contains the exact `mcp-name` marker required for PyPI ownership veri
 
 PyPI `0.1.1` was published successfully, but the first MCP Registry publication attempt was rejected because the server metadata used a lowercase GitHub namespace while Registry OIDC authorized `io.github.Blacksp1d3r/*`. PyPI release files are immutable, including the README ownership marker embedded in package metadata.
 
-Release `0.1.2` is the first fully aligned cross-registry publication:
+Release `0.1.2` was the first fully aligned cross-registry publication.
 
-- PyPI: `aifordable-runner-mcp==0.1.2`;
-- official MCP Registry: `io.github.Blacksp1d3r/runner-mcp` version `0.1.2`;
-- GitHub pre-release: `v0.1.2`;
-- Git tag and release target: exact validated commit `83175f439c60346f92b5759a90993c3b8f5352f8`.
+Current published release `0.1.3` was released on 2026-10-02 through protected workflow run `36962568072`:
+
+- PyPI: `aifordable-runner-mcp==0.1.3` via GitHub OIDC Trusted Publishing;
+- official MCP Registry: `io.github.Blacksp1d3r/runner-mcp` version `0.1.3`;
+- GitHub pre-release: `v0.1.3` with wheel and source distribution;
+- Git tag and release target: exact validated commit `0aa013c279128e22fbd53be32c35bced3ae26834`;
+- the workflow verified exact version metadata and ran the complete release check before any publication.
 
 Canonical public links:
 

@@ -134,12 +134,12 @@ Suggested body:
 >
 > Runner MCP is alpha and self-hosted. It does not provide a public hosted MCP endpoint.
 
-### Glama
+### Glama — optional discovery only
 
-The repository root contains `glama.json`. After metadata changes are merged, use Glama's **Add
-MCP Server** flow with the canonical GitHub repository and then repeat the ownership/claim flow so
-Glama refreshes the file. Keep **Developer Tools** as the primary positioning; Security, Testing &
-QA Tools and CI/CD & DevOps are secondary categories.
+The repository root contains `glama.json`. A Glama listing may point at the canonical GitHub
+repository and reuse canonical metadata. It is not a launch gate or runtime dependency. Do not adopt
+Glama hosting, Gateway routing or provider-specific runtime changes merely to obtain or preserve a
+listing. If Glama cannot represent Runner MCP's self-hosted model unchanged, skip the listing.
 
 ### AllMCPs
 
@@ -152,13 +152,12 @@ Use the canonical packet above and submit the repository URL
 user's behalf. Do not buy a boost merely to obtain the normal directory listing. If AllMCPs returns
 a claim URL or README badge, review that claim artifact before adding it to the repository.
 
-### Smithery
+### Smithery — optional and non-blocking
 
-Smithery publication requires an authenticated publisher/namespace flow. Publish the canonical
-self-hosted package/repository identity only. Do not register Runner MCP as a Smithery-hosted or
-external hosted endpoint unless such a service is actually deployed and separately approved.
-Preserve the same product name, package name, version, self-hosted wording and security boundaries
-used by PyPI and the official MCP Registry.
+Do not treat Smithery as a launch gate. List Runner MCP only if the current Smithery flow accepts the
+canonical self-hosted package/repository identity without requiring a hosted endpoint, MCPB bundle,
+alternate package identity, provider-specific runtime integration or weaker security boundary. If it
+does not, skip Smithery. Never redesign Runner MCP merely to satisfy a directory.
 
 ## Reddit/community draft
 
@@ -200,3 +199,10 @@ Do not describe Runner MCP as:
 - a hosted service when the public project is still self-hosted software.
 
 Do not publish real installation screenshots when they contain infrastructure names, paths, addresses, tokens, logs or customer/project identifiers.
+
+## External directory independence
+
+Glama, Smithery, mcp.so, AllMCPs and similar services are replaceable discovery surfaces. They may
+link to Runner MCP but must not sit in its runtime path or become required for installation, updates,
+authentication, support or releases. GitHub, PyPI, the official MCP Registry and this repository's
+first-party documentation remain canonical.

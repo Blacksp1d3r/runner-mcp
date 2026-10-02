@@ -1,3 +1,11 @@
+## 2026-10-02 — Secondary-directory independence policy
+
+- External MCP directories/marketplaces are explicitly optional discovery surfaces, not Runner MCP dependencies or launch gates.
+- Canonical authority remains GitHub `Blacksp1d3r/runner-mcp`, PyPI `aifordable-runner-mcp` and MCP Registry `io.github.Blacksp1d3r/runner-mcp`.
+- Glama hosting/gateway, Smithery-specific hosting/bundling, alternate package identities and provider-specific deployment modes must not be introduced merely to obtain a listing.
+- If a directory changes requirements or cannot represent the self-hosted project unchanged, skip/drop that listing instead of redesigning Runner MCP.
+- This rule is duplicated deliberately in `AGENTS.md` so every future AI/agent session receives it during mandatory bootstrap.
+
 ## 2026-10-02 — Task 69 self-update hardening integrated
 
 - Current reviewed Runner MCP main checkpoint: `4b5351de6e03ab8938ebb799e2847e2195e8ee3a`.

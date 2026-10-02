@@ -367,6 +367,50 @@ def test_preinstall_validation_failure_restores_installed_baseline(
     assert manager.runtime_status()["install_recovery_pending"] is False
 
 
+def test_partial_target_sync_failure_restores_installed_baseline(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "5" * 40
+    target = "6" * 40
+    current = {"commit": baseline}
+
+    class PartialSyncSource(FakeSource):
+        def sync_project_main_commit(self, project: str, commit: str):
+            self.calls.append((project, commit))
+            current["commit"] = commit
+            if commit == target:
+                raise RuntimeError("synthetic failure after checkout")
+            return {"project": project, "commit": commit, "changed": True}
+
+    source = PartialSyncSource()
+    manager, root, _exits = make_manager(
+        tmp_path,
+        source=source,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        manager._package_installer,
+        "build_wheel",
+        lambda **kwargs: root / "baseline.whl",
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda project_root: {"commit": current["commit"], "clean": True},
+    )
+
+    result = wait_terminal(manager, manager.start(target)["job_id"])
+
+    assert result["state"] == "failed"
+    assert result["error_category"] == "self_update_failed"
+    assert source.calls == [
+        ("runner-mcp", target),
+        ("runner-mcp", baseline),
+    ]
+    assert current["commit"] == baseline
+    assert manager._package_installer.pending_transaction() is None
+
+
 def test_preinstall_source_rollback_failure_requires_bounded_recovery(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

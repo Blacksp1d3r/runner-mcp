@@ -1,6 +1,6 @@
 ## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint
 
-Canonical target on `main`: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
+Canonical runtime-code self-update target: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` (reachable from `origin/main`; later documentation-only handover commits need not move this target).
 Installed/source rollback baseline on `aifordable-lab`: `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
 
 Live facts proven on the dedicated `aifordable-runner` service user:
@@ -20,7 +20,7 @@ Resolved root cause and correction:
 - target unit job `eb64112264214b5cb88291ac4a04e540` failed during collection because pytest imported the previously installed baseline package from `.venv/site-packages` instead of the newly checked-out `src/` tree;
 - PR #233 fixed validation with `pythonpath = ["src"]` in pytest configuration so self-update tests the active checkout;
 - #233 merged to `main` as `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` after commit-attribution, Runner MCP validation, Clean Ubuntu installer proof, Ruff/pytest, demo smoke and release-artifact validation were green;
-- current live host source remains safely restored to baseline `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`; next target is the new canonical main `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
+- current live host source remains safely restored to baseline `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`; next runtime-code target is `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
 
 Do not regress:
 - Agent Bus remains the intended primary runtime control path; GitHub mailbox is qualification/fallback, not long-term authority.

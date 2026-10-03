@@ -10,6 +10,7 @@ from runner_mcp import secure_io as secure_io_module
 from runner_mcp.autostart import (
     AGENT_BUS_WORKER_UNIT,
     COMPLETION_WATCHER_UNIT,
+    FABRIC_AGENT_QUALIFICATION_UNIT,
     FABRIC_LIVE_OVERVIEW_UNIT,
     GITHUB_WATCHER_UNIT,
     MANAGED_MARKER,
@@ -118,7 +119,11 @@ def test_agent_bus_worker_unit_is_added_only_when_configured(
         executable=executable,
     )
 
-    assert set(units) == {SERVER_UNIT, AGENT_BUS_WORKER_UNIT}
+    assert set(units) == {
+        SERVER_UNIT,
+        AGENT_BUS_WORKER_UNIT,
+        FABRIC_AGENT_QUALIFICATION_UNIT,
+    }
     assert "agent-bus-worker" in units[AGENT_BUS_WORKER_UNIT]
     assert "r" * 48 not in units[AGENT_BUS_WORKER_UNIT]
 
@@ -335,6 +340,12 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
             "active": False,
         },
         {
+            "component": "fabric-agent-qualification",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
+        {
             "component": "fabric-live-overview",
             "installed": False,
             "enabled": False,
@@ -405,6 +416,30 @@ def test_fabric_live_overview_unit_is_optional_and_contains_no_credentials(
     assert FABRIC_LIVE_OVERVIEW_UNIT in units
     content = units[FABRIC_LIVE_OVERVIEW_UNIT]
     assert "fabric-live-overview" in content
+    assert " run" in content
+    assert "credential" not in content.casefold()
+    assert "token" not in content.casefold()
+
+
+def test_fabric_agent_qualification_unit_is_optional_and_contains_no_credentials(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module,
+        "fabric_agent_qualification_configured",
+        lambda _config_dir: True,
+    )
+
+    units = render_user_units(
+        config_dir=paths.config_dir,
+        executable=executable,
+    )
+
+    assert FABRIC_AGENT_QUALIFICATION_UNIT in units
+    content = units[FABRIC_AGENT_QUALIFICATION_UNIT]
+    assert "fabric-agent-qualification" in content
     assert " run" in content
     assert "credential" not in content.casefold()
     assert "token" not in content.casefold()

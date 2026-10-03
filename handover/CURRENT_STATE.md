@@ -1,3 +1,30 @@
+## 2026-10-03 — Self-update succeeded; watcher restart activation is the only immediate Runner MCP gate
+
+Live replacement-host facts supplied from the completed bounded self-update:
+- installed runtime-code commit is `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`;
+- successful self-update job: `c6602347fe0646ffa9e20a0f638a2967`;
+- runtime status is operational; emergency stop inactive; install recovery clear;
+- doctor reports 0 failures / 0 warnings;
+- Agent Bus convergence is `clear` with 0 pending results;
+- `last_installed_commit` is the exact target and `install_recovery_pending=false`;
+- only restart activation remains: `restart_pending=true`, `pending_restart_count=2`;
+- exact remaining markers are `github-watcher=9dc9d2bf...` and `completion-watcher=9dc9d2bf...`; server marker is already clear.
+
+Source-supported restart path was re-verified on current main:
+- long-running GitHub watcher calls `run_restart_if_requested(config_dir, "github-watcher", ...)` after each cycle;
+- long-running completion watcher calls the same bounded helper for `completion-watcher` after each notification cycle;
+- the helper validates the marker, removes it, and re-execs the fixed Runner MCP component; if re-exec fails it restores the exact marker instead of silently consuming it;
+- therefore do not manually delete restart marker files and do not repeat the completed self-update proof.
+
+Immediate live sequence:
+1. start/resume the dedicated service-user `github-watcher run` and `completion-watcher run` paths long enough for each to reach its normal restart check;
+2. verify only that `restart_pending=false` and `pending_restart_count=0`;
+3. proceed directly to Runner Fabric #590 isolated Agent Bus qualification with GitHub/source-control credentials absent and fixed GitHub HTTPS probes denied;
+4. prove one real worker restart, durable result replay without duplicate execution, and convergence back to clear;
+5. only then qualify the separate GitHub fallback identity/pool, independent drain/disable, and persistent activation.
+
+Current external limitation of this coordination session: the replacement host is not reachable from the available remote-management device, so no live marker mutation/restart was attempted from an untrusted or guessed path.
+
 ## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint
 
 Canonical runtime-code self-update target: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` (reachable from `origin/main`; later documentation-only handover commits need not move this target).

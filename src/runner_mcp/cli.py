@@ -82,11 +82,6 @@ from .github_runtime import (
 )
 from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
 from .host_integrity_linux import LinuxJournalDiagnosticAdapter
-from .plugin_package import (
-    PluginPackageError,
-    render_http_plugin,
-    render_registered_app_plugin,
-)
 from .onboarding import (
     OnboardingError,
     default_config_dir,
@@ -98,6 +93,11 @@ from .onboarding import (
     prompt_setup_answers,
     read_private_runtime,
     run_doctor,
+)
+from .plugin_package import (
+    PluginPackageError,
+    render_http_plugin,
+    render_registered_app_plugin,
 )
 from .retention_preview import RetentionPreviewPlanner
 from .retention_pruning import RetentionPruner

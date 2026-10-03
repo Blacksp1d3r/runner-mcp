@@ -159,9 +159,15 @@ def _validate_endpoint(value: object) -> str:
 def _prepare_output(output_dir: Path, *, overwrite: bool) -> Path:
     if not isinstance(output_dir, Path):
         raise TypeError("output_dir must be a Path")
-    root = output_dir.expanduser().resolve(strict=False)
+    requested = output_dir.expanduser()
+    try:
+        if requested.is_symlink():
+            raise PluginPackageError("plugin output path is unsafe")
+    except OSError as exc:
+        raise PluginPackageError("plugin output path is unsafe") from exc
+    root = requested.resolve(strict=False)
     if root.exists():
-        if root.is_symlink() or not root.is_dir():
+        if not root.is_dir():
             raise PluginPackageError("plugin output path is unsafe")
         entries = list(root.iterdir())
         if entries:

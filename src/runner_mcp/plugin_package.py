@@ -27,6 +27,13 @@ _COMMON_PACKAGE_FILES = frozenset(
 )
 _REGISTERED_PACKAGE_FILES = _COMMON_PACKAGE_FILES | {".app.json"}
 _HTTP_PACKAGE_FILES = _COMMON_PACKAGE_FILES | {".mcp.json"}
+_PACKAGE_DIRS = frozenset(
+    {
+        ".codex-plugin",
+        "skills",
+        "skills/runner-mcp-control",
+    }
+)
 
 
 class PluginPackageError(RuntimeError):
@@ -197,15 +204,25 @@ def _owned_package_shape_is_safe(root: Path) -> bool:
         ):
             return False
         files: set[str] = set()
+        directories: set[str] = set()
         for path in root.rglob("*"):
             if path.is_symlink():
                 return False
-            if path.is_file():
-                files.add(path.relative_to(root).as_posix())
-        return frozenset(files) in {
-            _REGISTERED_PACKAGE_FILES,
-            _HTTP_PACKAGE_FILES,
-        }
+            relative = path.relative_to(root).as_posix()
+            if path.is_dir():
+                directories.add(relative)
+            elif path.is_file():
+                files.add(relative)
+            else:
+                return False
+        return (
+            frozenset(directories) == _PACKAGE_DIRS
+            and frozenset(files)
+            in {
+                _REGISTERED_PACKAGE_FILES,
+                _HTTP_PACKAGE_FILES,
+            }
+        )
     except OSError:
         return False
 

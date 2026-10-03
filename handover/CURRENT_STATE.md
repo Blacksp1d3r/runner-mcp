@@ -1,3 +1,27 @@
+## 2026-10-03 — Qualification proof matrix / do-not-repeat checkpoint
+
+Persist these live proofs and do not repeat them unless new evidence contradicts them:
+- local MCP server startup on `127.0.0.1:8000`: proven;
+- `/healthz`: proven `{"status":"ok"}`;
+- direct MCP bridge auth/session/runtime_status: proven;
+- `self_update_ready=true` before update attempts: proven;
+- bounded local lint: passed;
+- bounded local unit: passed;
+- GitHub mailbox -> watcher -> local MCP bridge -> bounded lint: passed, request `lint-55f906d7faec4d15`, job `dc43ca86f38244588b09ced284b70e34`;
+- runtime pip/setuptools build backend: proven available;
+- baseline wheel staging through the actual `SelfUpdatePackageInstaller`: proven;
+- origin/fetch/target reachability: proven; target `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` is reachable from `origin/main`;
+- test queue/workers: proven empty/idle before the retry;
+- previous update root cause: target unit collection imported stale baseline package from `.venv/site-packages`; fixed by PR #233 / runtime-code commit `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`;
+- latest retry job `dced091b11fa41d89033bffc7b324408` failed immediately with `started_at=None`; direct `clean_head()` then proved the current blocker is a dirty working tree;
+- exact dirty entry: untracked `aifordable_runner_mcp-0.1.3-py3-none-any.whl` in the Runner MCP source root.
+
+Current immediate action:
+1. remove only that exact untracked wheel from the source root;
+2. re-run `git status --short` and require no output;
+3. do not re-run earlier mailbox/MCP/pip/wheel/queue diagnostics;
+4. retry the bounded self-update to exact runtime-code commit `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
+
 ## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint
 
 Canonical runtime-code self-update target: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` (reachable from `origin/main`; later documentation-only handover commits need not move this target).

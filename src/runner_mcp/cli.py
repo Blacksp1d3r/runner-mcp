@@ -71,6 +71,10 @@ from .cron_autostart import (
     run_cron_component,
 )
 from .database_manager import DatabaseManager, DatabaseManagerError
+from .fabric_live_overview import (
+    FabricLiveOverviewError,
+    run_fabric_live_overview_process,
+)
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
@@ -1039,6 +1043,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 "github-watcher",
                 "completion-watcher",
                 "agent-bus-worker",
+                "fabric-live-overview",
             ):
                 print(
                     f"{component}: installed=no, enabled=no, active=no"
@@ -1095,6 +1100,50 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         print("No private configuration values were written to the public repository.")
         return 0
 
+    if args.autostart_action == "reconcile":
+        if managed_cron and managed_systemd:
+            raise AutostartError(
+                "multiple managed autostart backends are present; remove one before continuing"
+            )
+        if not managed_cron and not managed_systemd:
+            raise AutostartError(
+                "managed autostart is not installed"
+            )
+        state, activation_permit = _autostart_activation_preflight(
+            config_dir,
+            executable,
+        )
+        if activation_permit is None:
+            raise AutostartError(f"autostart activation is blocked ({state})")
+        if managed_systemd:
+            installed = install_user_services(
+                config_dir,
+                executable=executable,
+                port=args.port,
+                activation_permit=activation_permit,
+            )
+            print("Runner MCP autostart reconciled with systemd user services.")
+            for unit_name in installed:
+                component = unit_name.removeprefix("runner-mcp-").removesuffix(
+                    ".service"
+                )
+                if unit_name == "runner-mcp.service":
+                    component = "server"
+                print(f"  - {component}")
+        else:
+            components = configured_autostart_components(config_dir)
+            installed = install_cron_services(
+                executable=executable,
+                config_dir=config_dir,
+                components=components,
+                port=args.port,
+                activation_permit=activation_permit,
+            )
+            print("Runner MCP autostart reconciled with managed cron supervision.")
+            for component in installed:
+                print(f"  - {component}")
+        return 0
+
     if args.autostart_action == "remove":
         _require_removal_confirmation(
             "REMOVE RUNNER MCP AUTOSTART",
@@ -1119,6 +1168,16 @@ def cmd_agent_bus_worker(args: argparse.Namespace) -> int:
     if args.agent_bus_worker_action == "once":
         return run_agent_bus_worker_process(config_dir, once=True)
     raise RuntimeError("unknown Agent Bus worker action")
+
+
+def cmd_fabric_live_overview(args: argparse.Namespace) -> int:
+    if args.fabric_live_overview_action == "run":
+        return run_fabric_live_overview_process(
+            _config_dir(args.config_dir)
+        )
+    raise FabricLiveOverviewError(
+        "unknown Runner Fabric live overview action"
+    )
 
 
 def cmd_completion_notifier(args: argparse.Namespace) -> int:
@@ -1916,6 +1975,18 @@ def build_parser() -> argparse.ArgumentParser:
         help="Prefer systemd user services, or fall back to managed cron in auto mode.",
     )
     autostart_install.set_defaults(func=cmd_autostart)
+    autostart_reconcile = autostart_sub.add_parser(
+        "reconcile",
+        help="Reconcile the installed managed backend with current optional components.",
+    )
+    autostart_reconcile.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        choices=range(1, 65536),
+        metavar="PORT",
+    )
+    autostart_reconcile.set_defaults(func=cmd_autostart)
     autostart_remove = autostart_sub.add_parser(
         "remove",
         help="Remove only autostart scheduling/state managed by Runner MCP.",
@@ -1932,6 +2003,7 @@ def build_parser() -> argparse.ArgumentParser:
             "github-watcher",
             "completion-watcher",
             "agent-bus-worker",
+            "fabric-live-overview",
         ),
     )
     autostart_cron_run.add_argument(
@@ -1961,6 +2033,20 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run exactly one fixed Runner Fabric Agent Bus iteration.",
     )
     agent_bus_worker_once.set_defaults(func=cmd_agent_bus_worker)
+
+    fabric_live_overview = subparsers.add_parser(
+        "fabric-live-overview",
+        help="Run the fixed read-only Runner Fabric live overview.",
+    )
+    fabric_live_overview_sub = fabric_live_overview.add_subparsers(
+        dest="fabric_live_overview_action",
+        required=True,
+    )
+    fabric_live_overview_run = fabric_live_overview_sub.add_parser(
+        "run",
+        help="Run the fixed loopback-only live overview service.",
+    )
+    fabric_live_overview_run.set_defaults(func=cmd_fabric_live_overview)
 
     completion_notifier = subparsers.add_parser(
         "completion-notifier",

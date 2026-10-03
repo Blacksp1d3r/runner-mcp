@@ -24,6 +24,7 @@ CRON_COMPONENTS = (
     "github-watcher",
     "completion-watcher",
     "agent-bus-worker",
+    "fabric-live-overview",
 )
 
 
@@ -164,6 +165,7 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
                 " github-watcher ",
                 " completion-watcher ",
                 " agent-bus-worker ",
+                " fabric-live-overview ",
                 "ensure-running",
             )
         ):
@@ -398,8 +400,10 @@ def run_cron_component(
             argv.extend(["github-watcher", "run"])
         elif component == "completion-watcher":
             argv.extend(["completion-watcher", "run"])
-        else:
+        elif component == "agent-bus-worker":
             argv.extend(["agent-bus-worker", "run"])
+        else:
+            argv.extend(["fabric-live-overview", "run"])
 
         _diagnose_cron_supervisor(
             diagnostic_sink,

@@ -11,8 +11,8 @@ _PLUGIN_SCHEMA = "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json"
 _MARKER = ".runner-mcp-plugin-package"
 _MARKER_CONTENT = "runner-mcp-first-party-plugin-v1\n"
 _APP_ID_RE = re.compile(
-    r"^(?:plugin_)?(?P<canonical>(?:asdk_app|connector|templated_apps)_"
-    r"[A-Za-z0-9][A-Za-z0-9_-]{0,127})$"
+    r"^(?:(?:plugin_)?(?P<asdk>asdk_app_[A-Za-z0-9][A-Za-z0-9_-]{0,127})"
+    r"|(?P<other>(?:connector|templated_apps)_[A-Za-z0-9][A-Za-z0-9_-]{0,127}))$"
 )
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,127}$")
 _LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
@@ -123,7 +123,13 @@ def _canonical_registered_app_id(value: object) -> str:
     match = _APP_ID_RE.fullmatch(value.strip())
     if match is None:
         raise PluginPackageError("registered MCP app identifier is invalid")
-    return match.group("canonical")
+    asdk = match.group("asdk")
+    if asdk is not None:
+        return asdk
+    other = match.group("other")
+    if other is None:
+        raise PluginPackageError("registered MCP app identifier is invalid")
+    return other
 
 
 def _validate_env_name(value: object) -> str:

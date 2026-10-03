@@ -1,3 +1,29 @@
+## 2026-10-03 — First-party client path replaces routine broad remote control
+
+Canonical code base before this slice: `1196630299387d2f254629941790ee9b9cd70dca`.
+
+Current direction:
+- the canonical `aifordable-runner` service-user Agent Bus restart/replay acceptance is complete;
+- Runner Fabric #479 is closed; GitHub-denied bounded work-unit execution, durable replay/fencing and convergence evidence no longer block the Runner MCP bridge;
+- Agent Bus is the primary runtime control path; GitHub mailbox/direct GitHub choreography are fallback/bootstrap paths;
+- broad remote-host tooling such as Desktop Commander is break-glass only and must not be the normal development path;
+- Runner MCP already exposes exactly three configured coarse Fabric tools: `fabric_run_work_unit`, `fabric_get_work_unit`, and `fabric_cancel_work_unit`; do not add another bridge or a generic remote shell.
+
+Issue #240 / PR #241 add the missing first-party client packaging layer:
+- local ChatGPT/Codex plugin packages reuse the existing Runner MCP MCP server;
+- registered-app mode stores only a validated technical app identifier;
+- HTTP/self-hosted mode stores only a validated MCP URL plus bearer-token environment-variable name, never the token value;
+- generated packages are private by default and contain a bounded skill that directs agents to coarse Fabric work-units and treats broad host tooling as break-glass.
+
+Remaining #110 acceptance is now narrow: prove one real first-party client invocation through
+`client -> Runner MCP fabric_run_work_unit -> private Fabric MCP -> work-unit service`, then record bounded get/cancel/operator-safety evidence and the coarse-call reduction. No new execution authority is justified.
+
+Next:
+1. land #241 only after exact-head attribution and full Runner MCP validation are green;
+2. connect/register the private Runner MCP MCP server in an eligible first-party ChatGPT/Codex environment without weakening local-first/private connectivity;
+3. start a fresh client session so plugin tools reload, run one bounded Fabric work-unit, and reconcile #110;
+4. resume #108 recovery proof on the now-qualified replacement host after the first-party control path is usable.
+
 ## 2026-10-03 — Self-update succeeded; watcher restart activation is the only immediate Runner MCP gate
 
 Live replacement-host facts supplied from the completed bounded self-update:

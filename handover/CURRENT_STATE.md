@@ -1,3 +1,32 @@
+## 2026-10-03 — Canonical service-user Agent Bus restart/replay acceptance completed
+
+The dedicated `aifordable-runner` runtime on `runner:aifordable-lab` has now completed the live bounded Agent Bus acceptance that remained open in #125.
+
+Evidence:
+- Runner Fabric was activated through its managed slot/update path at exact qualification revision `a7492aeb2bc738a4de4d19d6e515d29b1482a1a0`;
+- q591 executed through the AIfordable SQL relay while GitHub fallback was unavailable;
+- the successful terminal relay acknowledgement was deliberately dropped only by the qualification-only Fabric path after durable commit;
+- Runner MCP convergence observed `state=pending pending_results=1`;
+- the ordinary Agent Bus worker was restarted;
+- after restart the durable result replayed before new claims and convergence returned `state=clear pending_results=0`;
+- the relay still returned q591 as the same completed/ok/reported terminal result;
+- reused q591 identity with changed content failed closed and did not alter the original terminal record;
+- prior live evidence already covers relay restart durability, stale-generation fencing, read-only GitHub-denied status/doctor and primary/fallback state.
+
+Do not repeat:
+- the old watcher-marker activation proof;
+- stale-generation fault injection;
+- relay-restart proof;
+- manual outbox/relay-store edits;
+- credential reconstruction.
+
+Runner MCP itself required no new runtime authority for this proof; the existing wrapper/private-env boundary and convergence surface were sufficient.
+
+Next:
+1. reconcile/close #125 from the accumulated acceptance evidence;
+2. keep Agent Bus as primary runtime control and GitHub mailbox as fallback/bootstrap only;
+3. proceed with managed persistent worker lifecycle and higher-level Fabric live overview/operations rather than adding generic remote-shell authority.
+
 ## 2026-10-03 — Self-update succeeded; watcher restart activation is the only immediate Runner MCP gate
 
 Live replacement-host facts supplied from the completed bounded self-update:

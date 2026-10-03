@@ -71,6 +71,10 @@ from .cron_autostart import (
     run_cron_component,
 )
 from .database_manager import DatabaseManager, DatabaseManagerError
+from .fabric_agent_qualification import (
+    FabricAgentQualificationError,
+    run_fabric_agent_qualification_process,
+)
 from .fabric_live_overview import (
     FabricLiveOverviewError,
     run_fabric_live_overview_process,
@@ -1048,6 +1052,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 "github-watcher",
                 "completion-watcher",
                 "agent-bus-worker",
+                "fabric-agent-qualification",
                 "fabric-live-overview",
             ):
                 print(
@@ -1173,6 +1178,16 @@ def cmd_agent_bus_worker(args: argparse.Namespace) -> int:
     if args.agent_bus_worker_action == "once":
         return run_agent_bus_worker_process(config_dir, once=True)
     raise RuntimeError("unknown Agent Bus worker action")
+
+
+def cmd_fabric_agent_qualification(args: argparse.Namespace) -> int:
+    if args.fabric_agent_qualification_action == "run":
+        return run_fabric_agent_qualification_process(
+            _config_dir(args.config_dir)
+        )
+    raise FabricAgentQualificationError(
+        "unknown Runner Fabric qualification agent action"
+    )
 
 
 def cmd_fabric_live_overview(args: argparse.Namespace) -> int:
@@ -2069,6 +2084,22 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run exactly one fixed Runner Fabric Agent Bus iteration.",
     )
     agent_bus_worker_once.set_defaults(func=cmd_agent_bus_worker)
+
+    fabric_agent_qualification = subparsers.add_parser(
+        "fabric-agent-qualification",
+        help="Run the fixed qualification-only Runner Fabric Agent MCP.",
+    )
+    fabric_agent_qualification_sub = fabric_agent_qualification.add_subparsers(
+        dest="fabric_agent_qualification_action",
+        required=True,
+    )
+    fabric_agent_qualification_run = fabric_agent_qualification_sub.add_parser(
+        "run",
+        help="Run the fixed loopback-only qualification Agent MCP.",
+    )
+    fabric_agent_qualification_run.set_defaults(
+        func=cmd_fabric_agent_qualification
+    )
 
     fabric_live_overview = subparsers.add_parser(
         "fabric-live-overview",

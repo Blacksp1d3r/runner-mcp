@@ -167,6 +167,28 @@ def test_refuses_foreign_nonempty_output_even_with_overwrite(tmp_path: Path) -> 
     assert (root / "important.txt").read_text(encoding="utf-8") == "keep"
 
 
+def test_marker_spoof_does_not_authorize_foreign_directory_deletion(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "plugin"
+    root.mkdir()
+    (root / ".runner-mcp-plugin-package").write_text(
+        "runner-mcp-first-party-plugin-v1\n",
+        encoding="utf-8",
+    )
+    (root / "important.txt").write_text("keep", encoding="utf-8")
+
+    with pytest.raises(PluginPackageError, match="not owned"):
+        render_registered_app_plugin(
+            root,
+            registered_app_id="asdk_app_abc123",
+            version="0.1.3",
+            overwrite=True,
+        )
+
+    assert (root / "important.txt").read_text(encoding="utf-8") == "keep"
+
+
 def test_owned_package_can_be_deterministically_replaced(tmp_path: Path) -> None:
     root = tmp_path / "plugin"
     render_registered_app_plugin(

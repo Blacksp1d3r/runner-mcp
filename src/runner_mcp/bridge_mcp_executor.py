@@ -12,6 +12,10 @@ from typing import Any
 
 from .bridge_processor import BridgeExecutionAdapterError
 
+class _StaleMCPSessionError(BridgeExecutionAdapterError):
+    """Internal marker for a confirmed stale downstream MCP session."""
+
+
 MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
 MAX_MCP_JOB_ID_CHARS = 32
@@ -425,14 +429,19 @@ class LocalMCPClient:
                 "local MCP executor rejected an unsupported tool"
             )
         self.initialize()
-        response = self._post(
-            {
-                "jsonrpc": "2.0",
-                "id": self._allocate_request_id(),
-                "method": "tools/call",
-                "params": {"name": name, "arguments": arguments},
-            }
-        )
+        payload = {
+            "jsonrpc": "2.0",
+            "id": self._allocate_request_id(),
+            "method": "tools/call",
+            "params": {"name": name, "arguments": arguments},
+        }
+        try:
+            response = self._post(payload)
+        except _StaleMCPSessionError:
+            self._session_id = None
+            self._initialized = False
+            self.initialize()
+            response = self._post(payload)
         if response is None or not isinstance(response, dict):
             raise BridgeExecutionAdapterError(
                 "Runner MCP returned an empty tool response"
@@ -539,8 +548,15 @@ class LocalMCPClient:
                         self._session_id = session_id
         except BridgeExecutionAdapterError:
             raise
+        except urllib.error.HTTPError as exc:
+            if exc.code == 404 and self._session_id is not None:
+                raise _StaleMCPSessionError(
+                    "Runner MCP session is no longer available"
+                ) from exc
+            raise BridgeExecutionAdapterError(
+                "Runner MCP is unavailable or rejected the request"
+            ) from exc
         except (
-            urllib.error.HTTPError,
             urllib.error.URLError,
             TimeoutError,
             OSError,

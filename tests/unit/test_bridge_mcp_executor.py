@@ -961,3 +961,134 @@ def test_migration_job_status_rejects_mismatched_job_identity() -> None:
 
     with pytest.raises(BridgeExecutionAdapterError, match="mismatched"):
         executor.migration_job_status(requested)
+
+def _request_session_id(request) -> str | None:
+    return next(
+        (
+            value
+            for key, value in request.header_items()
+            if key.lower() == "mcp-session-id"
+        ),
+        None,
+    )
+
+
+def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
+    calls = []
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{}}',
+            headers={"Mcp-Session-Id": "session-old"},
+        ),
+        FakeResponse(b""),
+        urllib.error.HTTPError(
+            "http://127.0.0.1:8000/mcp",
+            404,
+            "not found",
+            None,
+            None,
+        ),
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":3,"result":{}}',
+            headers={"Mcp-Session-Id": "session-new"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"{\"ok\":true}"}]}}'
+        ),
+    ]
+
+    def respond(request, timeout):
+        calls.append(request)
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    client = LocalMCPClient(
+        _config(),
+        allowed_tools=frozenset({"list_projects"}),
+    )
+
+    assert client._call_tool("list_projects", {}) == {"ok": True}
+    assert responses == []
+
+    payloads = [json.loads(request.data) for request in calls]
+    assert [payload["method"] for payload in payloads] == [
+        "initialize",
+        "notifications/initialized",
+        "tools/call",
+        "initialize",
+        "notifications/initialized",
+        "tools/call",
+    ]
+    assert [payload.get("id") for payload in payloads] == [1, None, 2, 3, None, 4]
+    assert [_request_session_id(request) for request in calls] == [
+        None,
+        "session-old",
+        "session-old",
+        None,
+        "session-new",
+        "session-new",
+    ]
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [
+        urllib.error.HTTPError(
+            "http://127.0.0.1:8000/mcp",
+            401,
+            "unauthorized",
+            None,
+            None,
+        ),
+        urllib.error.HTTPError(
+            "http://127.0.0.1:8000/mcp",
+            500,
+            "server error",
+            None,
+            None,
+        ),
+        urllib.error.URLError("offline"),
+        TimeoutError(),
+    ],
+)
+def test_client_does_not_retry_ambiguous_failure_after_session_established(
+    monkeypatch,
+    failure,
+) -> None:
+    calls = []
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{}}',
+            headers={"Mcp-Session-Id": "session-old"},
+        ),
+        FakeResponse(b""),
+        failure,
+    ]
+
+    def respond(request, timeout):
+        calls.append(request)
+        response = responses.pop(0)
+        if isinstance(response, Exception):
+            raise response
+        return response
+
+    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    client = LocalMCPClient(
+        _config(),
+        allowed_tools=frozenset({"list_projects"}),
+    )
+
+    with pytest.raises(BridgeExecutionAdapterError):
+        client._call_tool("list_projects", {})
+
+    assert responses == []
+    assert [json.loads(request.data)["method"] for request in calls] == [
+        "initialize",
+        "notifications/initialized",
+        "tools/call",
+    ]
+

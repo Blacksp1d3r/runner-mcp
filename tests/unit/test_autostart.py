@@ -10,6 +10,7 @@ from runner_mcp import secure_io as secure_io_module
 from runner_mcp.autostart import (
     AGENT_BUS_WORKER_UNIT,
     COMPLETION_WATCHER_UNIT,
+    FABRIC_LIVE_OVERVIEW_UNIT,
     GITHUB_WATCHER_UNIT,
     MANAGED_MARKER,
     SERVER_UNIT,
@@ -333,6 +334,12 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
             "enabled": False,
             "active": False,
         },
+        {
+            "component": "fabric-live-overview",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
     ]
 
 
@@ -377,3 +384,27 @@ def test_install_without_clear_permit_has_zero_systemd_or_file_mutation(tmp_path
 
     assert systemctl.calls == []
     assert not unit_dir.exists()
+
+
+def test_fabric_live_overview_unit_is_optional_and_contains_no_credentials(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module,
+        "fabric_live_overview_configured",
+        lambda _config_dir: True,
+    )
+
+    units = render_user_units(
+        config_dir=paths.config_dir,
+        executable=executable,
+    )
+
+    assert FABRIC_LIVE_OVERVIEW_UNIT in units
+    content = units[FABRIC_LIVE_OVERVIEW_UNIT]
+    assert "fabric-live-overview" in content
+    assert " run" in content
+    assert "credential" not in content.casefold()
+    assert "token" not in content.casefold()

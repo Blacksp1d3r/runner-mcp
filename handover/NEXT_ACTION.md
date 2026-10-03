@@ -20,9 +20,11 @@ Complete the replacement-host Runner MCP self-update to the fixed runtime-code t
 
 ## Next engineering action
 
-1. Submit one fresh bounded self-update request for exact commit `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` while the local MCP server remains alive.
-2. Process it once through the GitHub watcher and follow the resulting self-update job to terminal state.
-3. On success, verify installed commit/version, `runner-mcp doctor`, restart state and `runner-mcp agent-bus convergence`.
+1. Remove only the exact untracked source-root artifact `aifordable_runner_mcp-0.1.3-py3-none-any.whl`.
+2. Require `git status --short` to return no output; do not reset or clean anything else.
+3. Submit one fresh bounded self-update request for exact runtime-code commit `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` while the local MCP server remains alive.
+4. Process it once through the GitHub watcher and follow the resulting self-update job to terminal state.
+5. On success, verify installed commit/version, `runner-mcp doctor`, restart state and `runner-mcp agent-bus convergence`.
 4. Then run Runner Fabric #590 isolated Agent Bus work-unit qualification with GitHub credentials absent and GitHub network access denied.
 5. Prove worker restart/replay and convergence.
 6. Only then qualify/register the separate GitHub fallback and persistent activation.
@@ -30,3 +32,8 @@ Complete the replacement-host Runner MCP self-update to the fixed runtime-code t
 ## Do not repeat
 
 Do not re-investigate pytest/ruff availability, MCP endpoint/auth, mailbox transport, baseline wheel staging, generic pip/setuptools availability, origin reachability, target reachability, or empty test queues unless new evidence contradicts the recorded proofs.
+
+
+## Persisted proof / do-not-repeat
+
+The following are already proven and must not be re-diagnosed without contradictory new evidence: MCP server startup/health; bridge auth/session/runtime_status; local lint/unit; mailbox lint end-to-end; pip/setuptools availability; actual SelfUpdatePackageInstaller baseline wheel staging; origin/fetch/target reachability; empty test queue/workers; stale-site-packages unit-collection root cause and PR #233 fix. Latest immediate blocker is only the untracked source-root wheel artifact.

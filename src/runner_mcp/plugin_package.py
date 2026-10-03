@@ -16,6 +16,17 @@ _APP_ID_RE = re.compile(
 )
 _ENV_NAME_RE = re.compile(r"^[A-Z][A-Z0-9_]{0,127}$")
 _LOOPBACK_HOSTS = {"localhost", "127.0.0.1", "::1"}
+_COMMON_PACKAGE_FILES = frozenset(
+    {
+        _MARKER,
+        "README.txt",
+        "plugin.json",
+        ".codex-plugin/plugin.json",
+        "skills/runner-mcp-control/SKILL.md",
+    }
+)
+_REGISTERED_PACKAGE_FILES = _COMMON_PACKAGE_FILES | {".app.json"}
+_HTTP_PACKAGE_FILES = _COMMON_PACKAGE_FILES | {".mcp.json"}
 
 
 class PluginPackageError(RuntimeError):
@@ -157,12 +168,7 @@ def _prepare_output(output_dir: Path, *, overwrite: bool) -> Path:
         if entries:
             if not overwrite:
                 raise PluginPackageError("plugin output directory is not empty")
-            marker = root / _MARKER
-            if (
-                marker.is_symlink()
-                or not marker.is_file()
-                or marker.read_text(encoding="utf-8") != _MARKER_CONTENT
-            ):
+            if not _owned_package_shape_is_safe(root):
                 raise PluginPackageError(
                     "refusing to overwrite a directory not owned by Runner MCP"
                 )
@@ -174,6 +180,26 @@ def _prepare_output(output_dir: Path, *, overwrite: bool) -> Path:
         shutil.rmtree(root, ignore_errors=True)
         raise PluginPackageError("could not secure plugin output directory") from exc
     return root
+
+
+def _owned_package_shape_is_safe(root: Path) -> bool:
+    marker = root / _MARKER
+    try:
+        if (
+            marker.is_symlink()
+            or not marker.is_file()
+            or marker.read_text(encoding="utf-8") != _MARKER_CONTENT
+        ):
+            return False
+        files: set[str] = set()
+        for path in root.rglob("*"):
+            if path.is_symlink():
+                return False
+            if path.is_file():
+                files.add(path.relative_to(root).as_posix())
+        return files in {_REGISTERED_PACKAGE_FILES, _HTTP_PACKAGE_FILES}
+    except OSError:
+        return False
 
 
 def _write_common(root: Path, *, version: str) -> None:

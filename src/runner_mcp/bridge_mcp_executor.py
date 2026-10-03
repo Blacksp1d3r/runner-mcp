@@ -441,6 +441,10 @@ class LocalMCPClient:
             self._session_id = None
             self._initialized = False
             self.initialize()
+            payload = {
+                **payload,
+                "id": self._allocate_request_id(),
+            }
             response = self._post(payload)
         if response is None or not isinstance(response, dict):
             raise BridgeExecutionAdapterError(

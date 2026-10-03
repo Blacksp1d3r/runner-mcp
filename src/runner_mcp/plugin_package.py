@@ -52,6 +52,7 @@ def render_registered_app_plugin(
         )
         _write_readme(root, mode="registered-app")
         _write_text(root / _MARKER, _MARKER_CONTENT)
+        _secure_tree(root)
     except Exception:
         shutil.rmtree(root, ignore_errors=True)
         raise
@@ -91,6 +92,7 @@ def render_http_plugin(
         )
         _write_readme(root, mode="http")
         _write_text(root / _MARKER, _MARKER_CONTENT)
+        _secure_tree(root)
     except Exception:
         shutil.rmtree(root, ignore_errors=True)
         raise
@@ -165,7 +167,7 @@ def _prepare_output(output_dir: Path, *, overwrite: bool) -> Path:
                     "refusing to overwrite a directory not owned by Runner MCP"
                 )
             shutil.rmtree(root)
-    root.mkdir(parents=True, mode=0o700)
+    root.mkdir(parents=True, mode=0o700, exist_ok=True)
     try:
         root.chmod(0o700)
     except OSError as exc:
@@ -256,6 +258,17 @@ def _write_readme(root: Path, *, mode: str) -> None:
             "Use Runner MCP / Runner Fabric for normal operations; broad remote tooling is break-glass.\n"
         ),
     )
+
+
+def _secure_tree(root: Path) -> None:
+    root.chmod(0o700)
+    for path in root.rglob("*"):
+        if path.is_symlink():
+            raise PluginPackageError("generated plugin package contains an unsafe symlink")
+        if path.is_dir():
+            path.chmod(0o700)
+        elif path.is_file():
+            path.chmod(0o600)
 
 
 def _write_json(path: Path, value: object) -> None:

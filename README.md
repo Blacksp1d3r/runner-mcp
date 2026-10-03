@@ -63,6 +63,10 @@ repository-change workflow without receiving generic GitHub/Git/shell primitives
 The bridge is disabled by default and does not change Runner MCP's authority model. See
 [Optional Runner Fabric bridge](docs/RUNNER_FABRIC_BRIDGE.md).
 
+For ChatGPT/Codex clients, Runner MCP can also render a private first-party plugin package that
+reuses this existing MCP boundary without embedding bearer-token values or adding another control
+plane. See [First-party ChatGPT/Codex control path](docs/FIRST_PARTY_PLUGIN.md).
+
 ## I just want to use it
 
 You do not need to understand the Python source code for the basic workflow.
@@ -135,6 +139,8 @@ runner-mcp deployment-config list
 runner-mcp deployment-config add PROJECT --release-root PATH --service ALIAS
 runner-mcp github-mailbox status
 runner-mcp github-watcher once
+runner-mcp plugin-package registered-app --app-id APP_ID --output PRIVATE_DIR
+runner-mcp plugin-package http --url MCP_URL --output PRIVATE_DIR
 runner-mcp serve
 
 # MCP/mailbox clients can also use:

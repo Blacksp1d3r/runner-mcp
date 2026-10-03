@@ -6,7 +6,15 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ## Unreleased
 
-No unreleased user-visible changes yet.
+### Added
+
+- local first-party ChatGPT/Codex plugin package rendering for the existing Runner MCP MCP
+  boundary, including registered-app and HTTP/self-hosted modes without embedding bearer-token values.
+
+### Security
+
+- generated plugin packages are private by default, reject unsafe connection metadata and refuse to
+  overwrite directories not created by Runner MCP.
 
 ## 0.1.3 — 2026-10-02
 

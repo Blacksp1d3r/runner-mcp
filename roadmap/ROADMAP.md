@@ -71,10 +71,17 @@ This integration preserves the product boundary:
 - transport sessions are isolated per calling thread and response identity/revision/state
   relationships fail closed.
 
-Live activation and end-to-end proof are tracked separately in issue #110. They remain gated on the
-required Runner Fabric durable work-unit and private loopback MCP service lanes being green,
-integrated and privately deployable. The merged transport layer must not be rebuilt merely because
-the upstream activation gate is still open.
+Live activation and end-to-end proof are tracked separately in issue #110. The former upstream
+Runner Fabric durability/Agent-Bus qualification gate is now cleared: the canonical service-user
+restart/replay acceptance is complete and Fabric #479 is closed. The merged transport layer must
+not be rebuilt.
+
+The remaining #110 proof is client-facing: one real first-party ChatGPT/Codex invocation must traverse
+`client -> Runner MCP fabric_run_work_unit -> private Fabric MCP -> trusted work-unit service`.
+Issue #240 / PR #241 own the local plugin packaging needed for that proof. Agent Bus is the normal
+runtime-control path, direct GitHub choreography is fallback/bootstrap, and broad remote-host tools
+are break-glass only. No plugin/client convenience may add generic shell, Git/GitHub, filesystem,
+provider or credential authority.
 
 ## Phase 0 — repository and design
 

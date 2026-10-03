@@ -17,6 +17,27 @@ Build Runner MCP as a small, auditable, deny-by-default operations interface. Pr
 9. All operational actions must be auditable.
 10. Security tests are part of the definition of done.
 
+## First-party control path — hard rule
+
+Routine AI-assisted operations must prefer AIfordable-owned bounded control surfaces over broad
+remote-control tooling.
+
+Canonical order:
+1. Runner Fabric coarse work-unit operations through Runner MCP / Agent Bus when available;
+2. bounded Runner MCP capabilities for operations Runner MCP itself owns;
+3. direct GitHub connector/mailbox only as bootstrap, source integration or fallback while a required
+   first-party capability is unavailable;
+4. broad remote-host tools such as Desktop Commander only as break-glass for a recovery/diagnostic
+   action that the bounded first-party path genuinely cannot perform.
+
+A blocked or absent Runner MCP/Fabric capability must never be bypassed by substituting generic
+shell, filesystem, process, database, package-manager or remote-control authority. Record the missing
+bounded capability and implement/review that capability instead.
+
+Do not consume broad remote-tool quota for normal repository inspection, code changes, CI
+reconciliation, runner scheduling, Agent Bus operations or Fabric work that can be expressed through
+the first-party path.
+
 ## External discovery and independence — hard rule
 
 Runner MCP must remain installable, operable, updateable and supportable without any secondary MCP directory, marketplace, gateway or hosted catalog.

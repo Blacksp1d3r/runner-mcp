@@ -1,3 +1,20 @@
+## 2026-10-03 — Self-update completed; only restart markers remain
+
+Replacement-host self-update is now green and installed:
+- successful self-update job: `c6602347fe0646ffa9e20a0f638a2967`;
+- installed runtime-code commit: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`;
+- `runner-mcp status`: operational, emergency stop inactive, retention confirmed, install recovery clear;
+- `runner-mcp doctor`: 0 failures, 0 warnings;
+- `runner-mcp agent-bus convergence`: `state=clear pending_results=0`;
+- runtime status: `last_installed_commit=9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`, `install_recovery_pending=false`, `restart_pending=true`, `pending_restart_count=2`.
+
+Exact remaining restart markers:
+- `server`: none;
+- `github-watcher`: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`;
+- `completion-watcher`: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
+
+Do not repeat already-proven diagnostics. The only immediate task is to consume/resolve the two remaining watcher restart markers safely, then confirm `restart_pending=false` / count 0 and continue to Runner Fabric / Agent Bus live qualification (#590 path).
+
 ## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint
 
 Canonical runtime-code self-update target: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` (reachable from `origin/main`; later documentation-only handover commits need not move this target).

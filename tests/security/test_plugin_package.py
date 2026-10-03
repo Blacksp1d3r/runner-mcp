@@ -21,7 +21,9 @@ def test_generated_package_permissions_are_private(tmp_path: Path) -> None:
 
     assert root.stat().st_mode & 0o777 == 0o700
     for path in root.rglob("*"):
-        if path.is_file():
+        if path.is_dir():
+            assert path.stat().st_mode & 0o777 == 0o700
+        elif path.is_file():
             assert path.stat().st_mode & 0o777 == 0o600
 
 
@@ -92,6 +94,11 @@ def test_output_does_not_inherit_permissive_umask(tmp_path: Path) -> None:
         os.umask(previous)
 
     assert root.stat().st_mode & 0o777 == 0o700
+    assert all(
+        path.stat().st_mode & 0o777 == 0o700
+        for path in root.rglob("*")
+        if path.is_dir()
+    )
     assert all(
         path.stat().st_mode & 0o777 == 0o600
         for path in root.rglob("*")

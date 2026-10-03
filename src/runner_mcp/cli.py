@@ -82,6 +82,11 @@ from .github_runtime import (
 )
 from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
 from .host_integrity_linux import LinuxJournalDiagnosticAdapter
+from .plugin_package import (
+    PluginPackageError,
+    render_http_plugin,
+    render_registered_app_plugin,
+)
 from .onboarding import (
     OnboardingError,
     default_config_dir,
@@ -1553,6 +1558,37 @@ def cmd_self_update_recovery(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_plugin_package(args: argparse.Namespace) -> int:
+    output_dir = Path(args.output)
+
+    if args.plugin_package_action == "registered-app":
+        render_registered_app_plugin(
+            output_dir,
+            registered_app_id=args.app_id,
+            version=package_version(),
+            overwrite=args.overwrite,
+        )
+        mode = "registered-app"
+    elif args.plugin_package_action == "http":
+        render_http_plugin(
+            output_dir,
+            endpoint=args.url,
+            bearer_env_var=args.bearer_env,
+            version=package_version(),
+            overwrite=args.overwrite,
+        )
+        mode = "http"
+    else:
+        raise PluginPackageError("unknown plugin package mode")
+
+    print("Runner MCP first-party plugin package created.")
+    print(f"Mode: {mode}")
+    print("No bearer token value was written to the package.")
+    if args.show_output_location:
+        print(f"Output: {output_dir.expanduser().resolve(strict=False)}")
+    return 0
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     paths, settings, registry = read_private_runtime(config_dir)
@@ -2258,6 +2294,58 @@ def build_parser() -> argparse.ArgumentParser:
         default=DEFAULT_HEARTBEAT_SECONDS,
     )
     github_watcher_run.set_defaults(func=cmd_github_watcher)
+
+    plugin_package = subparsers.add_parser(
+        "plugin-package",
+        help=(
+            "Render a private first-party ChatGPT/Codex plugin package "
+            "without embedding bearer-token values."
+        ),
+    )
+    plugin_package_sub = plugin_package.add_subparsers(
+        dest="plugin_package_action",
+        required=True,
+    )
+
+    plugin_registered = plugin_package_sub.add_parser(
+        "registered-app",
+        help="Bind a local plugin package to an already-registered MCP app.",
+    )
+    plugin_registered.add_argument(
+        "--app-id",
+        required=True,
+        help="Registered MCP app technical identifier.",
+    )
+    plugin_registered.add_argument("--output", required=True)
+    plugin_registered.add_argument("--overwrite", action="store_true")
+    plugin_registered.add_argument(
+        "--show-output-location",
+        action="store_true",
+        help="Explicitly print the generated local package path.",
+    )
+    plugin_registered.set_defaults(func=cmd_plugin_package)
+
+    plugin_http = plugin_package_sub.add_parser(
+        "http",
+        help=(
+            "Render a Codex/self-hosted HTTP MCP plugin package that reads "
+            "its bearer token from an environment variable."
+        ),
+    )
+    plugin_http.add_argument("--url", required=True)
+    plugin_http.add_argument(
+        "--bearer-env",
+        default="RUNNER_MCP_PLUGIN_TOKEN",
+        help="Environment variable name containing the bearer token.",
+    )
+    plugin_http.add_argument("--output", required=True)
+    plugin_http.add_argument("--overwrite", action="store_true")
+    plugin_http.add_argument(
+        "--show-output-location",
+        action="store_true",
+        help="Explicitly print the generated local package path.",
+    )
+    plugin_http.set_defaults(func=cmd_plugin_package)
 
     serve = subparsers.add_parser(
         "serve",

@@ -189,6 +189,29 @@ def test_marker_spoof_does_not_authorize_foreign_directory_deletion(
     assert (root / "important.txt").read_text(encoding="utf-8") == "keep"
 
 
+def test_owned_package_with_foreign_empty_directory_is_not_overwritten(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "plugin"
+    render_registered_app_plugin(
+        root,
+        registered_app_id="asdk_app_abc123",
+        version="0.1.3",
+    )
+    foreign = root / "foreign-empty"
+    foreign.mkdir()
+
+    with pytest.raises(PluginPackageError, match="not owned"):
+        render_registered_app_plugin(
+            root,
+            registered_app_id="asdk_app_abc123",
+            version="0.1.3",
+            overwrite=True,
+        )
+
+    assert foreign.is_dir()
+
+
 def test_owned_package_can_be_deterministically_replaced(tmp_path: Path) -> None:
     root = tmp_path / "plugin"
     render_registered_app_plugin(

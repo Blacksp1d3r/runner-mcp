@@ -197,7 +197,10 @@ def _owned_package_shape_is_safe(root: Path) -> bool:
                 return False
             if path.is_file():
                 files.add(path.relative_to(root).as_posix())
-        return files in {_REGISTERED_PACKAGE_FILES, _HTTP_PACKAGE_FILES}
+        return frozenset(files) in {
+            _REGISTERED_PACKAGE_FILES,
+            _HTTP_PACKAGE_FILES,
+        }
     except OSError:
         return False
 

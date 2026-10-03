@@ -12,6 +12,7 @@ from typing import Any
 
 from .bridge_processor import BridgeExecutionAdapterError
 
+
 class _StaleMCPSessionError(BridgeExecutionAdapterError):
     """Internal marker for a confirmed stale downstream MCP session."""
 

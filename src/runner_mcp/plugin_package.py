@@ -144,11 +144,10 @@ def _validate_endpoint(value: object) -> str:
         or parsed.path != "/mcp"
     ):
         raise PluginPackageError("Runner MCP plugin endpoint is invalid")
-    if parsed.scheme == "https":
-        pass
-    elif parsed.scheme == "http" and host in _LOOPBACK_HOSTS:
-        pass
-    else:
+    if not (
+        parsed.scheme == "https"
+        or (parsed.scheme == "http" and host in _LOOPBACK_HOSTS)
+    ):
         raise PluginPackageError(
             "Runner MCP plugin endpoint must use HTTPS or loopback HTTP"
         )

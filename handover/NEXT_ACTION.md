@@ -4,28 +4,29 @@ Updated: 2026-10-03
 
 ## Goal
 
-Finish the replacement-host Runner MCP self-update safely, then resume Agent Bus / Runner Fabric live qualification without repeating already-proven checks.
+Complete the replacement-host Runner MCP self-update to the fixed runtime-code target, then resume Agent Bus / Runner Fabric live qualification.
 
 ## Current invariant state
 
-- Installed/source baseline: `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
-- Exact target/main: `fa2bedc3d9e9f8181fe2c27043a6d75c3dfe81fe`.
-- Source tree is clean and still at baseline after failed self-update.
+- Installed/source rollback baseline on `aifordable-lab`: `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
+- Exact runtime-code self-update target: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` (reachable from `origin/main`; handover-only commits do not need to move this target).
+- Source tree is clean and restored to the baseline after the failed update.
 - MCP server, auth/session bridge, bounded local lint/unit and mailbox lint are proven healthy.
-- `self_update_ready=true` before the failed update.
-- Failed self-update job: `48a3cb362da249f0925b5cee18fdfe86`; category `self_update_failed`; no target checkout occurred.
-- Generic baseline wheel build succeeds manually.
-- Persistent server/autostart is not installed yet.
+- Failed self-update job `48a3cb362da249f0925b5cee18fdfe86` reached target validation.
+- Target lint job `bf7e0872202a4b4d91d15e3f9762e4df` passed.
+- Target unit job `eb64112264214b5cb88291ac4a04e540` failed collection because pytest imported stale baseline code from `.venv/site-packages`.
+- PR #233 fixed this with pytest `pythonpath = ["src"]` and merged green as `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
+- Persistent server/autostart is not installed yet; keep the qualification server alive in the foreground.
 
 ## Next engineering action
 
-Reproduce only the internal pre-sync baseline-staging path using Runner MCP's own `SelfUpdatePackageInstaller` with the canonical private config directory and runtime Python, with a disposable unique job id and cleanup afterward. Capture only the bounded exception/category. Do not install a wheel, change the Git checkout, or submit another self-update until this exact path is understood.
+1. Submit one fresh bounded self-update request for exact commit `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` while the local MCP server remains alive.
+2. Process it once through the GitHub watcher and follow the resulting self-update job to terminal state.
+3. On success, verify installed commit/version, `runner-mcp doctor`, restart state and `runner-mcp agent-bus convergence`.
+4. Then run Runner Fabric #590 isolated Agent Bus work-unit qualification with GitHub credentials absent and GitHub network access denied.
+5. Prove worker restart/replay and convergence.
+6. Only then qualify/register the separate GitHub fallback and persistent activation.
 
-If internal staging succeeds, inspect the remaining pre-sync guards in order: self-update project source guard, installed-baseline comparison, private artifact-root safety/permissions, and state persistence. Add a bounded diagnostic category/step preservation fix if needed so future failures do not collapse to `self_update_failed`.
+## Do not repeat
 
-## After the self-update is green
-
-1. Verify installed commit/version, `runner-mcp doctor`, restart state and `runner-mcp agent-bus convergence`.
-2. Run the bounded Runner Fabric isolated Agent Bus work-unit qualification with GitHub credentials absent and GitHub network denied as defined by Fabric #590.
-3. Prove worker-process restart/replay and convergence.
-4. Only then qualify/register the separate GitHub fallback and persistent activation.
+Do not re-investigate pytest/ruff availability, MCP endpoint/auth, mailbox transport, baseline wheel staging, generic pip/setuptools availability, origin reachability, target reachability, or empty test queues unless new evidence contradicts the recorded proofs.

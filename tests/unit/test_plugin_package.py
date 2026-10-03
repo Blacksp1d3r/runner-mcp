@@ -61,6 +61,7 @@ def test_registered_app_package_is_bounded_and_normalizes_browser_id(
         "",
         "plugin_asdk_app_",
         "plugin_other_abc",
+        "plugin_connector_abc123",
         "asdk_app_bad space",
         "https://example.invalid/app",
     ],
@@ -77,6 +78,28 @@ def test_registered_app_identifier_fails_closed(
         )
 
     assert not (tmp_path / "plugin").exists()
+
+
+@pytest.mark.parametrize(
+    ("registered_app_id", "expected"),
+    [
+        ("connector_abc123", "connector_abc123"),
+        ("templated_apps_abc123", "templated_apps_abc123"),
+    ],
+)
+def test_registered_non_asdk_identifiers_remain_canonical(
+    tmp_path: Path,
+    registered_app_id: str,
+    expected: str,
+) -> None:
+    root = render_registered_app_plugin(
+        tmp_path / registered_app_id,
+        registered_app_id=registered_app_id,
+        version="0.1.3",
+    )
+
+    app_manifest = read_json(root / ".app.json")
+    assert app_manifest["apps"]["runner-mcp"]["id"] == expected
 
 
 def test_http_package_uses_environment_reference_not_secret(tmp_path: Path) -> None:

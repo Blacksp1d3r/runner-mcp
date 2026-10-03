@@ -994,7 +994,20 @@ def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
         ),
         FakeResponse(b""),
         FakeResponse(
-            b'{"jsonrpc":"2.0","id":4,"result":{"content":[{"type":"text","text":"{\"ok\":true}"}]}}'
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 4,
+                    "result": {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps({"ok": True}),
+                            }
+                        ]
+                    },
+                }
+            ).encode()
         ),
     ]
 

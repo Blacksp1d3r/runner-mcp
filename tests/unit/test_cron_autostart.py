@@ -215,6 +215,7 @@ def test_cron_run_uses_fixed_exec_argv_and_loopback(
         ("github-watcher", ["github-watcher", "run"]),
         ("completion-watcher", ["completion-watcher", "run"]),
         ("agent-bus-worker", ["agent-bus-worker", "run"]),
+        ("fabric-live-overview", ["fabric-live-overview", "run"]),
     ],
 )
 def test_cron_run_uses_fixed_watcher_argv(
@@ -370,6 +371,12 @@ def test_cron_status_reports_only_managed_components(
         },
         {
             "component": "agent-bus-worker",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
+        {
+            "component": "fabric-live-overview",
             "installed": False,
             "enabled": False,
             "active": False,

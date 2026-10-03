@@ -4,12 +4,12 @@ Updated: 2026-10-03
 
 ## Goal
 
-Complete the replacement-host Runner MCP self-update to the fixed canonical main, then resume Agent Bus / Runner Fabric live qualification.
+Complete the replacement-host Runner MCP self-update to the fixed runtime-code target, then resume Agent Bus / Runner Fabric live qualification.
 
 ## Current invariant state
 
 - Installed/source rollback baseline on `aifordable-lab`: `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
-- Exact canonical main and next self-update target: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
+- Exact runtime-code self-update target: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` (reachable from `origin/main`; handover-only commits do not need to move this target).
 - Source tree is clean and restored to the baseline after the failed update.
 - MCP server, auth/session bridge, bounded local lint/unit and mailbox lint are proven healthy.
 - Failed self-update job `48a3cb362da249f0925b5cee18fdfe86` reached target validation.

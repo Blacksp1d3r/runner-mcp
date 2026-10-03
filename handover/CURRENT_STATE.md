@@ -1,3 +1,32 @@
+## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint
+
+Canonical target on `main`: `fa2bedc3d9e9f8181fe2c27043a6d75c3dfe81fe`.
+Installed/source rollback baseline on `aifordable-lab`: `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
+
+Live facts proven on the dedicated `aifordable-runner` service user:
+- `runner-mcp 0.1.3`; doctor previously reported 0 failures / 0 warnings.
+- Local MCP server starts cleanly on `127.0.0.1:8000`; `/healthz` returns `{"status":"ok"}`.
+- Direct MCP bridge `runtime_status` succeeds and reports `self_update_ready=true`, no active update, no restart pending and no install recovery pending.
+- Bounded local `lint` and `unit` profiles both pass through the MCP bridge.
+- GitHub mailbox -> watcher -> local MCP bridge -> bounded test runner is proven end-to-end by request `lint-55f906d7faec4d15`, job `dc43ca86f38244588b09ced284b70e34`, terminal `passed`, exit code 0.
+- Self-update request `self-update-b3864011660143cb` was accepted end-to-end and created job `48a3cb362da249f0925b5cee18fdfe86` for exact target `fa2bedc3d9e9f8181fe2c27043a6d75c3dfe81fe`.
+- That self-update job failed with bounded category `self_update_failed` before source sync. Source checkout remains clean at baseline `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
+- Runtime packaging preflight is healthy: pip is available and `setuptools.build_meta` imports successfully.
+- A manual no-install/no-sync wheel build of the baseline project succeeds. Therefore do not re-investigate missing pytest/ruff, mailbox transport, MCP endpoint/auth, baseline registration, pip availability or build backend availability unless new evidence contradicts these facts.
+- The MCP server is not yet installed as persistent autostart; for qualification it must currently stay alive in a foreground terminal.
+
+Immediate diagnostic boundary:
+- failure happened before source checkout moved to target;
+- source is clean and still at baseline;
+- generic v0.1.3 self-update failure handling clears `current_step`, so the persisted job status does not reveal the exact pre-sync substep;
+- next diagnostic must reproduce the internal baseline-staging path using Runner MCP's own `SelfUpdatePackageInstaller`/config paths or add bounded step-preserving diagnostics, not repeat already-green generic checks.
+
+Do not regress:
+- Agent Bus remains the intended primary runtime control path; GitHub mailbox is qualification/fallback, not long-term authority.
+- Do not install persistent autostart until the bounded live qualification path is understood and green.
+- Do not manually replace the installed package or move the source checkout to the target to bypass self-update safety.
+- Keep rollback baseline `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d` intact until the failed self-update is diagnosed.
+
 ## 2026-10-02 — Agent Bus live proof + replacement-host reconciliation
 
 Canonical Runner MCP main at this checkpoint:

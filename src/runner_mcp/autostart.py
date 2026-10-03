@@ -9,6 +9,7 @@ from pathlib import Path
 from .agent_bus_worker import agent_bus_worker_configured
 from .autostart_activation import AutostartActivationPermit, require_clear_autostart_permit
 from .completion_delivery import completion_notifier_status
+from .fabric_agent_qualification import fabric_agent_qualification_configured
 from .fabric_live_overview import fabric_live_overview_configured
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
@@ -20,12 +21,14 @@ SERVER_UNIT = "runner-mcp.service"
 GITHUB_WATCHER_UNIT = "runner-mcp-github-watcher.service"
 COMPLETION_WATCHER_UNIT = "runner-mcp-completion-watcher.service"
 AGENT_BUS_WORKER_UNIT = "runner-mcp-agent-bus-worker.service"
+FABRIC_AGENT_QUALIFICATION_UNIT = "runner-mcp-fabric-agent-qualification.service"
 FABRIC_LIVE_OVERVIEW_UNIT = "runner-mcp-fabric-live-overview.service"
 KNOWN_UNITS = (
     SERVER_UNIT,
     GITHUB_WATCHER_UNIT,
     COMPLETION_WATCHER_UNIT,
     AGENT_BUS_WORKER_UNIT,
+    FABRIC_AGENT_QUALIFICATION_UNIT,
     FABRIC_LIVE_OVERVIEW_UNIT,
 )
 
@@ -137,6 +140,8 @@ def configured_autostart_components(config_dir: Path) -> tuple[str, ...]:
             )
         components.append("github-watcher")
 
+    if fabric_agent_qualification_configured(config_dir):
+        components.append("fabric-agent-qualification")
     if agent_bus_worker_configured(config_dir):
         components.append("agent-bus-worker")
     if fabric_live_overview_configured(config_dir):
@@ -226,6 +231,14 @@ def render_user_units(
             executable=executable,
             config_dir=config_dir,
             arguments=("github-watcher", "run"),
+            requires_server=True,
+        )
+    if "fabric-agent-qualification" in components:
+        units[FABRIC_AGENT_QUALIFICATION_UNIT] = _unit(
+            description="Runner Fabric qualification-only Agent MCP",
+            executable=executable,
+            config_dir=config_dir,
+            arguments=("fabric-agent-qualification", "run"),
             requires_server=True,
         )
     if "agent-bus-worker" in components:
@@ -375,6 +388,7 @@ def user_service_status(
         ("github-watcher", GITHUB_WATCHER_UNIT),
         ("completion-watcher", COMPLETION_WATCHER_UNIT),
         ("agent-bus-worker", AGENT_BUS_WORKER_UNIT),
+        ("fabric-agent-qualification", FABRIC_AGENT_QUALIFICATION_UNIT),
         ("fabric-live-overview", FABRIC_LIVE_OVERVIEW_UNIT),
     )
     for component, unit_name in names:

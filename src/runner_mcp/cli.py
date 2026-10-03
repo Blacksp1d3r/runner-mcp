@@ -2054,6 +2054,7 @@ def build_parser() -> argparse.ArgumentParser:
             "github-watcher",
             "completion-watcher",
             "agent-bus-worker",
+            "fabric-agent-qualification",
             "fabric-live-overview",
         ),
     )

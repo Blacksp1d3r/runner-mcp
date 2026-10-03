@@ -44,6 +44,22 @@ def test_existing_symlink_output_is_rejected(tmp_path: Path) -> None:
     assert list(target.iterdir()) == []
 
 
+def test_dangling_symlink_output_is_rejected(tmp_path: Path) -> None:
+    output = tmp_path / "plugin"
+    output.symlink_to(tmp_path / "missing", target_is_directory=True)
+
+    with pytest.raises(PluginPackageError, match="unsafe"):
+        render_http_plugin(
+            output,
+            endpoint="https://control.example.invalid/mcp",
+            bearer_env_var="RUNNER_MCP_PLUGIN_TOKEN",
+            version="0.1.3",
+        )
+
+    assert output.is_symlink()
+    assert not (tmp_path / "missing").exists()
+
+
 def test_environment_secret_value_is_never_read_into_package(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

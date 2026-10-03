@@ -1,6 +1,6 @@
 ## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint
 
-Canonical target on `main`: `fa2bedc3d9e9f8181fe2c27043a6d75c3dfe81fe`.
+Canonical target on `main`: `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
 Installed/source rollback baseline on `aifordable-lab`: `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
 
 Live facts proven on the dedicated `aifordable-runner` service user:
@@ -10,16 +10,17 @@ Live facts proven on the dedicated `aifordable-runner` service user:
 - Bounded local `lint` and `unit` profiles both pass through the MCP bridge.
 - GitHub mailbox -> watcher -> local MCP bridge -> bounded test runner is proven end-to-end by request `lint-55f906d7faec4d15`, job `dc43ca86f38244588b09ced284b70e34`, terminal `passed`, exit code 0.
 - Self-update request `self-update-b3864011660143cb` was accepted end-to-end and created job `48a3cb362da249f0925b5cee18fdfe86` for exact target `fa2bedc3d9e9f8181fe2c27043a6d75c3dfe81fe`.
-- That self-update job failed with bounded category `self_update_failed` before source sync. Source checkout remains clean at baseline `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`.
+- That self-update job reached the target checkout, passed target `lint`, then failed target `unit` collection with exit code 2. v0.1.3 automatically restored the source checkout to baseline afterward, so a baseline HEAD after failure did not mean sync had never occurred.
 - Runtime packaging preflight is healthy: pip is available and `setuptools.build_meta` imports successfully.
 - A manual no-install/no-sync wheel build of the baseline project succeeds. Therefore do not re-investigate missing pytest/ruff, mailbox transport, MCP endpoint/auth, baseline registration, pip availability or build backend availability unless new evidence contradicts these facts.
 - The MCP server is not yet installed as persistent autostart; for qualification it must currently stay alive in a foreground terminal.
 
-Immediate diagnostic boundary:
-- failure happened before source checkout moved to target;
-- source is clean and still at baseline;
-- generic v0.1.3 self-update failure handling clears `current_step`, so the persisted job status does not reveal the exact pre-sync substep;
-- next diagnostic must reproduce the internal baseline-staging path using Runner MCP's own `SelfUpdatePackageInstaller`/config paths or add bounded step-preserving diagnostics, not repeat already-green generic checks.
+Resolved root cause and correction:
+- target lint job `bf7e0872202a4b4d91d15e3f9762e4df` passed;
+- target unit job `eb64112264214b5cb88291ac4a04e540` failed during collection because pytest imported the previously installed baseline package from `.venv/site-packages` instead of the newly checked-out `src/` tree;
+- PR #233 fixed validation with `pythonpath = ["src"]` in pytest configuration so self-update tests the active checkout;
+- #233 merged to `main` as `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52` after commit-attribution, Runner MCP validation, Clean Ubuntu installer proof, Ruff/pytest, demo smoke and release-artifact validation were green;
+- current live host source remains safely restored to baseline `a71f68b3c6375c22d9a10a7cfea9e28c9692cc0d`; next target is the new canonical main `9dc9d2bfa09b25deff7a5186b9f12252c84cdd52`.
 
 Do not regress:
 - Agent Bus remains the intended primary runtime control path; GitHub mailbox is qualification/fallback, not long-term authority.

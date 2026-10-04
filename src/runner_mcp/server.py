@@ -47,6 +47,10 @@ from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
+from .fabric_agent_runtime import (
+    FabricAgentRestartError,
+    restart_fabric_qualification_agent,
+)
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .fabric_update import FabricUpdateError, FabricUpdateManager
@@ -1019,6 +1023,38 @@ def build_mcp(
         )
         return result
 
+    def fabric_agent_restart() -> dict:
+        """Restart the fixed loopback Fabric qualification agent safely."""
+        if (
+            settings.fabric_resource_url is None
+            or settings.fabric_bearer_token is None
+        ):
+            raise ValueError("Fabric agent restart is not configured")
+        try:
+            safety.assert_action_allowed(ActionClass.SERVICE)
+            result = restart_fabric_qualification_agent(
+                config_dir=settings.projects_config.parent,
+                resource_url=settings.fabric_resource_url,
+                bearer_token=settings.fabric_bearer_token,
+            )
+        except (
+            FabricAgentRestartError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_fabric(
+                "fabric_agent_restart",
+                "fabric-agent:qualification",
+                "denied",
+            )
+            raise ValueError("Fabric agent restart is unavailable") from exc
+        _audit_fabric(
+            "fabric_agent_restart",
+            "fabric-agent:qualification",
+            "restarted",
+        )
+        return result
+
     def fabric_operational_snapshot() -> dict:
         """Return bounded end-to-end operational state from Runner Fabric."""
         try:
@@ -1096,6 +1132,7 @@ def build_mcp(
         mcp.tool()(fabric_ci_runner_guest_status)
         mcp.tool()(fabric_ci_runner_guest_start)
         mcp.tool()(fabric_ci_runner_guest_stop)
+        mcp.tool()(fabric_agent_restart)
         mcp.tool()(fabric_operational_snapshot)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)

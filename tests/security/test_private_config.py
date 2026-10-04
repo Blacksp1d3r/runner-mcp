@@ -182,6 +182,25 @@ def test_setup_overwrite_preserves_explicit_rate_limit(tmp_path: Path) -> None:
     assert after["RUNNER_MCP_RATE_LIMIT_PER_MINUTE"] == "1200"
 
 
+def test_setup_overwrite_preserves_external_target_config_pointer(
+    tmp_path: Path,
+) -> None:
+    paths, project_root = installed(tmp_path)
+    pointer = str(tmp_path / "private-rasff-target.json")
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write(f"RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG={pointer}\n")
+    os.chmod(paths.env_file, 0o600)
+
+    install_private_configuration(
+        config_dir=paths.config_dir,
+        answers=answers_for(project_root),
+        overwrite=True,
+    )
+
+    after = load_env_file(paths.env_file)
+    assert after["RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"] == pointer
+
+
 def test_overwrite_preserves_existing_bearer_credential_by_default(tmp_path: Path) -> None:
     paths, project_root = installed(tmp_path)
     before = load_env_file(paths.env_file)["RUNNER_MCP_BEARER_TOKEN"]

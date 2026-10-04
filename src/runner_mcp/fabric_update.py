@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -34,6 +35,7 @@ _JOB_SCHEMA = "runner-mcp/fabric-update-job/v1"
 _MAX_JSON = 16_384
 _MAX_API_RESPONSE = 2 * 1024 * 1024
 _MAX_ARCHIVE = 256 * 1024 * 1024
+_MAX_UNCOMPRESSED = 256 * 1024 * 1024
 _MAX_ENTRY = 64 * 1024 * 1024
 _MAX_FILES = 160
 _TERMINAL = frozenset({"completed", "error", "interrupted"})
@@ -406,6 +408,8 @@ class FabricUpdateManager:
                 infos = zf.infolist()
                 if not 1 <= len(infos) <= _MAX_FILES:
                     raise FabricUpdateError("fabric_bundle_invalid")
+                if sum(info.file_size for info in infos) > _MAX_UNCOMPRESSED:
+                    raise FabricUpdateError("fabric_bundle_invalid")
                 names: set[str] = set()
                 for info in infos:
                     name = info.filename
@@ -456,21 +460,87 @@ class FabricUpdateManager:
             raise FabricUpdateError("fabric_bundle_recovery_failed") from exc
 
     def _validated_bootstrap(self, commit: str) -> Path:
-        manifest = _read_json(self.bundle / "BUNDLE.json", 32 * 1024, "fabric_bundle_invalid")
+        manifest = _read_json(
+            self.bundle / "BUNDLE.json",
+            32 * 1024,
+            "fabric_bundle_invalid",
+        )
         if (
-            manifest.get("schemaVersion") != "runner.fabric/control-plane-update-bundle/v1"
+            manifest.get("schemaVersion")
+            != "runner.fabric/control-plane-update-bundle/v1"
             or manifest.get("commitSha") != commit
+            or manifest.get("python") != "3.12"
         ):
             raise FabricUpdateError("fabric_bundle_invalid")
+
+        project_wheel = manifest.get("projectWheel")
+        wheel_count = manifest.get("wheelCount")
+        bootstrap_sha = manifest.get("bootstrapSha256")
+        if (
+            not isinstance(project_wheel, str)
+            or not project_wheel.startswith("runner_fabric-")
+            or not project_wheel.endswith(".whl")
+            or not isinstance(wheel_count, int)
+            or isinstance(wheel_count, bool)
+            or not 1 <= wheel_count <= _MAX_FILES
+            or not isinstance(bootstrap_sha, str)
+            or re.fullmatch(r"[0-9a-f]{64}", bootstrap_sha) is None
+        ):
+            raise FabricUpdateError("fabric_bundle_invalid")
+
         commit_file = self.bundle / "COMMIT_SHA"
         try:
-            if commit_file.is_symlink() or commit_file.read_text("ascii").strip() != commit:
+            if (
+                commit_file.is_symlink()
+                or commit_file.read_text(encoding="ascii").strip() != commit
+            ):
                 raise FabricUpdateError("fabric_bundle_invalid")
+        except (OSError, UnicodeDecodeError) as exc:
+            raise FabricUpdateError("fabric_bundle_invalid") from exc
+
+        sums = _parse_sums(
+            _read_regular(
+                self.bundle / "SHA256SUMS",
+                128 * 1024,
+                "fabric_bundle_invalid",
+            )
+        )
+        bootstrap = self.bundle / "BOOTSTRAP.py"
+        bootstrap_bytes = _read_regular(
+            bootstrap,
+            512 * 1024,
+            "fabric_bundle_invalid",
+        )
+        if hashlib.sha256(bootstrap_bytes).hexdigest() != bootstrap_sha:
+            raise FabricUpdateError("fabric_bundle_integrity_failed")
+
+        try:
+            wheels = sorted(self.bundle.glob("*.whl"))
+            actual_entries = {entry.name for entry in self.bundle.iterdir()}
         except OSError as exc:
             raise FabricUpdateError("fabric_bundle_invalid") from exc
-        bootstrap = self.bundle / "BOOTSTRAP.py"
-        if bootstrap.is_symlink() or not bootstrap.is_file():
+        if len(wheels) != wheel_count or project_wheel not in {w.name for w in wheels}:
             raise FabricUpdateError("fabric_bundle_invalid")
+
+        payload_names = {"BOOTSTRAP.py", *(wheel.name for wheel in wheels)}
+        expected_entries = payload_names | {
+            "BUNDLE.json",
+            "COMMIT_SHA",
+            "SHA256SUMS",
+        }
+        if actual_entries != expected_entries or set(sums) != payload_names:
+            raise FabricUpdateError("fabric_bundle_invalid")
+
+        payloads = {"BOOTSTRAP.py": bootstrap_bytes}
+        for wheel in wheels:
+            payloads[wheel.name] = _read_regular(
+                wheel,
+                _MAX_ENTRY,
+                "fabric_bundle_invalid",
+            )
+        for name, payload in payloads.items():
+            if hashlib.sha256(payload).hexdigest() != sums[name]:
+                raise FabricUpdateError("fabric_bundle_integrity_failed")
         return bootstrap
 
     def _run_fixed(self, bootstrap: Path, action: str, category: str) -> None:
@@ -609,6 +679,50 @@ def _read_json(path: Path, max_bytes: int, category: str) -> dict[str, Any]:
     return raw
 
 
+
+def _read_regular(path: Path, max_bytes: int, category: str) -> bytes:
+    try:
+        info = path.lstat()
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.getuid()
+            or info.st_nlink != 1
+            or info.st_size <= 0
+            or info.st_size > max_bytes
+        ):
+            raise FabricUpdateError(category)
+        raw = path.read_bytes()
+    except OSError as exc:
+        raise FabricUpdateError(category) from exc
+    if len(raw) > max_bytes:
+        raise FabricUpdateError(category)
+    return raw
+
+
+def _parse_sums(raw: bytes) -> dict[str, str]:
+    try:
+        lines = raw.decode("ascii").splitlines()
+    except UnicodeDecodeError as exc:
+        raise FabricUpdateError("fabric_bundle_invalid") from exc
+    rows: dict[str, str] = {}
+    for line in lines:
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2:
+            raise FabricUpdateError("fabric_bundle_invalid")
+        digest, name = parts
+        if (
+            re.fullmatch(r"[0-9a-f]{64}", digest) is None
+            or not name
+            or name in rows
+            or "/" in name
+            or "\\" in name
+        ):
+            raise FabricUpdateError("fabric_bundle_invalid")
+        rows[name] = digest
+    if not rows:
+        raise FabricUpdateError("fabric_bundle_invalid")
+    return rows
+
 def _category(exc: FabricUpdateError) -> str:
     value = str(exc)
     allowed = {
@@ -622,6 +736,7 @@ def _category(exc: FabricUpdateError) -> str:
         "fabric_transaction_invalid",
         "fabric_artifact_unavailable",
         "fabric_bundle_invalid",
+        "fabric_bundle_integrity_failed",
         "fabric_bundle_storage_conflict",
         "fabric_bundle_recovery_failed",
         "fabric_preflight_failed",

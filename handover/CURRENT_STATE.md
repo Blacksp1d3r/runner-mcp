@@ -1,3 +1,24 @@
+## 2026-10-04 — bounded Runner Fabric host inspection bridge
+
+Tracking: #247. Cross-repo dependency: Runner Fabric #760 / I5 #751.
+
+Runner MCP now proxies one new fixed zero-argument Runner Fabric capability:
+- `fabric_host_inspect()` -> loopback Fabric `host_inspect`;
+- strict bridge allow-list now includes exactly `host_inspect` beside the existing work-unit tools;
+- result must be `runner.fabric/host-inspection/v1` with `mutation_enabled=false`;
+- top-level, host and browser shapes are validated fail-closed;
+- nested output is size/node bounded and rejects keys that could expose paths, credentials, endpoints, argv, command or executable authority;
+- the public plugin takes no arguments, so callers cannot select a path, command, executable, service, URL or environment;
+- audit records only `fabric_host_inspect`, semantic `host:local` and outcome;
+- Fabric work-unit behavior and authority are unchanged.
+
+Next:
+1. exact-head Runner MCP validation;
+2. merge after Runner Fabric #760 is green/merged;
+3. self-update the managed Runner MCP runtime;
+4. update the managed Runner Fabric runtime;
+5. prove `fabric_host_inspect` through the existing remote connector and use that proof instead of Desktop Commander for browser/runtime readiness.
+
 ## 2026-10-03 — First-party client path replaces routine broad remote control
 
 Canonical code base before this slice: `1196630299387d2f254629941790ee9b9cd70dca`.

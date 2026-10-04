@@ -7,6 +7,7 @@
 [![PyPI](https://img.shields.io/pypi/v/aifordable-runner-mcp)](https://pypi.org/project/aifordable-runner-mcp/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 [![Python 3.12+](https://img.shields.io/badge/Python-3.12%2B-blue.svg)](pyproject.toml)
+[![AllMCPs Verified](https://allmcps.com/api/badge/runner-mcp)](https://allmcps.com/mcp/runner-mcp?verify=5c8910e5-98c5-4483-a29b-b8a2a6419752)
 
 **Let an AI run tests and controlled staging operations on your own server without giving it a general-purpose remote shell.**
 

@@ -137,8 +137,8 @@ def test_label_withdrawal_supports_drain_without_process_kill(tmp_path: Path) ->
                 "total_count": 2,
                 "labels": [
                     {"name": "self-hosted", "type": "read-only"},
-                    {"name": "Linux", "type": "custom"},
-                    {"name": "X64", "type": "custom"},
+                    {"name": "Linux", "type": "read-only"},
+                    {"name": "X64", "type": "read-only"},
                 ],
             },
             {

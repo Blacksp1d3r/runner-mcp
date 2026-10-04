@@ -1378,3 +1378,86 @@ def test_compatibility_contract_is_canonical_and_host_neutral(tmp_path: Path) ->
         "validation_dependencies": ["a-test", "z-test"],
     }
     assert str(root) not in str(contract)
+
+
+def test_local_recovery_qualification_interrupts_after_install_and_recovers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    baseline = "6" * 40
+    target = "7" * 40
+    current = {"commit": baseline}
+
+    class QualificationSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            result = super().sync_project_main_tip(project, commit)
+            current["commit"] = commit
+            return result
+
+        def restore_project_main_commit_for_recovery(self, project: str, commit: str):
+            result = super().restore_project_main_commit_for_recovery(project, commit)
+            current["commit"] = commit
+            return result
+
+    source = QualificationSource()
+    calls: list[list[str]] = []
+
+    def installer(command, **kwargs):
+        command = list(command)
+        calls.append(command)
+        if len(command) > 3 and command[3] == "wheel":
+            stage_fake_wheel(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        source=source,
+        installer_runner=installer,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda root: {"commit": current["commit"], "clean": True},
+    )
+
+    result = manager.qualify_install_recovery(target)
+
+    assert result["interrupted"] is True
+    assert result["commit"] == target
+    assert result["recovery_required"] is True
+    transaction = manager._package_installer.pending_transaction()
+    assert transaction is not None
+    assert transaction["job_id"] == result["job_id"]
+    assert transaction["target_commit"] == target
+    assert transaction["baseline_commit"] == baseline
+    assert current["commit"] == target
+    assert manager.runtime_status()["install_recovery_pending"] is True
+    assert manager.status(result["job_id"])["state"] == "installing"
+
+    install_calls = [
+        command
+        for command in calls
+        if len(command) > 3 and command[3] == "install"
+    ]
+    verify_calls = [
+        command
+        for command in calls
+        if len(command) > 1
+        and command[1:] == ["-c", "import runner_mcp; import runner_mcp.self_update"]
+    ]
+    assert len(install_calls) == 1
+    assert verify_calls == []
+
+    with pytest.raises(SelfUpdateError, match="recovery is still pending"):
+        manager.start("8" * 40)
+
+    assert manager.safety.stop_file is not None
+    manager.safety.stop_file.touch()
+    recovered = manager.recover_installation()
+
+    assert recovered["job_id"] == result["job_id"]
+    assert recovered["commit"] == baseline
+    assert current["commit"] == baseline
+    assert manager.runtime_status()["install_recovery_pending"] is False
+    assert manager.runtime_status()["last_installed_commit"] == baseline
+    assert manager.status(result["job_id"])["state"] == "interrupted"

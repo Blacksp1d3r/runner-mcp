@@ -160,3 +160,22 @@ def test_invalid_transport_binding_is_rejected() -> None:
         match="transport binding",
     ):
         spec(transport_binding_key="../guest")
+
+
+@pytest.mark.parametrize(
+    "value",
+    [
+        "x" * 15,
+        "x" * 4097,
+        "safe-but has-space" + "x" * 8,
+        "unsafe\n" + "x" * 16,
+        "unsafe\x00" + "x" * 16,
+        "é" * 20,
+    ],
+)
+def test_registration_secret_rejects_unsafe_values(value: str) -> None:
+    with pytest.raises(
+        CIRunnerGuestEnrollmentError,
+        match="registration secret is invalid",
+    ):
+        CIRunnerRegistrationSecret(value)

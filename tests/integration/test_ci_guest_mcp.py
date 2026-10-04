@@ -247,7 +247,7 @@ def test_ci_guest_enrollment_uses_private_allowlisted_spec(
         }
     )
     private = {
-        "GITHUB_TOKEN": token,
+        "RUNNER_MCP_GITHUB_TOKEN": token,
         "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
             [
                 {

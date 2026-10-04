@@ -22,6 +22,22 @@ Maintenance-mode rules:
 
 The canonical public alpha release is v0.1.3. Live acceptance covers bounded first-party control, self-update/restart convergence and deliberate interrupted-install recovery. Remaining open issues are external/owner-controlled follow-up rather than core runtime blockers.
 
+## Cross-cutting — end-to-end operational snapshot
+
+Tracking: #269; cross-repo source of orchestration truth: Runner Fabric #867.
+
+A concrete operator-correctness gap was observed on 2026-10-04: the local Runner MCP test queue could correctly report `0 queued / 0 claimed / 0 running` with all test workers available while the first-party client still reported that systems were busy. Therefore local test-queue idleness must never be presented as end-to-end idleness.
+
+Runner MCP will expose one coarse, read-only, bounded `operational_snapshot` over the existing canonical control path:
+
+`client -> control relay -> Agent Bus -> Runner MCP -> Runner Fabric -> worker/work-unit -> durable result -> acknowledgement`.
+
+The snapshot must, where canonical evidence exists, distinguish queued, claimed/inflight, running, waiting-for-result, waiting-for-ack/replay and retrying work; expose oldest-pending and last-activity age; show bounded worker capacity/saturation and primary/fallback/degraded transport state; and return explicit `unknown` / `not_configured` instead of false green when a layer cannot be observed.
+
+Runner MCP must not create a second queue, scheduler or orchestration state store. Runner Fabric remains the owner of orchestration truth; Runner MCP performs only bounded validation/projection. The tool exposes no payloads, prompts, file names, host paths, endpoints, credentials, raw logs, arbitrary queue browsing, shell, process or network authority.
+
+Acceptance requires a synthetic and live-observable case where the local test queue is idle while upstream relay/Agent-Bus/Fabric work is pending to report the system as non-idle and attribute the correct layer; a truly idle path must converge to clear across all observable layers. One coarse snapshot call is preferred over many small status calls.
+
 ## Cross-cutting — AI fault containment with proportional security gates
 
 Runner MCP assumes that an AI/client can misunderstand instructions, hallucinate, follow prompt

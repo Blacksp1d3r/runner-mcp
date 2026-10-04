@@ -744,10 +744,6 @@ class SelfUpdateManager:
         config = self._project_config()
         if not self._required_profiles_available():
             raise SelfUpdateError("Runner MCP self-update validation profiles are unavailable")
-        if not self._restart_ready():
-            raise SelfUpdateError(
-                "Runner MCP self-update requires a safe loopback restart runtime"
-            )
         self.safety.assert_project_action_allowed(
             ActionClass.TEST,
             environment=config.environment,

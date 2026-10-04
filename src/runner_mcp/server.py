@@ -804,6 +804,31 @@ def build_mcp(
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
         return result
 
+    def fabric_inspect_external_target(
+        target_allocation_id: str,
+        environment_id: str,
+    ) -> dict:
+        """Return bounded read-only evidence for one trusted external target."""
+
+        try:
+            result = _require_fabric_bridge().inspect_external_target(
+                target_allocation_id=target_allocation_id,
+                environment_id=environment_id,
+            )
+        except FabricBridgeError as exc:
+            _audit_fabric(
+                "fabric_inspect_external_target",
+                target_allocation_id,
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_inspect_external_target",
+            target_allocation_id,
+            str(result.get("readiness", "unknown")),
+        )
+        return result
+
     def fabric_run_work_unit(
         work_unit_id: str,
         project_id: str,
@@ -866,6 +891,7 @@ def build_mcp(
 
     if fabric_bridge is not None:
         mcp.tool()(fabric_host_inspect)
+        mcp.tool()(fabric_inspect_external_target)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)
         mcp.tool()(fabric_cancel_work_unit)

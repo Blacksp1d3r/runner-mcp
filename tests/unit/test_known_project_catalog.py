@@ -9,6 +9,7 @@ from runner_mcp.config import ProjectConfig, ProjectRegistry
 from runner_mcp.known_project_catalog import (
     KnownProjectRegistrationError,
     discover_known_project_root,
+    prepare_known_project,
     register_known_project,
 )
 
@@ -284,3 +285,140 @@ def test_registration_rejects_reload_without_expected_project(tmp_path: Path) ->
         )
 
     assert "aifordable" not in registry.projects
+
+
+
+def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    registry = _registry(anchor)
+    calls: list[dict[str, object]] = []
+
+    def runner(argv, **kwargs):
+        calls.append({"argv": argv, **kwargs})
+        if "clone" in argv:
+            target = Path(argv[-1])
+            target.mkdir()
+            return _completed("")
+        return _completed("https://github.com/Blacksp1d3r/AIfordable.git\n")
+
+    result = prepare_known_project(
+        registry,
+        project_id="aifordable",
+        runner=runner,
+    )
+
+    assert result["state"] == "prepared"
+    target = tmp_path / "AIfordable"
+    assert target.is_dir()
+    clone_call = calls[0]
+    assert clone_call["argv"][:-1] == [
+        "git",
+        "-c",
+        "core.hooksPath=/dev/null",
+        "clone",
+        "--origin",
+        "origin",
+        "--no-tags",
+        "--",
+        "https://github.com/Blacksp1d3r/AIfordable.git",
+    ]
+    assert Path(clone_call["argv"][-1]).parent == tmp_path
+    assert Path(clone_call["argv"][-1]).name.startswith(".aifordable-clone-")
+    assert clone_call["cwd"] == str(tmp_path)
+    assert clone_call["shell"] is False
+    assert clone_call["timeout"] == 180.0
+
+
+def test_prepare_known_project_is_idempotent_for_exact_existing_clone(
+    tmp_path: Path,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    target = tmp_path / "AIfordable"
+    target.mkdir()
+
+    result = prepare_known_project(
+        _registry(anchor),
+        project_id="aifordable",
+        runner=lambda *_args, **_kwargs: _completed(
+            "git@github.com:Blacksp1d3r/AIfordable.git\n"
+        ),
+    )
+
+    assert result["state"] == "already-prepared"
+
+
+def test_prepare_known_project_refuses_wrong_existing_destination(
+    tmp_path: Path,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    target = tmp_path / "AIfordable"
+    target.mkdir()
+
+    with pytest.raises(
+        KnownProjectRegistrationError,
+        match="unexpected repository",
+    ):
+        prepare_known_project(
+            _registry(anchor),
+            project_id="aifordable",
+            runner=lambda *_args, **_kwargs: _completed(
+                "https://github.com/example/AIfordable.git\n"
+            ),
+        )
+
+
+def test_prepare_known_project_cleans_failed_temporary_clone(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    def runner(argv, **kwargs):
+        target = Path(argv[-1])
+        target.mkdir()
+        (target / "partial").write_text("partial", encoding="utf-8")
+        return _completed("", returncode=1)
+
+    with pytest.raises(KnownProjectRegistrationError, match="clone failed"):
+        prepare_known_project(
+            _registry(anchor),
+            project_id="aifordable",
+            runner=runner,
+        )
+
+    assert not (tmp_path / "AIfordable").exists()
+    assert not any(path.name.startswith(".aifordable-clone-") for path in tmp_path.iterdir())
+
+
+def test_prepare_known_project_rejects_ambiguous_parent_roots(tmp_path: Path) -> None:
+    first = tmp_path / "one" / "runner-mcp"
+    second = tmp_path / "two" / "other"
+    first.mkdir(parents=True)
+    second.mkdir(parents=True)
+    registry = ProjectRegistry(
+        projects={
+            "runner-mcp": ProjectConfig(
+                display_name="Runner MCP",
+                repository="Blacksp1d3r/runner-mcp",
+                root=first,
+            ),
+            "other": ProjectConfig(
+                display_name="Other",
+                repository="example/other",
+                root=second,
+            ),
+        }
+    )
+
+    with pytest.raises(
+        KnownProjectRegistrationError,
+        match="destination is ambiguous",
+    ):
+        prepare_known_project(
+            registry,
+            project_id="aifordable",
+            runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("git must not run")
+            ),
+        )

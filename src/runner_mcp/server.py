@@ -29,12 +29,20 @@ from .ci_runner_enrollment import (
     CIRunnerEnrollmentManager,
 )
 from .ci_runner_github import CIRunnerGitHubController
+from .ci_runner_guest_enrollment import (
+    CIRunnerGuestEnrollmentError,
+    CIRunnerGuestEnrollmentManager,
+    CIRunnerGuestSpec,
+)
+from .ci_runner_guest_fabric_transport import CIRunnerGuestFabricTransport
+from .ci_runner_guest_github import CIRunnerGuestGitHubController
 from .ci_runner_lifecycle import (
     CIRunnerLifecycleError,
     inspect_ci_runner,
     parse_ci_runner_specs,
     plan_ci_runner,
 )
+from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
@@ -479,6 +487,25 @@ def build_mcp(
         )
         else None
     )
+
+    ci_guest_enrollment = None
+    if fabric_bridge is not None and ci_runner_specs and github_token:
+        handoff_root = settings.projects_config.parent / "ci-runner-handoffs"
+        try:
+            handoff_root.mkdir(mode=0o700, exist_ok=True)
+            ci_guest_enrollment = CIRunnerGuestEnrollmentManager(
+                github=CIRunnerGuestGitHubController(
+                    GitHubApiSession(token=github_token)
+                ),
+                transport=CIRunnerGuestFabricTransport(
+                    handoffs=CIRunnerSecretHandoffStore(root=handoff_root),
+                    fabric=fabric_bridge,
+                ),
+            )
+        except (OSError, TypeError, ValueError) as exc:
+            raise RuntimeError(
+                "CI guest enrollment private configuration is invalid"
+            ) from exc
 
     @mcp.tool()
     def runtime_status() -> dict:
@@ -1077,6 +1104,16 @@ def build_mcp(
             raise ValueError("Unknown or disabled CI runner")
         return spec
 
+    def _ci_guest_spec(alias: str) -> CIRunnerGuestSpec:
+        spec = _ci_runner_spec(alias)
+        return CIRunnerGuestSpec(
+            alias=spec.alias,
+            repository=spec.repository,
+            runner_name=spec.runner_name,
+            labels=spec.labels,
+            transport_binding_key=spec.alias,
+        )
+
     def list_ci_runners() -> list[dict[str, object]]:
         """List configured CI runner aliases without private host paths."""
         result = [
@@ -1194,12 +1231,52 @@ def build_mcp(
         )
         return result
 
+    def ci_runner_guest_enroll(alias: str) -> dict:
+        """Enroll one configured isolated CI guest without exposing registration secrets."""
+        if ci_guest_enrollment is None:
+            raise ValueError("CI guest enrollment is not configured")
+        try:
+            safety.assert_action_allowed(ActionClass.SERVICE)
+            result = ci_guest_enrollment.enroll(
+                _ci_guest_spec(alias)
+            ).to_payload()
+        except (
+            CIRunnerGuestEnrollmentError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+            ValueError,
+        ) as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "ci_runner_guest_enroll",
+                    alias,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError("CI guest enrollment is unavailable") from exc
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "ci_runner_guest_enroll",
+                alias,
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
     if ci_runner_specs:
         mcp.tool()(list_ci_runners)
         mcp.tool()(ci_runner_status)
         mcp.tool()(ci_runner_plan)
         if ci_runner_enrollment is not None:
             mcp.tool()(ci_runner_enroll)
+        if ci_guest_enrollment is not None:
+            mcp.tool()(ci_runner_guest_enroll)
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:

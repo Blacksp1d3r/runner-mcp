@@ -707,6 +707,15 @@ def test_startup_keeps_inactive_marker_during_install_recovery(
     assert restarted.runtime_status()["install_recovery_pending"] is True
 
 
+def test_restart_component_state_rejects_overlap(tmp_path: Path) -> None:
+    with pytest.raises(SelfUpdateError, match="contradictory"):
+        make_manager(
+            tmp_path,
+            restart_components={"server", "completion-watcher"},
+            inactive_restart_components={"completion-watcher"},
+        )
+
+
 def test_inactive_restart_selection_rejects_server(tmp_path: Path) -> None:
     with pytest.raises(SelfUpdateError, match="cannot be an inactive"):
         make_manager(

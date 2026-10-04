@@ -315,6 +315,8 @@ def build_mcp(
     safety_guard: OperatorSafetyGuard | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    server_bind_host: str | None = None,
+    server_bind_port: int | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
     mcp = MCPServer(
@@ -402,6 +404,8 @@ def build_mcp(
         tests=tests,
         source=source_sync,
         resource_url=settings.resource_url,
+        server_bind_host=server_bind_host,
+        server_bind_port=server_bind_port,
         restart_components=(
             self_update_restart_components
             if self_update_restart_components is not None
@@ -1763,6 +1767,8 @@ def create_app(
     registry: ProjectRegistry | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    server_bind_host: str | None = None,
+    server_bind_port: int | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
@@ -1779,6 +1785,8 @@ def create_app(
         safety_guard=safety_guard,
         secret_values=secret_values,
         self_update_restart_components=self_update_restart_components,
+        server_bind_host=server_bind_host,
+        server_bind_port=server_bind_port,
     )
     transport_security = transport_security_for(settings.resource_url)
 

@@ -343,6 +343,7 @@ def reexec_component(
     config_dir: Path,
     component: str,
     *,
+    server_host: str | None = None,
     server_port: int | None = None,
     exec_fn: Callable[[str, list[str]], object] = os.execv,
 ) -> None:
@@ -350,13 +351,15 @@ def reexec_component(
     config = str(config_dir.expanduser().resolve())
     argv = [str(executable), "--config-dir", config]
     if component == "server":
+        if server_host not in _LOOPBACK_HOSTS:
+            raise SelfUpdateError("Runner MCP server restart host is invalid")
         if server_port is None or not 1 <= server_port <= 65_535:
             raise SelfUpdateError("Runner MCP server restart port is invalid")
         argv.extend(
             [
                 "serve",
                 "--host",
-                "127.0.0.1",
+                server_host,
                 "--port",
                 str(server_port),
             ]
@@ -385,6 +388,8 @@ class SelfUpdateManager:
         source: SourceSynchronizer,
         installer_runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
         resource_url: str,
+        server_bind_host: str | None = None,
+        server_bind_port: int | None = None,
         server_reexec: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
@@ -425,27 +430,40 @@ class SelfUpdateManager:
         except PackageInstallError as exc:
             raise SelfUpdateError("Self-update package installer is unavailable") from exc
         self._restart_delay_seconds = restart_delay_seconds
+        self._server_host: str | None = None
         self._server_port: int | None = None
-        try:
-            parsed_resource = urlsplit(resource_url)
-            port = parsed_resource.port
-        except ValueError:
-            parsed_resource = None
-            port = None
-        if (
-            parsed_resource is not None
-            and parsed_resource.scheme in {"http", "https"}
-            and parsed_resource.hostname in _LOOPBACK_HOSTS
-            and parsed_resource.path.rstrip("/") == "/mcp"
-            and parsed_resource.username is None
-            and parsed_resource.password is None
-            and not parsed_resource.query
-            and not parsed_resource.fragment
-        ):
-            if port is None:
-                port = 443 if parsed_resource.scheme == "https" else 80
-            if 1 <= port <= 65_535:
-                self._server_port = port
+        if server_bind_host is not None or server_bind_port is not None:
+            if (
+                server_bind_host not in _LOOPBACK_HOSTS
+                or not isinstance(server_bind_port, int)
+                or isinstance(server_bind_port, bool)
+                or not 1 <= server_bind_port <= 65_535
+            ):
+                raise SelfUpdateError("Runner MCP server bind is invalid")
+            self._server_host = server_bind_host
+            self._server_port = server_bind_port
+        else:
+            try:
+                parsed_resource = urlsplit(resource_url)
+                port = parsed_resource.port
+            except ValueError:
+                parsed_resource = None
+                port = None
+            if (
+                parsed_resource is not None
+                and parsed_resource.scheme in {"http", "https"}
+                and parsed_resource.hostname in _LOOPBACK_HOSTS
+                and parsed_resource.path.rstrip("/") == "/mcp"
+                and parsed_resource.username is None
+                and parsed_resource.password is None
+                and not parsed_resource.query
+                and not parsed_resource.fragment
+            ):
+                if port is None:
+                    port = 443 if parsed_resource.scheme == "https" else 80
+                if 1 <= port <= 65_535:
+                    self._server_host = parsed_resource.hostname
+                    self._server_port = port
         self._server_reexec = server_reexec
         self._restart_components = _normalize_restart_components(restart_components)
         self._lock = threading.RLock()
@@ -946,11 +964,12 @@ class SelfUpdateManager:
         def restart_component() -> object:
             if self._server_reexec is not None:
                 return self._server_reexec()
-            if self._server_port is None:
+            if self._server_host is None or self._server_port is None:
                 raise SelfUpdateError("Runner MCP server restart is unavailable")
             return reexec_component(
                 self.config_dir,
                 "server",
+                server_host=self._server_host,
                 server_port=self._server_port,
             )
 

@@ -37,7 +37,7 @@ def spec(tmp_path: Path) -> CIRunnerSpec:
         repository="Blacksp1d3r/AIfordable",
         runner_name="aifordable-lab-ci",
         runner_root=tmp_path / "runner",
-        work_root=tmp_path / "work",
+        work_root=tmp_path / "runner" / "_work",
         labels=("aifordable-ci",),
     )
 

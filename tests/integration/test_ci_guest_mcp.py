@@ -314,3 +314,108 @@ def test_ci_guest_enrollment_uses_private_allowlisted_spec(
     audit = (tmp_path / "audit-enroll.jsonl").read_text(encoding="utf-8")
     assert token not in audit
     assert str(runner_root) not in audit
+
+
+def test_fabric_agent_restart_is_argumentless_and_bounded(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeFabricBridge:
+        def __init__(self, _config) -> None:
+            pass
+
+    def fake_restart(**kwargs):
+        calls.append(kwargs)
+        return {
+            "state": "restarted",
+            "pid_changed": True,
+            "healthy": True,
+        }
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricBridgeClient",
+        FakeFabricBridge,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.restart_fabric_qualification_agent",
+        fake_restart,
+    )
+
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit-restart.jsonl",
+        rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator.stop",
+        retention_confirmed=True,
+        fabric_resource_url="http://127.0.0.1:9010/mcp",
+        fabric_bearer_token="f" * 32,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = _headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        listed = client.post(
+            "/mcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "id": 30, "method": "tools/list", "params": {}},
+        )
+        assert "fabric_agent_restart" in listed.text
+
+        restarted = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 31,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_agent_restart",
+                    "arguments": {},
+                },
+            },
+        )
+        payload = _tool_json(restarted)
+
+    assert payload == {
+        "state": "restarted",
+        "pid_changed": True,
+        "healthy": True,
+    }
+    assert len(calls) == 1
+    assert calls[0]["config_dir"] == tmp_path
+    assert calls[0]["resource_url"] == "http://127.0.0.1:9010/mcp"
+    assert calls[0]["bearer_token"] == "f" * 32
+    assert "127.0.0.1" not in restarted.text
+    assert "f" * 32 not in restarted.text
+    audit = (tmp_path / "audit-restart.jsonl").read_text(encoding="utf-8")
+    assert "fabric_agent_restart" in audit
+    assert "127.0.0.1" not in audit
+    assert "f" * 32 not in audit

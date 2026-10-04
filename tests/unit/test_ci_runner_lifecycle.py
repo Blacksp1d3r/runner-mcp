@@ -118,10 +118,10 @@ def test_invalid_or_ambiguous_config_fails_closed(
 def test_symlink_runner_root_is_never_ready(tmp_path: Path) -> None:
     real = tmp_path / "real"
     real.mkdir()
+    (real / "_work").mkdir()
     link = tmp_path / "link"
     link.symlink_to(real, target_is_directory=True)
-    work = tmp_path / "work"
-    work.mkdir()
+    work = link / "_work"
 
     spec = parse_ci_runner_specs(raw(link, work))["aifordable-lab-ci"]
     status = inspect_ci_runner(spec)

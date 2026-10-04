@@ -323,13 +323,15 @@ def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) 
         "origin",
         "--no-tags",
         "--",
-        "https://github.com/Blacksp1d3r/AIfordable.git",
+        "git@github.com:Blacksp1d3r/AIfordable.git",
     ]
     assert Path(clone_call["argv"][-1]).parent == tmp_path
     assert Path(clone_call["argv"][-1]).name.startswith(".aifordable-clone-")
     assert clone_call["cwd"] == str(tmp_path)
+    assert clone_call["stdin"] is subprocess.DEVNULL
     assert clone_call["shell"] is False
     assert clone_call["timeout"] == 180.0
+    assert clone_call["env"]["GIT_TERMINAL_PROMPT"] == "0"
 
 
 def test_prepare_known_project_is_idempotent_for_exact_existing_clone(
@@ -391,6 +393,39 @@ def test_prepare_known_project_cleans_failed_temporary_clone(tmp_path: Path) -> 
 
     assert not (tmp_path / "AIfordable").exists()
     assert not any(path.name.startswith(".aifordable-clone-") for path in tmp_path.iterdir())
+
+
+def test_prepare_known_project_falls_back_to_fixed_https_after_ssh_failure(
+    tmp_path: Path,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    calls: list[list[str]] = []
+
+    def runner(argv, **kwargs):
+        calls.append(argv)
+        target = Path(argv[-1])
+        if "clone" in argv:
+            target.mkdir()
+            if argv[-2].startswith("git@github.com:"):
+                (target / "partial").write_text("partial", encoding="utf-8")
+                return _completed("", returncode=1)
+            return _completed("")
+        return _completed("https://github.com/Blacksp1d3r/AIfordable.git\n")
+
+    result = prepare_known_project(
+        _registry(anchor),
+        project_id="aifordable",
+        runner=runner,
+    )
+
+    assert result["state"] == "prepared"
+    clone_calls = [argv for argv in calls if "clone" in argv]
+    assert [argv[-2] for argv in clone_calls] == [
+        "git@github.com:Blacksp1d3r/AIfordable.git",
+        "https://github.com/Blacksp1d3r/AIfordable.git",
+    ]
+    assert not (tmp_path / "AIfordable" / "partial").exists()
 
 
 def test_prepare_known_project_rejects_ambiguous_parent_roots(tmp_path: Path) -> None:

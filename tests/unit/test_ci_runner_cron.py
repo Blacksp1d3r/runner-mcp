@@ -72,6 +72,17 @@ def test_render_contains_only_alias_not_private_runner_values(tmp_path: Path) ->
     assert "aifordable-ci" not in rendered
 
 
+def test_render_rejects_empty_runner_set(tmp_path: Path) -> None:
+    executable, config = prepare(tmp_path)
+
+    with pytest.raises(CIRunnerCronError, match="no CI runners are configured"):
+        render_ci_runner_cron_block(
+            executable=executable,
+            config_dir=config,
+            specs={},
+        )
+
+
 def test_install_preserves_existing_cron_and_is_idempotent(
     tmp_path: Path,
     monkeypatch,

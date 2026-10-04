@@ -7,6 +7,21 @@ Handoff policy: `roadmap/ROADMAP.md` is the canonical architectural roadmap; `ro
 
 Status policy: this roadmap is the architectural source of truth for implemented and remaining phases. `handover/CURRENT_STATE.md` is chronological evidence of completed work, while GitHub CI and release records are authoritative for exact validation results such as test counts.
 
+## Maintenance mode — alpha/MVP core complete
+
+Runner MCP's technical alpha/MVP core is complete and the project is in maintenance mode.
+
+Maintenance-mode rules:
+
+- do not add speculative features merely to keep the roadmap moving;
+- accept security fixes, correctness bugs, compatibility work and concrete operator needs;
+- preserve the small deny-by-default transport/execution boundary rather than growing into a general remote-control platform;
+- keep orchestration, scheduling, provider/API behavior, change planning, higher-level autonomy and fleet-scale control in Runner Fabric;
+- deferred items in later phases are not launch blockers and should be revisited only when a real use case justifies them;
+- discovery/marketing work is non-blocking and must not cause provider-specific runtime, package, auth or hosting changes.
+
+The canonical public alpha release is v0.1.3. Live acceptance covers bounded first-party control, self-update/restart convergence and deliberate interrupted-install recovery. Remaining open issues are external/owner-controlled follow-up rather than core runtime blockers.
+
 ## Cross-cutting — AI fault containment with proportional security gates
 
 Runner MCP assumes that an AI/client can misunderstand instructions, hallucinate, follow prompt
@@ -568,11 +583,11 @@ Canonical publication completed:
 
 Remaining discovery work is intentionally non-blocking:
 
-- Glama submission/claim requires maintainer-authenticated GitHub/OAuth and remains owner-controlled;
+- Glama listing discovery, maintainer claim and metadata verification are complete; Glama hosting/release/Gateway remain intentionally unused;
 - Smithery is deliberately skipped unless it exposes a repository-only path that preserves the canonical self-hosted architecture unchanged;
-- AllMCPs remains an optional free normal-review submission; no paid boost/featured placement is justified;
+- AllMCPs listing ownership is verified through the free README path; no paid boost/featured placement is justified;
 - stale third-party directory metadata is tracked separately in #263 and must not trigger package/runtime changes;
-- publish one technical launch post as a separate human-controlled action, then adapt later outreach from real feedback instead of mass cross-posting.
+- one technical launch post remains deliberately deferred until `aifordable.com` is ready enough to serve as the public umbrella/landing page.
 
 ## Phase 4 — staging service management
 

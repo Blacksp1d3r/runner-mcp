@@ -197,6 +197,7 @@ def render_env_file(
             or key in GITHUB_MAILBOX_ENV_KEYS
             or key == "RUNNER_MCP_RATE_LIMIT_PER_MINUTE"
             or key == "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH"
+            or key == "RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"
         ):
             values[key] = value
     lines = [
@@ -299,6 +300,7 @@ def install_private_configuration(
             or key in GITHUB_MAILBOX_ENV_KEYS
             or key == "RUNNER_MCP_RATE_LIMIT_PER_MINUTE"
             or key == "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH"
+            or key == "RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"
         }
         if not rotate_token:
             candidate = existing.get("RUNNER_MCP_BEARER_TOKEN", "")

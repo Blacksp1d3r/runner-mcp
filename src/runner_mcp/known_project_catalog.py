@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import secrets
 import shutil
 import subprocess
@@ -210,11 +211,34 @@ def register_known_project(
 
 
 
+def _github_clone_environment(github_token: str | None) -> dict[str, str]:
+    environment = _git_environment(network=True)
+    if github_token is None:
+        return environment
+    if not isinstance(github_token, str):
+        raise KnownProjectRegistrationError("GitHub clone credential is invalid")
+    token = github_token.strip()
+    if not token or any(char in token for char in ("\x00", "\r", "\n")):
+        raise KnownProjectRegistrationError("GitHub clone credential is invalid")
+    credential = base64.b64encode(
+        f"x-access-token:{token}".encode()
+    ).decode("ascii")
+    environment.update(
+        {
+            "GIT_CONFIG_COUNT": "1",
+            "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+            "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: basic {credential}",
+        }
+    )
+    return environment
+
+
 def prepare_known_project(
     registry: ProjectRegistry,
     *,
     project_id: str,
     runner=subprocess.run,
+    github_token: str | None = None,
 ) -> dict[str, str]:
     """Prepare one catalogued clone beside an already-trusted project root."""
 
@@ -257,48 +281,67 @@ def prepare_known_project(
             "Known project temporary destination is unavailable"
         )
 
-    repository_urls = (
-        f"git@github.com:{project.repository}.git",
-        f"https://github.com/{project.repository}.git",
-    )
+    repository_url = f"https://github.com/{project.repository}.git"
     try:
-        result = None
-        for repository_url in repository_urls:
-            if temporary.exists():
-                shutil.rmtree(temporary, ignore_errors=True)
-            result = runner(
-                [
-                    "git",
-                    "-c",
-                    "core.hooksPath=/dev/null",
-                    "clone",
-                    "--origin",
-                    "origin",
-                    "--no-tags",
-                    "--",
-                    repository_url,
-                    str(temporary),
-                ],
-                cwd=str(parent),
-                stdin=subprocess.DEVNULL,
-                capture_output=True,
-                text=True,
-                timeout=180.0,
-                check=False,
-                shell=False,
-                env=_git_environment(network=True),
-            )
-            if (
-                isinstance(result, subprocess.CompletedProcess)
-                and result.returncode == 0
-            ):
-                break
+        result = runner(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "clone",
+                "--origin",
+                "origin",
+                "--no-tags",
+                "--no-checkout",
+                "--branch",
+                "main",
+                "--single-branch",
+                "--",
+                repository_url,
+                str(temporary),
+            ],
+            cwd=str(parent),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=180.0,
+            check=False,
+            shell=False,
+            env=_github_clone_environment(github_token),
+        )
         if not isinstance(result, subprocess.CompletedProcess):
             raise KnownProjectRegistrationError(
                 "Known project clone result is invalid"
             )
         if result.returncode != 0:
             raise KnownProjectRegistrationError("Known project clone failed")
+        checkout = runner(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "-C",
+                str(temporary),
+                "checkout",
+                "--detach",
+                "origin/main",
+            ],
+            cwd=str(parent),
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=60.0,
+            check=False,
+            shell=False,
+            env=_git_environment(network=False),
+        )
+        if (
+            not isinstance(checkout, subprocess.CompletedProcess)
+            or checkout.returncode != 0
+        ):
+            raise KnownProjectRegistrationError(
+                "Known project checkout failed"
+            )
         if not temporary.is_dir() or temporary.is_symlink():
             raise KnownProjectRegistrationError("Known project clone is invalid")
         if _repository_for(temporary.resolve(strict=True), runner=runner) != project.repository:

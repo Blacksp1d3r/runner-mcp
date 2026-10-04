@@ -1,3 +1,7 @@
+## 2026-10-04 — bounded operational snapshot proxy in validation
+
+Issue #269 now has PR #286 on branch `ops/269-operational-snapshot-proxy`, head `d43e472bb265a7314e59bb3109bcdddbab650e18`. It adds zero-argument `fabric_operational_snapshot`, calls only Fabric's fixed `operational_snapshot` tool, validates exact `runner.fabric/operational-snapshot/v1` shape, count relationships, capacities, ages and read-only flags, and reuses bounded/private-detail validation. Runner MCP does not reconstruct relay/Fabric truth. Commit attribution is green and Runner MCP validation is still in progress. Do not merge before Runner-Fabric #876 is green/merged and #286 validation is terminal green.
+
 ## 2026-10-04 — #108 is now a one-command local qualification drill
 
 Runner MCP #262 is merged as `ba35f70eb9e3e489fc6936d2bc2f0fc425710c81` and the managed runtime has self-updated to that exact commit with no restart or install-recovery state pending.

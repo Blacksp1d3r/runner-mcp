@@ -15,7 +15,7 @@ Runner MCP is a security-first, self-hosted Model Context Protocol service. You 
 
 _An AIfordable project — secure software. Built with AI. Fairly priced._
 
-Runner MCP is currently **alpha**. The canonical public distribution is available on [PyPI](https://pypi.org/project/aifordable-runner-mcp/), the [official MCP Registry](https://registry.modelcontextprotocol.io/?q=io.github.Blacksp1d3r%2Frunner-mcp) and [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases). The first fully aligned cross-registry release is v0.1.2.
+Runner MCP is currently **alpha and in maintenance mode**. The canonical public release is **v0.1.3**, available on [PyPI](https://pypi.org/project/aifordable-runner-mcp/), the [official MCP Registry](https://registry.modelcontextprotocol.io/?q=io.github.Blacksp1d3r%2Frunner-mcp) and [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases). The core alpha scope is complete; new work is limited to security fixes, bugs, compatibility, and concrete operational needs rather than speculative feature growth.
 
 **Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
 
@@ -300,4 +300,4 @@ The current implementation state is tracked in:
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
 
-Runner MCP v0.1.2 is the current canonical cross-registry alpha release. The project remains under active development, and 0.1.3 is being prepared as the next candidate. The public GitHub mailbox stack now includes protocol-v1 validation, replay lifecycle, fixed-host transport, an incremental restart-safe watcher, a loopback-only MCP executor, bounded concurrent request handling, fail-closed missing-result recovery and a private-config runtime/CLI. Shared-watcher migration, exactly-once completion feedback, clean-Linux demo validation, non-root autostart packaging and privacy-safe connectivity guidance are complete. Ongoing alpha hardening and post-release work are tracked in the roadmap and release checklist.
+Runner MCP v0.1.3 is the current canonical cross-registry alpha release. The technical alpha/MVP core is complete and the project is now in maintenance mode. Runtime, self-update/recovery, bounded first-party control, GitHub mailbox/Agent Bus support and the optional coarse Runner Fabric bridge have live acceptance evidence. Future Runner MCP changes should be driven by security, defects, compatibility, or a concrete operational requirement; broader orchestration and new automation belong in Runner Fabric rather than expanding Runner MCP into a general remote-control layer.

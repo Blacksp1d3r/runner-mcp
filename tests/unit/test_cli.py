@@ -3036,3 +3036,171 @@ def test_ci_runner_unknown_alias_fails_before_supervisor(
     assert result == 2
     assert "Unknown or disabled CI runner" in captured.err
     assert calls == 0
+
+
+def test_ci_runner_cron_status_exposes_aliases_only(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    values = {
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "aifordable-lab-ci",
+                    "repository": "Blacksp1d3r/AIfordable",
+                    "runner_name": "aifordable-lab-ci",
+                    "runner_root": str(tmp_path / "runner"),
+                    "work_root": str(tmp_path / "runner" / "_work"),
+                    "labels": ["aifordable-ci"],
+                }
+            ]
+        )
+    }
+
+    class FakeStatus:
+        def to_payload(self):
+            return {
+                "installed": True,
+                "aliases": ["aifordable-lab-ci"],
+            }
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+    monkeypatch.setattr(
+        cli,
+        "ci_runner_cron_status",
+        lambda *, specs: FakeStatus(),
+    )
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "cron-status",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.strip() == (
+        "installed=yes aliases=aifordable-lab-ci"
+    )
+    assert "Blacksp1d3r/AIfordable" not in captured.out
+    assert str(tmp_path / "runner") not in captured.out
+
+
+def test_ci_runner_cron_install_uses_private_specs_only(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    values = {
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "aifordable-lab-ci",
+                    "repository": "Blacksp1d3r/AIfordable",
+                    "runner_name": "aifordable-lab-ci",
+                    "runner_root": str(root),
+                    "work_root": str(work),
+                    "labels": ["aifordable-ci"],
+                }
+            ]
+        )
+    }
+    seen: dict[str, object] = {}
+
+    class FakeStatus:
+        def to_payload(self):
+            return {
+                "installed": True,
+                "aliases": ["aifordable-lab-ci"],
+            }
+
+    def fake_install(*, executable, config_dir, specs):
+        seen["executable"] = executable
+        seen["config_dir"] = config_dir
+        seen["aliases"] = tuple(sorted(specs))
+        return FakeStatus()
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+    monkeypatch.setattr(cli, "install_ci_runner_cron", fake_install)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "cron-install",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert seen["config_dir"] == tmp_path.resolve()
+    assert seen["aliases"] == ("aifordable-lab-ci",)
+    assert Path(seen["executable"]).name == "runner-mcp"
+    assert captured.out.strip() == (
+        "installed=yes aliases=aifordable-lab-ci"
+    )
+
+
+def test_ci_runner_cron_remove_requires_typed_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(
+        cli,
+        "load_env_file",
+        lambda _path: {"RUNNER_MCP_CI_RUNNERS_JSON": "[]"},
+    )
+    monkeypatch.setattr(
+        "builtins.input",
+        lambda _prompt: "REMOVE CI RUNNER CRON",
+    )
+    calls = 0
+
+    def fake_remove():
+        nonlocal calls
+        calls += 1
+        return True
+
+    monkeypatch.setattr(cli, "remove_ci_runner_cron", fake_remove)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "cron-remove",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert calls == 1
+    assert captured.out.strip() == "removed=yes"

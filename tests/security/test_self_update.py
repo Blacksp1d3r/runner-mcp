@@ -581,19 +581,41 @@ def test_stale_optional_restart_marker_reconciliation_is_bounded(
 ) -> None:
     config_dir = tmp_path / "config"
     config_dir.mkdir()
-    server_commit = "a" * 40
-    stale_commit = "b" * 40
-    _write_restart_marker(config_dir, "server", server_commit)
-    _write_restart_marker(config_dir, "completion-watcher", stale_commit)
+    commit = "b" * 40
+    _write_restart_marker(config_dir, "server", commit)
+    _write_restart_marker(config_dir, "completion-watcher", commit)
 
     removed = reconcile_stale_restart_markers(
         config_dir,
         {"server"},
+        commit,
     )
 
     assert removed == ("completion-watcher",)
-    assert restart_marker_commit(config_dir, "server") == server_commit
+    assert restart_marker_commit(config_dir, "server") == commit
     assert restart_marker_commit(config_dir, "completion-watcher") is None
+
+
+def test_stale_restart_reconciliation_rejects_different_commit(
+    tmp_path: Path,
+) -> None:
+    config_dir = tmp_path / "config-mismatch"
+    config_dir.mkdir()
+    marker_commit = "b" * 40
+    installed_commit = "a" * 40
+    _write_restart_marker(config_dir, "completion-watcher", marker_commit)
+
+    with pytest.raises(SelfUpdateError, match="does not match the installed runtime"):
+        reconcile_stale_restart_markers(
+            config_dir,
+            {"server"},
+            installed_commit,
+        )
+
+    assert restart_marker_commit(
+        config_dir,
+        "completion-watcher",
+    ) == marker_commit
 
 
 def test_stale_restart_reconciliation_never_consumes_selected_component(
@@ -607,10 +629,41 @@ def test_stale_restart_reconciliation_never_consumes_selected_component(
     removed = reconcile_stale_restart_markers(
         config_dir,
         {"server", "github-watcher"},
+        commit,
     )
 
     assert removed == ()
     assert restart_marker_commit(config_dir, "github-watcher") == commit
+
+
+def test_install_recovery_blocks_stale_restart_reconciliation(
+    tmp_path: Path,
+) -> None:
+    manager, _root, _exits = make_manager(
+        tmp_path,
+        restart_components={"server"},
+    )
+    installed_commit = "d" * 40
+    target_commit = "e" * 40
+    manager._record_installed_commit(installed_commit)
+    _write_restart_marker(
+        manager.config_dir,
+        "completion-watcher",
+        installed_commit,
+    )
+    manager._package_installer.begin_transaction(
+        job_id="f" * 32,
+        target_commit=target_commit,
+        baseline_commit=installed_commit,
+    )
+
+    with pytest.raises(SelfUpdateError, match="installation recovery is still pending"):
+        manager.start(target_commit)
+
+    assert restart_marker_commit(
+        manager.config_dir,
+        "completion-watcher",
+    ) == installed_commit
 
 
 @pytest.mark.parametrize(

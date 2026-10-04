@@ -271,14 +271,41 @@ def _normalize_restart_components(
 def reconcile_stale_restart_markers(
     config_dir: Path,
     components: Collection[str],
+    expected_commit: str,
 ) -> tuple[str, ...]:
+    if not _COMMIT_RE.fullmatch(expected_commit):
+        raise SelfUpdateError("Invalid installed self-update commit")
     selected = set(_normalize_restart_components(components))
-    removed: list[str] = []
+    removable: list[str] = []
     for component in sorted(_RESTART_COMPONENTS - selected):
-        if restart_marker_commit(config_dir, component) is None:
+        marker_commit = restart_marker_commit(config_dir, component)
+        if marker_commit is None:
             continue
-        _remove_restart_marker(config_dir, component)
-        removed.append(component)
+        if marker_commit != expected_commit:
+            raise SelfUpdateError(
+                "Stale restart marker does not match the installed runtime"
+            )
+        removable.append(component)
+
+    removed: list[str] = []
+    try:
+        for component in removable:
+            _remove_restart_marker(config_dir, component)
+            removed.append(component)
+    except SelfUpdateError as exc:
+        restore_failed = False
+        for component in reversed(removed):
+            try:
+                _write_restart_marker(config_dir, component, expected_commit)
+            except SelfUpdateError:
+                restore_failed = True
+        if restore_failed:
+            raise SelfUpdateError(
+                "Stale restart marker reconciliation failed and state could not be restored"
+            ) from exc
+        raise SelfUpdateError(
+            "Stale restart marker reconciliation failed"
+        ) from exc
     return tuple(removed)
 
 
@@ -703,17 +730,20 @@ class SelfUpdateManager:
             ActionClass.TEST,
             environment=config.environment,
         )
-        reconcile_stale_restart_markers(
-            self.config_dir,
-            self._restart_components,
-        )
-        if restart_pending_count(self.config_dir):
-            raise SelfUpdateError(
-                "Runner MCP self-update activation is still pending"
-            )
         if self._pending_install_transaction() is not None:
             raise SelfUpdateError(
                 "Runner MCP self-update installation recovery is still pending"
+            )
+        installed_commit = self._installed_commit()
+        if installed_commit is not None:
+            reconcile_stale_restart_markers(
+                self.config_dir,
+                self._restart_components,
+                installed_commit,
+            )
+        if restart_pending_count(self.config_dir):
+            raise SelfUpdateError(
+                "Runner MCP self-update activation is still pending"
             )
 
         with self._lock:

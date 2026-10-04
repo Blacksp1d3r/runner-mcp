@@ -24,6 +24,11 @@ from starlette.routing import Mount, Route
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
+from .ci_runner_enrollment import (
+    CIRunnerEnrollmentError,
+    CIRunnerEnrollmentManager,
+)
+from .ci_runner_github import CIRunnerGitHubController
 from .ci_runner_lifecycle import (
     CIRunnerLifecycleError,
     inspect_ci_runner,
@@ -38,6 +43,7 @@ from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
+from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 from .migration_jobs import MigrationJobError, MigrationJobRunner
 from .migration_planning import (
@@ -377,6 +383,21 @@ def build_mcp(
         )
     except CIRunnerLifecycleError as exc:
         raise RuntimeError("CI runner private configuration is invalid") from exc
+
+    ci_runner_enrollment = None
+    github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
+    if ci_runner_specs and github_token:
+        try:
+            ci_runner_enrollment = CIRunnerEnrollmentManager(
+                github=CIRunnerGitHubController(
+                    GitHubApiSession(token=github_token)
+                ),
+                environment=private_values,
+            )
+        except (TypeError, ValueError) as exc:
+            raise RuntimeError(
+                "CI runner enrollment private configuration is invalid"
+            ) from exc
     migration_jobs = (
         MigrationJobRunner(
             manager=database_manager,
@@ -1009,10 +1030,50 @@ def build_mcp(
         )
         return result
 
+    def ci_runner_enroll(alias: str) -> dict:
+        """Enroll one preconfigured CI runner identity without caller path/argv authority."""
+        if ci_runner_enrollment is None:
+            raise ValueError("CI runner enrollment is not configured")
+        try:
+            safety.assert_action_allowed(ActionClass.SERVICE)
+            result = ci_runner_enrollment.enroll(
+                _ci_runner_spec(alias)
+            ).to_payload()
+        except (
+            CIRunnerEnrollmentError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+            ValueError,
+        ) as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "ci_runner_enroll",
+                    alias,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError("CI runner enrollment is unavailable") from exc
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "ci_runner_enroll",
+                alias,
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
     if ci_runner_specs:
         mcp.tool()(list_ci_runners)
         mcp.tool()(ci_runner_status)
         mcp.tool()(ci_runner_plan)
+        if ci_runner_enrollment is not None:
+            mcp.tool()(ci_runner_enroll)
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:

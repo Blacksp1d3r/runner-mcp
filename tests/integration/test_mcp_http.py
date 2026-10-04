@@ -15,6 +15,7 @@ from runner_mcp.config import (
     ServiceConfig,
 )
 from runner_mcp.config import TestProfile as RunnerTestProfile
+from runner_mcp.fabric_bridge import FabricBridgeError
 from runner_mcp.server import Settings, create_app
 from runner_mcp.service_manager import ServiceState
 
@@ -1997,3 +1998,90 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
     assert "wu:109" in audit_text
     assert "127.0.0.1" not in audit_text
     assert "f" * 32 not in audit_text
+
+
+def test_fabric_host_inspect_failure_returns_bounded_diagnostic(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+
+    class FailingFabricBridge:
+        def __init__(self, _config) -> None:
+            pass
+
+        def host_inspect(self):
+            raise FabricBridgeError(
+                "Runner Fabric host inspection failed: "
+                "https://private.invalid/token=do-not-expose"
+            )
+
+    monkeypatch.setattr("runner_mcp.server.FabricBridgeClient", FailingFabricBridge)
+
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        rate_limit_per_minute=60,
+        fabric_resource_url="http://127.0.0.1:9010/mcp",
+        fabric_bearer_token="f" * 32,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 300,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_host_inspect",
+                    "arguments": {},
+                },
+            },
+        )
+
+    payload = parse_tool_json(response)
+    assert payload == {
+        "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
+        "state": "unavailable",
+        "error_category": "invalid_inspection_payload",
+        "mutation_enabled": False,
+    }
+    assert "private.invalid" not in response.text
+    assert "do-not-expose" not in response.text
+    assert "127.0.0.1" not in response.text
+    assert "f" * 32 not in response.text
+
+    audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "fabric_host_inspect" in audit_text
+    assert "private.invalid" not in audit_text
+    assert "do-not-expose" not in audit_text

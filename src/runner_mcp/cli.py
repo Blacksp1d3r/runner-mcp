@@ -1638,6 +1638,8 @@ def cmd_serve(args: argparse.Namespace) -> int:
         registry=registry,
         secret_values=secret_values,
         self_update_restart_components=_self_update_restart_components(config_dir),
+        server_bind_host=bind_host,
+        server_bind_port=args.port,
     )
     uvicorn.run(
         app,

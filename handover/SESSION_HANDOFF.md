@@ -1,3 +1,27 @@
+## 2026-10-04 — Runner MCP self-update and managed Fabric update are live
+
+Live Runner MCP is now `cb7804bf0dbd10e9e343520aefb7b5df0f45ccc4` and fully converged:
+- `self_update_ready=true`;
+- `restart_pending=false`;
+- `pending_restart_count=0`;
+- `install_recovery_pending=false`;
+- `fabric_update_active=false`.
+
+Merged milestones:
+- #252 fixes stale optional restart markers;
+- #255 fixes public-resource/local-bind restart inference;
+- #256 closes #251 and adds exact managed Runner Fabric update/status/rollback.
+
+Important client note:
+- the current chat/client tool schema was loaded before #256, so the new `fabric_update`, `fabric_update_status`, and `fabric_update_rollback` tools may require a fresh first-party client session to appear;
+- do not fall back to Desktop Commander or generic shell merely because this already-open session cannot see the newly added schema.
+
+Immediate resume:
+1. reconcile Runner Fabric current `main` and its control-plane update artifact availability;
+2. eliminate any remaining manual `workflow_dispatch` dependency if necessary using a bounded canonical workflow change;
+3. open a fresh client session, verify the new update tools, then upgrade the managed Runner Fabric runtime by exact commit;
+4. continue I5/#110 remote-control-retirement proof with bounded host inspection/work-units.
+
 ## 2026-10-03 — First-party client path replaces routine broad remote control
 
 Canonical code base before this slice: `1196630299387d2f254629941790ee9b9cd70dca`.

@@ -1031,7 +1031,7 @@ class SelfUpdateManager:
                     current_step="noop" if baseline_commit == job.commit else "sync",
                 )
                 if baseline_commit == job.commit:
-                    self.source.sync_project_main_commit(SELF_PROJECT, job.commit)
+                    self.source.sync_project_main_tip(SELF_PROJECT, job.commit)
                     verified = clean_head(root)
                     if verified["commit"] != job.commit:
                         raise SelfUpdateError("Self-update no-op verification failed")
@@ -1072,7 +1072,7 @@ class SelfUpdateManager:
                     current_step="sync",
                 )
                 target_source_sync_attempted = source_restore_commit != job.commit
-                self.source.sync_project_main_commit(SELF_PROJECT, job.commit)
+                self.source.sync_project_main_tip(SELF_PROJECT, job.commit)
                 source_state = clean_head(root)
                 if source_state["commit"] != job.commit:
                     raise SelfUpdateError("Self-update source changed before validation")

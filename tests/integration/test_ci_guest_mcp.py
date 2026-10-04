@@ -314,4 +314,3 @@ def test_ci_guest_enrollment_uses_private_allowlisted_spec(
     audit = (tmp_path / "audit-enroll.jsonl").read_text(encoding="utf-8")
     assert token not in audit
     assert str(runner_root) not in audit
-

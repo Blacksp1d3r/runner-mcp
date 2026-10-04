@@ -3,8 +3,8 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from .ci_runner_guest_enrollment import CIRunnerGuestSpec
 from .ci_runner_github import CIRunnerGitHubError, GitHubRunnerState
+from .ci_runner_guest_enrollment import CIRunnerGuestSpec
 from .github_mailbox import GitHubApiSession, GitHubMailboxTransportError
 
 _MAX_RUNNERS_PAGE = "100"

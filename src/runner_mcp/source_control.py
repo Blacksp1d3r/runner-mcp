@@ -194,6 +194,19 @@ class SourceSynchronizer:
             recovery=False,
         )
 
+    def sync_project_main_tip(
+        self,
+        project: str,
+        commit: str,
+    ) -> dict[str, str | bool]:
+        return self._sync_project(
+            project,
+            commit,
+            required_remote_ref="refs/remotes/origin/main",
+            require_exact_remote_ref=True,
+            recovery=False,
+        )
+
     def restore_project_main_commit_for_recovery(
         self,
         project: str,
@@ -212,6 +225,7 @@ class SourceSynchronizer:
         commit: str,
         *,
         required_remote_ref: str | None,
+        require_exact_remote_ref: bool = False,
         recovery: bool = False,
     ) -> dict[str, str | bool]:
         config = self.registry.projects.get(project)
@@ -293,6 +307,19 @@ class SourceSynchronizer:
                     raise SourceControlError(
                         "Requested commit is not reachable from the required remote ref"
                     )
+                if require_exact_remote_ref:
+                    remote_ref_commit = _run_git(
+                        root,
+                        [
+                            "rev-parse",
+                            "--verify",
+                            f"{required_remote_ref}^{{commit}}",
+                        ],
+                    ).lower()
+                    if remote_ref_commit != resolved_commit:
+                        raise SourceControlError(
+                            "Requested commit is not the current required remote ref"
+                        )
             elif not any(
                 ref.startswith("refs/remotes/origin/")
                 and ref != "refs/remotes/origin/HEAD"

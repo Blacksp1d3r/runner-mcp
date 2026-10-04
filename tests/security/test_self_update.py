@@ -50,6 +50,10 @@ class FakeSource:
         self.calls.append((project, commit))
         return {"project": project, "commit": commit, "changed": True}
 
+    def sync_project_main_tip(self, project: str, commit: str):
+        self.calls.append((project, commit))
+        return {"project": project, "commit": commit, "changed": True}
+
     def restore_project_main_commit_for_recovery(self, project: str, commit: str):
         self.recovery_calls.append((project, commit))
         return {"project": project, "commit": commit, "changed": True}
@@ -334,6 +338,11 @@ def test_preinstall_validation_failure_restores_installed_baseline(
     current = {"commit": baseline}
 
     class StatefulSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            result = super().sync_project_main_tip(project, commit)
+            current["commit"] = commit
+            return result
+
         def sync_project_main_commit(self, project: str, commit: str):
             result = super().sync_project_main_commit(project, commit)
             current["commit"] = commit
@@ -380,11 +389,14 @@ def test_partial_target_sync_failure_restores_installed_baseline(
     current = {"commit": baseline}
 
     class PartialSyncSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            self.calls.append((project, commit))
+            current["commit"] = commit
+            raise RuntimeError("synthetic failure after checkout")
+
         def sync_project_main_commit(self, project: str, commit: str):
             self.calls.append((project, commit))
             current["commit"] = commit
-            if commit == target:
-                raise RuntimeError("synthetic failure after checkout")
             return {"project": project, "commit": commit, "changed": True}
 
     source = PartialSyncSource()
@@ -424,6 +436,11 @@ def test_preinstall_source_rollback_failure_requires_bounded_recovery(
     current = {"commit": baseline}
 
     class RollbackFailingSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            self.calls.append((project, commit))
+            current["commit"] = commit
+            return {"project": project, "commit": commit, "changed": True}
+
         def sync_project_main_commit(self, project: str, commit: str):
             self.calls.append((project, commit))
             if commit == baseline:
@@ -782,6 +799,11 @@ def test_failed_target_install_rolls_back_known_baseline(
     current = {"commit": baseline}
 
     class StatefulSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            result = super().sync_project_main_tip(project, commit)
+            current["commit"] = commit
+            return result
+
         def sync_project_main_commit(self, project: str, commit: str):
             result = super().sync_project_main_commit(project, commit)
             current["commit"] = commit
@@ -855,6 +877,11 @@ def test_failed_first_install_requires_explicit_recovery(
     current = {"commit": "5" * 40}
 
     class StatefulSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            result = super().sync_project_main_tip(project, commit)
+            current["commit"] = commit
+            return result
+
         def sync_project_main_commit(self, project: str, commit: str):
             result = super().sync_project_main_commit(project, commit)
             current["commit"] = commit
@@ -1313,6 +1340,7 @@ def test_self_update_fails_closed_when_dependency_contract_changes(
             )
         return {"project": _project, "commit": commit, "changed": True}
 
+    source.sync_project_main_tip = sync
     source.sync_project_main_commit = sync
     monkeypatch.setattr(
         "runner_mcp.self_update.clean_head",

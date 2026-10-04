@@ -63,16 +63,15 @@ def run_fabric_agent_qualification_process(
     endpoint = values[_RESOURCE_URL_KEY].strip()
     token = values[_BEARER_TOKEN_KEY]
     external_target_config = values.get(_EXTERNAL_TARGET_CONFIG_KEY, "").strip()
-    if external_target_config:
-        if (
-            "\x00" in external_target_config
-            or "\n" in external_target_config
-            or "\r" in external_target_config
-            or not Path(external_target_config).is_absolute()
-        ):
-            raise FabricAgentQualificationError(
-                "Runner Fabric qualification agent configuration is invalid"
-            )
+    if external_target_config and (
+        "\x00" in external_target_config
+        or "\n" in external_target_config
+        or "\r" in external_target_config
+        or not Path(external_target_config).is_absolute()
+    ):
+        raise FabricAgentQualificationError(
+            "Runner Fabric qualification agent configuration is invalid"
+        )
     executable = _fixed_runner_fabric_executable()
     environment = {
         "HOME": str(Path.home()),

@@ -45,8 +45,8 @@ from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
+from .known_project_catalog import KnownProjectRegistrationError
 from .known_project_catalog import (
-    KnownProjectRegistrationError,
     register_known_project as register_known_project_binding,
 )
 from .migration_jobs import MigrationJobError, MigrationJobRunner

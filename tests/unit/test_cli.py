@@ -60,6 +60,51 @@ def test_removal_confirmation_rejects_nonmatching_input_with_same_exception(
     assert caught.value is cancellation
 
 
+def test_self_update_restart_components_include_only_ready_optional_consumers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "configured_autostart_components",
+        lambda _config_dir: ("server", "github-watcher"),
+    )
+
+    assert cli._self_update_restart_components(tmp_path) == frozenset(
+        {"server", "github-watcher"}
+    )
+
+    monkeypatch.setattr(
+        cli,
+        "configured_autostart_components",
+        lambda _config_dir: (
+            "server",
+            "github-watcher",
+            "completion-watcher",
+            "agent-bus-worker",
+        ),
+    )
+    assert cli._self_update_restart_components(tmp_path) == frozenset(
+        {"server", "github-watcher", "completion-watcher"}
+    )
+
+
+def test_self_update_restart_components_fail_closed_on_invalid_optional_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    def invalid_autostart(_config_dir):
+        raise cli.AutostartError("invalid")
+
+    monkeypatch.setattr(
+        cli,
+        "configured_autostart_components",
+        invalid_autostart,
+    )
+
+    assert cli._self_update_restart_components(tmp_path) == frozenset({"server"})
+
+
 def install_config(
     tmp_path: Path,
     *,

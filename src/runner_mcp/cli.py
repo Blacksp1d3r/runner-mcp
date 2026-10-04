@@ -1604,6 +1604,18 @@ def cmd_plugin_package(args: argparse.Namespace) -> int:
     return 0
 
 
+def _self_update_restart_components(config_dir: Path) -> frozenset[str]:
+    components = {"server"}
+    try:
+        configured = set(configured_autostart_components(config_dir))
+    except AutostartError:
+        return frozenset(components)
+    components.update(
+        configured & {"github-watcher", "completion-watcher"}
+    )
+    return frozenset(components)
+
+
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     paths, settings, registry = read_private_runtime(config_dir)
@@ -1619,6 +1631,7 @@ def cmd_serve(args: argparse.Namespace) -> int:
         settings=settings,
         registry=registry,
         secret_values=secret_values,
+        self_update_restart_components=_self_update_restart_components(config_dir),
     )
     uvicorn.run(
         app,

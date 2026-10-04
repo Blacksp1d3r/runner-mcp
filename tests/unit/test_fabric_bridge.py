@@ -353,3 +353,63 @@ def test_host_inspect_rejects_unbounded_or_invalid_result(mutator) -> None:
 
     with pytest.raises(FabricBridgeError):
         bridge.host_inspect()
+
+
+
+def operational_snapshot_payload() -> dict:
+    return {
+        "schema_version": "runner.fabric/operational-snapshot/v1",
+        "observed_at": 100,
+        "busy": True,
+        "degraded": False,
+        "unknown_layers": [],
+        "layers": [
+            {
+                "layer": "agent-bus.relay",
+                "health": "healthy",
+                "queued": 1,
+                "claimed": 0,
+                "running": 0,
+                "waiting_for_result": 0,
+                "waiting_for_ack": 0,
+                "retrying": 0,
+                "pending_count": 1,
+                "capacity_total": None,
+                "capacity_available": None,
+                "oldest_pending_age_seconds": 5,
+                "last_activity_age_seconds": 1,
+                "reason_code": "pending-relay-work",
+            }
+        ],
+        "mutation_enabled": False,
+        "execution_enabled": False,
+    }
+
+
+def test_operational_snapshot_forwards_no_arguments_and_validates_result() -> None:
+    payload = operational_snapshot_payload()
+    bridge, fake = bridge_with_responses(payload)
+
+    result = bridge.operational_snapshot()
+
+    assert result == payload
+    assert fake.calls == [("operational_snapshot", {})]
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/tmp"}),
+        lambda payload: payload.update({"mutation_enabled": True}),
+        lambda payload: payload["layers"][0].update({"pending_count": 2}),
+        lambda payload: payload["layers"][0].update({"health": "green"}),
+        lambda payload: payload["layers"][0].update({"endpoint": "https://private.invalid"}),
+    ],
+)
+def test_operational_snapshot_rejects_invalid_or_private_result(mutator) -> None:
+    payload = operational_snapshot_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.operational_snapshot()

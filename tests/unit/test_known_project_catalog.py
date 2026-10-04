@@ -315,6 +315,8 @@ def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) 
     assert clone_call["argv"][:-1] == [
         "git",
         "-c",
+        "core.fsmonitor=false",
+        "-c",
         "core.hooksPath=/dev/null",
         "clone",
         "--origin",
@@ -328,6 +330,10 @@ def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) 
     assert clone_call["cwd"] == str(tmp_path)
     assert clone_call["shell"] is False
     assert clone_call["timeout"] == 180.0
+    assert clone_call["stdin"] is subprocess.DEVNULL
+    assert clone_call["env"]["GIT_CONFIG_NOSYSTEM"] == "1"
+    assert clone_call["env"]["GIT_OPTIONAL_LOCKS"] == "0"
+    assert clone_call["env"]["GIT_TERMINAL_PROMPT"] == "0"
 
 
 def test_prepare_known_project_is_idempotent_for_exact_existing_clone(
@@ -422,3 +428,37 @@ def test_prepare_known_project_rejects_ambiguous_parent_roots(tmp_path: Path) ->
                 AssertionError("git must not run")
             ),
         )
+
+
+
+def test_prepare_known_project_uses_only_trusted_network_auth_context(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    monkeypatch.setenv("HOME", str(tmp_path / "home"))
+    monkeypatch.setenv("SSH_AUTH_SOCK", str(tmp_path / "agent.sock"))
+    monkeypatch.setenv("GITHUB_TOKEN", "must-not-pass-directly")
+    monkeypatch.setenv("UNRELATED_SECRET", "must-not-pass")
+    calls: list[dict[str, object]] = []
+
+    def runner(argv, **kwargs):
+        calls.append({"argv": argv, **kwargs})
+        if "clone" in argv:
+            target = Path(argv[-1])
+            target.mkdir()
+            return _completed("")
+        return _completed("https://github.com/Blacksp1d3r/AIfordable.git\n")
+
+    prepare_known_project(
+        _registry(anchor),
+        project_id="aifordable",
+        runner=runner,
+    )
+
+    clone_env = calls[0]["env"]
+    assert clone_env["HOME"] == str(tmp_path / "home")
+    assert clone_env["SSH_AUTH_SOCK"] == str(tmp_path / "agent.sock")
+    assert "GITHUB_TOKEN" not in clone_env
+    assert "UNRELATED_SECRET" not in clone_env

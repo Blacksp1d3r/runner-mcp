@@ -299,5 +299,6 @@ The current implementation state is tracked in:
 
 - [handover/CURRENT_STATE.md](handover/CURRENT_STATE.md)
 - [roadmap/ROADMAP.md](roadmap/ROADMAP.md)
+- [FUTURE_LAB.md](FUTURE_LAB.md) — experimental research, benchmarks and moonshots kept separate from the stable core
 
 Runner MCP v0.1.3 is the current canonical cross-registry alpha release. The technical alpha/MVP core is complete and the project is now in maintenance mode. Runtime, self-update/recovery, bounded first-party control, GitHub mailbox/Agent Bus support and the optional coarse Runner Fabric bridge have live acceptance evidence. Future Runner MCP changes should be driven by security, defects, compatibility, or a concrete operational requirement; broader orchestration and new automation belong in Runner Fabric rather than expanding Runner MCP into a general remote-control layer.

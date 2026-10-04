@@ -55,6 +55,9 @@ from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 from .known_project_catalog import KnownProjectRegistrationError
 from .known_project_catalog import (
+    preflight_known_project as preflight_known_project_binding,
+)
+from .known_project_catalog import (
     prepare_known_project as prepare_known_project_binding,
 )
 from .known_project_catalog import (
@@ -1285,6 +1288,39 @@ def build_mcp(
         result = [cfg.public_summary(code) for code, cfg in sorted(registry.projects.items())]
         audit.append(
             AuditEvent(request_id, "list_projects", None, "authenticated-client", "ok", utc_timestamp())
+        )
+        return result
+
+    @mcp.tool()
+    def known_project_preflight(project_id: str) -> dict:
+        """Return bounded preparation state for one built-in managed project."""
+        request_id = current_request_id()
+        try:
+            result = preflight_known_project_binding(
+                registry,
+                project_id=project_id,
+            )
+        except KnownProjectRegistrationError as exc:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    "known_project_preflight",
+                    project_id,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                request_id,
+                "known_project_preflight",
+                str(result.get("code", project_id)),
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
         )
         return result
 

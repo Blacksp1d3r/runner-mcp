@@ -315,6 +315,7 @@ def build_mcp(
     safety_guard: OperatorSafetyGuard | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    self_update_inactive_restart_components: frozenset[str] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
     mcp = MCPServer(
@@ -406,6 +407,11 @@ def build_mcp(
             self_update_restart_components
             if self_update_restart_components is not None
             else frozenset({"server"})
+        ),
+        inactive_restart_components=(
+            self_update_inactive_restart_components
+            if self_update_inactive_restart_components is not None
+            else frozenset()
         ),
     )
     fabric_bootstrap_manager = FabricBootstrapManager(
@@ -1763,6 +1769,7 @@ def create_app(
     registry: ProjectRegistry | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    self_update_inactive_restart_components: frozenset[str] | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
@@ -1779,6 +1786,9 @@ def create_app(
         safety_guard=safety_guard,
         secret_values=secret_values,
         self_update_restart_components=self_update_restart_components,
+        self_update_inactive_restart_components=(
+            self_update_inactive_restart_components
+        ),
     )
     transport_security = transport_security_for(settings.resource_url)
 

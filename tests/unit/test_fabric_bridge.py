@@ -24,6 +24,69 @@ class FakeMCPClient:
         return self.responses.pop(0)
 
 
+
+
+def host_inspection_payload() -> dict:
+    return {
+        "schema_version": "runner.fabric/host-inspection/v1",
+        "mutation_enabled": False,
+        "host": {
+            "id": "host:local",
+            "display_name": "Runner Fabric host",
+            "freshness": {
+                "state": "fresh",
+                "observed_at": "2026-10-04T00:00:00+00:00",
+                "age_seconds": 0,
+            },
+            "cpu": {},
+            "memory": {},
+            "swap": {},
+            "pressure": {},
+            "filesystems": [],
+            "disks": [],
+            "network": [],
+            "uptime_seconds": {
+                "state": "available",
+                "value": 1,
+                "unit": "seconds",
+            },
+            "oom_kills": {
+                "state": "available",
+                "value": 0,
+                "unit": "count",
+            },
+            "process_count": {
+                "state": "available",
+                "value": 1,
+                "unit": "count",
+            },
+            "collector": {},
+        },
+        "browsers": [
+            {
+                "runtime": "chromium",
+                "state": "available",
+                "cache_ready": True,
+                "version": "Chromium 154.0.1",
+            },
+            {
+                "runtime": "chrome",
+                "state": "unavailable",
+                "cache_ready": True,
+            },
+            {
+                "runtime": "firefox",
+                "state": "unavailable",
+                "cache_ready": False,
+            },
+            {
+                "runtime": "webkit",
+                "state": "unavailable",
+                "cache_ready": False,
+            },
+        ],
+    }
+
 def result_payload() -> dict:
     return {
         "state": "complete",
@@ -255,3 +318,38 @@ def test_fabric_evidence_rejects_raw_or_unknown_shape() -> None:
             expected_revision=BASE,
             change_plan_id="plan:247",
         )
+
+
+def test_host_inspect_forwards_no_arguments_and_validates_result() -> None:
+    payload = host_inspection_payload()
+    bridge, fake = bridge_with_responses(payload)
+
+    result = bridge.host_inspect()
+
+    assert result == payload
+    assert fake.calls == [("host_inspect", {})]
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/tmp"}),
+        lambda payload: payload.update({"mutation_enabled": True}),
+        lambda payload: payload["host"].update({"endpoint": "https://private.invalid"}),
+        lambda payload: payload["browsers"].append(
+            {
+                "runtime": "chromium",
+                "state": "available",
+                "cache_ready": False,
+                "version": "duplicate",
+            }
+        ),
+    ],
+)
+def test_host_inspect_rejects_unbounded_or_invalid_result(mutator) -> None:
+    payload = host_inspection_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.host_inspect()

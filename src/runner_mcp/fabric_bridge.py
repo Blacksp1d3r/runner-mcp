@@ -12,6 +12,7 @@ from .bridge_processor import BridgeExecutionAdapterError
 _FABRIC_TOOLS = frozenset(
     {
         "host_inspect",
+        "operational_snapshot",
         "run_work_unit",
         "get_work_unit",
         "cancel_work_unit",
@@ -68,6 +69,17 @@ class FabricBridgeClient:
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric host inspection failed") from exc
         return _validate_host_inspection(result)
+
+    def operational_snapshot(self) -> dict[str, Any]:
+        """Return bounded read-only end-to-end operational state."""
+
+        try:
+            result = self._client()._call_tool("operational_snapshot", {})
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric operational snapshot failed"
+            ) from exc
+        return _validate_operational_snapshot(result)
 
     def run_work_unit(
         self,
@@ -428,4 +440,118 @@ def _revision(value: object) -> str:
 def _reference(value: object, field: str) -> str:
     if not isinstance(value, str) or _REFERENCE_RE.fullmatch(value) is None:
         raise FabricBridgeError(f"{field} is invalid")
+    return value
+
+
+
+def _validate_operational_snapshot(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    _exact_keys(
+        value,
+        {
+            "schema_version",
+            "observed_at",
+            "busy",
+            "degraded",
+            "unknown_layers",
+            "layers",
+            "mutation_enabled",
+            "execution_enabled",
+        },
+        "operational snapshot",
+    )
+    if value["schema_version"] != "runner.fabric/operational-snapshot/v1":
+        raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    if value["mutation_enabled"] is not False or value["execution_enabled"] is not False:
+        raise FabricBridgeError("Runner Fabric operational snapshot must be read-only")
+    observed_at = value["observed_at"]
+    if isinstance(observed_at, bool) or not isinstance(observed_at, int) or observed_at < 0:
+        raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    if not isinstance(value["busy"], bool) or not isinstance(value["degraded"], bool):
+        raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    unknown = value["unknown_layers"]
+    layers = value["layers"]
+    if not isinstance(unknown, list) or len(unknown) > 32:
+        raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    if not isinstance(layers, list) or len(layers) > 32:
+        raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    seen: set[str] = set()
+    for item in layers:
+        if not isinstance(item, dict):
+            raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        _exact_keys(
+            item,
+            {
+                "layer",
+                "health",
+                "queued",
+                "claimed",
+                "running",
+                "waiting_for_result",
+                "waiting_for_ack",
+                "retrying",
+                "pending_count",
+                "capacity_total",
+                "capacity_available",
+                "oldest_pending_age_seconds",
+                "last_activity_age_seconds",
+                "reason_code",
+            },
+            "operational layer",
+        )
+        layer = item["layer"]
+        if not isinstance(layer, str) or _ID_RE.fullmatch(layer) is None or layer in seen:
+            raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        seen.add(layer)
+        if item["health"] not in {"healthy", "degraded", "unavailable", "unknown"}:
+            raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        counts = (
+            "queued",
+            "claimed",
+            "running",
+            "waiting_for_result",
+            "waiting_for_ack",
+            "retrying",
+            "pending_count",
+        )
+        for key in counts:
+            count = item[key]
+            if isinstance(count, bool) or not isinstance(count, int) or not 0 <= count <= 1_000_000:
+                raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        if item["pending_count"] != sum(item[key] for key in counts[:-1]):
+            raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        for key in ("capacity_total", "capacity_available"):
+            capacity = item[key]
+            if capacity is not None and (
+                isinstance(capacity, bool)
+                or not isinstance(capacity, int)
+                or not 0 <= capacity <= 1_000_000
+            ):
+                raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        if (
+            item["capacity_total"] is not None
+            and item["capacity_available"] is not None
+            and item["capacity_available"] > item["capacity_total"]
+        ):
+            raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        for key in ("oldest_pending_age_seconds", "last_activity_age_seconds"):
+            age = item[key]
+            if age is not None and (
+                isinstance(age, bool)
+                or not isinstance(age, int)
+                or not 0 <= age <= 31 * 24 * 60 * 60
+            ):
+                raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+        reason = item["reason_code"]
+        if reason is not None and (
+            not isinstance(reason, str) or _ID_RE.fullmatch(reason) is None
+        ):
+            raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    if any(
+        not isinstance(item, str) or item not in seen
+        for item in unknown
+    ):
+        raise FabricBridgeError("Runner Fabric returned invalid operational snapshot")
+    _validate_bounded_json(value)
     return value

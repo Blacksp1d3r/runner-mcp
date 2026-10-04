@@ -110,6 +110,7 @@ def make_manager(
     installer_runner=subprocess.run,
     seed_compatibility: bool = True,
     restart_components=None,
+    inactive_restart_components=None,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -130,6 +131,7 @@ def make_manager(
         server_reexec=lambda: exits.append(75),
         restart_delay_seconds=1,
         restart_components=restart_components,
+        inactive_restart_components=inactive_restart_components,
     )
     pyproject = project / "pyproject.toml"
     pyproject.write_text(
@@ -626,6 +628,90 @@ def test_restart_marker_selection_requires_server(tmp_path: Path) -> None:
         make_manager(
             tmp_path,
             restart_components={"github-watcher"},
+        )
+
+
+def test_startup_reconciles_matching_inactive_legacy_restart_marker(
+    tmp_path: Path,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    commit = "1" * 40
+    manager._record_installed_commit(commit)
+    _write_restart_marker(
+        manager.config_dir,
+        "completion-watcher",
+        commit,
+    )
+
+    restarted, _root, _exits = make_manager(
+        tmp_path,
+        inactive_restart_components={"completion-watcher"},
+    )
+
+    assert restart_marker_commit(
+        restarted.config_dir,
+        "completion-watcher",
+    ) is None
+    assert restarted.runtime_status()["pending_restart_count"] == 0
+
+
+def test_startup_keeps_inactive_marker_for_different_commit(
+    tmp_path: Path,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    manager._record_installed_commit("2" * 40)
+    _write_restart_marker(
+        manager.config_dir,
+        "completion-watcher",
+        "3" * 40,
+    )
+
+    restarted, _root, _exits = make_manager(
+        tmp_path,
+        inactive_restart_components={"completion-watcher"},
+    )
+
+    assert restart_marker_commit(
+        restarted.config_dir,
+        "completion-watcher",
+    ) == "3" * 40
+
+
+def test_startup_keeps_inactive_marker_during_install_recovery(
+    tmp_path: Path,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    commit = "4" * 40
+    job_id = "5" * 32
+    manager._record_installed_commit(commit)
+    _write_restart_marker(
+        manager.config_dir,
+        "completion-watcher",
+        commit,
+    )
+    manager._package_installer.begin_transaction(
+        job_id=job_id,
+        target_commit=commit,
+        baseline_commit="6" * 40,
+    )
+
+    restarted, _root, _exits = make_manager(
+        tmp_path,
+        inactive_restart_components={"completion-watcher"},
+    )
+
+    assert restart_marker_commit(
+        restarted.config_dir,
+        "completion-watcher",
+    ) == commit
+    assert restarted.runtime_status()["install_recovery_pending"] is True
+
+
+def test_inactive_restart_selection_rejects_server(tmp_path: Path) -> None:
+    with pytest.raises(SelfUpdateError, match="cannot be an inactive"):
+        make_manager(
+            tmp_path,
+            inactive_restart_components={"server"},
         )
 
 

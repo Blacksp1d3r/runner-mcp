@@ -123,6 +123,140 @@ def test_artifact_run_must_come_from_main(
         manager._fetch_exact_artifact(commit)
 
 
+
+def test_push_artifact_is_preferred_over_manual_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    commit = "a" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+
+    def api(_token, path):
+        if "/artifacts" in path:
+            return {
+                "artifacts": [
+                    {
+                        "id": 303,
+                        "name": f"runner-fabric-control-plane-update-{commit}",
+                        "expired": False,
+                    }
+                ]
+            }
+        return {
+            "workflow_runs": [
+                {
+                    "id": 101,
+                    "head_sha": commit,
+                    "head_branch": "main",
+                    "event": "workflow_dispatch",
+                    "conclusion": "success",
+                },
+                {
+                    "id": 202,
+                    "head_sha": commit,
+                    "head_branch": "main",
+                    "event": "push",
+                    "conclusion": "success",
+                },
+            ]
+        }
+
+    monkeypatch.setattr(manager, "_api_json", api)
+    observed = []
+    monkeypatch.setattr(
+        manager,
+        "_download_artifact",
+        lambda _token, artifact_id: observed.append(artifact_id) or b"zip",
+    )
+
+    assert manager._fetch_exact_artifact(commit) == b"zip"
+    assert observed == [303]
+
+
+def test_manual_artifact_remains_fallback(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    commit = "a" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+
+    def api(_token, path):
+        if "/artifacts" in path:
+            return {
+                "artifacts": [
+                    {
+                        "id": 303,
+                        "name": f"runner-fabric-control-plane-update-{commit}",
+                        "expired": False,
+                    }
+                ]
+            }
+        return {
+            "workflow_runs": [
+                {
+                    "id": 101,
+                    "head_sha": commit,
+                    "head_branch": "main",
+                    "event": "workflow_dispatch",
+                    "conclusion": "success",
+                }
+            ]
+        }
+
+    monkeypatch.setattr(manager, "_api_json", api)
+    monkeypatch.setattr(manager, "_download_artifact", lambda _token, _id: b"zip")
+
+    assert manager._fetch_exact_artifact(commit) == b"zip"
+
+
+def test_duplicate_push_runs_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    commit = "a" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+    monkeypatch.setattr(
+        manager,
+        "_api_json",
+        lambda _token, _path: {
+            "workflow_runs": [
+                {
+                    "id": 101,
+                    "head_sha": commit,
+                    "head_branch": "main",
+                    "event": "push",
+                    "conclusion": "success",
+                },
+                {
+                    "id": 202,
+                    "head_sha": commit,
+                    "head_branch": "main",
+                    "event": "push",
+                    "conclusion": "success",
+                },
+            ]
+        },
+    )
+
+    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+        manager._fetch_exact_artifact(commit)
+
+
 def test_artifact_redirect_rejects_private_host(tmp_path: Path) -> None:
     class RedirectingOpener:
         def open(self, request, timeout):

@@ -6,7 +6,6 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .config import ProjectRegistry, load_project_registry
-from .config_manager import ConfigManagerError, add_project
 
 
 class KnownProjectRegistrationError(RuntimeError):
@@ -141,7 +140,7 @@ def register_known_project(
     *,
     project_id: str,
     runner=subprocess.run,
-    add_project_fn=add_project,
+    add_project_fn=None,
     reload_fn=load_project_registry,
 ) -> dict[str, str]:
     if not isinstance(config_dir, Path) or not config_dir.is_absolute():
@@ -169,6 +168,11 @@ def register_known_project(
         project_id=project_id,
         runner=runner,
     )
+    if add_project_fn is None:
+        from .config_manager import add_project as add_project_impl
+
+        add_project_fn = add_project_impl
+
     try:
         summary = add_project_fn(
             config_dir,
@@ -179,7 +183,7 @@ def register_known_project(
             adapter=discovered.adapter,
         )
         refreshed = reload_fn(projects_config)
-    except (ConfigManagerError, OSError, ValueError) as exc:
+    except (OSError, RuntimeError, ValueError) as exc:
         raise KnownProjectRegistrationError(
             "Managed project registration failed"
         ) from exc

@@ -17,6 +17,7 @@ from runner_mcp.self_update import (
     _write_restart_marker,
     _write_restart_markers,
     consume_restart_marker,
+    reconcile_stale_restart_markers,
     restart_marker_commit,
     restart_marker_path,
     restart_pending_count,
@@ -573,6 +574,43 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert status["self_update_ready"] is True
 
 
+
+
+def test_stale_optional_restart_marker_reconciliation_is_bounded(
+    tmp_path: Path,
+) -> None:
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    server_commit = "a" * 40
+    stale_commit = "b" * 40
+    _write_restart_marker(config_dir, "server", server_commit)
+    _write_restart_marker(config_dir, "completion-watcher", stale_commit)
+
+    removed = reconcile_stale_restart_markers(
+        config_dir,
+        {"server"},
+    )
+
+    assert removed == ("completion-watcher",)
+    assert restart_marker_commit(config_dir, "server") == server_commit
+    assert restart_marker_commit(config_dir, "completion-watcher") is None
+
+
+def test_stale_restart_reconciliation_never_consumes_selected_component(
+    tmp_path: Path,
+) -> None:
+    config_dir = tmp_path / "config"
+    config_dir.mkdir()
+    commit = "c" * 40
+    _write_restart_marker(config_dir, "github-watcher", commit)
+
+    removed = reconcile_stale_restart_markers(
+        config_dir,
+        {"server", "github-watcher"},
+    )
+
+    assert removed == ()
+    assert restart_marker_commit(config_dir, "github-watcher") == commit
 
 
 @pytest.mark.parametrize(

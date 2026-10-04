@@ -676,19 +676,30 @@ def build_mcp(
 
     def _audit_fabric(
         tool_name: str,
-        work_unit_id: str,
+        resource_id: str,
         result: str,
     ) -> None:
         audit.append(
             AuditEvent(
                 current_request_id(),
                 tool_name,
-                work_unit_id,
+                resource_id,
                 "authenticated-client",
                 result,
                 utc_timestamp(),
             )
         )
+
+
+    def fabric_host_inspect() -> dict:
+        """Return bounded Runner Fabric host/browser readiness without host authority."""
+        try:
+            result = _require_fabric_bridge().host_inspect()
+        except FabricBridgeError as exc:
+            _audit_fabric("fabric_host_inspect", "host:local", "denied")
+            raise ValueError(str(exc)) from None
+        _audit_fabric("fabric_host_inspect", "host:local", "ok")
+        return result
 
     def fabric_run_work_unit(
         work_unit_id: str,
@@ -751,6 +762,7 @@ def build_mcp(
         return result
 
     if fabric_bridge is not None:
+        mcp.tool()(fabric_host_inspect)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)
         mcp.tool()(fabric_cancel_work_unit)

@@ -1,3 +1,19 @@
+## 2026-10-04 — Runner MCP live on exact-main guard; next session must refresh tool schemas
+
+Runner MCP PR #258 is merged and the managed runtime successfully self-updated to exact code commit `82e4b0f133bae3a709bb29a89a9be2d98122aef9`. Live restart convergence is clean: `self_update_ready=true`, `restart_pending=false`, `pending_restart_count=0`, and no install recovery is pending. Issue #246 is also closed after the orphan-marker acceptance was proven live.
+
+The important behavioral change is now active: normal self-update accepts only the exact fetched current `origin/main` tip. Stale normal targets fail closed; older verified baselines remain recovery-only.
+
+Current-chat limitation:
+The already-open first-party client cached its Runner MCP MCP schema before the managed Fabric update/host-inspection tools were added. The server code contains them, but this chat cannot call tool names that were absent from its startup catalog. Do not use Desktop Commander or generic shell as a workaround.
+
+Immediate resume:
+1. start a fresh first-party client session;
+2. confirm `fabric_update`, its bounded status/rollback surface, and `fabric_host_inspect` are visible;
+3. re-read Runner Fabric current `main` and its canonical bundle workflow at that time; select only an exact commit whose `control-plane-update-bundle` run succeeded, because Fabric may have advanced beyond the earlier #800 merge target;
+4. run the bounded managed Fabric update and prove status/rollback readiness;
+5. continue #110 first-party coarse work-unit proof, then #108 deliberate self-update recovery proof without widening authority.
+
 ## 2026-10-04 — first fully automatic managed Fabric update target ready
 
 Runner Fabric #800 merged as exact target `ada2d6a691214959f88809f049c6dfa8f5db3c2a`. Its canonical control-plane bundle workflow now triggers automatically on every trusted `main` push, while keeping manual dispatch only as fallback.

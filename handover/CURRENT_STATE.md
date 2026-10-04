@@ -1,3 +1,21 @@
+## 2026-10-04 — exact-main self-update guard is live
+
+Canonical Runner MCP live code checkpoint: `82e4b0f133bae3a709bb29a89a9be2d98122aef9`.
+
+Completed:
+- PR #258 / issue #257 now require normal self-update to target the exact fetched `origin/main` tip; a stale normal target fails closed instead of becoming an implicit downgrade;
+- recovery keeps its dedicated older-baseline path and no generic ref/branch selector was introduced;
+- the six affected recovery/install test doubles were adapted to the new main-tip sync path; exact-head and post-merge validation, release artifact, attribution and clean demo are green;
+- live self-update to `82e4b0f1...` completed through Runner MCP itself; after controlled restart: `self_update_ready=true`, `restart_pending=false`, `pending_restart_count=0`, `install_recovery_pending=false`;
+- issue #246 is closed after live proof that configured restart consumers converge without orphan optional markers;
+- current already-open client session still exposes the older cached MCP tool catalog, so newly landed `fabric_update` / `fabric_host_inspect` schemas require a fresh first-party client session; do not bypass this with broad remote shell/Desktop Commander.
+
+Next:
+1. open a fresh first-party client session and verify the newly landed Runner MCP Fabric tools are visible;
+2. re-reconcile Runner Fabric current `main` at that moment and choose only the exact current commit with a successful canonical `control-plane-update-bundle` artifact; do not reuse a formerly-current Fabric SHA merely because it was recorded in an older handoff;
+3. perform the first bounded managed Fabric update through `fabric_update`, prove status and rollback readiness, then use `fabric_host_inspect` / coarse work-units for routine control;
+4. keep #110 as the remaining first-party work-unit proof and #108 as the separate deliberate recovery/fault-injection proof.
+
 ## 2026-10-04 — managed Fabric update path landed and Runner MCP live runtime converged
 
 Canonical Runner MCP main/live commit: `cb7804bf0dbd10e9e343520aefb7b5df0f45ccc4`.

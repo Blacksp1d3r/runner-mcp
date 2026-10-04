@@ -108,6 +108,7 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             assert tool_name in listed.text
 
         for tool_name in (
+            "fabric_host_inspect",
             "fabric_run_work_unit",
             "fabric_get_work_unit",
             "fabric_cancel_work_unit",
@@ -1700,6 +1701,67 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         def __init__(self, _config) -> None:
             pass
 
+        def host_inspect(self):
+            calls.append(("inspect", {}))
+            return {
+                "schema_version": "runner.fabric/host-inspection/v1",
+                "mutation_enabled": False,
+                "host": {
+                    "id": "host:local",
+                    "display_name": "Runner Fabric host",
+                    "freshness": {
+                        "state": "fresh",
+                        "observed_at": "2026-10-04T00:00:00+00:00",
+                        "age_seconds": 0,
+                    },
+                    "cpu": {},
+                    "memory": {},
+                    "swap": {},
+                    "pressure": {},
+                    "filesystems": [],
+                    "disks": [],
+                    "network": [],
+                    "uptime_seconds": {
+                        "state": "available",
+                        "value": 1,
+                        "unit": "seconds",
+                    },
+                    "oom_kills": {
+                        "state": "available",
+                        "value": 0,
+                        "unit": "count",
+                    },
+                    "process_count": {
+                        "state": "available",
+                        "value": 1,
+                        "unit": "count",
+                    },
+                    "collector": {},
+                },
+                "browsers": [
+                    {
+                        "runtime": "chromium",
+                        "state": "unavailable",
+                        "cache_ready": False,
+                    },
+                    {
+                        "runtime": "chrome",
+                        "state": "unavailable",
+                        "cache_ready": False,
+                    },
+                    {
+                        "runtime": "firefox",
+                        "state": "unavailable",
+                        "cache_ready": False,
+                    },
+                    {
+                        "runtime": "webkit",
+                        "state": "unavailable",
+                        "cache_ready": False,
+                    },
+                ],
+            }
+
         def run_work_unit(self, **kwargs):
             calls.append(("run", kwargs))
             return {
@@ -1805,12 +1867,29 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         ):
             assert tool_name in listed.text
 
-        started = client.post(
+        inspected = client.post(
             "/mcp",
             headers=headers,
             json={
                 "jsonrpc": "2.0",
                 "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_host_inspect",
+                    "arguments": {},
+                },
+            },
+        )
+        inspection = parse_tool_json(inspected)
+        assert inspection["schema_version"] == "runner.fabric/host-inspection/v1"
+        assert inspection["mutation_enabled"] is False
+
+        started = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 4,
                 "method": "tools/call",
                 "params": {
                     "name": "fabric_run_work_unit",
@@ -1829,6 +1908,7 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         assert payload["commit_revision"] == "b" * 40
 
     assert calls == [
+        ("inspect", {}),
         (
             "run",
             {
@@ -1844,6 +1924,7 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         )
     ]
     audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "fabric_host_inspect" in audit_text
     assert "fabric_run_work_unit" in audit_text
     assert "wu:109" in audit_text
     assert "127.0.0.1" not in audit_text

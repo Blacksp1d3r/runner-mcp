@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import ipaddress
 import io
 import json
 import os
@@ -288,6 +289,7 @@ class FabricUpdateManager:
             and row.get("head_sha") == commit
             and row.get("conclusion") == "success"
             and row.get("event") == "workflow_dispatch"
+            and row.get("head_branch") == "main"
         ]
         if len(exact) != 1 or not isinstance(exact[0].get("id"), int):
             raise FabricUpdateError("fabric_artifact_unavailable")
@@ -314,7 +316,6 @@ class FabricUpdateManager:
             f"https://api.github.com{path}",
             token=token,
             max_bytes=_MAX_API_RESPONSE,
-            allow_redirect=False,
         )
         try:
             value = json.loads(raw.decode("utf-8"))
@@ -335,7 +336,6 @@ class FabricUpdateManager:
             redirect,
             token=None,
             max_bytes=_MAX_ARCHIVE,
-            allow_redirect=False,
         )
 
     def _request_redirect(self, url: str, token: str) -> str:
@@ -355,12 +355,27 @@ class FabricUpdateManager:
         else:
             raise FabricUpdateError("fabric_artifact_unavailable")
         parsed = urllib.parse.urlsplit(location)
+        hostname = (parsed.hostname or "").lower()
         if (
             parsed.scheme != "https"
-            or not parsed.hostname
+            or not hostname
             or parsed.username is not None
             or parsed.password is not None
             or parsed.fragment
+            or hostname == "localhost"
+            or hostname.endswith(".local")
+        ):
+            raise FabricUpdateError("fabric_artifact_unavailable")
+        try:
+            address = ipaddress.ip_address(hostname)
+        except ValueError:
+            address = None
+        if address is not None and (
+            address.is_private
+            or address.is_loopback
+            or address.is_link_local
+            or address.is_reserved
+            or address.is_unspecified
         ):
             raise FabricUpdateError("fabric_artifact_unavailable")
         return location
@@ -371,7 +386,6 @@ class FabricUpdateManager:
         *,
         token: str | None,
         max_bytes: int,
-        allow_redirect: bool,
     ) -> bytes:
         request = urllib.request.Request(
             url,

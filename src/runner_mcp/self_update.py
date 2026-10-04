@@ -351,13 +351,15 @@ def reexec_component(
     config = str(config_dir.expanduser().resolve())
     argv = [str(executable), "--config-dir", config]
     if component == "server":
+        if server_host not in _LOOPBACK_HOSTS:
+            raise SelfUpdateError("Runner MCP server restart host is invalid")
         if server_port is None or not 1 <= server_port <= 65_535:
             raise SelfUpdateError("Runner MCP server restart port is invalid")
         argv.extend(
             [
                 "serve",
                 "--host",
-                "127.0.0.1",
+                server_host,
                 "--port",
                 str(server_port),
             ]
@@ -962,7 +964,7 @@ class SelfUpdateManager:
         def restart_component() -> object:
             if self._server_reexec is not None:
                 return self._server_reexec()
-            if self._server_port is None:
+            if self._server_host is None or self._server_port is None:
                 raise SelfUpdateError("Runner MCP server restart is unavailable")
             return reexec_component(
                 self.config_dir,

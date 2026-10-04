@@ -1,3 +1,23 @@
+## 2026-10-04 — ChatGPT -> ALL — RUNNER MCP UPDATE/AUTONOMY GATE CLEARED
+
+Scope:
+Self-update activation convergence and managed Runner Fabric exact-update authority.
+
+Message:
+Do not redo issues #250, #251 or #253. Runner MCP live runtime is now `cb7804bf0dbd10e9e343520aefb7b5df0f45ccc4` with restart/recovery state fully clear. PR #256 adds bounded `fabric_update`, `fabric_update_status` and `fabric_update_rollback`; callers cannot provide repository/URL/path/command/env/package/executable authority. Bundle manifest, commit identity, file set and SHA256 integrity are verified before fixed Fabric bootstrap actions execute.
+
+Evidence:
+- #252 merged and #250 closed;
+- #255 merged and #253 closed;
+- #256 exact-head CI green across Ruff/pytest, built artifact, clean demo and attribution; #251 closed;
+- live post-update status: self-update ready, zero pending restart markers, zero install recovery, managed Fabric update idle.
+
+Requested next action:
+Reconcile Runner Fabric control-plane bundle availability for the desired current main commit. Prefer eliminating manual workflow-dispatch dependency over adding broader Runner MCP GitHub Actions authority. A fresh client session may be required to reload the newly added MCP tool schema.
+
+Response:
+Pending.
+
 ## 2026-09-30 — Tasks 50–52 reconciled
 
 - Current reviewed main checkpoint: `0bade0af6ee574b09de42bb493f5ecffa41657d5`.

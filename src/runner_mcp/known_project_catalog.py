@@ -8,6 +8,7 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .config import ProjectRegistry, load_project_registry
+from .source_control import _git_environment
 
 
 class KnownProjectRegistrationError(RuntimeError):
@@ -256,28 +257,42 @@ def prepare_known_project(
             "Known project temporary destination is unavailable"
         )
 
-    repository_url = f"https://github.com/{project.repository}.git"
+    repository_urls = (
+        f"git@github.com:{project.repository}.git",
+        f"https://github.com/{project.repository}.git",
+    )
     try:
-        result = runner(
-            [
-                "git",
-                "-c",
-                "core.hooksPath=/dev/null",
-                "clone",
-                "--origin",
-                "origin",
-                "--no-tags",
-                "--",
-                repository_url,
-                str(temporary),
-            ],
-            cwd=str(parent),
-            capture_output=True,
-            text=True,
-            timeout=180.0,
-            check=False,
-            shell=False,
-        )
+        result = None
+        for repository_url in repository_urls:
+            if temporary.exists():
+                shutil.rmtree(temporary, ignore_errors=True)
+            result = runner(
+                [
+                    "git",
+                    "-c",
+                    "core.hooksPath=/dev/null",
+                    "clone",
+                    "--origin",
+                    "origin",
+                    "--no-tags",
+                    "--",
+                    repository_url,
+                    str(temporary),
+                ],
+                cwd=str(parent),
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=180.0,
+                check=False,
+                shell=False,
+                env=_git_environment(network=True),
+            )
+            if (
+                isinstance(result, subprocess.CompletedProcess)
+                and result.returncode == 0
+            ):
+                break
         if not isinstance(result, subprocess.CompletedProcess):
             raise KnownProjectRegistrationError(
                 "Known project clone result is invalid"

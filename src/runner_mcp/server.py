@@ -868,6 +868,42 @@ def build_mcp(
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
         return result
 
+    def fabric_external_target_preflight() -> dict:
+        """Return bounded config-only readiness for the trusted external target."""
+        try:
+            result = _require_fabric_bridge().external_target_preflight()
+        except FabricBridgeError as exc:
+            _audit_fabric(
+                "fabric_external_target_preflight",
+                "external-target:managed",
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_external_target_preflight",
+            "external-target:managed",
+            "ok",
+        )
+        return result
+
+    def fabric_external_target_inspect() -> dict:
+        """Return bounded live read-only qualification for the trusted external target."""
+        try:
+            result = _require_fabric_bridge().external_target_inspect()
+        except FabricBridgeError as exc:
+            _audit_fabric(
+                "fabric_external_target_inspect",
+                "external-target:managed",
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_external_target_inspect",
+            "external-target:managed",
+            str(result.get("readiness", "unknown")),
+        )
+        return result
+
     def fabric_operational_snapshot() -> dict:
         """Return bounded end-to-end operational state from Runner Fabric."""
         try:
@@ -940,6 +976,8 @@ def build_mcp(
 
     if fabric_bridge is not None:
         mcp.tool()(fabric_host_inspect)
+        mcp.tool()(fabric_external_target_preflight)
+        mcp.tool()(fabric_external_target_inspect)
         mcp.tool()(fabric_operational_snapshot)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)

@@ -4,7 +4,9 @@ import json
 import re
 import threading
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from .bridge_mcp_executor import LocalMCPClient, LocalMCPConfig
 from .bridge_processor import BridgeExecutionAdapterError
@@ -12,6 +14,8 @@ from .bridge_processor import BridgeExecutionAdapterError
 _FABRIC_TOOLS = frozenset(
     {
         "host_inspect",
+        "external_target_preflight",
+        "external_target_inspect",
         "operational_snapshot",
         "run_work_unit",
         "get_work_unit",
@@ -69,6 +73,24 @@ class FabricBridgeClient:
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric host inspection failed") from exc
         return _validate_host_inspection(result)
+
+    def external_target_preflight(self) -> dict[str, Any]:
+        """Return bounded config-only external-target preflight state."""
+
+        try:
+            result = self._client()._call_tool("external_target_preflight", {})
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError("Runner Fabric external target preflight failed") from exc
+        return _validate_external_target_preflight(result)
+
+    def external_target_inspect(self) -> dict[str, Any]:
+        """Return bounded read-only external-target HTTPS qualification."""
+
+        try:
+            result = self._client()._call_tool("external_target_inspect", {})
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError("Runner Fabric external target inspection failed") from exc
+        return _validate_external_target_inspection(result)
 
     def operational_snapshot(self) -> dict[str, Any]:
         """Return bounded read-only end-to-end operational state."""
@@ -171,6 +193,101 @@ class FabricBridgeClient:
             raise FabricBridgeError("Runner Fabric request failed") from exc
         return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
 
+
+
+def _canonical_uuid(value: object, field: str) -> str:
+    if not isinstance(value, str):
+        raise FabricBridgeError(f"Runner Fabric returned invalid {field}")
+    try:
+        parsed = UUID(value)
+    except ValueError as exc:
+        raise FabricBridgeError(f"Runner Fabric returned invalid {field}") from exc
+    if str(parsed) != value:
+        raise FabricBridgeError(f"Runner Fabric returned invalid {field}")
+    return value
+
+
+def _validate_external_target_preflight(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError("Runner Fabric returned invalid external target preflight")
+    _exact_keys(
+        value,
+        {
+            "schemaVersion",
+            "ready",
+            "targetAllocationId",
+            "environmentId",
+            "mutationEnabled",
+            "networkChecked",
+        },
+        "external target preflight",
+    )
+    if value["schemaVersion"] != "runner.fabric/external-target-preflight/v1":
+        raise FabricBridgeError("Runner Fabric returned invalid external target preflight")
+    if value["ready"] is not True:
+        raise FabricBridgeError("Runner Fabric external target preflight is not ready")
+    if value["mutationEnabled"] is not False or value["networkChecked"] is not False:
+        raise FabricBridgeError("Runner Fabric external target preflight is not read-only")
+    _canonical_uuid(value["targetAllocationId"], "target allocation id")
+    _canonical_uuid(value["environmentId"], "environment id")
+    _validate_bounded_json(value)
+    return value
+
+
+def _validate_external_target_inspection(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    _exact_keys(
+        value,
+        {
+            "schemaVersion",
+            "contractVersion",
+            "targetAllocationId",
+            "environmentId",
+            "reachability",
+            "readiness",
+            "observedAt",
+            "reasonCode",
+            "releaseRevision",
+            "evidenceRefs",
+            "liveMutationEnabled",
+        },
+        "external target inspection",
+    )
+    if value["schemaVersion"] != "runner.fabric/external-target-live-qualification/v1":
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    if value["contractVersion"] != "runner.fabric/external-target-inspection/v1alpha1":
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    if value["liveMutationEnabled"] is not False:
+        raise FabricBridgeError("Runner Fabric external target inspection must be read-only")
+    _canonical_uuid(value["targetAllocationId"], "target allocation id")
+    _canonical_uuid(value["environmentId"], "environment id")
+    if value["reachability"] not in {"reachable", "unreachable", "unknown"}:
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    if value["readiness"] not in {"ready", "degraded", "not-ready", "unknown"}:
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    observed_at = value["observedAt"]
+    if not isinstance(observed_at, str):
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    try:
+        observed = datetime.fromisoformat(observed_at)
+    except ValueError as exc:
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection") from exc
+    if observed.tzinfo is None or observed.utcoffset() is None:
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    reason = value["reasonCode"]
+    if not isinstance(reason, str) or _REASON_RE.fullmatch(reason) is None:
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    release = value["releaseRevision"]
+    if release is not None:
+        _revision(release)
+    evidence = value["evidenceRefs"]
+    if not isinstance(evidence, list) or len(evidence) > 16:
+        raise FabricBridgeError("Runner Fabric returned invalid external target inspection")
+    for reference in evidence:
+        _reference(reference, "evidence reference")
+    _validate_bounded_json(value)
+    return value
 
 
 def _validate_host_inspection(value: object) -> dict[str, Any]:

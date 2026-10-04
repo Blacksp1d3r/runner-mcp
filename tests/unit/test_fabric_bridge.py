@@ -87,6 +87,33 @@ def host_inspection_payload() -> dict:
         ],
     }
 
+def external_target_preflight_payload() -> dict:
+    return {
+        "schemaVersion": "runner.fabric/external-target-preflight/v1",
+        "ready": True,
+        "targetAllocationId": "11111111-1111-4111-8111-111111111111",
+        "environmentId": "22222222-2222-4222-8222-222222222222",
+        "mutationEnabled": False,
+        "networkChecked": False,
+    }
+
+
+def external_target_inspection_payload() -> dict:
+    return {
+        "schemaVersion": "runner.fabric/external-target-live-qualification/v1",
+        "contractVersion": "runner.fabric/external-target-inspection/v1alpha1",
+        "targetAllocationId": "11111111-1111-4111-8111-111111111111",
+        "environmentId": "22222222-2222-4222-8222-222222222222",
+        "reachability": "reachable",
+        "readiness": "ready",
+        "observedAt": "2026-10-04T17:30:00+00:00",
+        "reasonCode": "healthy",
+        "releaseRevision": "a" * 40,
+        "evidenceRefs": ["external-target:fixed-readonly-adapter"],
+        "liveMutationEnabled": False,
+    }
+
+
 def result_payload() -> dict:
     return {
         "state": "complete",
@@ -328,6 +355,50 @@ def test_host_inspect_forwards_no_arguments_and_validates_result() -> None:
 
     assert result == payload
     assert fake.calls == [("host_inspect", {})]
+
+
+def test_external_target_reads_forward_no_arguments_and_validate_results() -> None:
+    preflight = external_target_preflight_payload()
+    inspection = external_target_inspection_payload()
+    bridge, fake = bridge_with_responses(preflight, inspection)
+
+    assert bridge.external_target_preflight() == preflight
+    assert bridge.external_target_inspect() == inspection
+    assert fake.calls == [
+        ("external_target_preflight", {}),
+        ("external_target_inspect", {}),
+    ]
+
+
+@pytest.mark.parametrize(
+    ("method", "payload"),
+    [
+        (
+            "external_target_preflight",
+            {**external_target_preflight_payload(), "mutationEnabled": True},
+        ),
+        (
+            "external_target_preflight",
+            {**external_target_preflight_payload(), "private_path": "/secret"},
+        ),
+        (
+            "external_target_inspect",
+            {**external_target_inspection_payload(), "liveMutationEnabled": True},
+        ),
+        (
+            "external_target_inspect",
+            {**external_target_inspection_payload(), "endpoint": "https://private.invalid"},
+        ),
+    ],
+)
+def test_external_target_reads_reject_mutation_or_private_detail(
+    method: str,
+    payload: dict,
+) -> None:
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        getattr(bridge, method)()
 
 
 @pytest.mark.parametrize(

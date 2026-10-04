@@ -178,9 +178,6 @@ def test_ci_guest_enrollment_uses_private_allowlisted_spec(
 ) -> None:
     captured = {}
     token = "g" * 40
-    runner_root = tmp_path / "guest-runner"
-    work_root = runner_root / "_work"
-
     class FakeFabricBridge:
         def __init__(self, _config) -> None:
             pass
@@ -248,18 +245,6 @@ def test_ci_guest_enrollment_uses_private_allowlisted_spec(
     )
     private = {
         "RUNNER_MCP_GITHUB_TOKEN": token,
-        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
-            [
-                {
-                    "alias": "aifordable-lab-ci",
-                    "repository": "Blacksp1d3r/AIfordable",
-                    "runner_name": "aifordable-lab-ci",
-                    "runner_root": str(runner_root),
-                    "work_root": str(work_root),
-                    "labels": ["aifordable-ci"],
-                }
-            ]
-        ),
     }
     app = create_app(
         settings=settings,
@@ -313,7 +298,7 @@ def test_ci_guest_enrollment_uses_private_allowlisted_spec(
     assert token not in enrolled.text
     audit = (tmp_path / "audit-enroll.jsonl").read_text(encoding="utf-8")
     assert token not in audit
-    assert str(runner_root) not in audit
+    assert "Blacksp1d3r/AIfordable" not in audit
 
 
 def test_fabric_agent_restart_is_argumentless_and_bounded(

@@ -86,3 +86,27 @@ The bridge is transport only. It does not make a reserved or denied Fabric capab
 Runner Fabric remains responsible for work-unit policy, current fencing, approvals, credentials,
 workspace isolation, source-control authority, audit and recovery. Runner MCP only forwards the
 bounded request and bounded result.
+
+
+## Managed Fabric update artifact access
+
+Managed Runner Fabric updates are separate from the loopback work-unit bridge. Runner MCP verifies
+an exact successful canonical GitHub Actions run and exact named update artifact before applying a
+bundle.
+
+The private `RUNNER_MCP_GITHUB_TOKEN` used by Runner MCP must be able to read the
+`Blacksp1d3r/Runner-Fabric` repository's Actions metadata and artifacts. For a fine-grained token
+or GitHub App installation this means repository access to Runner Fabric plus **Actions: Read**
+(and normal repository metadata read access). Do not grant write/admin rights merely to make update
+downloads work.
+
+Use the read-only `fabric_update_readiness(commit)` tool before a managed update when diagnosing
+access. It returns only the requested commit and `artifact_ready=true` on success. Failures are
+bounded to categories such as:
+
+- `actions_run_unavailable` — the exact canonical successful run cannot be read or selected;
+- `artifact_metadata_unavailable` — the exact named non-expired artifact cannot be read or selected;
+- `artifact_download_unavailable` — the selected archive cannot be safely downloaded.
+
+No GitHub token, repository response body, redirect URL, artifact ID or private runtime detail is
+returned through these categories.

@@ -6,6 +6,7 @@ import pytest
 
 from runner_mcp import cli
 from runner_mcp.cli import _require_removal_confirmation, main
+from runner_mcp.github_watcher import GitHubWatcherError
 from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
@@ -97,7 +98,7 @@ def test_self_update_restart_components_include_only_ready_optional_consumers(
     )
 
 
-def test_self_update_restart_components_resolve_optional_failures_independently(
+def test_self_update_restart_components_fail_closed_on_invalid_mailbox(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -105,18 +106,12 @@ def test_self_update_restart_components_resolve_optional_failures_independently(
         raise cli.ConfigManagerError("invalid")
 
     monkeypatch.setattr(cli, "github_mailbox_config_status", invalid_mailbox)
-    monkeypatch.setattr(
-        cli,
-        "completion_notifier_status",
-        lambda _config_dir: {"configured": True, "initialized": True},
-    )
 
-    assert cli._self_update_restart_components(tmp_path) == frozenset(
-        {"server", "completion-watcher"}
-    )
+    with pytest.raises(cli.ConfigManagerError, match="invalid"):
+        cli._self_update_restart_components(tmp_path)
 
 
-def test_self_update_restart_components_fail_closed_on_invalid_optional_config(
+def test_self_update_restart_components_fail_closed_on_invalid_cursor(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -125,10 +120,7 @@ def test_self_update_restart_components_fail_closed_on_invalid_optional_config(
             pass
 
         def read(self):
-            raise cli.GitHubWatcherError("invalid")
-
-    def invalid_notifier(_config_dir):
-        raise cli.CompletionDeliveryError("invalid")
+            raise GitHubWatcherError("invalid")
 
     monkeypatch.setattr(
         cli,
@@ -136,10 +128,30 @@ def test_self_update_restart_components_fail_closed_on_invalid_optional_config(
         lambda _config_dir: {"configured": True},
     )
     monkeypatch.setattr(cli, "GitHubWatcherCursorStore", InvalidCursor)
-    monkeypatch.setattr(cli, "completion_notifier_status", invalid_notifier)
 
-    assert cli._self_update_restart_components(tmp_path) == frozenset({"server"})
+    with pytest.raises(GitHubWatcherError, match="invalid"):
+        cli._self_update_restart_components(tmp_path)
 
+
+def test_self_update_restart_components_fail_closed_on_invalid_notifier(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "github_mailbox_config_status",
+        lambda _config_dir: {"configured": False},
+    )
+    monkeypatch.setattr(
+        cli,
+        "completion_notifier_status",
+        lambda _config_dir: (_ for _ in ()).throw(
+            cli.CompletionDeliveryError("invalid")
+        ),
+    )
+
+    with pytest.raises(cli.CompletionDeliveryError, match="invalid"):
+        cli._self_update_restart_components(tmp_path)
 
 def install_config(
     tmp_path: Path,

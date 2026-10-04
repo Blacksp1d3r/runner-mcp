@@ -268,6 +268,20 @@ def _normalize_restart_components(
     return tuple(sorted(selected))
 
 
+def reconcile_stale_restart_markers(
+    config_dir: Path,
+    components: Collection[str],
+) -> tuple[str, ...]:
+    selected = set(_normalize_restart_components(components))
+    removed: list[str] = []
+    for component in sorted(_RESTART_COMPONENTS - selected):
+        if restart_marker_commit(config_dir, component) is None:
+            continue
+        _remove_restart_marker(config_dir, component)
+        removed.append(component)
+    return tuple(removed)
+
+
 def _write_restart_markers(
     config_dir: Path,
     commit: str,
@@ -688,6 +702,10 @@ class SelfUpdateManager:
         self.safety.assert_project_action_allowed(
             ActionClass.TEST,
             environment=config.environment,
+        )
+        reconcile_stale_restart_markers(
+            self.config_dir,
+            self._restart_components,
         )
         if restart_pending_count(self.config_dir):
             raise SelfUpdateError(

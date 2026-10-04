@@ -84,7 +84,7 @@ from .github_runtime import (
     DEFAULT_POLL_SECONDS,
     GitHubWatcherRuntime,
 )
-from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
+from .github_watcher import GitHubWatcherCursorStore
 from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
 from .host_integrity_linux import LinuxJournalDiagnosticAdapter
 from .onboarding import (
@@ -1608,27 +1608,19 @@ def cmd_plugin_package(args: argparse.Namespace) -> int:
 def _self_update_restart_components(config_dir: Path) -> frozenset[str]:
     components = {"server"}
 
-    try:
-        mailbox = github_mailbox_config_status(config_dir)
-        if mailbox["configured"]:
-            cursor = GitHubWatcherCursorStore(
-                config_dir / "github-mailbox-cursor.json"
-            )
-            if cursor.read() is not None:
-                components.add("github-watcher")
-    except (ConfigManagerError, GitHubWatcherError):
-        pass
+    mailbox = github_mailbox_config_status(config_dir)
+    if mailbox["configured"]:
+        cursor = GitHubWatcherCursorStore(
+            config_dir / "github-mailbox-cursor.json"
+        )
+        if cursor.read() is not None:
+            components.add("github-watcher")
 
-    try:
-        notifier = completion_notifier_status(config_dir)
-    except CompletionDeliveryError:
-        pass
-    else:
-        if notifier["configured"] and notifier["initialized"]:
-            components.add("completion-watcher")
+    notifier = completion_notifier_status(config_dir)
+    if notifier["configured"] and notifier["initialized"]:
+        components.add("completion-watcher")
 
     return frozenset(components)
-
 
 def cmd_serve(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)

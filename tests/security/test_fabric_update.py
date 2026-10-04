@@ -106,7 +106,7 @@ def test_artifact_run_must_come_from_main(
     monkeypatch.setattr(
         manager,
         "_api_json",
-        lambda _token, _path: {
+        lambda _token, _path, *, category: {
             "workflow_runs": [
                 {
                     "id": 123,
@@ -119,7 +119,7 @@ def test_artifact_run_must_come_from_main(
         },
     )
 
-    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+    with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
         manager._fetch_exact_artifact(commit)
 
 
@@ -136,7 +136,8 @@ def test_push_artifact_is_preferred_over_manual_fallback(
         lambda _path, _key: "x" * 40,
     )
 
-    def api(_token, path):
+    def api(_token, path, *, category):
+        assert category in {"actions_run_unavailable", "artifact_metadata_unavailable"}
         if "/artifacts" in path:
             return {
                 "artifacts": [
@@ -190,7 +191,8 @@ def test_manual_artifact_remains_fallback(
         lambda _path, _key: "x" * 40,
     )
 
-    def api(_token, path):
+    def api(_token, path, *, category):
+        assert category in {"actions_run_unavailable", "artifact_metadata_unavailable"}
         if "/artifacts" in path:
             return {
                 "artifacts": [
@@ -233,7 +235,7 @@ def test_duplicate_push_runs_fail_closed(
     monkeypatch.setattr(
         manager,
         "_api_json",
-        lambda _token, _path: {
+        lambda _token, _path, *, category: {
             "workflow_runs": [
                 {
                     "id": 101,
@@ -253,7 +255,7 @@ def test_duplicate_push_runs_fail_closed(
         },
     )
 
-    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+    with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
         manager._fetch_exact_artifact(commit)
 
 
@@ -280,7 +282,7 @@ def test_artifact_run_rejects_wrong_sha_or_event(
     monkeypatch.setattr(
         manager,
         "_api_json",
-        lambda _token, _path: {
+        lambda _token, _path, *, category: {
             "workflow_runs": [
                 {
                     "id": 123,
@@ -293,7 +295,7 @@ def test_artifact_run_rejects_wrong_sha_or_event(
         },
     )
 
-    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+    with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
         manager._fetch_exact_artifact(commit)
 
 
@@ -311,7 +313,7 @@ def test_artifact_redirect_rejects_private_host(tmp_path: Path) -> None:
     manager, _calls = _manager(tmp_path)
     manager._opener = RedirectingOpener()
 
-    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+    with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
         manager._request_redirect(
             "https://api.github.com/repos/Blacksp1d3r/Runner-Fabric/actions/artifacts/1/zip",
             "x" * 40,
@@ -330,7 +332,14 @@ def test_artifact_download_strips_bearer_after_redirect(
         lambda _url, _token: "https://artifact.example.invalid/file.zip",
     )
 
-    def fake_request(url: str, *, token: str | None, max_bytes: int) -> bytes:
+    def fake_request(
+        url: str,
+        *,
+        token: str | None,
+        max_bytes: int,
+        category: str,
+    ) -> bytes:
+        assert category == "artifact_download_unavailable"
         observed.append((url, token))
         assert max_bytes > 0
         return b"zip"
@@ -461,3 +470,79 @@ def test_rollback_is_bound_to_current_active_commit(tmp_path: Path) -> None:
 
     assert result == {"state": "completed", "commit": commit}
     assert calls[-1][-1] == "rollback"
+
+
+def test_readiness_checks_metadata_without_downloading(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "a" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+    observed: list[str] = []
+
+    def resolve(_token: str, value: str) -> int:
+        observed.append(value)
+        return 303
+
+    monkeypatch.setattr(manager, "_resolve_exact_artifact", resolve)
+    monkeypatch.setattr(
+        manager,
+        "_download_artifact",
+        lambda _token, _id: (_ for _ in ()).throw(
+            AssertionError("readiness must not download the artifact")
+        ),
+    )
+
+    assert manager.readiness(commit) == {
+        "commit": commit,
+        "artifact_ready": True,
+    }
+    assert observed == [commit]
+
+
+@pytest.mark.parametrize(
+    ("category", "path_fragment"),
+    [
+        ("actions_run_unavailable", "/actions/workflows/"),
+        ("artifact_metadata_unavailable", "/artifacts"),
+    ],
+)
+def test_artifact_lookup_preserves_bounded_failure_category(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    category: str,
+    path_fragment: str,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    commit = "a" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+
+    def api(_token, path, *, category: str):
+        if path_fragment in path:
+            raise FabricUpdateError(category)
+        return {
+            "workflow_runs": [
+                {
+                    "id": 202,
+                    "head_sha": commit,
+                    "head_branch": "main",
+                    "event": "push",
+                    "conclusion": "success",
+                }
+            ]
+        }
+
+    monkeypatch.setattr(manager, "_api_json", api)
+
+    with pytest.raises(FabricUpdateError, match=category):
+        manager._fetch_exact_artifact(commit)

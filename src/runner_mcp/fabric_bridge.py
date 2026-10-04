@@ -20,6 +20,10 @@ _FABRIC_TOOLS = frozenset(
         "run_work_unit",
         "get_work_unit",
         "cancel_work_unit",
+        "ci_runner_guest_status",
+        "ci_runner_guest_enroll",
+        "ci_runner_guest_start",
+        "ci_runner_guest_stop",
     }
 )
 _ID_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
@@ -31,6 +35,16 @@ _STATUSES = {"running", "cancel_requested", "complete", "blocked", "failed"}
 _STAGES = {"reconcile", "modify", "validate", "commit", "push", "report"}
 _OUTCOMES = {"success", "blocked", "failed"}
 _CHECKPOINTS = {"preflight", "pre_commit", "pre_push"}
+_HANDOFF_RE = re.compile(r"^[0-9a-f]{32}$")
+_CI_GUEST_STATES = {
+    "ready",
+    "registered",
+    "running",
+    "stopped",
+    "blocked",
+    "recovery_required",
+}
+_CI_GUEST_OPERATIONS = {"status", "enroll", "start", "stop"}
 
 
 class FabricBridgeError(RuntimeError):
@@ -102,6 +116,47 @@ class FabricBridgeClient:
                 "Runner Fabric operational snapshot failed"
             ) from exc
         return _validate_operational_snapshot(result)
+
+    def ci_runner_guest_status(self) -> dict[str, Any]:
+        """Return bounded isolated CI guest state."""
+
+        return self._call_ci_guest("ci_runner_guest_status", {})
+
+    def ci_runner_guest_enroll(self, handoff_id: str) -> dict[str, Any]:
+        """Enroll the isolated CI guest using one opaque handoff ID."""
+
+        if (
+            not isinstance(handoff_id, str)
+            or _HANDOFF_RE.fullmatch(handoff_id) is None
+        ):
+            raise FabricBridgeError("CI guest handoff id is invalid")
+        return self._call_ci_guest(
+            "ci_runner_guest_enroll",
+            {"handoff_id": handoff_id},
+        )
+
+    def ci_runner_guest_start(self) -> dict[str, Any]:
+        """Start the isolated CI guest listener."""
+
+        return self._call_ci_guest("ci_runner_guest_start", {})
+
+    def ci_runner_guest_stop(self) -> dict[str, Any]:
+        """Stop the isolated CI guest listener."""
+
+        return self._call_ci_guest("ci_runner_guest_stop", {})
+
+    def _call_ci_guest(
+        self,
+        tool: str,
+        arguments: dict[str, Any],
+    ) -> dict[str, Any]:
+        try:
+            result = self._client()._call_tool(tool, arguments)
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric CI guest request failed"
+            ) from exc
+        return _validate_ci_guest_result(result)
 
     def run_work_unit(
         self,
@@ -193,6 +248,68 @@ class FabricBridgeClient:
             raise FabricBridgeError("Runner Fabric request failed") from exc
         return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
 
+
+
+def _validate_ci_guest_result(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid CI guest result"
+        )
+    _exact_keys(
+        value,
+        {
+            "contract_version",
+            "operation",
+            "state",
+            "runner_name",
+            "registered",
+            "running",
+            "isolation_green",
+            "network_green",
+            "mutation_enabled",
+        },
+        "CI guest result",
+    )
+    if (
+        value["contract_version"]
+        != "runner.fabric/ci-runner-guest-execution/v1alpha1"
+    ):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid CI guest result"
+        )
+    if value["operation"] not in _CI_GUEST_OPERATIONS:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid CI guest result"
+        )
+    if value["state"] not in _CI_GUEST_STATES:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid CI guest result"
+        )
+    runner_name = value["runner_name"]
+    if (
+        not isinstance(runner_name, str)
+        or not re.fullmatch(r"[A-Za-z0-9._-]{1,100}", runner_name)
+    ):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid CI guest result"
+        )
+    for field in (
+        "registered",
+        "running",
+        "isolation_green",
+        "network_green",
+        "mutation_enabled",
+    ):
+        if not isinstance(value[field], bool):
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid CI guest result"
+            )
+    if value["running"] and not value["registered"]:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid CI guest result"
+        )
+    _validate_bounded_json(value)
+    return value
 
 
 def _canonical_uuid(value: object, field: str) -> str:

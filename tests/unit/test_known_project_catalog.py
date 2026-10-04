@@ -7,6 +7,7 @@ import pytest
 
 from runner_mcp.config import ProjectConfig, ProjectRegistry
 from runner_mcp.known_project_catalog import (
+    KNOWN_PROJECTS,
     KnownProjectRegistrationError,
     discover_known_project_root,
     preflight_known_project,
@@ -505,3 +506,48 @@ def test_known_project_preflight_reports_ambiguous_parent(tmp_path: Path) -> Non
     )
 
     assert result["state"] == "ambiguous-parent"
+
+
+def test_rasff_lens_is_bounded_known_python_project() -> None:
+    project = KNOWN_PROJECTS["rasff-lens"]
+    assert project.code == "rasff-lens"
+    assert project.display_name == "RASFF Lens"
+    assert project.repository == "Blacksp1d3r/rasff-lens"
+    assert project.directory_name == "rasff-lens"
+    assert project.adapter == "python"
+
+
+def test_rasff_lens_preflight_reports_ready_to_prepare(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="rasff-lens",
+        runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("git must not run")
+        ),
+    )
+
+    assert result == {
+        "code": "rasff-lens",
+        "repository": "Blacksp1d3r/rasff-lens",
+        "state": "ready-to-prepare",
+    }
+
+
+def test_rasff_lens_existing_clone_requires_exact_repository(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    target = tmp_path / "rasff-lens"
+    target.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="rasff-lens",
+        runner=lambda *_args, **_kwargs: _completed(
+            "https://github.com/Blacksp1d3r/rasff-lens.git\n"
+        ),
+    )
+    assert result["state"] == "already-prepared"
+

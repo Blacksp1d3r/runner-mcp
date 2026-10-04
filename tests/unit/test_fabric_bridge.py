@@ -484,3 +484,122 @@ def test_operational_snapshot_rejects_invalid_or_private_result(mutator) -> None
 
     with pytest.raises(FabricBridgeError):
         bridge.operational_snapshot()
+
+
+def ci_guest_payload(
+    *,
+    operation: str = "status",
+    state: str = "ready",
+    registered: bool = False,
+    running: bool = False,
+) -> dict:
+    return {
+        "contract_version": (
+            "runner.fabric/ci-runner-guest-execution/v1alpha1"
+        ),
+        "operation": operation,
+        "state": state,
+        "runner_name": "aifordable-lab-ci",
+        "registered": registered,
+        "running": running,
+        "isolation_green": True,
+        "network_green": True,
+        "mutation_enabled": True,
+    }
+
+
+def test_ci_guest_bridge_forwards_only_bounded_arguments() -> None:
+    status = ci_guest_payload()
+    enrolled = ci_guest_payload(
+        operation="enroll",
+        state="registered",
+        registered=True,
+    )
+    started = ci_guest_payload(
+        operation="start",
+        state="running",
+        registered=True,
+        running=True,
+    )
+    stopped = ci_guest_payload(
+        operation="stop",
+        state="stopped",
+        registered=True,
+    )
+    bridge, fake = bridge_with_responses(
+        status,
+        enrolled,
+        started,
+        stopped,
+    )
+    handoff_id = "ab" * 16
+
+    assert bridge.ci_runner_guest_status() == status
+    assert bridge.ci_runner_guest_enroll(handoff_id) == enrolled
+    assert bridge.ci_runner_guest_start() == started
+    assert bridge.ci_runner_guest_stop() == stopped
+
+    assert fake.calls == [
+        ("ci_runner_guest_status", {}),
+        ("ci_runner_guest_enroll", {"handoff_id": handoff_id}),
+        ("ci_runner_guest_start", {}),
+        ("ci_runner_guest_stop", {}),
+    ]
+
+
+@pytest.mark.parametrize(
+    "handoff_id",
+    [
+        "",
+        "short",
+        "../" + "a" * 29,
+        "g" * 32,
+        "a" * 31,
+        "a" * 33,
+    ],
+)
+def test_ci_guest_enroll_rejects_invalid_handoff_before_transport(
+    handoff_id: str,
+) -> None:
+    bridge, fake = bridge_with_responses(ci_guest_payload())
+
+    with pytest.raises(FabricBridgeError, match="handoff id"):
+        bridge.ci_runner_guest_enroll(handoff_id)
+
+    assert fake.calls == []
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/secret"}),
+        lambda payload: payload.update({"token": "secret"}),
+        lambda payload: payload.update({"state": "unknown"}),
+        lambda payload: payload.update({"operation": "shell"}),
+        lambda payload: payload.update({"running": True}),
+        lambda payload: payload.update({"runner_name": "../runner"}),
+    ],
+)
+def test_ci_guest_result_rejects_private_or_invalid_shape(mutator) -> None:
+    payload = ci_guest_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError, match="CI guest result"):
+        bridge.ci_runner_guest_status()
+
+
+def test_ci_guest_enroll_has_no_secret_argument_surface() -> None:
+    enrolled = ci_guest_payload(
+        operation="enroll",
+        state="registered",
+        registered=True,
+    )
+    bridge, fake = bridge_with_responses(enrolled)
+    secret = "registration-secret-must-not-cross-mcp"
+
+    result = bridge.ci_runner_guest_enroll("ab" * 16)
+
+    assert result["registered"] is True
+    assert secret not in repr(fake.calls)
+    assert set(fake.calls[0][1]) == {"handoff_id"}

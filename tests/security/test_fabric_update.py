@@ -5,11 +5,13 @@ import io
 import json
 import os
 import subprocess
+import urllib.error
 import zipfile
 from pathlib import Path
 
 import pytest
 
+import runner_mcp.fabric_update as fabric_update_module
 from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
 
@@ -88,6 +90,83 @@ def _bundle(commit: str, *, tamper_bootstrap: bool = False) -> bytes:
         )
         archive.writestr(wheel_name, wheel)
     return buffer.getvalue()
+
+
+def test_artifact_run_must_come_from_main(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    commit = "f" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+    monkeypatch.setattr(
+        manager,
+        "_api_json",
+        lambda _token, _path: {
+            "workflow_runs": [
+                {
+                    "id": 123,
+                    "head_sha": commit,
+                    "head_branch": "feature",
+                    "event": "workflow_dispatch",
+                    "conclusion": "success",
+                }
+            ]
+        },
+    )
+
+    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+        manager._fetch_exact_artifact(commit)
+
+
+def test_artifact_redirect_rejects_private_host(tmp_path: Path) -> None:
+    class RedirectingOpener:
+        def open(self, request, timeout):
+            raise urllib.error.HTTPError(
+                request.full_url,
+                302,
+                "Found",
+                {"Location": "https://127.0.0.1/private"},
+                None,
+            )
+
+    manager, _calls = _manager(tmp_path)
+    manager._opener = RedirectingOpener()
+
+    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+        manager._request_redirect(
+            "https://api.github.com/repos/Blacksp1d3r/Runner-Fabric/actions/artifacts/1/zip",
+            "x" * 40,
+        )
+
+
+def test_artifact_download_strips_bearer_after_redirect(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    observed: list[tuple[str, str | None]] = []
+    monkeypatch.setattr(
+        manager,
+        "_request_redirect",
+        lambda _url, _token: "https://artifact.example.invalid/file.zip",
+    )
+
+    def fake_request(url: str, *, token: str | None, max_bytes: int) -> bytes:
+        observed.append((url, token))
+        assert max_bytes > 0
+        return b"zip"
+
+    monkeypatch.setattr(manager, "_request", fake_request)
+
+    assert manager._download_artifact("secret-token", 123) == b"zip"
+    assert observed == [
+        ("https://artifact.example.invalid/file.zip", None)
+    ]
 
 
 def test_invalid_commit_is_rejected(tmp_path: Path) -> None:

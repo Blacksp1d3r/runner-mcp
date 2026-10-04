@@ -1,3 +1,22 @@
+## 2026-10-04 — managed Fabric update path landed and Runner MCP live runtime converged
+
+Canonical Runner MCP main/live commit: `cb7804bf0dbd10e9e343520aefb7b5df0f45ccc4`.
+
+Completed:
+- PR #252 / issue #250 fixed stale optional self-update restart markers with explicit bounded reconciliation and fail-closed optional-component configuration;
+- PR #255 / issue #253 bound server self-update restart to the actual local loopback serve host/port instead of inferring restart authority from the public/tunnel resource URL;
+- live self-update to `cb7804bf...` completed through Runner MCP itself;
+- server and configured GitHub-watcher restart markers both self-consumed; live status is `self_update_ready=true`, `restart_pending=false`, `pending_restart_count=0`, and no install recovery is pending;
+- PR #256 / issue #251 added bounded managed Runner Fabric exact-commit update/status/rollback tools;
+- Fabric updates accept only a full lowercase commit, require a successful canonical `control-plane-update-bundle` workflow from `main`, verify exact manifest/commit/file-set/SHA256 integrity before execution, strip GitHub authorization before artifact redirects, reject local/private redirect hosts, require an already-managed Fabric slot launcher, and invoke only fixed `BOOTSTRAP.py preflight|apply|rollback` actions;
+- rollback is bound to the currently active managed commit only; no repository, URL, path, command, environment, package, artifact ID or executable authority is caller-supplied.
+
+Next:
+1. make sure the desired Runner Fabric `main` commit has a canonical control-plane update artifact without reintroducing a manual operator dependency;
+2. start a fresh first-party client session so newly added MCP tool schemas reload;
+3. use `fabric_update` for the first exact managed Fabric upgrade and prove bounded status/rollback readiness;
+4. then use the already-landed `fabric_host_inspect`/work-unit route to continue retiring Desktop Commander from routine work.
+
 ## 2026-10-04 — bounded Runner Fabric host inspection bridge
 
 Tracking: #247. Cross-repo dependency: Runner Fabric #760 / I5 #751.

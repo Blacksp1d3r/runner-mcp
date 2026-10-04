@@ -5,7 +5,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
-from .config import ProjectRegistry
+from .config import ProjectRegistry, load_project_registry
+from .config_manager import ConfigManagerError, add_project
 
 
 class KnownProjectRegistrationError(RuntimeError):
@@ -131,3 +132,65 @@ def _normalize_repository(value: str) -> str | None:
     if len(parts) != 2 or not all(parts):
         return None
     return f"{parts[0]}/{parts[1]}"
+
+
+
+def register_known_project(
+    config_dir: Path,
+    projects_config: Path,
+    registry: ProjectRegistry,
+    *,
+    project_id: str,
+    runner=subprocess.run,
+    add_project_fn=add_project,
+    reload_fn=load_project_registry,
+) -> dict[str, str]:
+    if not isinstance(config_dir, Path) or not config_dir.is_absolute():
+        raise KnownProjectRegistrationError("Private configuration root is invalid")
+    if not isinstance(projects_config, Path) or not projects_config.is_absolute():
+        raise KnownProjectRegistrationError("Project configuration path is invalid")
+
+    project = KNOWN_PROJECTS.get(project_id)
+    if project is None:
+        raise KnownProjectRegistrationError("Unknown managed project")
+
+    existing = registry.projects.get(project.code)
+    if existing is not None:
+        if existing.repository != project.repository:
+            raise KnownProjectRegistrationError(
+                "Managed project code is already bound to another repository"
+            )
+        return {
+            **existing.public_summary(project.code),
+            "state": "already-registered",
+        }
+
+    discovered, root = discover_known_project_root(
+        registry,
+        project_id=project_id,
+        runner=runner,
+    )
+    try:
+        summary = add_project_fn(
+            config_dir,
+            code=discovered.code,
+            display_name=discovered.display_name,
+            repository=discovered.repository,
+            root=root,
+            adapter=discovered.adapter,
+        )
+        refreshed = reload_fn(projects_config)
+    except (ConfigManagerError, OSError, ValueError) as exc:
+        raise KnownProjectRegistrationError(
+            "Managed project registration failed"
+        ) from exc
+
+    current = refreshed.projects.get(discovered.code)
+    if current is None or current.repository != discovered.repository:
+        raise KnownProjectRegistrationError(
+            "Managed project registration could not be verified"
+        )
+
+    registry.projects.clear()
+    registry.projects.update(refreshed.projects)
+    return {**summary, "state": "registered"}

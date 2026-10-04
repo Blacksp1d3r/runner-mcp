@@ -30,6 +30,13 @@ KNOWN_PROJECTS: dict[str, KnownProject] = {
         repository="Blacksp1d3r/AIfordable",
         directory_name="AIfordable",
     ),
+    "rasff-lens": KnownProject(
+        code="rasff-lens",
+        display_name="RASFF Lens",
+        repository="Blacksp1d3r/rasff-lens",
+        directory_name="rasff-lens",
+        adapter="python",
+    ),
 }
 
 

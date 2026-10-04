@@ -3,6 +3,7 @@ from __future__ import annotations
 from concurrent.futures import ThreadPoolExecutor
 from threading import Barrier
 from types import SimpleNamespace
+from uuid import uuid4
 
 import pytest
 
@@ -353,3 +354,94 @@ def test_host_inspect_rejects_unbounded_or_invalid_result(mutator) -> None:
 
     with pytest.raises(FabricBridgeError):
         bridge.host_inspect()
+
+
+
+def external_target_payload(
+    target_allocation_id: str,
+    environment_id: str,
+) -> dict:
+    return {
+        "contract_version": "runner.fabric/external-target-inspection/v1alpha1",
+        "target_allocation_id": target_allocation_id,
+        "environment_id": environment_id,
+        "reachability": "reachable",
+        "readiness": "ready",
+        "observed_at": "2026-10-04T11:00:00+00:00",
+        "reason_code": "healthy",
+        "release_revision": "c" * 40,
+        "evidence_refs": ["external-target:fixed-readonly-adapter"],
+        "live_mutation_enabled": False,
+    }
+
+
+def test_external_target_inspection_forwards_only_semantic_uuids() -> None:
+    target_id = str(uuid4())
+    environment_id = str(uuid4())
+    payload = external_target_payload(target_id, environment_id)
+    bridge, fake = bridge_with_responses(payload)
+
+    result = bridge.inspect_external_target(
+        target_allocation_id=target_id,
+        environment_id=environment_id,
+    )
+
+    assert result == payload
+    assert fake.calls == [
+        (
+            "inspect_external_target",
+            {
+                "target_allocation_id": target_id,
+                "environment_id": environment_id,
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda payload: payload.update({"private_path": "/srv/private"}),
+        lambda payload: payload.update({"live_mutation_enabled": True}),
+        lambda payload: payload.update({"target_allocation_id": str(uuid4())}),
+        lambda payload: payload.update({"release_revision": "latest"}),
+        lambda payload: payload.update({"observed_at": "2026-10-04T11:00:00"}),
+        lambda payload: payload.update({"evidence_refs": ["/private/path"]}),
+    ],
+)
+def test_external_target_inspection_rejects_invalid_or_private_result(
+    mutation,
+) -> None:
+    target_id = str(uuid4())
+    environment_id = str(uuid4())
+    payload = external_target_payload(target_id, environment_id)
+    mutation(payload)
+    bridge, _fake = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.inspect_external_target(
+            target_allocation_id=target_id,
+            environment_id=environment_id,
+        )
+
+
+@pytest.mark.parametrize(
+    "field",
+    ["target_allocation_id", "environment_id"],
+)
+def test_external_target_inspection_rejects_noncanonical_uuid(field: str) -> None:
+    target_id = str(uuid4())
+    environment_id = str(uuid4())
+    bridge, fake = bridge_with_responses(
+        external_target_payload(target_id, environment_id)
+    )
+    kwargs = {
+        "target_allocation_id": target_id,
+        "environment_id": environment_id,
+    }
+    kwargs[field] = "not-a-uuid"
+
+    with pytest.raises(FabricBridgeError):
+        bridge.inspect_external_target(**kwargs)
+
+    assert fake.calls == []

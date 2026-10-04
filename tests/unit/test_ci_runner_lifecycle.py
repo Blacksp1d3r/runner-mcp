@@ -30,7 +30,7 @@ def raw(root: Path, work: Path) -> str:
 
 def test_config_is_exact_bounded_and_private_path_aware(tmp_path: Path) -> None:
     root = tmp_path / "runner"
-    work = tmp_path / "work"
+    work = root / "_work"
     specs = parse_ci_runner_specs(raw(root, work))
 
     assert tuple(specs) == ("aifordable-lab-ci",)
@@ -42,7 +42,7 @@ def test_config_is_exact_bounded_and_private_path_aware(tmp_path: Path) -> None:
 
 def test_status_reports_bounded_state_without_paths(tmp_path: Path) -> None:
     root = tmp_path / "runner"
-    work = tmp_path / "work"
+    work = root / "_work"
     root.mkdir()
     work.mkdir()
     (root / ".runner").write_text("private registration data", encoding="utf-8")
@@ -64,7 +64,7 @@ def test_status_reports_bounded_state_without_paths(tmp_path: Path) -> None:
 
 def test_plan_is_read_only_and_activation_reserved(tmp_path: Path) -> None:
     root = tmp_path / "runner"
-    work = tmp_path / "work"
+    work = root / "_work"
     root.mkdir()
     work.mkdir()
 
@@ -100,7 +100,7 @@ def test_invalid_or_ambiguous_config_fails_closed(
     mutation: dict[str, object],
 ) -> None:
     root = tmp_path / "runner"
-    work = tmp_path / "work"
+    work = root / "_work"
     item: dict[str, object] = {
         "alias": "aifordable-lab-ci",
         "repository": "Blacksp1d3r/AIfordable",
@@ -118,13 +118,22 @@ def test_invalid_or_ambiguous_config_fails_closed(
 def test_symlink_runner_root_is_never_ready(tmp_path: Path) -> None:
     real = tmp_path / "real"
     real.mkdir()
+    (real / "_work").mkdir()
     link = tmp_path / "link"
     link.symlink_to(real, target_is_directory=True)
-    work = tmp_path / "work"
-    work.mkdir()
+    work = link / "_work"
 
     spec = parse_ci_runner_specs(raw(link, work))["aifordable-lab-ci"]
     status = inspect_ci_runner(spec)
 
     assert status.runner_root_ready is False
     assert status.registered is False
+
+
+
+def test_work_root_must_be_inside_runner_root(tmp_path: Path) -> None:
+    root = tmp_path / "runner"
+    outside = tmp_path / "outside"
+
+    with pytest.raises(CIRunnerLifecycleError, match="inside runner root"):
+        parse_ci_runner_specs(raw(root, outside))

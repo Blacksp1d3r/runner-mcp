@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import re
 import threading
 from dataclasses import dataclass
@@ -279,8 +280,6 @@ def _validate_bounded_json(value: object) -> None:
                 raise FabricBridgeError("Runner Fabric host inspection contains private detail")
         elif current is not None and not isinstance(current, (int, float, bool)):
             raise FabricBridgeError("Runner Fabric host inspection is invalid")
-
-    import json
 
     try:
         raw = json.dumps(

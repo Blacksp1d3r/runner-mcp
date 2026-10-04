@@ -10,6 +10,7 @@ from .bridge_processor import BridgeExecutionAdapterError
 
 _FABRIC_TOOLS = frozenset(
     {
+        "host_inspect",
         "run_work_unit",
         "get_work_unit",
         "cancel_work_unit",
@@ -49,13 +50,23 @@ class FabricBridgeConfig:
 
 
 class FabricBridgeClient:
-    """Fixed three-tool proxy to a loopback Runner Fabric MCP endpoint."""
+    """Fixed bounded proxy to a loopback Runner Fabric MCP endpoint."""
 
     def __init__(self, config: FabricBridgeConfig) -> None:
         if not isinstance(config, FabricBridgeConfig):
             raise TypeError("config must be FabricBridgeConfig")
         self._mcp_config = config.to_mcp_config()
         self._local = threading.local()
+
+
+    def host_inspect(self) -> dict[str, Any]:
+        """Return bounded read-only Runner Fabric host/browser inspection."""
+
+        try:
+            result = self._client()._call_tool("host_inspect", {})
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError("Runner Fabric host inspection failed") from exc
+        return _validate_host_inspection(result)
 
     def run_work_unit(
         self,
@@ -146,6 +157,143 @@ class FabricBridgeClient:
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric request failed") from exc
         return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
+
+
+
+def _validate_host_inspection(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError("Runner Fabric returned invalid host inspection")
+    _exact_keys(
+        value,
+        {"schema_version", "mutation_enabled", "host", "browsers"},
+        "host inspection",
+    )
+    if value["schema_version"] != "runner.fabric/host-inspection/v1":
+        raise FabricBridgeError("Runner Fabric returned invalid host inspection")
+    if value["mutation_enabled"] is not False:
+        raise FabricBridgeError("Runner Fabric host inspection must be read-only")
+
+    host = value["host"]
+    if not isinstance(host, dict):
+        raise FabricBridgeError("Runner Fabric returned invalid host inspection")
+    required_host_keys = {
+        "id",
+        "display_name",
+        "freshness",
+        "cpu",
+        "memory",
+        "swap",
+        "pressure",
+        "filesystems",
+        "disks",
+        "network",
+        "uptime_seconds",
+        "oom_kills",
+        "process_count",
+        "collector",
+    }
+    if set(host) != required_host_keys:
+        raise FabricBridgeError("Runner Fabric returned invalid host inspection")
+    host_id = host["id"]
+    if not isinstance(host_id, str) or _ID_RE.fullmatch(host_id) is None:
+        raise FabricBridgeError("Runner Fabric returned invalid host inspection")
+    if not host_id.startswith("host:"):
+        raise FabricBridgeError("Runner Fabric returned invalid host inspection")
+    if not isinstance(host["display_name"], str) or not 1 <= len(host["display_name"]) <= 160:
+        raise FabricBridgeError("Runner Fabric returned invalid host inspection")
+
+    browsers = value["browsers"]
+    if not isinstance(browsers, list) or len(browsers) != 4:
+        raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+    expected_runtimes = {"chromium", "chrome", "firefox", "webkit"}
+    seen: set[str] = set()
+    for browser in browsers:
+        if not isinstance(browser, dict):
+            raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+        keys = set(browser)
+        if keys not in (
+            {"runtime", "state", "cache_ready"},
+            {"runtime", "state", "cache_ready", "version"},
+        ):
+            raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+        runtime = browser["runtime"]
+        state = browser["state"]
+        cache_ready = browser["cache_ready"]
+        if runtime not in expected_runtimes or runtime in seen:
+            raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+        seen.add(runtime)
+        if state not in {"available", "unverified", "unavailable"}:
+            raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+        if not isinstance(cache_ready, bool):
+            raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+        version = browser.get("version")
+        if state == "available":
+            if not isinstance(version, str) or not 1 <= len(version) <= 160:
+                raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+        elif version is not None:
+            raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+
+    if seen != expected_runtimes:
+        raise FabricBridgeError("Runner Fabric returned invalid browser inspection")
+    _validate_bounded_json(value)
+    return value
+
+
+def _validate_bounded_json(value: object) -> None:
+    forbidden_fragments = {
+        "path",
+        "token",
+        "secret",
+        "credential",
+        "password",
+        "authorization",
+        "private_key",
+        "endpoint",
+        "url",
+        "argv",
+        "command",
+        "shell",
+        "executable",
+    }
+    stack: list[object] = [value]
+    nodes = 0
+    while stack:
+        current = stack.pop()
+        nodes += 1
+        if nodes > 4096:
+            raise FabricBridgeError("Runner Fabric host inspection is too large")
+        if isinstance(current, dict):
+            for key, item in current.items():
+                if not isinstance(key, str):
+                    raise FabricBridgeError("Runner Fabric host inspection is invalid")
+                lowered = key.casefold()
+                if any(fragment in lowered for fragment in forbidden_fragments):
+                    raise FabricBridgeError("Runner Fabric host inspection contains private detail")
+                stack.append(item)
+        elif isinstance(current, list):
+            stack.extend(current)
+        elif isinstance(current, str):
+            if len(current) > 512 or any(ord(char) < 32 and char not in "\t" for char in current):
+                raise FabricBridgeError("Runner Fabric host inspection is invalid")
+            if current.startswith("/") or "\\" in current:
+                raise FabricBridgeError("Runner Fabric host inspection contains private detail")
+        elif current is not None and not isinstance(current, (int, float, bool)):
+            raise FabricBridgeError("Runner Fabric host inspection is invalid")
+
+    import json
+
+    try:
+        raw = json.dumps(
+            value,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise FabricBridgeError("Runner Fabric host inspection is invalid") from exc
+    if len(raw) > 64 * 1024:
+        raise FabricBridgeError("Runner Fabric host inspection is too large")
 
 
 def _validate_view(

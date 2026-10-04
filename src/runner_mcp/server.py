@@ -36,13 +36,13 @@ from .ci_runner_guest_enrollment import (
 )
 from .ci_runner_guest_fabric_transport import CIRunnerGuestFabricTransport
 from .ci_runner_guest_github import CIRunnerGuestGitHubController
-from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .ci_runner_lifecycle import (
     CIRunnerLifecycleError,
     inspect_ci_runner,
     parse_ci_runner_specs,
     plan_ci_runner,
 )
+from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner

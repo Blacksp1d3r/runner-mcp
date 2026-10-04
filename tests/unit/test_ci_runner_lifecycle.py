@@ -22,7 +22,7 @@ def raw(root: Path, work: Path) -> str:
                 "runner_name": "aifordable-lab-ci",
                 "runner_root": str(root),
                 "work_root": str(work),
-                "labels": ["Linux", "X64", "aifordable-ci"],
+                "labels": ["aifordable-ci"],
             }
         ]
     )
@@ -37,7 +37,7 @@ def test_config_is_exact_bounded_and_private_path_aware(tmp_path: Path) -> None:
     spec = specs["aifordable-lab-ci"]
     assert spec.repository == "Blacksp1d3r/AIfordable"
     assert spec.runner_name == "aifordable-lab-ci"
-    assert spec.labels == ("Linux", "X64", "aifordable-ci")
+    assert spec.labels == ("aifordable-ci",)
 
 
 def test_status_reports_bounded_state_without_paths(tmp_path: Path) -> None:
@@ -75,7 +75,7 @@ def test_plan_is_read_only_and_activation_reserved(tmp_path: Path) -> None:
         "alias": "aifordable-lab-ci",
         "repository": "Blacksp1d3r/AIfordable",
         "runner_name": "aifordable-lab-ci",
-        "labels": ["Linux", "X64", "aifordable-ci"],
+        "labels": ["aifordable-ci"],
         "enrollment_required": True,
         "activation_supported": False,
     }
@@ -90,6 +90,8 @@ def test_plan_is_read_only_and_activation_reserved(tmp_path: Path) -> None:
         {"alias": "../escape"},
         {"runner_name": "bad name"},
         {"labels": ["self-hosted", "aifordable-ci"]},
+        {"labels": ["Linux", "aifordable-ci"]},
+        {"labels": ["X64", "aifordable-ci"]},
         {"labels": ["aifordable-ci", "aifordable-ci"]},
     ],
 )

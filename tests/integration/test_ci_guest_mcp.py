@@ -102,6 +102,8 @@ def test_ci_guest_tools_are_bounded_fabric_proxies(
         projects_config=tmp_path / "unused.yml",
         audit_log=tmp_path / "audit.jsonl",
         rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator.stop",
+        retention_confirmed=True,
         fabric_resource_url="http://127.0.0.1:9010/mcp",
         fabric_bearer_token="f" * 32,
     )

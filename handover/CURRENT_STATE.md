@@ -1,3 +1,24 @@
+## 2026-10-04 — alpha core complete; maintenance mode
+
+Runner MCP is now in maintenance mode after completion of the technical alpha/MVP core and live recovery acceptance.
+
+Current live evidence:
+- runtime is operational with emergency stop inactive;
+- self-update is ready, with no active update, restart marker or install-recovery transaction;
+- #108 recovery qualification is complete: interrupted install state was detected, overlap failed closed, local emergency-stop-gated recovery restored the exact prior baseline, and a normal bounded self-update returned the runtime to exact main;
+- first-party bounded Runner Fabric work-unit control is proven; Runner Fabric remains the orchestration/control-plane owner;
+- canonical public release is v0.1.3 on PyPI, the official MCP Registry and GitHub Releases;
+- Glama and AllMCPs discovery/ownership are established without introducing hosted runtime dependencies;
+- #101 remains open only for a deliberately deferred technical launch post after `aifordable.com` is ready;
+- #263 remains open only for third-party directory metadata corrections, including upstream MCP Find issue #26.
+
+Maintenance policy:
+- no speculative Runner MCP feature work;
+- accept security fixes, correctness bugs, compatibility fixes and concrete operational needs;
+- preserve the deny-by-default bounded authority model and local-only recovery boundaries;
+- keep broad orchestration, scheduling, provider logic and higher-level automation in Runner Fabric;
+- external discovery/marketing work is non-blocking and must not drive runtime/package changes.
+
 ## 2026-10-04 — local self-update recovery qualification harness live-ready
 
 Canonical Runner MCP runtime/code checkpoint before the live recovery drill: `ba35f70eb9e3e489fc6936d2bc2f0fc425710c81`.

@@ -38,7 +38,7 @@ def spec(tmp_path: Path) -> CIRunnerSpec:
         runner_name="aifordable-lab-ci",
         runner_root=tmp_path / "runner",
         work_root=tmp_path / "work",
-        labels=("Linux", "X64", "aifordable-ci"),
+        labels=("aifordable-ci",),
     )
 
 
@@ -51,8 +51,8 @@ def runner_payload(*, labels=None):
         "labels": labels
         or [
             {"name": "self-hosted", "type": "read-only"},
-            {"name": "Linux", "type": "custom"},
-            {"name": "X64", "type": "custom"},
+            {"name": "Linux", "type": "read-only"},
+            {"name": "X64", "type": "read-only"},
             {"name": "aifordable-ci", "type": "custom"},
         ],
     }
@@ -68,7 +68,7 @@ def test_status_finds_exact_configured_identity(tmp_path: Path) -> None:
     assert result.runner_id == 42
     assert result.online is True
     assert result.busy is False
-    assert result.custom_labels == ("Linux", "X64", "aifordable-ci")
+    assert result.custom_labels == ("aifordable-ci",)
     assert session.calls == [
         (
             "get",
@@ -123,7 +123,7 @@ def test_label_control_cannot_exceed_configured_authority(tmp_path: Path) -> Non
         controller.set_custom_labels(
             spec(tmp_path),
             runner_id=42,
-            labels=("aifordable-ci", "production-secret"),
+            labels=("production-secret",),
         )
 
     assert session.calls == []
@@ -147,8 +147,8 @@ def test_label_withdrawal_supports_drain_without_process_kill(tmp_path: Path) ->
                     runner_payload(
                         labels=[
                             {"name": "self-hosted", "type": "read-only"},
-                            {"name": "Linux", "type": "custom"},
-                            {"name": "X64", "type": "custom"},
+                            {"name": "Linux", "type": "read-only"},
+                            {"name": "X64", "type": "read-only"},
                         ]
                     )
                 ],
@@ -159,14 +159,14 @@ def test_label_withdrawal_supports_drain_without_process_kill(tmp_path: Path) ->
     result = CIRunnerGitHubController(session).set_custom_labels(
         spec(tmp_path),
         runner_id=42,
-        labels=("Linux", "X64"),
+        labels=(),
     )
 
-    assert result.custom_labels == ("Linux", "X64")
+    assert result.custom_labels == ()
     assert session.calls[0] == (
         "put",
         "/repos/Blacksp1d3r/AIfordable/actions/runners/42/labels",
-        {"labels": ["Linux", "X64"]},
+        {"labels": []},
     )
 
 

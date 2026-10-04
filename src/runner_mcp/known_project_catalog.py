@@ -221,7 +221,7 @@ def _github_clone_environment(github_token: str | None) -> dict[str, str]:
     if not token or any(char in token for char in ("\x00", "\r", "\n")):
         raise KnownProjectRegistrationError("GitHub clone credential is invalid")
     credential = base64.b64encode(
-        f"x-access-token:{token}".encode("utf-8")
+        f"x-access-token:{token}".encode()
     ).decode("ascii")
     environment.update(
         {

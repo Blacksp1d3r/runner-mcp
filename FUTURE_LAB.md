@@ -589,6 +589,40 @@ An experiment may move toward production only when:
 Large experiments should normally start in a separate branch, prototype repository, test harness or
 Runner Fabric lab path rather than destabilizing Runner MCP main.
 
+
+## Resume point — where to restart later
+
+Runner MCP itself is not the immediate development priority after this document lands.
+
+Near-term project order:
+
+1. finish and stabilize Runner Fabric far enough that it can carry the higher-level orchestration,
+   autonomous work and multi-project control that should not be pushed back into Runner MCP;
+2. continue product work through Fabric, including RASFF Lens or other active product lanes, while
+   checking live ownership first so parallel work is not duplicated;
+3. return to Runner MCP Future Lab only when one of the experiments has a concrete trigger, useful
+   benchmark opportunity, compatibility need or real host/user demand.
+
+When Future Lab resumes, start here unless newer evidence changes the order:
+
+1. add privacy-safe performance instrumentation;
+2. measure representative real workflows, especially total AI/tool round-trips;
+3. prototype one bounded `operational_snapshot`;
+4. compare the snapshot workflow against today's multi-call workflow;
+5. only then decide whether compact responses, stateless-conformance work, idempotency
+   generalization, Tasks, caching or batching gives the next best return.
+
+Before starting any experiment:
+
+- reconcile current GitHub main, open PRs/issues and current MCP specification/SDK behavior;
+- check whether another active lane is already changing Runner MCP, Runner Fabric or the target
+  product;
+- do not duplicate RASFF Lens/Fabric work that is already owned elsewhere;
+- keep experimental work outside the stable Runner MCP core until its value is demonstrated.
+
+This section is intentionally a restart marker: if Runner MCP Future Lab is untouched for weeks or
+months, begin by reading this section, then revalidate all assumptions against the live state.
+
 ## Research backlog order
 
 This order is a starting hypothesis, not doctrine:

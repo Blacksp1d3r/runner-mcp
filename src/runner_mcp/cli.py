@@ -25,6 +25,14 @@ from .autostart import (
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
+from .ci_runner_lifecycle import (
+    CIRunnerLifecycleError,
+    parse_ci_runner_specs,
+)
+from .ci_runner_supervisor import (
+    CIRunnerSupervisor,
+    CIRunnerSupervisorError,
+)
 from .completion_delivery import (
     CompletionDeliveryError,
     CompletionNotifierRuntime,
@@ -990,6 +998,38 @@ def _autostart_activation_preflight(
         return integrity.value, None
 
     return "autostart_activation_clear", AutostartActivationPermit.clear()
+
+
+def cmd_ci_runner(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    values = load_env_file(paths.env_file)
+    try:
+        specs = parse_ci_runner_specs(
+            values.get("RUNNER_MCP_CI_RUNNERS_JSON")
+        )
+    except CIRunnerLifecycleError as exc:
+        raise RuntimeError("CI runner private configuration is invalid") from exc
+    spec = specs.get(args.alias)
+    if spec is None:
+        raise RuntimeError("Unknown or disabled CI runner")
+
+    supervisor = CIRunnerSupervisor(environment=values)
+
+    if args.ci_runner_action == "status":
+        result = supervisor.status(spec).to_payload()
+        print(
+            f"alias={result['alias']} "
+            f"registered={'yes' if result['registered'] else 'no'} "
+            f"active={'yes' if result['active'] else 'no'}"
+        )
+        return 0
+
+    if args.ci_runner_action == "run":
+        supervisor.run_once(spec)
+        return 0
+
+    raise CIRunnerSupervisorError("unknown CI runner action")
 
 
 def cmd_autostart(args: argparse.Namespace) -> int:
@@ -2072,6 +2112,27 @@ def build_parser() -> argparse.ArgumentParser:
     )
     approval_approve.add_argument("approval_id")
     approval_approve.set_defaults(func=cmd_approval)
+
+    ci_runner = subparsers.add_parser(
+        "ci-runner",
+        help="Inspect or run one preconfigured CI runner supervisor.",
+    )
+    ci_runner_sub = ci_runner.add_subparsers(
+        dest="ci_runner_action",
+        required=True,
+    )
+    ci_runner_status = ci_runner_sub.add_parser(
+        "status",
+        help="Show bounded local CI runner supervisor state.",
+    )
+    ci_runner_status.add_argument("alias")
+    ci_runner_status.set_defaults(func=cmd_ci_runner)
+    ci_runner_run = ci_runner_sub.add_parser(
+        "run",
+        help=argparse.SUPPRESS,
+    )
+    ci_runner_run.add_argument("alias")
+    ci_runner_run.set_defaults(func=cmd_ci_runner)
 
     autostart = subparsers.add_parser(
         "autostart",

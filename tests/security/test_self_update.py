@@ -50,6 +50,10 @@ class FakeSource:
         self.calls.append((project, commit))
         return {"project": project, "commit": commit, "changed": True}
 
+    def sync_project_main_tip(self, project: str, commit: str):
+        self.calls.append((project, commit))
+        return {"project": project, "commit": commit, "changed": True}
+
     def restore_project_main_commit_for_recovery(self, project: str, commit: str):
         self.recovery_calls.append((project, commit))
         return {"project": project, "commit": commit, "changed": True}

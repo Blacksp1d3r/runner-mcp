@@ -1,3 +1,24 @@
+## 2026-10-04 — local self-update recovery qualification harness live-ready
+
+Canonical Runner MCP runtime/code checkpoint before the live recovery drill: `ba35f70eb9e3e489fc6936d2bc2f0fc425710c81`.
+
+Completed:
+- #110 is closed after first-party coarse Fabric run/get plus fail-closed cancel/operator-safety acceptance;
+- issue #261 / PR #262 add a local-only `self-update-recovery-qualify <commit>` path for #108;
+- the qualifier uses normal exact-main validation/staging/install, then deterministically interrupts after target wheel installation and before verification/finalization, preserving the existing recovery transaction and staged baseline;
+- the qualification path is not exposed through MCP, mailbox or Agent Bus and adds no generic command/path/package/process authority;
+- exact-head #262 validation, release artifact, clean demo and attribution are green;
+- managed Runner MCP self-update to `ba35f70e...` completed and restart convergence is clear;
+- Fabric runtime update remains idle; do not confuse Runner MCP #260 automatic-bundle acceptance with an active Fabric update.
+
+Next:
+1. use the next exact current-main documentation commit as the forward target for the live #108 drill;
+2. locally run `self-update-recovery-qualify <exact-current-main>` under the qualified service-user runtime;
+3. prove remote/normal self-update refuses overlap while recovery is pending;
+4. locally activate the operator emergency stop and run `self-update-recovery` with its exact confirmation;
+5. verify baseline restoration, clear recovery state and then perform a normal bounded self-update back to exact current main;
+6. close #108 only after that live evidence is recorded.
+
 ## 2026-10-04 — exact-main self-update guard is live
 
 Canonical Runner MCP live code checkpoint: `82e4b0f133bae3a709bb29a89a9be2d98122aef9`.

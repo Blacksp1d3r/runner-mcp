@@ -9,10 +9,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
-from .ci_runner_guest_enrollment import (
-    CIRunnerGuestEnrollmentError,
-    CIRunnerRegistrationSecret,
-)
+from .ci_runner_guest_enrollment import CIRunnerRegistrationSecret
 
 _HANDOFF_RE = re.compile(r"^[0-9a-f]{32}$")
 _MAX_SECRET_BYTES = 4096

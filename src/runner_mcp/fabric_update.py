@@ -278,7 +278,7 @@ class FabricUpdateManager:
         runs = self._api_json(
             token,
             f"/repos/{owner}/{repo}/actions/workflows/{_WORKFLOW}/runs"
-            f"?head_sha={commit}&event=workflow_dispatch&status=success&per_page=100",
+            f"?head_sha={commit}&status=success&per_page=100",
         )
         rows = runs.get("workflow_runs") if isinstance(runs, dict) else None
         if not isinstance(rows, list):
@@ -288,12 +288,20 @@ class FabricUpdateManager:
             if isinstance(row, dict)
             and row.get("head_sha") == commit
             and row.get("conclusion") == "success"
-            and row.get("event") == "workflow_dispatch"
             and row.get("head_branch") == "main"
+            and row.get("event") in {"push", "workflow_dispatch"}
         ]
-        if len(exact) != 1 or not isinstance(exact[0].get("id"), int):
+        pushed = [row for row in exact if row.get("event") == "push"]
+        fallback = [row for row in exact if row.get("event") == "workflow_dispatch"]
+        if len(pushed) == 1:
+            selected = pushed[0]
+        elif len(pushed) > 1 or len(fallback) != 1:
             raise FabricUpdateError("fabric_artifact_unavailable")
-        run_id = exact[0]["id"]
+        else:
+            selected = fallback[0]
+        if not isinstance(selected.get("id"), int):
+            raise FabricUpdateError("fabric_artifact_unavailable")
+        run_id = selected["id"]
         artifacts = self._api_json(
             token,
             f"/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts?per_page=100",

@@ -2887,3 +2887,152 @@ def test_agent_bus_worker_run_cli_preserves_continuous_runtime(
         ]
     ) == 0
     assert calls == [(paths.config_dir.resolve(), False)]
+
+
+
+def test_ci_runner_status_uses_private_alias_only(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    (root / ".runner").write_text("private registration", encoding="utf-8")
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    values = {
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "aifordable-lab-ci",
+                    "repository": "Blacksp1d3r/AIfordable",
+                    "runner_name": "aifordable-lab-ci",
+                    "runner_root": str(root),
+                    "work_root": str(work),
+                    "labels": ["aifordable-ci"],
+                }
+            ]
+        )
+    }
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "status",
+            "aifordable-lab-ci",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.strip() == (
+        "alias=aifordable-lab-ci registered=yes active=no"
+    )
+    assert str(root) not in captured.out
+    assert "Blacksp1d3r/AIfordable" not in captured.out
+
+
+def test_ci_runner_run_delegates_only_preconfigured_alias(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    values = {
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "aifordable-lab-ci",
+                    "repository": "Blacksp1d3r/AIfordable",
+                    "runner_name": "aifordable-lab-ci",
+                    "runner_root": str(root),
+                    "work_root": str(work),
+                    "labels": ["aifordable-ci"],
+                }
+            ]
+        )
+    }
+    seen: list[str] = []
+
+    class FakeSupervisor:
+        def __init__(self, *, environment):
+            assert environment is values
+
+        def run_once(self, spec):
+            seen.append(spec.alias)
+            return object()
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+    monkeypatch.setattr(cli, "CIRunnerSupervisor", FakeSupervisor)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "run",
+            "aifordable-lab-ci",
+        ]
+    )
+
+    assert result == 0
+    assert seen == ["aifordable-lab-ci"]
+
+
+def test_ci_runner_unknown_alias_fails_before_supervisor(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    calls = 0
+
+    class FailSupervisor:
+        def __init__(self, **_kwargs):
+            nonlocal calls
+            calls += 1
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(
+        cli,
+        "load_env_file",
+        lambda _path: {"RUNNER_MCP_CI_RUNNERS_JSON": "[]"},
+    )
+    monkeypatch.setattr(cli, "CIRunnerSupervisor", FailSupervisor)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "run",
+            "unknown",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "Unknown or disabled CI runner" in captured.err
+    assert calls == 0

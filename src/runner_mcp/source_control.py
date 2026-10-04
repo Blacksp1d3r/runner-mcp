@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import os
 import re
 import subprocess
@@ -50,7 +51,11 @@ def _safe_root(root: Path) -> Path:
     return resolved
 
 
-def _git_environment(*, network: bool) -> dict[str, str]:
+def _git_environment(
+    *,
+    network: bool,
+    github_token: str | None = None,
+) -> dict[str, str]:
     environment = {
         "PATH": "/usr/local/bin:/usr/bin:/bin",
         "LANG": "C.UTF-8",
@@ -68,6 +73,27 @@ def _git_environment(*, network: bool) -> dict[str, str]:
             environment["SSH_AUTH_SOCK"] = ssh_auth_sock
     else:
         environment["HOME"] = "/nonexistent"
+
+    if github_token is not None:
+        if not network:
+            raise SourceControlError(
+                "GitHub credential is allowed only for network Git operations"
+            )
+        if not isinstance(github_token, str):
+            raise SourceControlError("GitHub source credential is invalid")
+        token = github_token.strip()
+        if not token or any(char in token for char in ("\x00", "\r", "\n")):
+            raise SourceControlError("GitHub source credential is invalid")
+        credential = base64.b64encode(
+            f"x-access-token:{token}".encode()
+        ).decode("ascii")
+        environment.update(
+            {
+                "GIT_CONFIG_COUNT": "1",
+                "GIT_CONFIG_KEY_0": "http.https://github.com/.extraheader",
+                "GIT_CONFIG_VALUE_0": f"AUTHORIZATION: basic {credential}",
+            }
+        )
     return environment
 
 
@@ -77,6 +103,7 @@ def _run_git(
     *,
     timeout: int = 30,
     network: bool = False,
+    github_token: str | None = None,
 ) -> str:
     resolved = _safe_root(root)
     command = [
@@ -98,7 +125,10 @@ def _run_git(
             timeout=timeout,
             check=False,
             shell=False,
-            env=_git_environment(network=network),
+            env=_git_environment(
+                network=network,
+                github_token=github_token,
+            ),
         )
     except (OSError, subprocess.TimeoutExpired) as exc:
         raise SourceControlError("Git source-state operation failed") from exc
@@ -170,10 +200,20 @@ class SourceSynchronizer:
         registry: ProjectRegistry,
         safety: OperatorSafetyGuard,
         tests=None,
+        github_token: str | None = None,
     ) -> None:
         self.registry = registry
         self.safety = safety
         self.tests = tests
+        if github_token is not None:
+            if not isinstance(github_token, str):
+                raise SourceControlError("GitHub source credential is invalid")
+            token = github_token.strip()
+            if not token or any(char in token for char in ("\x00", "\r", "\n")):
+                raise SourceControlError("GitHub source credential is invalid")
+            self.github_token = token
+        else:
+            self.github_token = None
 
     def sync_project(self, project: str, commit: str) -> dict[str, str | bool]:
         return self._sync_project(
@@ -285,6 +325,7 @@ class SourceSynchronizer:
                 ],
                 timeout=120,
                 network=True,
+                github_token=self.github_token,
             )
             resolved_commit = _run_git(
                 root,

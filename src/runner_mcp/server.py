@@ -858,13 +858,27 @@ def build_mcp(
             )
         )
 
+    def _fabric_host_inspect_failure(exc: FabricBridgeError) -> dict:
+        """Project one Fabric host-inspection failure into bounded public evidence."""
+        category = (
+            "fabric_inspection_unavailable"
+            if str(exc) == "Runner Fabric host inspection failed"
+            else "invalid_inspection_payload"
+        )
+        return {
+            "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
+            "state": "unavailable",
+            "error_category": category,
+            "mutation_enabled": False,
+        }
+
     def fabric_host_inspect() -> dict:
         """Return bounded Runner Fabric host/browser readiness without host authority."""
         try:
             result = _require_fabric_bridge().host_inspect()
         except FabricBridgeError as exc:
             _audit_fabric("fabric_host_inspect", "host:local", "denied")
-            raise ValueError(str(exc)) from None
+            return _fabric_host_inspect_failure(exc)
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
         return result
 

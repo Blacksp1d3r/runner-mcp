@@ -126,8 +126,7 @@ def _normalize_repository(value: str) -> str | None:
             return None
         path = parsed.path.lstrip("/")
 
-    if path.endswith(".git"):
-        path = path[:-4]
+    path = path.removesuffix(".git")
     parts = path.split("/")
     if len(parts) != 2 or not all(parts):
         return None

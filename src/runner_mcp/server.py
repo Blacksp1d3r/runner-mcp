@@ -495,8 +495,18 @@ def build_mcp(
         else None
     )
 
+    ci_guest_specs = {
+        "aifordable-lab-ci": CIRunnerGuestSpec(
+            alias="aifordable-lab-ci",
+            repository="Blacksp1d3r/AIfordable",
+            runner_name="aifordable-lab-ci",
+            labels=("aifordable-ci",),
+            transport_binding_key="aifordable-lab-ci",
+        )
+    }
+
     ci_guest_enrollment = None
-    if fabric_bridge is not None and ci_runner_specs and github_token:
+    if fabric_bridge is not None and ci_guest_specs and github_token:
         handoff_root = settings.projects_config.parent / "ci-runner-handoffs"
         try:
             handoff_root.mkdir(mode=0o700, exist_ok=True)
@@ -1145,14 +1155,10 @@ def build_mcp(
         return spec
 
     def _ci_guest_spec(alias: str) -> CIRunnerGuestSpec:
-        spec = _ci_runner_spec(alias)
-        return CIRunnerGuestSpec(
-            alias=spec.alias,
-            repository=spec.repository,
-            runner_name=spec.runner_name,
-            labels=spec.labels,
-            transport_binding_key=spec.alias,
-        )
+        spec = ci_guest_specs.get(alias)
+        if spec is None:
+            raise ValueError("Unknown or disabled CI guest")
+        return spec
 
     def list_ci_runners() -> list[dict[str, object]]:
         """List configured CI runner aliases without private host paths."""
@@ -1315,8 +1321,9 @@ def build_mcp(
         mcp.tool()(ci_runner_plan)
         if ci_runner_enrollment is not None:
             mcp.tool()(ci_runner_enroll)
-        if ci_guest_enrollment is not None:
-            mcp.tool()(ci_runner_guest_enroll)
+
+    if ci_guest_enrollment is not None:
+        mcp.tool()(ci_runner_guest_enroll)
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:

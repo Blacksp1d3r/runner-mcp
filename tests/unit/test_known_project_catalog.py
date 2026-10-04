@@ -9,6 +9,7 @@ from runner_mcp.config import ProjectConfig, ProjectRegistry
 from runner_mcp.known_project_catalog import (
     KnownProjectRegistrationError,
     discover_known_project_root,
+    preflight_known_project,
     prepare_known_project,
     register_known_project,
 )
@@ -422,3 +423,85 @@ def test_prepare_known_project_rejects_ambiguous_parent_roots(tmp_path: Path) ->
                 AssertionError("git must not run")
             ),
         )
+
+
+
+def test_known_project_preflight_reports_missing_destination(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="aifordable",
+        runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("git must not run")
+        ),
+    )
+
+    assert result == {
+        "code": "aifordable",
+        "repository": "Blacksp1d3r/AIfordable",
+        "state": "ready-to-prepare",
+    }
+
+
+def test_known_project_preflight_reports_exact_existing_clone(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    target = tmp_path / "AIfordable"
+    target.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="aifordable",
+        runner=lambda *_args, **_kwargs: _completed(
+            "https://github.com/Blacksp1d3r/AIfordable.git\n"
+        ),
+    )
+
+    assert result["state"] == "already-prepared"
+
+
+def test_known_project_preflight_reports_wrong_existing_clone(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    target = tmp_path / "AIfordable"
+    target.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="aifordable",
+        runner=lambda *_args, **_kwargs: _completed(
+            "https://github.com/example/AIfordable.git\n"
+        ),
+    )
+
+    assert result["state"] == "wrong-repository"
+
+
+def test_known_project_preflight_reports_ambiguous_parent(tmp_path: Path) -> None:
+    first = tmp_path / "one" / "runner-mcp"
+    second = tmp_path / "two" / "other"
+    first.mkdir(parents=True)
+    second.mkdir(parents=True)
+    registry = ProjectRegistry(
+        projects={
+            "runner-mcp": ProjectConfig(
+                display_name="Runner MCP",
+                repository="Blacksp1d3r/runner-mcp",
+                root=first,
+            ),
+            "other": ProjectConfig(
+                display_name="Other",
+                repository="example/other",
+                root=second,
+            ),
+        }
+    )
+
+    result = preflight_known_project(
+        registry,
+        project_id="aifordable",
+    )
+
+    assert result["state"] == "ambiguous-parent"

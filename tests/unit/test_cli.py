@@ -6,6 +6,7 @@ import pytest
 
 from runner_mcp import cli
 from runner_mcp.cli import _require_removal_confirmation, main
+from runner_mcp.github_watcher import GitHubWatcherError
 from runner_mcp.onboarding import (
     SetupAnswers,
     install_private_configuration,
@@ -119,7 +120,7 @@ def test_self_update_restart_components_fail_closed_on_invalid_cursor(
             pass
 
         def read(self):
-            raise cli.GitHubWatcherError("invalid")
+            raise GitHubWatcherError("invalid")
 
     monkeypatch.setattr(
         cli,
@@ -128,7 +129,7 @@ def test_self_update_restart_components_fail_closed_on_invalid_cursor(
     )
     monkeypatch.setattr(cli, "GitHubWatcherCursorStore", InvalidCursor)
 
-    with pytest.raises(cli.GitHubWatcherError, match="invalid"):
+    with pytest.raises(GitHubWatcherError, match="invalid"):
         cli._self_update_restart_components(tmp_path)
 
 

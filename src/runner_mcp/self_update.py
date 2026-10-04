@@ -94,6 +94,10 @@ class SelfUpdateError(RuntimeError):
     """Safe self-update failure without private path or process output."""
 
 
+class _SelfUpdateQualificationInterrupt(BaseException):
+    """Local-only deterministic interruption for recovery qualification."""
+
+
 class SelfUpdateJobState(StrEnum):
     QUEUED = "queued"
     SYNCING = "syncing"
@@ -884,6 +888,87 @@ class SelfUpdateManager:
                 pass
             raise SelfUpdateError("Self-update state could not be persisted") from exc
 
+    def qualify_install_recovery(self, commit: str) -> dict[str, Any]:
+        if not _COMMIT_RE.fullmatch(commit):
+            raise SelfUpdateError(
+                "Self-update recovery qualification requires a full lowercase commit ID"
+            )
+        config = self._project_config()
+        if not self._required_profiles_available():
+            raise SelfUpdateError(
+                "Runner MCP self-update validation profiles are unavailable"
+            )
+        self.safety.assert_project_action_allowed(
+            ActionClass.TEST,
+            environment=config.environment,
+        )
+        if self._pending_install_transaction() is not None:
+            raise SelfUpdateError(
+                "Runner MCP self-update installation recovery is still pending"
+            )
+        installed_commit = self._installed_commit()
+        if installed_commit is None:
+            raise SelfUpdateError(
+                "Self-update recovery qualification requires a recorded baseline"
+            )
+        if installed_commit == commit:
+            raise SelfUpdateError(
+                "Self-update recovery qualification requires a forward commit"
+            )
+        reconcile_stale_restart_markers(
+            self.config_dir,
+            self._restart_components,
+            installed_commit,
+        )
+        if restart_pending_count(self.config_dir):
+            raise SelfUpdateError(
+                "Runner MCP self-update activation is still pending"
+            )
+
+        with self._lock:
+            if any(
+                job.state not in _TERMINAL_SELF_UPDATE_STATES
+                for job in self._jobs.values()
+            ):
+                raise SelfUpdateError("A Runner MCP self-update is already active")
+            job = SelfUpdateJob(
+                job_id=uuid4().hex,
+                commit=commit,
+                state=SelfUpdateJobState.QUEUED,
+                created_at=_utc_now(),
+            )
+            self._jobs[job.job_id] = job
+            self._persist_job(job)
+
+        try:
+            self._run_job(
+                job.job_id,
+                qualification_interrupt_after_install=True,
+            )
+        except _SelfUpdateQualificationInterrupt:
+            transaction = self._pending_install_transaction()
+            if (
+                transaction is None
+                or transaction["job_id"] != job.job_id
+                or transaction["target_commit"] != commit
+                or transaction["baseline_commit"] != installed_commit
+            ):
+                raise SelfUpdateError(
+                    "Self-update recovery qualification did not preserve recovery state"
+                ) from None
+            return {
+                "interrupted": True,
+                "job_id": job.job_id,
+                "commit": commit,
+                "recovery_required": True,
+            }
+
+        status = self.status(job.job_id)
+        raise SelfUpdateError(
+            "Self-update recovery qualification did not reach the install interruption "
+            f"({status['state']})"
+        )
+
     def recover_installation(self) -> dict[str, Any]:
         transaction = self._pending_install_transaction()
         if transaction is None:
@@ -996,7 +1081,12 @@ class SelfUpdateManager:
             daemon=True,
         ).start()
 
-    def _run_job(self, job_id: str) -> None:
+    def _run_job(
+        self,
+        job_id: str,
+        *,
+        qualification_interrupt_after_install: bool = False,
+    ) -> None:
         job = self._jobs[job_id]
         installed = False
         failure_category = "self_update_failed"
@@ -1149,6 +1239,8 @@ class SelfUpdateManager:
                 )
                 try:
                     self._package_installer.install_wheel(target_wheel)
+                    if qualification_interrupt_after_install:
+                        raise _SelfUpdateQualificationInterrupt()
                     self._package_installer.verify_runtime()
                     installed = True
                 except PackageInstallError as install_exc:

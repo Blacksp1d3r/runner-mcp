@@ -130,6 +130,15 @@ class FabricUpdateManager:
             ),
         }
 
+    def readiness(self, commit: str) -> dict[str, Any]:
+        """Verify the exact canonical Actions run/artifact metadata without mutation."""
+        _require_commit(commit)
+        self._require_safe_runtime()
+        self._assert_managed_launcher()
+        token = _private_env_value(self.config_dir / "runner-mcp.env", _TOKEN_ENV)
+        self._resolve_exact_artifact(token, commit)
+        return {"commit": commit, "artifact_ready": True}
+
     def start(self, commit: str) -> dict[str, Any]:
         _require_commit(commit)
         self._require_safe_runtime()
@@ -274,15 +283,20 @@ class FabricUpdateManager:
 
     def _fetch_exact_artifact(self, commit: str) -> bytes:
         token = _private_env_value(self.config_dir / "runner-mcp.env", _TOKEN_ENV)
+        artifact_id = self._resolve_exact_artifact(token, commit)
+        return self._download_artifact(token, artifact_id)
+
+    def _resolve_exact_artifact(self, token: str, commit: str) -> int:
         owner, repo = _REPOSITORY.split("/", 1)
         runs = self._api_json(
             token,
             f"/repos/{owner}/{repo}/actions/workflows/{_WORKFLOW}/runs"
             f"?head_sha={commit}&status=success&per_page=100",
+            category="actions_run_unavailable",
         )
         rows = runs.get("workflow_runs") if isinstance(runs, dict) else None
         if not isinstance(rows, list):
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError("actions_run_unavailable")
         exact = [
             row for row in rows
             if isinstance(row, dict)
@@ -296,15 +310,16 @@ class FabricUpdateManager:
         if len(pushed) == 1:
             selected = pushed[0]
         elif len(pushed) > 1 or len(fallback) != 1:
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError("actions_run_unavailable")
         else:
             selected = fallback[0]
         if not isinstance(selected.get("id"), int):
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError("actions_run_unavailable")
         run_id = selected["id"]
         artifacts = self._api_json(
             token,
             f"/repos/{owner}/{repo}/actions/runs/{run_id}/artifacts?per_page=100",
+            category="artifact_metadata_unavailable",
         )
         rows = artifacts.get("artifacts") if isinstance(artifacts, dict) else None
         expected = f"runner-fabric-control-plane-update-{commit}"
@@ -316,21 +331,28 @@ class FabricUpdateManager:
             and isinstance(row.get("id"), int)
         ]
         if len(candidates) != 1:
-            raise FabricUpdateError("fabric_artifact_unavailable")
-        return self._download_artifact(token, candidates[0]["id"])
+            raise FabricUpdateError("artifact_metadata_unavailable")
+        return candidates[0]["id"]
 
-    def _api_json(self, token: str, path: str) -> dict[str, Any]:
+    def _api_json(
+        self,
+        token: str,
+        path: str,
+        *,
+        category: str,
+    ) -> dict[str, Any]:
         raw = self._request(
             f"https://api.github.com{path}",
             token=token,
             max_bytes=_MAX_API_RESPONSE,
+            category=category,
         )
         try:
             value = json.loads(raw.decode("utf-8"))
         except (UnicodeDecodeError, json.JSONDecodeError) as exc:
-            raise FabricUpdateError("fabric_artifact_unavailable") from exc
+            raise FabricUpdateError(category) from exc
         if not isinstance(value, dict):
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError(category)
         return value
 
     def _download_artifact(self, token: str, artifact_id: int) -> bytes:
@@ -344,6 +366,7 @@ class FabricUpdateManager:
             redirect,
             token=None,
             max_bytes=_MAX_ARCHIVE,
+            category="artifact_download_unavailable",
         )
 
     def _request_redirect(self, url: str, token: str) -> str:
@@ -356,12 +379,12 @@ class FabricUpdateManager:
             self._opener.open(request, timeout=30)
         except urllib.error.HTTPError as exc:
             if exc.code not in {301, 302, 303, 307, 308}:
-                raise FabricUpdateError("fabric_artifact_unavailable") from exc
+                raise FabricUpdateError("artifact_download_unavailable") from exc
             location = exc.headers.get("Location", "")
         except (OSError, urllib.error.URLError) as exc:
-            raise FabricUpdateError("fabric_artifact_unavailable") from exc
+            raise FabricUpdateError("artifact_download_unavailable") from exc
         else:
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError("artifact_download_unavailable")
         parsed = urllib.parse.urlsplit(location)
         hostname = (parsed.hostname or "").lower()
         if (
@@ -373,7 +396,7 @@ class FabricUpdateManager:
             or hostname == "localhost"
             or hostname.endswith(".local")
         ):
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError("artifact_download_unavailable")
         try:
             address = ipaddress.ip_address(hostname)
         except ValueError:
@@ -385,7 +408,7 @@ class FabricUpdateManager:
             or address.is_reserved
             or address.is_unspecified
         ):
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError("artifact_download_unavailable")
         return location
 
     def _request(
@@ -394,6 +417,7 @@ class FabricUpdateManager:
         *,
         token: str | None,
         max_bytes: int,
+        category: str,
     ) -> bytes:
         request = urllib.request.Request(
             url,
@@ -404,9 +428,9 @@ class FabricUpdateManager:
             with self._opener.open(request, timeout=60) as response:
                 raw = response.read(max_bytes + 1)
         except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
-            raise FabricUpdateError("fabric_artifact_unavailable") from exc
+            raise FabricUpdateError(category) from exc
         if len(raw) > max_bytes:
-            raise FabricUpdateError("fabric_artifact_unavailable")
+            raise FabricUpdateError(category)
         return raw
 
     @staticmethod
@@ -757,6 +781,9 @@ def _category(exc: FabricUpdateError) -> str:
         "fabric_recovery_required",
         "fabric_transaction_invalid",
         "fabric_artifact_unavailable",
+        "actions_run_unavailable",
+        "artifact_metadata_unavailable",
+        "artifact_download_unavailable",
         "fabric_bundle_invalid",
         "fabric_bundle_integrity_failed",
         "fabric_bundle_storage_conflict",

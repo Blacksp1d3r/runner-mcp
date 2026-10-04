@@ -45,6 +45,10 @@ from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
+from .known_project_catalog import KnownProjectRegistrationError
+from .known_project_catalog import (
+    register_known_project as register_known_project_binding,
+)
 from .migration_jobs import MigrationJobError, MigrationJobRunner
 from .migration_planning import (
     async_migration_approval_material,
@@ -1134,6 +1138,53 @@ def build_mcp(
         result = [cfg.public_summary(code) for code, cfg in sorted(registry.projects.items())]
         audit.append(
             AuditEvent(request_id, "list_projects", None, "authenticated-client", "ok", utc_timestamp())
+        )
+        return result
+
+    @mcp.tool()
+    def register_known_project(project_id: str) -> dict:
+        """Register one built-in managed project without caller-selected repo or path."""
+        request_id = current_request_id()
+        if safety.status().stop_active:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    "register_known_project",
+                    project_id,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError("Emergency stop is active")
+        try:
+            result = register_known_project_binding(
+                settings.projects_config.parent,
+                settings.projects_config,
+                registry,
+                project_id=project_id,
+            )
+        except KnownProjectRegistrationError as exc:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    "register_known_project",
+                    project_id,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                request_id,
+                "register_known_project",
+                str(result.get("code", project_id)),
+                "authenticated-client",
+                str(result.get("state", "registered")),
+                utc_timestamp(),
+            )
         )
         return result
 

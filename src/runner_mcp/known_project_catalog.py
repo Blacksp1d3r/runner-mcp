@@ -298,3 +298,77 @@ def prepare_known_project(
         "repository": project.repository,
         "state": "prepared",
     }
+
+
+
+def preflight_known_project(
+    registry: ProjectRegistry,
+    *,
+    project_id: str,
+    runner=subprocess.run,
+) -> dict[str, str]:
+    """Return bounded destination state for one catalogued project."""
+
+    project = KNOWN_PROJECTS.get(project_id)
+    if project is None:
+        raise KnownProjectRegistrationError("Unknown managed project")
+    if not callable(runner):
+        raise TypeError("runner must be callable")
+
+    parents = {
+        _trusted_existing_root(configured.root).parent
+        for configured in registry.projects.values()
+    }
+    if len(parents) != 1:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "ambiguous-parent",
+        }
+
+    parent = next(iter(parents))
+    target = parent / project.directory_name
+    if target.is_symlink():
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "unsafe-destination",
+        }
+    if not target.exists():
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "ready-to-prepare",
+        }
+    if not target.is_dir():
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "occupied-destination",
+        }
+    try:
+        resolved = target.resolve(strict=True)
+    except OSError:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "unavailable-destination",
+        }
+    observed = _repository_for(resolved, runner=runner)
+    if observed == project.repository:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "already-prepared",
+        }
+    if observed is None:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "not-a-matching-clone",
+        }
+    return {
+        "code": project.code,
+        "repository": project.repository,
+        "state": "wrong-repository",
+    }

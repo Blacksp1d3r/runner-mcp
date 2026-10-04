@@ -1,3 +1,24 @@
+## 2026-10-04 — bounded known-project registration merged; live activation pending connector refresh
+
+PR #305 merged as `f9db4a43cf60d613d4fc40f9d5b9f110fe6cbb52` after commit attribution, Ruff/pytest, release-artifact and clean-demo validation were green.
+
+Runner MCP now contains a bounded `register_known_project(project_id)` MCP tool. Initial catalog entry is only `aifordable` and binds exactly:
+- code `aifordable`;
+- repository `Blacksp1d3r/AIfordable`;
+- fixed local sibling directory name `AIfordable` beside an already-trusted project root.
+
+The caller cannot supply a repository, path, host, command or environment. Discovery rejects symlink candidates, verifies the exact GitHub remote, uses the existing private atomic `add_project` path, refreshes the in-memory registry only after persisted revalidation, is idempotent for the exact existing binding and is blocked by emergency stop.
+
+Live activation is not yet complete. The current ChatGPT Runner-MCP connector session started returning an internal connector error for every Runner-MCP tool, including read-only `runtime_status` / `list_projects`, so the bounded `self_update` could not be invoked from that session.
+
+Next exact sequence:
+1. refresh/reconnect the existing Runner-MCP app/tool session; do not use Desktop Commander or generic shell as a substitute;
+2. re-resolve exact Runner-MCP `main` and self-update only to that exact main commit;
+3. refresh the MCP tool catalog and verify `register_known_project` is visible;
+4. call `register_known_project(project_id="aifordable")`;
+5. verify `list_projects` shows `aifordable` and inspect its bounded capabilities;
+6. proceed to AIfordable AF-22.6b Q7: one low-risk docs/test-only Fabric work-unit into the subscription coding worker, with no direct Claude push/merge/deploy authority.
+
 ## 2026-10-04 — bounded Fabric operational snapshot proxy merged
 
 PR #286 merged as `e6330820a2ee58a2ec5068830c2d9a1267f2297b` after Runner MCP validation and attribution were green. Runner MCP now allow-lists Fabric's zero-argument `operational_snapshot` and exposes `fabric_operational_snapshot`, validating exact schema, pending-count relationships, capacity/age bounds, read-only flags and private-detail restrictions. Runner MCP does not reconstruct relay/Fabric truth. Fabric #876 is merged as `98baf4e2532e591d534ba893a147773aa31f644f`; live usefulness still depends on Fabric providing an explicit canonical provider. Keep #269 open until provider wiring and live proof show upstream pending work while local test workers are idle.

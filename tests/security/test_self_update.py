@@ -109,6 +109,7 @@ def make_manager(
     source=None,
     installer_runner=subprocess.run,
     seed_compatibility: bool = True,
+    restart_components=None,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -128,6 +129,7 @@ def make_manager(
         resource_url="http://127.0.0.1:8000/mcp",
         server_reexec=lambda: exits.append(75),
         restart_delay_seconds=1,
+        restart_components=restart_components,
     )
     pyproject = project / "pyproject.toml"
     pyproject.write_text(
@@ -490,9 +492,13 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
         assert tests.source_lock.depth > 0
         record_installed(value)
 
-    def guarded_restart_markers(config_dir: Path, value: str) -> None:
+    def guarded_restart_markers(
+        config_dir: Path,
+        value: str,
+        components=None,
+    ) -> None:
         assert tests.source_lock.depth > 0
-        _write_restart_markers(config_dir, value)
+        _write_restart_markers(config_dir, value, components)
 
     monkeypatch.setattr(manager, "_record_installed_commit", guarded_record_installed)
     monkeypatch.setattr(
@@ -567,6 +573,60 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert status["self_update_ready"] is True
 
 
+
+
+@pytest.mark.parametrize(
+    ("restart_components", "expected_markers"),
+    [
+        ({"server"}, {"server"}),
+        ({"server", "github-watcher"}, {"server", "github-watcher"}),
+        (
+            {"server", "completion-watcher"},
+            {"server", "completion-watcher"},
+        ),
+    ],
+)
+def test_successful_self_update_marks_only_configured_restart_consumers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    restart_components: set[str],
+    expected_markers: set[str],
+) -> None:
+    def installer(command, **kwargs):
+        command = list(command)
+        if len(command) > 3 and command[3] == "wheel":
+            stage_fake_wheel(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    manager, _root, _exits = make_manager(
+        tmp_path,
+        installer_runner=installer,
+        restart_components=restart_components,
+    )
+    commit = "e" * 40
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": commit, "clean": True},
+    )
+
+    result = wait_terminal(manager, manager.start(commit)["job_id"])
+
+    assert result["state"] == "completed"
+    assert manager.runtime_status()["pending_restart_count"] == len(expected_markers)
+    for component in ("server", "github-watcher", "completion-watcher"):
+        marker = restart_marker_path(manager.config_dir, component)
+        if component in expected_markers:
+            assert restart_marker_commit(manager.config_dir, component) == commit
+        else:
+            assert not marker.exists()
+
+
+def test_restart_marker_selection_requires_server(tmp_path: Path) -> None:
+    with pytest.raises(SelfUpdateError, match="server restart component is required"):
+        make_manager(
+            tmp_path,
+            restart_components={"github-watcher"},
+        )
 
 
 def test_runtime_status_uses_canonical_distribution_identity(

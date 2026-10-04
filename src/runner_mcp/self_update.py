@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 import tomllib
-from collections.abc import Callable
+from collections.abc import Callable, Collection
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from enum import StrEnum
@@ -251,10 +251,32 @@ def run_restart_if_requested(
     return True
 
 
-def _write_restart_markers(config_dir: Path, commit: str) -> None:
+def _normalize_restart_components(
+    components: Collection[str] | None,
+) -> tuple[str, ...]:
+    if components is None:
+        selected = set(_RESTART_COMPONENTS)
+    else:
+        if isinstance(components, (str, bytes)):
+            raise SelfUpdateError("Self-update restart components are invalid")
+        selected = set(components)
+    if "server" not in selected:
+        raise SelfUpdateError("Runner MCP server restart component is required")
+    unknown = selected - _RESTART_COMPONENTS
+    if unknown:
+        raise SelfUpdateError("Unknown self-update restart component")
+    return tuple(sorted(selected))
+
+
+def _write_restart_markers(
+    config_dir: Path,
+    commit: str,
+    components: Collection[str] | None = None,
+) -> None:
     written: list[str] = []
+    selected = _normalize_restart_components(components)
     try:
-        for component in sorted(_RESTART_COMPONENTS):
+        for component in selected:
             _write_restart_marker(config_dir, component, commit)
             written.append(component)
     except SelfUpdateError:
@@ -324,6 +346,7 @@ class SelfUpdateManager:
         resource_url: str,
         server_reexec: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
+        restart_components: Collection[str] | None = None,
     ) -> None:
         root = config_dir.expanduser()
         if root.exists() and root.is_symlink():
@@ -383,6 +406,7 @@ class SelfUpdateManager:
             if 1 <= port <= 65_535:
                 self._server_port = port
         self._server_reexec = server_reexec
+        self._restart_components = _normalize_restart_components(restart_components)
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()
@@ -1110,7 +1134,11 @@ class SelfUpdateManager:
 
                 self._record_installed_commit(job.commit)
                 self._write_compatibility_record(target_contract)
-                _write_restart_markers(self.config_dir, job.commit)
+                _write_restart_markers(
+                    self.config_dir,
+                    job.commit,
+                    self._restart_components,
+                )
                 try:
                     self._package_installer.clear_transaction()
                 except PackageInstallError as exc:

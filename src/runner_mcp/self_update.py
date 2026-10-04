@@ -427,6 +427,10 @@ class SelfUpdateManager:
         self._inactive_restart_components = _normalize_inactive_restart_components(
             inactive_restart_components
         )
+        if set(self._restart_components) & set(self._inactive_restart_components):
+            raise SelfUpdateError(
+                "Self-update restart component state is contradictory"
+            )
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()

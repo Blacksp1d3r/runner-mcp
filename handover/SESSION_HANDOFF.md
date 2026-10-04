@@ -1,3 +1,19 @@
+## 2026-10-04 — #108 is now a one-command local qualification drill
+
+Runner MCP #262 is merged as `ba35f70eb9e3e489fc6936d2bc2f0fc425710c81` and the managed runtime has self-updated to that exact commit with no restart or install-recovery state pending.
+
+New local-only command: `runner-mcp self-update-recovery-qualify <exact-current-main-commit>`. It is deliberately absent from MCP/mailbox/Agent Bus. It performs the normal exact-main validation and target wheel install, then interrupts at the deterministic post-install/pre-verification boundary so the real persisted recovery transaction remains. Ordinary self-update must then fail closed. Recovery still requires the operator emergency stop plus the existing local `runner-mcp self-update-recovery` confirmation path.
+
+Important coordination: Runner MCP #260 also landed in parallel and the live runtime already consumed that automatic-Fabric-bundle compatibility change before #262. No managed Fabric runtime update is active.
+
+Immediate resume:
+1. read current Runner MCP main after the coordination commits and use that exact SHA as the qualifier target;
+2. perform the local qualifier on the qualified service-user host;
+3. from the first-party client verify `install_recovery_pending=true` and normal self-update overlap refusal;
+4. locally activate emergency stop and run recovery;
+5. verify exact baseline restoration and clear state;
+6. self-update normally back to exact main and close #108 with scrubbed evidence.
+
 ## 2026-10-04 — Runner MCP live on exact-main guard; next session must refresh tool schemas
 
 Runner MCP PR #258 is merged and the managed runtime successfully self-updated to exact code commit `82e4b0f133bae3a709bb29a89a9be2d98122aef9`. Live restart convergence is clean: `self_update_ready=true`, `restart_pending=false`, `pending_restart_count=0`, and no install recovery is pending. Issue #246 is also closed after the orphan-marker acceptance was proven live.

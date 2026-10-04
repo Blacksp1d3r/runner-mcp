@@ -1,3 +1,15 @@
+## 2026-10-04 — first fully automatic managed Fabric update target ready
+
+Runner Fabric #800 merged as exact target `ada2d6a691214959f88809f049c6dfa8f5db3c2a`. Its canonical control-plane bundle workflow now triggers automatically on every trusted `main` push, while keeping manual dispatch only as fallback.
+
+Runner-MCP live code remains `cb7804bf0dbd10e9e343520aefb7b5df0f45ccc4` with self-update/restart state clear and bounded managed Fabric update code active.
+
+Current-chat limitation:
+This chat loaded the Runner-MCP connector schema before `fabric_update`, `fabric_update_status` and `fabric_update_rollback` were added, so those tools are not callable here even though the server runtime contains them.
+
+Next:
+Start a fresh first-party client session and invoke `fabric_update` for exact Fabric commit `ada2d6a691214959f88809f049c6dfa8f5db3c2a`; monitor with `fabric_update_status`. Do not use Desktop Commander/local shell merely to bypass stale client schema.
+
 ## 2026-10-04 — Runner MCP self-update and managed Fabric update are live
 
 Live Runner MCP is now `cb7804bf0dbd10e9e343520aefb7b5df0f45ccc4` and fully converged:

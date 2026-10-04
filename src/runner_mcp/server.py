@@ -1388,6 +1388,7 @@ def build_mcp(
             result = prepare_known_project_binding(
                 registry,
                 project_id=project_id,
+                github_token=github_token or None,
             )
         except KnownProjectRegistrationError as exc:
             audit.append(

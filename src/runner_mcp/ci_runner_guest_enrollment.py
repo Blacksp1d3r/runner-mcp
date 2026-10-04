@@ -53,7 +53,12 @@ class CIRunnerRegistrationSecret:
     value: str
 
     def __post_init__(self) -> None:
-        if not isinstance(self.value, str) or len(self.value) < 16:
+        if (
+            not isinstance(self.value, str)
+            or not 16 <= len(self.value) <= 4096
+            or not self.value.isascii()
+            or any(ord(char) < 33 or ord(char) == 127 for char in self.value)
+        ):
             raise CIRunnerGuestEnrollmentError(
                 "guest CI runner registration secret is invalid"
             )

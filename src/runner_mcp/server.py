@@ -847,6 +847,16 @@ def build_mcp(
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
         return result
 
+    def fabric_operational_snapshot() -> dict:
+        """Return bounded end-to-end operational state from Runner Fabric."""
+        try:
+            result = _require_fabric_bridge().operational_snapshot()
+        except FabricBridgeError as exc:
+            _audit_fabric("fabric_operational_snapshot", "fabric:operational", "denied")
+            raise ValueError(str(exc)) from None
+        _audit_fabric("fabric_operational_snapshot", "fabric:operational", "ok")
+        return result
+
     def fabric_run_work_unit(
         work_unit_id: str,
         project_id: str,
@@ -909,6 +919,7 @@ def build_mcp(
 
     if fabric_bridge is not None:
         mcp.tool()(fabric_host_inspect)
+        mcp.tool()(fabric_operational_snapshot)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)
         mcp.tool()(fabric_cancel_work_unit)

@@ -25,6 +25,12 @@ from .autostart import (
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
+from .ci_runner_cron import (
+    CIRunnerCronError,
+    ci_runner_cron_status,
+    install_ci_runner_cron,
+    remove_ci_runner_cron,
+)
 from .ci_runner_lifecycle import (
     CIRunnerLifecycleError,
     parse_ci_runner_specs,
@@ -1010,6 +1016,36 @@ def cmd_ci_runner(args: argparse.Namespace) -> int:
         )
     except CIRunnerLifecycleError as exc:
         raise RuntimeError("CI runner private configuration is invalid") from exc
+
+    if args.ci_runner_action == "cron-status":
+        result = ci_runner_cron_status(specs=specs).to_payload()
+        aliases = ",".join(result["aliases"]) or "-"
+        print(
+            f"installed={'yes' if result['installed'] else 'no'} "
+            f"aliases={aliases}"
+        )
+        return 0
+
+    if args.ci_runner_action == "cron-install":
+        executable = (Path(sys.executable).parent / "runner-mcp").resolve()
+        result = install_ci_runner_cron(
+            executable=executable,
+            config_dir=config_dir,
+            specs=specs,
+        ).to_payload()
+        aliases = ",".join(result["aliases"])
+        print(f"installed=yes aliases={aliases}")
+        return 0
+
+    if args.ci_runner_action == "cron-remove":
+        _require_removal_confirmation(
+            "REMOVE CI RUNNER CRON",
+            CIRunnerCronError("CI runner cron removal cancelled"),
+        )
+        removed = remove_ci_runner_cron()
+        print(f"removed={'yes' if removed else 'no'}")
+        return 0
+
     spec = specs.get(args.alias)
     if spec is None:
         raise RuntimeError("Unknown or disabled CI runner")
@@ -2133,6 +2169,21 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ci_runner_run.add_argument("alias")
     ci_runner_run.set_defaults(func=cmd_ci_runner)
+    ci_runner_cron_status_parser = ci_runner_sub.add_parser(
+        "cron-status",
+        help="Show bounded managed cron admission state for configured CI runners.",
+    )
+    ci_runner_cron_status_parser.set_defaults(func=cmd_ci_runner)
+    ci_runner_cron_install = ci_runner_sub.add_parser(
+        "cron-install",
+        help="Install managed cron admission for configured CI runners only.",
+    )
+    ci_runner_cron_install.set_defaults(func=cmd_ci_runner)
+    ci_runner_cron_remove = ci_runner_sub.add_parser(
+        "cron-remove",
+        help="Remove only the managed CI runner cron admission block.",
+    )
+    ci_runner_cron_remove.set_defaults(func=cmd_ci_runner)
 
     autostart = subparsers.add_parser(
         "autostart",

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import secrets
+import shutil
 import subprocess
 from dataclasses import dataclass
 from pathlib import Path
@@ -197,3 +199,102 @@ def register_known_project(
     registry.projects.clear()
     registry.projects.update(refreshed.projects)
     return {**summary, "state": "registered"}
+
+
+
+def prepare_known_project(
+    registry: ProjectRegistry,
+    *,
+    project_id: str,
+    runner=subprocess.run,
+) -> dict[str, str]:
+    """Prepare one catalogued clone beside an already-trusted project root."""
+
+    if project_id not in KNOWN_PROJECTS:
+        raise KnownProjectRegistrationError("Unknown managed project")
+    if not callable(runner):
+        raise TypeError("runner must be callable")
+
+    project = KNOWN_PROJECTS[project_id]
+    parents = {
+        _trusted_existing_root(configured.root).parent
+        for configured in registry.projects.values()
+    }
+    if len(parents) != 1:
+        raise KnownProjectRegistrationError(
+            "Known project clone destination is ambiguous"
+        )
+    parent = next(iter(parents))
+    target = parent / project.directory_name
+
+    if target.exists() or target.is_symlink():
+        if target.is_symlink() or not target.is_dir():
+            raise KnownProjectRegistrationError(
+                "Known project destination is occupied"
+            )
+        if _repository_for(target.resolve(strict=True), runner=runner) != project.repository:
+            raise KnownProjectRegistrationError(
+                "Known project destination has an unexpected repository"
+            )
+        return {
+            "code": project.code,
+            "name": project.display_name,
+            "repository": project.repository,
+            "state": "already-prepared",
+        }
+
+    temporary = parent / f".{project.code}-clone-{secrets.token_hex(8)}"
+    if temporary.exists() or temporary.is_symlink():
+        raise KnownProjectRegistrationError(
+            "Known project temporary destination is unavailable"
+        )
+
+    repository_url = f"https://github.com/{project.repository}.git"
+    try:
+        result = runner(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "clone",
+                "--origin",
+                "origin",
+                "--no-tags",
+                "--",
+                repository_url,
+                str(temporary),
+            ],
+            cwd=str(parent),
+            capture_output=True,
+            text=True,
+            timeout=180.0,
+            check=False,
+            shell=False,
+        )
+        if not isinstance(result, subprocess.CompletedProcess):
+            raise KnownProjectRegistrationError(
+                "Known project clone result is invalid"
+            )
+        if result.returncode != 0:
+            raise KnownProjectRegistrationError("Known project clone failed")
+        if not temporary.is_dir() or temporary.is_symlink():
+            raise KnownProjectRegistrationError("Known project clone is invalid")
+        if _repository_for(temporary.resolve(strict=True), runner=runner) != project.repository:
+            raise KnownProjectRegistrationError(
+                "Known project clone repository verification failed"
+            )
+        temporary.replace(target)
+    except subprocess.TimeoutExpired as exc:
+        raise KnownProjectRegistrationError("Known project clone timed out") from exc
+    except OSError as exc:
+        raise KnownProjectRegistrationError("Known project clone failed") from exc
+    finally:
+        if temporary.exists() and temporary != target:
+            shutil.rmtree(temporary, ignore_errors=True)
+
+    return {
+        "code": project.code,
+        "name": project.display_name,
+        "repository": project.repository,
+        "state": "prepared",
+    }

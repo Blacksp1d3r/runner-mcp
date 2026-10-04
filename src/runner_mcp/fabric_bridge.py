@@ -4,7 +4,9 @@ import json
 import re
 import threading
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
+from uuid import UUID
 
 from .bridge_mcp_executor import LocalMCPClient, LocalMCPConfig
 from .bridge_processor import BridgeExecutionAdapterError
@@ -12,6 +14,7 @@ from .bridge_processor import BridgeExecutionAdapterError
 _FABRIC_TOOLS = frozenset(
     {
         "host_inspect",
+        "inspect_external_target",
         "run_work_unit",
         "get_work_unit",
         "cancel_work_unit",
@@ -68,6 +71,34 @@ class FabricBridgeClient:
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric host inspection failed") from exc
         return _validate_host_inspection(result)
+
+    def inspect_external_target(
+        self,
+        *,
+        target_allocation_id: str,
+        environment_id: str,
+    ) -> dict[str, Any]:
+        """Return bounded read-only evidence for one trusted external target."""
+
+        _uuid(target_allocation_id, "target_allocation_id")
+        _uuid(environment_id, "environment_id")
+        try:
+            result = self._client()._call_tool(
+                "inspect_external_target",
+                {
+                    "target_allocation_id": target_allocation_id,
+                    "environment_id": environment_id,
+                },
+            )
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric external target inspection failed"
+            ) from exc
+        return _validate_external_target_inspection(
+            result,
+            expected_target_allocation_id=target_allocation_id,
+            expected_environment_id=environment_id,
+        )
 
     def run_work_unit(
         self,
@@ -159,6 +190,105 @@ class FabricBridgeClient:
             raise FabricBridgeError("Runner Fabric request failed") from exc
         return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
 
+
+
+
+def _validate_external_target_inspection(
+    value: object,
+    *,
+    expected_target_allocation_id: str,
+    expected_environment_id: str,
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    _exact_keys(
+        value,
+        {
+            "contract_version",
+            "target_allocation_id",
+            "environment_id",
+            "reachability",
+            "readiness",
+            "observed_at",
+            "reason_code",
+            "release_revision",
+            "evidence_refs",
+            "live_mutation_enabled",
+        },
+        "external target inspection",
+    )
+    if (
+        value["contract_version"]
+        != "runner.fabric/external-target-inspection/v1alpha1"
+    ):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    _uuid(value["target_allocation_id"], "target_allocation_id")
+    _uuid(value["environment_id"], "environment_id")
+    if value["target_allocation_id"] != expected_target_allocation_id:
+        raise FabricBridgeError(
+            "Runner Fabric returned mismatched external target identity"
+        )
+    if value["environment_id"] != expected_environment_id:
+        raise FabricBridgeError(
+            "Runner Fabric returned mismatched external target environment"
+        )
+    if value["reachability"] not in {
+        "reachable",
+        "unreachable",
+        "unknown",
+    }:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    if value["readiness"] not in {
+        "ready",
+        "degraded",
+        "not-ready",
+        "unknown",
+    }:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    observed_at = value["observed_at"]
+    if not isinstance(observed_at, str):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    try:
+        observed = datetime.fromisoformat(observed_at)
+    except ValueError as exc:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        ) from exc
+    if observed.tzinfo is None or observed.utcoffset() is None:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    reason_code = value["reason_code"]
+    if not isinstance(reason_code, str) or _REASON_RE.fullmatch(reason_code) is None:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    release_revision = value["release_revision"]
+    if release_revision is not None:
+        _revision(release_revision)
+    evidence_refs = value["evidence_refs"]
+    if not isinstance(evidence_refs, list) or len(evidence_refs) > 16:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid external target inspection"
+        )
+    for reference in evidence_refs:
+        _reference(reference, "evidence_ref")
+    if value["live_mutation_enabled"] is not False:
+        raise FabricBridgeError(
+            "Runner Fabric external target inspection must be read-only"
+        )
+    _validate_bounded_json(value)
+    return value
 
 
 def _validate_host_inspection(value: object) -> dict[str, Any]:
@@ -415,6 +545,19 @@ def _exact_keys(value: dict[str, Any], keys: set[str], label: str) -> None:
 
 def _semantic_id(value: object, field: str) -> str:
     if not isinstance(value, str) or _ID_RE.fullmatch(value) is None:
+        raise FabricBridgeError(f"{field} is invalid")
+    return value
+
+
+
+def _uuid(value: object, field: str) -> str:
+    if not isinstance(value, str):
+        raise FabricBridgeError(f"{field} is invalid")
+    try:
+        parsed = UUID(value)
+    except ValueError as exc:
+        raise FabricBridgeError(f"{field} is invalid") from exc
+    if str(parsed) != value:
         raise FabricBridgeError(f"{field} is invalid")
     return value
 

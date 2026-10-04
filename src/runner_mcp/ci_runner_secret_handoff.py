@@ -154,6 +154,36 @@ class CIRunnerSecretHandoffStore:
             "handoff id collision limit exceeded"
         )
 
+    def discard(self, handoff_id: str) -> bool:
+        """Remove one still-present safe handoff without reading its content."""
+
+        validate_handoff_id(handoff_id)
+        self._validate_root()
+        path = self._root / handoff_id
+        try:
+            info = path.lstat()
+        except FileNotFoundError:
+            return False
+        except OSError as exc:
+            raise CIRunnerSecretHandoffError(
+                "handoff record could not be inspected"
+            ) from exc
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.geteuid()
+            or stat.S_IMODE(info.st_mode) != 0o600
+        ):
+            raise CIRunnerSecretHandoffError(
+                "handoff record is unsafe"
+            )
+        try:
+            path.unlink()
+        except OSError as exc:
+            raise CIRunnerSecretHandoffError(
+                "handoff record could not be discarded"
+            ) from exc
+        return True
+
     def reap_expired(self) -> int:
         self._validate_root()
         now = self._now()

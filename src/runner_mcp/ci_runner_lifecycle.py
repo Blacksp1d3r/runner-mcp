@@ -11,6 +11,9 @@ _RUNNER_NAME_RE = re.compile(r"^[A-Za-z0-9._-]{1,100}$")
 _LABEL_RE = re.compile(r"^[A-Za-z0-9._-]{1,64}$")
 _MAX_RUNNERS = 16
 _MAX_LABELS = 16
+_IMPLICIT_RUNNER_LABELS = frozenset(
+    {"self-hosted", "linux", "windows", "macos", "x64", "arm", "arm64"}
+)
 
 
 class CIRunnerLifecycleError(ValueError):
@@ -44,9 +47,9 @@ class CIRunnerSpec:
         for label in self.labels:
             if not _LABEL_RE.fullmatch(label):
                 raise CIRunnerLifecycleError("CI runner label is invalid")
-        if "self-hosted" in self.labels:
+        if any(label.lower() in _IMPLICIT_RUNNER_LABELS for label in self.labels):
             raise CIRunnerLifecycleError(
-                "CI runner labels must not duplicate implicit self-hosted label"
+                "CI runner labels must contain custom admission labels only"
             )
 
 

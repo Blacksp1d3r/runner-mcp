@@ -6,7 +6,7 @@ from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Protocol
 
-from .ci_runner_github import CIRunnerGitHubController, CIRunnerGitHubError
+from .ci_runner_github import CIRunnerGitHubError
 
 _ALIAS_RE = re.compile(r"^[a-z][a-z0-9._-]{0,63}$")
 _REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")
@@ -78,6 +78,19 @@ class CIRunnerGuestTransportResult:
             )
 
 
+class CIRunnerGuestRegistrationToken(Protocol):
+    value: str
+
+
+class CIRunnerGuestGitHubController(Protocol):
+    def status(self, spec: CIRunnerGuestSpec): ...
+
+    def create_registration_token(
+        self,
+        spec: CIRunnerGuestSpec,
+    ) -> CIRunnerGuestRegistrationToken: ...
+
+
 class CIRunnerGuestEnrollmentTransport(Protocol):
     def enroll(
         self,
@@ -117,12 +130,15 @@ class CIRunnerGuestEnrollmentManager:
     def __init__(
         self,
         *,
-        github: CIRunnerGitHubController,
+        github: CIRunnerGuestGitHubController,
         transport: CIRunnerGuestEnrollmentTransport,
         sleeper: Sleep = time.sleep,
     ) -> None:
-        if not isinstance(github, CIRunnerGitHubController):
-            raise TypeError("github must be CIRunnerGitHubController")
+        if not hasattr(github, "status") or not hasattr(
+            github,
+            "create_registration_token",
+        ):
+            raise TypeError("github must provide bounded CI runner control")
         if not callable(sleeper):
             raise TypeError("sleeper must be callable")
         self._github = github

@@ -84,7 +84,7 @@ from .github_runtime import (
     DEFAULT_POLL_SECONDS,
     GitHubWatcherRuntime,
 )
-from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
+from .github_watcher import GitHubWatcherCursorStore
 from .host_integrity import HostIntegrityState, HostRuntimeIntegrityGate
 from .host_integrity_linux import LinuxJournalDiagnosticAdapter
 from .onboarding import (

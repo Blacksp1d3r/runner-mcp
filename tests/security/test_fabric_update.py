@@ -185,20 +185,8 @@ def test_rollback_is_bound_to_current_active_commit(tmp_path: Path) -> None:
     _managed_launcher(manager)
     commit = "c" * 40
     manager.bundle.mkdir(mode=0o700)
-    (manager.bundle / "BUNDLE.json").write_text(
-        json.dumps(
-            {
-                "schemaVersion": "runner.fabric/control-plane-update-bundle/v1",
-                "commitSha": commit,
-            }
-        ),
-        encoding="utf-8",
-    )
-    (manager.bundle / "COMMIT_SHA").write_text(commit + "\n", encoding="ascii")
-    (manager.bundle / "BOOTSTRAP.py").write_text(
-        "raise SystemExit(0)\n",
-        encoding="utf-8",
-    )
+    with zipfile.ZipFile(io.BytesIO(_bundle(commit))) as archive:
+        archive.extractall(manager.bundle)
     manager.transaction.write_text(
         json.dumps(
             {

@@ -18,6 +18,7 @@ from runner_mcp.self_update import (
     _write_restart_markers,
     consume_restart_marker,
     reconcile_stale_restart_markers,
+    reexec_component,
     restart_marker_commit,
     restart_marker_path,
     restart_pending_count,
@@ -1016,7 +1017,7 @@ def test_restart_marker_rejects_symlink(tmp_path: Path) -> None:
         consume_restart_marker(config, "github-watcher")
 
 
-def test_self_update_requires_safe_loopback_resource(tmp_path: Path) -> None:
+def test_external_resource_uses_explicit_loopback_server_bind(tmp_path: Path) -> None:
     project = tmp_path / "project-loopback"
     registry = make_registry(project)
     guard = OperatorSafetyGuard(
@@ -1031,11 +1032,97 @@ def test_self_update_requires_safe_loopback_resource(tmp_path: Path) -> None:
         tests=FakeTests(),
         source=FakeSource(),
         resource_url="https://example.invalid/mcp",
+        server_bind_host="127.0.0.1",
+        server_bind_port=8000,
+    )
+
+    assert manager.runtime_status()["self_update_ready"] is True
+
+
+def test_external_resource_without_explicit_bind_is_not_restart_ready(
+    tmp_path: Path,
+) -> None:
+    project = tmp_path / "project-external"
+    registry = make_registry(project)
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "stop-external",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+    manager = SelfUpdateManager(
+        config_dir=tmp_path / "config-external",
+        registry=registry,
+        safety=guard,
+        tests=FakeTests(),
+        source=FakeSource(),
+        resource_url="https://example.invalid/mcp",
     )
 
     assert manager.runtime_status()["self_update_ready"] is False
     with pytest.raises(SelfUpdateError, match="loopback restart runtime"):
         manager.start("a" * 40)
+
+
+def test_explicit_server_bind_rejects_non_loopback_host(tmp_path: Path) -> None:
+    project = tmp_path / "project-invalid-bind"
+    registry = make_registry(project)
+    guard = OperatorSafetyGuard(
+        stop_file=tmp_path / "stop-invalid-bind",
+        retention=RetentionPolicy(),
+        retention_confirmed=True,
+    )
+
+    with pytest.raises(SelfUpdateError, match="server bind is invalid"):
+        SelfUpdateManager(
+            config_dir=tmp_path / "config-invalid-bind",
+            registry=registry,
+            safety=guard,
+            tests=FakeTests(),
+            source=FakeSource(),
+            resource_url="https://example.invalid/mcp",
+            server_bind_host="0.0.0.0",
+            server_bind_port=8000,
+        )
+
+
+def test_server_reexec_preserves_explicit_loopback_bind(tmp_path: Path) -> None:
+    executable = tmp_path / "bin" / "runner-mcp"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config = tmp_path / "config"
+    config.mkdir()
+    calls: list[tuple[str, list[str]]] = []
+
+    original_prefix = __import__("sys").prefix
+    try:
+        __import__("sys").prefix = str(tmp_path)
+        reexec_component(
+            config,
+            "server",
+            server_host="localhost",
+            server_port=8123,
+            exec_fn=lambda path, argv: calls.append((path, argv)),
+        )
+    finally:
+        __import__("sys").prefix = original_prefix
+
+    assert calls == [
+        (
+            str(executable),
+            [
+                str(executable),
+                "--config-dir",
+                str(config.resolve()),
+                "serve",
+                "--host",
+                "localhost",
+                "--port",
+                "8123",
+            ],
+        )
+    ]
+
 
 
 def test_local_install_recovery_requires_operator_stop(

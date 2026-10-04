@@ -1605,19 +1605,32 @@ def cmd_plugin_package(args: argparse.Namespace) -> int:
     return 0
 
 
-def _self_update_restart_components(config_dir: Path) -> frozenset[str]:
-    components = {"server"}
+def _self_update_restart_component_state(
+    config_dir: Path,
+) -> tuple[frozenset[str], frozenset[str]]:
+    active = {"server"}
+    inactive: set[str] = set()
 
     try:
         mailbox = github_mailbox_config_status(config_dir)
-        if mailbox["configured"]:
+    except ConfigManagerError:
+        pass
+    else:
+        if not mailbox["configured"]:
+            inactive.add("github-watcher")
+        else:
             cursor = GitHubWatcherCursorStore(
                 config_dir / "github-mailbox-cursor.json"
             )
-            if cursor.read() is not None:
-                components.add("github-watcher")
-    except (ConfigManagerError, GitHubWatcherError):
-        pass
+            try:
+                cursor_head = cursor.read()
+            except GitHubWatcherError:
+                pass
+            else:
+                if cursor_head is None:
+                    inactive.add("github-watcher")
+                else:
+                    active.add("github-watcher")
 
     try:
         notifier = completion_notifier_status(config_dir)
@@ -1625,9 +1638,16 @@ def _self_update_restart_components(config_dir: Path) -> frozenset[str]:
         pass
     else:
         if notifier["configured"] and notifier["initialized"]:
-            components.add("completion-watcher")
+            active.add("completion-watcher")
+        else:
+            inactive.add("completion-watcher")
 
-    return frozenset(components)
+    return frozenset(active), frozenset(inactive)
+
+
+def _self_update_restart_components(config_dir: Path) -> frozenset[str]:
+    active, _inactive = _self_update_restart_component_state(config_dir)
+    return active
 
 
 def cmd_serve(args: argparse.Namespace) -> int:
@@ -1641,11 +1661,15 @@ def cmd_serve(args: argparse.Namespace) -> int:
             "Non-loopback bind requires --allow-public-bind; prefer a TLS reverse proxy"
         )
 
+    restart_components, inactive_restart_components = (
+        _self_update_restart_component_state(config_dir)
+    )
     app = create_app(
         settings=settings,
         registry=registry,
         secret_values=secret_values,
-        self_update_restart_components=_self_update_restart_components(config_dir),
+        self_update_restart_components=restart_components,
+        self_update_inactive_restart_components=inactive_restart_components,
     )
     uvicorn.run(
         app,

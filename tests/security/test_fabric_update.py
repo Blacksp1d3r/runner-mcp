@@ -313,7 +313,7 @@ def test_artifact_redirect_rejects_private_host(tmp_path: Path) -> None:
     manager, _calls = _manager(tmp_path)
     manager._opener = RedirectingOpener()
 
-    with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
+    with pytest.raises(FabricUpdateError, match="artifact_download_unavailable"):
         manager._request_redirect(
             "https://api.github.com/repos/Blacksp1d3r/Runner-Fabric/actions/artifacts/1/zip",
             "x" * 40,

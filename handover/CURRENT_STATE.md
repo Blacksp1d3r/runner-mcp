@@ -1,3 +1,7 @@
+## 2026-10-04 — bounded Fabric operational snapshot proxy merged
+
+PR #286 merged as `e6330820a2ee58a2ec5068830c2d9a1267f2297b` after Runner MCP validation and attribution were green. Runner MCP now allow-lists Fabric's zero-argument `operational_snapshot` and exposes `fabric_operational_snapshot`, validating exact schema, pending-count relationships, capacity/age bounds, read-only flags and private-detail restrictions. Runner MCP does not reconstruct relay/Fabric truth. Fabric #876 is merged as `98baf4e2532e591d534ba893a147773aa31f644f`; live usefulness still depends on Fabric providing an explicit canonical provider. Keep #269 open until provider wiring and live proof show upstream pending work while local test workers are idle.
+
 ## 2026-10-04 — operational snapshot proxy implementation in validation
 
 Issue #269 is now implemented as a strict Runner-Fabric projection rather than a local reconstruction. PR #286 head `d43e472bb265a7314e59bb3109bcdddbab650e18` adds zero-argument `fabric_operational_snapshot`, allow-lists only Fabric's fixed `operational_snapshot` call, validates exact `runner.fabric/operational-snapshot/v1` fields/count relationships/capacity bounds/ages/read-only flags and reuses private-detail rejection. This preserves Fabric as orchestration truth. Commit attribution is green; Runner MCP validation is in progress. Dependency: Runner-Fabric #876 must first land the optional Agent-MCP source contract. Do not merge #286 before both sides are terminal green.

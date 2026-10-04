@@ -299,8 +299,9 @@ def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) 
     def runner(argv, **kwargs):
         calls.append({"argv": argv, **kwargs})
         if "clone" in argv:
-            target = Path(argv[-1])
-            target.mkdir()
+            Path(argv[-1]).mkdir()
+            return _completed("")
+        if "checkout" in argv:
             return _completed("")
         return _completed("https://github.com/Blacksp1d3r/AIfordable.git\n")
 
@@ -308,6 +309,7 @@ def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) 
         registry,
         project_id="aifordable",
         runner=runner,
+        github_token="private-token",
     )
 
     assert result["state"] == "prepared"
@@ -322,8 +324,12 @@ def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) 
         "--origin",
         "origin",
         "--no-tags",
+        "--no-checkout",
+        "--branch",
+        "main",
+        "--single-branch",
         "--",
-        "git@github.com:Blacksp1d3r/AIfordable.git",
+        "https://github.com/Blacksp1d3r/AIfordable.git",
     ]
     assert Path(clone_call["argv"][-1]).parent == tmp_path
     assert Path(clone_call["argv"][-1]).name.startswith(".aifordable-clone-")
@@ -331,7 +337,23 @@ def test_prepare_known_project_clones_only_fixed_catalog_target(tmp_path: Path) 
     assert clone_call["stdin"] is subprocess.DEVNULL
     assert clone_call["shell"] is False
     assert clone_call["timeout"] == 180.0
-    assert clone_call["env"]["GIT_TERMINAL_PROMPT"] == "0"
+    assert "private-token" not in " ".join(clone_call["argv"])
+    assert clone_call["env"]["GIT_CONFIG_COUNT"] == "1"
+    assert clone_call["env"]["GIT_CONFIG_KEY_0"] == (
+        "http.https://github.com/.extraheader"
+    )
+    assert clone_call["env"]["GIT_CONFIG_VALUE_0"].startswith(
+        "AUTHORIZATION: basic "
+    )
+
+    checkout_call = calls[1]
+    assert checkout_call["argv"][-3:] == [
+        "checkout",
+        "--detach",
+        "origin/main",
+    ]
+    assert "GIT_CONFIG_VALUE_0" not in checkout_call["env"]
+    assert checkout_call["env"]["HOME"] == "/nonexistent"
 
 
 def test_prepare_known_project_is_idempotent_for_exact_existing_clone(
@@ -374,6 +396,26 @@ def test_prepare_known_project_refuses_wrong_existing_destination(
         )
 
 
+def test_prepare_known_project_rejects_invalid_github_token_before_clone(
+    tmp_path: Path,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    with pytest.raises(
+        KnownProjectRegistrationError,
+        match="credential is invalid",
+    ):
+        prepare_known_project(
+            _registry(anchor),
+            project_id="aifordable",
+            runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("git must not run")
+            ),
+            github_token="bad\ntoken",
+        )
+
+
 def test_prepare_known_project_cleans_failed_temporary_clone(tmp_path: Path) -> None:
     anchor = tmp_path / "runner-mcp"
     anchor.mkdir()
@@ -393,39 +435,6 @@ def test_prepare_known_project_cleans_failed_temporary_clone(tmp_path: Path) -> 
 
     assert not (tmp_path / "AIfordable").exists()
     assert not any(path.name.startswith(".aifordable-clone-") for path in tmp_path.iterdir())
-
-
-def test_prepare_known_project_falls_back_to_fixed_https_after_ssh_failure(
-    tmp_path: Path,
-) -> None:
-    anchor = tmp_path / "runner-mcp"
-    anchor.mkdir()
-    calls: list[list[str]] = []
-
-    def runner(argv, **kwargs):
-        calls.append(argv)
-        target = Path(argv[-1])
-        if "clone" in argv:
-            target.mkdir()
-            if argv[-2].startswith("git@github.com:"):
-                (target / "partial").write_text("partial", encoding="utf-8")
-                return _completed("", returncode=1)
-            return _completed("")
-        return _completed("https://github.com/Blacksp1d3r/AIfordable.git\n")
-
-    result = prepare_known_project(
-        _registry(anchor),
-        project_id="aifordable",
-        runner=runner,
-    )
-
-    assert result["state"] == "prepared"
-    clone_calls = [argv for argv in calls if "clone" in argv]
-    assert [argv[-2] for argv in clone_calls] == [
-        "git@github.com:Blacksp1d3r/AIfordable.git",
-        "https://github.com/Blacksp1d3r/AIfordable.git",
-    ]
-    assert not (tmp_path / "AIfordable" / "partial").exists()
 
 
 def test_prepare_known_project_rejects_ambiguous_parent_roots(tmp_path: Path) -> None:

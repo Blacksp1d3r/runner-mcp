@@ -382,16 +382,18 @@ def build_mcp(
         if settings.test_jobs_root is not None
         else None
     )
+    private_values = secret_values or os.environ
+    github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
     source_sync = SourceSynchronizer(
         registry=registry,
         safety=safety,
         tests=tests,
+        github_token=github_token or None,
     )
     service_manager = ServiceManager(
         registry=registry,
         safety=safety,
     )
-    private_values = secret_values or os.environ
     database_manager = DatabaseManager(
         registry=registry,
         safety=safety,
@@ -407,7 +409,6 @@ def build_mcp(
         raise RuntimeError("CI runner private configuration is invalid") from exc
 
     ci_runner_enrollment = None
-    github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
     if ci_runner_specs and github_token:
         try:
             ci_runner_enrollment = CIRunnerEnrollmentManager(

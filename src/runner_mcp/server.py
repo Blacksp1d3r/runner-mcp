@@ -925,6 +925,70 @@ def build_mcp(
         )
         return result
 
+    def fabric_ci_runner_guest_status() -> dict:
+        """Return bounded isolated CI guest state without host authority."""
+        try:
+            result = _require_fabric_bridge().ci_runner_guest_status()
+        except FabricBridgeError as exc:
+            _audit_fabric(
+                "fabric_ci_runner_guest_status",
+                "ci-runner:aifordable-lab-ci",
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_ci_runner_guest_status",
+            "ci-runner:aifordable-lab-ci",
+            str(result.get("state", "unknown")),
+        )
+        return result
+
+    def fabric_ci_runner_guest_start() -> dict:
+        """Start the isolated CI guest listener through bounded Fabric authority."""
+        try:
+            safety.assert_action_allowed(ActionClass.SERVICE)
+            result = _require_fabric_bridge().ci_runner_guest_start()
+        except (
+            FabricBridgeError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_fabric(
+                "fabric_ci_runner_guest_start",
+                "ci-runner:aifordable-lab-ci",
+                "denied",
+            )
+            raise ValueError("CI guest start is unavailable") from exc
+        _audit_fabric(
+            "fabric_ci_runner_guest_start",
+            "ci-runner:aifordable-lab-ci",
+            str(result.get("state", "unknown")),
+        )
+        return result
+
+    def fabric_ci_runner_guest_stop() -> dict:
+        """Stop the isolated CI guest listener through bounded Fabric authority."""
+        try:
+            safety.assert_action_allowed(ActionClass.SERVICE)
+            result = _require_fabric_bridge().ci_runner_guest_stop()
+        except (
+            FabricBridgeError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_fabric(
+                "fabric_ci_runner_guest_stop",
+                "ci-runner:aifordable-lab-ci",
+                "denied",
+            )
+            raise ValueError("CI guest stop is unavailable") from exc
+        _audit_fabric(
+            "fabric_ci_runner_guest_stop",
+            "ci-runner:aifordable-lab-ci",
+            str(result.get("state", "unknown")),
+        )
+        return result
+
     def fabric_operational_snapshot() -> dict:
         """Return bounded end-to-end operational state from Runner Fabric."""
         try:
@@ -999,6 +1063,9 @@ def build_mcp(
         mcp.tool()(fabric_host_inspect)
         mcp.tool()(fabric_external_target_preflight)
         mcp.tool()(fabric_external_target_inspect)
+        mcp.tool()(fabric_ci_runner_guest_status)
+        mcp.tool()(fabric_ci_runner_guest_start)
+        mcp.tool()(fabric_ci_runner_guest_stop)
         mcp.tool()(fabric_operational_snapshot)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)

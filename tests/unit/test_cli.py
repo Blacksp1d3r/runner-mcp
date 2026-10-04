@@ -83,17 +83,43 @@ def test_self_update_restart_components_include_only_ready_optional_consumers(
         lambda _config_dir: {"configured": True, "initialized": False},
     )
 
-    assert cli._self_update_restart_components(tmp_path) == frozenset(
-        {"server", "github-watcher"}
-    )
+    active, inactive = cli._self_update_restart_component_state(tmp_path)
+    assert active == frozenset({"server", "github-watcher"})
+    assert inactive == frozenset({"completion-watcher"})
+    assert cli._self_update_restart_components(tmp_path) == active
 
     monkeypatch.setattr(
         cli,
         "completion_notifier_status",
         lambda _config_dir: {"configured": True, "initialized": True},
     )
-    assert cli._self_update_restart_components(tmp_path) == frozenset(
+    active, inactive = cli._self_update_restart_component_state(tmp_path)
+    assert active == frozenset(
         {"server", "github-watcher", "completion-watcher"}
+    )
+    assert inactive == frozenset()
+
+
+def test_self_update_restart_components_mark_confirmed_absence_inactive(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        cli,
+        "github_mailbox_config_status",
+        lambda _config_dir: {"configured": False},
+    )
+    monkeypatch.setattr(
+        cli,
+        "completion_notifier_status",
+        lambda _config_dir: {"configured": False, "initialized": False},
+    )
+
+    active, inactive = cli._self_update_restart_component_state(tmp_path)
+
+    assert active == frozenset({"server"})
+    assert inactive == frozenset(
+        {"github-watcher", "completion-watcher"}
     )
 
 
@@ -111,12 +137,13 @@ def test_self_update_restart_components_resolve_optional_failures_independently(
         lambda _config_dir: {"configured": True, "initialized": True},
     )
 
-    assert cli._self_update_restart_components(tmp_path) == frozenset(
-        {"server", "completion-watcher"}
-    )
+    active, inactive = cli._self_update_restart_component_state(tmp_path)
+
+    assert active == frozenset({"server", "completion-watcher"})
+    assert inactive == frozenset()
 
 
-def test_self_update_restart_components_fail_closed_on_invalid_optional_config(
+def test_self_update_restart_components_keep_invalid_optional_state_ambiguous(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
@@ -138,7 +165,10 @@ def test_self_update_restart_components_fail_closed_on_invalid_optional_config(
     monkeypatch.setattr(cli, "GitHubWatcherCursorStore", InvalidCursor)
     monkeypatch.setattr(cli, "completion_notifier_status", invalid_notifier)
 
-    assert cli._self_update_restart_components(tmp_path) == frozenset({"server"})
+    active, inactive = cli._self_update_restart_component_state(tmp_path)
+
+    assert active == frozenset({"server"})
+    assert inactive == frozenset()
 
 
 def install_config(

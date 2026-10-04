@@ -71,17 +71,15 @@ This integration preserves the product boundary:
 - transport sessions are isolated per calling thread and response identity/revision/state
   relationships fail closed.
 
-Live activation and end-to-end proof are tracked separately in issue #110. The former upstream
-Runner Fabric durability/Agent-Bus qualification gate is now cleared: the canonical service-user
-restart/replay acceptance is complete and Fabric #479 is closed. The merged transport layer must
-not be rebuilt.
+Live activation and end-to-end proof are complete. Issue #110 is closed after a real first-party
+client invocation traversed `client -> Runner MCP fabric_run_work_unit -> private Fabric MCP ->
+trusted work-unit service`, followed by bounded get/cancel/operator-safety reconciliation. The
+former upstream Runner Fabric durability/Agent-Bus qualification gate is also complete. The merged
+transport layer must not be rebuilt.
 
-The remaining #110 proof is client-facing: one real first-party ChatGPT/Codex invocation must traverse
-`client -> Runner MCP fabric_run_work_unit -> private Fabric MCP -> trusted work-unit service`.
-Issue #240 / PR #241 own the local plugin packaging needed for that proof. Agent Bus is the normal
-runtime-control path, direct GitHub choreography is fallback/bootstrap, and broad remote-host tools
-are break-glass only. No plugin/client convenience may add generic shell, Git/GitHub, filesystem,
-provider or credential authority.
+Agent Bus remains the normal runtime-control path, direct GitHub choreography is fallback/bootstrap,
+and broad remote-host tools are break-glass only. No plugin/client convenience may add generic shell,
+Git/GitHub, filesystem, provider or credential authority.
 
 ## Phase 0 — repository and design
 
@@ -560,19 +558,20 @@ Implemented launch-readiness foundation:
 
 Canonical publication completed:
 
-- PyPI package `aifordable-runner-mcp==0.1.2` is published;
-- official MCP Registry identity `io.github.Blacksp1d3r/runner-mcp` version `0.1.2` is published;
-- GitHub pre-release `v0.1.2` is aligned with the canonical release commit and carries wheel + sdist assets;
+- PyPI package `aifordable-runner-mcp==0.1.3` is published;
+- official MCP Registry identity `io.github.Blacksp1d3r/runner-mcp` version `0.1.3` is published;
+- GitHub pre-release `v0.1.3` is aligned with exact release commit `0aa013c279128e22fbd53be32c35bced3ae26834` and carries wheel + sdist assets;
+- protected publish workflow run `36962568072` completed PyPI, official Registry and GitHub pre-release publication successfully;
 - public GitHub description/topics and first-party canonical discovery links are live;
+- mcp.so community submission is complete;
 - secondary directories must reuse the canonical identity/install/auth metadata rather than inventing alternatives.
 
-Remaining discovery work:
+Remaining discovery work is intentionally non-blocking:
 
-- allow Registry-driven indexing time to propagate before changing package identity or metadata for search visibility;
-- submit/claim Glama through maintainer-authenticated GitHub flow;
-- publish to Smithery only through maintainer-authenticated flow with the canonical self-hosted/auth wording;
-- submit mcp.so through its free community route; do not pay for expedited listing merely for backlinks;
-- optional additional directories are acceptable only when they do not require divergent metadata or paid placement;
+- Glama submission/claim requires maintainer-authenticated GitHub/OAuth and remains owner-controlled;
+- Smithery is deliberately skipped unless it exposes a repository-only path that preserves the canonical self-hosted architecture unchanged;
+- AllMCPs remains an optional free normal-review submission; no paid boost/featured placement is justified;
+- stale third-party directory metadata is tracked separately in #263 and must not trigger package/runtime changes;
 - publish one technical launch post as a separate human-controlled action, then adapt later outreach from real feedback instead of mass cross-posting.
 
 ## Phase 4 — staging service management

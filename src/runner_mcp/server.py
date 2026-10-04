@@ -629,6 +629,35 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def fabric_update_readiness(commit: str) -> dict:
+        """Check bounded Runner Fabric update artifact readiness without mutation."""
+        try:
+            result = fabric_update_manager.readiness(commit)
+        except FabricUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_update_readiness",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_update_readiness",
+                "runner-fabric",
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
     def fabric_update(commit: str) -> dict:
         """Start one exact canonical managed Runner Fabric update."""
         try:

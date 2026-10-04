@@ -1701,6 +1701,33 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         def __init__(self, _config) -> None:
             pass
 
+        def external_target_preflight(self):
+            calls.append(("external_target_preflight", {}))
+            return {
+                "schemaVersion": "runner.fabric/external-target-preflight/v1",
+                "ready": True,
+                "targetAllocationId": "11111111-1111-4111-8111-111111111111",
+                "environmentId": "22222222-2222-4222-8222-222222222222",
+                "mutationEnabled": False,
+                "networkChecked": False,
+            }
+
+        def external_target_inspect(self):
+            calls.append(("external_target_inspect", {}))
+            return {
+                "schemaVersion": "runner.fabric/external-target-live-qualification/v1",
+                "contractVersion": "runner.fabric/external-target-inspection/v1alpha1",
+                "targetAllocationId": "11111111-1111-4111-8111-111111111111",
+                "environmentId": "22222222-2222-4222-8222-222222222222",
+                "reachability": "reachable",
+                "readiness": "ready",
+                "observedAt": "2026-10-04T17:30:00+00:00",
+                "reasonCode": "healthy",
+                "releaseRevision": "a" * 40,
+                "evidenceRefs": ["external-target:fixed-readonly-adapter"],
+                "liveMutationEnabled": False,
+            }
+
         def host_inspect(self):
             calls.append(("inspect", {}))
             return {
@@ -1861,6 +1888,8 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         )
         assert listed.status_code == 200
         for tool_name in (
+            "fabric_external_target_preflight",
+            "fabric_external_target_inspect",
             "fabric_run_work_unit",
             "fabric_get_work_unit",
             "fabric_cancel_work_unit",
@@ -1883,6 +1912,43 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         inspection = parse_tool_json(inspected)
         assert inspection["schema_version"] == "runner.fabric/host-inspection/v1"
         assert inspection["mutation_enabled"] is False
+
+        preflight = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 31,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_external_target_preflight",
+                    "arguments": {},
+                },
+            },
+        )
+        preflight_payload = parse_tool_json(preflight)
+        assert preflight_payload["ready"] is True
+        assert preflight_payload["mutationEnabled"] is False
+        assert "hostname" not in preflight.text.casefold()
+
+        external_inspection = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 32,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_external_target_inspect",
+                    "arguments": {},
+                },
+            },
+        )
+        external_payload = parse_tool_json(external_inspection)
+        assert external_payload["readiness"] == "ready"
+        assert external_payload["liveMutationEnabled"] is False
+        assert "hostname" not in external_inspection.text.casefold()
+        assert "private_path" not in external_inspection.text.casefold()
 
         started = client.post(
             "/mcp",
@@ -1909,6 +1975,8 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
 
     assert calls == [
         ("inspect", {}),
+        ("external_target_preflight", {}),
+        ("external_target_inspect", {}),
         (
             "run",
             {

@@ -24,6 +24,12 @@ from starlette.routing import Mount, Route
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
+from .ci_runner_lifecycle import (
+    CIRunnerLifecycleError,
+    inspect_ci_runner,
+    parse_ci_runner_specs,
+    plan_ci_runner,
+)
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
@@ -357,12 +363,20 @@ def build_mcp(
         registry=registry,
         safety=safety,
     )
+    private_values = secret_values or os.environ
     database_manager = DatabaseManager(
         registry=registry,
         safety=safety,
         backup_root=settings.database_backup_root,
-        secret_values=secret_values or os.environ,
+        secret_values=private_values,
     )
+
+    try:
+        ci_runner_specs = parse_ci_runner_specs(
+            private_values.get("RUNNER_MCP_CI_RUNNERS_JSON")
+        )
+    except CIRunnerLifecycleError as exc:
+        raise RuntimeError("CI runner private configuration is invalid") from exc
     migration_jobs = (
         MigrationJobRunner(
             manager=database_manager,
@@ -898,6 +912,96 @@ def build_mcp(
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)
         mcp.tool()(fabric_cancel_work_unit)
+
+    def _ci_runner_spec(alias: str):
+        spec = ci_runner_specs.get(alias)
+        if spec is None:
+            raise ValueError("Unknown or disabled CI runner")
+        return spec
+
+    def list_ci_runners() -> list[dict[str, object]]:
+        """List configured CI runner aliases without private host paths."""
+        result = [
+            {
+                "alias": spec.alias,
+                "repository": spec.repository,
+                "runner_name": spec.runner_name,
+                "labels": list(spec.labels),
+            }
+            for spec in sorted(ci_runner_specs.values(), key=lambda item: item.alias)
+        ]
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "list_ci_runners",
+                None,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    def ci_runner_status(alias: str) -> dict:
+        """Return bounded local registration readiness for one configured CI runner."""
+        try:
+            result = inspect_ci_runner(_ci_runner_spec(alias)).to_payload()
+        except (CIRunnerLifecycleError, OSError) as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "ci_runner_status",
+                    alias,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError("CI runner status is unavailable") from exc
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "ci_runner_status",
+                alias,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    def ci_runner_plan(alias: str) -> dict:
+        """Return the read-only enrollment plan for one configured CI runner."""
+        try:
+            result = plan_ci_runner(_ci_runner_spec(alias)).to_payload()
+        except (CIRunnerLifecycleError, OSError) as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "ci_runner_plan",
+                    alias,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError("CI runner plan is unavailable") from exc
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "ci_runner_plan",
+                alias,
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    if ci_runner_specs:
+        mcp.tool()(list_ci_runners)
+        mcp.tool()(ci_runner_status)
+        mcp.tool()(ci_runner_plan)
 
     @mcp.tool()
     def list_projects() -> list[dict[str, str]]:

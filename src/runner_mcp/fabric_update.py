@@ -23,7 +23,7 @@ from pathlib import Path
 from typing import Any
 from uuid import uuid4
 
-from .fabric_bootstrap import _private_env_value
+from .fabric_bootstrap import FabricBootstrapError, _private_env_value
 from .operational_safety import OperatorSafetyGuard
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
@@ -135,7 +135,7 @@ class FabricUpdateManager:
         _require_commit(commit)
         self._require_safe_runtime()
         self._assert_managed_launcher()
-        token = _private_env_value(self.config_dir / "runner-mcp.env", _TOKEN_ENV)
+        token = self._github_token()
         self._resolve_exact_artifact(token, commit)
         return {"commit": commit, "artifact_ready": True}
 
@@ -282,9 +282,18 @@ class FabricUpdateManager:
             self._finish(job_id, FabricUpdateState.COMPLETED, None)
 
     def _fetch_exact_artifact(self, commit: str) -> bytes:
-        token = _private_env_value(self.config_dir / "runner-mcp.env", _TOKEN_ENV)
+        token = self._github_token()
         artifact_id = self._resolve_exact_artifact(token, commit)
         return self._download_artifact(token, artifact_id)
+
+    def _github_token(self) -> str:
+        try:
+            return _private_env_value(
+                self.config_dir / "runner-mcp.env",
+                _TOKEN_ENV,
+            )
+        except FabricBootstrapError as exc:
+            raise FabricUpdateError("actions_run_unavailable") from exc
 
     def _resolve_exact_artifact(self, token: str, commit: str) -> int:
         owner, repo = _REPOSITORY.split("/", 1)

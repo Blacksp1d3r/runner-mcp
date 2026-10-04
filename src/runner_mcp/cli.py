@@ -112,6 +112,7 @@ from .self_update_install import install_recovery_state
 from .server import create_app
 from .service_journal import ServiceJournalReader
 from .source_control import SourceSynchronizer
+from .test_runner import TestRunner
 
 
 def package_version() -> str:
@@ -1499,19 +1500,37 @@ def cmd_github_watcher(args: argparse.Namespace) -> int:
     raise RuntimeError("Unknown GitHub watcher action")
 
 
-def _local_self_update_manager(config_dir: Path) -> SelfUpdateManager:
+def _local_self_update_manager(
+    config_dir: Path,
+    *,
+    enable_tests: bool = False,
+) -> SelfUpdateManager:
     paths, settings, registry = read_private_runtime(config_dir)
     _, safety = operator_stop_status(config_dir)
+    tests = None
+    if enable_tests:
+        if settings.test_jobs_root is None:
+            raise RuntimeError(
+                "Self-update recovery qualification requires configured test execution"
+            )
+        tests = TestRunner(
+            registry=registry,
+            safety=safety,
+            jobs_root=settings.test_jobs_root,
+            playwright_browsers_path=settings.playwright_browsers_path,
+            max_concurrent_jobs=settings.max_test_jobs,
+            max_queued_jobs=settings.max_queued_tests,
+        )
     source = SourceSynchronizer(
         registry=registry,
         safety=safety,
-        tests=None,
+        tests=tests,
     )
     return SelfUpdateManager(
         config_dir=paths.config_dir,
         registry=registry,
         safety=safety,
-        tests=None,
+        tests=tests,
         source=source,
         resource_url=settings.resource_url,
     )
@@ -1547,6 +1566,34 @@ def cmd_self_update_bootstrap(args: argparse.Namespace) -> int:
     result = _local_self_update_manager(config_dir).bootstrap_baseline(commit)
     print("Runner MCP self-update baseline recorded.")
     print(f"Baseline commit: {result['commit'][:12]}")
+    return 0
+
+
+def cmd_self_update_recovery_qualify(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    commit = args.commit
+    phrase = f"QUALIFY SELF UPDATE RECOVERY {commit}"
+    print(
+        "This local-only qualification performs the normal self-update validation and "
+        "target package install, then deliberately stops before runtime verification "
+        "and finalization. A persisted recovery transaction will remain on success."
+    )
+    print(
+        "Recovery stays local-only: ordinary self-update will be blocked until the "
+        "operator activates the emergency stop and runs self-update-recovery."
+    )
+    confirmation = input(f"Type {phrase} to continue: ").strip()
+    if confirmation != phrase:
+        raise RuntimeError("Self-update recovery qualification cancelled")
+
+    result = _local_self_update_manager(
+        config_dir,
+        enable_tests=True,
+    ).qualify_install_recovery(commit)
+    print("Runner MCP self-update recovery qualification interruption created.")
+    print(f"Recovery job: {result['job_id']}")
+    print("Self-update install recovery: REQUIRED")
+    print("Next: activate the operator emergency stop and run self-update-recovery.")
     return 0
 
 
@@ -1727,6 +1774,21 @@ def build_parser() -> argparse.ArgumentParser:
         help="Exact full lowercase commit of the already-installed runtime.",
     )
     self_update_bootstrap.set_defaults(func=cmd_self_update_bootstrap)
+
+    self_update_recovery_qualify = subparsers.add_parser(
+        "self-update-recovery-qualify",
+        help=(
+            "Locally create one deterministic interrupted self-update transaction "
+            "for recovery qualification."
+        ),
+    )
+    self_update_recovery_qualify.add_argument(
+        "commit",
+        help="Exact full lowercase current-main commit to qualify.",
+    )
+    self_update_recovery_qualify.set_defaults(
+        func=cmd_self_update_recovery_qualify
+    )
 
     self_update_recovery = subparsers.add_parser(
         "self-update-recovery",

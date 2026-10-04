@@ -13,11 +13,12 @@ import urllib.error
 import urllib.parse
 import urllib.request
 import zipfile
+from collections.abc import Callable
 from dataclasses import dataclass, replace
 from datetime import UTC, datetime
 from enum import StrEnum
 from pathlib import Path
-from typing import Any, Callable
+from typing import Any
 from uuid import uuid4
 
 from .fabric_bootstrap import _private_env_value
@@ -263,7 +264,7 @@ class FabricUpdateManager:
                     shutil.rmtree(previous, ignore_errors=True)
         except FabricUpdateError as exc:
             self._finish(job_id, FabricUpdateState.ERROR, _category(exc))
-        except Exception:
+        except Exception:  # noqa: BLE001 - background update must fail closed
             self._finish(job_id, FabricUpdateState.ERROR, "fabric_update_failed")
         else:
             self._finish(job_id, FabricUpdateState.COMPLETED, None)

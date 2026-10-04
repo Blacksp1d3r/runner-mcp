@@ -69,6 +69,67 @@ def test_qualification_agent_rejects_non_loopback_endpoint(tmp_path: Path) -> No
         fabric_agent_qualification_configured(paths.config_dir)
 
 
+def test_qualification_agent_forwards_only_fixed_optional_target_config(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    token = _append_bridge(paths)
+    external_config = tmp_path / "private-target.json"
+    external_config.write_text("{}\n", encoding="utf-8")
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write(f"RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG={external_config}\n")
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    assert environment["RUNNER_FABRIC_AGENT_BEARER_TOKEN"] == token
+    assert environment["RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"] == str(external_config)
+    assert "UNRELATED_PRIVATE_VALUE" not in environment
+    assert set(environment) == {
+        "HOME",
+        "PATH",
+        "LANG",
+        "RUNNER_FABRIC_AGENT_RESOURCE_URL",
+        "RUNNER_FABRIC_AGENT_BEARER_TOKEN",
+        "RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG",
+    }
+
+
+def test_qualification_agent_rejects_relative_external_target_config(
+    tmp_path: Path,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG=relative.json\n")
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="configuration is invalid",
+    ):
+        run_fabric_agent_qualification_process(paths.config_dir, execve=lambda *_: object())
+
+
 def test_qualification_agent_execs_only_fixed_qualification_command(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

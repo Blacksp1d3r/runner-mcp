@@ -690,7 +690,6 @@ def build_mcp(
             )
         )
 
-
     def fabric_host_inspect() -> dict:
         """Return bounded Runner Fabric host/browser readiness without host authority."""
         try:

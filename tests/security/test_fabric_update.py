@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import io
 import json
 import os
@@ -54,17 +55,38 @@ def _managed_launcher(manager: FabricUpdateManager) -> None:
     manager.launcher.symlink_to(target)
 
 
-def _bundle(commit: str) -> bytes:
+def _bundle(commit: str, *, tamper_bootstrap: bool = False) -> bytes:
+    bootstrap = b"raise SystemExit(0)\n"
+    wheel_name = "runner_fabric-0.0.1-py3-none-any.whl"
+    wheel = b"synthetic-wheel"
+    sums = {
+        "BOOTSTRAP.py": hashlib.sha256(bootstrap).hexdigest(),
+        wheel_name: hashlib.sha256(wheel).hexdigest(),
+    }
     manifest = {
         "schemaVersion": "runner.fabric/control-plane-update-bundle/v1",
         "commitSha": commit,
+        "python": "3.12",
+        "projectWheel": wheel_name,
+        "wheelCount": 1,
+        "bootstrapSha256": sums["BOOTSTRAP.py"],
     }
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, "w") as archive:
         archive.writestr("BUNDLE.json", json.dumps(manifest))
         archive.writestr("COMMIT_SHA", commit + "\n")
-        archive.writestr("SHA256SUMS", "placeholder\n")
-        archive.writestr("BOOTSTRAP.py", "raise SystemExit(0)\n")
+        archive.writestr(
+            "SHA256SUMS",
+            "".join(
+                f"{digest}  {name}\n"
+                for name, digest in sorted(sums.items())
+            ),
+        )
+        archive.writestr(
+            "BOOTSTRAP.py",
+            b"tampered\n" if tamper_bootstrap else bootstrap,
+        )
+        archive.writestr(wheel_name, wheel)
     return buffer.getvalue()
 
 
@@ -125,6 +147,37 @@ def test_exact_bundle_uses_only_fixed_preflight_and_apply(
     assert [call[-1] for call in calls] == ["preflight", "apply"]
     assert all(call[1].endswith("BOOTSTRAP.py") for call in calls)
     assert all(len(call) == 3 for call in calls)
+
+
+def test_bundle_hash_mismatch_blocks_before_bootstrap(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "e" * 40
+    monkeypatch.setattr(
+        manager,
+        "_fetch_exact_artifact",
+        lambda value: _bundle(value, tamper_bootstrap=True),
+    )
+
+    started = manager.start(commit)
+    job_id = started["job_id"]
+
+    for _ in range(200):
+        result = manager.status(job_id)
+        if result["state"] in {"completed", "error"}:
+            break
+        import time
+
+        time.sleep(0.01)
+    else:
+        raise AssertionError("fabric update did not finish")
+
+    assert result["state"] == "error"
+    assert result["error_category"] == "fabric_bundle_integrity_failed"
+    assert calls == []
 
 
 def test_rollback_is_bound_to_current_active_commit(tmp_path: Path) -> None:

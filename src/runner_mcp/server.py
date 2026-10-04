@@ -29,6 +29,7 @@ from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
+from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
@@ -417,6 +418,11 @@ def build_mcp(
         safety=safety,
         self_update_status_provider=self_update_manager.runtime_status,
     )
+    fabric_update_manager = FabricUpdateManager(
+        config_dir=settings.projects_config.parent,
+        safety=safety,
+        self_update_status_provider=self_update_manager.runtime_status,
+    )
 
     fabric_bridge = (
         FabricBridgeClient(
@@ -460,7 +466,8 @@ def build_mcp(
         try:
             result.update(self_update_manager.runtime_status())
             result.update(fabric_bootstrap_manager.runtime_status())
-        except (SelfUpdateError, FabricBootstrapError) as exc:
+            result.update(fabric_update_manager.runtime_status())
+        except (SelfUpdateError, FabricBootstrapError, FabricUpdateError) as exc:
             audit.append(
                 AuditEvent(
                     current_request_id(),
@@ -616,6 +623,93 @@ def build_mcp(
                 "runner-fabric",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_update(commit: str) -> dict:
+        """Start one exact canonical managed Runner Fabric update."""
+        try:
+            result = fabric_update_manager.start(commit)
+        except FabricUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_update",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_update",
+                "runner-fabric",
+                "authenticated-client",
+                "started",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_update_status(job_id: str) -> dict:
+        """Return bounded status for one managed Runner Fabric update."""
+        try:
+            result = fabric_update_manager.status(job_id)
+        except FabricUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_update_status",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_update_status",
+                "runner-fabric",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_update_rollback(commit: str) -> dict:
+        """Rollback only the currently active managed Runner Fabric update."""
+        try:
+            result = fabric_update_manager.rollback(commit)
+        except FabricUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_update_rollback",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_update_rollback",
+                "runner-fabric",
+                "authenticated-client",
+                "completed",
                 utc_timestamp(),
             )
         )

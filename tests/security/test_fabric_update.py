@@ -257,6 +257,46 @@ def test_duplicate_push_runs_fail_closed(
         manager._fetch_exact_artifact(commit)
 
 
+@pytest.mark.parametrize(
+    ("head_sha", "event"),
+    [
+        ("b" * 40, "push"),
+        ("a" * 40, "schedule"),
+    ],
+)
+def test_artifact_run_rejects_wrong_sha_or_event(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    head_sha: str,
+    event: str,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    commit = "a" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+    monkeypatch.setattr(
+        manager,
+        "_api_json",
+        lambda _token, _path: {
+            "workflow_runs": [
+                {
+                    "id": 123,
+                    "head_sha": head_sha,
+                    "head_branch": "main",
+                    "event": event,
+                    "conclusion": "success",
+                }
+            ]
+        },
+    )
+
+    with pytest.raises(FabricUpdateError, match="fabric_artifact_unavailable"):
+        manager._fetch_exact_artifact(commit)
+
+
 def test_artifact_redirect_rejects_private_host(tmp_path: Path) -> None:
     class RedirectingOpener:
         def open(self, request, timeout):

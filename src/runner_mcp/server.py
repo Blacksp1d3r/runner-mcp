@@ -45,11 +45,11 @@ from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
-from .migration_jobs import MigrationJobError, MigrationJobRunner
 from .known_project_catalog import (
     KnownProjectRegistrationError,
-    register_known_project,
+    register_known_project as register_known_project_binding,
 )
+from .migration_jobs import MigrationJobError, MigrationJobRunner
 from .migration_planning import (
     async_migration_approval_material,
     migration_binding_fingerprint,
@@ -1158,7 +1158,7 @@ def build_mcp(
             )
             raise ValueError("Emergency stop is active")
         try:
-            result = register_known_project(
+            result = register_known_project_binding(
                 settings.projects_config.parent,
                 settings.projects_config,
                 registry,

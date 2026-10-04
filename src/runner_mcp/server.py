@@ -29,8 +29,8 @@ from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
-from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
+from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 from .migration_jobs import MigrationJobError, MigrationJobRunner

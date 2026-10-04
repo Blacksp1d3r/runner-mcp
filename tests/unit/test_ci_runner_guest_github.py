@@ -2,12 +2,12 @@ from __future__ import annotations
 
 import pytest
 
+from runner_mcp.ci_runner_github import CIRunnerGitHubError
 from runner_mcp.ci_runner_guest_enrollment import CIRunnerGuestSpec
 from runner_mcp.ci_runner_guest_github import (
     CIRunnerGuestGitHubController,
     CIRunnerGuestRegistrationToken,
 )
-from runner_mcp.ci_runner_github import CIRunnerGitHubError
 from runner_mcp.github_mailbox import GitHubApiSession
 
 

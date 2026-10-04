@@ -1,3 +1,7 @@
+## 2026-10-04 — operational snapshot gap promoted to maintenance priority
+
+Live operator evidence showed `queue_status` and `worker_status` at 0 queued / 0 claimed / 0 running with both test workers available while first-party client sessions still reported systems as busy. Restart state later converged clear, so local test-queue idleness is not sufficient end-to-end evidence. Issue #269 now tracks one bounded read-only `operational_snapshot`; Runner Fabric #867 owns the canonical cross-layer projection. Required attribution spans control relay, Agent Bus, Runner MCP, Fabric/Conductor/work-unit, worker capacity, durable result/outbox/replay and ACK state. Unknown/unobservable layers must remain unknown rather than false green. This is a correctness/operator need allowed under maintenance mode, not speculative feature growth.
+
 ## 2026-10-04 — alpha core complete; maintenance mode
 
 Runner MCP is now in maintenance mode after completion of the technical alpha/MVP core and live recovery acceptance.

@@ -4,7 +4,6 @@ import json
 import re
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Mapping
 
 _ALIAS_RE = re.compile(r"^[a-z][a-z0-9._-]{0,63}$")
 _REPOSITORY_RE = re.compile(r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$")

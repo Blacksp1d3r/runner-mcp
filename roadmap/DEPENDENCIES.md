@@ -1,26 +1,30 @@
 # Runner MCP — Dependency / Integration Order
 
-Last reconciled: 2026-09-30. GitHub current state wins.
+Last reconciled: 2026-10-04. GitHub current state wins.
 
 ## Current cross-product gates
 
-- Runner Fabric transport foundation is COMPLETE on Runner MCP `main` via PR #111 / merge
+- Runner Fabric transport foundation remains COMPLETE on Runner MCP `main` via PR #111 / merge
   `3ebd39981c358c307fa66afa32ad2f5fc32731cf`; issue #109 is complete. Do not duplicate this work.
-- Issue #110 is the remaining activation/end-to-end lane. It is BLOCKED until the required Runner
-  Fabric work-unit service, loopback MCP adapter and startable private service are exact-head green,
-  integrated and privately deployable. Reconcile Runner Fabric live state before acting.
-- At the latest 2026-09-27 checkpoint, Runner Fabric #258 and #266 are merged and green. #256
-  (transport-neutral agent gateway) and #264 (durable fenced work-unit journal) remain open on
-  failing/non-mergeable heads, while #268 (startable private agent MCP service) remains open.
-  These are checkpoint facts; reconcile Fabric live state before activation.
-- Issue #108 remains an independent private-host recovery proof and may proceed only through the
-  existing bounded interfaces without exposing private infrastructure.
-- Issue #101 remains an independent external-discovery lane; account/OAuth/browser submission gates
-  remain human-controlled and must not be bypassed.
+- Issue #110 is COMPLETE. A real first-party client invocation traversed the bounded Runner MCP ->
+  Runner Fabric coarse work-unit path, and bounded get/cancel/operator-safety evidence is reconciled.
+  Do not rebuild the bridge or add a second primary transport.
+- Runner MCP now has bounded managed Runner Fabric update/status/rollback support and accepts the
+  canonical automatic control-plane bundle lane. Before any live Fabric runtime mutation, reconcile
+  current Runner Fabric `main` and Runner MCP `fabric_update_active`; source-development activity
+  in Runner Fabric is not itself evidence that a managed Fabric runtime update is active.
+- Issue #108 is the remaining live self-update recovery proof. PR #262 / merge
+  `ba35f70eb9e3e489fc6936d2bc2f0fc425710c81` provides a local-only deterministic recovery
+  qualifier; the actual interrupted-install/overlap/local-recovery proof must still be executed on
+  the qualified host and must not be bypassed with generic shell, package-manager or remote-control
+  authority.
+- Issue #101 remains an independent external-discovery lane; Glama/AllMCPs/launch-post actions are
+  owner-controlled and non-blocking. Third-party stale install metadata is tracked separately in
+  #263 and must not drive product/runtime changes.
 
 ## Current build order
 1. Core safety/protocol invariants remain the base for every later slice.
-2. Task 10 private-host live self-update/recovery proof remains externally blocked; it does not block independent public hardening work.
+2. Task 10 / issue #108 private-host live self-update/recovery proof is no longer blocked by host qualification or first-party control. The remaining step is an intentionally local operator recovery drill using the merged bounded qualifier; it does not block independent documentation/discovery work.
 3. Tasks 16, 17, 18, 20, 21, 22, 23, 24, 25, 26, 27, 28, 29, 30, 31, 32, 33, 35, 36 and 38 are complete on main; do not duplicate them.
 4. Task 34 retention preview is COMPLETE on main via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 37 restore-execution review is COMPLETE on main via PR #93 / merge `81720ce24d6e309c72d6a06155c4e70d3b868dbf`. Task 39 adapter-contract refactor is COMPLETE on main via PR #94 / merge `163c5e0597cb8a6cc70f32fd3d8c99e30d08f7aa`. Task 40 pruning execute-boundary review is COMPLETE on main via PR #95 / merge `83453d9bb56f1bcbb69ccf68563699aab56e777b`.
 5. Task 28 depended on Task 24 and is complete via merge `131e168e02b7d5781441bbc8256e65de434e6166`. Task 44 is now COMPLETE via PR #118 / merge `6053b7c3d5aef757055c453d2fd5b7f581248e53`, so migration completion has a real strict persisted `MIGRATION_JOB` source without changing synchronous execution.
@@ -28,7 +32,7 @@ Last reconciled: 2026-09-30. GitHub current state wins.
 7. Task 31 depended on Task 27 and is complete via merge `e54a0684bdc9da3a32d062e0e0e45261c1616020`. Actual restore/PITR and remote restore authority remain deferred.
 8. Task 34 depends on Task 30 and is complete via PR #92 / merge `36599fab6ed1b96d145a830fa45b935aba823db3`. Task 40 resolved the first deletion boundary; Task 48 supplied the required shared release lock; Task 43 is COMPLETE via PR #116 / merge `a95e75739bb71bcbaf653244e0ebf9c9bee7b0ee` for one local/manual non-migration orphan release. Backup pruning and automatic pruning remain deferred.
 9. Task 32 is complete via review merge `e629515f9c7e7a5d44506dfb82a48343870f94da`; it demonstrated six documentation drift blockers before any alpha tag.
-10. Task 36 depended on Task 32 and is complete via merge `8c971016e4fc3cd821dc52d28334567c20835ff4`; release documentation drift is reconciled, but no tag/release/publication is authorized.
+10. Task 36 depended on Task 32 and is complete via merge `8c971016e4fc3cd821dc52d28334567c20835ff4`. Runner MCP 0.1.3 was subsequently published from exact release commit `0aa013c279128e22fbd53be32c35bced3ae26834` through the protected release workflow; future release/tagging still requires explicit authorization and an exact green candidate.
 11. Task 23 had Task 18 as its prerequisite; that prerequisite is satisfied by merge `5c4f5db350cdafa99066bdb091866b7d6979a7a9`.
 12. Dependency/build/interpreter contract changes still require explicit bootstrap because self-update intentionally uses `--no-deps`.
 13. Task 39 depends on Task 38; that dependency is satisfied by PR #91 merge `11b9a4d4e508ac93cd436037563c09d08cfa43ab`. Task 39 is COMPLETE on main via PR #94 / merge `163c5e0597cb8a6cc70f32fd3d8c99e30d08f7aa`.
@@ -40,8 +44,17 @@ Last reconciled: 2026-09-30. GitHub current state wins.
 19. Issue #143 remains open only for the production packaging-capability preflight; PR #142 already made the environment-dependent wheel smoke conditional. Task 50 is the bounded CODE follow-up.
 20. Issue #144 remains high-risk first-install Runner Fabric bootstrap design; Task 52 is review-only before any code or new bootstrap authority.
 21. PR #127 and PR #129 remain open with unique Agent-Bus transport/runtime work. Later merged #131/#132/#134 do not make those branches safe to duplicate blindly; reconcile/rebase them separately.
-22. Public release/tagging requires explicit user authorization and an exact green candidate; private-host proof limitation must remain explicit until actually proven.
+22. Future public release/tagging requires explicit user authorization and an exact green candidate. The remaining private-host recovery limitation is tracked by #108 and must remain explicit until the live local drill is actually proven.
 
+
+## 2026-10-04 reconciliation
+
+- #110 is COMPLETE; the first-party Runner MCP -> Runner Fabric coarse work-unit path is live-proven. Do not recreate that bridge or its client packaging lane.
+- #198, #225 and #237 are COMPLETE: replacement-host qualification and persistent managed Agent Bus worker recovery are no longer activation blockers.
+- #108 is OPEN and is the only remaining technical live-proof lane in Runner MCP. The managed runtime baseline is `ba35f70e...`; current exact forward qualifier target is `d0077215...` until `main` changes. The local qualifier/recovery sequence is recorded on #108.
+- #101 is non-blocking discovery/launch work. Runner MCP 0.1.3 publication is complete; Smithery is deliberately skipped unless a repository-only path emerges, while Glama/AllMCPs and the technical launch post remain owner-controlled.
+- #263 tracks stale third-party directory metadata. Canonical `pyproject.toml` / `server.json` are already correct; do not change package identity, Python requirement, transport or launch semantics merely to match crawler output.
+- Managed Runner Fabric runtime updates remain a separate bounded action. Reconcile live `fabric_update_active` and exact Fabric `main` immediately before any update so parallel Fabric development is not crossed.
 
 ## Parallel work that is safe
 - documentation/CLI contract drift audits;

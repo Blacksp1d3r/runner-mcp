@@ -40,6 +40,12 @@ class CIRunnerSpec:
             raise CIRunnerLifecycleError("CI runner paths must be absolute")
         if self.runner_root == self.work_root:
             raise CIRunnerLifecycleError("CI runner work root must be separate")
+        try:
+            self.work_root.relative_to(self.runner_root)
+        except ValueError as exc:
+            raise CIRunnerLifecycleError(
+                "CI runner work root must be inside runner root"
+            ) from exc
         if not 1 <= len(self.labels) <= _MAX_LABELS:
             raise CIRunnerLifecycleError("CI runner labels are outside supported bounds")
         if len(set(self.labels)) != len(self.labels):

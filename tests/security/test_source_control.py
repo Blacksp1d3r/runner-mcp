@@ -6,7 +6,12 @@ import pytest
 
 from runner_mcp.config import ProjectConfig, ProjectRegistry
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
-from runner_mcp.source_control import SourceControlError, SourceSynchronizer, clean_head
+from runner_mcp.source_control import (
+    SourceControlError,
+    SourceSynchronizer,
+    _git_environment,
+    clean_head,
+)
 
 
 def git(root: Path, *args: str) -> str:
@@ -71,7 +76,11 @@ class BusyTests:
         return True
 
 
-def _synchronizer(tmp_path: Path, tests=None) -> tuple[SourceSynchronizer, Path]:
+def _synchronizer(
+    tmp_path: Path,
+    tests=None,
+    github_token: str | None = None,
+) -> tuple[SourceSynchronizer, Path]:
     root = tmp_path / "sync-project"
     root.mkdir()
     registry = ProjectRegistry(
@@ -94,16 +103,47 @@ def _synchronizer(tmp_path: Path, tests=None) -> tuple[SourceSynchronizer, Path]
             registry=registry,
             safety=guard,
             tests=tests or IdleTests(),
+            github_token=github_token,
         ),
         root,
     )
+
+
+def test_network_git_environment_scopes_github_token_to_https_header() -> None:
+    environment = _git_environment(
+        network=True,
+        github_token="private-token",
+    )
+
+    assert environment["GIT_CONFIG_COUNT"] == "1"
+    assert environment["GIT_CONFIG_KEY_0"] == (
+        "http.https://github.com/.extraheader"
+    )
+    assert environment["GIT_CONFIG_VALUE_0"].startswith(
+        "AUTHORIZATION: basic "
+    )
+    assert "private-token" not in environment["GIT_CONFIG_VALUE_0"]
+
+
+def test_local_git_environment_rejects_github_token() -> None:
+    with pytest.raises(
+        SourceControlError,
+        match="only for network Git operations",
+    ):
+        _git_environment(
+            network=False,
+            github_token="private-token",
+        )
 
 
 def test_source_sync_accepts_only_origin_reachable_commit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    synchronizer, _root = _synchronizer(tmp_path)
+    synchronizer, _root = _synchronizer(
+        tmp_path,
+        github_token="private-token",
+    )
     before = "1" * 40
     target = "2" * 40
     state = {"head": before, "fetched": False}
@@ -124,6 +164,8 @@ def test_source_sync_accepts_only_origin_reachable_commit(
             "origin",
             "+refs/heads/*:refs/remotes/origin/*",
         ]:
+            assert kwargs["network"] is True
+            assert kwargs["github_token"] == "private-token"
             state["fetched"] = True
             return ""
         if arguments == ["rev-parse", "--verify", f"{target}^{{commit}}"]:

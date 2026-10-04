@@ -268,6 +268,22 @@ def _normalize_restart_components(
     return tuple(sorted(selected))
 
 
+def _normalize_inactive_restart_components(
+    components: Collection[str] | None,
+) -> tuple[str, ...]:
+    if components is None:
+        return ()
+    if isinstance(components, (str, bytes)):
+        raise SelfUpdateError("Self-update inactive restart components are invalid")
+    selected = set(components)
+    if "server" in selected:
+        raise SelfUpdateError("Runner MCP server cannot be an inactive restart component")
+    unknown = selected - (_RESTART_COMPONENTS - {"server"})
+    if unknown:
+        raise SelfUpdateError("Unknown inactive self-update restart component")
+    return tuple(sorted(selected))
+
+
 def _write_restart_markers(
     config_dir: Path,
     commit: str,
@@ -347,6 +363,7 @@ class SelfUpdateManager:
         server_reexec: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
+        inactive_restart_components: Collection[str] | None = None,
     ) -> None:
         root = config_dir.expanduser()
         if root.exists() and root.is_symlink():
@@ -407,9 +424,13 @@ class SelfUpdateManager:
                 self._server_port = port
         self._server_reexec = server_reexec
         self._restart_components = _normalize_restart_components(restart_components)
+        self._inactive_restart_components = _normalize_inactive_restart_components(
+            inactive_restart_components
+        )
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()
+        self._reconcile_inactive_restart_markers()
 
     def _job_path(self, job_id: str) -> Path:
         return self.jobs_root / f"{job_id}.json"
@@ -469,6 +490,46 @@ class SelfUpdateManager:
         if not isinstance(candidate, str) or not _COMMIT_RE.fullmatch(candidate):
             raise SelfUpdateError("Self-update state is invalid")
         return candidate
+
+    def _reconcile_inactive_restart_markers(self) -> None:
+        if not self._inactive_restart_components:
+            return
+        if self._pending_install_transaction() is not None:
+            return
+
+        installed_commit = self._installed_commit()
+        if installed_commit is None:
+            return
+
+        removable: list[str] = []
+        for component in self._inactive_restart_components:
+            marker_commit = restart_marker_commit(self.config_dir, component)
+            if marker_commit == installed_commit:
+                removable.append(component)
+
+        removed: list[str] = []
+        try:
+            for component in removable:
+                _remove_restart_marker(self.config_dir, component)
+                removed.append(component)
+        except SelfUpdateError as exc:
+            restore_failed = False
+            for component in reversed(removed):
+                try:
+                    _write_restart_marker(
+                        self.config_dir,
+                        component,
+                        installed_commit,
+                    )
+                except SelfUpdateError:
+                    restore_failed = True
+            if restore_failed:
+                raise SelfUpdateError(
+                    "Inactive restart marker reconciliation failed and state could not be restored"
+                ) from exc
+            raise SelfUpdateError(
+                "Inactive restart marker reconciliation failed"
+            ) from exc
 
     def _pending_install_transaction(self) -> dict[str, Any] | None:
         try:

@@ -594,3 +594,65 @@ def test_rasff_lens_existing_clone_requires_exact_repository(tmp_path: Path) -> 
         ),
     )
     assert result["state"] == "already-prepared"
+
+
+@pytest.mark.parametrize(
+    ("project_id", "display_name", "repository", "directory_name", "adapter"),
+    [
+        ("bewind", "Bewind", "Blacksp1d3r/bewind", "bewind", "python"),
+        ("enercue", "EnerCue", "Blacksp1d3r/EnerCue", "EnerCue", "generic"),
+        ("patrimai", "PatrimAI", "Blacksp1d3r/PatrimAI", "PatrimAI", "generic"),
+        ("unifiedesg", "UnifiedESG", "Blacksp1d3r/UnifiedESG", "UnifiedESG", "python"),
+        ("pastentrance", "PastEntrance", "Blacksp1d3r/PastEntrance", "PastEntrance", "generic"),
+        ("safety", "Safety!", "Blacksp1d3r/safety", "safety", "generic"),
+        ("rasff-lens", "RASFF Lens", "Blacksp1d3r/rasff-lens", "rasff-lens", "python"),
+    ],
+)
+def test_aifordable_managed_project_catalog_is_fixed_and_bounded(
+    project_id: str,
+    display_name: str,
+    repository: str,
+    directory_name: str,
+    adapter: str,
+) -> None:
+    project = KNOWN_PROJECTS[project_id]
+    assert project.code == project_id
+    assert project.display_name == display_name
+    assert project.repository == repository
+    assert project.directory_name == directory_name
+    assert project.adapter == adapter
+
+
+@pytest.mark.parametrize(
+    ("project_id", "repository"),
+    [
+        ("bewind", "Blacksp1d3r/bewind"),
+        ("enercue", "Blacksp1d3r/EnerCue"),
+        ("patrimai", "Blacksp1d3r/PatrimAI"),
+        ("unifiedesg", "Blacksp1d3r/UnifiedESG"),
+        ("pastentrance", "Blacksp1d3r/PastEntrance"),
+        ("safety", "Blacksp1d3r/safety"),
+        ("rasff-lens", "Blacksp1d3r/rasff-lens"),
+    ],
+)
+def test_aifordable_managed_project_preflight_is_ready_without_clone(
+    tmp_path: Path,
+    project_id: str,
+    repository: str,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id=project_id,
+        runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("git must not run")
+        ),
+    )
+
+    assert result == {
+        "code": project_id,
+        "repository": repository,
+        "state": "ready-to-prepare",
+    }

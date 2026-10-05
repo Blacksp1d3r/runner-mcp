@@ -114,6 +114,26 @@ def test_install_preserves_unrelated_lines_and_is_idempotent(
     assert "cron-run github-watcher" in crontab.content
 
 
+def test_install_rejects_unmanaged_tunnel_cron_supervisor(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+) -> None:
+    crontab = FakeCrontab(
+        "* * * * * /home/user/.local/bin/runner-mcp autostart cron-run tunnel --port 8000\n"
+    )
+
+    with pytest.raises(CronAutostartError, match="unmanaged Runner MCP"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server", "tunnel"),
+            runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert len(crontab.calls) == 1
+
+
 def test_install_rejects_unmanaged_tunnel_run_cron(
     tmp_path: Path,
     fake_crontab_executable: None,

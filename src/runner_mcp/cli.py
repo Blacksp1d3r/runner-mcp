@@ -128,6 +128,7 @@ from .service_journal import ServiceJournalReader
 from .source_control import SourceSynchronizer
 from .test_runner import TestRunner
 from .tunnel_config_readiness import collect_tunnel_config_readiness
+from .tunnel_runtime import run_managed_tunnel
 
 
 def package_version() -> str:
@@ -238,6 +239,13 @@ def cmd_tunnel_status(args: argparse.Namespace) -> int:
     print(f"Readiness: {result['state']}")
     print(f"Reason: {result['reason']}")
     return 0
+
+
+def cmd_tunnel_run(args: argparse.Namespace) -> int:
+    return run_managed_tunnel(
+        _config_dir(args.config_dir),
+        port=args.port,
+    )
 
 
 def cmd_doctor(args: argparse.Namespace) -> int:
@@ -1839,6 +1847,19 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show bounded local tunnel readiness without exposing private values.",
     )
     tunnel_status.set_defaults(func=cmd_tunnel_status)
+
+    tunnel_run = subparsers.add_parser(
+        "tunnel-run",
+        help=argparse.SUPPRESS,
+    )
+    tunnel_run.add_argument(
+        "--port",
+        type=int,
+        default=8000,
+        choices=range(1, 65536),
+        metavar="PORT",
+    )
+    tunnel_run.set_defaults(func=cmd_tunnel_run)
 
     guide = subparsers.add_parser(
         "guide",

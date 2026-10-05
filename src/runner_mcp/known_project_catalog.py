@@ -271,6 +271,86 @@ def _github_clone_environment(github_token: str | None) -> dict[str, str]:
     return environment
 
 
+
+def preflight_known_project_source(
+    *,
+    project_id: str,
+    github_token: str | None,
+    runner=subprocess.run,
+) -> dict[str, str | bool]:
+    """Return bounded source reachability for one fixed catalogued project."""
+
+    project = KNOWN_PROJECTS.get(project_id)
+    if project is None:
+        raise KnownProjectRegistrationError("Unknown managed project")
+    if not callable(runner):
+        raise TypeError("runner must be callable")
+
+    credential_configured = bool(
+        isinstance(github_token, str) and github_token.strip()
+    )
+    if not credential_configured:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "credential_configured": False,
+            "source_reachable": False,
+            "main_ref_available": False,
+            "reason_code": "credential-unconfigured",
+        }
+
+    repository_url = f"https://github.com/{project.repository}.git"
+    try:
+        result = runner(
+            [
+                "git",
+                "-c",
+                "core.hooksPath=/dev/null",
+                "ls-remote",
+                "--heads",
+                "--",
+                repository_url,
+                "refs/heads/main",
+            ],
+            stdin=subprocess.DEVNULL,
+            capture_output=True,
+            text=True,
+            timeout=20.0,
+            check=False,
+            shell=False,
+            env=_github_clone_environment(github_token),
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "credential_configured": True,
+            "source_reachable": False,
+            "main_ref_available": False,
+            "reason_code": "source-unreachable-or-unauthorized",
+        }
+
+    if not isinstance(result, subprocess.CompletedProcess) or result.returncode != 0:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "credential_configured": True,
+            "source_reachable": False,
+            "main_ref_available": False,
+            "reason_code": "source-unreachable-or-unauthorized",
+        }
+
+    stdout = result.stdout if isinstance(result.stdout, str) else ""
+    main_ref_available = "refs/heads/main" in stdout
+    return {
+        "code": project.code,
+        "repository": project.repository,
+        "credential_configured": True,
+        "source_reachable": True,
+        "main_ref_available": main_ref_available,
+        "reason_code": "ready" if main_ref_available else "main-ref-unavailable",
+    }
+
 def prepare_known_project(
     registry: ProjectRegistry,
     *,

@@ -67,6 +67,21 @@ def test_render_cron_block_is_fixed_and_bounded(tmp_path: Path) -> None:
     assert " >/dev/null 2>&1" in block[2]
 
 
+def test_render_cron_block_adds_fixed_tunnel_port(tmp_path: Path) -> None:
+    executable = tmp_path / "runner-mcp"
+    config = tmp_path / "private config"
+
+    block = render_cron_block(
+        executable=executable,
+        config_dir=config,
+        components=("server", "tunnel"),
+        port=8123,
+    )
+
+    assert "autostart cron-run server --port 8123" in block[2]
+    assert "autostart cron-run tunnel --port 8123" in block[3]
+
+
 def test_install_preserves_unrelated_lines_and_is_idempotent(
     tmp_path: Path,
     fake_crontab_executable: None,
@@ -97,6 +112,26 @@ def test_install_preserves_unrelated_lines_and_is_idempotent(
     assert "17 2 * * * /usr/bin/backup" in crontab.content
     assert "cron-run server" in crontab.content
     assert "cron-run github-watcher" in crontab.content
+
+
+def test_install_rejects_unmanaged_tunnel_run_cron(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+) -> None:
+    crontab = FakeCrontab(
+        "* * * * * /home/user/.local/bin/runner-mcp tunnel-run --port 8000\n"
+    )
+
+    with pytest.raises(CronAutostartError, match="unmanaged Runner MCP"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server", "tunnel"),
+            runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert len(crontab.calls) == 1
 
 
 def test_install_rejects_unmanaged_runner_mcp_cron(
@@ -219,6 +254,61 @@ def test_cron_run_uses_fixed_exec_argv_and_loopback(
         ("fabric-live-overview", ["fabric-live-overview", "run"]),
     ],
 )
+def test_cron_tunnel_waits_until_managed_server_is_active(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "runner-mcp"
+    executable.write_text("#!/bin/sh\nexit 0\n")
+    executable.chmod(0o700)
+    called: list[bool] = []
+
+    assert run_cron_component(
+        config_dir=config,
+        executable=executable,
+        component="tunnel",
+        port=8123,
+        exec_fn=lambda *_args: called.append(True),
+    ) == 0
+
+    assert called == []
+
+
+def test_cron_tunnel_uses_fixed_runtime_when_server_lock_is_active(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "runner-mcp"
+    executable.write_text("#!/bin/sh\nexit 0\n")
+    executable.chmod(0o700)
+    server_lock = config / "autostart-server.lock"
+    server_fd = server_lock.open("w")
+    fcntl.flock(server_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+    captured: dict[str, object] = {}
+
+    def fake_exec(path: str, argv: list[str]) -> object:
+        captured["path"] = path
+        captured["argv"] = argv
+        return object()
+
+    try:
+        assert run_cron_component(
+            config_dir=config,
+            executable=executable,
+            component="tunnel",
+            port=8123,
+            exec_fn=fake_exec,
+        ) == 0
+    finally:
+        fcntl.flock(server_fd.fileno(), fcntl.LOCK_UN)
+        server_fd.close()
+
+    assert captured["path"] == str(executable)
+    assert captured["argv"][-3:] == ["tunnel-run", "--port", "8123"]
+
+
 def test_cron_run_uses_fixed_watcher_argv(
     tmp_path: Path,
     component: str,
@@ -356,6 +446,12 @@ def test_cron_status_reports_only_managed_components(
             "component": "server",
             "installed": True,
             "enabled": True,
+            "active": False,
+        },
+        {
+            "component": "tunnel",
+            "installed": False,
+            "enabled": False,
             "active": False,
         },
         {

@@ -11,6 +11,7 @@ from runner_mcp.known_project_catalog import (
     KnownProjectRegistrationError,
     discover_known_project_root,
     preflight_known_project,
+    preflight_known_project_source,
     prepare_known_project,
     register_known_project,
 )
@@ -655,4 +656,74 @@ def test_aifordable_managed_project_preflight_is_ready_without_clone(
         "code": project_id,
         "repository": repository,
         "state": "ready-to-prepare",
+    }
+
+
+def test_known_project_source_preflight_requires_configured_credential() -> None:
+    result = preflight_known_project_source(
+        project_id="rasff-lens",
+        github_token=None,
+        runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("git must not run")
+        ),
+    )
+    assert result["credential_configured"] is False
+    assert result["reason_code"] == "credential-unconfigured"
+
+
+def test_known_project_source_preflight_reports_ready_for_exact_main_ref() -> None:
+    calls = []
+
+    def runner(argv, **kwargs):
+        calls.append((argv, kwargs))
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=0,
+            stdout=("f" * 40) + "\trefs/heads/main\n",
+            stderr="",
+        )
+
+    result = preflight_known_project_source(
+        project_id="rasff-lens",
+        github_token="private-token",
+        runner=runner,
+    )
+    assert result["credential_configured"] is True
+    assert result["source_reachable"] is True
+    assert result["main_ref_available"] is True
+    assert result["reason_code"] == "ready"
+    argv, kwargs = calls[0]
+    assert argv[-2:] == [
+        "https://github.com/Blacksp1d3r/rasff-lens.git",
+        "refs/heads/main",
+    ]
+    assert "private-token" not in " ".join(argv)
+    assert kwargs["shell"] is False
+    assert kwargs["stdin"] is subprocess.DEVNULL
+    assert kwargs["env"]["GIT_CONFIG_KEY_0"] == (
+        "http.https://github.com/.extraheader"
+    )
+
+
+def test_known_project_source_preflight_scrubs_source_failure() -> None:
+    def runner(argv, **kwargs):
+        return subprocess.CompletedProcess(
+            args=argv,
+            returncode=128,
+            stdout="",
+            stderr="fatal: secret private detail",
+        )
+
+    result = preflight_known_project_source(
+        project_id="bewind",
+        github_token="private-token",
+        runner=runner,
+    )
+    assert result == {
+        "code": "bewind",
+        "repository": "Blacksp1d3r/bewind",
+        "credential_configured": True,
+        "source_reachable": False,
+        "main_ref_available": False,
+        "reason_code": "source-unreachable-or-unauthorized",
     }

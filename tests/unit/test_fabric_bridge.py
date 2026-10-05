@@ -427,6 +427,93 @@ def test_host_inspect_rejects_unbounded_or_invalid_result(mutator) -> None:
 
 
 
+def synthetic_probe_status_payload(
+    *,
+    available: bool = True,
+    age_seconds: int = 30,
+    interval_seconds: int = 60,
+    outcome: str = "success",
+    failure_layer: str | None = None,
+    reason_code: str = "probe_succeeded",
+) -> dict:
+    if not available:
+        return {
+            "schemaVersion": "runner.fabric/agent-bus-synthetic-probe-status/v1",
+            "available": False,
+            "observed_at": None,
+            "age_seconds": None,
+            "interval_seconds": None,
+            "outcome": None,
+            "failure_layer": None,
+            "reason_code": "probe_status_unavailable",
+            "qualification_id": None,
+            "trace_id": None,
+            "outcome_evidence_id": None,
+            "cycle_evidence_id": None,
+        }
+    return {
+        "schemaVersion": "runner.fabric/agent-bus-synthetic-probe-status/v1",
+        "available": True,
+        "observed_at": 1_200,
+        "age_seconds": age_seconds,
+        "interval_seconds": interval_seconds,
+        "outcome": outcome,
+        "failure_layer": failure_layer,
+        "reason_code": reason_code,
+        "qualification_id": "probe:fleet:14",
+        "trace_id": "1" * 32,
+        "outcome_evidence_id": "agent-bus-probe-abc123",
+        "cycle_evidence_id": "agent-bus-cycle-def456",
+    }
+
+
+def test_synthetic_probe_status_is_zero_arg_and_freshness_bounded() -> None:
+    fresh = synthetic_probe_status_payload()
+    stale = synthetic_probe_status_payload(age_seconds=121)
+    bridge, fake = bridge_with_responses(fresh, fresh, stale)
+
+    assert bridge.synthetic_probe_status() == fresh
+    assert bridge.synthetic_probe_fresh_success() is True
+    assert bridge.synthetic_probe_fresh_success() is False
+    assert fake.calls == [
+        ("synthetic_probe_status", {}),
+        ("synthetic_probe_status", {}),
+        ("synthetic_probe_status", {}),
+    ]
+
+
+def test_synthetic_probe_failure_and_unavailable_are_not_routable() -> None:
+    failed = synthetic_probe_status_payload(
+        outcome="failure",
+        failure_layer="transport",
+        reason_code="relay_transport_unavailable",
+    )
+    unavailable = synthetic_probe_status_payload(available=False)
+    bridge, _ = bridge_with_responses(failed, unavailable)
+
+    assert bridge.synthetic_probe_fresh_success() is False
+    assert bridge.synthetic_probe_fresh_success() is False
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/secret"}),
+        lambda payload: payload.update({"trace_id": "0" * 32}),
+        lambda payload: payload.update({"failure_layer": "transport"}),
+        lambda payload: payload.update({"age_seconds": -1}),
+        lambda payload: payload.update({"interval_seconds": 0}),
+    ],
+)
+def test_synthetic_probe_status_rejects_invalid_or_private_payload(mutator) -> None:
+    payload = synthetic_probe_status_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError, match="synthetic probe status"):
+        bridge.synthetic_probe_status()
+
+
 def operational_snapshot_payload() -> dict:
     return {
         "schema_version": "runner.fabric/operational-snapshot/v1",

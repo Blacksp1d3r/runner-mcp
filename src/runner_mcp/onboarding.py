@@ -575,24 +575,34 @@ def run_doctor(config_dir: Path) -> list[DoctorCheck]:
                     )
                 )
             else:
-                restartable = all(
-                    tunnel_values.get(key, "").strip()
-                    for key in (
-                        "CONTROL_PLANE_TUNNEL_ID",
-                        "CONTROL_PLANE_API_KEY",
-                    )
+                tunnel_id = tunnel_values.get("CONTROL_PLANE_TUNNEL_ID", "").strip()
+                api_key = tunnel_values.get("CONTROL_PLANE_API_KEY", "").strip()
+                restartable = bool(tunnel_id and api_key)
+                duplicated_api_key = (
+                    bool(api_key)
+                    and len(api_key) % 2 == 0
+                    and api_key[: len(api_key) // 2] == api_key[len(api_key) // 2 :]
                 )
-                checks.append(
-                    DoctorCheck(
-                        "connector tunnel restart configuration",
-                        "PASS" if restartable else "WARN",
-                        (
-                            "private restart configuration is complete"
-                            if restartable
-                            else "private restart configuration is incomplete"
-                        ),
+                if duplicated_api_key:
+                    checks.append(
+                        DoctorCheck(
+                            "connector tunnel restart configuration",
+                            "FAIL",
+                            "private control-plane credential is structurally invalid",
+                        )
                     )
-                )
+                else:
+                    checks.append(
+                        DoctorCheck(
+                            "connector tunnel restart configuration",
+                            "PASS" if restartable else "WARN",
+                            (
+                                "private restart configuration is complete"
+                                if restartable
+                                else "private restart configuration is incomplete"
+                            ),
+                        )
+                    )
 
     if settings.test_jobs_root is None:
         checks.append(DoctorCheck("test job storage", "WARN", "test execution is not configured"))

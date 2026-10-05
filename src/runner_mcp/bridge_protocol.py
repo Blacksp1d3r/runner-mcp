@@ -87,6 +87,7 @@ class BridgeAction(StrEnum):
     RUNTIME_STATUS = "runtime_status"
     RUNTIME_DOCTOR = "runtime_doctor"
     FABRIC_OPERATIONAL_SNAPSHOT = "fabric_operational_snapshot"
+    FABRIC_OPERATIONAL_SNAPSHOT = "fabric_operational_snapshot"
     SELF_UPDATE = "self_update"
     SELF_UPDATE_STATUS = "self_update_status"
     FABRIC_BOOTSTRAP = "fabric_bootstrap"

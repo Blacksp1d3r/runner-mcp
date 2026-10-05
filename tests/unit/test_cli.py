@@ -270,6 +270,35 @@ def test_doctor_accepts_complete_tunnel_restart_configuration_without_echo(
     assert api_key not in captured.err
 
 
+def test_doctor_rejects_exactly_duplicated_tunnel_api_key_without_echo(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_id = "tunnel-valid-placeholder"
+    half = "api-sensitive-placeholder"
+    duplicated_api_key = half + half
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        f"CONTROL_PLANE_TUNNEL_ID={tunnel_id}\n"
+        f"CONTROL_PLANE_API_KEY={duplicated_api_key}\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = main(["--config-dir", str(paths.config_dir), "doctor"])
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "connector tunnel restart configuration" in captured.out
+    assert "FAIL" in captured.out
+    assert "private control-plane credential is structurally invalid" in captured.out
+    assert half not in captured.out
+    assert duplicated_api_key not in captured.out
+    assert half not in captured.err
+    assert duplicated_api_key not in captured.err
+
+
 def test_emergency_stop_cli_on_status_and_off(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

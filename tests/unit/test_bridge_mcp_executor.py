@@ -222,6 +222,65 @@ def test_client_initializes_session_and_sends_authenticated_tool_call(
     }
 
 
+def test_client_propagates_only_bound_traceparent(monkeypatch) -> None:
+    traceparent = (
+        "00-0123456789abcdef0123456789abcdef-0123456789abcdef-01"
+    )
+    captured: list[str | None] = []
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":2,"result":{"content":[]}}'
+        ),
+    ]
+
+    monkeypatch.setattr(
+        "runner_mcp.bridge_mcp_executor.active_traceparent",
+        lambda: traceparent,
+    )
+
+    def fake_urlopen(request, *, timeout):
+        del timeout
+        captured.append(request.get_header("Traceparent"))
+        return responses.pop(0)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    client = LocalMCPClient(_config())
+
+    assert client._call_tool("runtime_status", {}) is None
+    assert captured == [traceparent, traceparent, traceparent]
+
+
+def test_client_omits_traceparent_without_bound_request(monkeypatch) -> None:
+    captured: list[str | None] = []
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+    ]
+
+    monkeypatch.setattr(
+        "runner_mcp.bridge_mcp_executor.active_traceparent",
+        lambda: None,
+    )
+
+    def fake_urlopen(request, *, timeout):
+        del timeout
+        captured.append(request.get_header("Traceparent"))
+        return responses.pop(0)
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    LocalMCPClient(_config()).initialize()
+
+    assert captured == [None, None]
+
+
 def test_client_accepts_multi_item_list_tool_content(monkeypatch) -> None:
     responses = [
         FakeResponse(

@@ -857,7 +857,14 @@ class SelfUpdateManager:
         except PackageInstallError:
             pass
 
-    def _record_installed_commit(self, commit: str) -> None:
+    def _record_installed_commit(
+        self,
+        commit: str,
+        *,
+        artifact_digest: str | None = None,
+    ) -> None:
+        if artifact_digest is not None and not re.fullmatch(r"[0-9a-f]{64}", artifact_digest):
+            raise SelfUpdateError("Self-update artifact digest is invalid")
         path = self._state_path()
         if path.exists() and path.is_symlink():
             raise SelfUpdateError("Self-update state is unsafe")
@@ -866,6 +873,8 @@ class SelfUpdateManager:
             "commit": commit,
             "installed_at": _iso(_utc_now()),
         }
+        if artifact_digest is not None:
+            payload["artifact_digest"] = artifact_digest
         try:
             with temporary.open("w", encoding="utf-8") as handle:
                 handle.write(
@@ -1001,6 +1010,7 @@ class SelfUpdateManager:
                 job_id=job_id,
                 label="baseline",
             )
+            baseline_wheel_digest = self._package_installer.wheel_sha256(baseline_wheel)
             self._package_installer.install_wheel(baseline_wheel)
             self._package_installer.verify_runtime()
             self.source.restore_project_main_commit_for_recovery(
@@ -1013,7 +1023,10 @@ class SelfUpdateManager:
                 raise SelfUpdateError(
                     "Runner MCP self-update recovery source verification failed"
                 )
-            self._record_installed_commit(baseline_commit)
+            self._record_installed_commit(
+                baseline_commit,
+                artifact_digest=baseline_wheel_digest,
+            )
 
             with self._lock:
                 job = self._jobs.get(job_id)
@@ -1207,6 +1220,12 @@ class SelfUpdateManager:
                     raise SelfUpdateError(
                         "Self-update source changed while staging target"
                     )
+                try:
+                    target_wheel_digest = self._package_installer.wheel_sha256(target_wheel)
+                except PackageInstallError as exc:
+                    raise SelfUpdateError(
+                        "Self-update target wheel digest is unavailable"
+                    ) from exc
 
                 self.safety.assert_project_action_allowed(
                     ActionClass.TEST,
@@ -1291,7 +1310,10 @@ class SelfUpdateManager:
                         "Runner MCP self-install failed and was rolled back"
                     ) from install_exc
 
-                self._record_installed_commit(job.commit)
+                self._record_installed_commit(
+                    job.commit,
+                    artifact_digest=target_wheel_digest,
+                )
                 self._write_compatibility_record(target_contract)
                 _write_restart_markers(
                     self.config_dir,

@@ -1,3 +1,16 @@
+## 2026-10-05 — Tunnel readiness proven through control-plane authentication; end-to-end gate remains
+
+Canonical Runner-MCP main: 9a4f9d7a2916625617aa2ef144fc40679e549129.
+
+Issue #333 remains open. Completed and green: #370 managed tunnel autostart, #371 managed process evidence, #372 fixed local MCP health evidence, and #373 fixed local control-plane successful-poll evidence.
+
+Current bounded progression: COMPLETE config -> managed process active -> local MCP proven -> control-plane authenticated -> end_to_end_not_routable. Do not claim READY from config, process, local MCP health, or successful control-plane polling alone.
+
+Upstream tunnel-client review confirms each process sends an opaque X-Tunnel-Client-Instance-Id, but the local runtime has no authoritative inventory of every other active instance using the same tunnel ID. Tunnel service uses a shared queue per tunnel; redundant clients are safe only for equivalent/stateless or session-aware shared backends. Runner-MCP targets localhost per host, so keep one active tunnel client per tunnel ID unless topology proves equivalent shared-backend behavior.
+
+Remaining #333 gate: do not invent local uniqueness evidence or a second probe engine. Wait for Fabric A3/#939's existing qualification/synthetic-work-unit path to expose continuous durable end-to-end evidence. Consume only a bounded first-party result if/when available, and require topology/duplicate-runtime reconciliation before end_to_end_routable=true / READY.
+
+No live autostart, tunnel restart, deployment, migration or runtime update was performed in these slices.
 ## 2026-10-05 — Tunnel readiness runtime boundary merged; managed autostart next
 
 Canonical Runner-MCP main: `2a27fb0d8236e6c06f2fd0da3b04dfced558d471`.

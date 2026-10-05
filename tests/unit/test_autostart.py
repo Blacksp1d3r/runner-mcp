@@ -15,6 +15,7 @@ from runner_mcp.autostart import (
     GITHUB_WATCHER_UNIT,
     MANAGED_MARKER,
     SERVER_UNIT,
+    TUNNEL_UNIT,
     AutostartError,
     _write_managed_unit,
     install_user_services,
@@ -98,6 +99,37 @@ def test_render_server_unit_contains_no_credentials(tmp_path: Path) -> None:
     assert "serve" in units[SERVER_UNIT]
     assert "Authorization" not in units[SERVER_UNIT]
     assert "token" not in units[SERVER_UNIT].lower()
+
+
+def test_complete_tunnel_config_adds_fixed_dependent_tunnel_unit(
+    tmp_path: Path,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    tunnel_id = "tunnel_sensitive_placeholder"
+    api_key = "api_sensitive_placeholder"
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        f"CONTROL_PLANE_TUNNEL_ID={tunnel_id}\n"
+        f"CONTROL_PLANE_API_KEY={api_key}\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    units = render_user_units(
+        config_dir=paths.config_dir,
+        executable=executable,
+        port=8123,
+    )
+
+    assert set(units) == {SERVER_UNIT, TUNNEL_UNIT}
+    content = units[TUNNEL_UNIT]
+    assert f"After=network-online.target {SERVER_UNIT}" in content
+    assert f"Requires={SERVER_UNIT}" in content
+    assert "tunnel-run" in content
+    assert "--port" in content
+    assert "8123" in content
+    assert tunnel_id not in content
+    assert api_key not in content
 
 
 
@@ -320,6 +352,12 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
             "installed": True,
             "enabled": True,
             "active": True,
+        },
+        {
+            "component": "tunnel",
+            "installed": False,
+            "enabled": False,
+            "active": False,
         },
         {
             "component": "github-watcher",

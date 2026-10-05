@@ -76,3 +76,40 @@ def test_public_payload_contains_only_bounded_state_and_reason():
         "reason": "control_plane_not_authenticated",
     }
     assert set(result.public_dict()) == {"state", "reason"}
+
+
+
+def test_inconsistent_readiness_evidence_fails_closed():
+    cases = [
+        TunnelReadinessEvidence(
+            configured=False,
+            process_running=True,
+        ),
+        TunnelReadinessEvidence(
+            configured=True,
+            process_running=False,
+            local_mcp_ready=True,
+        ),
+        TunnelReadinessEvidence(
+            configured=True,
+            process_running=True,
+            local_mcp_ready=False,
+            control_plane_authenticated=True,
+        ),
+        TunnelReadinessEvidence(
+            configured=True,
+            process_running=True,
+            local_mcp_ready=True,
+            control_plane_authenticated=False,
+            end_to_end_routable=True,
+        ),
+    ]
+
+    for evidence in cases:
+        result = classify_tunnel_readiness(evidence)
+        assert result.state is TunnelReadinessState.BLOCKED
+        assert result.reason is TunnelReadinessReason.INCONSISTENT_EVIDENCE
+        assert result.public_dict() == {
+            "state": "blocked",
+            "reason": "inconsistent_evidence",
+        }

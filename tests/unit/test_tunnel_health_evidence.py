@@ -9,6 +9,7 @@ import pytest
 from runner_mcp.tunnel_health_evidence import (
     MAX_HEALTH_RESPONSE_BYTES,
     TunnelHealthEvidenceError,
+    collect_control_plane_authenticated,
     collect_local_mcp_ready,
 )
 
@@ -97,6 +98,88 @@ def test_nonproven_mcp_health_never_claims_ready(
         tmp_path,
         opener=lambda *_args, **_kwargs: FakeResponse(
             _payload(status=status, state=state)
+        ),
+    ) is False
+
+
+def test_control_plane_successful_poll_is_authenticated(
+    tmp_path: Path,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    requests = []
+    payload = json.dumps(
+        {
+            "schema_version": 1,
+            "component": "control-plane",
+            "status": "ok",
+            "state": "polling",
+            "details": {
+                "last_success": "2026-10-05T18:00:00Z",
+                "consecutive_failures": 0,
+            },
+        }
+    ).encode("utf-8")
+
+    def opener(request, *, timeout):
+        requests.append((request, timeout))
+        return FakeResponse(payload)
+
+    assert collect_control_plane_authenticated(
+        tmp_path,
+        opener=opener,
+    ) is True
+    request, timeout = requests[0]
+    assert request.full_url == "http://127.0.0.1:48123/health/control-plane"
+    assert timeout == 2.0
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {
+            "schema_version": 1,
+            "component": "control-plane",
+            "status": "unknown",
+            "state": "starting",
+            "details": {},
+        },
+        {
+            "schema_version": 1,
+            "component": "control-plane",
+            "status": "degraded",
+            "state": "backoff",
+            "details": {
+                "last_success": "2026-10-05T18:00:00Z",
+            },
+        },
+        {
+            "schema_version": 1,
+            "component": "control-plane",
+            "status": "ok",
+            "state": "stopped",
+            "details": {
+                "last_success": "2026-10-05T18:00:00Z",
+            },
+        },
+        {
+            "schema_version": 1,
+            "component": "control-plane",
+            "status": "ok",
+            "state": "idle",
+            "details": {},
+        },
+    ],
+)
+def test_control_plane_nonproof_never_claims_authenticated(
+    tmp_path: Path,
+    payload: dict,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+
+    assert collect_control_plane_authenticated(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(
+            json.dumps(payload).encode("utf-8")
         ),
     ) is False
 

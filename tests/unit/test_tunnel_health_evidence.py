@@ -115,6 +115,8 @@ def test_network_failure_is_not_ready(tmp_path: Path) -> None:
     [
         "https://127.0.0.1:48123",
         "http://example.com:48123",
+        "http://localhost:48123",
+        "http://[::1]:48123",
         "http://127.0.0.1:48123/private",
         "http://user:pass@127.0.0.1:48123",
         "http://127.0.0.1",

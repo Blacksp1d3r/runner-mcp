@@ -1353,6 +1353,17 @@ def build_mcp(
                 registry,
                 project_id=project_id,
             )
+            if result.get("state") == "ready-to-prepare":
+                source = preflight_known_project_source_binding(
+                    project_id=project_id,
+                    github_token=github_token or None,
+                )
+                if source.get("reason_code") != "ready":
+                    result = {
+                        "code": str(source.get("code", project_id)),
+                        "repository": str(source.get("repository", result.get("repository", ""))),
+                        "state": str(source.get("reason_code", "source-unavailable")),
+                    }
         except KnownProjectRegistrationError as exc:
             audit.append(
                 AuditEvent(

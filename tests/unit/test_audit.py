@@ -40,7 +40,12 @@ def test_audit_logger_appends_json_lines_with_private_permissions(tmp_path) -> N
     assert [row["request_id"] for row in rows] == ["req-1", "req-2"]
     assert [row["result"] for row in rows] == ["ok", "failed"]
     assert {row["component_id"] for row in rows} == {"runner-mcp"}
-    assert {row["component_version"] for row in rows} == {"development"}
+    assert {row["build_version"] for row in rows} == {"development"}
+    assert {row["source_revision"] for row in rows} == {None}
+    assert {row["artifact_digest"] for row in rows} == {None}
+    assert {row["protocol_min"] for row in rows} == {None}
+    assert {row["protocol_max"] for row in rows} == {None}
+    assert {row["interface_schema_digest"] for row in rows} == {None}
     assert stat.S_IMODE(path.stat().st_mode) == 0o600
 
 
@@ -148,14 +153,20 @@ def test_audit_logger_serializes_cross_process_records(tmp_path) -> None:
 
 def test_audit_logger_can_stamp_exact_component_build_identity(tmp_path) -> None:
     path = tmp_path / "audit.jsonl"
+    from runner_mcp.build_identity import runner_mcp_build_identity
+
     logger = AuditLogger(
         path,
-        component_id="runner-mcp",
-        component_version="0.1.3",
+        build_identity=runner_mcp_build_identity("0.1.3"),
     )
 
     logger.append(_event("req-build", "ok"))
 
     row = json.loads(path.read_text(encoding="utf-8"))
     assert row["component_id"] == "runner-mcp"
-    assert row["component_version"] == "0.1.3"
+    assert row["build_version"] == "0.1.3"
+    assert row["source_revision"] is None
+    assert row["artifact_digest"] is None
+    assert row["protocol_min"] is None
+    assert row["protocol_max"] is None
+    assert row["interface_schema_digest"] is None

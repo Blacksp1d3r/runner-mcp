@@ -76,7 +76,9 @@ def _read_private_health_url(config_dir: Path) -> str | None:
     return value
 
 
-def _local_health_component_url(base_url: str) -> str:
+def _local_health_component_url(base_url: str, component: str) -> str:
+    if component not in {"mcp", "control-plane"}:
+        raise TunnelHealthEvidenceError("unsupported tunnel health component")
     parsed = urllib.parse.urlsplit(base_url)
     if parsed.scheme != "http":
         raise TunnelHealthEvidenceError("tunnel health evidence is not loopback HTTP")
@@ -92,7 +94,7 @@ def _local_health_component_url(base_url: str) -> str:
         raise TunnelHealthEvidenceError("tunnel health evidence URL is invalid")
     if parsed.path not in {"", "/"}:
         raise TunnelHealthEvidenceError("tunnel health evidence URL is invalid")
-    return f"http://127.0.0.1:{port}/health/mcp"
+    return f"http://127.0.0.1:{port}/health/{component}"
 
 
 def _decode_component_payload(raw: bytes) -> dict[str, Any]:
@@ -125,17 +127,16 @@ def _open_loopback(request: urllib.request.Request, *, timeout: float):
     return opener.open(request, timeout=timeout)
 
 
-def collect_local_mcp_ready(
+def _collect_health_component(
     config_dir: Path,
     *,
-    opener=_open_loopback,
-) -> bool:
-    """Probe only the tunnel-client's fixed loopback MCP health component."""
-
+    component: str,
+    opener,
+) -> dict[str, Any] | None:
     base_url = _read_private_health_url(config_dir)
     if base_url is None:
-        return False
-    url = _local_health_component_url(base_url)
+        return None
+    url = _local_health_component_url(base_url, component)
     request = urllib.request.Request(
         url,
         method="GET",
@@ -145,13 +146,51 @@ def collect_local_mcp_ready(
         with opener(request, timeout=_HEALTH_TIMEOUT_SECONDS) as response:
             raw = response.read(MAX_HEALTH_RESPONSE_BYTES + 1)
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
-        return False
+        return None
 
     payload = _decode_component_payload(raw)
     if type(payload.get("schema_version")) is not int or payload["schema_version"] != 1:
-        return False
-    if payload.get("component") != "mcp":
-        return False
-    if payload.get("status") != "ok":
+        return None
+    if payload.get("component") != component:
+        return None
+    return payload
+
+
+def collect_local_mcp_ready(
+    config_dir: Path,
+    *,
+    opener=_open_loopback,
+) -> bool:
+    """Probe only the tunnel-client's fixed loopback MCP health component."""
+
+    payload = _collect_health_component(
+        config_dir,
+        component="mcp",
+        opener=opener,
+    )
+    if payload is None or payload.get("status") != "ok":
         return False
     return payload.get("state") in {"initialized", "discovered"}
+
+
+def collect_control_plane_authenticated(
+    config_dir: Path,
+    *,
+    opener=_open_loopback,
+) -> bool:
+    """Use only tunnel-client's local control-plane poll health as auth evidence."""
+
+    payload = _collect_health_component(
+        config_dir,
+        component="control-plane",
+        opener=opener,
+    )
+    if payload is None or payload.get("status") != "ok":
+        return False
+    if payload.get("state") not in {"idle", "polling", "backpressured"}:
+        return False
+    details = payload.get("details")
+    if not isinstance(details, dict):
+        return False
+    last_success = details.get("last_success")
+    return isinstance(last_success, str) and bool(last_success.strip())

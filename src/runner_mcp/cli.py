@@ -16,8 +16,11 @@ from .agent_bus_worker import (
 )
 from .approval_manager import ApprovalError, ApprovalManager
 from .autostart import (
+    MANAGED_MARKER,
+    TUNNEL_UNIT,
     AutostartError,
     configured_autostart_components,
+    default_user_unit_dir,
     has_managed_user_units,
     install_user_services,
     remove_user_services,
@@ -233,8 +236,50 @@ def cmd_status(args: argparse.Namespace) -> int:
     return 0
 
 
+def _managed_tunnel_process_running(config_dir: Path) -> bool:
+    managed_cron = has_managed_cron() if cron_available() else False
+    managed_systemd = has_managed_user_units()
+    if managed_cron and managed_systemd:
+        raise AutostartError(
+            "multiple managed autostart backends are present; remove one before continuing"
+        )
+
+    if managed_cron:
+        components = configured_autostart_components(config_dir)
+        rows = cron_status(
+            config_dir=config_dir,
+            components=components,
+        )
+        tunnel = next((row for row in rows if row.component == "tunnel"), None)
+        return bool(tunnel is not None and tunnel.installed and tunnel.active)
+
+    if managed_systemd:
+        unit_path = default_user_unit_dir() / TUNNEL_UNIT
+        if not unit_path.exists():
+            return False
+        if unit_path.is_symlink() or not unit_path.is_file():
+            raise AutostartError("managed tunnel unit path is unsafe")
+        try:
+            content = unit_path.read_text(encoding="utf-8")
+        except OSError as exc:
+            raise AutostartError("managed tunnel unit could not be inspected") from exc
+        if not content.startswith(MANAGED_MARKER + "\n"):
+            return False
+        tunnel = next(
+            (row for row in user_service_status() if row.component == "tunnel"),
+            None,
+        )
+        return bool(tunnel is not None and tunnel.installed and tunnel.active)
+
+    return False
+
+
 def cmd_tunnel_status(args: argparse.Namespace) -> int:
-    result = collect_tunnel_config_readiness(_config_dir(args.config_dir)).public_dict()
+    config_dir = _config_dir(args.config_dir)
+    result = collect_tunnel_config_readiness(
+        config_dir,
+        process_running=_managed_tunnel_process_running(config_dir),
+    ).public_dict()
     print(f"Restart config: {result['restart_config']}")
     print(f"Readiness: {result['state']}")
     print(f"Reason: {result['reason']}")

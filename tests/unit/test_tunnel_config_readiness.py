@@ -70,6 +70,44 @@ def test_complete_config_requires_separate_process_evidence(tmp_path: Path) -> N
     }
 
 
+def test_complete_config_with_process_evidence_advances_one_layer(
+    tmp_path: Path,
+) -> None:
+    tunnel_env = tmp_path / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = collect_tunnel_config_readiness(
+        tmp_path,
+        process_running=True,
+    )
+
+    assert result.public_dict() == {
+        "restart_config": "complete",
+        "state": "process_running",
+        "reason": "local_mcp_not_ready",
+    }
+
+
+def test_process_evidence_without_complete_config_fails_closed(
+    tmp_path: Path,
+) -> None:
+    result = collect_tunnel_config_readiness(
+        tmp_path,
+        process_running=True,
+    )
+
+    assert result.public_dict() == {
+        "restart_config": "absent",
+        "state": "blocked",
+        "reason": "inconsistent_evidence",
+    }
+
+
 def test_public_payload_has_only_bounded_fields(tmp_path: Path) -> None:
     result = collect_tunnel_config_readiness(tmp_path)
 

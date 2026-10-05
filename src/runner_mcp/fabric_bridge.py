@@ -130,7 +130,7 @@ class FabricBridgeClient:
         return _validate_synthetic_probe_status(result)
 
     def synthetic_probe_fresh_success(self) -> bool:
-        """Require a successful probe no older than two configured intervals."""
+        """Require a successful probe no older than one configured interval."""
 
         status = self.synthetic_probe_status()
         if status["available"] is not True:
@@ -141,7 +141,7 @@ class FabricBridgeClient:
             status["outcome"] == "success"
             and isinstance(age, int)
             and isinstance(interval, int)
-            and age <= interval * 2
+            and age <= interval
         )
 
     def ci_runner_guest_status(self) -> dict[str, Any]:
@@ -333,7 +333,7 @@ def _validate_synthetic_probe_status(value: object) -> dict[str, Any]:
             raise FabricBridgeError(
                 "Runner Fabric returned invalid synthetic probe status"
             )
-    if value["interval_seconds"] < 1:
+    if not 30 <= value["interval_seconds"] <= 120:
         raise FabricBridgeError(
             "Runner Fabric returned invalid synthetic probe status"
         )
@@ -344,12 +344,11 @@ def _validate_synthetic_probe_status(value: object) -> dict[str, Any]:
     for field in (
         "reason_code",
         "qualification_id",
-        "trace_id",
         "outcome_evidence_id",
         "cycle_evidence_id",
     ):
         item = value[field]
-        if not isinstance(item, str) or not item or len(item) > 160:
+        if not isinstance(item, str) or _ID_RE.fullmatch(item) is None:
             raise FabricBridgeError(
                 "Runner Fabric returned invalid synthetic probe status"
             )

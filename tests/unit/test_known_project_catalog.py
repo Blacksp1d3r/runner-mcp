@@ -727,3 +727,53 @@ def test_known_project_source_preflight_scrubs_source_failure() -> None:
         "main_ref_available": False,
         "reason_code": "source-unreachable-or-unauthorized",
     }
+
+
+def test_known_project_preflight_reports_unwritable_parent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    monkeypatch.setattr(
+        "runner_mcp.known_project_catalog.os.access",
+        lambda path, mode: False,
+    )
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="bewind",
+    )
+
+    assert result == {
+        "code": "bewind",
+        "repository": "Blacksp1d3r/bewind",
+        "state": "parent-not-writable",
+    }
+
+
+def test_prepare_known_project_rejects_unwritable_parent_before_network(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    monkeypatch.setattr(
+        "runner_mcp.known_project_catalog.os.access",
+        lambda path, mode: False,
+    )
+
+    with pytest.raises(
+        KnownProjectRegistrationError,
+        match="destination is not writable",
+    ):
+        prepare_known_project(
+            _registry(anchor),
+            project_id="bewind",
+            runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("git must not run")
+            ),
+            github_token="private-token",
+        )

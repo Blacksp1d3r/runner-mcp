@@ -28,6 +28,8 @@ from .autostart import (
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
+from .ci_runner_enrollment import CIRunnerEnrollmentManager
+from .ci_runner_github import CIRunnerGitHubController
 from .ci_runner_cron import (
     CIRunnerCronError,
     ci_runner_cron_status,
@@ -96,6 +98,7 @@ from .fabric_live_overview import (
     FabricLiveOverviewError,
     run_fabric_live_overview_process,
 )
+from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
@@ -1127,6 +1130,26 @@ def cmd_ci_runner(args: argparse.Namespace) -> int:
     spec = specs.get(args.alias)
     if spec is None:
         raise RuntimeError("Unknown or disabled CI runner")
+
+    if args.ci_runner_action == "enroll":
+        github_token = values.get(GITHUB_TOKEN_ENV, "").strip()
+        if not github_token:
+            raise RuntimeError("CI runner enrollment is not configured")
+        manager = CIRunnerEnrollmentManager(
+            github=CIRunnerGitHubController(
+                GitHubApiSession(token=github_token)
+            ),
+            environment=values,
+        )
+        result = manager.enroll(spec).to_payload()
+        print(
+            f"alias={result['alias']} "
+            f"state={result['state']} "
+            f"registered={'yes' if result['registered'] else 'no'} "
+            f"online={'yes' if result['online'] else 'no'} "
+            f"busy={'yes' if result['busy'] else 'no'}"
+        )
+        return 0
 
     supervisor = CIRunnerSupervisor(environment=values)
 
@@ -2261,6 +2284,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ci_runner_status.add_argument("alias")
     ci_runner_status.set_defaults(func=cmd_ci_runner)
+    ci_runner_enroll = ci_runner_sub.add_parser(
+        "enroll",
+        help="Register one preconfigured CI runner without exposing its token.",
+    )
+    ci_runner_enroll.add_argument("alias")
+    ci_runner_enroll.set_defaults(func=cmd_ci_runner)
     ci_runner_run = ci_runner_sub.add_parser(
         "run",
         help=argparse.SUPPRESS,

@@ -78,6 +78,61 @@ def test_fixed_loopback_mcp_ok_state_is_ready(
     assert timeout == 2.0
 
 
+@pytest.mark.parametrize("probe_state", ["succeeded", "auth_required"])
+def test_http_startup_probe_proves_local_mcp_reachability(
+    tmp_path: Path,
+    probe_state: str,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = json.dumps(
+        {
+            "schema_version": 1,
+            "component": "mcp",
+            "status": "unknown",
+            "state": "not_observed",
+            "details": {
+                "transport": "http-streamable",
+                "startup_probe": {
+                    "state": probe_state,
+                    "observed_at": "2026-10-05T18:00:00Z",
+                },
+            },
+        }
+    ).encode("utf-8")
+
+    assert collect_local_mcp_ready(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(payload),
+    ) is True
+
+
+@pytest.mark.parametrize("probe_state", ["pending", "timed_out", "failed"])
+def test_http_startup_nonproof_does_not_claim_local_mcp_ready(
+    tmp_path: Path,
+    probe_state: str,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = json.dumps(
+        {
+            "schema_version": 1,
+            "component": "mcp",
+            "status": "unknown",
+            "state": "not_observed",
+            "details": {
+                "transport": "http-streamable",
+                "startup_probe": {
+                    "state": probe_state,
+                },
+            },
+        }
+    ).encode("utf-8")
+
+    assert collect_local_mcp_ready(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(payload),
+    ) is False
+
+
 @pytest.mark.parametrize(
     ("status", "state"),
     [

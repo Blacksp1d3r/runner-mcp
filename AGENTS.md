@@ -38,6 +38,12 @@ Do not consume broad remote-tool quota for normal repository inspection, code ch
 reconciliation, runner scheduling, Agent Bus operations or Fabric work that can be expressed through
 the first-party path.
 
+## Zero incremental software-cost rule
+
+Until AIfordable has revenue, new project software/service dependencies must have **zero incremental licence or subscription cost**. Prefer existing first-party code, permissively licensed/open-source software, and capabilities already available at no additional software cost. Hardware, electricity and connectivity are owner infrastructure costs and are a separate optimisation concern.
+
+Paid SaaS, Enterprise-only tooling, paid deployment/update tiers, commercial gateways and similar services may be studied as references but must not become runtime/build/control-plane dependencies without a later explicit owner decision after revenue exists. Time spent building/maintaining free software is an accepted current cost; do not trade this rule away merely for convenience.
+
 ## External discovery and independence — hard rule
 
 Runner MCP must remain installable, operable, updateable and supportable without any secondary MCP directory, marketplace, gateway or hosted catalog.

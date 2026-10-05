@@ -77,6 +77,13 @@ def current_traceparent() -> str:
     return context.traceparent if context is not None else _new_trace_context().traceparent
 
 
+def active_traceparent() -> str | None:
+    """Return only a trace context actually bound to the current HTTP request."""
+
+    context = _trace_context.get()
+    return None if context is None else context.traceparent
+
+
 def parse_traceparent(value: str | None) -> TraceContext | None:
     """Parse the bounded W3C traceparent v00 form; malformed input is non-authoritative."""
 

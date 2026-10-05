@@ -164,6 +164,7 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
             token in lowered
             for token in (
                 " serve ",
+                " tunnel-run ",
                 " github-watcher ",
                 " completion-watcher ",
                 " agent-bus-worker ",
@@ -383,6 +384,10 @@ def run_cron_component(
             )
             return 0
         os.set_inheritable(fd, True)
+
+        if component == "tunnel" and not component_active(config_dir, "server"):
+            fcntl.flock(fd, fcntl.LOCK_UN)
+            return 0
 
         argv = [
             str(executable),

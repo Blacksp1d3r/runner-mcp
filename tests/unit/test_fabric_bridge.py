@@ -469,7 +469,7 @@ def synthetic_probe_status_payload(
 
 def test_synthetic_probe_status_is_zero_arg_and_freshness_bounded() -> None:
     fresh = synthetic_probe_status_payload()
-    stale = synthetic_probe_status_payload(age_seconds=121)
+    stale = synthetic_probe_status_payload(age_seconds=61)
     bridge, fake = bridge_with_responses(fresh, fresh, stale)
 
     assert bridge.synthetic_probe_status() == fresh
@@ -502,7 +502,10 @@ def test_synthetic_probe_failure_and_unavailable_are_not_routable() -> None:
         lambda payload: payload.update({"trace_id": "0" * 32}),
         lambda payload: payload.update({"failure_layer": "transport"}),
         lambda payload: payload.update({"age_seconds": -1}),
-        lambda payload: payload.update({"interval_seconds": 0}),
+        lambda payload: payload.update({"interval_seconds": 29}),
+        lambda payload: payload.update({"interval_seconds": 121}),
+        lambda payload: payload.update({"reason_code": "/private"}),
+        lambda payload: payload.update({"qualification_id": "../probe"}),
     ],
 )
 def test_synthetic_probe_status_rejects_invalid_or_private_payload(mutator) -> None:

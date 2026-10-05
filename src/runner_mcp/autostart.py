@@ -13,11 +13,17 @@ from .fabric_agent_qualification import fabric_agent_qualification_configured
 from .fabric_live_overview import fabric_live_overview_configured
 from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .github_watcher import GitHubWatcherCursorStore, GitHubWatcherError
-from .onboarding import load_env_file, read_private_runtime
+from .onboarding import (
+    TunnelRestartConfigState,
+    inspect_tunnel_restart_config,
+    load_env_file,
+    read_private_runtime,
+)
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
 MANAGED_MARKER = "# Managed by Runner MCP autostart."
 SERVER_UNIT = "runner-mcp.service"
+TUNNEL_UNIT = "runner-mcp-tunnel.service"
 GITHUB_WATCHER_UNIT = "runner-mcp-github-watcher.service"
 COMPLETION_WATCHER_UNIT = "runner-mcp-completion-watcher.service"
 AGENT_BUS_WORKER_UNIT = "runner-mcp-agent-bus-worker.service"
@@ -25,6 +31,7 @@ FABRIC_AGENT_QUALIFICATION_UNIT = "runner-mcp-fabric-agent-qualification.service
 FABRIC_LIVE_OVERVIEW_UNIT = "runner-mcp-fabric-live-overview.service"
 KNOWN_UNITS = (
     SERVER_UNIT,
+    TUNNEL_UNIT,
     GITHUB_WATCHER_UNIT,
     COMPLETION_WATCHER_UNIT,
     AGENT_BUS_WORKER_UNIT,
@@ -121,6 +128,11 @@ def configured_autostart_components(config_dir: Path) -> tuple[str, ...]:
     values = load_env_file(paths.env_file)
 
     components = ["server"]
+    if (
+        inspect_tunnel_restart_config(paths.config_dir)
+        is TunnelRestartConfigState.COMPLETE
+    ):
+        components.append("tunnel")
     mailbox_configured = all(
         values.get(key, "").strip() for key in GITHUB_MAILBOX_ENV_KEYS
     )
@@ -225,6 +237,14 @@ def render_user_units(
             requires_server=False,
         )
     }
+    if "tunnel" in components:
+        units[TUNNEL_UNIT] = _unit(
+            description="Runner MCP Secure MCP Tunnel",
+            executable=executable,
+            config_dir=config_dir,
+            arguments=("tunnel-run", "--port", str(port)),
+            requires_server=True,
+        )
     if "github-watcher" in components:
         units[GITHUB_WATCHER_UNIT] = _unit(
             description="Runner MCP GitHub mailbox watcher",
@@ -385,6 +405,7 @@ def user_service_status(
     results: list[AutostartStatus] = []
     names = (
         ("server", SERVER_UNIT),
+        ("tunnel", TUNNEL_UNIT),
         ("github-watcher", GITHUB_WATCHER_UNIT),
         ("completion-watcher", COMPLETION_WATCHER_UNIT),
         ("agent-bus-worker", AGENT_BUS_WORKER_UNIT),

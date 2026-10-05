@@ -220,6 +220,56 @@ def test_doctor_command_reports_no_failures(
     assert "Doctor found no failures" in captured.out
 
 
+def test_doctor_warns_when_tunnel_restart_configuration_is_incomplete(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=\n"
+        "CONTROL_PLANE_API_KEY=\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = main(["--config-dir", str(paths.config_dir), "doctor"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "connector tunnel restart configuration" in captured.out
+    assert "WARN" in captured.out
+    assert "private restart configuration is incomplete" in captured.out
+
+
+def test_doctor_accepts_complete_tunnel_restart_configuration_without_echo(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_id = "tunnel-sensitive-placeholder"
+    api_key = "api-sensitive-placeholder"
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        f"CONTROL_PLANE_TUNNEL_ID={tunnel_id}\n"
+        f"CONTROL_PLANE_API_KEY={api_key}\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = main(["--config-dir", str(paths.config_dir), "doctor"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert "connector tunnel restart configuration" in captured.out
+    assert "PASS" in captured.out
+    assert "private restart configuration is complete" in captured.out
+    assert tunnel_id not in captured.out
+    assert api_key not in captured.out
+    assert tunnel_id not in captured.err
+    assert api_key not in captured.err
+
+
 def test_emergency_stop_cli_on_status_and_off(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

@@ -11,6 +11,7 @@ from dataclasses import dataclass
 from typing import Any
 
 from .bridge_processor import BridgeExecutionAdapterError
+from .http_middleware import active_traceparent
 
 
 class _StaleMCPSessionError(BridgeExecutionAdapterError):
@@ -528,6 +529,9 @@ class LocalMCPClient:
         }
         if self._session_id is not None:
             headers["Mcp-Session-Id"] = self._session_id
+        traceparent = active_traceparent()
+        if traceparent is not None:
+            headers["traceparent"] = traceparent
 
         request = urllib.request.Request(
             self._config.endpoint,

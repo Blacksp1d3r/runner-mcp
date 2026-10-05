@@ -552,6 +552,48 @@ def run_doctor(config_dir: Path) -> list[DoctorCheck]:
         )
     )
 
+    tunnel_env = paths.config_dir / "tunnel.env"
+    if tunnel_env.exists() or tunnel_env.is_symlink():
+        tunnel_mode = _mode(tunnel_env)
+        if tunnel_env.is_symlink() or tunnel_mode != 0o600:
+            checks.append(
+                DoctorCheck(
+                    "connector tunnel restart configuration",
+                    "FAIL",
+                    "private tunnel configuration is unsafe",
+                )
+            )
+        else:
+            try:
+                tunnel_values = load_env_file(tunnel_env)
+            except (OSError, RuntimeError, ValueError):
+                checks.append(
+                    DoctorCheck(
+                        "connector tunnel restart configuration",
+                        "FAIL",
+                        "private tunnel configuration is invalid",
+                    )
+                )
+            else:
+                restartable = all(
+                    tunnel_values.get(key, "").strip()
+                    for key in (
+                        "CONTROL_PLANE_TUNNEL_ID",
+                        "CONTROL_PLANE_API_KEY",
+                    )
+                )
+                checks.append(
+                    DoctorCheck(
+                        "connector tunnel restart configuration",
+                        "PASS" if restartable else "WARN",
+                        (
+                            "private restart configuration is complete"
+                            if restartable
+                            else "private restart configuration is incomplete"
+                        ),
+                    )
+                )
+
     if settings.test_jobs_root is None:
         checks.append(DoctorCheck("test job storage", "WARN", "test execution is not configured"))
     else:

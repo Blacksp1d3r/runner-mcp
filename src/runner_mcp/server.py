@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import secrets
 from collections.abc import Mapping
@@ -2487,6 +2489,44 @@ def build_mcp(
     return mcp
 
 
+async def runner_mcp_interface_schema_digest(mcp: MCPServer) -> str:
+    """Hash the exact registered MCP tool names and generated JSON schemas."""
+
+    if not isinstance(mcp, MCPServer):
+        raise TypeError("mcp must be MCPServer")
+    tools = await mcp.list_tools()
+    if not 1 <= len(tools) <= 256:
+        raise ValueError("Runner MCP tool surface is outside supported bounds")
+    interface: list[dict[str, object]] = []
+    for tool in sorted(tools, key=lambda item: item.name):
+        if (
+            not isinstance(tool.name, str)
+            or not 1 <= len(tool.name) <= 128
+            or not tool.name.isascii()
+        ):
+            raise ValueError("Runner MCP tool name is invalid")
+        interface.append(
+            {
+                "name": tool.name,
+                "input_schema": tool.input_schema,
+                "output_schema": tool.output_schema,
+            }
+        )
+    try:
+        encoded = json.dumps(
+            interface,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Runner MCP tool schema is not canonical JSON") from exc
+    if not encoded or len(encoded) > 2 * 1024 * 1024:
+        raise ValueError("Runner MCP tool schema exceeds supported bounds")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 async def health(_: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
@@ -2505,19 +2545,13 @@ def create_app(
         package_version = version("aifordable-runner-mcp")
     except PackageNotFoundError:
         package_version = "development"
+    config_dir = settings.projects_config.parent
     audit = AuditLogger(
         settings.audit_log,
-        build_identity=runner_mcp_build_identity(package_version),
-    )
-    audit.append(
-        AuditEvent(
-            "runtime-start",
-            "runtime",
-            None,
-            "system",
-            "started",
-            utc_timestamp(),
-        )
+        build_identity=runner_mcp_build_identity(
+            package_version,
+            config_dir=config_dir,
+        ),
     )
     safety_guard = OperatorSafetyGuard(
         stop_file=settings.operator_stop_file,
@@ -2538,6 +2572,24 @@ def create_app(
 
     @asynccontextmanager
     async def lifespan(_: Starlette):
+        interface_digest = await runner_mcp_interface_schema_digest(mcp)
+        audit.set_build_identity(
+            runner_mcp_build_identity(
+                package_version,
+                config_dir=config_dir,
+                interface_schema_digest=interface_digest,
+            )
+        )
+        audit.append(
+            AuditEvent(
+                "runtime-start",
+                "runtime",
+                None,
+                "system",
+                "started",
+                utc_timestamp(),
+            )
+        )
         async with mcp.session_manager.run():
             yield
     return Starlette(

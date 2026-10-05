@@ -79,6 +79,44 @@ def runner_mcp_build_identity(build_version: str) -> BuildIdentity:
     )
 
 
+def runner_mcp_mcp_build_identity(
+    build_version: str,
+    *,
+    interface_schema_digest: str | None = None,
+) -> BuildIdentity:
+    """Bind Runner-MCP identity to the installed MCP handshake protocol range."""
+
+    protocol_min: str | None = None
+    protocol_max: str | None = None
+    try:
+        from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
+
+        versions = tuple(HANDSHAKE_PROTOCOL_VERSIONS)
+    except (ImportError, TypeError):
+        versions = ()
+    if (
+        1 <= len(versions) <= 32
+        and all(
+            isinstance(version, str)
+            and 1 <= len(version) <= _MAX_TEXT
+            and version.isascii()
+            and all(32 <= ord(char) < 127 for char in version)
+            for version in versions
+        )
+    ):
+        protocol_min = versions[0]
+        protocol_max = versions[-1]
+    return BuildIdentity(
+        component_id="runner-mcp",
+        build_version=build_version,
+        source_revision=None,
+        artifact_digest=None,
+        protocol_min=protocol_min,
+        protocol_max=protocol_max,
+        interface_schema_digest=interface_schema_digest,
+    )
+
+
 def _bounded_text(value: object, field: str) -> str:
     if (
         not isinstance(value, str)

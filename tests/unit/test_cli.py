@@ -207,6 +207,53 @@ def test_status_does_not_print_private_paths_or_bearer_value(
     assert token not in captured.err
 
 
+def test_tunnel_status_reports_bounded_config_readiness(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.splitlines() == [
+        "Restart config: absent",
+        "Readiness: unconfigured",
+        "Reason: not_configured",
+    ]
+
+
+def test_tunnel_status_does_not_echo_private_values(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_id = "tunnel-sensitive-placeholder"
+    api_key = "api-sensitive-placeholder"
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        f"CONTROL_PLANE_TUNNEL_ID={tunnel_id}\n"
+        f"CONTROL_PLANE_API_KEY={api_key}\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.splitlines() == [
+        "Restart config: complete",
+        "Readiness: configured",
+        "Reason: process_not_running",
+    ]
+    assert tunnel_id not in captured.out
+    assert api_key not in captured.out
+    assert tunnel_id not in captured.err
+    assert api_key not in captured.err
+
+
 def test_doctor_command_reports_no_failures(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

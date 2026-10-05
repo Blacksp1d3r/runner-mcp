@@ -1144,6 +1144,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
             print("backend: none")
             for component in (
                 "server",
+                "tunnel",
                 "github-watcher",
                 "completion-watcher",
                 "agent-bus-worker",
@@ -2282,6 +2283,7 @@ def build_parser() -> argparse.ArgumentParser:
         "component",
         choices=(
             "server",
+            "tunnel",
             "github-watcher",
             "completion-watcher",
             "agent-bus-worker",

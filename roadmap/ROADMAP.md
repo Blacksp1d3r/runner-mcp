@@ -1,3 +1,20 @@
+## Fleet Update Track A — control-path protection
+
+Canonical umbrella: Blacksp1d3r/Runner-Fabric#924. Reviewed design: Runner-Fabric `roadmap/FLEET_UPDATE_PLANE_BUILD_VS_BORROW.md` v2. Runner-MCP execution issue: #341. Fabric Track A: #937–#943.
+
+Runner-MCP owns the concrete bounded execution and local safety pieces, not fleet orchestration. Near-term order:
+1. reproduce the historical stale/incompatible peer failure in automated tests;
+2. expose build identity and version-stamped logs;
+3. propagate correlation context and support the synthetic end-to-end probe;
+4. exchange/enforce protocol range plus interface/tool-schema compatibility;
+5. implement CI evidence for N/N-1 first-party skew;
+6. emit bounded journal evidence needed by Fabric;
+7. reuse the existing staged baseline/self-update recovery machinery while adding support for a separate local commit-confirmed supervisor that can revert after activation without network/Fabric.
+
+Important existing capability: install-time rollback already stages a baseline wheel and can restore it when installation/runtime verification fails. The missing mechanism is post-activation independent recovery: successful updates currently clear the install transaction/artifacts and restart is scheduled by Runner-MCP itself.
+
+Economic constraint until AIfordable has revenue: **incremental software spend is EUR 0**. Use existing code and free/open-source dependencies only. No paid SaaS, commercial update manager, paid Fleet tier, Mender Enterprise or other paid runtime dependency. Hardware, connectivity and electricity are accepted owner costs; software cost remains time only until revenue supports a new explicit decision.
+
 # Runner MCP roadmap
 
 This public roadmap is intentionally infrastructure-neutral. Real deployment details belong only in private configuration.

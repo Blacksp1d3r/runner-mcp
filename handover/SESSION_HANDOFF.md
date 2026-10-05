@@ -1,3 +1,21 @@
+## 2026-10-05 — resume #333 only when A3 end-to-end evidence is ready
+
+Repository: Blacksp1d3r/runner-mcp
+Canonical main at checkpoint: 9a4f9d7a2916625617aa2ef144fc40679e549129
+Primary issue: #333
+Completed in this continuation: #370, #371, #372, #373.
+
+Do not redo managed tunnel autostart, process evidence, local MCP health evidence, or control-plane authentication evidence.
+
+Current chain: COMPLETE config -> managed process active -> local /health/mcp proven -> local /health/control-plane successful poll -> end_to_end_not_routable.
+
+Evidence boundaries: no generic process scan; health URL must come from the fixed private mode-0600 tunnel-health.url and be direct 127.0.0.1; MCP evidence requires schema v1, component mcp, status ok, initialized/discovered; control-plane evidence requires schema v1, status ok, idle/polling/backpressured plus non-empty last_success; proxy environment is disabled for local probes.
+
+Important topology fact: tunnel-client emits X-Tunnel-Client-Instance-Id to the service, but local code cannot authoritatively enumerate all active instances. For Runner-MCP's localhost-per-host backend, keep one active client per tunnel ID. Do not infer uniqueness from the local instance id.
+
+Next action is cross-repo: reconcile Fabric #939 and wait for its existing qualification synthetic work-unit to become a continuous bounded probe with durable evidence. Add only a minimal adapter if Fabric exposes a narrow first-party result suitable for end_to_end_routable; otherwise keep Runner-MCP fail-closed and use explicit live/topology proof. Do not build a second probe engine or direct provider client enumeration.
+
+No live tunnel/autostart mutation was performed.
 ## 2026-10-05 — resume #333 from managed tunnel autostart admission
 
 Repository: Blacksp1d3r/runner-mcp

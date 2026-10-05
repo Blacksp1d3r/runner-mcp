@@ -1,3 +1,13 @@
+## 2026-10-05 — resume Fleet Update work with historical-failure reproduction
+
+Fabric umbrella #924 and reviewed v2 define the sequence. Runner-MCP should begin with A1-compatible test work: reproduce an incompatible/stale control-path peer in a lab/integration test and classify where it fails. Do not start supervisor implementation until the reproduction/observability steps are understood.
+
+Later Runner-MCP responsibilities: build identity/log stamping, trace propagation hooks, handshake/interface digest, N/N-1 compatibility CI, bounded evidence, and #341/#943 supervisor support.
+
+Current self-update fact: baseline wheel rollback exists for install/verification failure; durable previous-release retention plus an external commit-confirmed revert timer after activation does not yet exist.
+
+Software budget is EUR 0 until revenue. Prefer existing/free/open-source software; paid services/tools remain out of scope.
+
 ## 2026-10-04 — bounded operational snapshot proxy in validation
 
 Issue #269 now has PR #286 on branch `ops/269-operational-snapshot-proxy`, head `d43e472bb265a7314e59bb3109bcdddbab650e18`. It adds zero-argument `fabric_operational_snapshot`, calls only Fabric's fixed `operational_snapshot` tool, validates exact `runner.fabric/operational-snapshot/v1` shape, count relationships, capacities, ages and read-only flags, and reuses bounded/private-detail validation. Runner MCP does not reconstruct relay/Fabric truth. Commit attribution is green and Runner MCP validation is still in progress. Do not merge before Runner-Fabric #876 is green/merged and #286 validation is terminal green.

@@ -15,6 +15,12 @@ Important existing capability: install-time rollback already stages a baseline w
 
 Economic constraint until AIfordable has revenue: **incremental software spend is EUR 0**. Use existing code and free/open-source dependencies only. No paid SaaS, commercial update manager, paid Fleet tier, Mender Enterprise or other paid runtime dependency. Hardware, connectivity and electricity are accepted owner costs; software cost remains time only until revenue supports a new explicit decision.
 
+Status update — 2026-10-05:
+- Step 1/A1 COMPLETE via #346 / `c37f60dc...`.
+- Step 2/A2 ACTIVE. Initial component/version audit stamping #348 / `c73298e6...`; full aligned BuildIdentity fields on every existing audit row #355 / `98bd8ca0...`.
+- A2 is not complete until installed provenance, protocol range/interface digest and cross-hop request reconstruction are proven.
+- Next Runner-MCP contribution is to expose/propagate the provenance/protocol/interface facts needed by Fabric A2/A4 without broadening remote authority.
+
 # Runner MCP roadmap
 
 This public roadmap is intentionally infrastructure-neutral. Real deployment details belong only in private configuration.

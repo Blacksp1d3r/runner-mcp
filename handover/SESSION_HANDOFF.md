@@ -1,3 +1,18 @@
+## 2026-10-05 — resume Fleet Update after Runner-MCP #355
+
+Main checkpoint: `98bd8ca0de5ecdb2c16b70bbe3ff620b882e432c`.
+
+Do not redo #346, #348, #349 or #355.
+
+Runner-MCP now provides aligned full BuildIdentity fields on every durable audit row, including request_id-bearing tool events. Unknown source revision/artifact digest/protocol/interface facts are explicit null by design.
+
+Next cross-repo dependency is Fabric #938 request/connection identity stamping. Only add Runner-MCP code if Fabric needs a bounded fact that Runner-MCP uniquely owns:
+- installed source revision/artifact digest from trustworthy active-runtime provenance;
+- supported protocol range;
+- interface/tool-schema digest.
+
+Do not add paid observability/update software. Do not broaden shell/path/endpoint authority. Claude review remains UNCLAIMED and non-blocking.
+
 ## 2026-10-05 — resume Fleet Update work with historical-failure reproduction
 
 Fabric umbrella #924 and reviewed v2 define the sequence. Runner-MCP should begin with A1-compatible test work: reproduce an incompatible/stale control-path peer in a lab/integration test and classify where it fails. Do not start supervisor implementation until the reproduction/observability steps are understood.

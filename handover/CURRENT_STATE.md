@@ -1,3 +1,17 @@
+## 2026-10-05 — Fleet Update A2 Runner-MCP audit identity hardening merged
+
+Canonical Runner-MCP main: `98bd8ca0de5ecdb2c16b70bbe3ff620b882e432c`.
+
+A1 remains complete via #346 / `c37f60dc...`.
+
+A2 progress:
+- #348 / `c73298e6...` added component/version stamping and runtime-start to the existing durable audit log.
+- #355 / `98bd8ca0...` replaced the partial shape with the full bounded BuildIdentity field set on every audit row: component_id, build_version, source_revision, artifact_digest, protocol_min/max and interface_schema_digest.
+- Existing request_id/tool/project/actor/result/timestamp evidence remains intact; unproven provenance/protocol/interface fields remain explicit null.
+- exact-head #355 validation: Runner MCP validation #1033 success; attribution #543 success; Ruff/pytest, release artifact and clean demo all green.
+
+Do not claim #938 complete from Runner-MCP alone. Remaining cross-repo work belongs primarily in Fabric: request/connection stamping across first-party hops plus trustworthy installed provenance/protocol/interface evidence. Runner-MCP may need a later bounded slice to expose those facts, but must not invent checkout-derived provenance.
+
 ## 2026-10-05 — Fleet Update A2 Runner-MCP build identity merged
 
 PR #348 merged as `c73298e601081bc85d7f850583356b9c1ee741b4`. Runner-MCP now reuses its existing durable audit log to stamp every record with `component_id=runner-mcp` and the installed package version, and emits a safe runtime-start event. No new logging service/dependency was introduced. Fabric #938 remains open because Agent Bus/Fabric and other first-party hops still need equivalent identity evidence with backward-compatible persisted schemas.

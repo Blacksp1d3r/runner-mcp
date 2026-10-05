@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import hashlib
+import json
 import os
 import secrets
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from contextlib import asynccontextmanager
 from dataclasses import dataclass, field
 from importlib.metadata import PackageNotFoundError, version
@@ -24,7 +26,11 @@ from starlette.routing import Mount, Route
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
-from .build_identity import runner_mcp_build_identity
+from .build_identity import (
+    BuildIdentity,
+    runner_mcp_build_identity,
+    runner_mcp_mcp_build_identity,
+)
 from .ci_runner_enrollment import (
     CIRunnerEnrollmentError,
     CIRunnerEnrollmentManager,
@@ -356,6 +362,7 @@ def build_mcp(
     self_update_restart_components: frozenset[str] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
+    build_identity_provider: Callable[[], BuildIdentity] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
     mcp = MCPServer(
@@ -528,6 +535,27 @@ def build_mcp(
             raise RuntimeError(
                 "CI guest enrollment private configuration is invalid"
             ) from exc
+
+    if build_identity_provider is not None and not callable(
+        build_identity_provider
+    ):
+        raise TypeError("build_identity_provider must be callable")
+
+    def build_identity() -> dict[str, object]:
+        """Return bounded first-party build/protocol/interface identity."""
+
+        if build_identity_provider is None:
+            raise ValueError("build_identity_unavailable")
+        try:
+            identity = build_identity_provider()
+        except (RuntimeError, TypeError, ValueError):
+            raise ValueError("build_identity_unavailable") from None
+        if not isinstance(identity, BuildIdentity):
+            raise TypeError("build_identity_unavailable")
+        return identity.to_payload()
+
+    if build_identity_provider is not None:
+        mcp.tool()(build_identity)
 
     @mcp.tool()
     def runtime_status() -> dict:
@@ -2487,6 +2515,44 @@ def build_mcp(
     return mcp
 
 
+async def runner_mcp_interface_schema_digest(mcp: MCPServer) -> str:
+    """Hash exact registered MCP tool names and generated JSON schemas."""
+
+    if not isinstance(mcp, MCPServer):
+        raise TypeError("mcp must be MCPServer")
+    tools = await mcp.list_tools()
+    if not 1 <= len(tools) <= 512:
+        raise ValueError("Runner MCP tool surface is outside supported bounds")
+    interface: list[dict[str, object]] = []
+    for tool in sorted(tools, key=lambda item: item.name):
+        if (
+            not isinstance(tool.name, str)
+            or not 1 <= len(tool.name) <= 128
+            or not tool.name.isascii()
+        ):
+            raise ValueError("Runner MCP tool name is invalid")
+        interface.append(
+            {
+                "name": tool.name,
+                "input_schema": tool.input_schema,
+                "output_schema": tool.output_schema,
+            }
+        )
+    try:
+        encoded = json.dumps(
+            interface,
+            sort_keys=True,
+            separators=(",", ":"),
+            ensure_ascii=True,
+            allow_nan=False,
+        ).encode("utf-8")
+    except (TypeError, ValueError) as exc:
+        raise ValueError("Runner MCP tool schema is not canonical JSON") from exc
+    if not encoded or len(encoded) > 4 * 1024 * 1024:
+        raise ValueError("Runner MCP tool schema exceeds supported bounds")
+    return hashlib.sha256(encoded).hexdigest()
+
+
 async def health(_: Request) -> JSONResponse:
     return JSONResponse({"status": "ok"})
 
@@ -2505,6 +2571,13 @@ def create_app(
         package_version = version("aifordable-runner-mcp")
     except PackageNotFoundError:
         package_version = "development"
+    identity: BuildIdentity | None = None
+
+    def current_build_identity() -> BuildIdentity:
+        if identity is None:
+            return runner_mcp_mcp_build_identity(package_version)
+        return identity
+
     audit = AuditLogger(
         settings.audit_log,
         build_identity=runner_mcp_build_identity(package_version),
@@ -2533,11 +2606,17 @@ def create_app(
         self_update_restart_components=self_update_restart_components,
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
+        build_identity_provider=current_build_identity,
     )
     transport_security = transport_security_for(settings.resource_url)
 
     @asynccontextmanager
     async def lifespan(_: Starlette):
+        nonlocal identity
+        identity = runner_mcp_mcp_build_identity(
+            package_version,
+            interface_schema_digest=await runner_mcp_interface_schema_digest(mcp),
+        )
         async with mcp.session_manager.run():
             yield
     return Starlette(

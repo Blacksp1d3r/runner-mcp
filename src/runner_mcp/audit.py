@@ -33,13 +33,14 @@ class AuditLogger:
         self.build_identity = build_identity or runner_mcp_build_identity("development")
         self._lock = Lock()
 
+    def set_build_identity(self, identity: BuildIdentity) -> None:
+        if not isinstance(identity, BuildIdentity):
+            raise TypeError("identity must be BuildIdentity")
+        with self._lock:
+            self.build_identity = identity
+
     def append(self, event: AuditEvent) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
-        record = asdict(event)
-        record.update(self.build_identity.to_payload())
-        payload = (
-            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
-        ).encode("utf-8")
         flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
         nofollow = getattr(os, "O_NOFOLLOW", 0)
         if nofollow == 0:
@@ -47,6 +48,11 @@ class AuditLogger:
         flags |= nofollow
 
         with self._lock:
+            record = asdict(event)
+            record.update(self.build_identity.to_payload())
+            payload = (
+                json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
+            ).encode("utf-8")
             fd = os.open(self.path, flags, 0o600)
             try:
                 opened = os.fstat(fd)

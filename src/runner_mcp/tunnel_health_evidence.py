@@ -82,8 +82,8 @@ def _local_health_component_url(base_url: str) -> str:
         raise TunnelHealthEvidenceError("tunnel health evidence is not loopback HTTP")
     if parsed.username or parsed.password or parsed.query or parsed.fragment:
         raise TunnelHealthEvidenceError("tunnel health evidence URL is unsafe")
-    if (parsed.hostname or "").lower() not in {"127.0.0.1", "::1", "localhost"}:
-        raise TunnelHealthEvidenceError("tunnel health evidence is not loopback HTTP")
+    if (parsed.hostname or "").lower() != "127.0.0.1":
+        raise TunnelHealthEvidenceError("tunnel health evidence is not fixed loopback HTTP")
     try:
         port = parsed.port
     except ValueError as exc:
@@ -92,10 +92,7 @@ def _local_health_component_url(base_url: str) -> str:
         raise TunnelHealthEvidenceError("tunnel health evidence URL is invalid")
     if parsed.path not in {"", "/"}:
         raise TunnelHealthEvidenceError("tunnel health evidence URL is invalid")
-    host = parsed.hostname or ""
-    if ":" in host and not host.startswith("["):
-        host = f"[{host}]"
-    return f"http://{host}:{port}/health/mcp"
+    return f"http://127.0.0.1:{port}/health/mcp"
 
 
 def _decode_component_payload(raw: bytes) -> dict[str, Any]:
@@ -108,7 +105,13 @@ def _decode_component_payload(raw: bytes) -> dict[str, Any]:
             object_pairs_hook=_reject_duplicate_keys,
             parse_constant=_reject_nonstandard_constant,
         )
-    except (UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError) as exc:
+    except (
+        UnicodeDecodeError,
+        json.JSONDecodeError,
+        TypeError,
+        ValueError,
+        RecursionError,
+    ) as exc:
         raise TunnelHealthEvidenceError(
             "tunnel health response is invalid"
         ) from exc
@@ -117,10 +120,15 @@ def _decode_component_payload(raw: bytes) -> dict[str, Any]:
     return payload
 
 
+def _open_loopback(request: urllib.request.Request, *, timeout: float):
+    opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+    return opener.open(request, timeout=timeout)
+
+
 def collect_local_mcp_ready(
     config_dir: Path,
     *,
-    opener=urllib.request.urlopen,
+    opener=_open_loopback,
 ) -> bool:
     """Probe only the tunnel-client's fixed loopback MCP health component."""
 

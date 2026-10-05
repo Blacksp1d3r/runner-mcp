@@ -21,6 +21,8 @@ class _StaleMCPSessionError(BridgeExecutionAdapterError):
 MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
 MAX_MCP_JOB_ID_CHARS = 32
+_MCP_PROTOCOL_VERSION = "2025-06-18"
+_PEER_INFO_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ +:/()-]{0,127}$")
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9._~-]{1,256}$")
 _JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -313,6 +315,49 @@ def _decode_mcp_response(raw: bytes) -> dict[str, Any] | None:
         ) from exc
 
 
+def _validate_initialize_peer(value: object) -> dict[str, str | None]:
+    if not isinstance(value, dict):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP initialization result is invalid"
+        )
+    protocol = value.get("protocolVersion")
+    if protocol is not None and (
+        not isinstance(protocol, str)
+        or protocol != _MCP_PROTOCOL_VERSION
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP protocol version is incompatible"
+        )
+
+    server_name: str | None = None
+    server_version: str | None = None
+    server_info = value.get("serverInfo")
+    if server_info is not None:
+        if not isinstance(server_info, dict) or set(server_info) != {"name", "version"}:
+            raise BridgeExecutionAdapterError(
+                "Runner MCP server identity is invalid"
+            )
+        name = server_info.get("name")
+        version = server_info.get("version")
+        if (
+            not isinstance(name, str)
+            or _PEER_INFO_RE.fullmatch(name) is None
+            or not isinstance(version, str)
+            or _PEER_INFO_RE.fullmatch(version) is None
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP server identity is invalid"
+            )
+        server_name = name
+        server_version = version
+
+    return {
+        "protocol_version": protocol,
+        "server_name": server_name,
+        "server_version": server_version,
+    }
+
+
 _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
     {
         "list_projects",
@@ -388,6 +433,17 @@ class LocalMCPClient:
         self._session_id: str | None = None
         self._next_request_id = 1
         self._initialized = False
+        self._peer_protocol_version: str | None = None
+        self._peer_server_name: str | None = None
+        self._peer_server_version: str | None = None
+
+    @property
+    def peer_identity(self) -> dict[str, str | None]:
+        return {
+            "protocol_version": self._peer_protocol_version,
+            "server_name": self._peer_server_name,
+            "server_version": self._peer_server_version,
+        }
 
     def initialize(self) -> None:
         if self._initialized:
@@ -399,7 +455,7 @@ class LocalMCPClient:
                 "id": self._allocate_request_id(),
                 "method": "initialize",
                 "params": {
-                    "protocolVersion": "2025-06-18",
+                    "protocolVersion": _MCP_PROTOCOL_VERSION,
                     "capabilities": {},
                     "clientInfo": {
                         "name": self._client_name,
@@ -416,6 +472,10 @@ class LocalMCPClient:
             raise BridgeExecutionAdapterError(
                 "Runner MCP initialization was rejected"
             )
+        peer = _validate_initialize_peer(response.get("result"))
+        self._peer_protocol_version = peer["protocol_version"]
+        self._peer_server_name = peer["server_name"]
+        self._peer_server_version = peer["server_version"]
 
         self._post(
             {

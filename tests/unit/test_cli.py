@@ -301,6 +301,75 @@ def test_tunnel_status_uses_managed_systemd_process_evidence(
     ]
 
 
+def test_tunnel_status_advances_to_local_ready_only_with_mcp_health_evidence(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    (unit_dir / cli.TUNNEL_UNIT).write_text(
+        cli.MANAGED_MARKER + "\n",
+        encoding="utf-8",
+    )
+
+    class Row:
+        component = "tunnel"
+        installed = True
+        active = True
+
+    monkeypatch.setattr(cli, "cron_available", lambda: False)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(cli, "default_user_unit_dir", lambda: unit_dir)
+    monkeypatch.setattr(cli, "user_service_status", lambda: [Row()])
+    monkeypatch.setattr(cli, "collect_local_mcp_ready", lambda _config_dir: True)
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.splitlines() == [
+        "Restart config: complete",
+        "Readiness: local_ready",
+        "Reason: control_plane_not_authenticated",
+    ]
+
+
+def test_tunnel_status_does_not_probe_local_health_without_process_evidence(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    called: list[bool] = []
+    monkeypatch.setattr(cli, "cron_available", lambda: False)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: False)
+    monkeypatch.setattr(
+        cli,
+        "collect_local_mcp_ready",
+        lambda _config_dir: called.append(True),
+    )
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert called == []
+    assert captured.out.splitlines() == [
+        "Restart config: absent",
+        "Readiness: unconfigured",
+        "Reason: not_configured",
+    ]
+
+
 def test_tunnel_status_rejects_foreign_systemd_unit_as_process_evidence(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

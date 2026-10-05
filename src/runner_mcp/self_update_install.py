@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
@@ -348,6 +349,24 @@ class SelfUpdatePackageInstaller:
         if not resolved.is_relative_to(self.artifacts_root):
             raise PackageInstallError("Self-update wheel stage is unsafe")
         return resolved
+
+    def wheel_sha256(self, wheel: Path) -> str:
+        if wheel.is_symlink():
+            raise PackageInstallError("Self-update wheel is unsafe")
+        try:
+            resolved = wheel.resolve(strict=True)
+        except OSError as exc:
+            raise PackageInstallError("Self-update wheel is unavailable") from exc
+        if not resolved.is_file() or not resolved.is_relative_to(self.artifacts_root):
+            raise PackageInstallError("Self-update wheel is unsafe")
+        digest = hashlib.sha256()
+        try:
+            with resolved.open("rb") as handle:
+                while chunk := handle.read(1024 * 1024):
+                    digest.update(chunk)
+        except OSError as exc:
+            raise PackageInstallError("Self-update wheel is unavailable") from exc
+        return digest.hexdigest()
 
     def install_wheel(self, wheel: Path) -> None:
         if wheel.is_symlink():

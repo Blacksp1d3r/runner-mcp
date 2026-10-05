@@ -592,6 +592,7 @@ class LocalMCPClient:
         *,
         allowed_tools: frozenset[str] = _RUNNER_MCP_BRIDGE_TOOLS,
         client_name: str = "runner-mcp-github-watcher",
+        compatibility_preflight: bool = False,
     ) -> None:
         if not isinstance(allowed_tools, frozenset) or not allowed_tools:
             raise ValueError("MCP tool allow-list must be a non-empty frozenset")
@@ -606,9 +607,12 @@ class LocalMCPClient:
             client_name,
         ):
             raise ValueError("MCP client name is invalid")
+        if not isinstance(compatibility_preflight, bool):
+            raise ValueError("compatibility_preflight must be boolean")
         self._config = config
         self._allowed_tools = allowed_tools
         self._client_name = client_name
+        self._compatibility_preflight = compatibility_preflight
         self._session_id: str | None = None
         self._next_request_id = 1
         self._initialized = False
@@ -619,18 +623,24 @@ class LocalMCPClient:
         self._peer_tool_names: frozenset[str] = frozenset()
 
     @property
-    def peer_identity(self) -> dict[str, object]:
+    def peer_identity(self) -> dict[str, str | None]:
         return {
             "protocol_version": self._peer_protocol_version,
             "server_name": self._peer_server_name,
             "server_version": self._peer_server_version,
-            "build_identity": (
-                None
-                if self._peer_build_identity is None
-                else dict(self._peer_build_identity)
-            ),
-            "tool_names": tuple(sorted(self._peer_tool_names)),
         }
+
+    @property
+    def peer_build_identity(self) -> dict[str, object] | None:
+        return (
+            None
+            if self._peer_build_identity is None
+            else dict(self._peer_build_identity)
+        )
+
+    @property
+    def peer_tool_names(self) -> tuple[str, ...]:
+        return tuple(sorted(self._peer_tool_names))
 
     def initialize(self) -> None:
         if self._initialized:
@@ -671,34 +681,35 @@ class LocalMCPClient:
                 "params": {},
             }
         )
-        tool_surface = self._post(
-            {
-                "jsonrpc": "2.0",
-                "id": self._allocate_request_id(),
-                "method": "tools/list",
-                "params": {},
-            }
-        )
-        observed_digest, tool_names = _validate_peer_tool_surface(
-            tool_surface,
-            required_tools=self._allowed_tools,
-        )
-        identity_response = self._post(
-            {
-                "jsonrpc": "2.0",
-                "id": self._allocate_request_id(),
-                "method": "tools/call",
-                "params": {
-                    "name": "build_identity",
-                    "arguments": {},
-                },
-            }
-        )
-        self._peer_build_identity = _validate_peer_build_identity(
-            _tool_result_payload(identity_response),
-            observed_interface_digest=observed_digest,
-        )
-        self._peer_tool_names = tool_names
+        if self._compatibility_preflight:
+            tool_surface = self._post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": self._allocate_request_id(),
+                    "method": "tools/list",
+                    "params": {},
+                }
+            )
+            observed_digest, tool_names = _validate_peer_tool_surface(
+                tool_surface,
+                required_tools=self._allowed_tools,
+            )
+            identity_response = self._post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": self._allocate_request_id(),
+                    "method": "tools/call",
+                    "params": {
+                        "name": "build_identity",
+                        "arguments": {},
+                    },
+                }
+            )
+            self._peer_build_identity = _validate_peer_build_identity(
+                _tool_result_payload(identity_response),
+                observed_interface_digest=observed_digest,
+            )
+            self._peer_tool_names = tool_names
         self._initialized = True
 
     def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
@@ -863,7 +874,10 @@ class LocalMCPBridgeExecutor:
     def _client(self) -> LocalMCPClient:
         client = getattr(self._local, "client", None)
         if client is None:
-            client = LocalMCPClient(self._config)
+            client = LocalMCPClient(
+                self._config,
+                compatibility_preflight=True,
+            )
             self._local.client = client
         return client
 

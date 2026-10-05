@@ -8,7 +8,7 @@ from pathlib import Path
 from typing import Any
 from uuid import UUID
 
-from .fabric_agent_runtime import _validated_launcher
+from .fabric_agent_runtime import FabricAgentRestartError, _validated_launcher
 from .operational_safety import (
     ActionClass,
     OperatorSafetyGuard,
@@ -58,7 +58,7 @@ def qualify_fabric_disposable_target(
     home_root = (home or Path.home()).expanduser().resolve()
     try:
         launcher = _validated_launcher(home_root)
-    except Exception as exc:
+    except FabricAgentRestartError as exc:
         raise FabricDisposableTargetQualificationError(
             "fabric_disposable_target_qualification_unavailable"
         ) from exc

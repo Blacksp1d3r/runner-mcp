@@ -7,6 +7,7 @@ import shlex
 import stat
 from collections.abc import Callable
 from dataclasses import dataclass
+from enum import StrEnum
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -366,6 +367,47 @@ def load_env_file(path: Path) -> dict[str, str]:
     return loaded
 
 
+
+
+class TunnelRestartConfigState(StrEnum):
+    ABSENT = "absent"
+    UNSAFE = "unsafe"
+    INVALID = "invalid"
+    INCOMPLETE = "incomplete"
+    STRUCTURALLY_INVALID = "structurally_invalid"
+    COMPLETE = "complete"
+
+
+def inspect_tunnel_restart_config(config_dir: Path) -> TunnelRestartConfigState:
+    """Inspect only bounded tunnel restart metadata; never return private values."""
+
+    tunnel_env = PrivatePaths.for_config_dir(config_dir).config_dir / "tunnel.env"
+    if not tunnel_env.exists() and not tunnel_env.is_symlink():
+        return TunnelRestartConfigState.ABSENT
+
+    if tunnel_env.is_symlink() or _mode(tunnel_env) != 0o600:
+        return TunnelRestartConfigState.UNSAFE
+
+    try:
+        tunnel_values = load_env_file(tunnel_env)
+    except (OSError, RuntimeError, ValueError):
+        return TunnelRestartConfigState.INVALID
+
+    tunnel_id = tunnel_values.get("CONTROL_PLANE_TUNNEL_ID", "").strip()
+    api_key = tunnel_values.get("CONTROL_PLANE_API_KEY", "").strip()
+    if not tunnel_id or not api_key:
+        return TunnelRestartConfigState.INCOMPLETE
+
+    duplicated_api_key = (
+        len(api_key) % 2 == 0
+        and api_key[: len(api_key) // 2] == api_key[len(api_key) // 2 :]
+    )
+    if duplicated_api_key:
+        return TunnelRestartConfigState.STRUCTURALLY_INVALID
+
+    return TunnelRestartConfigState.COMPLETE
+
+
 def _require_private_mode(path: Path, expected: int, *, label: str) -> None:
     try:
         mode = stat.S_IMODE(path.stat().st_mode)
@@ -552,57 +594,28 @@ def run_doctor(config_dir: Path) -> list[DoctorCheck]:
         )
     )
 
-    tunnel_env = paths.config_dir / "tunnel.env"
-    if tunnel_env.exists() or tunnel_env.is_symlink():
-        tunnel_mode = _mode(tunnel_env)
-        if tunnel_env.is_symlink() or tunnel_mode != 0o600:
-            checks.append(
-                DoctorCheck(
-                    "connector tunnel restart configuration",
-                    "FAIL",
-                    "private tunnel configuration is unsafe",
-                )
+    tunnel_config = inspect_tunnel_restart_config(paths.config_dir)
+    if tunnel_config is not TunnelRestartConfigState.ABSENT:
+        if tunnel_config is TunnelRestartConfigState.UNSAFE:
+            status, detail = "FAIL", "private tunnel configuration is unsafe"
+        elif tunnel_config is TunnelRestartConfigState.INVALID:
+            status, detail = "FAIL", "private tunnel configuration is invalid"
+        elif tunnel_config is TunnelRestartConfigState.INCOMPLETE:
+            status, detail = "WARN", "private restart configuration is incomplete"
+        elif tunnel_config is TunnelRestartConfigState.STRUCTURALLY_INVALID:
+            status, detail = (
+                "FAIL",
+                "private control-plane credential is structurally invalid",
             )
         else:
-            try:
-                tunnel_values = load_env_file(tunnel_env)
-            except (OSError, RuntimeError, ValueError):
-                checks.append(
-                    DoctorCheck(
-                        "connector tunnel restart configuration",
-                        "FAIL",
-                        "private tunnel configuration is invalid",
-                    )
-                )
-            else:
-                tunnel_id = tunnel_values.get("CONTROL_PLANE_TUNNEL_ID", "").strip()
-                api_key = tunnel_values.get("CONTROL_PLANE_API_KEY", "").strip()
-                restartable = bool(tunnel_id and api_key)
-                duplicated_api_key = (
-                    bool(api_key)
-                    and len(api_key) % 2 == 0
-                    and api_key[: len(api_key) // 2] == api_key[len(api_key) // 2 :]
-                )
-                if duplicated_api_key:
-                    checks.append(
-                        DoctorCheck(
-                            "connector tunnel restart configuration",
-                            "FAIL",
-                            "private control-plane credential is structurally invalid",
-                        )
-                    )
-                else:
-                    checks.append(
-                        DoctorCheck(
-                            "connector tunnel restart configuration",
-                            "PASS" if restartable else "WARN",
-                            (
-                                "private restart configuration is complete"
-                                if restartable
-                                else "private restart configuration is incomplete"
-                            ),
-                        )
-                    )
+            status, detail = "PASS", "private restart configuration is complete"
+        checks.append(
+            DoctorCheck(
+                "connector tunnel restart configuration",
+                status,
+                detail,
+            )
+        )
 
     if settings.test_jobs_root is None:
         checks.append(DoctorCheck("test job storage", "WARN", "test execution is not configured"))

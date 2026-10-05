@@ -299,6 +299,31 @@ def test_doctor_rejects_exactly_duplicated_tunnel_api_key_without_echo(
     assert duplicated_api_key not in captured.err
 
 
+
+def test_tunnel_restart_config_status_is_bounded(
+    tmp_path: Path,
+) -> None:
+    from runner_mcp.onboarding import (
+        TunnelRestartConfigState,
+        inspect_tunnel_restart_config,
+    )
+
+    paths, _ = install_config(tmp_path)
+    assert inspect_tunnel_restart_config(paths.config_dir) is TunnelRestartConfigState.ABSENT
+
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    assert (
+        inspect_tunnel_restart_config(paths.config_dir)
+        is TunnelRestartConfigState.COMPLETE
+    )
+
 def test_emergency_stop_cli_on_status_and_off(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

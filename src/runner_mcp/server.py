@@ -23,8 +23,8 @@ from starlette.routing import Mount, Route
 
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
-from .build_identity import runner_mcp_build_identity
 from .audit import AuditEvent, AuditLogger, utc_timestamp
+from .build_identity import runner_mcp_build_identity
 from .ci_runner_enrollment import (
     CIRunnerEnrollmentError,
     CIRunnerEnrollmentManager,

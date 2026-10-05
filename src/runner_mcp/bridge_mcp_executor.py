@@ -321,11 +321,13 @@ def _validate_initialize_peer(value: object) -> dict[str, str | None]:
             "Runner MCP initialization result is invalid"
         )
     protocol = value.get("protocolVersion")
-    if protocol is not None:
-        if not isinstance(protocol, str) or protocol != _MCP_PROTOCOL_VERSION:
-            raise BridgeExecutionAdapterError(
-                "Runner MCP protocol version is incompatible"
-            )
+    if protocol is not None and (
+        not isinstance(protocol, str)
+        or protocol != _MCP_PROTOCOL_VERSION
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP protocol version is incompatible"
+        )
 
     server_name: str | None = None
     server_version: str | None = None

@@ -93,6 +93,53 @@ def test_complete_config_with_process_evidence_advances_one_layer(
     }
 
 
+def test_complete_process_and_local_mcp_evidence_advances_to_local_ready(
+    tmp_path: Path,
+) -> None:
+    tunnel_env = tmp_path / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = collect_tunnel_config_readiness(
+        tmp_path,
+        process_running=True,
+        local_mcp_ready=True,
+    )
+
+    assert result.public_dict() == {
+        "restart_config": "complete",
+        "state": "local_ready",
+        "reason": "control_plane_not_authenticated",
+    }
+
+
+def test_local_mcp_evidence_without_process_evidence_fails_closed(
+    tmp_path: Path,
+) -> None:
+    tunnel_env = tmp_path / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = collect_tunnel_config_readiness(
+        tmp_path,
+        local_mcp_ready=True,
+    )
+
+    assert result.public_dict() == {
+        "restart_config": "complete",
+        "state": "blocked",
+        "reason": "inconsistent_evidence",
+    }
+
+
 def test_process_evidence_without_complete_config_fails_closed(
     tmp_path: Path,
 ) -> None:

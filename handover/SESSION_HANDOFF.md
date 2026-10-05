@@ -1,3 +1,37 @@
+## 2026-10-05 — resume #333 from managed tunnel autostart admission
+
+Repository: Blacksp1d3r/runner-mcp
+Canonical main at landing: `2a27fb0d8236e6c06f2fd0da3b04dfced558d471`
+Primary issue: #333
+Completed PRs in this lane: #364, #366, #367, #368.
+Parallel A3 trace PR #363 is merged; duplicate #365 is closed.
+
+Do not redo config readiness, doctor fail-closed behavior, tunnel-status, or the fixed tunnel runtime wrapper.
+
+Current fixed runtime contract from #368:
+- local hidden command: `runner-mcp tunnel-run --port PORT`;
+- PORT is bounded to 1..65535;
+- only installed `tunnel-client` is resolved;
+- only `tunnel-client run` is executed;
+- MCP target is fixed to `http://127.0.0.1:PORT/mcp`;
+- existing private `tunnel.env` must classify COMPLETE;
+- `CONTROL_PLANE_TUNNEL_ID` and `CONTROL_PLANE_API_KEY` are explicitly exported to the child and never printed;
+- health listener is fixed to ephemeral loopback and health URL is written to the fixed private `tunnel-health.url` path;
+- unsafe/symlink health evidence path fails closed.
+
+Exact next safe implementation:
+1. add fixed `tunnel` component to `autostart.py` and `cron_autostart.py`;
+2. include it only when private tunnel restart config is COMPLETE;
+3. systemd unit depends on the Runner-MCP server and invokes only `tunnel-run --port <same bounded port>`;
+4. cron supervision uses the existing per-component lock and the same hidden command;
+5. extend bounded autostart status/tests to show tunnel installed/enabled/active;
+6. then connect active evidence to `tunnel-status` / readiness classifier in a separate smallest slice;
+7. later probe only the fixed private health URL for local-ready evidence. Do not collapse local ready into control-plane-authenticated or end-to-end-routable.
+
+Upstream fact already checked against openai/tunnel-client current public source: env tunnel ID/runtime API key, fixed `--mcp-server-url`, `--health-listen-addr` and `--health-url-file` are supported; upstream writes the health URL file mode 0600.
+
+No live runtime mutation, deployment or migration was performed. Reconcile live main and active PRs before starting. Fabric #939 has its own active lane; do not duplicate it.
+
 ## 2026-10-05 — resume Fleet Update after Runner-MCP #355
 
 Main checkpoint: `98bd8ca0de5ecdb2c16b70bbe3ff620b882e432c`.

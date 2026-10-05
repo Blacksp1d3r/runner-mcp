@@ -1,3 +1,28 @@
+## 2026-10-05 — Tunnel readiness runtime boundary merged; managed autostart next
+
+Canonical Runner-MCP main: `2a27fb0d8236e6c06f2fd0da3b04dfced558d471`.
+
+Issue #333 remains open. Completed this session:
+- #364 / `4aae2a21...`: maps secret-free tunnel restart-config evidence into the bounded readiness state machine;
+- #366 / `69b958aa...`: complete private config no longer makes `doctor` claim PASS; without separate process evidence it stays WARN / `process_not_running`;
+- #367 / `7e157688...`: local read-only `tunnel-status` exposes only restart_config/state/reason;
+- #368 / `2a27fb0d...`: hidden fixed `tunnel-run` executes only installed `tunnel-client run` against Runner-MCP loopback, explicitly exports the existing private tunnel ID/runtime key, requests an ephemeral loopback health listener and writes the resolved health URL to the fixed private config path.
+- #363 also merged in parallel as `7b2782f2...` for A3 bound traceparent propagation; the transient duplicate restack #365 was closed after reconciliation.
+
+Security boundary:
+- no generic process scan, shell, arbitrary executable, arbitrary endpoint/argv, credential output or paid dependency was added;
+- tunnel-client profile management is not reimplemented; current upstream supports env-backed tunnel ID/runtime key, a fixed MCP server URL and private health URL-file evidence;
+- no live runtime update, deployment, migration or tunnel restart was performed in this session.
+
+Next safe #333 slice:
+1. admit `tunnel` as one fixed optional Runner-MCP autostart component for systemd-user and managed-cron only when `inspect_tunnel_restart_config(...) == COMPLETE`;
+2. invoke only the existing hidden `tunnel-run --port <bounded-port>` path;
+3. expose managed active/inactive evidence through existing autostart status, then feed that bounded process evidence into tunnel readiness;
+4. only after process evidence is proven, consume the fixed private tunnel health URL for local `readyz` evidence; control-plane authenticated and end-to-end routable remain separate later evidence;
+5. keep duplicate-tunnel/fencing protection explicit before any READY/routable claim.
+
+Runner-Fabric A3/#939 is active in parallel; do not duplicate its Fabric-side trace/result/ACK/failure-taxonomy work.
+
 ## 2026-10-05 — Fleet Update A2 Runner-MCP audit identity hardening merged
 
 Canonical Runner-MCP main: `98bd8ca0de5ecdb2c16b70bbe3ff620b882e432c`.

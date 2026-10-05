@@ -210,8 +210,11 @@ def test_status_does_not_print_private_paths_or_bearer_value(
 def test_tunnel_status_reports_bounded_config_readiness(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(cli, "cron_available", lambda: False)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: False)
 
     result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
     captured = capsys.readouterr()
@@ -227,8 +230,11 @@ def test_tunnel_status_reports_bounded_config_readiness(
 def test_tunnel_status_does_not_echo_private_values(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(cli, "cron_available", lambda: False)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: False)
     tunnel_id = "tunnel-sensitive-placeholder"
     api_key = "api-sensitive-placeholder"
     tunnel_env = paths.config_dir / "tunnel.env"
@@ -252,6 +258,150 @@ def test_tunnel_status_does_not_echo_private_values(
     assert api_key not in captured.out
     assert tunnel_id not in captured.err
     assert api_key not in captured.err
+
+
+def test_tunnel_status_uses_managed_systemd_process_evidence(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    (unit_dir / cli.TUNNEL_UNIT).write_text(
+        cli.MANAGED_MARKER + "\n",
+        encoding="utf-8",
+    )
+
+    class Row:
+        component = "tunnel"
+        installed = True
+        active = True
+
+    monkeypatch.setattr(cli, "cron_available", lambda: False)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(cli, "default_user_unit_dir", lambda: unit_dir)
+    monkeypatch.setattr(cli, "user_service_status", lambda: [Row()])
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.splitlines() == [
+        "Restart config: complete",
+        "Readiness: process_running",
+        "Reason: local_mcp_not_ready",
+    ]
+
+
+def test_tunnel_status_rejects_foreign_systemd_unit_as_process_evidence(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    (unit_dir / cli.TUNNEL_UNIT).write_text(
+        "[Service]\nExecStart=/bin/false\n",
+        encoding="utf-8",
+    )
+    called: list[bool] = []
+
+    monkeypatch.setattr(cli, "cron_available", lambda: False)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(cli, "default_user_unit_dir", lambda: unit_dir)
+    monkeypatch.setattr(
+        cli,
+        "user_service_status",
+        lambda: called.append(True),
+    )
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert called == []
+    assert captured.out.splitlines() == [
+        "Restart config: complete",
+        "Readiness: configured",
+        "Reason: process_not_running",
+    ]
+
+
+def test_tunnel_status_uses_managed_cron_process_evidence(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    class Row:
+        component = "tunnel"
+        installed = True
+        active = True
+
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: False)
+    monkeypatch.setattr(
+        cli,
+        "configured_autostart_components",
+        lambda _config_dir: ("server", "tunnel"),
+    )
+    monkeypatch.setattr(
+        cli,
+        "cron_status",
+        lambda **_kwargs: [Row()],
+    )
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert captured.out.splitlines() == [
+        "Restart config: complete",
+        "Readiness: process_running",
+        "Reason: local_mcp_not_ready",
+    ]
+
+
+def test_tunnel_status_fails_closed_on_multiple_managed_backends(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+
+    result = main(["--config-dir", str(paths.config_dir), "tunnel-status"])
+    captured = capsys.readouterr()
+
+    assert result == 2
+    assert "multiple managed autostart backends" in captured.err
 
 
 def test_doctor_command_reports_no_failures(

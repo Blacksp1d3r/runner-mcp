@@ -23,13 +23,18 @@ class TunnelConfigReadiness:
         }
 
 
-def collect_tunnel_config_readiness(config_dir: Path) -> TunnelConfigReadiness:
-    """Collect bounded config evidence only; no process or network probing."""
+def collect_tunnel_config_readiness(
+    config_dir: Path,
+    *,
+    process_running: bool = False,
+) -> TunnelConfigReadiness:
+    """Classify bounded config/process evidence without process or network probing."""
 
     restart_config = inspect_tunnel_restart_config(config_dir)
     readiness = classify_tunnel_readiness(
         TunnelReadinessEvidence(
             configured=restart_config is TunnelRestartConfigState.COMPLETE,
+            process_running=process_running,
         )
     )
     return TunnelConfigReadiness(

@@ -53,6 +53,10 @@ from .fabric_agent_runtime import (
     restart_fabric_qualification_agent,
 )
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
+from .fabric_disposable_target_qualification import (
+    FabricDisposableTargetQualificationError,
+    qualify_fabric_disposable_target,
+)
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
@@ -1043,6 +1047,29 @@ def build_mcp(
         )
         return result
 
+    def fabric_disposable_target_qualify() -> dict:
+        """Run the fixed disposable Runner Fabric target qualification."""
+        try:
+            result = qualify_fabric_disposable_target(
+                safety=safety,
+                private_values=private_values,
+            )
+        except FabricDisposableTargetQualificationError as exc:
+            _audit_fabric(
+                "fabric_disposable_target_qualify",
+                "fabric-target:disposable-qualification",
+                "denied",
+            )
+            raise ValueError(
+                "Fabric disposable target qualification is unavailable"
+            ) from exc
+        _audit_fabric(
+            "fabric_disposable_target_qualify",
+            "fabric-target:disposable-qualification",
+            "qualified",
+        )
+        return result
+
     def fabric_agent_restart() -> dict:
         """Restart the fixed loopback Fabric qualification agent safely."""
         if (
@@ -1152,6 +1179,7 @@ def build_mcp(
         mcp.tool()(fabric_ci_runner_guest_status)
         mcp.tool()(fabric_ci_runner_guest_start)
         mcp.tool()(fabric_ci_runner_guest_stop)
+        mcp.tool()(fabric_disposable_target_qualify)
         mcp.tool()(fabric_agent_restart)
         mcp.tool()(fabric_operational_snapshot)
         mcp.tool()(fabric_run_work_unit)

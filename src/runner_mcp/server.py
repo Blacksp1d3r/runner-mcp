@@ -2500,7 +2500,25 @@ def create_app(
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
-    audit = AuditLogger(settings.audit_log)
+    try:
+        package_version = version("aifordable-runner-mcp")
+    except PackageNotFoundError:
+        package_version = "development"
+    audit = AuditLogger(
+        settings.audit_log,
+        component_id="runner-mcp",
+        component_version=package_version,
+    )
+    audit.append(
+        AuditEvent(
+            "runtime-start",
+            "runtime",
+            None,
+            "system",
+            "started",
+            utc_timestamp(),
+        )
+    )
     safety_guard = OperatorSafetyGuard(
         stop_file=settings.operator_stop_file,
         retention=settings.retention_policy,

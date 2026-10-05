@@ -39,6 +39,44 @@ KNOWN_PROJECTS: dict[str, KnownProject] = {
         directory_name="rasff-lens",
         adapter="python",
     ),
+    "bewind": KnownProject(
+        code="bewind",
+        display_name="Bewind",
+        repository="Blacksp1d3r/bewind",
+        directory_name="bewind",
+        adapter="python",
+    ),
+    "enercue": KnownProject(
+        code="enercue",
+        display_name="EnerCue",
+        repository="Blacksp1d3r/EnerCue",
+        directory_name="EnerCue",
+    ),
+    "patrimai": KnownProject(
+        code="patrimai",
+        display_name="PatrimAI",
+        repository="Blacksp1d3r/PatrimAI",
+        directory_name="PatrimAI",
+    ),
+    "unifiedesg": KnownProject(
+        code="unifiedesg",
+        display_name="UnifiedESG",
+        repository="Blacksp1d3r/UnifiedESG",
+        directory_name="UnifiedESG",
+        adapter="python",
+    ),
+    "pastentrance": KnownProject(
+        code="pastentrance",
+        display_name="PastEntrance",
+        repository="Blacksp1d3r/PastEntrance",
+        directory_name="PastEntrance",
+    ),
+    "safety": KnownProject(
+        code="safety",
+        display_name="Safety!",
+        repository="Blacksp1d3r/safety",
+        directory_name="safety",
+    ),
 }
 
 

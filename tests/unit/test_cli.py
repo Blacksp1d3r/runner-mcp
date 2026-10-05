@@ -242,7 +242,7 @@ def test_doctor_warns_when_tunnel_restart_configuration_is_incomplete(
     assert "private restart configuration is incomplete" in captured.out
 
 
-def test_doctor_accepts_complete_tunnel_restart_configuration_without_echo(
+def test_doctor_warns_when_complete_tunnel_config_has_no_process_evidence(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
 ) -> None:
@@ -262,8 +262,11 @@ def test_doctor_accepts_complete_tunnel_restart_configuration_without_echo(
 
     assert result == 0
     assert "connector tunnel restart configuration" in captured.out
-    assert "PASS" in captured.out
-    assert "private restart configuration is complete" in captured.out
+    assert "WARN" in captured.out
+    assert (
+        "private restart configuration is complete; "
+        "tunnel readiness remains process_not_running"
+    ) in captured.out
     assert tunnel_id not in captured.out
     assert api_key not in captured.out
     assert tunnel_id not in captured.err

@@ -9,6 +9,8 @@ from datetime import UTC, datetime
 from pathlib import Path
 from threading import Lock
 
+from .build_identity import BuildIdentity, runner_mcp_build_identity
+
 
 @dataclass(frozen=True)
 class AuditEvent:
@@ -25,19 +27,16 @@ class AuditLogger:
         self,
         path: Path,
         *,
-        component_id: str = "runner-mcp",
-        component_version: str = "development",
+        build_identity: BuildIdentity | None = None,
     ) -> None:
         self.path = path
-        self.component_id = component_id
-        self.component_version = component_version
+        self.build_identity = build_identity or runner_mcp_build_identity("development")
         self._lock = Lock()
 
     def append(self, event: AuditEvent) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
         record = asdict(event)
-        record["component_id"] = self.component_id
-        record["component_version"] = self.component_version
+        record.update(self.build_identity.to_payload())
         payload = (
             json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
         ).encode("utf-8")

@@ -62,6 +62,9 @@ from .known_project_catalog import (
     preflight_known_project as preflight_known_project_binding,
 )
 from .known_project_catalog import (
+    preflight_known_project_source as preflight_known_project_source_binding,
+)
+from .known_project_catalog import (
     prepare_known_project as prepare_known_project_binding,
 )
 from .known_project_catalog import (
@@ -607,6 +610,11 @@ def build_mcp(
             "resource_transport",
             "pass" if transport_ok else "fail",
             "secure_or_loopback" if transport_ok else "unsafe",
+        )
+        add(
+            "github_source_auth",
+            "pass" if github_token else "warn",
+            "configured" if github_token else "not_configured",
         )
 
         def storage_state(value: Path | None) -> tuple[str, str]:
@@ -1364,6 +1372,39 @@ def build_mcp(
                 str(result.get("code", project_id)),
                 "authenticated-client",
                 str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def known_project_source_preflight(project_id: str) -> dict:
+        """Return bounded source-auth readiness for one built-in managed project."""
+        request_id = current_request_id()
+        try:
+            result = preflight_known_project_source_binding(
+                project_id=project_id,
+                github_token=github_token or None,
+            )
+        except KnownProjectRegistrationError as exc:
+            audit.append(
+                AuditEvent(
+                    request_id,
+                    "known_project_source_preflight",
+                    project_id,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                request_id,
+                "known_project_source_preflight",
+                str(result.get("code", project_id)),
+                "authenticated-client",
+                str(result.get("reason_code", "unknown")),
                 utc_timestamp(),
             )
         )

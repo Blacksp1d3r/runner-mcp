@@ -1,4 +1,5 @@
 import json
+import logging
 import threading
 import urllib.error
 import urllib.request
@@ -188,6 +189,7 @@ def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:
 
 def test_client_preflights_required_surface_and_build_identity(
     monkeypatch,
+    caplog,
 ) -> None:
     tools = [
         {
@@ -283,7 +285,8 @@ def test_client_preflights_required_surface_and_build_identity(
         compatibility_preflight=True,
     )
 
-    assert client._call_tool("list_projects", {}) == [{"code": "demo"}]
+    with caplog.at_level(logging.INFO, logger="runner_mcp.peer_identity"):
+        assert client._call_tool("list_projects", {}) == [{"code": "demo"}]
     assert client.peer_build_identity == identity
     assert client.peer_tool_names == tuple(sorted(names))
     assert [item["method"] for item in captured] == [
@@ -297,6 +300,24 @@ def test_client_preflights_required_surface_and_build_identity(
         "name": "build_identity",
         "arguments": {},
     }
+    records = [
+        json.loads(record.message)
+        for record in caplog.records
+        if record.name == "runner_mcp.peer_identity"
+    ]
+    assert len(records) == 1
+    peer = records[0]
+    assert peer["event"] == "runner_mcp_peer_observed"
+    assert peer["initialize_protocol_version"] == "2025-06-18"
+    assert peer["server_name"] == "Runner MCP"
+    assert peer["server_version"] == "0.1.3"
+    assert peer["peer_component_id"] == "runner-mcp"
+    assert peer["peer_protocol_min"] == "2025-03-26"
+    assert peer["peer_protocol_max"] == "2025-06-18"
+    assert peer["peer_interface_schema_digest"] == digest
+    rendered = json.dumps(peer)
+    assert "safe-token" not in rendered
+    assert "127.0.0.1" not in rendered
 
 
 def test_client_preflight_rejects_missing_required_tool(monkeypatch) -> None:

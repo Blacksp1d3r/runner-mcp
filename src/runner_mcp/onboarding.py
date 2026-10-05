@@ -18,6 +18,7 @@ from .github_mailbox import GITHUB_MAILBOX_ENV_KEYS
 from .operational_safety import OperatorSafetyGuard
 from .self_update_install import install_recovery_state
 from .server import Settings
+from .tunnel_readiness import TunnelReadinessEvidence, classify_tunnel_readiness
 
 
 class OnboardingError(RuntimeError):
@@ -608,7 +609,16 @@ def run_doctor(config_dir: Path) -> list[DoctorCheck]:
                 "private control-plane credential is structurally invalid",
             )
         else:
-            status, detail = "PASS", "private restart configuration is complete"
+            readiness = classify_tunnel_readiness(
+                TunnelReadinessEvidence(configured=True)
+            )
+            status, detail = (
+                "WARN",
+                (
+                    "private restart configuration is complete; "
+                    f"tunnel readiness remains {readiness.reason.value}"
+                ),
+            )
         checks.append(
             DoctorCheck(
                 "connector tunnel restart configuration",

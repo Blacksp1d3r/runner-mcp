@@ -40,6 +40,13 @@ from runner_mcp.bridge_protocol import (
         ),
         (
             {
+                "request_id": "req-fabric-snapshot",
+                "action": "fabric_operational_snapshot",
+            },
+            ("fabric_operational_snapshot", {}),
+        ),
+        (
+            {
                 "request_id": "req-003",
                 "action": "project_status",
                 "project": "demo",
@@ -131,6 +138,7 @@ def test_unknown_fields_are_rejected() -> None:
         '{"request_id":"req-001","action":"queue_status","project":"demo"}',
         '{"request_id":"req-001","action":"runtime_status","project":"demo"}',
         '{"request_id":"req-001","action":"runtime_doctor","limit":2}',
+        '{"request_id":"req-001","action":"fabric_operational_snapshot","project":"demo"}',
         '{"request_id":"req-001","action":"job_status"}',
         '{"request_id":"req-001","action":"job_status","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","project":"demo"}',
         '{"request_id":"req-001","action":"cancel_job","job_id":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","profile":"unit"}',
@@ -749,6 +757,10 @@ _VALID_REQUEST_BY_ACTION: dict[BridgeAction, dict[str, object]] = {
     BridgeAction.RUNTIME_DOCTOR: {
         "request_id": "matrix-runtime-doctor",
         "action": "runtime_doctor",
+    },
+    BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT: {
+        "request_id": "matrix-fabric-operational-snapshot",
+        "action": "fabric_operational_snapshot",
     },
     BridgeAction.SELF_UPDATE: {
         "request_id": "matrix-self-update",

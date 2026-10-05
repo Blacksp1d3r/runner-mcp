@@ -165,6 +165,7 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
             for token in (
                 " serve ",
                 " tunnel-run ",
+                " cron-run tunnel",
                 " github-watcher ",
                 " completion-watcher ",
                 " agent-bus-worker ",

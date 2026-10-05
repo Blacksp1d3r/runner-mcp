@@ -25,8 +25,6 @@ jobs:
       - X64
       - runner-mcp-validation
     timeout-minutes: 20
-    env:
-      HOME: ${{ runner.temp }}/runner-mcp-home
 
     steps:
       - name: Check out exact requested revision
@@ -39,7 +37,9 @@ jobs:
       - name: Prepare isolated job home
         shell: bash
         run: |
-          install -d -m 700 "$HOME"
+          isolated_home="$RUNNER_TEMP/runner-mcp-home"
+          install -d -m 700 "$isolated_home"
+          printf 'HOME=%s\n' "$isolated_home" >> "$GITHUB_ENV"
 
       - name: Verify Python 3.12+
         shell: bash

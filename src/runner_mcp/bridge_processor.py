@@ -237,6 +237,9 @@ class BridgeProcessor:
         if request.action == BridgeAction.RUNTIME_DOCTOR:
             return self._executor.runtime_doctor()
 
+        if request.action == BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT:
+            return self._executor.fabric_operational_snapshot()
+
         if request.action == BridgeAction.SELF_UPDATE:
             assert request.commit is not None
             return self._executor.self_update(request.commit)

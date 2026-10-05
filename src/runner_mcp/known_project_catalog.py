@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import base64
+import os
 import secrets
 import shutil
 import subprocess
@@ -375,6 +376,10 @@ def prepare_known_project(
             "Known project clone destination is ambiguous"
         )
     parent = next(iter(parents))
+    if not os.access(parent, os.W_OK | os.X_OK):
+        raise KnownProjectRegistrationError(
+            "Known project destination is not writable"
+        )
     target = parent / project.directory_name
 
     if target.exists() or target.is_symlink():
@@ -510,6 +515,12 @@ def preflight_known_project(
         }
 
     parent = next(iter(parents))
+    if not os.access(parent, os.W_OK | os.X_OK):
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "parent-not-writable",
+        }
     target = parent / project.directory_name
     if target.is_symlink():
         return {

@@ -1,7 +1,7 @@
 ## Fleet Update parallel review task — UNCLAIMED
 
-Status: `UNCLAIMED`  
-Preferred agent: Claude  
+Status: `UNCLAIMED`
+Preferred agent: Claude
 Coordination: ChatGPT owns the first A1 implementation branch and all direct changes to `self_update.py` / `self_update_install.py`.
 
 Goal: independently review the upcoming historical-failure reproduction for Runner-Fabric #937 / Runner-MCP #341 without duplicating implementation.

@@ -21,14 +21,25 @@ class AuditEvent:
 
 
 class AuditLogger:
-    def __init__(self, path: Path) -> None:
+    def __init__(
+        self,
+        path: Path,
+        *,
+        component_id: str = "runner-mcp",
+        component_version: str = "development",
+    ) -> None:
         self.path = path
+        self.component_id = component_id
+        self.component_version = component_version
         self._lock = Lock()
 
     def append(self, event: AuditEvent) -> None:
         self.path.parent.mkdir(parents=True, exist_ok=True)
+        record = asdict(event)
+        record["component_id"] = self.component_id
+        record["component_version"] = self.component_version
         payload = (
-            json.dumps(asdict(event), sort_keys=True, separators=(",", ":")) + "\n"
+            json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n"
         ).encode("utf-8")
         flags = os.O_WRONLY | os.O_APPEND | os.O_CREAT
         nofollow = getattr(os, "O_NOFOLLOW", 0)

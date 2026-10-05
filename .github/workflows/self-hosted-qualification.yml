@@ -38,8 +38,10 @@ jobs:
         shell: bash
         run: |
           isolated_home="$RUNNER_TEMP/runner-mcp-home"
-          install -d -m 700 "$isolated_home"
+          install -d -m 700 "$isolated_home" "$isolated_home/bin"
+          ln -s "$(command -v python3)" "$isolated_home/bin/python"
           printf 'HOME=%s\n' "$isolated_home" >> "$GITHUB_ENV"
+          printf '%s\n' "$isolated_home/bin" >> "$GITHUB_PATH"
 
       - name: Verify Python 3.12+
         shell: bash

@@ -21,6 +21,8 @@ jobs:
       - X64
       - runner-mcp-validation
     timeout-minutes: 20
+    env:
+      HOME: ${{ runner.temp }}/runner-mcp-home
 
     steps:
       - name: Check out exact requested revision
@@ -28,6 +30,11 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+
+      - name: Prepare isolated job home
+        shell: bash
+        run: |
+          install -d -m 700 "$HOME"
 
       - name: Verify Python 3.12+
         shell: bash
@@ -66,7 +73,7 @@ jobs:
           print(hashlib.sha256(identity + b"\0" + payload).hexdigest()[:24])
           PY
           )
-          cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/runner-mcp/validation-wheels"
+          cache_root="${RUNNER_TOOL_CACHE:-$HOME/.cache}/runner-mcp/validation-wheels"
           wheelhouse="$cache_root/$fingerprint"
           if [ ! -f "$wheelhouse/.complete" ]; then
             staging="$wheelhouse.tmp.$$"
@@ -91,7 +98,7 @@ jobs:
           site_packages=$(.venv-ci/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
           wheelhouse=$(cat "$RUNNER_TEMP/runner-mcp-wheelhouse")
           fingerprint=$(cat "$RUNNER_TEMP/runner-mcp-fingerprint")
-          installed_root="${XDG_CACHE_HOME:-$HOME/.cache}/runner-mcp/validation-installed"
+          installed_root="${RUNNER_TOOL_CACHE:-$HOME/.cache}/runner-mcp/validation-installed"
           installed_tree="$installed_root/$fingerprint"
           if [ ! -f "$installed_tree/.complete" ]; then
             staging="$installed_tree.tmp.$$"
@@ -125,7 +132,7 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/runner-mcp/mcp-publisher"
+          cache_root="${RUNNER_TOOL_CACHE:-$HOME/.cache}/runner-mcp/mcp-publisher"
           binary="$cache_root/$MCP_PUBLISHER_VERSION/mcp-publisher"
           if [ ! -x "$binary" ]; then
             staging="$cache_root/$MCP_PUBLISHER_VERSION.tmp.$$"

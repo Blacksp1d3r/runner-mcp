@@ -55,7 +55,7 @@ jobs:
         shell: bash
         run: |
           rm -rf .venv-ci
-          python3 -m venv --without-pip .venv-ci
+          python3 -m venv .venv-ci
 
       - name: Seed immutable local dependency wheelhouse
         shell: bash

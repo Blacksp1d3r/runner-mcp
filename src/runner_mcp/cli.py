@@ -131,6 +131,7 @@ from .service_journal import ServiceJournalReader
 from .source_control import SourceSynchronizer
 from .test_runner import TestRunner
 from .tunnel_config_readiness import collect_tunnel_config_readiness
+from .tunnel_health_evidence import collect_local_mcp_ready
 from .tunnel_runtime import run_managed_tunnel
 
 
@@ -276,9 +277,15 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
 
 def cmd_tunnel_status(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
+    process_running = _managed_tunnel_process_running(config_dir)
     result = collect_tunnel_config_readiness(
         config_dir,
-        process_running=_managed_tunnel_process_running(config_dir),
+        process_running=process_running,
+        local_mcp_ready=(
+            collect_local_mcp_ready(config_dir)
+            if process_running
+            else False
+        ),
     ).public_dict()
     print(f"Restart config: {result['restart_config']}")
     print(f"Readiness: {result['state']}")

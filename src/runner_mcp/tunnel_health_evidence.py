@@ -168,9 +168,21 @@ def collect_local_mcp_ready(
         component="mcp",
         opener=opener,
     )
-    if payload is None or payload.get("status") != "ok":
+    if payload is None:
         return False
-    return payload.get("state") in {"initialized", "discovered"}
+    if (
+        payload.get("status") == "ok"
+        and payload.get("state") in {"initialized", "discovered"}
+    ):
+        return True
+
+    details = payload.get("details")
+    if not isinstance(details, dict) or details.get("transport") != "http-streamable":
+        return False
+    startup_probe = details.get("startup_probe")
+    if not isinstance(startup_probe, dict):
+        return False
+    return startup_probe.get("state") in {"succeeded", "auth_required"}
 
 
 def collect_control_plane_authenticated(

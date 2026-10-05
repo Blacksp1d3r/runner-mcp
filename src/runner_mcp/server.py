@@ -24,6 +24,7 @@ from starlette.routing import Mount, Route
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
+from .build_identity import runner_mcp_build_identity
 from .ci_runner_enrollment import (
     CIRunnerEnrollmentError,
     CIRunnerEnrollmentManager,
@@ -2506,8 +2507,7 @@ def create_app(
         package_version = "development"
     audit = AuditLogger(
         settings.audit_log,
-        component_id="runner-mcp",
-        component_version=package_version,
+        build_identity=runner_mcp_build_identity(package_version),
     )
     audit.append(
         AuditEvent(

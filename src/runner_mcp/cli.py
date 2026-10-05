@@ -28,14 +28,14 @@ from .autostart import (
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
-from .ci_runner_enrollment import CIRunnerEnrollmentManager
-from .ci_runner_github import CIRunnerGitHubController
 from .ci_runner_cron import (
     CIRunnerCronError,
     ci_runner_cron_status,
     install_ci_runner_cron,
     remove_ci_runner_cron,
 )
+from .ci_runner_enrollment import CIRunnerEnrollmentManager
+from .ci_runner_github import CIRunnerGitHubController
 from .ci_runner_lifecycle import (
     CIRunnerLifecycleError,
     parse_ci_runner_specs,

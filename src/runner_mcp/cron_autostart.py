@@ -21,6 +21,7 @@ CRON_BEGIN = "# BEGIN RUNNER MCP AUTOSTART v1"
 CRON_END = "# END RUNNER MCP AUTOSTART v1"
 CRON_COMPONENTS = (
     "server",
+    "tunnel",
     "github-watcher",
     "completion-watcher",
     "agent-bus-worker",
@@ -192,7 +193,7 @@ def _cron_command(
         "cron-run",
         component,
     ]
-    if component == "server":
+    if component in {"server", "tunnel"}:
         argv.extend(["--port", str(port)])
     command = " ".join(shlex.quote(item) for item in argv)
     return f"* * * * * {command} >/dev/null 2>&1"
@@ -398,6 +399,8 @@ def run_cron_component(
                     str(port),
                 ]
             )
+        elif component == "tunnel":
+            argv.extend(["tunnel-run", "--port", str(port)])
         elif component == "github-watcher":
             argv.extend(["github-watcher", "run"])
         elif component == "completion-watcher":

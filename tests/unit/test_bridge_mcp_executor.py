@@ -11,6 +11,7 @@ from runner_mcp.bridge_mcp_executor import (
     LocalMCPClient,
     LocalMCPConfig,
     _decode_mcp_response,
+    _validate_peer_tool_surface,
 )
 from runner_mcp.bridge_processor import BridgeExecutionAdapterError
 
@@ -183,6 +184,243 @@ def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:
         "server_name": "Runner MCP",
         "server_version": "0.1.3",
     }
+
+
+def test_client_preflights_required_surface_and_build_identity(
+    monkeypatch,
+) -> None:
+    tools = [
+        {
+            "name": "build_identity",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+        {
+            "name": "list_projects",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    ]
+    digest, names = _validate_peer_tool_surface(
+        {"result": {"tools": tools}},
+        required_tools=frozenset({"list_projects"}),
+    )
+    identity = {
+        "component_id": "runner-mcp",
+        "build_version": "0.1.3",
+        "source_revision": None,
+        "artifact_digest": None,
+        "protocol_min": "2025-03-26",
+        "protocol_max": "2025-06-18",
+        "interface_schema_digest": digest,
+    }
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","serverInfo":{"name":"Runner MCP","version":"0.1.3"}}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {"tools": tools},
+                }
+            ).encode()
+        ),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "result": {
+                        "isError": False,
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(identity),
+                            }
+                        ],
+                    },
+                }
+            ).encode()
+        ),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 4,
+                    "result": {
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps([{"code": "demo"}]),
+                            }
+                        ],
+                    },
+                }
+            ).encode()
+        ),
+    ]
+    captured = []
+
+    def respond(request, timeout):
+        del timeout
+        captured.append(json.loads(request.data))
+        return responses.pop(0)
+
+    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    client = LocalMCPClient(
+        _config(),
+        allowed_tools=frozenset({"list_projects"}),
+        compatibility_preflight=True,
+    )
+
+    assert client._call_tool("list_projects", {}) == [{"code": "demo"}]
+    assert client.peer_build_identity == identity
+    assert client.peer_tool_names == tuple(sorted(names))
+    assert [item["method"] for item in captured] == [
+        "initialize",
+        "notifications/initialized",
+        "tools/list",
+        "tools/call",
+        "tools/call",
+    ]
+    assert captured[3]["params"] == {
+        "name": "build_identity",
+        "arguments": {},
+    }
+
+
+def test_client_preflight_rejects_missing_required_tool(monkeypatch) -> None:
+    tools = [
+        {
+            "name": "build_identity",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        }
+    ]
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18"}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {"tools": tools},
+                }
+            ).encode()
+        ),
+    ]
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda request, timeout: responses.pop(0),
+    )
+    client = LocalMCPClient(
+        _config(),
+        allowed_tools=frozenset({"list_projects"}),
+        compatibility_preflight=True,
+    )
+
+    with pytest.raises(
+        BridgeExecutionAdapterError,
+        match="interface schema",
+    ):
+        client.initialize()
+
+
+def test_client_preflight_rejects_peer_digest_mismatch(monkeypatch) -> None:
+    tools = [
+        {
+            "name": "build_identity",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+        {
+            "name": "list_projects",
+            "inputSchema": {
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        },
+    ]
+    identity = {
+        "component_id": "runner-mcp",
+        "build_version": "0.1.3",
+        "source_revision": None,
+        "artifact_digest": None,
+        "protocol_min": "2025-03-26",
+        "protocol_max": "2025-06-18",
+        "interface_schema_digest": "f" * 64,
+    }
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18"}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 2,
+                    "result": {"tools": tools},
+                }
+            ).encode()
+        ),
+        FakeResponse(
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 3,
+                    "result": {
+                        "isError": False,
+                        "content": [
+                            {
+                                "type": "text",
+                                "text": json.dumps(identity),
+                            }
+                        ],
+                    },
+                }
+            ).encode()
+        ),
+    ]
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda request, timeout: responses.pop(0),
+    )
+    client = LocalMCPClient(
+        _config(),
+        allowed_tools=frozenset({"list_projects"}),
+        compatibility_preflight=True,
+    )
+
+    with pytest.raises(
+        BridgeExecutionAdapterError,
+        match="interface schema",
+    ):
+        client.initialize()
 
 
 def test_client_rejects_observed_protocol_version_mismatch(monkeypatch) -> None:
@@ -947,7 +1185,7 @@ def test_executor_uses_thread_local_clients(monkeypatch) -> None:
     created: list[int] = []
 
     class TrackingClient:
-        def __init__(self, _config):
+        def __init__(self, _config, **_kwargs):
             created.append(threading.get_ident())
 
         def _call_tool(self, name, arguments):

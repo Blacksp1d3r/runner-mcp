@@ -349,6 +349,7 @@ _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
         "rollback_status",
         "runtime_status",
         "runtime_doctor",
+        "fabric_operational_snapshot",
         "self_update",
         "self_update_status",
         "fabric_bootstrap",

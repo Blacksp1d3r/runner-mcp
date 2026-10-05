@@ -161,6 +161,7 @@ class RecordingExecutor:
     def __init__(self) -> None:
         self.status_calls = 0
         self.doctor_calls = 0
+        self.fabric_snapshot_calls = 0
 
     def runtime_status(self):
         self.status_calls += 1
@@ -169,6 +170,16 @@ class RecordingExecutor:
     def runtime_doctor(self):
         self.doctor_calls += 1
         return {"failures": 0, "warnings": 0}
+
+    def fabric_operational_snapshot(self):
+        self.fabric_snapshot_calls += 1
+        return {
+            "schema_version": "runner.fabric/operational-snapshot/v1",
+            "busy": False,
+            "degraded": False,
+            "mutation_enabled": False,
+            "execution_enabled": False,
+        }
 
 
 class FakeTransport:
@@ -288,3 +299,31 @@ def test_runtime_doctor_uses_only_bounded_executor_method(tmp_path: Path) -> Non
     assert outcome.state is BridgeProcessState.COMPLETED
     assert executor.doctor_calls == 1
     assert executor.status_calls == 0
+
+
+
+def test_fabric_operational_snapshot_uses_only_bounded_executor_method(
+    tmp_path: Path,
+) -> None:
+    transport = FakeTransport(relay_claim("fabric_operational_snapshot"))
+    executor = RecordingExecutor()
+    worker = AIfordableRelayWorker(
+        transport=transport,
+        ledger=BridgeReplayLedger((tmp_path / "replay.json").resolve()),
+        executor=executor,
+        pending_store=RelayPendingResultStore(
+            (tmp_path / "pending.json").resolve()
+        ),
+    )
+
+    outcome = worker.once()
+
+    assert outcome is not None
+    assert outcome.state is BridgeProcessState.COMPLETED
+    assert executor.fabric_snapshot_calls == 1
+    assert executor.status_calls == 0
+    assert executor.doctor_calls == 0
+    published = json.loads(transport.published[0].result_json)
+    assert published["action"] == "fabric_operational_snapshot"
+    assert published["data"]["result"]["busy"] is False
+    assert published["data"]["result"]["execution_enabled"] is False

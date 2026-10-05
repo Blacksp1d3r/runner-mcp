@@ -45,6 +45,7 @@ _CONTROL_SCHEMA = "aifordable.control/v1"
 _ALLOWED_OPERATIONS = {
     "runtime_status": BridgeAction.RUNTIME_STATUS,
     "runtime_doctor": BridgeAction.RUNTIME_DOCTOR,
+    "fabric_operational_snapshot": BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT,
 }
 
 

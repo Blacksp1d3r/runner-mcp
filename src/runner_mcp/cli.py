@@ -127,6 +127,7 @@ from .server import create_app
 from .service_journal import ServiceJournalReader
 from .source_control import SourceSynchronizer
 from .test_runner import TestRunner
+from .tunnel_config_readiness import collect_tunnel_config_readiness
 
 
 def package_version() -> str:
@@ -228,6 +229,14 @@ def cmd_status(args: argparse.Namespace) -> int:
     for code in sorted(registry.projects):
         project = registry.projects[code]
         print(f"  - {code}: {project.display_name}")
+    return 0
+
+
+def cmd_tunnel_status(args: argparse.Namespace) -> int:
+    result = collect_tunnel_config_readiness(_config_dir(args.config_dir)).public_dict()
+    print(f"Restart config: {result['restart_config']}")
+    print(f"Readiness: {result['state']}")
+    print(f"Reason: {result['reason']}")
     return 0
 
 
@@ -1824,6 +1833,12 @@ def build_parser() -> argparse.ArgumentParser:
         help="Validate private configuration, permissions, projects and safety settings.",
     )
     doctor.set_defaults(func=cmd_doctor)
+
+    tunnel_status = subparsers.add_parser(
+        "tunnel-status",
+        help="Show bounded local tunnel readiness without exposing private values.",
+    )
+    tunnel_status.set_defaults(func=cmd_tunnel_status)
 
     guide = subparsers.add_parser(
         "guide",

@@ -17,6 +17,7 @@ _FABRIC_TOOLS = frozenset(
         "external_target_preflight",
         "external_target_inspect",
         "operational_snapshot",
+        "synthetic_probe_status",
         "run_work_unit",
         "get_work_unit",
         "cancel_work_unit",
@@ -116,6 +117,32 @@ class FabricBridgeClient:
                 "Runner Fabric operational snapshot failed"
             ) from exc
         return _validate_operational_snapshot(result)
+
+    def synthetic_probe_status(self) -> dict[str, Any]:
+        """Return bounded read-only latest synthetic-probe status."""
+
+        try:
+            result = self._client()._call_tool("synthetic_probe_status", {})
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric synthetic probe status failed"
+            ) from exc
+        return _validate_synthetic_probe_status(result)
+
+    def synthetic_probe_fresh_success(self) -> bool:
+        """Require a successful probe no older than two configured intervals."""
+
+        status = self.synthetic_probe_status()
+        if status["available"] is not True:
+            return False
+        age = status["age_seconds"]
+        interval = status["interval_seconds"]
+        return (
+            status["outcome"] == "success"
+            and isinstance(age, int)
+            and isinstance(interval, int)
+            and age <= interval * 2
+        )
 
     def ci_runner_guest_status(self) -> dict[str, Any]:
         """Return bounded isolated CI guest state."""
@@ -248,6 +275,115 @@ class FabricBridgeClient:
             raise FabricBridgeError("Runner Fabric request failed") from exc
         return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
 
+
+
+def _validate_synthetic_probe_status(value: object) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid synthetic probe status"
+        )
+    keys = {
+        "schemaVersion",
+        "available",
+        "observed_at",
+        "age_seconds",
+        "interval_seconds",
+        "outcome",
+        "failure_layer",
+        "reason_code",
+        "qualification_id",
+        "trace_id",
+        "outcome_evidence_id",
+        "cycle_evidence_id",
+    }
+    _exact_keys(value, keys, "synthetic probe status")
+    if value["schemaVersion"] != "runner.fabric/agent-bus-synthetic-probe-status/v1":
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid synthetic probe status"
+        )
+    if not isinstance(value["available"], bool):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid synthetic probe status"
+        )
+    if value["available"] is False:
+        for field in (
+            "observed_at",
+            "age_seconds",
+            "interval_seconds",
+            "outcome",
+            "failure_layer",
+            "qualification_id",
+            "trace_id",
+            "outcome_evidence_id",
+            "cycle_evidence_id",
+        ):
+            if value[field] is not None:
+                raise FabricBridgeError(
+                    "Runner Fabric returned invalid synthetic probe status"
+                )
+        if value["reason_code"] != "probe_status_unavailable":
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid synthetic probe status"
+            )
+        return value
+
+    for field in ("observed_at", "age_seconds", "interval_seconds"):
+        item = value[field]
+        if isinstance(item, bool) or not isinstance(item, int) or item < 0:
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid synthetic probe status"
+            )
+    if value["interval_seconds"] < 1:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid synthetic probe status"
+        )
+    if value["outcome"] not in {"success", "failure"}:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid synthetic probe status"
+        )
+    for field in (
+        "reason_code",
+        "qualification_id",
+        "trace_id",
+        "outcome_evidence_id",
+        "cycle_evidence_id",
+    ):
+        item = value[field]
+        if not isinstance(item, str) or not item or len(item) > 160:
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid synthetic probe status"
+            )
+    trace_id = value["trace_id"]
+    if (
+        len(trace_id) != 32
+        or any(char not in "0123456789abcdef" for char in trace_id)
+        or trace_id == "0" * 32
+    ):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid synthetic probe status"
+        )
+    failure_layer = value["failure_layer"]
+    if value["outcome"] == "success":
+        if failure_layer is not None or value["reason_code"] != "probe_succeeded":
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid synthetic probe status"
+            )
+    elif failure_layer not in {
+        "process",
+        "transport",
+        "handshake",
+        "protocol_version",
+        "interface_schema",
+        "auth",
+        "functional",
+        "result",
+        "ack",
+    }:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid synthetic probe status"
+        )
+    _validate_bounded_json(value)
+    return value
 
 
 def _validate_ci_guest_result(value: object) -> dict[str, Any]:

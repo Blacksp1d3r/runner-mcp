@@ -1,3 +1,19 @@
+## 2026-10-05 — Fleet Update A2 Runner-MCP build identity merged
+
+PR #348 merged as `c73298e601081bc85d7f850583356b9c1ee741b4`. Runner-MCP now reuses its existing durable audit log to stamp every record with `component_id=runner-mcp` and the installed package version, and emits a safe runtime-start event. No new logging service/dependency was introduced. Fabric #938 remains open because Agent Bus/Fabric and other first-party hops still need equivalent identity evidence with backward-compatible persisted schemas.
+
+## 2026-10-05 — Fleet Update A1 characterization merged
+
+PR #346 merged as `c37f60dc6001be5f269f88506a92934bc09bf7cb`. The integration regression reproduces the observed stale-client tool-catalog failure class: MCP protocol negotiation remains green while the cached peer lacks a newly available Fabric tool, so the failure layer is `interface_schema`, not transport/protocol. No production code or runtime authority changed. Track A may proceed to A2 only after post-merge validation remains green.
+
+## 2026-10-05 — Fleet Update Track A added; A1 first
+
+Runner-Fabric v2 review narrows Runner-MCP work to concrete control-path protection. #341 is the execution counterpart; Fabric #937–#943 define Track A. First implementation is the historical incompatibility reproduction only; no production mutation.
+
+Code inspection confirms existing self-update already has baseline-wheel/install-time recovery but not an independent post-activation commit-confirmed supervisor. Reuse the installer; do not build another updater.
+
+Zero-cost rule: no paid software dependencies before project revenue.
+
 ## 2026-10-04 — bounded Fabric operational snapshot proxy merged
 
 PR #286 merged as `e6330820a2ee58a2ec5068830c2d9a1267f2297b` after Runner MCP validation and attribution were green. Runner MCP now allow-lists Fabric's zero-argument `operational_snapshot` and exposes `fabric_operational_snapshot`, validating exact schema, pending-count relationships, capacity/age bounds, read-only flags and private-detail restrictions. Runner MCP does not reconstruct relay/Fabric truth. Fabric #876 is merged as `98baf4e2532e591d534ba893a147773aa31f644f`; live usefulness still depends on Fabric providing an explicit canonical provider. Keep #269 open until provider wiring and live proof show upstream pending work while local test workers are idle.

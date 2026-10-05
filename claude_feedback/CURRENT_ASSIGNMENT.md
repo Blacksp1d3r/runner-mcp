@@ -1,3 +1,28 @@
+## Fleet Update parallel review task — UNCLAIMED
+
+Status: `UNCLAIMED`  
+Preferred agent: Claude  
+Coordination: ChatGPT owns the first A1 implementation branch and all direct changes to `self_update.py` / `self_update_install.py`.
+
+Goal: independently review the upcoming historical-failure reproduction for Runner-Fabric #937 / Runner-MCP #341 without duplicating implementation.
+
+Allowed work:
+- inspect current Runner-MCP tests/protocol/plugin packaging and identify the smallest realistic stale-peer/incompatible-interface test fixture;
+- identify external/uncontrolled hops versus first-party hops;
+- propose failure taxonomy and assertions;
+- review the A1 PR when it appears;
+- write findings to `claude_feedback/` and `handover/AGENT_EXCHANGE.md` if cross-agent relevant.
+
+Do not:
+- change production/self-update code;
+- create a competing A1 implementation branch;
+- add paid services/dependencies;
+- broaden into Track B/C/D.
+
+Economic constraint: software budget is EUR 0 until AIfordable has revenue.
+
+---
+
 # Claude continuous assignment queue
 
 Last reconciled: 2026-09-22.

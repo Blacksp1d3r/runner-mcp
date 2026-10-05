@@ -264,16 +264,6 @@ def test_cron_run_uses_fixed_exec_argv_and_loopback(
     assert str(executable) not in diagnostics[0]
 
 
-@pytest.mark.parametrize(
-    ("component", "tail"),
-    [
-        ("github-watcher", ["github-watcher", "run"]),
-        ("completion-watcher", ["completion-watcher", "run"]),
-        ("agent-bus-worker", ["agent-bus-worker", "run"]),
-        ("fabric-agent-qualification", ["fabric-agent-qualification", "run"]),
-        ("fabric-live-overview", ["fabric-live-overview", "run"]),
-    ],
-)
 def test_cron_tunnel_waits_until_managed_server_is_active(
     tmp_path: Path,
 ) -> None:
@@ -329,6 +319,16 @@ def test_cron_tunnel_uses_fixed_runtime_when_server_lock_is_active(
     assert captured["argv"][-3:] == ["tunnel-run", "--port", "8123"]
 
 
+@pytest.mark.parametrize(
+    ("component", "tail"),
+    [
+        ("github-watcher", ["github-watcher", "run"]),
+        ("completion-watcher", ["completion-watcher", "run"]),
+        ("agent-bus-worker", ["agent-bus-worker", "run"]),
+        ("fabric-agent-qualification", ["fabric-agent-qualification", "run"]),
+        ("fabric-live-overview", ["fabric-live-overview", "run"]),
+    ],
+)
 def test_cron_run_uses_fixed_watcher_argv(
     tmp_path: Path,
     component: str,

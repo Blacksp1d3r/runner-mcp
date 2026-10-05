@@ -20,6 +20,7 @@ class TunnelReadinessReason(StrEnum):
     LOCAL_MCP_NOT_READY = "local_mcp_not_ready"
     CONTROL_PLANE_NOT_AUTHENTICATED = "control_plane_not_authenticated"
     END_TO_END_NOT_ROUTABLE = "end_to_end_not_routable"
+    INCONSISTENT_EVIDENCE = "inconsistent_evidence"
     READY = "ready"
 
 
@@ -46,6 +47,23 @@ class TunnelReadiness:
 
 def classify_tunnel_readiness(evidence: TunnelReadinessEvidence) -> TunnelReadiness:
     """Classify already-collected evidence without probing processes, network, or secrets."""
+
+    progression = (
+        evidence.configured,
+        evidence.process_running,
+        evidence.local_mcp_ready,
+        evidence.control_plane_authenticated,
+        evidence.end_to_end_routable,
+    )
+    seen_false = False
+    for item in progression:
+        if not item:
+            seen_false = True
+        elif seen_false:
+            return TunnelReadiness(
+                state=TunnelReadinessState.BLOCKED,
+                reason=TunnelReadinessReason.INCONSISTENT_EVIDENCE,
+            )
 
     if not evidence.configured:
         return TunnelReadiness(

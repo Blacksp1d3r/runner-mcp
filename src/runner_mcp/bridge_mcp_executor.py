@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import logging
 import re
 import threading
 import time
@@ -23,6 +24,7 @@ MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
 MAX_MCP_JOB_ID_CHARS = 32
 _MCP_PROTOCOL_VERSION = "2025-06-18"
+_PEER_LOGGER = logging.getLogger("runner_mcp.peer_identity")
 _PEER_INFO_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ +:/()-]{0,127}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -537,6 +539,33 @@ def _validate_peer_build_identity(
     return dict(payload)
 
 
+def _log_peer_identity_observed(
+    *,
+    protocol_version: str | None,
+    server_name: str | None,
+    server_version: str | None,
+    build_identity: dict[str, object],
+) -> None:
+    if not isinstance(build_identity, dict):
+        raise TypeError("build_identity must be a dict")
+    _PEER_LOGGER.info(
+        json.dumps(
+            {
+                "event": "runner_mcp_peer_observed",
+                "initialize_protocol_version": protocol_version,
+                "server_name": server_name,
+                "server_version": server_version,
+                **{
+                    f"peer_{key}": value
+                    for key, value in build_identity.items()
+                },
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+
+
 _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
     {
         "list_projects",
@@ -710,6 +739,12 @@ class LocalMCPClient:
                 observed_interface_digest=observed_digest,
             )
             self._peer_tool_names = tool_names
+            _log_peer_identity_observed(
+                protocol_version=self._peer_protocol_version,
+                server_name=self._peer_server_name,
+                server_version=self._peer_server_version,
+                build_identity=self._peer_build_identity,
+            )
         self._initialized = True
 
     def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:

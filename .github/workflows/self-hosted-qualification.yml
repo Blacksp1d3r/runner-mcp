@@ -1,0 +1,155 @@
+name: Runner MCP self-hosted qualification
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: runner-mcp-self-hosted-qualification-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  qualify:
+    name: Self-hosted qualification
+    runs-on:
+      - self-hosted
+      - Linux
+      - X64
+      - runner-mcp-validation
+    timeout-minutes: 20
+
+    steps:
+      - name: Check out exact requested revision
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+
+      - name: Verify Python 3.12+
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          import sys
+          if sys.version_info < (3, 12):
+              raise SystemExit(f"Python 3.12+ required, found {sys.version}")
+          print(sys.version)
+          PY
+
+      - name: Create clean validation venv
+        shell: bash
+        run: |
+          rm -rf .venv-ci
+          python3 -m venv --without-pip .venv-ci
+
+      - name: Seed immutable local dependency wheelhouse
+        shell: bash
+        run: |
+          set -euo pipefail
+          fingerprint=$(python3 - <<'PY'
+          import hashlib
+          import pathlib
+          import platform
+          import sys
+
+          source_digest = hashlib.sha256()
+          for path in sorted(pathlib.Path("src").rglob("*.py")):
+              source_digest.update(path.as_posix().encode())
+              source_digest.update(b"\0")
+              source_digest.update(path.read_bytes())
+              source_digest.update(b"\0")
+          payload = pathlib.Path("pyproject.toml").read_bytes() + b"\0" + source_digest.digest()
+          identity = f"{sys.implementation.name}-{platform.python_version()}-{platform.machine()}".encode()
+          print(hashlib.sha256(identity + b"\0" + payload).hexdigest()[:24])
+          PY
+          )
+          cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/runner-mcp/validation-wheels"
+          wheelhouse="$cache_root/$fingerprint"
+          if [ ! -f "$wheelhouse/.complete" ]; then
+            staging="$wheelhouse.tmp.$$"
+            rm -rf "$staging"
+            mkdir -p "$staging"
+            python3 -m pip wheel --disable-pip-version-check --wheel-dir "$staging" '.[dev]'
+            touch "$staging/.complete"
+            mkdir -p "$(dirname "$wheelhouse")"
+            if ! mv "$staging" "$wheelhouse" 2>/dev/null; then
+              rm -rf "$staging"
+              test -f "$wheelhouse/.complete"
+            fi
+          fi
+          test -f "$wheelhouse/.complete"
+          printf '%s\n' "$wheelhouse" > "$RUNNER_TEMP/runner-mcp-wheelhouse"
+          printf '%s\n' "$fingerprint" > "$RUNNER_TEMP/runner-mcp-fingerprint"
+
+      - name: Install immutable validation dependencies
+        shell: bash
+        run: |
+          set -euo pipefail
+          site_packages=$(.venv-ci/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
+          wheelhouse=$(cat "$RUNNER_TEMP/runner-mcp-wheelhouse")
+          fingerprint=$(cat "$RUNNER_TEMP/runner-mcp-fingerprint")
+          installed_root="${XDG_CACHE_HOME:-$HOME/.cache}/runner-mcp/validation-installed"
+          installed_tree="$installed_root/$fingerprint"
+          if [ ! -f "$installed_tree/.complete" ]; then
+            staging="$installed_tree.tmp.$$"
+            rm -rf "$staging"
+            mkdir -p "$staging/site-packages"
+            python3 -m pip install --disable-pip-version-check --no-index --find-links "$wheelhouse" --target "$staging/site-packages" 'aifordable-runner-mcp[dev]'
+            chmod -R a-w "$staging/site-packages"
+            touch "$staging/.complete"
+            mkdir -p "$installed_root"
+            if ! mv "$staging" "$installed_tree" 2>/dev/null; then
+              chmod -R u+w "$staging" 2>/dev/null || true
+              rm -rf "$staging"
+              test -f "$installed_tree/.complete"
+            fi
+          fi
+          printf '%s\n' "$installed_tree/site-packages" > "$site_packages/runner-mcp-immutable-deps.pth"
+
+      - name: Compile Python
+        run: .venv-ci/bin/python -m compileall -q src tests
+
+      - name: Ruff
+        run: .venv-ci/bin/python -m ruff check .
+
+      - name: Pytest
+        run: .venv-ci/bin/python -m pytest -q
+
+      - name: Validate MCP Registry metadata
+        env:
+          MCP_PUBLISHER_VERSION: "v1.8.1"
+          MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
+        shell: bash
+        run: |
+          set -euo pipefail
+          cache_root="${XDG_CACHE_HOME:-$HOME/.cache}/runner-mcp/mcp-publisher"
+          binary="$cache_root/$MCP_PUBLISHER_VERSION/mcp-publisher"
+          if [ ! -x "$binary" ]; then
+            staging="$cache_root/$MCP_PUBLISHER_VERSION.tmp.$$"
+            rm -rf "$staging"
+            mkdir -p "$staging"
+            url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+            curl --fail --silent --show-error --location "$url" --output "$staging/mcp-publisher.tar.gz"
+            printf '%s  %s\n' "$MCP_PUBLISHER_SHA256" "$staging/mcp-publisher.tar.gz" | sha256sum --check -
+            tar -xzf "$staging/mcp-publisher.tar.gz" -C "$staging" mcp-publisher
+            chmod 0755 "$staging/mcp-publisher"
+            mkdir -p "$cache_root"
+            if ! mv "$staging" "$cache_root/$MCP_PUBLISHER_VERSION" 2>/dev/null; then
+              rm -rf "$staging"
+              test -x "$binary"
+            fi
+          fi
+          "$binary" validate server.json
+
+      - name: Whitespace check
+        shell: bash
+        run: git diff --check
+
+      - name: Clean five-minute demo
+        shell: bash
+        run: bash scripts/demo-smoke.sh
+
+      - name: Built release artifact
+        shell: bash
+        run: bash scripts/release-artifact-smoke.sh

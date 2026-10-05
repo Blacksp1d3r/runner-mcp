@@ -25,8 +25,10 @@ def test_absent_tunnel_config_is_not_configured(tmp_path: Path) -> None:
             "incomplete",
         ),
         (
-            "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
-            "CONTROL_PLANE_API_KEY=duplicate-credentialduplicate-credential\n",
+            (
+                "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+                "CONTROL_PLANE_API_KEY=duplicate-credentialduplicate-credential\n"
+            ),
             "structurally_invalid",
         ),
     ],

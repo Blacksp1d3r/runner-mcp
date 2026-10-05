@@ -632,7 +632,7 @@ def test_doctor_warns_when_complete_tunnel_config_has_no_process_evidence(
     assert "WARN" in captured.out
     assert (
         "private restart configuration is complete; "
-        "tunnel readiness remains process_not_running"
+        "use tunnel-status for live readiness"
     ) in captured.out
     assert tunnel_id not in captured.out
     assert api_key not in captured.out

@@ -1,3 +1,17 @@
+## 2026-10-06 — A6 qualification proxy merged and live
+
+Runner-MCP main/live: `e88e76badad428995c026cf5ac9988607fd52069`.
+
+PR #411 added exactly two strict Runner-MCP -> Fabric A6 qualification proxies:
+- `fabric_a6_update_qualification_prepare(candidate_commit)`
+- `fabric_a6_update_qualification_finalize(correlation_id, job_id)`
+
+Exact-head validation #1138 and attribution #655 were green before merge. Live self-update job `3d3339dcad1d44838eb99825286eca8a` completed successfully; runtime_status confirms exact installed commit, operational mode, no restart pending and no recovery pending.
+
+The remaining blocker is ChatGPT connector schema refresh: this current session still exposes the older runner-mcp-control tool catalog and therefore cannot invoke the two newly added proxy tools even though the server runtime has them.
+
+Do not add another proxy/updater. After tool schema refresh, execute the existing A6 prepare -> self_update -> finalize path and hand evidence back to Fabric #942.
+
 ## 2026-10-05 — Tunnel readiness proven through control-plane authentication; end-to-end gate remains
 
 Canonical Runner-MCP main: 9a4f9d7a2916625617aa2ef144fc40679e549129.

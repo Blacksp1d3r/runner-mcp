@@ -49,6 +49,66 @@ class FabricRepositoryMirrorRunner:
             validator=_validate_preflight,
         )
 
+    def readiness(self) -> dict[str, Any]:
+        inventory_ready = _safe_private_dir(
+            self.environment.get("RUNNER_FABRIC_REPOSITORY_MIRROR_INVENTORY_ROOT")
+        )
+        mirror_ready = _safe_private_dir(
+            self.environment.get("RUNNER_FABRIC_REPOSITORY_MIRROR_ROOT")
+        )
+        desired_ready = _safe_private_file(
+            self.environment.get("RUNNER_FABRIC_MANAGED_REPOSITORIES_FILE")
+        )
+        credential_ready = _safe_private_file(
+            self.environment.get("RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG")
+        )
+        try:
+            self._validated_launcher()
+            runtime_ready = True
+        except FabricRepositoryMirrorError:
+            runtime_ready = False
+
+        configured_count = sum(
+            bool(self.environment.get(key))
+            for key in _ENV_KEYS
+        )
+        if configured_count == 0:
+            activation_state = "unconfigured"
+        elif configured_count == len(_ENV_KEYS):
+            activation_state = "configured"
+        else:
+            activation_state = "partial"
+
+        storage_ready = inventory_ready and mirror_ready
+        ready = (
+            storage_ready
+            and desired_ready
+            and credential_ready
+            and runtime_ready
+        )
+        if ready:
+            reason = "ready"
+        elif not runtime_ready:
+            reason = "fabric-runtime-unavailable"
+        elif not storage_ready:
+            reason = "storage-binding-unavailable"
+        elif not desired_ready:
+            reason = "desired-state-binding-unavailable"
+        else:
+            reason = "credential-binding-unavailable"
+
+        return {
+            "schemaVersion": "runner-mcp/fabric-repository-mirror-activation-readiness/v1",
+            "ready": ready,
+            "storageReady": storage_ready,
+            "desiredStateReady": desired_ready,
+            "credentialBindingReady": credential_ready,
+            "fabricRuntimeReady": runtime_ready,
+            "activationState": activation_state,
+            "reasonCode": reason,
+            "mutationEnabled": False,
+        }
+
     def reconcile(self) -> dict[str, Any]:
         self.safety.assert_action_allowed(ActionClass.BACKUP)
         return self._run(
@@ -156,6 +216,37 @@ class FabricRepositoryMirrorRunner:
             )
         return launcher
 
+
+
+
+def _safe_private_dir(value: object) -> bool:
+    if not isinstance(value, str) or not value or "\x00" in value:
+        return False
+    path = Path(value)
+    if not path.is_absolute() or path.is_symlink():
+        return False
+    try:
+        metadata = path.stat()
+    except OSError:
+        return False
+    return (
+        stat.S_ISDIR(metadata.st_mode)
+        and not (metadata.st_mode & 0o077)
+        and os.access(path, os.W_OK | os.X_OK)
+    )
+
+
+def _safe_private_file(value: object) -> bool:
+    if not isinstance(value, str) or not value or "\x00" in value:
+        return False
+    path = Path(value)
+    if not path.is_absolute() or path.is_symlink():
+        return False
+    try:
+        metadata = path.stat()
+    except OSError:
+        return False
+    return stat.S_ISREG(metadata.st_mode) and not (metadata.st_mode & 0o077)
 
 def _validate_preflight(value: object) -> dict[str, Any]:
     if not isinstance(value, dict) or set(value) != {

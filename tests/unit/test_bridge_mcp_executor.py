@@ -8,11 +8,11 @@ import pytest
 from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 
 from runner_mcp.bridge_mcp_executor import (
+    _MCP_POLICY_PROTOCOL_VERSIONS,
     MAX_MCP_RESPONSE_BYTES,
     LocalMCPBridgeExecutor,
     LocalMCPClient,
     LocalMCPConfig,
-    _MCP_POLICY_PROTOCOL_VERSIONS,
     _decode_mcp_response,
     _validate_peer_tool_surface,
 )

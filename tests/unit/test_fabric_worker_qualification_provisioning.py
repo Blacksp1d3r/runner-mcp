@@ -209,15 +209,15 @@ def test_provision_is_idempotent_for_same_request(tmp_path: Path) -> None:
         tmp_path,
         revision=revision,
     )
-    args = dict(
-        worker_id="worker-lab-a",
-        capability_profile="bewind-ocr-qualification-v1",
-        generation=7,
-        plan_digest=plan_digest,
-        policy_expires_at=expires.isoformat(),
-        fabric_revision=revision,
-        request_fingerprint=expected_fingerprint,
-    )
+    args = {
+        "worker_id": "worker-lab-a",
+        "capability_profile": "bewind-ocr-qualification-v1",
+        "generation": 7,
+        "plan_digest": plan_digest,
+        "policy_expires_at": expires.isoformat(),
+        "fabric_revision": revision,
+        "request_fingerprint": expected_fingerprint,
+    }
 
     assert manager.provision(**args) == manager.provision(**args)
 

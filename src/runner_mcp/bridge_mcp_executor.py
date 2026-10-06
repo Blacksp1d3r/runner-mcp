@@ -12,6 +12,8 @@ import urllib.request
 from dataclasses import dataclass
 from typing import Any
 
+from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
+
 from .bridge_processor import BridgeExecutionAdapterError
 from .http_middleware import active_traceparent
 
@@ -24,6 +26,10 @@ MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
 MAX_MCP_JOB_ID_CHARS = 32
 _MCP_PROTOCOL_VERSION = "2025-06-18"
+_MCP_PREVIOUS_PROTOCOL_VERSION = "2025-03-26"
+_MCP_POLICY_PROTOCOL_VERSIONS = frozenset(
+    {_MCP_PROTOCOL_VERSION, _MCP_PREVIOUS_PROTOCOL_VERSION}
+)
 _PEER_LOGGER = logging.getLogger("runner_mcp.peer_identity")
 _PEER_INFO_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ +:/()-]{0,127}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -328,7 +334,7 @@ def _validate_initialize_peer(value: object) -> dict[str, str | None]:
     protocol = value.get("protocolVersion")
     if protocol is not None and (
         not isinstance(protocol, str)
-        or protocol != _MCP_PROTOCOL_VERSION
+        or protocol not in _MCP_POLICY_PROTOCOL_VERSIONS
     ):
         raise BridgeExecutionAdapterError(
             "Runner MCP protocol version is incompatible"
@@ -473,6 +479,7 @@ def _validate_peer_build_identity(
     payload: object,
     *,
     observed_interface_digest: str,
+    negotiated_protocol_version: str,
 ) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise BridgeExecutionAdapterError(
@@ -523,7 +530,11 @@ def _validate_peer_build_identity(
     if (
         not isinstance(protocol_min, str)
         or not isinstance(protocol_max, str)
-        or not protocol_min <= _MCP_PROTOCOL_VERSION <= protocol_max
+        or not _protocol_range_contains(
+            negotiated_protocol_version,
+            protocol_min=protocol_min,
+            protocol_max=protocol_max,
+        )
     ):
         raise BridgeExecutionAdapterError(
             "Runner MCP protocol version is incompatible"
@@ -537,6 +548,26 @@ def _validate_peer_build_identity(
             "Runner MCP interface schema is incompatible"
         )
     return dict(payload)
+
+
+def _protocol_range_contains(
+    protocol_version: str,
+    *,
+    protocol_min: str,
+    protocol_max: str,
+) -> bool:
+    versions = tuple(HANDSHAKE_PROTOCOL_VERSIONS)
+    if (
+        protocol_version not in versions
+        or protocol_min not in versions
+        or protocol_max not in versions
+    ):
+        return False
+    return (
+        versions.index(protocol_min)
+        <= versions.index(protocol_version)
+        <= versions.index(protocol_max)
+    )
 
 
 def _log_peer_identity_observed(
@@ -734,9 +765,14 @@ class LocalMCPClient:
                     },
                 }
             )
+            if self._peer_protocol_version is None:
+                raise BridgeExecutionAdapterError(
+                    "Runner MCP protocol version is unavailable"
+                )
             self._peer_build_identity = _validate_peer_build_identity(
                 _tool_result_payload(identity_response),
                 observed_interface_digest=observed_digest,
+                negotiated_protocol_version=self._peer_protocol_version,
             )
             self._peer_tool_names = tool_names
             _log_peer_identity_observed(
@@ -764,6 +800,11 @@ class LocalMCPClient:
         except _StaleMCPSessionError:
             self._session_id = None
             self._initialized = False
+            self._peer_protocol_version = None
+            self._peer_server_name = None
+            self._peer_server_version = None
+            self._peer_build_identity = None
+            self._peer_tool_names = frozenset()
             self.initialize()
             payload = {
                 **payload,
@@ -850,6 +891,8 @@ class LocalMCPClient:
         }
         if self._session_id is not None:
             headers["Mcp-Session-Id"] = self._session_id
+        if self._peer_protocol_version is not None:
+            headers["MCP-Protocol-Version"] = self._peer_protocol_version
         traceparent = active_traceparent()
         if traceparent is not None:
             headers["traceparent"] = traceparent

@@ -1069,6 +1069,35 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def fabric_local_bundle_stage(commit: str) -> dict:
+        """Stage one exact canonical Runner Fabric update bundle into local custody."""
+        try:
+            result = fabric_update_manager.stage_local_bundle(commit)
+        except FabricUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_local_bundle_stage",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_local_bundle_stage",
+                "runner-fabric",
+                "authenticated-client",
+                "ready",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
     def fabric_local_update_readiness(commit: str) -> dict:
         """Check one exact locally-custodied Runner Fabric bundle."""
         try:

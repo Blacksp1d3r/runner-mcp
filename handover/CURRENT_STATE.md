@@ -1,3 +1,21 @@
+## 2026-10-06 — Local Fabric update custody is self-staging
+
+Tracking: #442, follows local-custody update source #404.
+
+Runner-MCP now has a bounded exact-commit staging path for Runner Fabric control-plane update bundles. The caller supplies only the full commit revision. Runner-MCP owns the canonical Runner Fabric repository, fixed builder, private temporary checkout and existing local-bundles custody root.
+
+The staging path:
+- clones/fetches only the canonical Runner Fabric source using the existing private GitHub credential;
+- verifies exact clean HEAD before build;
+- invokes only scripts/build_control_plane_update_bundle.py;
+- reuses FabricUpdateManager local bundle and bootstrap integrity validation;
+- atomically publishes only a fully validated bundle to local custody;
+- is idempotent for an already-valid exact bundle;
+- cleans temporary source/credential state on failure;
+- exposes no repository/path/token/argv authority to the caller.
+
+This closes the gap between provider-neutral bundle creation and the existing fabric_local_update_readiness/fabric_local_update route.
+
 ## 2026-10-06 — F34 bounded mirror activation
 
 Tracking: #431. Depends on Runner Fabric #1121 for one-time delegation of the fixed 8TB namespace.

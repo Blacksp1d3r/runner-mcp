@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import asyncio
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -141,8 +142,7 @@ def test_multiple_or_missing_supervisors_fail_closed(
         activation.managed_server_activation_status(tmp_path)
 
 
-@pytest.mark.asyncio
-async def test_activation_proof_middleware_confirms_only_after_http_request(
+def test_activation_proof_middleware_confirms_only_after_http_request(
     tmp_path: Path,
 ) -> None:
     config = tmp_path / "private"
@@ -159,17 +159,20 @@ async def test_activation_proof_middleware_confirms_only_after_http_request(
     )
     assert restart_marker_commit(config, "server") == COMMIT
 
-    await middleware(
-        {"type": "lifespan"},
-        lambda: None,
-        lambda _message: None,
-    )
-    assert restart_marker_commit(config, "server") == COMMIT
+    async def exercise() -> None:
+        await middleware(
+            {"type": "lifespan"},
+            lambda: None,
+            lambda _message: None,
+        )
+        assert restart_marker_commit(config, "server") == COMMIT
 
-    await middleware(
-        {"type": "http"},
-        lambda: None,
-        lambda _message: None,
-    )
+        await middleware(
+            {"type": "http"},
+            lambda: None,
+            lambda _message: None,
+        )
+
+    asyncio.run(exercise())
     assert restart_marker_commit(config, "server") is None
     assert calls == ["lifespan", "http"]

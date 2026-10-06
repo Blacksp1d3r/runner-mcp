@@ -11,6 +11,13 @@ from uuid import UUID
 from .bridge_mcp_executor import LocalMCPClient, LocalMCPConfig
 from .bridge_processor import BridgeExecutionAdapterError
 
+_FABRIC_A6_PREFLIGHT_TOOLS = frozenset(
+    {
+        "synthetic_probe_status",
+        "a6_update_qualification_prepare",
+    }
+)
+
 _FABRIC_TOOLS = frozenset(
     {
         "host_inspect",
@@ -80,6 +87,61 @@ class FabricBridgeClient:
             raise TypeError("config must be FabricBridgeConfig")
         self._mcp_config = config.to_mcp_config()
         self._local = threading.local()
+
+
+    def preflight(self) -> dict[str, Any]:
+        """Validate the fixed Fabric MCP peer without invoking a Fabric tool."""
+
+        client = LocalMCPClient(
+            self._mcp_config,
+            allowed_tools=_FABRIC_A6_PREFLIGHT_TOOLS,
+            client_name="runner-mcp-fabric-preflight",
+            compatibility_preflight=True,
+        )
+        try:
+            client.initialize()
+        except BridgeExecutionAdapterError as exc:
+            detail = str(exc)
+            if "protocol version" in detail:
+                reason = "protocol_incompatible"
+            elif "interface schema" in detail:
+                reason = "interface_incompatible"
+            elif "build identity" in detail:
+                reason = "build_identity_incompatible"
+            elif "initialization" in detail:
+                reason = "initialization_failed"
+            elif "unavailable or rejected" in detail:
+                reason = "transport_or_auth_unavailable"
+            else:
+                reason = "peer_unavailable"
+            return {
+                "schema_version": "runner-mcp/fabric-bridge-preflight/v1",
+                "state": "blocked",
+                "reason_code": reason,
+                "protocol_version": None,
+                "server_name": None,
+                "server_version": None,
+                "source_revision": None,
+                "a6_prepare_available": False,
+                "synthetic_probe_status_available": False,
+                "mutation_enabled": False,
+            }
+
+        peer = client.peer_identity
+        build = client.peer_build_identity or {}
+        names = set(client.peer_tool_names)
+        return {
+            "schema_version": "runner-mcp/fabric-bridge-preflight/v1",
+            "state": "ready",
+            "reason_code": "ready",
+            "protocol_version": peer["protocol_version"],
+            "server_name": peer["server_name"],
+            "server_version": peer["server_version"],
+            "source_revision": build.get("source_revision"),
+            "a6_prepare_available": "a6_update_qualification_prepare" in names,
+            "synthetic_probe_status_available": "synthetic_probe_status" in names,
+            "mutation_enabled": False,
+        }
 
 
     def host_inspect(self) -> dict[str, Any]:

@@ -278,3 +278,141 @@ def test_qualification_agent_rejects_partial_a6_binding(tmp_path: Path) -> None:
             paths.config_dir,
             execve=lambda *_: object(),
         )
+
+
+_WORKER_VALUES = {
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_WORKER_ID": "worker-lab-a",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_GENERATION": "1",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_NETWORK_PROFILE": "deny-private",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_CPU_UNITS": "4",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_MEMORY_MIB": "8192",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_DISK_MIB": "16384",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_SOFT_RESERVE_CPU_UNITS": "1",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_SOFT_RESERVE_MEMORY_MIB": "2048",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_POLICY_EXPIRES_AT": (
+        "2027-01-04T00:00:00+00:00"
+    ),
+    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": "http://127.0.0.1:8000/mcp",
+    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": "r" * 48,
+}
+
+
+def _append_worker_policy(paths, values: dict[str, str] | None = None) -> None:
+    selected = _WORKER_VALUES if values is None else values
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in selected.items():
+            handle.write(f"{key}={value}\n")
+
+
+def test_qualification_agent_forwards_worker_policy_without_a6(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_worker_policy(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _WORKER_VALUES.items():
+        assert environment[key] == value
+    assert "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT" not in environment
+    assert "UNRELATED_PRIVATE_VALUE" not in environment
+
+
+def test_qualification_agent_forwards_a6_and_worker_policy_together(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_a6(paths)
+    _append_worker_policy(paths)
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _A6_VALUES.items():
+        assert environment[key] == value
+    for key, value in _WORKER_VALUES.items():
+        assert environment[key] == value
+
+
+def test_qualification_agent_rejects_partial_worker_policy(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_worker_policy(
+        paths,
+        {
+            "RUNNER_FABRIC_WORKER_QUALIFICATION_WORKER_ID": "worker-lab-a",
+            "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": "http://127.0.0.1:8000/mcp",
+            "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": "r" * 48,
+        },
+    )
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="worker qualification configuration is incomplete",
+    ):
+        run_fabric_agent_qualification_process(
+            paths.config_dir,
+            execve=lambda *_: object(),
+        )
+
+
+def test_shared_runner_mcp_binding_alone_does_not_trigger_a6_or_worker(
+    tmp_path: Path,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT=http://127.0.0.1:8000/mcp\n"
+        )
+        handle.write(f"RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN={'r' * 48}\n")
+
+    additions = qualification.qualification_agent_environment_additions(
+        paths.config_dir
+    )
+
+    assert "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT" not in additions
+    assert "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN" not in additions

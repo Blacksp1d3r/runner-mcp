@@ -1550,3 +1550,33 @@ A GitHub primary-rate-limit incident proved that the mailbox cannot remain opera
 The required target is now explicit: AIfordable-owned durable relay + outbound-only Runner Fabric
 Agent Bus. GitHub remains source/CI during migration and later optional mirror/bootstrap/fallback.
 Runner MCP #125/#130 and Runner Fabric #356 track the implementation and live cutover.
+
+## 2026-10-06 — fixed Fabric worker qualification provisioning executor (#445)
+
+Implemented the Runner-MCP execution counterpart for Runner Fabric #1130/#1132.
+
+Boundary:
+- Runner Fabric remains authoritative and supplies only semantic provisioning
+  fields: worker id, allow-listed capability, generation, plan digest, expiry,
+  exact Fabric revision and deterministic request fingerprint;
+- the only supported capability is currently
+  `bewind-ocr-qualification-v1`;
+- no caller-selected shell, argv, executable, path, host/IP, endpoint,
+  environment map, service, Incus object or credential is accepted;
+- trusted local worker binding is read only from the private owner-only
+  `RUNNER_FABRIC_WORKER_QUALIFICATION_PROVISIONING_CONFIG`;
+- current managed Runner-Fabric launcher must already resolve inside the
+  controlled update slot for the exact requested revision;
+- the executor writes only owner-only qualification state below the fixed
+  Runner-MCP state root;
+- an identical request is idempotent; stale/mismatched/unmanaged state fails
+  closed and is never overwritten;
+- normal workload activation remains false;
+- no OCR is executed and active Bewind v3 is untouched.
+
+MCP tool: `fabric_worker_qualification_provision`.
+
+Focused validation: 13/13 new unit+integration tests green and Ruff green.
+The next dependency is Runner Fabric #1130 wiring, followed by #1113 actual
+aifordable-lab isolation/network/resource/runtime qualification.
+

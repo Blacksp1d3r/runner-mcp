@@ -116,6 +116,7 @@ def make_manager(
     installer_runner=subprocess.run,
     seed_compatibility: bool = True,
     restart_components=None,
+    server_activation_scheduler=None,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -134,6 +135,7 @@ def make_manager(
         installer_runner=installer_runner,
         resource_url="http://127.0.0.1:8000/mcp",
         server_reexec=lambda: exits.append(75),
+        server_activation_scheduler=server_activation_scheduler,
         restart_delay_seconds=1,
         restart_components=restart_components,
     )
@@ -1474,3 +1476,24 @@ def test_local_recovery_qualification_interrupts_after_install_and_recovers(
     assert manager.runtime_status()["install_recovery_pending"] is False
     assert manager.runtime_status()["last_installed_commit"] == baseline
     assert manager.status(result["job_id"])["state"] == "interrupted"
+
+
+def test_managed_activation_scheduler_preserves_server_marker(
+    tmp_path: Path,
+) -> None:
+    calls: list[bool] = []
+    manager, _root, _exits = make_manager(
+        tmp_path,
+        server_activation_scheduler=lambda: calls.append(True),
+    )
+    commit = "c" * 40
+    _write_restart_marker(manager.config_dir, "server", commit)
+
+    manager._schedule_server_restart()
+
+    deadline = time.monotonic() + 2
+    while not calls and time.monotonic() < deadline:
+        time.sleep(0.02)
+
+    assert calls == [True]
+    assert restart_marker_commit(manager.config_dir, "server") == commit

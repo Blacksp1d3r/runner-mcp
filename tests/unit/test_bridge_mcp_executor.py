@@ -195,15 +195,38 @@ def test_initialize_peer_accepts_forward_compatible_server_metadata() -> None:
 
 
 @pytest.mark.parametrize(
-    "server_info",
+    ("server_info", "expected_name", "expected_version"),
     [
-        {"version": "1.0", "title": "missing-name"},
-        {"name": "Runner Fabric Agent", "title": "missing-version"},
-        {"name": "", "version": "1.0"},
-        {"name": "Runner Fabric Agent", "version": ""},
+        ({"version": "1.0", "title": "missing-name"}, None, "1.0"),
+        ({"name": "Runner Fabric Agent", "title": "missing-version"}, "Runner Fabric Agent", None),
+        ({}, None, None),
     ],
 )
-def test_initialize_peer_still_rejects_invalid_required_server_identity(
+def test_initialize_peer_accepts_optional_advisory_server_identity_fields(
+    server_info,
+    expected_name,
+    expected_version,
+) -> None:
+    result = _validate_initialize_peer(
+        {
+            "protocolVersion": "2025-06-18",
+            "serverInfo": server_info,
+        }
+    )
+    assert result["server_name"] == expected_name
+    assert result["server_version"] == expected_version
+
+
+@pytest.mark.parametrize(
+    "server_info",
+    [
+        {"name": "", "version": "1.0"},
+        {"name": "Runner Fabric Agent", "version": ""},
+        {"name": 123, "version": "1.0"},
+        {"name": "Runner Fabric Agent", "version": []},
+    ],
+)
+def test_initialize_peer_rejects_invalid_present_server_identity_fields(
     server_info,
 ) -> None:
     with pytest.raises(BridgeExecutionAdapterError, match="server identity"):

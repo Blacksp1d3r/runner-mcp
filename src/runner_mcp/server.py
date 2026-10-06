@@ -842,6 +842,64 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def fabric_local_update_readiness(commit: str) -> dict:
+        """Check one exact locally-custodied Runner Fabric bundle."""
+        try:
+            result = fabric_update_manager.local_readiness(commit)
+        except FabricUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_local_update_readiness",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_local_update_readiness",
+                "runner-fabric",
+                "authenticated-client",
+                "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_local_update(commit: str) -> dict:
+        """Start one exact managed Runner Fabric update from local custody."""
+        try:
+            result = fabric_update_manager.start_local(commit)
+        except FabricUpdateError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_local_update",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(str(exc)) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_local_update",
+                "runner-fabric",
+                "authenticated-client",
+                "started",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
     def fabric_update(commit: str) -> dict:
         """Start one exact canonical managed Runner Fabric update."""
         try:

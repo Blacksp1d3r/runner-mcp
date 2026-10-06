@@ -620,3 +620,109 @@ def test_actions_readiness_fails_closed_without_private_credential(
 
     with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
         manager.actions_readiness()
+
+
+def _local_bundle(
+    manager: FabricUpdateManager,
+    commit: str,
+    *,
+    payload_commit: str | None = None,
+) -> Path:
+    root = manager.local_bundles_root / commit
+    root.mkdir(mode=0o700)
+    root.chmod(0o700)
+    archive = _bundle(payload_commit or commit)
+    with zipfile.ZipFile(io.BytesIO(archive)) as source:
+        for info in source.infolist():
+            target = root / info.filename
+            target.write_bytes(source.read(info))
+            target.chmod(0o600)
+    return root
+
+
+def test_local_custody_readiness_needs_no_github_actions_access(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "1" * 40
+    _local_bundle(manager, commit)
+
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("GitHub credential must not be read")
+        ),
+    )
+
+    assert manager.local_readiness(commit) == {
+        "commit": commit,
+        "artifact_ready": True,
+        "source": "local-custody",
+    }
+
+
+def test_local_custody_rejects_wrong_commit_bundle(tmp_path: Path) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "2" * 40
+    _local_bundle(manager, commit, payload_commit="3" * 40)
+
+    with pytest.raises(FabricUpdateError, match="fabric_bundle_invalid"):
+        manager.local_readiness(commit)
+
+
+def test_local_custody_rejects_world_readable_bundle_file(tmp_path: Path) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "4" * 40
+    root = _local_bundle(manager, commit)
+    (root / "BUNDLE.json").chmod(0o644)
+
+    with pytest.raises(FabricUpdateError, match="fabric_bundle_invalid"):
+        manager.local_readiness(commit)
+
+
+def test_local_custody_rejects_symlinked_bundle_entry(tmp_path: Path) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "5" * 40
+    root = _local_bundle(manager, commit)
+    target = root / "COMMIT_SHA"
+    target.unlink()
+    external = tmp_path / "commit"
+    external.write_text(commit + "\n", encoding="ascii")
+    external.chmod(0o600)
+    target.symlink_to(external)
+
+    with pytest.raises(FabricUpdateError, match="fabric_bundle_invalid"):
+        manager.local_readiness(commit)
+
+
+def test_local_update_job_records_visible_source_class(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "6" * 40
+    _local_bundle(manager, commit)
+
+    class InlineThread:
+        def __init__(self, *, target, args, name, daemon):
+            self.target = target
+            self.args = args
+
+        def start(self):
+            self.target(*self.args)
+
+    monkeypatch.setattr(fabric_update_module.threading, "Thread", InlineThread)
+
+    started = manager.start_local(commit)
+
+    assert started["source"] == "local-custody"
+    status = manager.status(started["job_id"])
+    assert status["state"] == "completed"
+    assert status["source"] == "local-custody"

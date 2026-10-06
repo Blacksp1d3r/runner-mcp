@@ -66,6 +66,11 @@ class FabricUpdateJob:
     finished_at: datetime | None = None
     error_category: str | None = None
     already_active: bool = False
+    source: str = "github-actions"
+
+    def __post_init__(self) -> None:
+        if self.source not in {"github-actions", "local-custody"}:
+            raise ValueError("fabric update source is invalid")
 
     def public_dict(self) -> dict[str, Any]:
         return {
@@ -77,6 +82,7 @@ class FabricUpdateJob:
             "finished_at": _iso(self.finished_at),
             "error_category": self.error_category,
             "already_active": self.already_active,
+            "source": self.source,
         }
 
     def persisted_dict(self) -> dict[str, Any]:
@@ -117,6 +123,10 @@ class FabricUpdateManager:
             parents=True,
         )
         self.bundle = self.state_root / "bundle"
+        self.local_bundles_root = _private_dir(
+            self.state_root / "local-bundles",
+            create=True,
+        )
         self.launcher = self.home / ".local" / "bin" / "runner-fabric"
         self.transaction = self.state_root / "transaction.json"
         self._lock = threading.RLock()
@@ -153,8 +163,31 @@ class FabricUpdateManager:
         self._resolve_exact_artifact(token, commit)
         return {"commit": commit, "artifact_ready": True}
 
-    def start(self, commit: str) -> dict[str, Any]:
+    def local_readiness(self, commit: str) -> dict[str, Any]:
+        """Verify one exact locally-custodied Fabric bundle without mutation."""
         _require_commit(commit)
+        self._require_safe_runtime()
+        self._assert_managed_launcher()
+        root = self._local_bundle_root(commit)
+        self._validate_local_bundle_source(root)
+        self._validated_bootstrap(commit, root=root)
+        return {
+            "commit": commit,
+            "artifact_ready": True,
+            "source": "local-custody",
+        }
+
+    def start(self, commit: str) -> dict[str, Any]:
+        return self._start(commit, source="github-actions")
+
+    def start_local(self, commit: str) -> dict[str, Any]:
+        self.local_readiness(commit)
+        return self._start(commit, source="local-custody")
+
+    def _start(self, commit: str, *, source: str) -> dict[str, Any]:
+        _require_commit(commit)
+        if source not in {"github-actions", "local-custody"}:
+            raise FabricUpdateError("fabric_update_source_invalid")
         self._require_safe_runtime()
         with self._lock:
             active = [j for j in self._jobs.values() if j.state.value not in _TERMINAL]
@@ -171,6 +204,7 @@ class FabricUpdateManager:
                     created_at=_now(),
                     finished_at=_now(),
                     already_active=True,
+                    source=source,
                 )
                 self._persist(job)
                 self._jobs[job.job_id] = job
@@ -181,6 +215,7 @@ class FabricUpdateManager:
                 commit=commit,
                 state=FabricUpdateState.QUEUED,
                 created_at=_now(),
+                source=source,
             )
             self._persist(job)
             self._jobs[job.job_id] = job
@@ -271,8 +306,11 @@ class FabricUpdateManager:
             started_at=_now(),
         )
         try:
-            archive = self._fetch_exact_artifact(job.commit)
-            staged = self._extract_bundle(archive, job)
+            if job.source == "local-custody":
+                staged = self._stage_local_bundle(job)
+            else:
+                archive = self._fetch_exact_artifact(job.commit)
+                staged = self._extract_bundle(archive, job)
             previous = self._activate_bundle(staged, job)
             try:
                 bootstrap = self._validated_bootstrap(job.commit)
@@ -294,6 +332,66 @@ class FabricUpdateManager:
             self._finish(job_id, FabricUpdateState.ERROR, "fabric_update_failed")
         else:
             self._finish(job_id, FabricUpdateState.COMPLETED, None)
+
+    def _local_bundle_root(self, commit: str) -> Path:
+        root = self.local_bundles_root / commit
+        return _private_dir(root, create=False)
+
+    def _validate_local_bundle_source(self, root: Path) -> None:
+        try:
+            entries = tuple(root.iterdir())
+        except OSError as exc:
+            raise FabricUpdateError("fabric_bundle_invalid") from exc
+        if not 1 <= len(entries) <= _MAX_FILES:
+            raise FabricUpdateError("fabric_bundle_invalid")
+        total = 0
+        for entry in entries:
+            if entry.is_symlink() or not entry.is_file():
+                raise FabricUpdateError("fabric_bundle_invalid")
+            try:
+                info = entry.stat()
+            except OSError as exc:
+                raise FabricUpdateError("fabric_bundle_invalid") from exc
+            if (
+                info.st_uid != os.getuid()
+                or info.st_nlink != 1
+                or info.st_mode & 0o077
+                or info.st_size <= 0
+                or info.st_size > _MAX_ENTRY
+            ):
+                raise FabricUpdateError("fabric_bundle_invalid")
+            total += info.st_size
+        if total > _MAX_UNCOMPRESSED:
+            raise FabricUpdateError("fabric_bundle_invalid")
+
+    def _stage_local_bundle(self, job: FabricUpdateJob) -> Path:
+        source = self._local_bundle_root(job.commit)
+        self._validate_local_bundle_source(source)
+        self._validated_bootstrap(job.commit, root=source)
+        staged = self.state_root / f".bundle-{job.job_id}"
+        if staged.exists() or staged.is_symlink():
+            raise FabricUpdateError("fabric_bundle_storage_conflict")
+        staged.mkdir(mode=0o700)
+        try:
+            entries = tuple(source.iterdir())
+            if not 1 <= len(entries) <= _MAX_FILES:
+                raise FabricUpdateError("fabric_bundle_invalid")
+            for entry in entries:
+                if entry.is_symlink() or not entry.is_file():
+                    raise FabricUpdateError("fabric_bundle_invalid")
+                info = entry.stat()
+                if info.st_uid != os.getuid() or info.st_nlink != 1:
+                    raise FabricUpdateError("fabric_bundle_invalid")
+                if info.st_mode & 0o077 or info.st_size > _MAX_ENTRY:
+                    raise FabricUpdateError("fabric_bundle_invalid")
+                target = staged / entry.name
+                shutil.copyfile(entry, target)
+                target.chmod(0o600)
+            self._validated_bootstrap(job.commit, root=staged)
+        except Exception:
+            shutil.rmtree(staged, ignore_errors=True)
+            raise
+        return staged
 
     def _fetch_exact_artifact(self, commit: str) -> bytes:
         token = self._github_token()
@@ -528,9 +626,15 @@ class FabricUpdateManager:
         except OSError as exc:
             raise FabricUpdateError("fabric_bundle_recovery_failed") from exc
 
-    def _validated_bootstrap(self, commit: str) -> Path:
+    def _validated_bootstrap(
+        self,
+        commit: str,
+        *,
+        root: Path | None = None,
+    ) -> Path:
+        bundle_root = self.bundle if root is None else root
         manifest = _read_json(
-            self.bundle / "BUNDLE.json",
+            bundle_root / "BUNDLE.json",
             32 * 1024,
             "fabric_bundle_invalid",
         )
@@ -557,7 +661,7 @@ class FabricUpdateManager:
         ):
             raise FabricUpdateError("fabric_bundle_invalid")
 
-        commit_file = self.bundle / "COMMIT_SHA"
+        commit_file = bundle_root / "COMMIT_SHA"
         try:
             if (
                 commit_file.is_symlink()
@@ -569,12 +673,12 @@ class FabricUpdateManager:
 
         sums = _parse_sums(
             _read_regular(
-                self.bundle / "SHA256SUMS",
+                bundle_root / "SHA256SUMS",
                 128 * 1024,
                 "fabric_bundle_invalid",
             )
         )
-        bootstrap = self.bundle / "BOOTSTRAP.py"
+        bootstrap = bundle_root / "BOOTSTRAP.py"
         bootstrap_bytes = _read_regular(
             bootstrap,
             512 * 1024,
@@ -584,8 +688,8 @@ class FabricUpdateManager:
             raise FabricUpdateError("fabric_bundle_integrity_failed")
 
         try:
-            wheels = sorted(self.bundle.glob("*.whl"))
-            actual_entries = {entry.name for entry in self.bundle.iterdir()}
+            wheels = sorted(bundle_root.glob("*.whl"))
+            actual_entries = {entry.name for entry in bundle_root.iterdir()}
         except OSError as exc:
             raise FabricUpdateError("fabric_bundle_invalid") from exc
         if len(wheels) != wheel_count or project_wheel not in {w.name for w in wheels}:
@@ -693,6 +797,7 @@ class FabricUpdateManager:
                     finished_at=_parse_optional(raw["finished_at"]),
                     error_category=raw["error_category"],
                     already_active=raw["already_active"],
+                    source=raw.get("source", "github-actions"),
                 )
             except (KeyError, TypeError, ValueError) as exc:
                 raise FabricUpdateError("fabric_update_job_invalid") from exc
@@ -815,6 +920,7 @@ def _category(exc: FabricUpdateError) -> str:
         "fabric_apply_failed",
         "rollback_failed",
         "fabric_update_failed",
+        "fabric_update_source_invalid",
     }
     return value if value in allowed else "fabric_update_failed"
 

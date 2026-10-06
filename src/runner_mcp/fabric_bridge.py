@@ -27,6 +27,7 @@ _FABRIC_TOOLS = frozenset(
         "synthetic_probe_status",
         "a6_update_qualification_prepare",
         "a6_update_qualification_finalize",
+        "worker_qualification_provision",
         "run_work_unit",
         "get_work_unit",
         "cancel_work_unit",
@@ -38,6 +39,7 @@ _FABRIC_TOOLS = frozenset(
 )
 _ID_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
+_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _REFERENCE_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:/-]{0,159}$")
 _REASON_RE = re.compile(r"^[a-z][a-z0-9._-]{0,63}$")
 _STATES = {"complete", "blocked", "failed"}
@@ -253,6 +255,43 @@ class FabricBridgeClient:
             expected_job_id=job_id,
         )
 
+    def worker_qualification_provision(
+        self,
+        worker_id: str,
+        capability_profile: str,
+        expected_generation: int,
+    ) -> dict[str, Any]:
+        """Request one bounded Fabric-owned worker qualification provision."""
+
+        _semantic_id(worker_id, "worker_id")
+        if capability_profile != "bewind-ocr-qualification-v1":
+            raise FabricBridgeError("unsupported worker qualification profile")
+        if (
+            isinstance(expected_generation, bool)
+            or not isinstance(expected_generation, int)
+            or expected_generation < 1
+        ):
+            raise FabricBridgeError("worker qualification generation is invalid")
+        try:
+            result = self._client()._call_tool(
+                "worker_qualification_provision",
+                {
+                    "worker_id": worker_id,
+                    "capability_profile": capability_profile,
+                    "expected_generation": expected_generation,
+                },
+            )
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric worker qualification provisioning failed"
+            ) from exc
+        return _validate_worker_qualification_result(
+            result,
+            expected_worker_id=worker_id,
+            expected_profile=capability_profile,
+            expected_generation=expected_generation,
+        )
+
     def ci_runner_guest_status(self) -> dict[str, Any]:
         """Return bounded isolated CI guest state."""
 
@@ -385,6 +424,85 @@ class FabricBridgeClient:
         return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
 
 
+
+
+def _validate_worker_qualification_result(
+    value: object,
+    *,
+    expected_worker_id: str,
+    expected_profile: str,
+    expected_generation: int,
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid worker qualification result"
+        )
+    _exact_keys(
+        value,
+        {
+            "schemaVersion",
+            "workerId",
+            "capabilityProfile",
+            "state",
+            "reasonCode",
+            "observedGeneration",
+            "observedFabricRevision",
+            "requestFingerprint",
+            "managedLauncherReady",
+            "qualificationStateReady",
+            "normalActivationEnabled",
+        },
+        "worker qualification result",
+    )
+    if (
+        value["schemaVersion"]
+        != "runner.fabric/worker-qualification-provisioning-result/v1"
+    ):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid worker qualification result"
+        )
+    if value["workerId"] != expected_worker_id:
+        raise FabricBridgeError(
+            "Runner Fabric returned mismatched worker qualification identity"
+        )
+    if value["capabilityProfile"] != expected_profile:
+        raise FabricBridgeError(
+            "Runner Fabric returned mismatched worker qualification profile"
+        )
+    if value["observedGeneration"] != expected_generation:
+        raise FabricBridgeError(
+            "Runner Fabric returned mismatched worker qualification generation"
+        )
+    if value["state"] not in {"ready", "not-ready"}:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid worker qualification result"
+        )
+    reason = value["reasonCode"]
+    if not isinstance(reason, str) or _ID_RE.fullmatch(reason) is None:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid worker qualification result"
+        )
+    _revision(value["observedFabricRevision"])
+    fingerprint = value["requestFingerprint"]
+    if not isinstance(fingerprint, str) or _DIGEST_RE.fullmatch(fingerprint) is None:
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid worker qualification result"
+        )
+    if (
+        not isinstance(value["managedLauncherReady"], bool)
+        or not isinstance(value["qualificationStateReady"], bool)
+        or value["normalActivationEnabled"] is not False
+    ):
+        raise FabricBridgeError(
+            "Runner Fabric returned invalid worker qualification result"
+        )
+    ready = value["managedLauncherReady"] and value["qualificationStateReady"]
+    if (value["state"] == "ready") != ready:
+        raise FabricBridgeError(
+            "Runner Fabric returned contradictory worker qualification result"
+        )
+    _validate_bounded_json(value)
+    return value
 
 
 def _validate_a6_common(

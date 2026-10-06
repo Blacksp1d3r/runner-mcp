@@ -916,3 +916,96 @@ def test_bridge_preflight_classifies_failures_without_private_detail(
     assert result["protocol_version"] is None
     assert result["source_revision"] is None
     assert detail not in str(result)
+
+
+def worker_qualification_payload(
+    *,
+    worker_id: str = "worker:aifordable-lab",
+    profile: str = "bewind-ocr-qualification-v1",
+    generation: int = 1,
+) -> dict:
+    return {
+        "schemaVersion": "runner.fabric/worker-qualification-provisioning-result/v1",
+        "workerId": worker_id,
+        "capabilityProfile": profile,
+        "state": "ready",
+        "reasonCode": "ready",
+        "observedGeneration": generation,
+        "observedFabricRevision": "c" * 40,
+        "requestFingerprint": "d" * 64,
+        "managedLauncherReady": True,
+        "qualificationStateReady": True,
+        "normalActivationEnabled": False,
+    }
+
+
+def test_worker_qualification_proxy_forwards_only_semantic_arguments() -> None:
+    payload = worker_qualification_payload()
+    bridge, fake = bridge_with_responses(payload)
+
+    result = bridge.worker_qualification_provision(
+        "worker:aifordable-lab",
+        "bewind-ocr-qualification-v1",
+        1,
+    )
+
+    assert result == payload
+    assert fake.calls == [
+        (
+            "worker_qualification_provision",
+            {
+                "worker_id": "worker:aifordable-lab",
+                "capability_profile": "bewind-ocr-qualification-v1",
+                "expected_generation": 1,
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("worker_id", "profile", "generation"),
+    [
+        ("../worker", "bewind-ocr-qualification-v1", 1),
+        ("worker:aifordable-lab", "arbitrary-profile", 1),
+        ("worker:aifordable-lab", "bewind-ocr-qualification-v1", 0),
+        ("worker:aifordable-lab", "bewind-ocr-qualification-v1", True),
+    ],
+)
+def test_worker_qualification_proxy_rejects_invalid_input_before_transport(
+    worker_id: str,
+    profile: str,
+    generation: int,
+) -> None:
+    bridge, fake = bridge_with_responses(worker_qualification_payload())
+
+    with pytest.raises(FabricBridgeError):
+        bridge.worker_qualification_provision(worker_id, profile, generation)
+
+    assert fake.calls == []
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/secret"}),
+        lambda payload: payload.update({"workerId": "worker:other"}),
+        lambda payload: payload.update({"capabilityProfile": "other"}),
+        lambda payload: payload.update({"observedGeneration": 2}),
+        lambda payload: payload.update({"normalActivationEnabled": True}),
+        lambda payload: payload.update({"requestFingerprint": "not-a-digest"}),
+        lambda payload: payload.update({"state": "not-ready"}),
+    ],
+)
+def test_worker_qualification_proxy_rejects_private_or_mismatched_result(
+    mutator,
+) -> None:
+    payload = worker_qualification_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.worker_qualification_provision(
+            "worker:aifordable-lab",
+            "bewind-ocr-qualification-v1",
+            1,
+        )

@@ -28,6 +28,7 @@ from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .build_identity import (
     BuildIdentity,
+    installed_source_revision,
     runner_mcp_build_identity,
     runner_mcp_mcp_build_identity,
 )
@@ -3104,15 +3105,22 @@ def create_app(
     except PackageNotFoundError:
         package_version = "development"
     identity: BuildIdentity | None = None
+    source_revision = installed_source_revision(settings.projects_config.parent)
 
     def current_build_identity() -> BuildIdentity:
         if identity is None:
-            return runner_mcp_mcp_build_identity(package_version)
+            return runner_mcp_mcp_build_identity(
+                package_version,
+                source_revision=source_revision,
+            )
         return identity
 
     audit = AuditLogger(
         settings.audit_log,
-        build_identity=runner_mcp_build_identity(package_version),
+        build_identity=runner_mcp_build_identity(
+            package_version,
+            source_revision=source_revision,
+        ),
     )
     audit.append(
         AuditEvent(
@@ -3147,6 +3155,7 @@ def create_app(
         nonlocal identity
         identity = runner_mcp_mcp_build_identity(
             package_version,
+            source_revision=source_revision,
             interface_schema_digest=await runner_mcp_interface_schema_digest(mcp),
         )
         async with mcp.session_manager.run():

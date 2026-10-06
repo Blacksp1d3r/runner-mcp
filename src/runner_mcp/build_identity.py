@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import json
 import re
 from dataclasses import dataclass
+from pathlib import Path
 
 _COMPONENT_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -65,13 +67,37 @@ class BuildIdentity:
         }
 
 
-def runner_mcp_build_identity(build_version: str) -> BuildIdentity:
+def installed_source_revision(config_dir: Path) -> str | None:
+    """Return the exact installed revision from canonical private self-update state."""
+
+    path = config_dir / "self-update-state.json"
+    if path.is_symlink():
+        raise BuildIdentityError("installed source revision state is unsafe")
+    if not path.exists():
+        return None
+    if not path.is_file():
+        raise BuildIdentityError("installed source revision state is unsafe")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise BuildIdentityError("installed source revision state is unavailable") from exc
+    candidate = raw.get("commit") if isinstance(raw, dict) else None
+    if not isinstance(candidate, str) or _REVISION_RE.fullmatch(candidate) is None:
+        raise BuildIdentityError("installed source revision state is invalid")
+    return candidate
+
+
+def runner_mcp_build_identity(
+    build_version: str,
+    *,
+    source_revision: str | None = None,
+) -> BuildIdentity:
     """Return only identity facts the installed runtime can currently prove."""
 
     return BuildIdentity(
         component_id="runner-mcp",
         build_version=build_version,
-        source_revision=None,
+        source_revision=source_revision,
         artifact_digest=None,
         protocol_min=None,
         protocol_max=None,
@@ -82,6 +108,7 @@ def runner_mcp_build_identity(build_version: str) -> BuildIdentity:
 def runner_mcp_mcp_build_identity(
     build_version: str,
     *,
+    source_revision: str | None = None,
     interface_schema_digest: str | None = None,
 ) -> BuildIdentity:
     """Bind Runner-MCP identity to the installed MCP handshake protocol range."""
@@ -109,7 +136,7 @@ def runner_mcp_mcp_build_identity(
     return BuildIdentity(
         component_id="runner-mcp",
         build_version=build_version,
-        source_revision=None,
+        source_revision=source_revision,
         artifact_digest=None,
         protocol_min=protocol_min,
         protocol_max=protocol_max,

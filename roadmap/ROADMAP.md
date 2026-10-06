@@ -1,3 +1,13 @@
+## 2026-10-06 — fixed Fabric worker-qualification provisioning executor in validation
+
+Tracking: #445; orchestration owner: Blacksp1d3r/Runner-Fabric#1130/#1113/#1110.
+
+Runner-MCP now has a bounded local provisioning slice for Fabric-authorized worker qualification. Fabric remains authoritative; Runner-MCP only verifies the request against host-owned private worker authority, exact generation/expiry/fingerprint and the exact managed Runner-Fabric runtime slot, then writes the existing disposable-target qualification config into one fixed owner-only local namespace.
+
+The public MCP tool exposes only semantic worker/capability identity, generation, plan digest, expiry, exact Fabric revision and request fingerprint. No caller-selected shell, argv, path, host/IP, service, endpoint, Incus object, environment map or credential is accepted. Normal workload activation remains false.
+
+After this lands and is live, Fabric #1130 may bind the fixed executor, then #1113 may run the real external-worker qualification. No Bewind OCR or v3 mutation is part of #445.
+
 ## Customer/on-prem update readiness counterpart
 
 Tracking: #414. Orchestration/policy owner: Blacksp1d3r/Runner-Fabric#1063. Customer/product semantics: Blacksp1d3r/AIfordable#401.

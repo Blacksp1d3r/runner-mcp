@@ -14,6 +14,7 @@ from runner_mcp.bridge_mcp_executor import (
     LocalMCPClient,
     LocalMCPConfig,
     _decode_mcp_response,
+    _validate_initialize_peer,
     _validate_peer_tool_surface,
 )
 from runner_mcp.bridge_processor import BridgeExecutionAdapterError
@@ -173,6 +174,45 @@ def test_mcp_policy_versions_are_real_sdk_handshake_versions() -> None:
     assert _MCP_POLICY_PROTOCOL_VERSIONS <= set(
         HANDSHAKE_PROTOCOL_VERSIONS
     )
+
+
+def test_initialize_peer_accepts_forward_compatible_server_metadata() -> None:
+    assert _validate_initialize_peer(
+        {
+            "protocolVersion": "2025-06-18",
+            "serverInfo": {
+                "name": "Runner Fabric Agent",
+                "version": "1.0",
+                "title": "Runner Fabric Agent",
+                "websiteUrl": "https://example.invalid",
+            },
+        }
+    ) == {
+        "protocol_version": "2025-06-18",
+        "server_name": "Runner Fabric Agent",
+        "server_version": "1.0",
+    }
+
+
+@pytest.mark.parametrize(
+    "server_info",
+    [
+        {"version": "1.0", "title": "missing-name"},
+        {"name": "Runner Fabric Agent", "title": "missing-version"},
+        {"name": "", "version": "1.0"},
+        {"name": "Runner Fabric Agent", "version": ""},
+    ],
+)
+def test_initialize_peer_still_rejects_invalid_required_server_identity(
+    server_info,
+) -> None:
+    with pytest.raises(BridgeExecutionAdapterError, match="server identity"):
+        _validate_initialize_peer(
+            {
+                "protocolVersion": "2025-06-18",
+                "serverInfo": server_info,
+            }
+        )
 
 
 def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:

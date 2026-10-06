@@ -4,8 +4,8 @@ import threading
 import urllib.error
 import urllib.request
 
-from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 import pytest
+from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 
 from runner_mcp.bridge_mcp_executor import (
     MAX_MCP_RESPONSE_BYTES,

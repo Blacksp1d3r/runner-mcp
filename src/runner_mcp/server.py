@@ -529,17 +529,14 @@ def build_mcp(
         safety=safety,
         environment=private_values,
     )
+    mirror_runtime_environment = dict(private_values)
     fabric_repository_mirror_runner = FabricRepositoryMirrorRunner(
         safety=safety,
-        environment=private_values,
+        environment=mirror_runtime_environment,
     )
-    if not isinstance(private_values, dict) and private_values is not os.environ:
-        mirror_activation_environment = dict(private_values)
-    else:
-        mirror_activation_environment = private_values
     fabric_repository_mirror_activator = FabricRepositoryMirrorActivator(
         safety=safety,
-        environment=mirror_activation_environment,
+        environment=mirror_runtime_environment,
         config_dir=settings.projects_config.parent,
         github_token=github_token or None,
     )
@@ -964,11 +961,6 @@ def build_mcp(
             raise ValueError(
                 "Fabric repository mirror activation is unavailable"
             ) from None
-        if mirror_activation_environment is not private_values:
-            try:
-                private_values.update(mirror_activation_environment)
-            except AttributeError:
-                pass
         audit.append(
             AuditEvent(
                 current_request_id(),

@@ -1,3 +1,12 @@
+## 2026-10-06 — A6 live qualification candidate after bounded Fabric-agent recovery
+
+Runner-MCP #427/#428 restored bounded recovery of the fixed qualification-only Runner Fabric Agent MCP after genuine process loss. Live recovery on `86708c18fe075993590caa28b32f1d73221e40ef` returned `state=restarted`, `pid_changed=true`, `healthy=true`.
+
+The earlier A6 candidate `7493a2500411614b91fad6d298210acc74baa211` was not mutated because prepare failed before journal evidence existed. This documentation-only revision is the next exact-main candidate for the canonical A6 sequence:
+`prepare -> self_update -> restart convergence -> fresh A3 probe -> finalize`.
+
+Do not claim A6 complete or start A7 unless finalization returns qualified/off-target evidence with successful update, reconnect and probe reconstruction.
+
 ## 2026-10-06 — A6 live qualification candidate marker
 
 The runner-mcp-control client schema now exposes both bounded A6 qualification proxies. A concurrent bounded self-update advanced the live runtime cleanly to `877f80423724cc197e3ccd39d0869f8a5611faec` before A6 prepare could start, so that update is not claimed as A6 evidence.

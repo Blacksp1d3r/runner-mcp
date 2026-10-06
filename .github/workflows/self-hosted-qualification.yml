@@ -168,4 +168,4 @@ jobs:
 
       - name: Built release artifact
         shell: bash
-        run: bash scripts/release-artifact-smoke.sh
+        run: PATH="$PWD/.venv-ci/bin:$PATH" bash scripts/release-artifact-smoke.sh

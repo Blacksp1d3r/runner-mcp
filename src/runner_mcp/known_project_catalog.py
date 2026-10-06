@@ -40,6 +40,13 @@ KNOWN_PROJECTS: dict[str, KnownProject] = {
         directory_name="rasff-lens",
         adapter="python",
     ),
+    "runner-fabric": KnownProject(
+        code="runner-fabric",
+        display_name="Runner Fabric",
+        repository="Blacksp1d3r/Runner-Fabric",
+        directory_name="Runner-Fabric",
+        adapter="python",
+    ),
     "bewind": KnownProject(
         code="bewind",
         display_name="Bewind",

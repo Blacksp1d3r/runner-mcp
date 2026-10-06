@@ -60,6 +60,10 @@ from .fabric_agent_runtime import (
 )
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
+from .fabric_continuity_status import (
+    FabricContinuityStatusError,
+    FabricContinuityStatusRunner,
+)
 from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
@@ -506,6 +510,9 @@ def build_mcp(
         self_update_status_provider=self_update_manager.runtime_status,
     )
 
+    fabric_continuity_status_runner = FabricContinuityStatusRunner(
+        environment=private_values,
+    )
     fabric_disposable_target_runner = FabricDisposableTargetQualificationRunner(
         safety=safety,
         environment=private_values,
@@ -819,6 +826,37 @@ def build_mcp(
                 "runner-fabric:disposable-target",
                 "authenticated-client",
                 "qualified",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_continuity_status() -> dict:
+        """Return fixed read-only Runner Fabric continuity evidence."""
+        try:
+            result = fabric_continuity_status_runner.status()
+        except FabricContinuityStatusError:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_continuity_status",
+                    "runner-fabric:continuity-status",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Fabric continuity status is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_continuity_status",
+                "runner-fabric:continuity-status",
+                "authenticated-client",
+                str(result.get("mode", "unknown")),
                 utc_timestamp(),
             )
         )

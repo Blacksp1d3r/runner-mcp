@@ -1399,11 +1399,31 @@ def build_mcp(
 
     def _fabric_host_inspect_failure(exc: FabricBridgeError) -> dict:
         """Project one Fabric host-inspection failure into bounded public evidence."""
+
         category = (
             "fabric_inspection_unavailable"
             if str(exc) == "Runner Fabric host inspection failed"
             else "invalid_inspection_payload"
         )
+        try:
+            preflight = _require_fabric_bridge().preflight()
+        except FabricBridgeError:
+            preflight = {}
+        reason = preflight.get("reason_code") if isinstance(preflight, dict) else None
+        if (
+            preflight.get("state") == "blocked"
+            and isinstance(reason, str)
+            and reason in {
+                "transport_or_auth_unavailable",
+                "initialization_failed",
+                "protocol_incompatible",
+                "interface_incompatible",
+                "build_identity_incompatible",
+                "peer_unavailable",
+                "bridge_unavailable",
+            }
+        ):
+            category = reason
         return {
             "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
             "state": "unavailable",

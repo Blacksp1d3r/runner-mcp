@@ -637,7 +637,7 @@ class LocalMCPClient:
         ):
             raise ValueError("MCP client name is invalid")
         if not isinstance(compatibility_preflight, bool):
-            raise ValueError("compatibility_preflight must be boolean")
+            raise TypeError("compatibility_preflight must be boolean")
         self._config = config
         self._allowed_tools = allowed_tools
         self._client_name = client_name

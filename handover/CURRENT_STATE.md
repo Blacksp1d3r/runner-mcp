@@ -1,3 +1,20 @@
+## 2026-10-06 — A6 now blocked by stale Fabric runtime plus private Runner-Fabric authorization
+
+The ChatGPT runner-mcp-control schema now exposes both A6 qualification proxies. Runner-MCP #427/#428 also restored bounded recovery of the fixed qualification-only Fabric Agent MCP after genuine process loss; the live restart returned `state=restarted`, `pid_changed=true`, `healthy=true`.
+
+A full Runner-MCP restart on `55fa3d1ba46d6d6bb41b2e43d3d94e97376cf309` ruled out cached downstream MCP session state. Fabric bridge calls still fail, including A6 prepare and older read-only Fabric operations.
+
+Bounded source evidence for built-in `runner-fabric`:
+- credential_configured=true;
+- source_reachable=false;
+- main_ref_available=false;
+- reason_code=source-unreachable-or-unauthorized;
+- runtime doctor still reports Runner-Fabric Actions read unavailable/unauthorized.
+
+The managed Fabric slot is older than A6 (#1046/#1049). Local-custody readiness was checked for current Fabric main `7af6cbf887a214f70354726c99abe9d19712b32f`, A6 baseline `5b5e71ad9ed66a9f7cec35ddb48eb7535edf3d99`, prior managed-update baseline `a8cb6835d33269bfb96ea3d8e40bc505f91b107b`, and older live-qualified `a7492aeb2bc738a4de4d19d6e515d29b1482a1a0`; none is locally staged.
+
+Do not create an untrusted bundle ingress, another updater, or a shell/Desktop Commander bypass. Immediate unblock is either least-privilege Runner-Fabric repository/Actions read for the existing private Runner-MCP credential or a separately trusted pre-staged local-custody bundle. After Fabric is updated to an A6-capable exact revision, resume only `prepare -> self_update -> fresh A3 probe -> finalize`.
+
 ## 2026-10-06 — Fleet A6 blocked only on client schema; access warning split to #417
 
 Fresh reconciliation confirms the active runner-mcp-control catalog still lacks the two existing A6 qualification proxies. Live Runner-MCP remains operational on the previously qualified installed commit with no pending restart or install recovery. Do not rebuild the proxy or updater.

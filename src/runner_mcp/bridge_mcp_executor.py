@@ -350,10 +350,15 @@ def _validate_initialize_peer(value: object) -> dict[str, str | None]:
             )
         name = server_info.get("name")
         version = server_info.get("version")
-        if (
+        if name is not None and (
             not isinstance(name, str)
             or _PEER_INFO_RE.fullmatch(name) is None
-            or not isinstance(version, str)
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP server identity is invalid"
+            )
+        if version is not None and (
+            not isinstance(version, str)
             or _PEER_INFO_RE.fullmatch(version) is None
         ):
             raise BridgeExecutionAdapterError(

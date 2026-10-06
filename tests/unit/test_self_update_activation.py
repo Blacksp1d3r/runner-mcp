@@ -7,7 +7,6 @@ from types import SimpleNamespace
 import pytest
 
 import runner_mcp.self_update_activation as activation
-from runner_mcp.self_update import confirm_server_activation, restart_marker_commit
 
 
 COMMIT = "a" * 40
@@ -36,8 +35,8 @@ def test_old_process_cannot_consume_new_server_marker(tmp_path: Path) -> None:
     write_installed_state(config)
     write_server_marker(config)
 
-    assert confirm_server_activation(config, process_commit=OTHER) is False
-    assert restart_marker_commit(config, "server") == COMMIT
+    assert activation.confirm_server_activation(config, process_commit=OTHER) is False
+    assert activation.restart_marker_commit(config, "server") == COMMIT
 
 
 def test_exact_new_process_consumes_server_marker_on_proof(tmp_path: Path) -> None:
@@ -45,8 +44,8 @@ def test_exact_new_process_consumes_server_marker_on_proof(tmp_path: Path) -> No
     write_installed_state(config)
     write_server_marker(config)
 
-    assert confirm_server_activation(config, process_commit=COMMIT) is True
-    assert restart_marker_commit(config, "server") is None
+    assert activation.confirm_server_activation(config, process_commit=COMMIT) is True
+    assert activation.restart_marker_commit(config, "server") is None
 
 
 def test_installed_revision_mismatch_keeps_marker(tmp_path: Path) -> None:
@@ -54,8 +53,8 @@ def test_installed_revision_mismatch_keeps_marker(tmp_path: Path) -> None:
     write_installed_state(config, OTHER)
     write_server_marker(config, COMMIT)
 
-    assert confirm_server_activation(config, process_commit=COMMIT) is False
-    assert restart_marker_commit(config, "server") == COMMIT
+    assert activation.confirm_server_activation(config, process_commit=COMMIT) is False
+    assert activation.restart_marker_commit(config, "server") == COMMIT
 
 
 def test_managed_cron_activation_uses_fixed_self_termination(
@@ -154,7 +153,7 @@ def test_activation_proof_middleware_confirms_only_after_http_request(
         app,
         config_dir=config,
     )
-    assert restart_marker_commit(config, "server") == COMMIT
+    assert activation.restart_marker_commit(config, "server") == COMMIT
 
     async def exercise() -> None:
         await middleware(
@@ -162,7 +161,7 @@ def test_activation_proof_middleware_confirms_only_after_http_request(
             lambda: None,
             lambda _message: None,
         )
-        assert restart_marker_commit(config, "server") == COMMIT
+        assert activation.restart_marker_commit(config, "server") == COMMIT
 
         await middleware(
             {"type": "http"},
@@ -171,5 +170,5 @@ def test_activation_proof_middleware_confirms_only_after_http_request(
         )
 
     asyncio.run(exercise())
-    assert restart_marker_commit(config, "server") is None
+    assert activation.restart_marker_commit(config, "server") is None
     assert calls == ["lifespan", "http"]

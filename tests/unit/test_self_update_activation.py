@@ -7,10 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from runner_mcp import self_update_activation as activation
-from runner_mcp.self_update import (
-    confirm_server_activation,
-    restart_marker_commit,
-)
+from runner_mcp.self_update import confirm_server_activation, restart_marker_commit
 
 
 COMMIT = "a" * 40

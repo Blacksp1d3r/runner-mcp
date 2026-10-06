@@ -64,6 +64,10 @@ from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
 )
+from .fabric_repository_mirrors import (
+    FabricRepositoryMirrorError,
+    FabricRepositoryMirrorRunner,
+)
 from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
@@ -502,6 +506,10 @@ def build_mcp(
         safety=safety,
         environment=private_values,
     )
+    fabric_repository_mirror_runner = FabricRepositoryMirrorRunner(
+        safety=safety,
+        environment=private_values,
+    )
 
     fabric_bridge = (
         FabricBridgeClient(
@@ -807,6 +815,72 @@ def build_mcp(
                 "runner-fabric:disposable-target",
                 "authenticated-client",
                 "qualified",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_repository_mirrors_preflight() -> dict:
+        """Validate fixed private F34 repository-mirror activation inputs."""
+        try:
+            result = fabric_repository_mirror_runner.preflight()
+        except FabricRepositoryMirrorError:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_repository_mirrors_preflight",
+                    "runner-fabric:repository-mirrors",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Fabric repository mirror preflight is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_repository_mirrors_preflight",
+                "runner-fabric:repository-mirrors",
+                "authenticated-client",
+                "ready",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_repository_mirrors_reconcile() -> dict:
+        """Reconcile the fixed host-owned F34 managed repository mirror set."""
+        try:
+            result = fabric_repository_mirror_runner.reconcile()
+        except (
+            FabricRepositoryMirrorError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_repository_mirrors_reconcile",
+                    "runner-fabric:repository-mirrors",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Fabric repository mirror reconcile is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_repository_mirrors_reconcile",
+                "runner-fabric:repository-mirrors",
+                "authenticated-client",
+                "complete" if result.get("successful") is True else "failed",
                 utc_timestamp(),
             )
         )

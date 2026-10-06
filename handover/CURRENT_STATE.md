@@ -1,3 +1,17 @@
+## 2026-10-06 — F34 bounded mirror activation
+
+Tracking: #431. Depends on Runner Fabric #1121 for one-time delegation of the fixed 8TB namespace.
+
+Runner-MCP now has a zero-argument activation path that, after the fixed storage namespace is writable by the managed service identity:
+- verifies the fixed inventory/mirror roots are private and writable;
+- writes the canonical 11-repository desired-state snapshot into owner-only Runner-MCP private config;
+- binds the existing GitHub credential into an owner-only Git configuration without exposing it in output/audit;
+- persists the four F34 private runtime bindings atomically into runner-mcp.env;
+- updates the same in-memory mirror environment used by readiness/preflight, so activate -> preflight works without an extra restart;
+- never runs mirror reconcile/network work as part of activation.
+
+Reconcile remains separately gated on repository-mirrors-preflight READY.
+
 ## 2026-10-06 — A6 now blocked by stale Fabric runtime plus private Runner-Fabric authorization
 
 The ChatGPT runner-mcp-control schema now exposes both A6 qualification proxies. Runner-MCP #427/#428 also restored bounded recovery of the fixed qualification-only Fabric Agent MCP after genuine process loss; the live restart returned `state=restarted`, `pid_changed=true`, `healthy=true`.

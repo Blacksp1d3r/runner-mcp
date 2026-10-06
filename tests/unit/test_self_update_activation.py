@@ -74,10 +74,10 @@ def test_managed_cron_activation_uses_fixed_self_termination(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: True)
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: False)
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: True)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: False)
     monkeypatch.setattr(
-        "runner_mcp.self_update_activation.cron_status",
+        "runner_mcp.cron_autostart.cron_status",
         lambda **_kwargs: [
             SimpleNamespace(
                 component="server",
@@ -102,10 +102,10 @@ def test_managed_systemd_activation_uses_fixed_server_unit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: False)
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: True)
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: True)
     monkeypatch.setattr(
-        "runner_mcp.self_update_activation.user_service_status",
+        "runner_mcp.autostart.user_service_status",
         lambda: [
             SimpleNamespace(
                 component="server",
@@ -117,7 +117,7 @@ def test_managed_systemd_activation_uses_fixed_server_unit(
     )
     restarted: list[bool] = []
     monkeypatch.setattr(
-        "runner_mcp.self_update_activation.restart_managed_server_unit",
+        "runner_mcp.autostart.restart_managed_server_unit",
         lambda: restarted.append(True),
     )
 
@@ -131,16 +131,16 @@ def test_multiple_or_missing_supervisors_fail_closed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: True)
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: True)
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: True)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: True)
     with pytest.raises(
         ManagedServerActivationError,
         match="Multiple managed",
     ):
         managed_server_activation_status(tmp_path)
 
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: False)
-    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: False)
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: False)
     with pytest.raises(
         ManagedServerActivationError,
         match="unavailable",

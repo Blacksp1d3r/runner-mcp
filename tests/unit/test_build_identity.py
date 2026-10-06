@@ -6,6 +6,7 @@ from runner_mcp.build_identity import (
     BuildIdentity,
     BuildIdentityError,
     runner_mcp_build_identity,
+    runner_mcp_mcp_build_identity,
 )
 
 
@@ -21,6 +22,23 @@ def test_runner_mcp_identity_keeps_unproven_provenance_explicit() -> None:
         "protocol_max": None,
         "interface_schema_digest": None,
     }
+
+
+def test_runner_mcp_mcp_identity_uses_installed_handshake_range() -> None:
+    from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
+
+    identity = runner_mcp_mcp_build_identity(
+        "0.1.3",
+        interface_schema_digest="a" * 64,
+    )
+
+    assert identity.component_id == "runner-mcp"
+    assert identity.build_version == "0.1.3"
+    assert identity.protocol_min == HANDSHAKE_PROTOCOL_VERSIONS[0]
+    assert identity.protocol_max == HANDSHAKE_PROTOCOL_VERSIONS[-1]
+    assert identity.interface_schema_digest == "a" * 64
+    assert identity.source_revision is None
+    assert identity.artifact_digest is None
 
 
 @pytest.mark.parametrize(

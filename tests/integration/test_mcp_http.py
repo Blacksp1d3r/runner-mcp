@@ -3,6 +3,7 @@ import sys
 import time
 from pathlib import Path
 
+from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 from starlette.testclient import TestClient
 
 from runner_mcp.approval_manager import ApprovalManager
@@ -104,6 +105,7 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             "safety_status",
             "runtime_status",
             "runtime_doctor",
+            "build_identity",
             "project_status",
             "read_project_file",
             "list_project_files",
@@ -118,6 +120,62 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             "fabric_cancel_work_unit",
         ):
             assert tool_name not in listed.text
+
+        identity = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 29,
+                "method": "tools/call",
+                "params": {
+                    "name": "build_identity",
+                    "arguments": {},
+                },
+            },
+        )
+        assert identity.status_code == 200
+        identity_payload = parse_tool_json(identity)
+        assert set(identity_payload) == {
+            "component_id",
+            "build_version",
+            "source_revision",
+            "artifact_digest",
+            "protocol_min",
+            "protocol_max",
+            "interface_schema_digest",
+        }
+        assert identity_payload["component_id"] == "runner-mcp"
+        assert isinstance(identity_payload["build_version"], str)
+        assert identity_payload["build_version"]
+        assert identity_payload["source_revision"] is None
+        assert identity_payload["artifact_digest"] is None
+        assert identity_payload["protocol_min"] == HANDSHAKE_PROTOCOL_VERSIONS[0]
+        assert identity_payload["protocol_max"] == HANDSHAKE_PROTOCOL_VERSIONS[-1]
+        digest = identity_payload["interface_schema_digest"]
+        assert isinstance(digest, str)
+        assert len(digest) == 64
+        assert all(char in "0123456789abcdef" for char in digest)
+        assert ("x" * 32) not in identity.text
+        assert str(tmp_path) not in identity.text
+        assert "mcp.example.invalid" not in identity.text
+
+        rejected_identity = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 28,
+                "method": "tools/call",
+                "params": {
+                    "name": "build_identity",
+                    "arguments": {"path": "/tmp/private"},
+                },
+            },
+        )
+        assert rejected_identity.status_code == 200
+        assert '"isError":true' in rejected_identity.text
+        assert "/tmp/private" not in rejected_identity.text
 
         safety = client.post(
             "/mcp",

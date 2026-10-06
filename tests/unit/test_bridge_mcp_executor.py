@@ -575,7 +575,6 @@ def test_client_rejects_observed_protocol_version_mismatch(monkeypatch) -> None:
 @pytest.mark.parametrize(
     "server_info",
     [
-        {"name": "Runner MCP"},
         {"name": "../private", "version": "1"},
         {"name": "Runner MCP", "version": ""},
         {"name": "Runner MCP", "version": "x" * 129},

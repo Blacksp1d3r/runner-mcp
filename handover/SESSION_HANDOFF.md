@@ -1,3 +1,11 @@
+## 2026-10-06 — Fleet A6 resume gate and separate #417 access issue
+
+A6/#942 remains gated by ChatGPT client tool-schema refresh. The two bounded A6 proxy tools already exist server-side and must not be duplicated.
+
+Separate Runner-MCP issue #417 tracks private Runner-Fabric source and Actions read access. Keep it independent from A6 qualification.
+
+After the A6 proxy tools become visible: reconcile exact Runner-MCP main, prepare that newer exact commit, self-update to the same commit, wait for restart convergence, require a fresh post-completion A3 probe, finalize, and require qualified/off_target with succeeded update/reconnect/probe before closing Fabric #942. Start A7/#943 only afterwards.
+
 ## 2026-10-06 — customer update safety counterpart #414
 
 Do not start with mutation. Wait for/consume Runner Fabric #1063 contracts, then add only the smallest read-only local projection needed. Keep cohort/canary/soak/freeze policy in Fabric and customer semantics in AIfordable #401. Explicitly fail closed on insufficient RAM/storage and unknown required health evidence.

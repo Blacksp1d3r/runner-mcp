@@ -1405,9 +1405,14 @@ def build_mcp(
             if str(exc) == "Runner Fabric host inspection failed"
             else "invalid_inspection_payload"
         )
-        try:
-            preflight = _require_fabric_bridge().preflight()
-        except FabricBridgeError:
+        bridge = _require_fabric_bridge()
+        preflight_method = getattr(bridge, "preflight", None)
+        if callable(preflight_method):
+            try:
+                preflight = preflight_method()
+            except FabricBridgeError:
+                preflight = {}
+        else:
             preflight = {}
         reason = preflight.get("reason_code") if isinstance(preflight, dict) else None
         if (

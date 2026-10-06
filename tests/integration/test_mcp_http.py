@@ -106,6 +106,7 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             "runtime_status",
             "runtime_doctor",
             "build_identity",
+            "tunnel_topology_refresh",
             "project_status",
             "read_project_file",
             "list_project_files",
@@ -297,6 +298,122 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
     assert str(project_root) not in audit_text
     assert "hello runner" not in audit_text
     assert "this-value" not in audit_text
+
+
+def test_topology_refresh_tool_is_zero_arg_and_secret_free(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    private_instance = "a" * 32
+    private_digest = "b" * 64
+    monkeypatch.setattr(
+        "runner_mcp.server.refresh_tunnel_topology_attestation",
+        lambda _config_dir: {
+            "state": "qualified",
+            "reason": "topology_unique_primary",
+            "qualified": True,
+        },
+    )
+    app = build_test_app(tmp_path)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 81,
+                "method": "tools/call",
+                "params": {
+                    "name": "tunnel_topology_refresh",
+                    "arguments": {},
+                },
+            },
+        )
+        assert response.status_code == 200
+        assert parse_tool_json(response) == {
+            "state": "qualified",
+            "reason": "topology_unique_primary",
+            "qualified": True,
+        }
+        assert private_instance not in response.text
+        assert private_digest not in response.text
+
+        rejected = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 82,
+                "method": "tools/call",
+                "params": {
+                    "name": "tunnel_topology_refresh",
+                    "arguments": {"path": "/tmp/private"},
+                },
+            },
+        )
+        assert rejected.status_code == 200
+        assert '"isError":true' in rejected.text
+        assert "/tmp/private" not in rejected.text
+
+
+def test_topology_refresh_failure_is_sanitized(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from runner_mcp.tunnel_topology_refresh import TunnelTopologyRefreshError
+
+    monkeypatch.setattr(
+        "runner_mcp.server.refresh_tunnel_topology_attestation",
+        lambda _config_dir: (_ for _ in ()).throw(
+            TunnelTopologyRefreshError("private failure")
+        ),
+    )
+    app = build_test_app(tmp_path)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 83,
+                "method": "tools/call",
+                "params": {
+                    "name": "tunnel_topology_refresh",
+                    "arguments": {},
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert '"isError":true' in response.text
+    assert "private failure" not in response.text
+    assert str(tmp_path) not in response.text
 
 
 def test_authenticated_request_with_unexpected_host_is_rejected(tmp_path: Path) -> None:

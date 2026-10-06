@@ -11,6 +11,11 @@ from urllib.parse import urlsplit
 
 from .config import ProjectRegistry, load_project_registry
 from .source_control import _git_environment
+from .known_project_local_source import (
+    LocalSourceBindingError,
+    load_local_source_binding,
+    materialize_local_source,
+)
 
 
 class KnownProjectRegistrationError(RuntimeError):
@@ -284,6 +289,7 @@ def preflight_known_project_source(
     *,
     project_id: str,
     github_token: str | None,
+    local_source_bindings_raw: str | None = None,
     runner=subprocess.run,
 ) -> dict[str, str | bool]:
     """Return bounded source reachability for one fixed catalogued project."""
@@ -293,6 +299,28 @@ def preflight_known_project_source(
         raise KnownProjectRegistrationError("Unknown managed project")
     if not callable(runner):
         raise TypeError("runner must be callable")
+
+    try:
+        local_binding = load_local_source_binding(
+            raw=local_source_bindings_raw,
+            project_id=project.code,
+            expected_repository=project.repository,
+        )
+    except LocalSourceBindingError as exc:
+        raise KnownProjectRegistrationError(
+            "Local source private configuration is invalid"
+        ) from exc
+    if local_binding is not None:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "credential_configured": bool(
+                isinstance(github_token, str) and github_token.strip()
+            ),
+            "source_reachable": True,
+            "main_ref_available": True,
+            "reason_code": "local-source-ready",
+        }
 
     credential_configured = bool(
         isinstance(github_token, str) and github_token.strip()
@@ -309,169 +337,192 @@ def preflight_known_project_source(
 
     repository_url = f"https://github.com/{project.repository}.git"
     try:
-        result = runner(
-            [
-                "git",
-                "-c",
-                "core.hooksPath=/dev/null",
-                "ls-remote",
-                "--heads",
-                "--",
-                repository_url,
-                "refs/heads/main",
-            ],
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=20.0,
-            check=False,
-            shell=False,
-            env=_github_clone_environment(github_token),
-        )
-    except (OSError, subprocess.TimeoutExpired):
+        try:
+            local_binding = load_local_source_binding(
+                raw=local_source_bindings_raw,
+                project_id=project.code,
+                expected_repository=project.repository,
+            )
+        except LocalSourceBindingError as exc:
+            raise KnownProjectRegistrationError(
+                "Local source private configuration is invalid"
+            ) from exc
+
+        if local_binding is not None:
+            materialize_local_source(
+                binding=local_binding,
+                destination=temporary,
+                canonical_origin=repository_url,
+                runner=runner,
+            )
+            local_materialized = True
+        else:
+            local_materialized = False
+            result = runner(
+                [
+                    "git",
+                    "-c",
+                    "core.hooksPath=/dev/null",
+                    "ls-remote",
+                    "--heads",
+                    "--",
+                    repository_url,
+                    "refs/heads/main",
+                ],
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=20.0,
+                check=False,
+                shell=False,
+                env=_github_clone_environment(github_token),
+            )
+        except (OSError, subprocess.TimeoutExpired):
+            return {
+                "code": project.code,
+                "repository": project.repository,
+                "credential_configured": True,
+                "source_reachable": False,
+                "main_ref_available": False,
+                "reason_code": "source-unreachable-or-unauthorized",
+            }
+    
+        if not isinstance(result, subprocess.CompletedProcess) or result.returncode != 0:
+            return {
+                "code": project.code,
+                "repository": project.repository,
+                "credential_configured": True,
+                "source_reachable": False,
+                "main_ref_available": False,
+                "reason_code": "source-unreachable-or-unauthorized",
+            }
+    
+        stdout = result.stdout if isinstance(result.stdout, str) else ""
+        main_ref_available = "refs/heads/main" in stdout
         return {
             "code": project.code,
             "repository": project.repository,
             "credential_configured": True,
-            "source_reachable": False,
-            "main_ref_available": False,
-            "reason_code": "source-unreachable-or-unauthorized",
+            "source_reachable": True,
+            "main_ref_available": main_ref_available,
+            "reason_code": "ready" if main_ref_available else "main-ref-unavailable",
         }
-
-    if not isinstance(result, subprocess.CompletedProcess) or result.returncode != 0:
-        return {
-            "code": project.code,
-            "repository": project.repository,
-            "credential_configured": True,
-            "source_reachable": False,
-            "main_ref_available": False,
-            "reason_code": "source-unreachable-or-unauthorized",
+    
+    def prepare_known_project(
+        registry: ProjectRegistry,
+        *,
+        project_id: str,
+        runner=subprocess.run,
+        github_token: str | None = None,
+        local_source_bindings_raw: str | None = None,
+    ) -> dict[str, str]:
+        """Prepare one catalogued clone beside an already-trusted project root."""
+    
+        if project_id not in KNOWN_PROJECTS:
+            raise KnownProjectRegistrationError("Unknown managed project")
+        if not callable(runner):
+            raise TypeError("runner must be callable")
+    
+        project = KNOWN_PROJECTS[project_id]
+        parents = {
+            _trusted_existing_root(configured.root).parent
+            for configured in registry.projects.values()
         }
-
-    stdout = result.stdout if isinstance(result.stdout, str) else ""
-    main_ref_available = "refs/heads/main" in stdout
-    return {
-        "code": project.code,
-        "repository": project.repository,
-        "credential_configured": True,
-        "source_reachable": True,
-        "main_ref_available": main_ref_available,
-        "reason_code": "ready" if main_ref_available else "main-ref-unavailable",
-    }
-
-def prepare_known_project(
-    registry: ProjectRegistry,
-    *,
-    project_id: str,
-    runner=subprocess.run,
-    github_token: str | None = None,
-) -> dict[str, str]:
-    """Prepare one catalogued clone beside an already-trusted project root."""
-
-    if project_id not in KNOWN_PROJECTS:
-        raise KnownProjectRegistrationError("Unknown managed project")
-    if not callable(runner):
-        raise TypeError("runner must be callable")
-
-    project = KNOWN_PROJECTS[project_id]
-    parents = {
-        _trusted_existing_root(configured.root).parent
-        for configured in registry.projects.values()
-    }
-    if len(parents) != 1:
-        raise KnownProjectRegistrationError(
-            "Known project clone destination is ambiguous"
-        )
-    parent = next(iter(parents))
-    if not os.access(parent, os.W_OK | os.X_OK):
-        raise KnownProjectRegistrationError(
-            "Known project destination is not writable"
-        )
-    target = parent / project.directory_name
-
-    if target.exists() or target.is_symlink():
-        if target.is_symlink() or not target.is_dir():
+        if len(parents) != 1:
             raise KnownProjectRegistrationError(
-                "Known project destination is occupied"
+                "Known project clone destination is ambiguous"
             )
-        if _repository_for(target.resolve(strict=True), runner=runner) != project.repository:
+        parent = next(iter(parents))
+        if not os.access(parent, os.W_OK | os.X_OK):
             raise KnownProjectRegistrationError(
-                "Known project destination has an unexpected repository"
+                "Known project destination is not writable"
             )
-        return {
-            "code": project.code,
-            "name": project.display_name,
-            "repository": project.repository,
-            "state": "already-prepared",
-        }
-
-    temporary = parent / f".{project.code}-clone-{secrets.token_hex(8)}"
-    if temporary.exists() or temporary.is_symlink():
-        raise KnownProjectRegistrationError(
-            "Known project temporary destination is unavailable"
-        )
-
-    repository_url = f"https://github.com/{project.repository}.git"
-    try:
-        result = runner(
-            [
-                "git",
-                "-c",
-                "core.hooksPath=/dev/null",
-                "clone",
-                "--origin",
-                "origin",
-                "--no-tags",
-                "--no-checkout",
-                "--branch",
-                "main",
-                "--single-branch",
-                "--",
-                repository_url,
-                str(temporary),
-            ],
-            cwd=str(parent),
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=180.0,
-            check=False,
-            shell=False,
-            env=_github_clone_environment(github_token),
-        )
-        if not isinstance(result, subprocess.CompletedProcess):
+        target = parent / project.directory_name
+    
+        if target.exists() or target.is_symlink():
+            if target.is_symlink() or not target.is_dir():
+                raise KnownProjectRegistrationError(
+                    "Known project destination is occupied"
+                )
+            if _repository_for(target.resolve(strict=True), runner=runner) != project.repository:
+                raise KnownProjectRegistrationError(
+                    "Known project destination has an unexpected repository"
+                )
+            return {
+                "code": project.code,
+                "name": project.display_name,
+                "repository": project.repository,
+                "state": "already-prepared",
+            }
+    
+        temporary = parent / f".{project.code}-clone-{secrets.token_hex(8)}"
+        if temporary.exists() or temporary.is_symlink():
             raise KnownProjectRegistrationError(
-                "Known project clone result is invalid"
+                "Known project temporary destination is unavailable"
             )
-        if result.returncode != 0:
-            raise KnownProjectRegistrationError("Known project clone failed")
-        checkout = runner(
-            [
-                "git",
-                "-c",
-                "core.hooksPath=/dev/null",
-                "-C",
-                str(temporary),
-                "checkout",
-                "--detach",
-                "origin/main",
-            ],
-            cwd=str(parent),
-            stdin=subprocess.DEVNULL,
-            capture_output=True,
-            text=True,
-            timeout=60.0,
-            check=False,
-            shell=False,
-            env=_git_environment(network=False),
-        )
-        if (
-            not isinstance(checkout, subprocess.CompletedProcess)
-            or checkout.returncode != 0
-        ):
-            raise KnownProjectRegistrationError(
-                "Known project checkout failed"
+    
+        repository_url = f"https://github.com/{project.repository}.git"
+        try:
+            result = runner(
+                [
+                    "git",
+                    "-c",
+                    "core.hooksPath=/dev/null",
+                    "clone",
+                    "--origin",
+                    "origin",
+                    "--no-tags",
+                    "--no-checkout",
+                    "--branch",
+                    "main",
+                    "--single-branch",
+                    "--",
+                    repository_url,
+                    str(temporary),
+                ],
+                cwd=str(parent),
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=180.0,
+                check=False,
+                shell=False,
+                env=_github_clone_environment(github_token),
             )
+            if not isinstance(result, subprocess.CompletedProcess):
+                raise KnownProjectRegistrationError(
+                    "Known project clone result is invalid"
+                )
+            if result.returncode != 0:
+                raise KnownProjectRegistrationError("Known project clone failed")
+            if not local_materialized:
+            checkout = runner(
+                [
+                    "git",
+                    "-c",
+                    "core.hooksPath=/dev/null",
+                    "-C",
+                    str(temporary),
+                    "checkout",
+                    "--detach",
+                    "origin/main",
+                ],
+                cwd=str(parent),
+                stdin=subprocess.DEVNULL,
+                capture_output=True,
+                text=True,
+                timeout=60.0,
+                check=False,
+                shell=False,
+                env=_git_environment(network=False),
+            )
+            if (
+                not isinstance(checkout, subprocess.CompletedProcess)
+                or checkout.returncode != 0
+            ):
+                raise KnownProjectRegistrationError(
+                    "Known project checkout failed"
+                )
         if not temporary.is_dir() or temporary.is_symlink():
             raise KnownProjectRegistrationError("Known project clone is invalid")
         if _repository_for(temporary.resolve(strict=True), runner=runner) != project.repository:
@@ -491,7 +542,7 @@ def prepare_known_project(
         "code": project.code,
         "name": project.display_name,
         "repository": project.repository,
-        "state": "prepared",
+        "state": "prepared-local" if local_materialized else "prepared",
     }
 
 

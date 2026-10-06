@@ -3315,6 +3315,121 @@ def test_retention_prune_release_cli_requires_typed_candidate_confirmation(
     assert captured.err == ""
 
 
+def test_topology_heartbeat_once_cli_prints_bounded_status(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class Outcome:
+        healthy = True
+
+        def public_dict(self):
+            return {
+                "healthy": True,
+                "state": "qualified",
+                "reason": "topology_unique_primary",
+                "qualified": True,
+            }
+
+    monkeypatch.setattr(
+        cli,
+        "run_topology_heartbeat_once",
+        lambda _config_dir: Outcome(),
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "topology-heartbeat",
+            "once",
+        ]
+    ) == 0
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == (
+        "state=qualified reason=topology_unique_primary qualified=yes"
+    )
+    assert str(paths.config_dir) not in captured.out
+    assert captured.err == ""
+
+
+def test_topology_heartbeat_once_cli_returns_nonzero_when_unhealthy(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class Outcome:
+        healthy = False
+
+        def public_dict(self):
+            return {
+                "healthy": False,
+                "state": "unavailable",
+                "reason": "topology_refresh_unavailable",
+                "qualified": False,
+            }
+
+    monkeypatch.setattr(
+        cli,
+        "run_topology_heartbeat_once",
+        lambda _config_dir: Outcome(),
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "topology-heartbeat",
+            "once",
+        ]
+    ) == 2
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == (
+        "state=unavailable reason=topology_refresh_unavailable qualified=no"
+    )
+
+
+def test_topology_heartbeat_run_cli_stops_cleanly_on_interrupt(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    calls: list[Path] = []
+
+    def run_forever(config_dir: Path) -> None:
+        calls.append(config_dir)
+        raise KeyboardInterrupt
+
+    monkeypatch.setattr(
+        cli,
+        "run_topology_heartbeat_forever",
+        run_forever,
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "topology-heartbeat",
+            "run",
+        ]
+    ) == 0
+    captured = capsys.readouterr()
+
+    assert calls == [paths.config_dir.resolve()]
+    assert captured.out.splitlines() == [
+        "Runner MCP topology heartbeat running.",
+        "Runner MCP topology heartbeat stopped.",
+    ]
+
+
 def test_agent_bus_worker_once_cli_selects_one_shot_runtime(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

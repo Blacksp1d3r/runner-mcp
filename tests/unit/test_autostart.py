@@ -22,6 +22,7 @@ from runner_mcp.autostart import (
     install_user_services,
     remove_user_services,
     render_user_units,
+    restart_managed_server_unit,
     user_service_status,
 )
 from runner_mcp.autostart_activation import AutostartActivationPermit
@@ -522,3 +523,35 @@ def test_fabric_agent_qualification_unit_is_optional_and_contains_no_credentials
     assert " run" in content
     assert "credential" not in content.casefold()
     assert "token" not in content.casefold()
+
+
+def test_restart_managed_server_unit_uses_only_fixed_managed_unit(
+    tmp_path: Path,
+) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    path = unit_dir / SERVER_UNIT
+    path.write_text(MANAGED_MARKER + "\n", encoding="utf-8")
+    path.chmod(0o600)
+    systemctl = FakeSystemctl()
+
+    restart_managed_server_unit(
+        unit_dir=unit_dir,
+        runner=systemctl,
+    )
+
+    assert systemctl.calls == [
+        ["systemctl", "--user", "restart", SERVER_UNIT],
+    ]
+
+
+def test_restart_managed_server_unit_refuses_foreign_unit(
+    tmp_path: Path,
+) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    path = unit_dir / SERVER_UNIT
+    path.write_text("[Service]\nExecStart=/bin/false\n", encoding="utf-8")
+
+    with pytest.raises(AutostartError, match="not managed"):
+        restart_managed_server_unit(unit_dir=unit_dir)

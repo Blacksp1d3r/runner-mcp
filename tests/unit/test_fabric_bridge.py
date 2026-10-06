@@ -891,6 +891,11 @@ def test_bridge_preflight_returns_only_bounded_peer_facts(
         ("Runner MCP protocol version is incompatible", "protocol_incompatible"),
         ("Runner MCP interface schema is incompatible", "interface_incompatible"),
         ("Runner MCP build identity is incompatible", "build_identity_incompatible"),
+        ("Runner MCP server identity is invalid", "server_identity_invalid"),
+        ("Runner MCP returned an invalid session identifier", "session_invalid"),
+        ("Runner MCP returned an unsupported event stream", "response_invalid"),
+        ("Runner MCP returned invalid JSON", "response_invalid"),
+        ("Runner MCP response must be a JSON object", "response_invalid"),
         ("other bounded failure", "peer_unavailable"),
     ],
 )

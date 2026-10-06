@@ -1424,6 +1424,9 @@ def build_mcp(
                 "protocol_incompatible",
                 "interface_incompatible",
                 "build_identity_incompatible",
+                "server_identity_invalid",
+                "session_invalid",
+                "response_invalid",
                 "peer_unavailable",
                 "bridge_unavailable",
             }

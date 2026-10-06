@@ -139,6 +139,10 @@ from .tunnel_health_evidence import (
 )
 from .tunnel_runtime import run_managed_tunnel
 from .tunnel_topology import collect_tunnel_topology_evidence
+from .tunnel_topology_heartbeat import (
+    run_topology_heartbeat_forever,
+    run_topology_heartbeat_once,
+)
 
 
 def package_version() -> str:
@@ -1362,6 +1366,27 @@ def cmd_autostart(args: argparse.Namespace) -> int:
     raise AutostartError("unknown autostart action")
 
 
+def cmd_topology_heartbeat(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    if args.topology_heartbeat_action == "once":
+        outcome = run_topology_heartbeat_once(config_dir)
+        payload = outcome.public_dict()
+        print(
+            f"state={payload['state']} "
+            f"reason={payload['reason']} "
+            f"qualified={'yes' if payload['qualified'] else 'no'}"
+        )
+        return 0 if outcome.healthy else 2
+    if args.topology_heartbeat_action == "run":
+        print("Runner MCP topology heartbeat running.")
+        try:
+            run_topology_heartbeat_forever(config_dir)
+        except KeyboardInterrupt:
+            print("Runner MCP topology heartbeat stopped.")
+            return 0
+    raise RuntimeError("unknown topology heartbeat action")
+
+
 def cmd_agent_bus_worker(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
     if args.agent_bus_worker_action == "run":
@@ -2394,6 +2419,25 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PORT",
     )
     autostart_cron_run.set_defaults(func=cmd_autostart)
+
+    topology_heartbeat = subparsers.add_parser(
+        "topology-heartbeat",
+        help="Keep external tunnel topology evidence fresh.",
+    )
+    topology_heartbeat_sub = topology_heartbeat.add_subparsers(
+        dest="topology_heartbeat_action",
+        required=True,
+    )
+    topology_heartbeat_once = topology_heartbeat_sub.add_parser(
+        "once",
+        help="Run one bounded topology heartbeat.",
+    )
+    topology_heartbeat_once.set_defaults(func=cmd_topology_heartbeat)
+    topology_heartbeat_run = topology_heartbeat_sub.add_parser(
+        "run",
+        help="Continuously keep topology evidence fresh.",
+    )
+    topology_heartbeat_run.set_defaults(func=cmd_topology_heartbeat)
 
     agent_bus_worker = subparsers.add_parser(
         "agent-bus-worker",

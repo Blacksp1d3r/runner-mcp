@@ -164,6 +164,14 @@ def stage_fake_wheel(command: list[str]) -> None:
 
 
 
+def test_runtime_status_has_no_latest_job_before_first_update(
+    tmp_path: Path,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
 def test_bootstrap_baseline_requires_emergency_stop_and_exact_source(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
@@ -577,6 +585,7 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert status["self_update_ready"] is False
     assert status["restart_pending"] is True
     assert status["pending_restart_count"] == 3
+    assert status["latest_self_update_job"] == result
 
     for component in ("server", "github-watcher", "completion-watcher"):
         marker = restart_marker_path(manager.config_dir, component)
@@ -590,6 +599,10 @@ def test_successful_self_update_uses_fixed_installer_and_restart_markers(
     assert status["restart_pending"] is False
     assert status["pending_restart_count"] == 0
     assert status["self_update_ready"] is True
+    assert status["latest_self_update_job"] == result
+
+    restarted, _project, _exits = make_manager(tmp_path)
+    assert restarted.runtime_status()["latest_self_update_job"] == result
 
 
 

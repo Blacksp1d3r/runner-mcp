@@ -703,6 +703,16 @@ class SelfUpdateManager:
     def _restart_ready(self) -> bool:
         return self._server_reexec is not None or self._server_port is not None
 
+    def _latest_job_public(self) -> dict[str, Any] | None:
+        with self._lock:
+            if not self._jobs:
+                return None
+            latest = max(
+                self._jobs.values(),
+                key=lambda job: (job.created_at, job.job_id),
+            )
+            return latest.public_dict()
+
     def runtime_status(self) -> dict[str, Any]:
         try:
             package_version = version("aifordable-runner-mcp")
@@ -736,6 +746,7 @@ class SelfUpdateManager:
             "restart_pending": pending_restarts > 0,
             "pending_restart_count": pending_restarts,
             "install_recovery_pending": recovery_pending,
+            "latest_self_update_job": self._latest_job_public(),
         }
 
     def start(self, commit: str) -> dict[str, Any]:

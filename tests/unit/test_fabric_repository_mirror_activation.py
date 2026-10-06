@@ -34,8 +34,7 @@ def configure(monkeypatch, tmp_path: Path):
     env_file = config_dir / "runner-mcp.env"
     token = "ghp_" + "x" * 40
     env_file.write_text(
-        "RUNNER_MCP_BEARER_TOKEN='existing-secret'\n"
-        f"GITHUB_TOKEN={token}\n",
+        "RUNNER_MCP_BEARER_TOKEN='existing-secret'\n",
         encoding="utf-8",
     )
     os.chmod(env_file, 0o600)

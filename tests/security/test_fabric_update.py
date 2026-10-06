@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 
 import runner_mcp.fabric_update as fabric_update_module
+from runner_mcp.fabric_bootstrap import FabricBootstrapError
 from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
 
@@ -546,3 +547,74 @@ def test_artifact_lookup_preserves_bounded_failure_category(
 
     with pytest.raises(FabricUpdateError, match=category):
         manager._fetch_exact_artifact(commit)
+
+
+def test_actions_readiness_uses_same_private_credential_and_canonical_workflow(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    observed: list[tuple[str, str]] = []
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+
+    def api(token, path, *, category):
+        observed.append((token, path))
+        assert category == "actions_run_unavailable"
+        return {"workflow_runs": []}
+
+    monkeypatch.setattr(manager, "_api_json", api)
+
+    assert manager.actions_readiness() == {
+        "configured": True,
+        "actions_readable": True,
+    }
+    assert observed == [
+        (
+            "x" * 40,
+            "/repos/Blacksp1d3r/Runner-Fabric/actions/workflows/"
+            "control-plane-update-bundle.yml/runs?per_page=1",
+        )
+    ]
+
+
+def test_actions_readiness_fails_closed_when_actions_metadata_is_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+
+    def unavailable(_token, _path, *, category):
+        raise FabricUpdateError(category)
+
+    monkeypatch.setattr(manager, "_api_json", unavailable)
+
+    with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
+        manager.actions_readiness()
+
+
+def test_actions_readiness_fails_closed_without_private_credential(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+
+    def missing(_path, _key):
+        raise FabricBootstrapError("missing")
+
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        missing,
+    )
+
+    with pytest.raises(FabricUpdateError, match="actions_run_unavailable"):
+        manager.actions_readiness()

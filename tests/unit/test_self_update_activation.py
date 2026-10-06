@@ -15,7 +15,6 @@ from runner_mcp.self_update_activation import (
     managed_server_activation_status,
 )
 
-
 COMMIT = "a" * 40
 OTHER = "b" * 40
 

@@ -50,6 +50,22 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
             assert "environment" in kwargs
             assert "safety" in kwargs
 
+        def readiness(self):
+            calls.append("readiness")
+            return {
+                "schemaVersion": (
+                    "runner-mcp/fabric-repository-mirror-activation-readiness/v1"
+                ),
+                "ready": False,
+                "storageReady": False,
+                "desiredStateReady": False,
+                "credentialBindingReady": False,
+                "fabricRuntimeReady": True,
+                "activationState": "unconfigured",
+                "reasonCode": "storage-binding-unavailable",
+                "mutationEnabled": False,
+            }
+
         def preflight(self):
             calls.append("preflight")
             return {
@@ -118,15 +134,33 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
             headers=headers,
             json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
         )
+        assert "fabric_repository_mirrors_activation_readiness" in listed.text
         assert "fabric_repository_mirrors_preflight" in listed.text
         assert "fabric_repository_mirrors_reconcile" in listed.text
+
+        readiness = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_repository_mirrors_activation_readiness",
+                    "arguments": {},
+                },
+            },
+        )
+        readiness_payload = _tool_json(readiness)
+        assert readiness_payload["ready"] is False
+        assert readiness_payload["reasonCode"] == "storage-binding-unavailable"
 
         preflight = client.post(
             "/mcp",
             headers=headers,
             json={
                 "jsonrpc": "2.0",
-                "id": 3,
+                "id": 4,
                 "method": "tools/call",
                 "params": {
                     "name": "fabric_repository_mirrors_preflight",
@@ -141,7 +175,7 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
             headers=headers,
             json={
                 "jsonrpc": "2.0",
-                "id": 4,
+                "id": 5,
                 "method": "tools/call",
                 "params": {
                     "name": "fabric_repository_mirrors_reconcile",
@@ -156,7 +190,7 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
             headers=headers,
             json={
                 "jsonrpc": "2.0",
-                "id": 5,
+                "id": 6,
                 "method": "tools/call",
                 "params": {
                     "name": "fabric_repository_mirrors_reconcile",
@@ -166,8 +200,9 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
         )
         assert _event(rejected)["result"]["isError"] is True
 
-    assert calls == ["preflight", "reconcile"]
+    assert calls == ["readiness", "preflight", "reconcile"]
     audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "fabric_repository_mirrors_activation_readiness" in audit
     assert "fabric_repository_mirrors_preflight" in audit
     assert "fabric_repository_mirrors_reconcile" in audit
     assert "example/private" not in audit

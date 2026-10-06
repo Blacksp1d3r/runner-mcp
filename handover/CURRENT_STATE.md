@@ -1,3 +1,7 @@
+## 2026-10-06 — Cross-project authority binding
+
+Runner-MCP is bound to the AIfordable Infrastructure + Credential Authority. Do not maintain a separate full server/token map here. Resolve scoped current context before infrastructure mutation or credential repair; unknown/stale/conflicting context fails closed.
+
 ## 2026-10-06 — Mandatory topology preflight
 
 Before connection or infrastructure troubleshooting, consult the canonical AIfordable infrastructure authority at `Blacksp1d3r/AIfordable/docs/INFRASTRUCTURE_AUTHORITY.md` and Runner Fabric's topology directory. Confirm the actual host, runtime and service identity before changing configuration. Unknown or conflicting topology fails closed. Historical correction: `github-runner` was the first Runner-MCP host; `aifordable-lab` was the first Runner-MCP + Runner Fabric combination.

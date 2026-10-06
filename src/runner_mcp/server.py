@@ -60,6 +60,10 @@ from .fabric_agent_runtime import (
 )
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
+from .fabric_coding_availability import (
+    FabricCodingAvailabilityQualificationError,
+    FabricCodingAvailabilityQualificationRunner,
+)
 from .fabric_continuity_status import (
     FabricContinuityStatusError,
     FabricContinuityStatusRunner,
@@ -510,6 +514,10 @@ def build_mcp(
         self_update_status_provider=self_update_manager.runtime_status,
     )
 
+    fabric_coding_availability_runner = FabricCodingAvailabilityQualificationRunner(
+        safety=safety,
+        environment=private_values,
+    )
     fabric_continuity_status_runner = FabricContinuityStatusRunner(
         environment=private_values,
     )
@@ -824,6 +832,47 @@ def build_mcp(
                 current_request_id(),
                 "fabric_disposable_target_qualify",
                 "runner-fabric:disposable-target",
+                "authenticated-client",
+                "qualified",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_coding_availability_qualify(
+        case: str,
+        expected_revision: str,
+    ) -> dict:
+        """Run one fixed bounded coding-worker availability qualification case."""
+        try:
+            result = fabric_coding_availability_runner.run(
+                case,
+                expected_revision,
+            )
+        except (
+            FabricCodingAvailabilityQualificationError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_coding_availability_qualify",
+                    "runner-fabric:coding-availability",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Fabric coding availability qualification is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_coding_availability_qualify",
+                "runner-fabric:coding-availability",
                 "authenticated-client",
                 "qualified",
                 utc_timestamp(),

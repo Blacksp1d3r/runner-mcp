@@ -81,6 +81,10 @@ from .fabric_repository_mirrors import (
     FabricRepositoryMirrorRunner,
 )
 from .fabric_update import FabricUpdateError, FabricUpdateManager
+from .fabric_worker_qualification_provisioning import (
+    FabricWorkerQualificationProvisioner,
+    FabricWorkerQualificationProvisioningError,
+)
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
@@ -529,9 +533,15 @@ def build_mcp(
     fabric_continuity_status_runner = FabricContinuityStatusRunner(
         environment=private_values,
     )
+    worker_qualification_environment = dict(private_values)
+    fabric_worker_qualification_provisioner = FabricWorkerQualificationProvisioner(
+        safety=safety,
+        environment=worker_qualification_environment,
+        config_dir=settings.projects_config.parent,
+    )
     fabric_disposable_target_runner = FabricDisposableTargetQualificationRunner(
         safety=safety,
-        environment=private_values,
+        environment=worker_qualification_environment,
     )
     mirror_runtime_environment = dict(private_values)
     fabric_repository_mirror_runner = FabricRepositoryMirrorRunner(
@@ -812,6 +822,57 @@ def build_mcp(
                 current_request_id(),
                 "fabric_bootstrap_status",
                 "runner-fabric",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_worker_qualification_provision(
+        worker_id: str,
+        capability_profile: str,
+        generation: int,
+        plan_digest: str,
+        policy_expires_at: str,
+        fabric_revision: str,
+        request_fingerprint: str,
+    ) -> dict:
+        """Provision fixed local state for one Fabric-authorized qualification."""
+        try:
+            result = fabric_worker_qualification_provisioner.provision(
+                worker_id=worker_id,
+                capability_profile=capability_profile,
+                generation=generation,
+                plan_digest=plan_digest,
+                policy_expires_at=policy_expires_at,
+                fabric_revision=fabric_revision,
+                request_fingerprint=request_fingerprint,
+            )
+        except (
+            FabricWorkerQualificationProvisioningError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_worker_qualification_provision",
+                    "runner-fabric:worker-qualification",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Fabric worker qualification provisioning is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_worker_qualification_provision",
+                "runner-fabric:worker-qualification",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
                 utc_timestamp(),

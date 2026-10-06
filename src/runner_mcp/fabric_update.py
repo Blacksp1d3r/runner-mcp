@@ -169,6 +169,7 @@ class FabricUpdateManager:
         self._require_safe_runtime()
         self._assert_managed_launcher()
         root = self._local_bundle_root(commit)
+        self._validate_local_bundle_source(root)
         self._validated_bootstrap(commit, root=root)
         return {
             "commit": commit,
@@ -336,8 +337,36 @@ class FabricUpdateManager:
         root = self.local_bundles_root / commit
         return _private_dir(root, create=False)
 
+    def _validate_local_bundle_source(self, root: Path) -> None:
+        try:
+            entries = tuple(root.iterdir())
+        except OSError as exc:
+            raise FabricUpdateError("fabric_bundle_invalid") from exc
+        if not 1 <= len(entries) <= _MAX_FILES:
+            raise FabricUpdateError("fabric_bundle_invalid")
+        total = 0
+        for entry in entries:
+            if entry.is_symlink() or not entry.is_file():
+                raise FabricUpdateError("fabric_bundle_invalid")
+            try:
+                info = entry.stat()
+            except OSError as exc:
+                raise FabricUpdateError("fabric_bundle_invalid") from exc
+            if (
+                info.st_uid != os.getuid()
+                or info.st_nlink != 1
+                or info.st_mode & 0o077
+                or info.st_size <= 0
+                or info.st_size > _MAX_ENTRY
+            ):
+                raise FabricUpdateError("fabric_bundle_invalid")
+            total += info.st_size
+        if total > _MAX_UNCOMPRESSED:
+            raise FabricUpdateError("fabric_bundle_invalid")
+
     def _stage_local_bundle(self, job: FabricUpdateJob) -> Path:
         source = self._local_bundle_root(job.commit)
+        self._validate_local_bundle_source(source)
         self._validated_bootstrap(job.commit, root=source)
         staged = self.state_root / f".bundle-{job.job_id}"
         if staged.exists() or staged.is_symlink():

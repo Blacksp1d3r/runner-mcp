@@ -14,7 +14,6 @@ from runner_mcp.operational_safety import (
     RetentionPolicy,
 )
 
-
 _CASES = {
     "provider-temporarily-unavailable": (
         "wait",

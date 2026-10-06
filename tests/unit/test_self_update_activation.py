@@ -6,11 +6,18 @@ from types import SimpleNamespace
 
 import pytest
 
-import runner_mcp.self_update_activation as activation
+from runner_mcp import self_update_activation
 
 
 COMMIT = "a" * 40
 OTHER = "b" * 40
+
+
+def marker_commit(config: Path) -> str | None:
+    path = config / "self-update-restart-server.marker"
+    if not path.exists():
+        return None
+    return path.read_text(encoding="utf-8").strip()
 
 
 def write_installed_state(config: Path, commit: str = COMMIT) -> None:
@@ -35,8 +42,8 @@ def test_old_process_cannot_consume_new_server_marker(tmp_path: Path) -> None:
     write_installed_state(config)
     write_server_marker(config)
 
-    assert activation.confirm_server_activation(config, process_commit=OTHER) is False
-    assert activation.restart_marker_commit(config, "server") == COMMIT
+    assert self_update_activation.confirm_server_activation(config, process_commit=OTHER) is False
+    assert marker_commit(config) == COMMIT
 
 
 def test_exact_new_process_consumes_server_marker_on_proof(tmp_path: Path) -> None:
@@ -44,8 +51,8 @@ def test_exact_new_process_consumes_server_marker_on_proof(tmp_path: Path) -> No
     write_installed_state(config)
     write_server_marker(config)
 
-    assert activation.confirm_server_activation(config, process_commit=COMMIT) is True
-    assert activation.restart_marker_commit(config, "server") is None
+    assert self_update_activation.confirm_server_activation(config, process_commit=COMMIT) is True
+    assert marker_commit(config) is None
 
 
 def test_installed_revision_mismatch_keeps_marker(tmp_path: Path) -> None:
@@ -53,8 +60,8 @@ def test_installed_revision_mismatch_keeps_marker(tmp_path: Path) -> None:
     write_installed_state(config, OTHER)
     write_server_marker(config, COMMIT)
 
-    assert activation.confirm_server_activation(config, process_commit=COMMIT) is False
-    assert activation.restart_marker_commit(config, "server") == COMMIT
+    assert self_update_activation.confirm_server_activation(config, process_commit=COMMIT) is False
+    assert marker_commit(config) == COMMIT
 
 
 def test_managed_cron_activation_uses_fixed_self_termination(
@@ -77,12 +84,12 @@ def test_managed_cron_activation_uses_fixed_self_termination(
     )
     terminated: list[bool] = []
 
-    backend = activation.activate_managed_server(
+    backend = self_update_activation.activate_managed_server(
         tmp_path,
         terminate_self=lambda: terminated.append(True),
     )
 
-    assert backend is activation.ManagedServerBackend.CRON
+    assert backend is self_update_activation.ManagedServerBackend.CRON
     assert terminated == [True]
 
 
@@ -111,9 +118,9 @@ def test_managed_systemd_activation_uses_fixed_server_unit(
         lambda: restarted.append(True),
     )
 
-    backend = activation.activate_managed_server(tmp_path)
+    backend = self_update_activation.activate_managed_server(tmp_path)
 
-    assert backend is activation.ManagedServerBackend.SYSTEMD_USER
+    assert backend is self_update_activation.ManagedServerBackend.SYSTEMD_USER
     assert restarted == [True]
 
 
@@ -124,18 +131,18 @@ def test_multiple_or_missing_supervisors_fail_closed(
     monkeypatch.setattr(activation, "has_managed_cron", lambda: True)
     monkeypatch.setattr(activation, "has_managed_user_units", lambda: True)
     with pytest.raises(
-        activation.ManagedServerActivationError,
+        self_update_activation.ManagedServerActivationError,
         match="Multiple managed",
     ):
-        activation.managed_server_activation_status(tmp_path)
+        self_update_activation.managed_server_activation_status(tmp_path)
 
     monkeypatch.setattr(activation, "has_managed_cron", lambda: False)
     monkeypatch.setattr(activation, "has_managed_user_units", lambda: False)
     with pytest.raises(
-        activation.ManagedServerActivationError,
+        self_update_activation.ManagedServerActivationError,
         match="unavailable",
     ):
-        activation.managed_server_activation_status(tmp_path)
+        self_update_activation.managed_server_activation_status(tmp_path)
 
 
 def test_activation_proof_middleware_confirms_only_after_http_request(
@@ -149,11 +156,11 @@ def test_activation_proof_middleware_confirms_only_after_http_request(
     async def app(scope, receive, send):
         calls.append(scope["type"])
 
-    middleware = activation.ServerActivationProofMiddleware(
+    middleware = self_update_activation.ServerActivationProofMiddleware(
         app,
         config_dir=config,
     )
-    assert activation.restart_marker_commit(config, "server") == COMMIT
+    assert marker_commit(config) == COMMIT
 
     async def exercise() -> None:
         await middleware(
@@ -161,7 +168,7 @@ def test_activation_proof_middleware_confirms_only_after_http_request(
             lambda: None,
             lambda _message: None,
         )
-        assert activation.restart_marker_commit(config, "server") == COMMIT
+        assert marker_commit(config) == COMMIT
 
         await middleware(
             {"type": "http"},
@@ -170,5 +177,5 @@ def test_activation_proof_middleware_confirms_only_after_http_request(
         )
 
     asyncio.run(exercise())
-    assert activation.restart_marker_commit(config, "server") is None
+    assert marker_commit(config) is None
     assert calls == ["lifespan", "http"]

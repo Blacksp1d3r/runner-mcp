@@ -1,3 +1,12 @@
+## 2026-10-06 — resume #451 Bewind-only source token
+
+#445 is complete/live at `1d4957ff...`.
+
+Active #451 branch: `source/451-bewind-dedicated-token`.
+It introduces only fixed private env `RUNNER_MCP_BEWIND_GITHUB_TOKEN` plus an internal project-id credential selector. Bewind uses the dedicated token when present; all other known projects and mailbox remain on the global token. No MCP credential input/output exists.
+
+After merge/live update, owner only needs to place the already-created Bewind read token into the private env. Then run `known_project_source_preflight(bewind)` -> `prepare_known_project(bewind)` -> `register_known_project(bewind)`. Do not replace the global token and do not touch active Bewind v3.
+
 ## 2026-10-06 — resume #445 worker qualification provisioning
 
 Active branch: `fabric/445-worker-qualification-provision-v2`, based on main `10df2c8b...`.

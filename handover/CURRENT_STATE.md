@@ -1,3 +1,13 @@
+## 2026-10-06 — #451 dedicated Bewind source credential in validation
+
+Tracking: #451; unblocks Runner-Fabric #1112/#1110.
+
+Runner-MCP #445 is merged via #452 as `1d4957ff0787e91378dc1a46215469623fc76947` and live on aifordable-lab with restart/recovery clear.
+
+#451 adds one fixed private credential selector for the built-in `bewind` project. When `RUNNER_MCP_BEWIND_GITHUB_TOKEN` is present, only Bewind known-project preflight/source-preflight/prepare may use it. Other projects and mailbox remain on the existing global token. Missing dedicated credential explicitly preserves current global fallback; malformed dedicated credential fails closed. MCP callers still provide only project_id and no credential value is returned/audited.
+
+Next: exact-head CI/merge/live update. Then the owner stores the already-created fine-grained Bewind read token in the dedicated private env binding; run bounded preflight -> prepare -> register to close Fabric #1112 without touching v3.
+
 ## 2026-10-06 — #445 fixed worker-qualification provisioner in validation
 
 Tracking: #445; Fabric chain #1130 -> #1113 -> #1110. Active branch: `fabric/445-worker-qualification-provision-v2`.

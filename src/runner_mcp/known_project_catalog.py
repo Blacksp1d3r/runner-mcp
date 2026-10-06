@@ -5,6 +5,7 @@ import os
 import secrets
 import shutil
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -29,6 +30,9 @@ class KnownProject:
     repository: str
     directory_name: str
     adapter: str = "generic"
+
+
+BEWIND_GITHUB_TOKEN_ENV = "RUNNER_MCP_BEWIND_GITHUB_TOKEN"
 
 
 KNOWN_PROJECTS: dict[str, KnownProject] = {
@@ -260,6 +264,63 @@ def register_known_project(
     registry.projects.update(refreshed.projects)
     return {**summary, "state": "registered"}
 
+
+
+def resolve_known_project_github_token(
+    *,
+    project_id: str,
+    global_token: str | None,
+    private_values: Mapping[str, str],
+) -> str | None:
+    """Resolve one fixed private source credential without exposing selector authority."""
+
+    if project_id not in KNOWN_PROJECTS:
+        raise KnownProjectRegistrationError("Unknown managed project")
+    if not hasattr(private_values, "get"):
+        raise KnownProjectRegistrationError(
+            "Known project source credential configuration is invalid"
+        )
+
+    if project_id != "bewind":
+        return _validated_optional_token(global_token)
+
+    dedicated = private_values.get(BEWIND_GITHUB_TOKEN_ENV)
+    if dedicated is None or dedicated == "":
+        return _validated_optional_token(global_token)
+    if not isinstance(dedicated, str):
+        raise KnownProjectRegistrationError(
+            "Bewind source credential configuration is invalid"
+        )
+    return _validated_optional_token(dedicated, required=True)
+
+
+def _validated_optional_token(
+    value: str | None,
+    *,
+    required: bool = False,
+) -> str | None:
+    if value is None:
+        if required:
+            raise KnownProjectRegistrationError(
+                "Known project source credential is invalid"
+            )
+        return None
+    if not isinstance(value, str):
+        raise KnownProjectRegistrationError(
+            "Known project source credential is invalid"
+        )
+    token = value.strip()
+    if not token:
+        if required:
+            raise KnownProjectRegistrationError(
+                "Known project source credential is invalid"
+            )
+        return None
+    if any(char in token for char in ("\x00", "\r", "\n")):
+        raise KnownProjectRegistrationError(
+            "Known project source credential is invalid"
+        )
+    return token
 
 
 def _github_clone_environment(github_token: str | None) -> dict[str, str]:

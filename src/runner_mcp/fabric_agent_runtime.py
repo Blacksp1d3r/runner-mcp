@@ -11,6 +11,11 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
+from .fabric_agent_qualification import (
+    FabricAgentQualificationError,
+    qualification_agent_environment_additions,
+)
+
 
 class FabricAgentRestartError(RuntimeError):
     """Bounded Fabric-agent restart failure without private detail leakage."""
@@ -204,6 +209,10 @@ def restart_fabric_qualification_agent(
         "RUNNER_FABRIC_AGENT_RESOURCE_URL": resource_url,
         "RUNNER_FABRIC_AGENT_BEARER_TOKEN": bearer_token,
     }
+    try:
+        env.update(qualification_agent_environment_additions(config_root))
+    except FabricAgentQualificationError as exc:
+        raise FabricAgentRestartError("fabric_agent_config_invalid") from exc
     try:
         with log_file.open("ab", buffering=0) as log_handle:
             process = subprocess.Popen(

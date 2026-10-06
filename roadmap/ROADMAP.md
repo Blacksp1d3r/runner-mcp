@@ -785,3 +785,10 @@ Only if concrete use cases remain unmet, add tightly allow-listed executable tem
 ## MVP completion
 
 The MVP is complete when one pilot project can be inspected, tested, backed up, migrated, deployed to staging, health-checked, and rolled back without a general remote-shell dependency, while all actions remain auditable and secrets stay inaccessible.
+
+
+## Cross-project Infrastructure Authority invariant
+
+Runner-MCP consumes the canonical AIfordable Infrastructure + Credential Authority and does not own a separate fleet/server truth. Bounded operations must resolve scoped customer/site/host/runtime/service identity/credential binding and freshness before infrastructure mutation. Stable asset IDs are technical identity; env-var names and Linux usernames are implementation bindings, not host identity. Unknown, stale or conflicting context fails closed.
+
+Authority: `Blacksp1d3r/AIfordable/docs/INFRASTRUCTURE_AUTHORITY.md`.

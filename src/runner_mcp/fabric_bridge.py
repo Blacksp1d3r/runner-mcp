@@ -110,6 +110,12 @@ class FabricBridgeClient:
                 reason = "interface_incompatible"
             elif "build identity" in detail:
                 reason = "build_identity_incompatible"
+            elif "server identity container" in detail:
+                reason = "server_identity_container_invalid"
+            elif "server identity name" in detail:
+                reason = "server_identity_name_invalid"
+            elif "server identity version" in detail:
+                reason = "server_identity_version_invalid"
             elif "server identity" in detail:
                 reason = "server_identity_invalid"
             elif "session identifier" in detail:

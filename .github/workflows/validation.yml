@@ -43,6 +43,18 @@ jobs:
       - name: Ruff
         run: ruff check .
 
+      - name: FASTER-13 Unix envelope E2E — 32 B
+        run: python scripts/benchmark_unix_envelope_e2e_shadow.py --iterations 1000 --payload-bytes 32 --pause-ms 1
+
+      - name: FASTER-13 Unix envelope E2E — 256 B
+        run: python scripts/benchmark_unix_envelope_e2e_shadow.py --iterations 1000 --payload-bytes 256 --pause-ms 1
+
+      - name: FASTER-13 Unix envelope E2E — 4 KiB
+        run: python scripts/benchmark_unix_envelope_e2e_shadow.py --iterations 500 --payload-bytes 4096 --pause-ms 1
+
+      - name: FASTER-13 Unix envelope E2E — 64 KiB
+        run: python scripts/benchmark_unix_envelope_e2e_shadow.py --iterations 200 --payload-bytes 65536 --pause-ms 1
+
       - name: Pytest
         run: pytest -q
 

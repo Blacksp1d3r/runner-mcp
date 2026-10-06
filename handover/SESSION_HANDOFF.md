@@ -1,3 +1,12 @@
+## 2026-10-06 — A6 live qualification candidate marker
+
+The runner-mcp-control client schema now exposes both bounded A6 qualification proxies. A concurrent bounded self-update advanced the live runtime cleanly to `877f80423724cc197e3ccd39d0869f8a5611faec` before A6 prepare could start, so that update is not claimed as A6 evidence.
+
+This documentation-only revision intentionally creates the next exact-main candidate without changing runtime behavior. Once merged, use that exact merge commit for the canonical A6 sequence only:
+`prepare -> self_update -> restart convergence -> fresh A3 probe -> finalize`.
+
+Do not start A7 unless finalization returns qualified/off-target evidence with successful update, reconnect and probe reconstruction.
+
 ## 2026-10-06 — Fleet A6 resume gate and separate #417 access issue
 
 A6/#942 remains gated by ChatGPT client tool-schema refresh. The two bounded A6 proxy tools already exist server-side and must not be duplicated.

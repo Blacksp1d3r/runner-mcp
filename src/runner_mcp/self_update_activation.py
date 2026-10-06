@@ -18,6 +18,11 @@ from .cron_autostart import (
     cron_status,
     has_managed_cron,
 )
+from .self_update import (
+    SelfUpdateError,
+    confirm_server_activation,
+    installed_self_update_commit,
+)
 
 
 class ManagedServerActivationError(RuntimeError):
@@ -147,3 +152,28 @@ def activate_managed_server(
 
 def _terminate_current_process() -> None:
     os.kill(os.getpid(), signal.SIGTERM)
+
+
+
+class ServerActivationProofMiddleware:
+    """Consume only the exact server marker belonging to this running process."""
+
+    def __init__(self, app, *, config_dir: Path) -> None:
+        self.app = app
+        self.config_dir = config_dir.expanduser().resolve()
+        try:
+            self.process_commit = installed_self_update_commit(self.config_dir)
+        except SelfUpdateError:
+            self.process_commit = None
+        self._confirmed = False
+
+    async def __call__(self, scope, receive, send) -> None:
+        if scope.get("type") == "http" and not self._confirmed:
+            try:
+                self._confirmed = confirm_server_activation(
+                    self.config_dir,
+                    process_commit=self.process_commit,
+                )
+            except SelfUpdateError:
+                self._confirmed = False
+        await self.app(scope, receive, send)

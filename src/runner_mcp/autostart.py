@@ -410,6 +410,33 @@ def install_user_services(
     return ordered
 
 
+
+def restart_managed_server_unit(
+    *,
+    unit_dir: Path | None = None,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> None:
+    """Restart only the fixed Runner-MCP server unit when it is managed."""
+
+    target = unit_dir or default_user_unit_dir()
+    expanded = target.expanduser()
+    path = expanded / SERVER_UNIT
+    if not path.exists() or path.is_symlink() or not path.is_file():
+        raise AutostartError("managed Runner MCP server unit is unavailable")
+    try:
+        content = path.read_text(encoding="utf-8")
+    except OSError as exc:
+        raise AutostartError(
+            "managed Runner MCP server unit could not be inspected"
+        ) from exc
+    if not content.startswith(MANAGED_MARKER + "\n"):
+        raise AutostartError(
+            "refusing to restart a server unit not managed by Runner MCP"
+        )
+    _run_systemctl(["restart", SERVER_UNIT], runner=runner)
+
+
+
 def user_service_status(
     *,
     unit_dir: Path | None = None,

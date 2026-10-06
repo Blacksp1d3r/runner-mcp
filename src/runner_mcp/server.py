@@ -107,6 +107,10 @@ from .operational_safety import (
     SafetyConfigurationError,
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
+from .self_update_activation import (
+    ServerActivationProofMiddleware,
+    activate_managed_server,
+)
 from .service_manager import ServiceManager, ServiceManagerError
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
@@ -383,6 +387,7 @@ def build_mcp(
     self_update_restart_components: frozenset[str] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
+    server_activation_scheduler: Callable[[], object] | None = None,
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
@@ -497,6 +502,7 @@ def build_mcp(
         resource_url=settings.resource_url,
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
+        server_activation_scheduler=server_activation_scheduler,
         restart_components=(
             self_update_restart_components
             if self_update_restart_components is not None
@@ -2943,6 +2949,7 @@ def create_app(
     self_update_restart_components: frozenset[str] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
+    server_activation_scheduler: Callable[[], object] | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
@@ -2985,6 +2992,11 @@ def create_app(
         self_update_restart_components=self_update_restart_components,
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
+        server_activation_scheduler=(
+            server_activation_scheduler
+            if server_activation_scheduler is not None
+            else lambda: activate_managed_server(settings.projects_config.parent)
+        ),
         build_identity_provider=current_build_identity,
     )
     transport_security = transport_security_for(settings.resource_url)
@@ -3009,6 +3021,10 @@ def create_app(
             ),
         ],
         middleware=[
+            Middleware(
+                ServerActivationProofMiddleware,
+                config_dir=settings.projects_config.parent,
+            ),
             Middleware(RequestIdMiddleware),
             Middleware(
                 RateLimitMiddleware,

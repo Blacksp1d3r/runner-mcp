@@ -1,0 +1,184 @@
+from __future__ import annotations
+
+import asyncio
+from pathlib import Path
+from types import SimpleNamespace
+
+import pytest
+
+from runner_mcp.self_update_activation import (
+    ManagedServerActivationError,
+    ManagedServerBackend,
+    ServerActivationProofMiddleware,
+    activate_managed_server,
+    confirm_server_activation,
+    managed_server_activation_status,
+)
+
+COMMIT = "a" * 40
+OTHER = "b" * 40
+
+
+def marker_commit(config: Path) -> str | None:
+    path = config / "self-update-restart-server.marker"
+    if not path.exists():
+        return None
+    return path.read_text(encoding="utf-8").strip()
+
+
+def write_installed_state(config: Path, commit: str = COMMIT) -> None:
+    config.mkdir(parents=True, exist_ok=True)
+    (config / "self-update-state.json").write_text(
+        '{"commit":"' + commit + '"}\n',
+        encoding="utf-8",
+    )
+    (config / "self-update-state.json").chmod(0o600)
+
+
+def write_server_marker(config: Path, commit: str = COMMIT) -> None:
+    (config / "self-update-restart-server.marker").write_text(
+        commit + "\n",
+        encoding="utf-8",
+    )
+    (config / "self-update-restart-server.marker").chmod(0o600)
+
+
+def test_old_process_cannot_consume_new_server_marker(tmp_path: Path) -> None:
+    config = tmp_path / "private"
+    write_installed_state(config)
+    write_server_marker(config)
+
+    assert confirm_server_activation(config, process_commit=OTHER) is False
+    assert marker_commit(config) == COMMIT
+
+
+def test_exact_new_process_consumes_server_marker_on_proof(tmp_path: Path) -> None:
+    config = tmp_path / "private"
+    write_installed_state(config)
+    write_server_marker(config)
+
+    assert confirm_server_activation(config, process_commit=COMMIT) is True
+    assert marker_commit(config) is None
+
+
+def test_installed_revision_mismatch_keeps_marker(tmp_path: Path) -> None:
+    config = tmp_path / "private"
+    write_installed_state(config, OTHER)
+    write_server_marker(config, COMMIT)
+
+    assert confirm_server_activation(config, process_commit=COMMIT) is False
+    assert marker_commit(config) == COMMIT
+
+
+def test_managed_cron_activation_uses_fixed_self_termination(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: True)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: False)
+    monkeypatch.setattr(
+        "runner_mcp.cron_autostart.cron_status",
+        lambda **_kwargs: [
+            SimpleNamespace(
+                component="server",
+                installed=True,
+                enabled=True,
+                active=True,
+            )
+        ],
+    )
+    terminated: list[bool] = []
+
+    backend = activate_managed_server(
+        tmp_path,
+        terminate_self=lambda: terminated.append(True),
+    )
+
+    assert backend is ManagedServerBackend.CRON
+    assert terminated == [True]
+
+
+def test_managed_systemd_activation_uses_fixed_server_unit(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.autostart.user_service_status",
+        lambda: [
+            SimpleNamespace(
+                component="server",
+                installed=True,
+                enabled=True,
+                active=True,
+            )
+        ],
+    )
+    restarted: list[bool] = []
+    monkeypatch.setattr(
+        "runner_mcp.autostart.restart_managed_server_unit",
+        lambda: restarted.append(True),
+    )
+
+    backend = activate_managed_server(tmp_path)
+
+    assert backend is ManagedServerBackend.SYSTEMD_USER
+    assert restarted == [True]
+
+
+def test_multiple_or_missing_supervisors_fail_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: True)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: True)
+    with pytest.raises(
+        ManagedServerActivationError,
+        match="Multiple managed",
+    ):
+        managed_server_activation_status(tmp_path)
+
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.autostart.has_managed_user_units", lambda: False)
+    with pytest.raises(
+        ManagedServerActivationError,
+        match="unavailable",
+    ):
+        managed_server_activation_status(tmp_path)
+
+
+def test_activation_proof_middleware_confirms_only_after_http_request(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "private"
+    write_installed_state(config)
+    write_server_marker(config)
+    calls: list[str] = []
+
+    async def app(scope, receive, send):
+        calls.append(scope["type"])
+
+    middleware = ServerActivationProofMiddleware(
+        app,
+        config_dir=config,
+    )
+    assert marker_commit(config) == COMMIT
+
+    async def exercise() -> None:
+        await middleware(
+            {"type": "lifespan"},
+            lambda: None,
+            lambda _message: None,
+        )
+        assert marker_commit(config) == COMMIT
+
+        await middleware(
+            {"type": "http"},
+            lambda: None,
+            lambda _message: None,
+        )
+
+    asyncio.run(exercise())
+    assert marker_commit(config) is None
+    assert calls == ["lifespan", "http"]

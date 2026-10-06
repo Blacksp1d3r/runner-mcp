@@ -15,6 +15,19 @@ _RESOURCE_URL_KEY = "RUNNER_FABRIC_AGENT_RESOURCE_URL"
 _BEARER_TOKEN_KEY = "RUNNER_FABRIC_AGENT_BEARER_TOKEN"
 _EXTERNAL_TARGET_CONFIG_KEY = "RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"
 _KEYS = (_RESOURCE_URL_KEY, _BEARER_TOKEN_KEY)
+_A6_KEYS = (
+    "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT",
+    "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN",
+    "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN",
+    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT",
+    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_ID",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION",
+)
 
 
 class FabricAgentQualificationError(RuntimeError):
@@ -46,6 +59,44 @@ def fabric_agent_qualification_configured(config_dir: Path) -> bool:
     return True
 
 
+def qualification_agent_environment_additions(
+    config_dir: Path,
+) -> dict[str, str]:
+    """Return only fixed optional Fabric qualification bindings."""
+
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    values = load_env_file(paths.env_file)
+    additions: dict[str, str] = {}
+
+    external_target_config = values.get(_EXTERNAL_TARGET_CONFIG_KEY, "").strip()
+    if external_target_config:
+        if (
+            "\x00" in external_target_config
+            or "\n" in external_target_config
+            or "\r" in external_target_config
+            or not Path(external_target_config).is_absolute()
+        ):
+            raise FabricAgentQualificationError(
+                "Runner Fabric qualification agent configuration is invalid"
+            )
+        additions[_EXTERNAL_TARGET_CONFIG_KEY] = external_target_config
+
+    present = tuple(bool(values.get(key, "").strip()) for key in _A6_KEYS)
+    if any(present) and not all(present):
+        raise FabricAgentQualificationError(
+            "Runner Fabric A6 qualification configuration is incomplete"
+        )
+    if all(present):
+        for key in _A6_KEYS:
+            value = values[key]
+            if "\x00" in value or "\n" in value or "\r" in value:
+                raise FabricAgentQualificationError(
+                    "Runner Fabric A6 qualification configuration is invalid"
+                )
+            additions[key] = value
+    return additions
+
+
 def run_fabric_agent_qualification_process(
     config_dir: Path,
     *,
@@ -62,16 +113,7 @@ def run_fabric_agent_qualification_process(
 
     endpoint = values[_RESOURCE_URL_KEY].strip()
     token = values[_BEARER_TOKEN_KEY]
-    external_target_config = values.get(_EXTERNAL_TARGET_CONFIG_KEY, "").strip()
-    if external_target_config and (
-        "\x00" in external_target_config
-        or "\n" in external_target_config
-        or "\r" in external_target_config
-        or not Path(external_target_config).is_absolute()
-    ):
-        raise FabricAgentQualificationError(
-            "Runner Fabric qualification agent configuration is invalid"
-        )
+    additions = qualification_agent_environment_additions(paths.config_dir)
     executable = _fixed_runner_fabric_executable()
     environment = {
         "HOME": str(Path.home()),
@@ -80,8 +122,7 @@ def run_fabric_agent_qualification_process(
         _RESOURCE_URL_KEY: endpoint,
         _BEARER_TOKEN_KEY: token,
     }
-    if external_target_config:
-        environment[_EXTERNAL_TARGET_CONFIG_KEY] = external_target_config
+    environment.update(additions)
 
     try:
         execve(

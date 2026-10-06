@@ -58,6 +58,11 @@ def _patch_start(
 ) -> None:
     monkeypatch.setattr(runtime.subprocess, "Popen", lambda *_args, **_kwargs: process)
     monkeypatch.setattr(runtime, "_wait_health", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        runtime,
+        "_qualification_agent_environment_additions",
+        lambda _config: {},
+    )
 
 
 def test_restart_recovers_when_pid_file_is_missing(
@@ -186,6 +191,72 @@ def test_restart_keeps_malformed_pid_fail_closed(
     (config / "fabric-qualification.pid").write_text("not-a-pid\n", encoding="ascii")
 
     with pytest.raises(FabricAgentRestartError, match="fabric_agent_pid_invalid"):
+        restart_fabric_qualification_agent(
+            config_dir=config,
+            resource_url="http://127.0.0.1:9020/mcp",
+            bearer_token="q" * 48,
+            home=home,
+        )
+
+
+def test_restart_forwards_only_fixed_qualification_additions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+    home = _managed_home(tmp_path)
+    process = _Process(43214)
+    additions = {
+        "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": "/private/journal",
+        "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": "http://127.0.0.1:8000/mcp",
+    }
+    monkeypatch.setattr(
+        runtime,
+        "_qualification_agent_environment_additions",
+        lambda _config: dict(additions),
+    )
+    monkeypatch.setattr(runtime, "_wait_health", lambda *_args, **_kwargs: True)
+    captured: dict[str, object] = {}
+
+    def fake_popen(*args, **kwargs):
+        captured["args"] = args
+        captured["env"] = kwargs["env"]
+        return process
+
+    monkeypatch.setattr(runtime.subprocess, "Popen", fake_popen)
+
+    result = restart_fabric_qualification_agent(
+        config_dir=config,
+        resource_url="http://127.0.0.1:9020/mcp",
+        bearer_token="q" * 48,
+        home=home,
+    )
+
+    assert result["healthy"] is True
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    assert environment["RUNNER_FABRIC_UPDATE_JOURNAL_ROOT"] == "/private/journal"
+    assert environment["RUNNER_FABRIC_RUNNER_MCP_ENDPOINT"] == (
+        "http://127.0.0.1:8000/mcp"
+    )
+    assert environment["RUNNER_FABRIC_AGENT_BEARER_TOKEN"] == "q" * 48
+
+
+def test_restart_fails_closed_when_fixed_qualification_binding_is_invalid(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+    home = _managed_home(tmp_path)
+    monkeypatch.setattr(
+        runtime,
+        "_qualification_agent_environment_additions",
+        lambda _config: (_ for _ in ()).throw(
+            FabricAgentRestartError("fabric_agent_config_invalid")
+        ),
+    )
+
+    with pytest.raises(FabricAgentRestartError, match="fabric_agent_config_invalid"):
         restart_fabric_qualification_agent(
             config_dir=config,
             resource_url="http://127.0.0.1:9020/mcp",

@@ -7,17 +7,6 @@ from dataclasses import dataclass
 from enum import StrEnum
 from pathlib import Path
 
-from .autostart import (
-    AutostartError,
-    has_managed_user_units,
-    restart_managed_server_unit,
-    user_service_status,
-)
-from .cron_autostart import (
-    CronAutostartError,
-    cron_status,
-    has_managed_cron,
-)
 from .self_update import (
     SelfUpdateError,
     confirm_server_activation,
@@ -59,6 +48,17 @@ def managed_server_activation_status(
     config_dir: Path,
 ) -> ManagedServerActivationStatus:
     """Inspect exactly one Runner-MCP-managed server supervisor."""
+
+    from .autostart import (
+        AutostartError,
+        has_managed_user_units,
+        user_service_status,
+    )
+    from .cron_autostart import (
+        CronAutostartError,
+        cron_status,
+        has_managed_cron,
+    )
 
     try:
         cron = has_managed_cron()
@@ -117,7 +117,6 @@ def managed_server_activation_status(
         active=row.active,
     )
 
-
 def activate_managed_server(
     config_dir: Path,
     *,
@@ -132,6 +131,8 @@ def activate_managed_server(
         )
 
     if status.backend is ManagedServerBackend.SYSTEMD_USER:
+        from .autostart import AutostartError, restart_managed_server_unit
+
         try:
             restart_managed_server_unit()
         except AutostartError as exc:
@@ -148,7 +149,6 @@ def activate_managed_server(
             "Managed cron server handoff failed"
         ) from exc
     return status.backend
-
 
 def _terminate_current_process() -> None:
     os.kill(os.getpid(), signal.SIGTERM)

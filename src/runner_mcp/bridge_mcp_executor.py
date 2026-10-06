@@ -805,10 +805,6 @@ class LocalMCPClient:
                 "local MCP executor rejected an unsupported tool"
             )
         self.initialize()
-        if name not in self._peer_tool_names:
-            raise BridgeExecutionAdapterError(
-                "Runner MCP interface schema is incompatible"
-            )
         payload = {
             "jsonrpc": "2.0",
             "id": self._allocate_request_id(),

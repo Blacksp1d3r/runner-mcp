@@ -61,7 +61,7 @@ def _patch_start(
     monkeypatch.setattr(runtime, "_wait_health", lambda *_args, **_kwargs: True)
     monkeypatch.setattr(
         runtime,
-        "qualification_agent_environment_additions",
+        "_qualification_agent_environment_additions",
         lambda _config: {},
     )
 
@@ -213,7 +213,7 @@ def test_restart_forwards_only_fixed_qualification_additions(
     }
     monkeypatch.setattr(
         runtime,
-        "qualification_agent_environment_additions",
+        "_qualification_agent_environment_additions",
         lambda _config: dict(additions),
     )
     monkeypatch.setattr(runtime, "_wait_health", lambda *_args, **_kwargs: True)
@@ -251,7 +251,7 @@ def test_restart_fails_closed_when_fixed_qualification_binding_is_invalid(
     home = _managed_home(tmp_path)
     monkeypatch.setattr(
         runtime,
-        "qualification_agent_environment_additions",
+        "_qualification_agent_environment_additions",
         lambda _config: (_ for _ in ()).throw(
             FabricAgentQualificationError("invalid")
         ),

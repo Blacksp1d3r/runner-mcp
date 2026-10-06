@@ -306,6 +306,10 @@ def install_private_configuration(
             or key == "RUNNER_MCP_RATE_LIMIT_PER_MINUTE"
             or key == "RUNNER_MCP_PLAYWRIGHT_BROWSERS_PATH"
             or key == "RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"
+            or key == "RUNNER_FABRIC_REPOSITORY_MIRROR_INVENTORY_ROOT"
+            or key == "RUNNER_FABRIC_REPOSITORY_MIRROR_ROOT"
+            or key == "RUNNER_FABRIC_MANAGED_REPOSITORIES_FILE"
+            or key == "RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG"
         }
         if not rotate_token:
             candidate = existing.get("RUNNER_MCP_BEARER_TOKEN", "")

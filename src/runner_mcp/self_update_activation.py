@@ -22,7 +22,6 @@ from .self_update import (
     SelfUpdateError,
     confirm_server_activation,
     installed_self_update_commit,
-    restart_marker_commit,
 )
 
 

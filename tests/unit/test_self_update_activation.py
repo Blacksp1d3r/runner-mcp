@@ -6,7 +6,14 @@ from types import SimpleNamespace
 
 import pytest
 
-from runner_mcp import self_update_activation
+from runner_mcp.self_update_activation import (
+    ManagedServerActivationError,
+    ManagedServerBackend,
+    ServerActivationProofMiddleware,
+    activate_managed_server,
+    confirm_server_activation,
+    managed_server_activation_status,
+)
 
 
 COMMIT = "a" * 40
@@ -42,7 +49,7 @@ def test_old_process_cannot_consume_new_server_marker(tmp_path: Path) -> None:
     write_installed_state(config)
     write_server_marker(config)
 
-    assert self_update_activation.confirm_server_activation(config, process_commit=OTHER) is False
+    assert confirm_server_activation(config, process_commit=OTHER) is False
     assert marker_commit(config) == COMMIT
 
 
@@ -51,7 +58,7 @@ def test_exact_new_process_consumes_server_marker_on_proof(tmp_path: Path) -> No
     write_installed_state(config)
     write_server_marker(config)
 
-    assert self_update_activation.confirm_server_activation(config, process_commit=COMMIT) is True
+    assert confirm_server_activation(config, process_commit=COMMIT) is True
     assert marker_commit(config) is None
 
 
@@ -60,7 +67,7 @@ def test_installed_revision_mismatch_keeps_marker(tmp_path: Path) -> None:
     write_installed_state(config, OTHER)
     write_server_marker(config, COMMIT)
 
-    assert self_update_activation.confirm_server_activation(config, process_commit=COMMIT) is False
+    assert confirm_server_activation(config, process_commit=COMMIT) is False
     assert marker_commit(config) == COMMIT
 
 
@@ -68,11 +75,10 @@ def test_managed_cron_activation_uses_fixed_self_termination(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(self_update_activation, "has_managed_cron", lambda: True)
-    monkeypatch.setattr(self_update_activation, "has_managed_user_units", lambda: False)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: True)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: False)
     monkeypatch.setattr(
-        self_update_activation,
-        "cron_status",
+        "runner_mcp.self_update_activation.cron_status",
         lambda **_kwargs: [
             SimpleNamespace(
                 component="server",
@@ -84,12 +90,12 @@ def test_managed_cron_activation_uses_fixed_self_termination(
     )
     terminated: list[bool] = []
 
-    backend = self_update_activation.activate_managed_server(
+    backend = activate_managed_server(
         tmp_path,
         terminate_self=lambda: terminated.append(True),
     )
 
-    assert backend is self_update_activation.ManagedServerBackend.CRON
+    assert backend is ManagedServerBackend.CRON
     assert terminated == [True]
 
 
@@ -97,11 +103,10 @@ def test_managed_systemd_activation_uses_fixed_server_unit(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(self_update_activation, "has_managed_cron", lambda: False)
-    monkeypatch.setattr(self_update_activation, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: True)
     monkeypatch.setattr(
-        self_update_activation,
-        "user_service_status",
+        "runner_mcp.self_update_activation.user_service_status",
         lambda: [
             SimpleNamespace(
                 component="server",
@@ -113,14 +118,13 @@ def test_managed_systemd_activation_uses_fixed_server_unit(
     )
     restarted: list[bool] = []
     monkeypatch.setattr(
-        self_update_activation,
-        "restart_managed_server_unit",
+        "runner_mcp.self_update_activation.restart_managed_server_unit",
         lambda: restarted.append(True),
     )
 
-    backend = self_update_activation.activate_managed_server(tmp_path)
+    backend = activate_managed_server(tmp_path)
 
-    assert backend is self_update_activation.ManagedServerBackend.SYSTEMD_USER
+    assert backend is ManagedServerBackend.SYSTEMD_USER
     assert restarted == [True]
 
 
@@ -128,21 +132,21 @@ def test_multiple_or_missing_supervisors_fail_closed(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    monkeypatch.setattr(self_update_activation, "has_managed_cron", lambda: True)
-    monkeypatch.setattr(self_update_activation, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: True)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: True)
     with pytest.raises(
-        self_update_activation.ManagedServerActivationError,
+        ManagedServerActivationError,
         match="Multiple managed",
     ):
-        self_update_activation.managed_server_activation_status(tmp_path)
+        managed_server_activation_status(tmp_path)
 
-    monkeypatch.setattr(self_update_activation, "has_managed_cron", lambda: False)
-    monkeypatch.setattr(self_update_activation, "has_managed_user_units", lambda: False)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_cron", lambda: False)
+    monkeypatch.setattr("runner_mcp.self_update_activation.has_managed_user_units", lambda: False)
     with pytest.raises(
-        self_update_activation.ManagedServerActivationError,
+        ManagedServerActivationError,
         match="unavailable",
     ):
-        self_update_activation.managed_server_activation_status(tmp_path)
+        managed_server_activation_status(tmp_path)
 
 
 def test_activation_proof_middleware_confirms_only_after_http_request(
@@ -156,7 +160,7 @@ def test_activation_proof_middleware_confirms_only_after_http_request(
     async def app(scope, receive, send):
         calls.append(scope["type"])
 
-    middleware = self_update_activation.ServerActivationProofMiddleware(
+    middleware = ServerActivationProofMiddleware(
         app,
         config_dir=config,
     )

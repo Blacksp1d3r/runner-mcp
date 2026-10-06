@@ -10,6 +10,11 @@ from pathlib import Path
 from urllib.parse import urlsplit
 
 from .config import ProjectRegistry, load_project_registry
+from .known_project_local_source import (
+    KnownProjectLocalSourceError,
+    materialize_known_project_local_source,
+    resolve_known_project_local_source,
+)
 from .source_control import _git_environment
 
 
@@ -284,6 +289,7 @@ def preflight_known_project_source(
     *,
     project_id: str,
     github_token: str | None,
+    local_source_bindings_raw: str | None = None,
     runner=subprocess.run,
 ) -> dict[str, str | bool]:
     """Return bounded source reachability for one fixed catalogued project."""
@@ -293,6 +299,28 @@ def preflight_known_project_source(
         raise KnownProjectRegistrationError("Unknown managed project")
     if not callable(runner):
         raise TypeError("runner must be callable")
+
+    try:
+        local_source = resolve_known_project_local_source(
+            raw=local_source_bindings_raw,
+            project_id=project.code,
+            expected_repository=project.repository,
+        )
+    except KnownProjectLocalSourceError as exc:
+        raise KnownProjectRegistrationError(
+            "Trusted local project source configuration is invalid"
+        ) from exc
+    if local_source is not None:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "credential_configured": bool(
+                isinstance(github_token, str) and github_token.strip()
+            ),
+            "source_reachable": True,
+            "main_ref_available": True,
+            "reason_code": "local-source-ready",
+        }
 
     credential_configured = bool(
         isinstance(github_token, str) and github_token.strip()
@@ -308,6 +336,55 @@ def preflight_known_project_source(
         }
 
     repository_url = f"https://github.com/{project.repository}.git"
+    try:
+        local_source = resolve_known_project_local_source(
+            raw=local_source_bindings_raw,
+            project_id=project.code,
+            expected_repository=project.repository,
+        )
+    except KnownProjectLocalSourceError as exc:
+        raise KnownProjectRegistrationError(
+            "Trusted local project source configuration is invalid"
+        ) from exc
+
+    if local_source is not None:
+        try:
+            materialize_known_project_local_source(
+                binding=local_source,
+                destination=temporary,
+                canonical_origin=repository_url,
+                runner=runner,
+            )
+            if not temporary.is_dir() or temporary.is_symlink():
+                raise KnownProjectRegistrationError(
+                    "Known project local materialization is invalid"
+                )
+            if (
+                _repository_for(temporary.resolve(strict=True), runner=runner)
+                != project.repository
+            ):
+                raise KnownProjectRegistrationError(
+                    "Known project local materialization verification failed"
+                )
+            temporary.replace(target)
+        except KnownProjectLocalSourceError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project local materialization failed"
+            ) from exc
+        except OSError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project local materialization failed"
+            ) from exc
+        finally:
+            if temporary.exists() and temporary != target:
+                shutil.rmtree(temporary, ignore_errors=True)
+        return {
+            "code": project.code,
+            "name": project.display_name,
+            "repository": project.repository,
+            "state": "prepared-local",
+        }
+
     try:
         result = runner(
             [
@@ -365,6 +442,7 @@ def prepare_known_project(
     project_id: str,
     runner=subprocess.run,
     github_token: str | None = None,
+    local_source_bindings_raw: str | None = None,
 ) -> dict[str, str]:
     """Prepare one catalogued clone beside an already-trusted project root."""
 

@@ -98,7 +98,7 @@ class FabricRepositoryMirrorActivator:
         _write_private_exact(desired_file, desired_content)
 
         encoded = base64.b64encode(
-            f"x-access-token:{token}".encode("utf-8")
+            f"x-access-token:{token}".encode()
         ).decode("ascii")
         git_config_content = (
             '[http "https://github.com/"]\n'

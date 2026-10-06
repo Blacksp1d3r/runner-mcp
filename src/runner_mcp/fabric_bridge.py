@@ -18,6 +18,8 @@ _FABRIC_TOOLS = frozenset(
         "external_target_inspect",
         "operational_snapshot",
         "synthetic_probe_status",
+        "a6_update_qualification_prepare",
+        "a6_update_qualification_finalize",
         "run_work_unit",
         "get_work_unit",
         "cancel_work_unit",
@@ -142,6 +144,51 @@ class FabricBridgeClient:
             and isinstance(age, int)
             and isinstance(interval, int)
             and age <= interval
+        )
+
+
+    def a6_update_qualification_prepare(self, candidate_commit: str) -> dict[str, Any]:
+        """Prepare bounded off-target A6 evidence without starting an update."""
+
+        _revision(candidate_commit)
+        try:
+            result = self._client()._call_tool(
+                "a6_update_qualification_prepare",
+                {"candidate_commit": candidate_commit},
+            )
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric A6 qualification prepare failed"
+            ) from exc
+        return _validate_a6_prepare(result, expected_candidate=candidate_commit)
+
+    def a6_update_qualification_finalize(
+        self,
+        correlation_id: str,
+        job_id: str,
+    ) -> dict[str, Any]:
+        """Finalize bounded A6 evidence after the existing self-update path."""
+
+        _semantic_id(correlation_id, "correlation_id")
+        if (
+            not isinstance(job_id, str)
+            or len(job_id) != 32
+            or any(char not in "0123456789abcdef" for char in job_id)
+        ):
+            raise FabricBridgeError("A6 qualification job id is invalid")
+        try:
+            result = self._client()._call_tool(
+                "a6_update_qualification_finalize",
+                {"correlation_id": correlation_id, "job_id": job_id},
+            )
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric A6 qualification finalize failed"
+            ) from exc
+        return _validate_a6_finalize(
+            result,
+            expected_correlation=correlation_id,
+            expected_job_id=job_id,
         )
 
     def ci_runner_guest_status(self) -> dict[str, Any]:
@@ -275,6 +322,99 @@ class FabricBridgeClient:
             raise FabricBridgeError("Runner Fabric request failed") from exc
         return _validate_view(result, expected_work_unit_id=expected_work_unit_id)
 
+
+
+
+def _validate_a6_common(
+    value: object,
+    *,
+    expected_state: str,
+    expected_keys: set[str],
+) -> dict[str, Any]:
+    if not isinstance(value, dict):
+        raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    _exact_keys(value, expected_keys, "A6 qualification result")
+    if value["schemaVersion"] != "runner.fabric/a6-update-qualification/v1":
+        raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    if value["state"] != expected_state:
+        raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    if value["off_target"] is not True:
+        raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    for field in ("journal_storage_domain", "target_storage_domain"):
+        item = value[field]
+        if not isinstance(item, str) or _ID_RE.fullmatch(item) is None:
+            raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    if value["journal_storage_domain"] == value["target_storage_domain"]:
+        raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    _revision(value["target_revision"])
+    _revision(value["candidate_revision"])
+    _semantic_id(value["correlation_id"], "correlation_id")
+    _validate_bounded_json(value)
+    return value
+
+
+def _validate_a6_prepare(
+    value: object,
+    *,
+    expected_candidate: str,
+) -> dict[str, Any]:
+    result = _validate_a6_common(
+        value,
+        expected_state="prepared",
+        expected_keys={
+            "schemaVersion",
+            "state",
+            "correlation_id",
+            "target_revision",
+            "candidate_revision",
+            "off_target",
+            "journal_storage_domain",
+            "target_storage_domain",
+        },
+    )
+    if result["candidate_revision"] != expected_candidate:
+        raise FabricBridgeError("Runner Fabric returned mismatched A6 candidate")
+    if result["target_revision"] == result["candidate_revision"]:
+        raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    return result
+
+
+def _validate_a6_finalize(
+    value: object,
+    *,
+    expected_correlation: str,
+    expected_job_id: str,
+) -> dict[str, Any]:
+    result = _validate_a6_common(
+        value,
+        expected_state="qualified",
+        expected_keys={
+            "schemaVersion",
+            "state",
+            "correlation_id",
+            "target_revision",
+            "candidate_revision",
+            "update_job_id",
+            "update_outcome",
+            "reconnect_outcome",
+            "probe_outcome",
+            "record_count",
+            "off_target",
+            "journal_storage_domain",
+            "target_storage_domain",
+        },
+    )
+    if result["correlation_id"] != expected_correlation:
+        raise FabricBridgeError("Runner Fabric returned mismatched A6 correlation")
+    if result["update_job_id"] != expected_job_id:
+        raise FabricBridgeError("Runner Fabric returned mismatched A6 update job")
+    for field in ("update_outcome", "reconnect_outcome", "probe_outcome"):
+        if result[field] != "succeeded":
+            raise FabricBridgeError("Runner Fabric returned unsuccessful A6 qualification")
+    count = result["record_count"]
+    if isinstance(count, bool) or not isinstance(count, int) or count < 4:
+        raise FabricBridgeError("Runner Fabric returned invalid A6 qualification result")
+    return result
 
 
 def _validate_synthetic_probe_status(value: object) -> dict[str, Any]:

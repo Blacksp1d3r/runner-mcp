@@ -1376,7 +1376,7 @@ def cmd_topology_heartbeat(args: argparse.Namespace) -> int:
             f"reason={payload['reason']} "
             f"qualified={'yes' if payload['qualified'] else 'no'}"
         )
-        return 0 if outcome.healthy else 2
+        return 0 if outcome.healthy and payload["qualified"] is True else 2
     if args.topology_heartbeat_action == "run":
         print("Runner MCP topology heartbeat running.")
         try:

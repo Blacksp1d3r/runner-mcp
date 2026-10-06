@@ -1,3 +1,25 @@
+## 2026-10-06 — resume A6 after Runner-Fabric runtime authorization/update
+
+Do not redo the connector refresh or #427/#428. Both A6 proxies are visible; the fixed Fabric qualification agent can now recover after process loss.
+
+Current live Runner-MCP: `55fa3d1ba46d6d6bb41b2e43d3d94e97376cf309`, operational, restart/recovery clear after diagnostic restart.
+
+Current blocker is below A6:
+1. built-in `runner-fabric` source preflight says credential configured but source unreachable/unauthorized and main unavailable;
+2. Actions read remains unavailable/unauthorized;
+3. no tested A6-capable/current Fabric bundle is present in local custody;
+4. therefore the older managed Fabric slot cannot yet be advanced to #1049+.
+
+Once least-privilege Runner-Fabric read access or a trusted local-custody bundle is restored:
+1. update Fabric through existing bounded `fabric_update` or explicit `fabric_local_update`;
+2. restart/recover the fixed qualification agent if needed;
+3. verify bounded Fabric read operations;
+4. reconcile exact Runner-MCP main and call A6 prepare before mutation;
+5. self-update to that same exact commit;
+6. require restart convergence and fresh A3 probe;
+7. finalize and require qualified/off_target plus succeeded update/reconnect/probe;
+8. only then close Fabric #942 and begin A7/#943.
+
 ## 2026-10-06 — A6 live qualification candidate after bounded Fabric-agent recovery
 
 Runner-MCP #427/#428 restored bounded recovery of the fixed qualification-only Runner Fabric Agent MCP after genuine process loss. Live recovery on `86708c18fe075993590caa28b32f1d73221e40ef` returned `state=restarted`, `pid_changed=true`, `healthy=true`.

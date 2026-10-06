@@ -1,3 +1,9 @@
+## 2026-10-06 — customer update readiness counterpart planned
+
+Tracking: #414; Runner Fabric #1063; AIfordable #401.
+
+Runner-MCP is execution-only for the new customer-update safety lane. Planned first scope is read-only semantic readiness for disk capacity/margins, RAM/available memory/memory pressure/swap/OOM, CPU/thermal/storage/power/network/restart/build/schema/recovery and returning-node trust generation. No live customer mutation or fleet policy is activated.
+
 ## 2026-10-06 — A6 qualification proxy merged and live
 
 Runner-MCP main/live: `e88e76badad428995c026cf5ac9988607fd52069`.

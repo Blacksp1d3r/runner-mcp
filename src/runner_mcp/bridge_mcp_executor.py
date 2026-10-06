@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import hashlib
 import json
+import logging
 import re
 import threading
 import time
@@ -22,7 +24,10 @@ MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
 MAX_MCP_JOB_ID_CHARS = 32
 _MCP_PROTOCOL_VERSION = "2025-06-18"
+_PEER_LOGGER = logging.getLogger("runner_mcp.peer_identity")
 _PEER_INFO_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._ +:/()-]{0,127}$")
+_DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 _LOOPBACK_HOSTS = {"127.0.0.1", "::1", "localhost"}
 _SESSION_ID_RE = re.compile(r"^[A-Za-z0-9._~-]{1,256}$")
 _JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -358,6 +363,209 @@ def _validate_initialize_peer(value: object) -> dict[str, str | None]:
     }
 
 
+def _validate_peer_tool_surface(
+    response: object,
+    *,
+    required_tools: frozenset[str],
+) -> tuple[str, frozenset[str]]:
+    if not isinstance(response, dict) or "error" in response:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP interface schema is incompatible"
+        )
+    result = response.get("result")
+    if not isinstance(result, dict):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP interface schema is incompatible"
+        )
+    tools = result.get("tools")
+    if not isinstance(tools, list) or not 1 <= len(tools) <= 512:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP interface schema is incompatible"
+        )
+    interface: list[dict[str, object]] = []
+    names: set[str] = set()
+    for item in tools:
+        if not isinstance(item, dict):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP interface schema is incompatible"
+            )
+        name = item.get("name")
+        input_schema = item.get("inputSchema")
+        output_schema = item.get("outputSchema")
+        if (
+            not isinstance(name, str)
+            or not re.fullmatch(r"[a-z][a-z0-9_]{0,127}", name)
+            or name in names
+            or not isinstance(input_schema, dict)
+            or (
+                output_schema is not None
+                and not isinstance(output_schema, dict)
+            )
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP interface schema is incompatible"
+            )
+        names.add(name)
+        interface.append(
+            {
+                "name": name,
+                "input_schema": input_schema,
+                "output_schema": output_schema,
+            }
+        )
+    required = set(required_tools) | {"build_identity"}
+    if not required.issubset(names):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP interface schema is incompatible"
+        )
+    encoded = json.dumps(
+        sorted(interface, key=lambda item: str(item["name"])),
+        sort_keys=True,
+        separators=(",", ":"),
+        ensure_ascii=True,
+        allow_nan=False,
+    ).encode("utf-8")
+    if not encoded or len(encoded) > 4 * 1024 * 1024:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP interface schema is incompatible"
+        )
+    return hashlib.sha256(encoded).hexdigest(), frozenset(names)
+
+
+def _tool_result_payload(response: object) -> dict[str, Any]:
+    if not isinstance(response, dict) or "error" in response:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is unavailable"
+        )
+    result = response.get("result")
+    if not isinstance(result, dict) or result.get("isError") is True:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is unavailable"
+        )
+    content = result.get("content")
+    if not isinstance(content, list) or len(content) != 1:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is unavailable"
+        )
+    item = content[0]
+    if (
+        not isinstance(item, dict)
+        or item.get("type") != "text"
+        or not isinstance(item.get("text"), str)
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is unavailable"
+        )
+    try:
+        payload = _strict_json_loads(item["text"])
+    except (json.JSONDecodeError, TypeError, ValueError) as exc:
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is unavailable"
+        ) from exc
+    if not isinstance(payload, dict):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is unavailable"
+        )
+    return payload
+
+
+def _validate_peer_build_identity(
+    payload: object,
+    *,
+    observed_interface_digest: str,
+) -> dict[str, object]:
+    if not isinstance(payload, dict):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is incompatible"
+        )
+    expected = {
+        "component_id",
+        "build_version",
+        "source_revision",
+        "artifact_digest",
+        "protocol_min",
+        "protocol_max",
+        "interface_schema_digest",
+    }
+    if set(payload) != expected or payload.get("component_id") != "runner-mcp":
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is incompatible"
+        )
+    build_version = payload.get("build_version")
+    source_revision = payload.get("source_revision")
+    artifact_digest = payload.get("artifact_digest")
+    protocol_min = payload.get("protocol_min")
+    protocol_max = payload.get("protocol_max")
+    interface_digest = payload.get("interface_schema_digest")
+    if (
+        not isinstance(build_version, str)
+        or not build_version
+        or len(build_version) > 128
+        or not build_version.isascii()
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is incompatible"
+        )
+    if source_revision is not None and (
+        not isinstance(source_revision, str)
+        or _REVISION_RE.fullmatch(source_revision) is None
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is incompatible"
+        )
+    if artifact_digest is not None and (
+        not isinstance(artifact_digest, str)
+        or _DIGEST_RE.fullmatch(artifact_digest) is None
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP build identity is incompatible"
+        )
+    if (
+        not isinstance(protocol_min, str)
+        or not isinstance(protocol_max, str)
+        or not protocol_min <= _MCP_PROTOCOL_VERSION <= protocol_max
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP protocol version is incompatible"
+        )
+    if (
+        not isinstance(interface_digest, str)
+        or _DIGEST_RE.fullmatch(interface_digest) is None
+        or interface_digest != observed_interface_digest
+    ):
+        raise BridgeExecutionAdapterError(
+            "Runner MCP interface schema is incompatible"
+        )
+    return dict(payload)
+
+
+def _log_peer_identity_observed(
+    *,
+    protocol_version: str | None,
+    server_name: str | None,
+    server_version: str | None,
+    build_identity: dict[str, object],
+) -> None:
+    if not isinstance(build_identity, dict):
+        raise TypeError("build_identity must be a dict")
+    _PEER_LOGGER.info(
+        json.dumps(
+            {
+                "event": "runner_mcp_peer_observed",
+                "initialize_protocol_version": protocol_version,
+                "server_name": server_name,
+                "server_version": server_version,
+                **{
+                    f"peer_{key}": value
+                    for key, value in build_identity.items()
+                },
+            },
+            sort_keys=True,
+            separators=(",", ":"),
+        )
+    )
+
+
 _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
     {
         "list_projects",
@@ -413,6 +621,7 @@ class LocalMCPClient:
         *,
         allowed_tools: frozenset[str] = _RUNNER_MCP_BRIDGE_TOOLS,
         client_name: str = "runner-mcp-github-watcher",
+        compatibility_preflight: bool = False,
     ) -> None:
         if not isinstance(allowed_tools, frozenset) or not allowed_tools:
             raise ValueError("MCP tool allow-list must be a non-empty frozenset")
@@ -427,15 +636,20 @@ class LocalMCPClient:
             client_name,
         ):
             raise ValueError("MCP client name is invalid")
+        if not isinstance(compatibility_preflight, bool):
+            raise TypeError("compatibility_preflight must be boolean")
         self._config = config
         self._allowed_tools = allowed_tools
         self._client_name = client_name
+        self._compatibility_preflight = compatibility_preflight
         self._session_id: str | None = None
         self._next_request_id = 1
         self._initialized = False
         self._peer_protocol_version: str | None = None
         self._peer_server_name: str | None = None
         self._peer_server_version: str | None = None
+        self._peer_build_identity: dict[str, object] | None = None
+        self._peer_tool_names: frozenset[str] = frozenset()
 
     @property
     def peer_identity(self) -> dict[str, str | None]:
@@ -444,6 +658,18 @@ class LocalMCPClient:
             "server_name": self._peer_server_name,
             "server_version": self._peer_server_version,
         }
+
+    @property
+    def peer_build_identity(self) -> dict[str, object] | None:
+        return (
+            None
+            if self._peer_build_identity is None
+            else dict(self._peer_build_identity)
+        )
+
+    @property
+    def peer_tool_names(self) -> tuple[str, ...]:
+        return tuple(sorted(self._peer_tool_names))
 
     def initialize(self) -> None:
         if self._initialized:
@@ -484,6 +710,41 @@ class LocalMCPClient:
                 "params": {},
             }
         )
+        if self._compatibility_preflight:
+            tool_surface = self._post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": self._allocate_request_id(),
+                    "method": "tools/list",
+                    "params": {},
+                }
+            )
+            observed_digest, tool_names = _validate_peer_tool_surface(
+                tool_surface,
+                required_tools=self._allowed_tools,
+            )
+            identity_response = self._post(
+                {
+                    "jsonrpc": "2.0",
+                    "id": self._allocate_request_id(),
+                    "method": "tools/call",
+                    "params": {
+                        "name": "build_identity",
+                        "arguments": {},
+                    },
+                }
+            )
+            self._peer_build_identity = _validate_peer_build_identity(
+                _tool_result_payload(identity_response),
+                observed_interface_digest=observed_digest,
+            )
+            self._peer_tool_names = tool_names
+            _log_peer_identity_observed(
+                protocol_version=self._peer_protocol_version,
+                server_name=self._peer_server_name,
+                server_version=self._peer_server_version,
+                build_identity=self._peer_build_identity,
+            )
         self._initialized = True
 
     def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
@@ -648,7 +909,10 @@ class LocalMCPBridgeExecutor:
     def _client(self) -> LocalMCPClient:
         client = getattr(self._local, "client", None)
         if client is None:
-            client = LocalMCPClient(self._config)
+            client = LocalMCPClient(
+                self._config,
+                compatibility_preflight=True,
+            )
             self._local.client = client
         return client
 

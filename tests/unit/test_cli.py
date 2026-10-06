@@ -3832,3 +3832,52 @@ def test_ci_runner_cron_remove_requires_typed_confirmation(
     assert result == 0
     assert calls == 1
     assert captured.out.strip() == "removed=yes"
+
+
+def test_setup_overwrite_preserves_repository_mirror_private_bindings(
+    tmp_path: Path,
+) -> None:
+    paths, project_root = install_config(tmp_path)
+    mirror_values = {
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_INVENTORY_ROOT": "/private/inventory",
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_ROOT": "/private/mirrors",
+        "RUNNER_FABRIC_MANAGED_REPOSITORIES_FILE": "/private/managed.json",
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG": "/private/gitconfig",
+    }
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in mirror_values.items():
+            handle.write(f"{key}={value}\n")
+
+    install_private_configuration(
+        config_dir=paths.config_dir,
+        answers=SetupAnswers(
+            resource_url="https://mcp.example.invalid/mcp",
+            auth_issuer="https://auth.example.invalid/",
+            project_code="demo",
+            project_name="Demo",
+            repository="example/demo",
+            project_root=project_root,
+        ),
+        overwrite=True,
+    )
+
+    values = load_env_file(paths.env_file)
+    assert {
+        key: values[key]
+        for key in mirror_values
+    } == mirror_values
+
+
+def test_fresh_setup_does_not_invent_repository_mirror_bindings(
+    tmp_path: Path,
+) -> None:
+    paths, _ = install_config(tmp_path)
+    values = load_env_file(paths.env_file)
+
+    for key in (
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_INVENTORY_ROOT",
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_ROOT",
+        "RUNNER_FABRIC_MANAGED_REPOSITORIES_FILE",
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG",
+    ):
+        assert key not in values

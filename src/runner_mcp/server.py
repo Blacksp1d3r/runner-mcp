@@ -863,6 +863,22 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def fabric_repository_mirrors_activation_readiness() -> dict:
+        """Inspect fixed F34 mirror activation prerequisites without mutation."""
+        result = fabric_repository_mirror_runner.readiness()
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_repository_mirrors_activation_readiness",
+                "runner-fabric:repository-mirrors",
+                "authenticated-client",
+                str(result.get("reasonCode", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
     def fabric_repository_mirrors_preflight() -> dict:
         """Validate fixed private F34 repository-mirror activation inputs."""
         try:

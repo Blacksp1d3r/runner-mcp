@@ -1,3 +1,7 @@
+## 2026-10-06 — customer update safety counterpart #414
+
+Do not start with mutation. Wait for/consume Runner Fabric #1063 contracts, then add only the smallest read-only local projection needed. Keep cohort/canary/soak/freeze policy in Fabric and customer semantics in AIfordable #401. Explicitly fail closed on insufficient RAM/storage and unknown required health evidence.
+
 ## 2026-10-06 — next action: use newly live A6 proxies after connector refresh
 
 Do not redo #411. Runner-MCP is already live on `e88e76ba...`.

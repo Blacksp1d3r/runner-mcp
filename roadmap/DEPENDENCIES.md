@@ -1,3 +1,17 @@
+## 2026-10-06 customer update safety dependency
+
+Tracking: #414; Fabric authority/policy: Blacksp1d3r/Runner-Fabric#1063; AIfordable contract: Blacksp1d3r/AIfordable#401.
+
+Build order for this lane is intentionally downstream:
+1. Fabric defines read-only semantic readiness and returning-node trust/quarantine contracts.
+2. Runner-MCP may add the minimal local read-only projection needed to satisfy those contracts.
+3. No live customer update mutation is added until Fabric rollout/recovery/fencing gates exist.
+4. Exact release staging must complete and verify before destructive activation.
+5. Durable phase/restart reconciliation is required before power/network interruption qualification.
+6. Database/schema rollback remains separate from code rollback.
+
+Do not turn #414 into fleet orchestration or generic host inspection.
+
 # Runner MCP — Dependency / Integration Order
 
 Last reconciled: 2026-10-04. GitHub current state wins.

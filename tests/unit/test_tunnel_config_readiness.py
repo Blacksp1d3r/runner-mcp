@@ -142,6 +142,32 @@ def test_complete_local_and_control_plane_evidence_advances_to_authenticated(
     }
 
 
+def test_explicit_end_to_end_evidence_promotes_routable(
+    tmp_path: Path,
+) -> None:
+    tunnel_env = tmp_path / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel-placeholder\n"
+        "CONTROL_PLANE_API_KEY=api-placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+
+    result = collect_tunnel_config_readiness(
+        tmp_path,
+        process_running=True,
+        local_mcp_ready=True,
+        control_plane_authenticated=True,
+        end_to_end_routable=True,
+    )
+
+    assert result.public_dict() == {
+        "restart_config": "complete",
+        "state": "routable",
+        "reason": "ready",
+    }
+
+
 def test_control_plane_evidence_without_local_mcp_evidence_fails_closed(
     tmp_path: Path,
 ) -> None:

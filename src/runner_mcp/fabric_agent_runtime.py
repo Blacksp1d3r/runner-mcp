@@ -68,9 +68,11 @@ def _health_url(resource_url: str) -> str:
     )
 
 
-def _read_pid(pid_file: Path) -> int:
+def _read_pid_if_present(pid_file: Path) -> int | None:
     try:
         raw = pid_file.read_text(encoding="ascii").strip()
+    except FileNotFoundError:
+        return None
     except OSError as exc:
         raise FabricAgentRestartError("fabric_agent_pid_unavailable") from exc
     if not raw.isdecimal():
@@ -79,6 +81,10 @@ def _read_pid(pid_file: Path) -> int:
     if not 2 <= pid <= 2_147_483_647:
         raise FabricAgentRestartError("fabric_agent_pid_invalid")
     return pid
+
+
+def _pid_exists(pid: int) -> bool:
+    return Path(f"/proc/{pid}").exists()
 
 
 def _same_user_process(pid: int) -> bool:
@@ -179,16 +185,17 @@ def restart_fabric_qualification_agent(
     pid_file = config_root / "fabric-qualification.pid"
     log_file = config_root / "fabric-qualification.log"
 
-    old_pid = _read_pid(pid_file)
-    if not _same_user_process(old_pid):
-        raise FabricAgentRestartError("fabric_agent_process_mismatch")
-
-    try:
-        os.kill(old_pid, signal.SIGTERM)
-    except OSError as exc:
-        raise FabricAgentRestartError("fabric_agent_stop_failed") from exc
-    if not _wait_process_exit(old_pid):
-        raise FabricAgentRestartError("fabric_agent_stop_timeout")
+    old_pid = _read_pid_if_present(pid_file)
+    if old_pid is not None:
+        if _same_user_process(old_pid):
+            try:
+                os.kill(old_pid, signal.SIGTERM)
+            except OSError as exc:
+                raise FabricAgentRestartError("fabric_agent_stop_failed") from exc
+            if not _wait_process_exit(old_pid):
+                raise FabricAgentRestartError("fabric_agent_stop_timeout")
+        elif _pid_exists(old_pid):
+            raise FabricAgentRestartError("fabric_agent_process_mismatch")
 
     env = {
         "HOME": str(home_root),
@@ -222,7 +229,12 @@ def restart_fabric_qualification_agent(
             pass
         raise FabricAgentRestartError("fabric_agent_pid_write_failed") from exc
 
-    if process.pid == old_pid or not _wait_health(health_url):
+    if (
+        (old_pid is not None and process.pid == old_pid)
+        or process.poll() is not None
+        or not _wait_health(health_url)
+        or process.poll() is not None
+    ):
         try:
             process.terminate()
         except OSError:

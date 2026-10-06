@@ -350,6 +350,7 @@ def harden_mcp_argument_validation() -> None:
     ArgModelBase.model_config = ConfigDict(
         arbitrary_types_allowed=True,
         extra="forbid",
+        hide_input_in_errors=True,
     )
 
 

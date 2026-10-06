@@ -1,3 +1,9 @@
+## 2026-10-06 — Fleet A6 blocked only on client schema; access warning split to #417
+
+Fresh reconciliation confirms the active runner-mcp-control catalog still lacks the two existing A6 qualification proxies. Live Runner-MCP remains operational on the previously qualified installed commit with no pending restart or install recovery. Do not rebuild the proxy or updater.
+
+Runner-MCP #417 separately tracks the private Runner-Fabric source/Actions read warning. This is not A6 implementation work and must not weaken the fixed-repository, fixed-workflow, fail-closed update boundary.
+
 ## 2026-10-06 — customer update readiness counterpart planned
 
 Tracking: #414; Runner Fabric #1063; AIfordable #401.

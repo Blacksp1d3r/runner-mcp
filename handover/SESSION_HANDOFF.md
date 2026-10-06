@@ -1,3 +1,11 @@
+## 2026-10-06 — resume #445 worker qualification provisioning
+
+Active branch: `fabric/445-worker-qualification-provision-v2`, based on main `10df2c8b...`.
+
+Implemented: strict `fabric_worker_qualification_provision`; host-owned private template; exact fingerprint/expiry/generation/Fabric-slot checks; fixed owner-only qualification config; durable runtime binding; immediate handoff to existing `fabric_disposable_target_qualify`; normal activation false; no OCR or Bewind v3 mutation.
+
+Next: exact-head CI/merge, live Runner-MCP update, then Fabric #1130 -> #1113 -> #1114 -> #1115. Runner-MCP #451 separately owns the least-privilege Bewind-only source token needed to close Fabric #1112 without replacing the global GitHub credential.
+
 ## 2026-10-06 — A6 live candidate after Fabric lifecycle binding fix
 
 Runner-MCP #446/#447 is live on `0d7d281a5382d822b5cfd0fb7af263145ae51743`. The fixed qualification-agent launch and bounded restart now preserve only the exact all-or-nothing A6 private binding keys required by Runner-Fabric #1049. Live `fabric_agent_restart` after installation returned restarted/pid_changed/healthy.

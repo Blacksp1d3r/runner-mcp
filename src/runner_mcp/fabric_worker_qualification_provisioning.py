@@ -241,10 +241,15 @@ class FabricWorkerQualificationProvisioner:
             if not stat.S_ISLNK(metadata.st_mode):
                 raise OSError
             resolved = launcher.resolve(strict=True)
-            expected_slot = (slots / revision).resolve(strict=True)
         except OSError as exc:
             raise FabricWorkerQualificationProvisioningError(
                 "managed Runner Fabric launcher is unavailable"
+            ) from exc
+        try:
+            expected_slot = (slots / revision).resolve(strict=True)
+        except OSError as exc:
+            raise FabricWorkerQualificationProvisioningError(
+                "managed Runner Fabric revision is unavailable"
             ) from exc
         if (
             not resolved.is_relative_to(expected_slot)

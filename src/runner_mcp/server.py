@@ -1411,6 +1411,31 @@ def build_mcp(
             "mutation_enabled": False,
         }
 
+    def fabric_bridge_preflight() -> dict:
+        """Return bounded read-only Fabric MCP handshake readiness."""
+
+        try:
+            result = _require_fabric_bridge().preflight()
+        except FabricBridgeError:
+            result = {
+                "schema_version": "runner-mcp/fabric-bridge-preflight/v1",
+                "state": "blocked",
+                "reason_code": "bridge_unavailable",
+                "protocol_version": None,
+                "server_name": None,
+                "server_version": None,
+                "source_revision": None,
+                "a6_prepare_available": False,
+                "synthetic_probe_status_available": False,
+                "mutation_enabled": False,
+            }
+        _audit_fabric(
+            "fabric_bridge_preflight",
+            "fabric:bridge",
+            str(result.get("state", "blocked")),
+        )
+        return result
+
     def fabric_host_inspect() -> dict:
         """Return bounded Runner Fabric host/browser readiness without host authority."""
         try:
@@ -1702,6 +1727,7 @@ def build_mcp(
         return result
 
     if fabric_bridge is not None:
+        mcp.tool()(fabric_bridge_preflight)
         mcp.tool()(fabric_host_inspect)
         mcp.tool()(fabric_external_target_preflight)
         mcp.tool()(fabric_external_target_inspect)

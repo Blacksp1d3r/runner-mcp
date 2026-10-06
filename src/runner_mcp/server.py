@@ -656,6 +656,21 @@ def build_mcp(
             "configured" if github_token else "not_configured",
         )
 
+        try:
+            actions_readiness = fabric_update_manager.actions_readiness()
+        except FabricUpdateError:
+            add(
+                "runner_fabric_actions_read",
+                "warn",
+                "unavailable_or_unauthorized",
+            )
+        else:
+            add(
+                "runner_fabric_actions_read",
+                "pass" if actions_readiness.get("actions_readable") is True else "warn",
+                "readable" if actions_readiness.get("actions_readable") is True else "unavailable_or_unauthorized",
+            )
+
         def storage_state(value: Path | None) -> tuple[str, str]:
             if value is None:
                 return "warn", "not_configured"

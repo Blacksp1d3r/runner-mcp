@@ -420,6 +420,10 @@ def build_mcp(
     )
     private_values = secret_values or os.environ
     github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
+    known_project_local_sources = private_values.get(
+        "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON",
+        "",
+    )
     source_sync = SourceSynchronizer(
         registry=registry,
         safety=safety,
@@ -1840,8 +1844,9 @@ def build_mcp(
                 source = preflight_known_project_source_binding(
                     project_id=project_id,
                     github_token=github_token or None,
+                    local_source_bindings_raw=known_project_local_sources or None,
                 )
-                if source.get("reason_code") != "ready":
+                if source.get("reason_code") not in {"ready", "local-source-ready"}:
                     result = {
                         "code": str(source.get("code", project_id)),
                         "repository": str(source.get("repository", result.get("repository", ""))),
@@ -1879,6 +1884,7 @@ def build_mcp(
             result = preflight_known_project_source_binding(
                 project_id=project_id,
                 github_token=github_token or None,
+                local_source_bindings_raw=known_project_local_sources or None,
             )
         except KnownProjectRegistrationError as exc:
             audit.append(
@@ -1925,6 +1931,7 @@ def build_mcp(
                 registry,
                 project_id=project_id,
                 github_token=github_token or None,
+                local_source_bindings_raw=known_project_local_sources or None,
             )
         except KnownProjectRegistrationError as exc:
             audit.append(

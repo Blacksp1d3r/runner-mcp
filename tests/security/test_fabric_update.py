@@ -575,8 +575,10 @@ def test_actions_readiness_uses_same_private_credential_and_canonical_workflow(
     assert observed == [
         (
             "x" * 40,
-            "/repos/Blacksp1d3r/Runner-Fabric/actions/workflows/"
-            "control-plane-update-bundle.yml/runs?per_page=1",
+            (
+                "/repos/Blacksp1d3r/Runner-Fabric/actions/workflows/"
+                "control-plane-update-bundle.yml/runs?per_page=1"
+            ),
         )
     ]
 

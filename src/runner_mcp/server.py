@@ -102,6 +102,10 @@ from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
+from .tunnel_topology_refresh import (
+    TunnelTopologyRefreshError,
+    refresh_tunnel_topology_attestation,
+)
 
 
 @dataclass(frozen=True)
@@ -1295,6 +1299,39 @@ def build_mcp(
         )
         return result
 
+
+    def tunnel_topology_refresh() -> dict:
+        """Refresh private external topology evidence through AIfordable."""
+
+        try:
+            result = refresh_tunnel_topology_attestation(
+                settings.projects_config.parent
+            )
+        except TunnelTopologyRefreshError as exc:
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "tunnel_topology_refresh",
+                    None,
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError("Tunnel topology refresh is unavailable") from exc
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "tunnel_topology_refresh",
+                None,
+                "authenticated-client",
+                "ok" if result.get("qualified") is True else "blocked",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    mcp.tool()(tunnel_topology_refresh)
 
     def fabric_a6_update_qualification_prepare(candidate_commit: str) -> dict:
         """Prepare off-target A6 evidence without starting a Runner-MCP update."""

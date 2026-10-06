@@ -5,8 +5,10 @@ import urllib.error
 import urllib.request
 
 import pytest
+from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 
 from runner_mcp.bridge_mcp_executor import (
+    _MCP_POLICY_PROTOCOL_VERSIONS,
     MAX_MCP_RESPONSE_BYTES,
     LocalMCPBridgeExecutor,
     LocalMCPClient,
@@ -163,6 +165,16 @@ def test_decode_mcp_response_is_size_bounded() -> None:
         _decode_mcp_response(b"x" * (MAX_MCP_RESPONSE_BYTES + 1))
 
 
+def test_mcp_policy_versions_are_real_sdk_handshake_versions() -> None:
+    assert _MCP_POLICY_PROTOCOL_VERSIONS == {
+        "2025-06-18",
+        "2025-03-26",
+    }
+    assert _MCP_POLICY_PROTOCOL_VERSIONS <= set(
+        HANDSHAKE_PROTOCOL_VERSIONS
+    )
+
+
 def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:
     responses = [
         FakeResponse(
@@ -187,9 +199,14 @@ def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:
     }
 
 
+@pytest.mark.parametrize(
+    "protocol_version",
+    ["2025-06-18", "2025-03-26"],
+)
 def test_client_preflights_required_surface_and_build_identity(
     monkeypatch,
     caplog,
+    protocol_version: str,
 ) -> None:
     tools = [
         {
@@ -224,7 +241,19 @@ def test_client_preflights_required_surface_and_build_identity(
     }
     responses = [
         FakeResponse(
-            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","serverInfo":{"name":"Runner MCP","version":"0.1.3"}}}',
+            json.dumps(
+                {
+                    "jsonrpc": "2.0",
+                    "id": 1,
+                    "result": {
+                        "protocolVersion": protocol_version,
+                        "serverInfo": {
+                            "name": "Runner MCP",
+                            "version": "0.1.3",
+                        },
+                    },
+                }
+            ).encode(),
             headers={"Mcp-Session-Id": "session-123"},
         ),
         FakeResponse(b""),
@@ -308,7 +337,7 @@ def test_client_preflights_required_surface_and_build_identity(
     assert len(records) == 1
     peer = records[0]
     assert peer["event"] == "runner_mcp_peer_observed"
-    assert peer["initialize_protocol_version"] == "2025-06-18"
+    assert peer["initialize_protocol_version"] == protocol_version
     assert peer["server_name"] == "Runner MCP"
     assert peer["server_version"] == "0.1.3"
     assert peer["peer_component_id"] == "runner-mcp"
@@ -442,6 +471,27 @@ def test_client_preflight_rejects_peer_digest_mismatch(monkeypatch) -> None:
         match="interface schema",
     ):
         client.initialize()
+
+
+def test_client_sends_negotiated_protocol_header(monkeypatch) -> None:
+    captured: list[str | None] = []
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-03-26"}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+    ]
+
+    def respond(request, timeout):
+        del timeout
+        captured.append(request.get_header("Mcp-protocol-version"))
+        return responses.pop(0)
+
+    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    LocalMCPClient(_config()).initialize()
+
+    assert captured == [None, "2025-03-26"]
 
 
 def test_client_rejects_observed_protocol_version_mismatch(monkeypatch) -> None:
@@ -1365,11 +1415,22 @@ def _request_session_id(request) -> str | None:
     )
 
 
+def _request_protocol_version(request) -> str | None:
+    return next(
+        (
+            value
+            for key, value in request.header_items()
+            if key.lower() == "mcp-protocol-version"
+        ),
+        None,
+    )
+
+
 def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
     calls = []
     responses = [
         FakeResponse(
-            b'{"jsonrpc":"2.0","id":1,"result":{}}',
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18"}}',
             headers={"Mcp-Session-Id": "session-old"},
         ),
         FakeResponse(b""),
@@ -1381,7 +1442,7 @@ def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
             None,
         ),
         FakeResponse(
-            b'{"jsonrpc":"2.0","id":3,"result":{}}',
+            b'{"jsonrpc":"2.0","id":3,"result":{"protocolVersion":"2025-03-26"}}',
             headers={"Mcp-Session-Id": "session-new"},
         ),
         FakeResponse(b""),
@@ -1436,6 +1497,14 @@ def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
         None,
         "session-new",
         "session-new",
+    ]
+    assert [_request_protocol_version(request) for request in calls] == [
+        None,
+        "2025-06-18",
+        "2025-06-18",
+        None,
+        "2025-03-26",
+        "2025-03-26",
     ]
 
 

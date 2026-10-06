@@ -11,11 +11,6 @@ import urllib.request
 from pathlib import Path
 from urllib.parse import urlsplit, urlunsplit
 
-from .fabric_agent_qualification import (
-    FabricAgentQualificationError,
-    qualification_agent_environment_additions,
-)
-
 
 class FabricAgentRestartError(RuntimeError):
     """Bounded Fabric-agent restart failure without private detail leakage."""
@@ -162,6 +157,22 @@ def _wait_health(url: str, timeout_seconds: float = 10.0) -> bool:
     return False
 
 
+def _qualification_agent_environment_additions(
+    config_dir: Path,
+) -> dict[str, str]:
+    """Load fixed optional bindings lazily to avoid server import cycles."""
+
+    from .fabric_agent_qualification import (
+        FabricAgentQualificationError,
+        qualification_agent_environment_additions,
+    )
+
+    try:
+        return qualification_agent_environment_additions(config_dir)
+    except FabricAgentQualificationError as exc:
+        raise FabricAgentRestartError("fabric_agent_config_invalid") from exc
+
+
 def restart_fabric_qualification_agent(
     *,
     config_dir: Path,
@@ -209,10 +220,7 @@ def restart_fabric_qualification_agent(
         "RUNNER_FABRIC_AGENT_RESOURCE_URL": resource_url,
         "RUNNER_FABRIC_AGENT_BEARER_TOKEN": bearer_token,
     }
-    try:
-        env.update(qualification_agent_environment_additions(config_root))
-    except FabricAgentQualificationError as exc:
-        raise FabricAgentRestartError("fabric_agent_config_invalid") from exc
+    env.update(_qualification_agent_environment_additions(config_root))
     try:
         with log_file.open("ab", buffering=0) as log_handle:
             process = subprocess.Popen(

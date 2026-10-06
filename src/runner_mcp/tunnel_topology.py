@@ -199,7 +199,7 @@ def _timestamp(value: object) -> datetime:
     if not isinstance(value, str) or not value.endswith("Z"):
         raise TunnelTopologyEvidenceError("topology attestation is invalid")
     try:
-        parsed = datetime.fromisoformat(value[:-1] + "+00:00")
+        parsed = datetime.fromisoformat(value)
     except ValueError as exc:
         raise TunnelTopologyEvidenceError("topology attestation is invalid") from exc
     return _utc(parsed)

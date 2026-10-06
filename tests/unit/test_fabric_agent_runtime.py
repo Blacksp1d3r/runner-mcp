@@ -5,6 +5,7 @@ from pathlib import Path
 import pytest
 
 from runner_mcp import fabric_agent_runtime as runtime
+from runner_mcp.fabric_agent_qualification import FabricAgentQualificationError
 from runner_mcp.fabric_agent_runtime import (
     FabricAgentRestartError,
     restart_fabric_qualification_agent,

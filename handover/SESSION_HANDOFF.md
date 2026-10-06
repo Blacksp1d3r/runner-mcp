@@ -1,3 +1,14 @@
+## 2026-10-06 — A6 live candidate after Fabric lifecycle binding fix
+
+Runner-MCP #446/#447 is live on `0d7d281a5382d822b5cfd0fb7af263145ae51743`. The fixed qualification-agent launch and bounded restart now preserve only the exact all-or-nothing A6 private binding keys required by Runner-Fabric #1049. Live `fabric_agent_restart` after installation returned restarted/pid_changed/healthy.
+
+Runner-Fabric is managed on exact `7ebe95ca853e45734463d3dd605474ff5e70d178`, and Runner-Fabric source plus Actions-read are healthy after least-privilege token repair.
+
+This documentation-only revision is the next exact-main Runner-MCP candidate for the canonical A6 proof:
+`prepare -> self_update -> restart convergence -> fresh A3 probe -> finalize`.
+
+Do not count the #447 installation as A6 evidence because it occurred before this prepare boundary.
+
 ## 2026-10-06 — resume A6 after Runner-Fabric runtime authorization/update
 
 Do not redo the connector refresh or #427/#428. Both A6 proxies are visible; the fixed Fabric qualification agent can now recover after process loss.

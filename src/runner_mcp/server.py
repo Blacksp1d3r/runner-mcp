@@ -72,6 +72,10 @@ from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
 )
+from .fabric_repository_mirror_activation import (
+    FabricRepositoryMirrorActivationError,
+    FabricRepositoryMirrorActivator,
+)
 from .fabric_repository_mirrors import (
     FabricRepositoryMirrorError,
     FabricRepositoryMirrorRunner,
@@ -529,6 +533,16 @@ def build_mcp(
         safety=safety,
         environment=private_values,
     )
+    if not isinstance(private_values, dict) and private_values is not os.environ:
+        mirror_activation_environment = dict(private_values)
+    else:
+        mirror_activation_environment = private_values
+    fabric_repository_mirror_activator = FabricRepositoryMirrorActivator(
+        safety=safety,
+        environment=mirror_activation_environment,
+        config_dir=settings.projects_config.parent,
+        github_token=github_token or None,
+    )
 
     fabric_bridge = (
         FabricBridgeClient(
@@ -922,6 +936,46 @@ def build_mcp(
                 "runner-fabric:repository-mirrors",
                 "authenticated-client",
                 str(result.get("reasonCode", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_repository_mirrors_activate() -> dict:
+        """Activate fixed private F34 mirror bindings without running reconcile."""
+        try:
+            result = fabric_repository_mirror_activator.activate()
+        except (
+            FabricRepositoryMirrorActivationError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_repository_mirrors_activate",
+                    "runner-fabric:repository-mirrors",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Fabric repository mirror activation is unavailable"
+            ) from None
+        if mirror_activation_environment is not private_values:
+            try:
+                private_values.update(mirror_activation_environment)
+            except AttributeError:
+                pass
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_repository_mirrors_activate",
+                "runner-fabric:repository-mirrors",
+                "authenticated-client",
+                "activated",
                 utc_timestamp(),
             )
         )

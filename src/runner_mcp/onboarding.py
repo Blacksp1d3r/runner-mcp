@@ -203,6 +203,7 @@ def render_env_file(
             or key == "RUNNER_FABRIC_REPOSITORY_MIRROR_ROOT"
             or key == "RUNNER_FABRIC_MANAGED_REPOSITORIES_FILE"
             or key == "RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG"
+            or key == "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON"
         ):
             values[key] = value
     lines = [
@@ -310,6 +311,7 @@ def install_private_configuration(
             or key == "RUNNER_FABRIC_REPOSITORY_MIRROR_ROOT"
             or key == "RUNNER_FABRIC_MANAGED_REPOSITORIES_FILE"
             or key == "RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG"
+            or key == "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON"
         }
         if not rotate_token:
             candidate = existing.get("RUNNER_MCP_BEARER_TOKEN", "")

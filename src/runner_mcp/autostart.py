@@ -24,6 +24,7 @@ from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 MANAGED_MARKER = "# Managed by Runner MCP autostart."
 SERVER_UNIT = "runner-mcp.service"
 TUNNEL_UNIT = "runner-mcp-tunnel.service"
+TOPOLOGY_HEARTBEAT_UNIT = "runner-mcp-topology-heartbeat.service"
 GITHUB_WATCHER_UNIT = "runner-mcp-github-watcher.service"
 COMPLETION_WATCHER_UNIT = "runner-mcp-completion-watcher.service"
 AGENT_BUS_WORKER_UNIT = "runner-mcp-agent-bus-worker.service"
@@ -32,6 +33,7 @@ FABRIC_LIVE_OVERVIEW_UNIT = "runner-mcp-fabric-live-overview.service"
 KNOWN_UNITS = (
     SERVER_UNIT,
     TUNNEL_UNIT,
+    TOPOLOGY_HEARTBEAT_UNIT,
     GITHUB_WATCHER_UNIT,
     COMPLETION_WATCHER_UNIT,
     AGENT_BUS_WORKER_UNIT,
@@ -128,11 +130,15 @@ def configured_autostart_components(config_dir: Path) -> tuple[str, ...]:
     values = load_env_file(paths.env_file)
 
     components = ["server"]
-    if (
+    tunnel_configured = (
         inspect_tunnel_restart_config(paths.config_dir)
         is TunnelRestartConfigState.COMPLETE
-    ):
+    )
+    if tunnel_configured:
         components.append("tunnel")
+    agent_bus_configured = agent_bus_worker_configured(config_dir)
+    if tunnel_configured and agent_bus_configured:
+        components.append("topology-heartbeat")
     mailbox_configured = all(
         values.get(key, "").strip() for key in GITHUB_MAILBOX_ENV_KEYS
     )
@@ -154,7 +160,7 @@ def configured_autostart_components(config_dir: Path) -> tuple[str, ...]:
 
     if fabric_agent_qualification_configured(config_dir):
         components.append("fabric-agent-qualification")
-    if agent_bus_worker_configured(config_dir):
+    if agent_bus_configured:
         components.append("agent-bus-worker")
     if fabric_live_overview_configured(config_dir):
         components.append("fabric-live-overview")
@@ -243,6 +249,14 @@ def render_user_units(
             executable=executable,
             config_dir=config_dir,
             arguments=("tunnel-run", "--port", str(port)),
+            requires_server=True,
+        )
+    if "topology-heartbeat" in components:
+        units[TOPOLOGY_HEARTBEAT_UNIT] = _unit(
+            description="Runner MCP topology heartbeat",
+            executable=executable,
+            config_dir=config_dir,
+            arguments=("topology-heartbeat", "run"),
             requires_server=True,
         )
     if "github-watcher" in components:
@@ -406,6 +420,7 @@ def user_service_status(
     names = (
         ("server", SERVER_UNIT),
         ("tunnel", TUNNEL_UNIT),
+        ("topology-heartbeat", TOPOLOGY_HEARTBEAT_UNIT),
         ("github-watcher", GITHUB_WATCHER_UNIT),
         ("completion-watcher", COMPLETION_WATCHER_UNIT),
         ("agent-bus-worker", AGENT_BUS_WORKER_UNIT),

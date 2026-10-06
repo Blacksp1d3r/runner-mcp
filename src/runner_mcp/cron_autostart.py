@@ -22,6 +22,7 @@ CRON_END = "# END RUNNER MCP AUTOSTART v1"
 CRON_COMPONENTS = (
     "server",
     "tunnel",
+    "topology-heartbeat",
     "github-watcher",
     "completion-watcher",
     "agent-bus-worker",
@@ -165,7 +166,9 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
             for token in (
                 " serve ",
                 " tunnel-run ",
+                " topology-heartbeat ",
                 " cron-run tunnel",
+                " cron-run topology-heartbeat",
                 " github-watcher ",
                 " completion-watcher ",
                 " agent-bus-worker ",
@@ -407,6 +410,8 @@ def run_cron_component(
             )
         elif component == "tunnel":
             argv.extend(["tunnel-run", "--port", str(port)])
+        elif component == "topology-heartbeat":
+            argv.extend(["topology-heartbeat", "run"])
         elif component == "github-watcher":
             argv.extend(["github-watcher", "run"])
         elif component == "completion-watcher":

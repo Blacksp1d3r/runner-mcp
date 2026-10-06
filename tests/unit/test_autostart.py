@@ -15,6 +15,7 @@ from runner_mcp.autostart import (
     GITHUB_WATCHER_UNIT,
     MANAGED_MARKER,
     SERVER_UNIT,
+    TOPOLOGY_HEARTBEAT_UNIT,
     TUNNEL_UNIT,
     AutostartError,
     _write_managed_unit,
@@ -131,6 +132,40 @@ def test_complete_tunnel_config_adds_fixed_dependent_tunnel_unit(
     assert tunnel_id not in content
     assert api_key not in content
 
+
+
+def test_topology_heartbeat_unit_requires_tunnel_and_agent_bus(
+    tmp_path: Path,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=tunnel_sensitive_placeholder\n"
+        "CONTROL_PLANE_API_KEY=api_sensitive_placeholder\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_FABRIC_RELAY_ORIGIN=https://relay.example.invalid\n")
+        handle.write("RUNNER_FABRIC_RELAY_SUBJECT=runner:one\n")
+        handle.write(f"RUNNER_FABRIC_RELAY_CREDENTIAL={'r' * 48}\n")
+        handle.write(
+            "RUNNER_FABRIC_AGENT_RESOURCE_URL=http://127.0.0.1:9020/mcp\n"
+        )
+        handle.write(f"RUNNER_FABRIC_AGENT_BEARER_TOKEN={'a' * 48}\n")
+
+    units = render_user_units(
+        config_dir=paths.config_dir,
+        executable=executable,
+    )
+
+    assert TOPOLOGY_HEARTBEAT_UNIT in units
+    content = units[TOPOLOGY_HEARTBEAT_UNIT]
+    assert f"Requires={SERVER_UNIT}" in content
+    assert "topology-heartbeat" in content
+    assert " run" in content
+    assert "relay.example.invalid" not in content
+    assert "r" * 48 not in content
 
 
 def test_agent_bus_worker_unit_is_added_only_when_configured(
@@ -355,6 +390,12 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
         },
         {
             "component": "tunnel",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
+        {
+            "component": "topology-heartbeat",
             "installed": False,
             "enabled": False,
             "active": False,

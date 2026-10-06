@@ -322,6 +322,7 @@ def test_cron_tunnel_uses_fixed_runtime_when_server_lock_is_active(
 @pytest.mark.parametrize(
     ("component", "tail"),
     [
+        ("topology-heartbeat", ["topology-heartbeat", "run"]),
         ("github-watcher", ["github-watcher", "run"]),
         ("completion-watcher", ["completion-watcher", "run"]),
         ("agent-bus-worker", ["agent-bus-worker", "run"]),
@@ -470,6 +471,12 @@ def test_cron_status_reports_only_managed_components(
         },
         {
             "component": "tunnel",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
+        {
+            "component": "topology-heartbeat",
             "installed": False,
             "enabled": False,
             "active": False,

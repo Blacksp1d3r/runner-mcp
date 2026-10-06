@@ -77,7 +77,7 @@ def test_refresh_posts_private_binding_and_persists_only_valid_attestation(
 ) -> None:
     root = private_config(tmp_path)
     monkeypatch.setattr(
-        "runner_mcp.tunnel_topology_refresh.read_private_runtime",
+        "runner_mcp.tunnel_topology_refresh._read_private_runtime",
         lambda path: (
             type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
             object(),
@@ -130,7 +130,7 @@ def test_refresh_returns_not_unique_without_exposing_private_values(
 ) -> None:
     root = private_config(tmp_path)
     monkeypatch.setattr(
-        "runner_mcp.tunnel_topology_refresh.read_private_runtime",
+        "runner_mcp.tunnel_topology_refresh._read_private_runtime",
         lambda path: (
             type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
             object(),
@@ -181,7 +181,7 @@ def test_invalid_response_never_replaces_existing_evidence(
     existing.chmod(0o600)
     before = existing.read_bytes()
     monkeypatch.setattr(
-        "runner_mcp.tunnel_topology_refresh.read_private_runtime",
+        "runner_mcp.tunnel_topology_refresh._read_private_runtime",
         lambda path: (
             type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
             object(),
@@ -206,7 +206,7 @@ def test_authority_http_error_is_secret_free(
 ) -> None:
     root = private_config(tmp_path)
     monkeypatch.setattr(
-        "runner_mcp.tunnel_topology_refresh.read_private_runtime",
+        "runner_mcp.tunnel_topology_refresh._read_private_runtime",
         lambda path: (
             type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
             object(),

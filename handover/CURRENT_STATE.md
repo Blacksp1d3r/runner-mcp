@@ -1,3 +1,7 @@
+## 2026-10-06 — Mandatory topology preflight
+
+Before connection or infrastructure troubleshooting, consult the canonical AIfordable infrastructure authority at `Blacksp1d3r/AIfordable/docs/INFRASTRUCTURE_AUTHORITY.md` and Runner Fabric's topology directory. Confirm the actual host, runtime and service identity before changing configuration. Unknown or conflicting topology fails closed. Historical correction: `github-runner` was the first Runner-MCP host; `aifordable-lab` was the first Runner-MCP + Runner Fabric combination.
+
 ## 2026-10-06 — #451 dedicated Bewind source credential in validation
 
 Tracking: #451; unblocks Runner-Fabric #1112/#1110.

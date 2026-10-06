@@ -418,7 +418,6 @@ class FabricBridgeClient:
                 self._mcp_config,
                 allowed_tools=_FABRIC_TOOLS,
                 client_name="runner-mcp-fabric-bridge",
-                required_tools=frozenset(),
             )
             self._local.client = client
         return client

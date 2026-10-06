@@ -1106,7 +1106,7 @@ class SelfUpdateManager:
             if self._server_activation_scheduler is not None:
                 try:
                     restart_component()
-                except Exception:
+                except (OSError, RuntimeError):
                     return
                 return
             for retry_delay in (0.0, 2.0, 5.0):

@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import json
 import re
-from pathlib import Path
 from dataclasses import dataclass
+from pathlib import Path
 
 _COMPONENT_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")

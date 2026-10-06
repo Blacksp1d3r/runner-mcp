@@ -1,3 +1,11 @@
+## Customer/on-prem update readiness counterpart
+
+Tracking: #414. Orchestration/policy owner: Blacksp1d3r/Runner-Fabric#1063. Customer/product semantics: Blacksp1d3r/AIfordable#401.
+
+Runner-MCP may later expose only bounded local primitives required by Fabric: read-only semantic disk/RAM/memory-pressure/swap/OOM/CPU/thermal/storage/power/network/restart/build/schema/recovery readiness; returning-node trust-generation state; exact release staging/activation/rollback only after separate authorization; and bounded failover/failback hooks only for fixed target adapters.
+
+Runner-MCP does not choose customers, cohorts, rollout order, canaries, soak windows or failure cause. Missing/unsupported health remains explicit unknown. Insufficient RAM/storage or unsafe resource pressure blocks before mutation. No arbitrary path, shell, package manager, endpoint, service selector, raw hardware log or customer data is exposed.
+
 ## Fleet Update Track A — control-path protection
 
 Canonical umbrella: Blacksp1d3r/Runner-Fabric#924. Reviewed design: Runner-Fabric `roadmap/FLEET_UPDATE_PLANE_BUILD_VS_BORROW.md` v2. Runner-MCP execution issue: #341. Fabric Track A: #937–#943.

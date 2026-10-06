@@ -60,6 +60,10 @@ from .fabric_agent_runtime import (
 )
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
 from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
+from .fabric_disposable_target import (
+    FabricDisposableTargetQualificationError,
+    FabricDisposableTargetQualificationRunner,
+)
 from .fabric_update import FabricUpdateError, FabricUpdateManager
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
@@ -494,6 +498,11 @@ def build_mcp(
         self_update_status_provider=self_update_manager.runtime_status,
     )
 
+    fabric_disposable_target_runner = FabricDisposableTargetQualificationRunner(
+        safety=safety,
+        environment=private_values,
+    )
+
     fabric_bridge = (
         FabricBridgeClient(
             FabricBridgeConfig(
@@ -748,6 +757,41 @@ def build_mcp(
                 "runner-fabric",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_disposable_target_qualify() -> dict:
+        """Run the fixed bounded disposable-target qualification lifecycle."""
+        try:
+            result = fabric_disposable_target_runner.run()
+        except (
+            FabricDisposableTargetQualificationError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_disposable_target_qualify",
+                    "runner-fabric:disposable-target",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Fabric disposable target qualification is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_disposable_target_qualify",
+                "runner-fabric:disposable-target",
+                "authenticated-client",
+                "qualified",
                 utc_timestamp(),
             )
         )

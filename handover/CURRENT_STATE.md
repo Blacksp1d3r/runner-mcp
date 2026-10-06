@@ -1,3 +1,21 @@
+## 2026-10-06 — #445 fixed worker-qualification provisioner in validation
+
+Tracking: #445; Fabric chain #1130 -> #1113 -> #1110. Active branch: `fabric/445-worker-qualification-provision`.
+
+Implemented:
+- fixed MCP tool `fabric_worker_qualification_provision`;
+- exact accepted capability `bewind-ocr-qualification-v1`;
+- request fingerprint recomputed locally from worker/capability/generation/plan digest/expiry/Fabric revision;
+- local private worker identity/capability/generation authority;
+- active managed Runner-Fabric launcher must resolve inside the exact requested control-plane update slot;
+- owner-only fixed qualification config is written under Runner-MCP private config and persisted into `runner-mcp.env`;
+- the same in-memory private environment is shared with existing `fabric_disposable_target_qualify`, so provision -> qualify needs no runtime restart;
+- sanitized result proves managed launcher + qualification state ready and keeps normal activation false;
+- extra MCP arguments remain fail-closed;
+- no OCR execution and no active Bewind v3 interaction.
+
+Next: exact-head CI/review/merge. Then update the live Runner-MCP runtime, configure only the host-owned private qualification template, execute Fabric #1130 bounded binding and continue #1113.
+
 ## 2026-10-06 — Known projects can materialize from trusted local source
 
 Tracking: #401.

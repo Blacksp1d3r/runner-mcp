@@ -126,7 +126,8 @@ def test_qualification_invokes_only_fixed_managed_command(
         "LC_ALL",
         *_Q7_ENV,
     }
-    assert "provider" not in repr(result).casefold()
+    assert "/srv/q7" not in repr(result)
+    assert "k" * 48 not in repr(result)
 
 
 @pytest.mark.parametrize(

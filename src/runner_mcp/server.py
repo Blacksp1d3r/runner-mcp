@@ -1295,6 +1295,51 @@ def build_mcp(
         )
         return result
 
+
+    def fabric_a6_update_qualification_prepare(candidate_commit: str) -> dict:
+        """Prepare off-target A6 evidence without starting a Runner-MCP update."""
+        try:
+            result = _require_fabric_bridge().a6_update_qualification_prepare(
+                candidate_commit
+            )
+        except FabricBridgeError as exc:
+            _audit_fabric(
+                "fabric_a6_update_qualification_prepare",
+                "runner-mcp:a6",
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_a6_update_qualification_prepare",
+            "runner-mcp:a6",
+            "prepared",
+        )
+        return result
+
+    def fabric_a6_update_qualification_finalize(
+        correlation_id: str,
+        job_id: str,
+    ) -> dict:
+        """Finalize off-target A6 evidence after an existing Runner-MCP update."""
+        try:
+            result = _require_fabric_bridge().a6_update_qualification_finalize(
+                correlation_id,
+                job_id,
+            )
+        except FabricBridgeError as exc:
+            _audit_fabric(
+                "fabric_a6_update_qualification_finalize",
+                "runner-mcp:a6",
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_a6_update_qualification_finalize",
+            "runner-mcp:a6",
+            "qualified",
+        )
+        return result
+
     def fabric_operational_snapshot() -> dict:
         """Return bounded end-to-end operational state from Runner Fabric."""
         try:
@@ -1373,6 +1418,8 @@ def build_mcp(
         mcp.tool()(fabric_ci_runner_guest_start)
         mcp.tool()(fabric_ci_runner_guest_stop)
         mcp.tool()(fabric_agent_restart)
+        mcp.tool()(fabric_a6_update_qualification_prepare)
+        mcp.tool()(fabric_a6_update_qualification_finalize)
         mcp.tool()(fabric_operational_snapshot)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)

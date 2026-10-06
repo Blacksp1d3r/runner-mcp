@@ -212,3 +212,101 @@ def test_nonzero_result_is_sanitized(tmp_path: Path) -> None:
 
     assert "/private" not in str(captured.value)
     assert "secret" not in str(captured.value)
+
+
+def ready_environment(tmp_path: Path) -> dict[str, str]:
+    values = environment(tmp_path)
+    for key in (
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_INVENTORY_ROOT",
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_ROOT",
+    ):
+        path = Path(values[key])
+        path.mkdir()
+        path.chmod(0o700)
+    for key in (
+        "RUNNER_FABRIC_MANAGED_REPOSITORIES_FILE",
+        "RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG",
+    ):
+        path = Path(values[key])
+        path.write_text("{}\n", encoding="utf-8")
+        path.chmod(0o600)
+    return values
+
+
+def test_activation_readiness_is_bounded_and_non_mutating(tmp_path: Path) -> None:
+    home = managed_home(tmp_path)
+    values = ready_environment(tmp_path)
+    called = False
+
+    def fake_run(command, **kwargs):
+        nonlocal called
+        called = True
+        raise AssertionError("readiness must not spawn a process")
+
+    runner = FabricRepositoryMirrorRunner(
+        safety=safety(tmp_path),
+        environment=values,
+        home=home,
+        runner=fake_run,
+    )
+
+    result = runner.readiness()
+
+    assert result == {
+        "schemaVersion": (
+            "runner-mcp/fabric-repository-mirror-activation-readiness/v1"
+        ),
+        "ready": True,
+        "storageReady": True,
+        "desiredStateReady": True,
+        "credentialBindingReady": True,
+        "fabricRuntimeReady": True,
+        "activationState": "configured",
+        "reasonCode": "ready",
+        "mutationEnabled": False,
+    }
+    assert called is False
+    rendered = json.dumps(result)
+    assert str(tmp_path) not in rendered
+    assert "token" not in rendered.casefold()
+
+
+def test_activation_readiness_reports_unconfigured_without_private_values(
+    tmp_path: Path,
+) -> None:
+    home = managed_home(tmp_path)
+    runner = FabricRepositoryMirrorRunner(
+        safety=safety(tmp_path),
+        environment={},
+        home=home,
+        runner=lambda *args, **kwargs: None,
+    )
+
+    result = runner.readiness()
+
+    assert result["ready"] is False
+    assert result["activationState"] == "unconfigured"
+    assert result["storageReady"] is False
+    assert result["desiredStateReady"] is False
+    assert result["credentialBindingReady"] is False
+    assert result["fabricRuntimeReady"] is True
+    assert result["reasonCode"] == "storage-binding-unavailable"
+
+
+def test_activation_readiness_rejects_broad_private_permissions(
+    tmp_path: Path,
+) -> None:
+    home = managed_home(tmp_path)
+    values = ready_environment(tmp_path)
+    git_config = Path(values["RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG"])
+    git_config.chmod(0o644)
+
+    result = FabricRepositoryMirrorRunner(
+        safety=safety(tmp_path),
+        environment=values,
+        home=home,
+    ).readiness()
+
+    assert result["ready"] is False
+    assert result["credentialBindingReady"] is False
+    assert result["reasonCode"] == "credential-binding-unavailable"

@@ -1,3 +1,20 @@
+## 2026-10-06 — resume #445 fixed worker qualification provisioning
+
+Fabric prerequisites #1128/#1132 are already merged. Do not rebuild them.
+
+Active Runner-MCP branch: `fabric/445-worker-qualification-provision`, based on main `e445d723f4fe442adb4476dd0aaa2b4f892b24ed`.
+
+Scope implemented:
+- strict `fabric_worker_qualification_provision` tool;
+- no generic installation/remote-command authority;
+- host-owned private JSON template supplies private disposable-target binding;
+- exact request fingerprint, expiry, local generation and exact managed Fabric slot are checked before mutation;
+- fixed private config path + durable private env binding;
+- existing `fabric_disposable_target_qualify` sees the newly provisioned binding immediately;
+- normal activation false; no OCR; no v3 stop/restart.
+
+Next exact action: PR + exact-head validation for #445. After merge/live update, return to Fabric #1130; then #1113 worker qualification, #1114 exactly one `nld+fra+deu` equivalence unit, then #1115 preparation under #1026.
+
 ## 2026-10-06 — resume A6 after Runner-Fabric runtime authorization/update
 
 Do not redo the connector refresh or #427/#428. Both A6 proxies are visible; the fixed Fabric qualification agent can now recover after process loss.

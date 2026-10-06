@@ -253,7 +253,7 @@ def test_restart_fails_closed_when_fixed_qualification_binding_is_invalid(
         runtime,
         "_qualification_agent_environment_additions",
         lambda _config: (_ for _ in ()).throw(
-            FabricAgentQualificationError("invalid")
+            FabricAgentRestartError("fabric_agent_config_invalid")
         ),
     )
 

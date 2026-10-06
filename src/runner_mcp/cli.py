@@ -88,11 +88,11 @@ from .cron_autostart import (
     run_cron_component,
 )
 from .database_manager import DatabaseManager, DatabaseManagerError
-from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .fabric_agent_qualification import (
     FabricAgentQualificationError,
     run_fabric_agent_qualification_process,
 )
+from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .fabric_live_overview import (
     FabricLiveOverviewError,
     run_fabric_live_overview_process,

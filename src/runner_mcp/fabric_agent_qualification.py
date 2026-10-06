@@ -113,6 +113,7 @@ def run_fabric_agent_qualification_process(
 
     endpoint = values[_RESOURCE_URL_KEY].strip()
     token = values[_BEARER_TOKEN_KEY]
+    additions = qualification_agent_environment_additions(paths.config_dir)
     executable = _fixed_runner_fabric_executable()
     environment = {
         "HOME": str(Path.home()),
@@ -121,7 +122,7 @@ def run_fabric_agent_qualification_process(
         _RESOURCE_URL_KEY: endpoint,
         _BEARER_TOKEN_KEY: token,
     }
-    environment.update(qualification_agent_environment_additions(paths.config_dir))
+    environment.update(additions)
 
     try:
         execve(

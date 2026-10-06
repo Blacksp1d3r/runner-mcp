@@ -88,7 +88,10 @@ from .fabric_worker_qualification_provisioning import (
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
-from .known_project_catalog import KnownProjectRegistrationError
+from .known_project_catalog import (
+    KnownProjectRegistrationError,
+    resolve_known_project_github_token,
+)
 from .known_project_catalog import (
     preflight_known_project as preflight_known_project_binding,
 )
@@ -428,6 +431,13 @@ def build_mcp(
         "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON",
         "",
     )
+
+    def known_project_github_token(project_id: str) -> str | None:
+        return resolve_known_project_github_token(
+            project_id=project_id,
+            global_token=github_token or None,
+            private_values=private_values,
+        )
     source_sync = SourceSynchronizer(
         registry=registry,
         safety=safety,
@@ -1904,7 +1914,7 @@ def build_mcp(
             if result.get("state") == "ready-to-prepare":
                 source = preflight_known_project_source_binding(
                     project_id=project_id,
-                    github_token=github_token or None,
+                    github_token=known_project_github_token(project_id),
                     local_source_bindings_raw=known_project_local_sources or None,
                 )
                 if source.get("reason_code") not in {"ready", "local-source-ready"}:
@@ -1944,7 +1954,7 @@ def build_mcp(
         try:
             result = preflight_known_project_source_binding(
                 project_id=project_id,
-                github_token=github_token or None,
+                github_token=known_project_github_token(project_id),
                 local_source_bindings_raw=known_project_local_sources or None,
             )
         except KnownProjectRegistrationError as exc:
@@ -1991,7 +2001,7 @@ def build_mcp(
             result = prepare_known_project_binding(
                 registry,
                 project_id=project_id,
-                github_token=github_token or None,
+                github_token=known_project_github_token(project_id),
                 local_source_bindings_raw=known_project_local_sources or None,
             )
         except KnownProjectRegistrationError as exc:

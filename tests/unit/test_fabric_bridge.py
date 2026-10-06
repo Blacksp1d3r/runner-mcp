@@ -693,3 +693,121 @@ def test_ci_guest_enroll_has_no_secret_argument_surface() -> None:
     assert result["registered"] is True
     assert secret not in repr(fake.calls)
     assert set(fake.calls[0][1]) == {"handoff_id"}
+
+
+def a6_prepare_payload(candidate: str = "2" * 40) -> dict:
+    return {
+        "schemaVersion": "runner.fabric/a6-update-qualification/v1",
+        "state": "prepared",
+        "correlation_id": f"fleet-a6:{'1' * 40}:{candidate}",
+        "target_revision": "1" * 40,
+        "candidate_revision": candidate,
+        "off_target": True,
+        "journal_storage_domain": "control:evidence",
+        "target_storage_domain": "target:runner-mcp",
+    }
+
+
+def a6_finalize_payload(
+    *,
+    correlation_id: str,
+    job_id: str,
+) -> dict:
+    return {
+        "schemaVersion": "runner.fabric/a6-update-qualification/v1",
+        "state": "qualified",
+        "correlation_id": correlation_id,
+        "target_revision": "1" * 40,
+        "candidate_revision": "2" * 40,
+        "update_job_id": job_id,
+        "update_outcome": "succeeded",
+        "reconnect_outcome": "succeeded",
+        "probe_outcome": "succeeded",
+        "record_count": 4,
+        "off_target": True,
+        "journal_storage_domain": "control:evidence",
+        "target_storage_domain": "target:runner-mcp",
+    }
+
+
+def test_a6_qualification_proxy_forwards_only_bounded_identity_arguments() -> None:
+    candidate = "2" * 40
+    prepared = a6_prepare_payload(candidate)
+    correlation = prepared["correlation_id"]
+    job_id = "a" * 32
+    finalized = a6_finalize_payload(correlation_id=correlation, job_id=job_id)
+    bridge, fake = bridge_with_responses(prepared, finalized)
+
+    assert bridge.a6_update_qualification_prepare(candidate) == prepared
+    assert bridge.a6_update_qualification_finalize(correlation, job_id) == finalized
+    assert fake.calls == [
+        ("a6_update_qualification_prepare", {"candidate_commit": candidate}),
+        (
+            "a6_update_qualification_finalize",
+            {"correlation_id": correlation, "job_id": job_id},
+        ),
+    ]
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/secret"}),
+        lambda payload: payload.update({"off_target": False}),
+        lambda payload: payload.update({"candidate_revision": "3" * 40}),
+        lambda payload: payload.update({"journal_storage_domain": "same", "target_storage_domain": "same"}),
+    ],
+)
+def test_a6_prepare_rejects_private_or_invalid_result(mutator) -> None:
+    candidate = "2" * 40
+    payload = a6_prepare_payload(candidate)
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.a6_update_qualification_prepare(candidate)
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/secret"}),
+        lambda payload: payload.update({"state": "prepared"}),
+        lambda payload: payload.update({"update_outcome": "failed"}),
+        lambda payload: payload.update({"record_count": 3}),
+    ],
+)
+def test_a6_finalize_rejects_private_or_unsuccessful_result(mutator) -> None:
+    correlation = f"fleet-a6:{'1' * 40}:{'2' * 40}"
+    job_id = "a" * 32
+    payload = a6_finalize_payload(correlation_id=correlation, job_id=job_id)
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.a6_update_qualification_finalize(correlation, job_id)
+
+
+@pytest.mark.parametrize(
+    ("candidate", "correlation", "job_id"),
+    [
+        ("bad", f"fleet-a6:{'1' * 40}:{'2' * 40}", "a" * 32),
+        ("2" * 40, "../bad", "a" * 32),
+        ("2" * 40, f"fleet-a6:{'1' * 40}:{'2' * 40}", "bad"),
+    ],
+)
+def test_a6_proxy_rejects_invalid_inputs_before_transport(
+    candidate: str,
+    correlation: str,
+    job_id: str,
+) -> None:
+    bridge, fake = bridge_with_responses(a6_prepare_payload())
+
+    if candidate != "2" * 40:
+        with pytest.raises(FabricBridgeError):
+            bridge.a6_update_qualification_prepare(candidate)
+    else:
+        with pytest.raises(FabricBridgeError):
+            bridge.a6_update_qualification_finalize(correlation, job_id)
+
+    assert fake.calls == []

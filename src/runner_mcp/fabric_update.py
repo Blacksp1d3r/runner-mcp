@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
 import ipaddress
@@ -176,6 +177,203 @@ class FabricUpdateManager:
             "artifact_ready": True,
             "source": "local-custody",
         }
+
+    def stage_local_bundle(self, commit: str) -> dict[str, Any]:
+        """Build and retain one exact canonical Runner Fabric update bundle."""
+
+        _require_commit(commit)
+        self._require_safe_runtime()
+        self._assert_managed_launcher()
+
+        target = self.local_bundles_root / commit
+        if target.exists() or target.is_symlink():
+            if target.is_symlink():
+                raise FabricUpdateError("fabric_bundle_storage_conflict")
+            root = self._local_bundle_root(commit)
+            self._validate_local_bundle_source(root)
+            self._validated_bootstrap(commit, root=root)
+            return {
+                "commit": commit,
+                "staged": True,
+                "bundleReady": True,
+                "source": "canonical-source",
+                "localCustody": True,
+                "alreadyStaged": True,
+            }
+
+        work = self.local_bundles_root / f".incoming-{uuid4().hex}"
+        source = work / "source"
+        credential_config = work / "gitconfig"
+        try:
+            work.mkdir(mode=0o700)
+            os.chmod(work, 0o700)
+            token = self._github_token()
+            encoded = base64.b64encode(f"x-access-token:{token}".encode()).decode("ascii")
+            credential_config.write_text(
+                '[http "https://github.com/"]\n'
+                f"\textraHeader = AUTHORIZATION: basic {encoded}\n",
+                encoding="utf-8",
+            )
+            os.chmod(credential_config, 0o600)
+
+            git_env = {
+                "HOME": str(self.home),
+                "PATH": "/usr/local/bin:/usr/bin:/bin",
+                "LANG": "C.UTF-8",
+                "LC_ALL": "C.UTF-8",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": str(credential_config),
+                "GIT_TERMINAL_PROMPT": "0",
+            }
+            self._run_bundle_command(
+                [
+                    "/usr/bin/git",
+                    "clone",
+                    "--depth=64",
+                    "--no-checkout",
+                    "https://github.com/Blacksp1d3r/Runner-Fabric.git",
+                    str(source),
+                ],
+                cwd=work,
+                env=git_env,
+                category="fabric_bundle_source_unavailable",
+                timeout=180,
+            )
+            self._run_bundle_command(
+                [
+                    "/usr/bin/git",
+                    "-C",
+                    str(source),
+                    "fetch",
+                    "--depth=1",
+                    "origin",
+                    commit,
+                ],
+                cwd=work,
+                env=git_env,
+                category="fabric_bundle_source_unavailable",
+                timeout=120,
+            )
+            self._run_bundle_command(
+                [
+                    "/usr/bin/git",
+                    "-C",
+                    str(source),
+                    "checkout",
+                    "--detach",
+                    commit,
+                ],
+                cwd=work,
+                env={
+                    **git_env,
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                },
+                category="fabric_bundle_source_invalid",
+                timeout=60,
+            )
+            observed = self._run_bundle_command(
+                ["/usr/bin/git", "-C", str(source), "rev-parse", "HEAD"],
+                cwd=work,
+                env={
+                    **git_env,
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                },
+                category="fabric_bundle_source_invalid",
+                timeout=30,
+                capture=True,
+            )
+            if observed.stdout.strip() != commit:
+                raise FabricUpdateError("fabric_bundle_source_invalid")
+            dirty = self._run_bundle_command(
+                ["/usr/bin/git", "-C", str(source), "status", "--porcelain"],
+                cwd=work,
+                env={
+                    **git_env,
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                },
+                category="fabric_bundle_source_invalid",
+                timeout=30,
+                capture=True,
+            )
+            if dirty.stdout.strip():
+                raise FabricUpdateError("fabric_bundle_source_invalid")
+
+            try:
+                credential_config.unlink()
+            except OSError as exc:
+                raise FabricUpdateError("fabric_bundle_secret_cleanup_failed") from exc
+
+            build_env = {
+                "HOME": str(self.home),
+                "PATH": "/usr/local/bin:/usr/bin:/bin",
+                "LANG": "C.UTF-8",
+                "LC_ALL": "C.UTF-8",
+                "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+                "PIP_NO_INPUT": "1",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_TERMINAL_PROMPT": "0",
+            }
+            self._run_bundle_command(
+                [sys.executable, "scripts/build_control_plane_update_bundle.py"],
+                cwd=source,
+                env=build_env,
+                category="fabric_bundle_build_failed",
+                timeout=900,
+            )
+            bundle = source / "bundle"
+            self._validate_local_bundle_source(bundle)
+            self._validated_bootstrap(commit, root=bundle)
+            try:
+                os.replace(bundle, target)
+                directory_fd = os.open(self.local_bundles_root, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+            except OSError as exc:
+                raise FabricUpdateError("fabric_bundle_storage_conflict") from exc
+            self._validate_local_bundle_source(target)
+            self._validated_bootstrap(commit, root=target)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+        return {
+            "commit": commit,
+            "staged": True,
+            "bundleReady": True,
+            "source": "canonical-source",
+            "localCustody": True,
+            "alreadyStaged": False,
+        }
+
+    def _run_bundle_command(
+        self,
+        argv: list[str],
+        *,
+        cwd: Path,
+        env: dict[str, str],
+        category: str,
+        timeout: int,
+        capture: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        try:
+            completed = self._runner(
+                argv,
+                cwd=str(cwd),
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=timeout,
+                check=False,
+                shell=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise FabricUpdateError(category) from exc
+        if completed.returncode != 0:
+            raise FabricUpdateError(category)
+        return completed
 
     def start(self, commit: str) -> dict[str, Any]:
         return self._start(commit, source="github-actions")

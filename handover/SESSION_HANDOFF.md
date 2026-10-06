@@ -1,3 +1,16 @@
+## 2026-10-06 — next action: use newly live A6 proxies after connector refresh
+
+Do not redo #411. Runner-MCP is already live on `e88e76ba...`.
+
+After runner-mcp-control tools are refreshed in ChatGPT:
+1. call `fabric_a6_update_qualification_prepare` for a newer exact Runner-MCP main commit;
+2. call existing `self_update` for that same commit;
+3. wait for terminal success/restart convergence;
+4. require a fresh post-update A3 probe;
+5. call `fabric_a6_update_qualification_finalize` with the returned correlation id and self-update job id.
+
+If finalization is qualified, Fabric #942 may close. Only then start A7/#943.
+
 ## 2026-10-05 — resume #333 only when A3 end-to-end evidence is ready
 
 Repository: Blacksp1d3r/runner-mcp

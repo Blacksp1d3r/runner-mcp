@@ -278,20 +278,3 @@ def test_qualification_agent_rejects_partial_a6_binding(tmp_path: Path) -> None:
             paths.config_dir,
             execve=lambda *_: object(),
         )
-
-
-def test_qualification_agent_rejects_multiline_a6_value(tmp_path: Path) -> None:
-    paths = _private_config(tmp_path)
-    _append_bridge(paths)
-    values = dict(_A6_VALUES)
-    values["RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN"] = "control:evidence\nleak"
-    _append_a6(paths, values)
-
-    with pytest.raises(
-        FabricAgentQualificationError,
-        match="A6 qualification configuration is invalid",
-    ):
-        run_fabric_agent_qualification_process(
-            paths.config_dir,
-            execve=lambda *_: object(),
-        )

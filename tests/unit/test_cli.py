@@ -3395,6 +3395,45 @@ def test_topology_heartbeat_once_cli_returns_nonzero_when_unhealthy(
     )
 
 
+def test_topology_heartbeat_once_cli_fails_closed_when_not_unique(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, _ = install_config(tmp_path)
+
+    class Outcome:
+        healthy = True
+
+        def public_dict(self):
+            return {
+                "healthy": True,
+                "state": "not_unique",
+                "reason": "topology_not_unique_primary",
+                "qualified": False,
+            }
+
+    monkeypatch.setattr(
+        cli,
+        "run_topology_heartbeat_once",
+        lambda _config_dir: Outcome(),
+    )
+
+    assert main(
+        [
+            "--config-dir",
+            str(paths.config_dir),
+            "topology-heartbeat",
+            "once",
+        ]
+    ) == 2
+    captured = capsys.readouterr()
+
+    assert captured.out.strip() == (
+        "state=not_unique reason=topology_not_unique_primary qualified=no"
+    )
+
+
 def test_topology_heartbeat_run_cli_stops_cleanly_on_interrupt(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

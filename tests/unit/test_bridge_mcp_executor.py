@@ -199,6 +199,7 @@ def test_initialize_peer_accepts_forward_compatible_server_metadata() -> None:
     [
         ({"version": "1.0", "title": "missing-name"}, None, "1.0"),
         ({"name": "Runner Fabric Agent", "title": "missing-version"}, "Runner Fabric Agent", None),
+        ({"name": "Runner Fabric Agent", "version": ""}, "Runner Fabric Agent", None),
         ({}, None, None),
     ],
 )
@@ -221,7 +222,6 @@ def test_initialize_peer_accepts_optional_advisory_server_identity_fields(
     "server_info",
     [
         {"name": "", "version": "1.0"},
-        {"name": "Runner Fabric Agent", "version": ""},
         {"name": 123, "version": "1.0"},
         {"name": "Runner Fabric Agent", "version": []},
     ],
@@ -576,8 +576,8 @@ def test_client_rejects_observed_protocol_version_mismatch(monkeypatch) -> None:
     "server_info",
     [
         {"name": "../private", "version": "1"},
-        {"name": "Runner MCP", "version": ""},
         {"name": "Runner MCP", "version": "x" * 129},
+        {"name": "Runner MCP", "version": "bad\nversion"},
     ],
 )
 def test_client_rejects_invalid_observed_server_identity(

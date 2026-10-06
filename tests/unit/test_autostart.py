@@ -140,8 +140,8 @@ def test_topology_heartbeat_unit_requires_tunnel_and_agent_bus(
     paths, executable = _private_config(tmp_path)
     tunnel_env = paths.config_dir / "tunnel.env"
     tunnel_env.write_text(
-        "CONTROL_PLANE_TUNNEL_ID=tunnel_" + ("b" * 32) + "\n"
-        "CONTROL_PLANE_API_KEY=" + ("k" * 48) + "\n",
+        "CONTROL_PLANE_TUNNEL_ID=tunnel_sensitive_placeholder\n"
+        "CONTROL_PLANE_API_KEY=api_sensitive_placeholder\n",
         encoding="utf-8",
     )
     tunnel_env.chmod(0o600)
@@ -390,6 +390,12 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
         },
         {
             "component": "tunnel",
+            "installed": False,
+            "enabled": False,
+            "active": False,
+        },
+        {
+            "component": "topology-heartbeat",
             "installed": False,
             "enabled": False,
             "active": False,

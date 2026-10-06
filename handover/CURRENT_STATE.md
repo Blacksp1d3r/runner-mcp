@@ -1,3 +1,21 @@
+## 2026-10-06 — Known projects can materialize from trusted local source
+
+Tracking: #401.
+
+Runner-MCP can now consume an optional host-owned private known-project local-source map before falling back to GitHub. The MCP caller still supplies only project_id.
+
+The local binding is schema-bound to:
+- fixed catalog project identity;
+- expected canonical repository identity;
+- private owner-only local source directory;
+- exact expected commit revision.
+
+When present and valid, preparation clones locally with network disabled, checks out the exact revision, verifies a clean HEAD, normalizes the resulting origin to the canonical GitHub repository identity, atomically renames the temporary checkout into the existing trusted sibling destination and cleans partial state on failure.
+
+Invalid or unsafe configured local authority fails closed rather than silently falling back to GitHub. Without a local binding, the prior GitHub preparation path is unchanged. The private binding is retained across config overwrite.
+
+Live branch qualification included lint + unit PASS and a real bare local Git source materialization test.
+
 ## 2026-10-06 — Local Fabric update custody is self-staging
 
 Tracking: #442, follows local-custody update source #404.

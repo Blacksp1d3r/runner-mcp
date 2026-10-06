@@ -777,3 +777,50 @@ def test_prepare_known_project_rejects_unwritable_parent_before_network(
             ),
             github_token="private-token",
         )
+
+
+def test_runner_fabric_is_bounded_known_python_project() -> None:
+    project = KNOWN_PROJECTS["runner-fabric"]
+    assert project.code == "runner-fabric"
+    assert project.display_name == "Runner Fabric"
+    assert project.repository == "Blacksp1d3r/Runner-Fabric"
+    assert project.directory_name == "Runner-Fabric"
+    assert project.adapter == "python"
+
+
+def test_runner_fabric_preflight_reports_ready_to_prepare(tmp_path: Path) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="runner-fabric",
+        runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("git must not run")
+        ),
+    )
+
+    assert result == {
+        "code": "runner-fabric",
+        "repository": "Blacksp1d3r/Runner-Fabric",
+        "state": "ready-to-prepare",
+    }
+
+
+def test_runner_fabric_existing_clone_requires_exact_repository(
+    tmp_path: Path,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    target = tmp_path / "Runner-Fabric"
+    target.mkdir()
+
+    result = preflight_known_project(
+        _registry(anchor),
+        project_id="runner-fabric",
+        runner=lambda *_args, **_kwargs: _completed(
+            "https://github.com/Blacksp1d3r/Runner-Fabric.git\n"
+        ),
+    )
+
+    assert result["state"] == "already-prepared"

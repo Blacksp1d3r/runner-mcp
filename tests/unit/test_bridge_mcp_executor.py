@@ -238,6 +238,15 @@ def test_initialize_peer_rejects_invalid_present_server_identity_fields(
         )
 
 
+def test_client_rejects_required_tools_outside_allowlist() -> None:
+    with pytest.raises(ValueError, match="required MCP tools"):
+        LocalMCPClient(
+            _config(),
+            allowed_tools=frozenset({"one"}),
+            required_tools=frozenset({"two"}),
+        )
+
+
 def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:
     responses = [
         FakeResponse(

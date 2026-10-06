@@ -825,12 +825,14 @@ class _PreflightClient:
         allowed_tools,
         client_name,
         compatibility_preflight,
+        required_tools,
     ) -> None:
         assert allowed_tools == frozenset(
             {"synthetic_probe_status", "a6_update_qualification_prepare"}
         )
         assert client_name == "runner-mcp-fabric-preflight"
         assert compatibility_preflight is True
+        assert required_tools == frozenset()
         self.peer_identity = {
             "protocol_version": "2025-06-18",
             "server_name": "Runner Fabric Agent",

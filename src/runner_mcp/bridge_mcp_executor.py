@@ -660,6 +660,7 @@ class LocalMCPClient:
         allowed_tools: frozenset[str] = _RUNNER_MCP_BRIDGE_TOOLS,
         client_name: str = "runner-mcp-github-watcher",
         compatibility_preflight: bool = False,
+        required_tools: frozenset[str] | None = None,
     ) -> None:
         if not isinstance(allowed_tools, frozenset) or not allowed_tools:
             raise ValueError("MCP tool allow-list must be a non-empty frozenset")
@@ -676,8 +677,16 @@ class LocalMCPClient:
             raise ValueError("MCP client name is invalid")
         if not isinstance(compatibility_preflight, bool):
             raise TypeError("compatibility_preflight must be boolean")
+        if required_tools is not None and not isinstance(required_tools, frozenset):
+            raise TypeError("required_tools must be a frozenset or None")
+        effective_required_tools = (
+            allowed_tools if required_tools is None else required_tools
+        )
+        if not effective_required_tools.issubset(allowed_tools):
+            raise ValueError("required MCP tools must be allowed")
         self._config = config
         self._allowed_tools = allowed_tools
+        self._required_tools = effective_required_tools
         self._client_name = client_name
         self._compatibility_preflight = compatibility_preflight
         self._session_id: str | None = None
@@ -759,7 +768,7 @@ class LocalMCPClient:
             )
             observed_digest, tool_names = _validate_peer_tool_surface(
                 tool_surface,
-                required_tools=self._allowed_tools,
+                required_tools=self._required_tools,
             )
             identity_response = self._post(
                 {

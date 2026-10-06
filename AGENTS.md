@@ -64,6 +64,12 @@ A future first-party AIfordable discovery page may mirror canonical metadata, re
 
 Use environment-variable placeholders and reserved example domains. Do not publish actual paths, ports, service names, database names, usernames, hostnames, or network addresses.
 
+## Epic decomposition and bounded-child rule
+
+Large roadmap items, epics and cross-cutting features must be decomposed into bounded executable child work before substantial implementation.
+
+Use one umbrella for end-to-end intent and dependencies, then split implementation into small child issues with one coherent responsibility and explicit acceptance criteria. Each child should be small enough to inspect, implement, test, review and hand off within a bounded tool/model context. Large Markdown plans are architectural references, not the executable unit of work. When context/tool output becomes truncated or hard to reconcile, split further rather than compressing away constraints. Parent completion is derived from child evidence.
+
 ## Git workflow
 
 Use small branches and pull requests. Update `handover/CURRENT_STATE.md` after meaningful milestones. Keep core code project-agnostic; project-specific behavior belongs in adapters/configuration.

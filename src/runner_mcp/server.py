@@ -107,11 +107,11 @@ from .operational_safety import (
     SafetyConfigurationError,
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
-from .service_manager import ServiceManager, ServiceManagerError
 from .self_update_activation import (
     ServerActivationProofMiddleware,
     activate_managed_server,
 )
+from .service_manager import ServiceManager, ServiceManagerError
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
 from .tunnel_topology_refresh import (

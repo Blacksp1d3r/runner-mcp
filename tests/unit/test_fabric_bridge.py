@@ -6,6 +6,8 @@ from types import SimpleNamespace
 
 import pytest
 
+from runner_mcp import fabric_bridge as fabric_bridge_module
+from runner_mcp.bridge_processor import BridgeExecutionAdapterError
 from runner_mcp.fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 
 BASE = "a" * 40
@@ -811,3 +813,106 @@ def test_a6_proxy_rejects_invalid_inputs_before_transport(
             bridge.a6_update_qualification_finalize(correlation, job_id)
 
     assert fake.calls == []
+
+
+class _PreflightClient:
+    failure: str | None = None
+
+    def __init__(
+        self,
+        _config,
+        *,
+        allowed_tools,
+        client_name,
+        compatibility_preflight,
+    ) -> None:
+        assert allowed_tools == frozenset(
+            {"synthetic_probe_status", "a6_update_qualification_prepare"}
+        )
+        assert client_name == "runner-mcp-fabric-preflight"
+        assert compatibility_preflight is True
+        self.peer_identity = {
+            "protocol_version": "2025-06-18",
+            "server_name": "Runner Fabric Agent",
+            "server_version": "1",
+        }
+        self.peer_build_identity = {
+            "component_id": "runner-fabric",
+            "build_version": "runner-fabric-agent-mcp",
+            "source_revision": "c" * 40,
+        }
+        self.peer_tool_names = (
+            "build_identity",
+            "synthetic_probe_status",
+            "a6_update_qualification_prepare",
+        )
+
+    def initialize(self) -> None:
+        if self.failure is not None:
+            raise BridgeExecutionAdapterError(self.failure)
+
+
+def test_bridge_preflight_returns_only_bounded_peer_facts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _PreflightClient.failure = None
+    monkeypatch.setattr(fabric_bridge_module, "LocalMCPClient", _PreflightClient)
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:9010/mcp",
+            bearer_token="x" * 32,
+        )
+    )
+
+    result = bridge.preflight()
+
+    assert result == {
+        "schema_version": "runner-mcp/fabric-bridge-preflight/v1",
+        "state": "ready",
+        "reason_code": "ready",
+        "protocol_version": "2025-06-18",
+        "server_name": "Runner Fabric Agent",
+        "server_version": "1",
+        "source_revision": "c" * 40,
+        "a6_prepare_available": True,
+        "synthetic_probe_status_available": True,
+        "mutation_enabled": False,
+    }
+    assert "endpoint" not in result
+    assert "token" not in result
+    assert "session_id" not in result
+
+
+@pytest.mark.parametrize(
+    ("detail", "reason"),
+    [
+        ("Runner MCP is unavailable or rejected the request", "transport_or_auth_unavailable"),
+        ("Runner MCP initialization failed", "initialization_failed"),
+        ("Runner MCP protocol version is incompatible", "protocol_incompatible"),
+        ("Runner MCP interface schema is incompatible", "interface_incompatible"),
+        ("Runner MCP build identity is incompatible", "build_identity_incompatible"),
+        ("other bounded failure", "peer_unavailable"),
+    ],
+)
+def test_bridge_preflight_classifies_failures_without_private_detail(
+    monkeypatch: pytest.MonkeyPatch,
+    detail: str,
+    reason: str,
+) -> None:
+    _PreflightClient.failure = detail
+    monkeypatch.setattr(fabric_bridge_module, "LocalMCPClient", _PreflightClient)
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:9010/mcp",
+            bearer_token="x" * 32,
+        )
+    )
+
+    result = bridge.preflight()
+
+    assert result["state"] == "blocked"
+    assert result["reason_code"] == reason
+    assert result["mutation_enabled"] is False
+    assert result["protocol_version"] is None
+    assert result["source_revision"] is None
+    assert detail not in str(result)

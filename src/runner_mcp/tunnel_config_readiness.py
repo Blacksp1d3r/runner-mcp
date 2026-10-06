@@ -29,6 +29,7 @@ def collect_tunnel_config_readiness(
     process_running: bool = False,
     local_mcp_ready: bool = False,
     control_plane_authenticated: bool = False,
+    end_to_end_routable: bool = False,
 ) -> TunnelConfigReadiness:
     """Classify bounded config/process evidence without process or network probing."""
 
@@ -39,6 +40,7 @@ def collect_tunnel_config_readiness(
             process_running=process_running,
             local_mcp_ready=local_mcp_ready,
             control_plane_authenticated=control_plane_authenticated,
+            end_to_end_routable=end_to_end_routable,
         )
     )
     return TunnelConfigReadiness(

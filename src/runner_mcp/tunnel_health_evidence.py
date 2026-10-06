@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import os
+import re
 import stat
 import urllib.error
 import urllib.parse
@@ -12,6 +13,7 @@ from typing import Any
 MAX_HEALTH_URL_BYTES = 2_048
 MAX_HEALTH_RESPONSE_BYTES = 32_768
 _HEALTH_TIMEOUT_SECONDS = 2.0
+_INSTANCE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 
 
 class TunnelHealthEvidenceError(RuntimeError):
@@ -154,6 +156,62 @@ def _collect_health_component(
     if payload.get("component") != component:
         return None
     return payload
+
+
+def collect_tunnel_runtime_instance_id(
+    config_dir: Path,
+    *,
+    opener=_open_loopback,
+) -> str | None:
+    """Read only the tunnel-client's bounded process-scoped runtime identity."""
+
+    base_url = _read_private_health_url(config_dir)
+    if base_url is None:
+        return None
+    parsed = urllib.parse.urlsplit(base_url)
+    if (
+        parsed.scheme != "http"
+        or (parsed.hostname or "").lower() != "127.0.0.1"
+        or parsed.username
+        or parsed.password
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise TunnelHealthEvidenceError(
+            "tunnel health evidence is not fixed loopback HTTP"
+        )
+    try:
+        port = parsed.port
+    except ValueError as exc:
+        raise TunnelHealthEvidenceError(
+            "tunnel health evidence URL is invalid"
+        ) from exc
+    if port is None or not 1 <= port <= 65_535 or parsed.path not in {"", "/"}:
+        raise TunnelHealthEvidenceError(
+            "tunnel health evidence URL is invalid"
+        )
+
+    request = urllib.request.Request(
+        f"http://127.0.0.1:{port}/health?details=true",
+        method="GET",
+        headers={"Accept": "application/json"},
+    )
+    try:
+        with opener(request, timeout=_HEALTH_TIMEOUT_SECONDS) as response:
+            raw = response.read(MAX_HEALTH_RESPONSE_BYTES + 1)
+    except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
+        return None
+
+    payload = _decode_component_payload(raw)
+    if type(payload.get("schema_version")) is not int or payload["schema_version"] != 1:
+        return None
+    runtime = payload.get("runtime")
+    if not isinstance(runtime, dict):
+        return None
+    instance_id = runtime.get("instance_id")
+    if not isinstance(instance_id, str) or _INSTANCE_ID_RE.fullmatch(instance_id) is None:
+        return None
+    return instance_id
 
 
 def collect_local_mcp_ready(

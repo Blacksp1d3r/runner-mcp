@@ -11,6 +11,7 @@ from runner_mcp.tunnel_health_evidence import (
     TunnelHealthEvidenceError,
     collect_control_plane_authenticated,
     collect_local_mcp_ready,
+    collect_tunnel_runtime_instance_id,
 )
 
 
@@ -56,6 +57,57 @@ def test_missing_health_evidence_is_not_ready(tmp_path: Path) -> None:
         opener=lambda *_args, **_kwargs: called.append(True),
     ) is False
     assert called == []
+
+
+def test_collects_bounded_runtime_instance_id(tmp_path: Path) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = json.dumps(
+        {
+            "schema_version": 1,
+            "live": True,
+            "ready": True,
+            "runtime": {
+                "instance_id": "a" * 32,
+                "version": "0.0.15",
+                "flavor": "full",
+            },
+        }
+    ).encode("utf-8")
+    requests = []
+
+    def opener(request, *, timeout):
+        requests.append((request, timeout))
+        return FakeResponse(payload)
+
+    assert collect_tunnel_runtime_instance_id(
+        tmp_path,
+        opener=opener,
+    ) == "a" * 32
+    request, timeout = requests[0]
+    assert request.full_url == "http://127.0.0.1:48123/health?details=true"
+    assert timeout == 2.0
+
+
+@pytest.mark.parametrize(
+    "instance_id",
+    [None, "", "A" * 32, "g" * 32, "a" * 31],
+)
+def test_invalid_runtime_instance_id_is_not_evidence(
+    tmp_path: Path,
+    instance_id,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = json.dumps(
+        {
+            "schema_version": 1,
+            "runtime": {"instance_id": instance_id},
+        }
+    ).encode("utf-8")
+
+    assert collect_tunnel_runtime_instance_id(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(payload),
+    ) is None
 
 
 @pytest.mark.parametrize("state", ["initialized", "discovered"])

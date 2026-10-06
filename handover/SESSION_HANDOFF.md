@@ -1,3 +1,11 @@
+## 2026-10-06 — A6 live proof candidate after provenance repair
+
+Runner-MCP #454/#455 is merged and live. `build_identity.source_revision` now derives from the canonical private self-update state and exactly matches `runtime_status.last_installed_commit` after restart convergence.
+
+The A6 private journal/evidence bindings are configured on `aifordable-lab`; the Fabric qualification agent is healthy. This documentation-only revision is intentionally the next candidate for the canonical live A6 proof so no unrelated runtime behavior is mixed into the campaign.
+
+Required order remains: A6 prepare -> existing bounded self_update -> restart convergence -> fresh A3 probe -> A6 finalize. Do not update to this candidate before prepare succeeds.
+
 ## 2026-10-06 — resume #451 Bewind-only source token
 
 #445 is complete/live at `1d4957ff...`.

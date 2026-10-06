@@ -202,3 +202,96 @@ def test_qualification_agent_start_failure_is_bounded(
 
     assert str(exc.value) == "Runner Fabric qualification agent could not start"
     assert secret not in str(exc.value)
+
+
+_A6_VALUES = {
+    "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": "/private/a6-journal",
+    "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN": "control:evidence",
+    "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN": "target:runner-mcp",
+    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": "http://127.0.0.1:8000/mcp",
+    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": "r" * 48,
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_ID": "fleet-a6",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT": "runner:aifordable-lab",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION": "f" * 40,
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS": "60",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT": "/private/a6-evidence",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION": "f" * 40,
+}
+
+
+def _append_a6(paths, values: dict[str, str] | None = None) -> None:
+    selected = _A6_VALUES if values is None else values
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in selected.items():
+            handle.write(f"{key}={value}\n")
+
+
+def test_qualification_agent_forwards_complete_fixed_a6_binding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_a6(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _A6_VALUES.items():
+        assert environment[key] == value
+    assert "UNRELATED_PRIVATE_VALUE" not in environment
+
+
+def test_qualification_agent_rejects_partial_a6_binding(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_a6(
+        paths,
+        {"RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": "/private/a6-journal"},
+    )
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="A6 qualification configuration is incomplete",
+    ):
+        run_fabric_agent_qualification_process(
+            paths.config_dir,
+            execve=lambda *_: object(),
+        )
+
+
+def test_qualification_agent_rejects_multiline_a6_value(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    values = dict(_A6_VALUES)
+    values["RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN"] = "control:evidence\nleak"
+    _append_a6(paths, values)
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="A6 qualification configuration is invalid",
+    ):
+        run_fabric_agent_qualification_process(
+            paths.config_dir,
+            execve=lambda *_: object(),
+        )

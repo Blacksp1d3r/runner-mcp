@@ -1,8 +1,8 @@
 from __future__ import annotations
 
 import json
-import re
 import os
+import re
 import stat
 import urllib.error
 import urllib.parse

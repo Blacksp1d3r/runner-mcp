@@ -130,6 +130,20 @@ class FabricUpdateManager:
             ),
         }
 
+    def actions_readiness(self) -> dict[str, bool]:
+        """Check only whether the configured credential can read Fabric Actions metadata."""
+        token = self._github_token()
+        owner, repo = _REPOSITORY.split("/", 1)
+        payload = self._api_json(
+            token,
+            f"/repos/{owner}/{repo}/actions/workflows/{_WORKFLOW}/runs?per_page=1",
+            category="actions_run_unavailable",
+        )
+        rows = payload.get("workflow_runs") if isinstance(payload, dict) else None
+        if not isinstance(rows, list):
+            raise FabricUpdateError("actions_run_unavailable")
+        return {"configured": True, "actions_readable": True}
+
     def readiness(self, commit: str) -> dict[str, Any]:
         """Verify the exact canonical Actions run/artifact metadata without mutation."""
         _require_commit(commit)

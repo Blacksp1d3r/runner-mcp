@@ -991,7 +991,7 @@ def test_bewind_uses_dedicated_source_credential() -> None:
 
 @pytest.mark.parametrize(
     "project_id",
-    ["aifordable", "rasff-lens", "runner-mcp", "runner-fabric"],
+    ["aifordable", "rasff-lens", "runner-fabric", "safety"],
 )
 def test_other_projects_never_consume_bewind_source_credential(
     project_id: str,

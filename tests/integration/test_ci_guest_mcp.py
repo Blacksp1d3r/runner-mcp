@@ -404,3 +404,138 @@ def test_fabric_agent_restart_is_argumentless_and_bounded(
     assert "fabric_agent_restart" in audit
     assert "127.0.0.1" not in audit
     assert "f" * 32 not in audit
+
+
+def test_fabric_disposable_target_qualify_is_argumentless_and_bounded(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeFabricBridge:
+        def __init__(self, _config) -> None:
+            pass
+
+    result_payload = {
+        "schemaVersion": "runner.fabric/disposable-target-qualification/v1",
+        "qualificationId": "af14-lab-one",
+        "targetAllocationId": "11111111-1111-4111-8111-111111111111",
+        "runtimeProfile": "disposable-incus-vm-podman-v1",
+        "createdReady": True,
+        "resourceLimitsVerified": True,
+        "guestRuntimeVerified": True,
+        "managementAuthorityBlocked": True,
+        "noDefaultRoute": True,
+        "networkPolicyVerified": True,
+        "destroyVerified": True,
+        "recreateVerified": True,
+        "recreateIsolationVerified": True,
+        "finalDestroyVerified": True,
+        "imageFingerprint": "a" * 64,
+        "bootstrapSha256": "b" * 64,
+        "qualificationPassed": True,
+        "normalActivationEnabled": False,
+        "finalState": "destroyed",
+    }
+
+    def fake_qualify(**kwargs):
+        calls.append(kwargs)
+        return result_payload
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricBridgeClient",
+        FakeFabricBridge,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.qualify_fabric_disposable_target",
+        fake_qualify,
+    )
+
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    private_config = tmp_path / "fabric-disposable-target.json"
+    private_config.write_text("{}", encoding="utf-8")
+    private_config.chmod(0o600)
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit-target-qualification.jsonl",
+        rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator.stop",
+        retention_confirmed=True,
+        fabric_resource_url="http://127.0.0.1:9010/mcp",
+        fabric_bearer_token="f" * 32,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    secret_values = {
+        "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+            private_config.resolve()
+        )
+    }
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values=secret_values,
+    )
+    headers = _headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        listed = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 40,
+                "method": "tools/list",
+                "params": {},
+            },
+        )
+        assert "fabric_disposable_target_qualify" in listed.text
+
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 41,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_disposable_target_qualify",
+                    "arguments": {},
+                },
+            },
+        )
+        payload = _tool_json(response)
+
+    assert payload == result_payload
+    assert len(calls) == 1
+    assert calls[0]["private_values"] == secret_values
+    assert "fabric_disposable_target_qualify" in (
+        tmp_path / "audit-target-qualification.jsonl"
+    ).read_text(encoding="utf-8")
+    rendered = response.text.casefold()
+    assert str(private_config).casefold() not in rendered
+    assert "127.0.0.1" not in rendered
+    assert "f" * 32 not in rendered

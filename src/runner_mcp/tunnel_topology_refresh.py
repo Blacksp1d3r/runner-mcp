@@ -10,13 +10,7 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .agent_bus_worker import (
-    AgentBusWorkerError,
-    validate_agent_bus_relay_config,
-)
-from .onboarding import load_env_file, read_private_runtime
 from .tunnel_health_evidence import collect_tunnel_runtime_instance_id
-from .tunnel_topology import collect_tunnel_topology_evidence
 
 _MAX_RESPONSE_BYTES = 4096
 _INSTANCE_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -38,15 +32,15 @@ def refresh_tunnel_topology_attestation(
 ) -> dict[str, str | bool]:
     """Refresh private topology evidence through the existing AIfordable runner channel."""
 
-    paths, _settings, _registry = read_private_runtime(config_dir)
-    values = load_env_file(paths.env_file)
+    paths, _settings, _registry = _read_private_runtime(config_dir)
+    values = _load_env_file(paths.env_file)
     try:
-        origin, _subject, credential = validate_agent_bus_relay_config(
+        origin, _subject, credential = _validate_agent_bus_relay_config(
             origin=values.get("RUNNER_FABRIC_RELAY_ORIGIN", ""),
             subject=values.get("RUNNER_FABRIC_RELAY_SUBJECT", ""),
             credential=values.get("RUNNER_FABRIC_RELAY_CREDENTIAL", ""),
         )
-    except AgentBusWorkerError as exc:
+    except (RuntimeError, TypeError, ValueError) as exc:
         raise TunnelTopologyRefreshError(
             "AIfordable topology authority configuration is unavailable"
         ) from exc
@@ -103,7 +97,7 @@ def refresh_tunnel_topology_attestation(
     )
     _persist_attestation(paths.config_dir, payload)
 
-    result = collect_tunnel_topology_evidence(
+    result = _collect_tunnel_topology_evidence(
         paths.config_dir,
         runtime_instance_id=instance_id,
         now=now,
@@ -219,7 +213,9 @@ def _persist_attestation(config_dir: Path, payload: dict[str, object]) -> None:
 
 def _tunnel_binding(config_dir: Path) -> str:
     try:
-        values = load_env_file(config_dir.expanduser().resolve() / "tunnel.env")
+        values = _load_env_file(
+            config_dir.expanduser().resolve() / "tunnel.env"
+        )
         tunnel_id = values["CONTROL_PLANE_TUNNEL_ID"].strip()
     except (KeyError, OSError, RuntimeError, ValueError) as exc:
         raise TunnelTopologyRefreshError(
@@ -228,6 +224,48 @@ def _tunnel_binding(config_dir: Path) -> str:
     if _TUNNEL_ID_RE.fullmatch(tunnel_id) is None:
         raise TunnelTopologyRefreshError("tunnel binding is unavailable")
     return hashlib.sha256(tunnel_id.encode("utf-8")).hexdigest()
+
+
+def _read_private_runtime(config_dir: Path):
+    from .onboarding import read_private_runtime
+
+    return read_private_runtime(config_dir)
+
+
+def _load_env_file(path: Path) -> dict[str, str]:
+    from .onboarding import load_env_file
+
+    return load_env_file(path)
+
+
+def _validate_agent_bus_relay_config(
+    *,
+    origin: object,
+    subject: object,
+    credential: object,
+) -> tuple[str, str, str]:
+    from .agent_bus_worker import validate_agent_bus_relay_config
+
+    return validate_agent_bus_relay_config(
+        origin=origin,
+        subject=subject,
+        credential=credential,
+    )
+
+
+def _collect_tunnel_topology_evidence(
+    config_dir: Path,
+    *,
+    runtime_instance_id: str,
+    now: datetime | None,
+):
+    from .tunnel_topology import collect_tunnel_topology_evidence
+
+    return collect_tunnel_topology_evidence(
+        config_dir,
+        runtime_instance_id=runtime_instance_id,
+        now=now,
+    )
 
 
 def _timestamp(value: object) -> datetime:

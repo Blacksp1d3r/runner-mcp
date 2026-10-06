@@ -173,6 +173,44 @@ def restart_marker_commit(config_dir: Path, component: str) -> str | None:
     return commit
 
 
+def installed_self_update_commit(config_dir: Path) -> str | None:
+    path = config_dir.expanduser().resolve() / "self-update-state.json"
+    if path.is_symlink():
+        raise SelfUpdateError("Self-update state is unsafe")
+    if not path.exists():
+        return None
+    if not path.is_file():
+        raise SelfUpdateError("Self-update state is unsafe")
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SelfUpdateError("Self-update state is unavailable") from exc
+    candidate = raw.get("commit") if isinstance(raw, dict) else None
+    if not isinstance(candidate, str) or not _COMMIT_RE.fullmatch(candidate):
+        raise SelfUpdateError("Self-update state is invalid")
+    return candidate
+
+
+def confirm_server_activation(
+    config_dir: Path,
+    *,
+    process_commit: str | None,
+) -> bool:
+    """Consume the server marker only from a process started on that exact commit."""
+
+    if process_commit is None:
+        return False
+    if not _COMMIT_RE.fullmatch(process_commit):
+        raise SelfUpdateError("Runner MCP process commit is invalid")
+    marker = restart_marker_commit(config_dir, "server")
+    if marker is None or marker != process_commit:
+        return False
+    installed = installed_self_update_commit(config_dir)
+    if installed != process_commit:
+        return False
+    return consume_restart_marker(config_dir, "server")
+
+
 def restart_pending_count(config_dir: Path) -> int:
     return sum(
         restart_marker_commit(config_dir, component) is not None
@@ -395,6 +433,7 @@ class SelfUpdateManager:
         server_bind_host: str | None = None,
         server_bind_port: int | None = None,
         server_reexec: Callable[[], object] | None = None,
+        server_activation_scheduler: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
     ) -> None:
@@ -469,6 +508,7 @@ class SelfUpdateManager:
                     self._server_host = parsed_resource.hostname
                     self._server_port = port
         self._server_reexec = server_reexec
+        self._server_activation_scheduler = server_activation_scheduler
         self._restart_components = _normalize_restart_components(restart_components)
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
@@ -517,21 +557,7 @@ class SelfUpdateManager:
             raise SelfUpdateError("Self-update compatibility record could not be persisted") from exc
 
     def _installed_commit(self) -> str | None:
-        path = self._state_path()
-        if path.is_symlink():
-            raise SelfUpdateError("Self-update state is unsafe")
-        if not path.exists():
-            return None
-        if not path.is_file():
-            raise SelfUpdateError("Self-update state is unsafe")
-        try:
-            raw = json.loads(path.read_text(encoding="utf-8"))
-        except (OSError, json.JSONDecodeError) as exc:
-            raise SelfUpdateError("Self-update state is unavailable") from exc
-        candidate = raw.get("commit") if isinstance(raw, dict) else None
-        if not isinstance(candidate, str) or not _COMMIT_RE.fullmatch(candidate):
-            raise SelfUpdateError("Self-update state is invalid")
-        return candidate
+        return installed_self_update_commit(self.config_dir)
 
     def _pending_install_transaction(self) -> dict[str, Any] | None:
         try:
@@ -701,7 +727,11 @@ class SelfUpdateManager:
         return all(name in names for name in SELF_TEST_PROFILES)
 
     def _restart_ready(self) -> bool:
-        return self._server_reexec is not None or self._server_port is not None
+        return (
+            self._server_activation_scheduler is not None
+            or self._server_reexec is not None
+            or self._server_port is not None
+        )
 
     def _latest_job_public(self) -> dict[str, Any] | None:
         with self._lock:
@@ -1058,6 +1088,8 @@ class SelfUpdateManager:
 
     def _schedule_server_restart(self) -> None:
         def restart_component() -> object:
+            if self._server_activation_scheduler is not None:
+                return self._server_activation_scheduler()
             if self._server_reexec is not None:
                 return self._server_reexec()
             if self._server_host is None or self._server_port is None:
@@ -1071,6 +1103,12 @@ class SelfUpdateManager:
 
         def restart() -> None:
             time.sleep(self._restart_delay_seconds)
+            if self._server_activation_scheduler is not None:
+                try:
+                    restart_component()
+                except Exception:
+                    return
+                return
             for retry_delay in (0.0, 2.0, 5.0):
                 if retry_delay:
                     time.sleep(retry_delay)

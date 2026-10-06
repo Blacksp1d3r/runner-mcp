@@ -5,6 +5,7 @@ import os
 import secrets
 import shutil
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
@@ -269,7 +270,7 @@ def resolve_known_project_github_token(
     *,
     project_id: str,
     global_token: str | None,
-    private_values,
+    private_values: Mapping[str, str],
 ) -> str | None:
     """Resolve one fixed private source credential without exposing selector authority."""
 

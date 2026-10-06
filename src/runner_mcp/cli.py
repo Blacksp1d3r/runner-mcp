@@ -88,6 +88,7 @@ from .cron_autostart import (
     run_cron_component,
 )
 from .database_manager import DatabaseManager, DatabaseManagerError
+from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 from .fabric_agent_qualification import (
     FabricAgentQualificationError,
     run_fabric_agent_qualification_process,
@@ -134,8 +135,10 @@ from .tunnel_config_readiness import collect_tunnel_config_readiness
 from .tunnel_health_evidence import (
     collect_control_plane_authenticated,
     collect_local_mcp_ready,
+    collect_tunnel_runtime_instance_id,
 )
 from .tunnel_runtime import run_managed_tunnel
+from .tunnel_topology import collect_tunnel_topology_evidence
 
 
 def package_version() -> str:
@@ -280,23 +283,67 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
 
 def cmd_tunnel_status(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
+    _, settings, _ = read_private_runtime(config_dir)
     process_running = _managed_tunnel_process_running(config_dir)
     local_mcp_ready = (
         collect_local_mcp_ready(config_dir)
         if process_running
         else False
     )
+    control_plane_authenticated = (
+        collect_control_plane_authenticated(config_dir)
+        if local_mcp_ready
+        else False
+    )
+
+    topology_state = "unavailable"
+    topology_reason = "runtime_identity_unavailable"
+    topology_qualified = False
+    probe_state = "unavailable"
+    probe_fresh_success = False
+
+    if control_plane_authenticated:
+        runtime_instance_id = collect_tunnel_runtime_instance_id(config_dir)
+        if runtime_instance_id is not None:
+            topology = collect_tunnel_topology_evidence(
+                config_dir,
+                runtime_instance_id=runtime_instance_id,
+            )
+            topology_state = topology.state.value
+            topology_reason = topology.reason
+            topology_qualified = topology.qualified
+
+    if (
+        topology_qualified
+        and settings.fabric_resource_url is not None
+        and settings.fabric_bearer_token is not None
+    ):
+        try:
+            probe_fresh_success = FabricBridgeClient(
+                FabricBridgeConfig(
+                    endpoint=settings.fabric_resource_url,
+                    bearer_token=settings.fabric_bearer_token,
+                )
+            ).synthetic_probe_fresh_success()
+            probe_state = (
+                "fresh_success"
+                if probe_fresh_success
+                else "not_fresh_success"
+            )
+        except (FabricBridgeError, ValueError):
+            probe_state = "unavailable"
+
     result = collect_tunnel_config_readiness(
         config_dir,
         process_running=process_running,
         local_mcp_ready=local_mcp_ready,
-        control_plane_authenticated=(
-            collect_control_plane_authenticated(config_dir)
-            if local_mcp_ready
-            else False
-        ),
+        control_plane_authenticated=control_plane_authenticated,
+        end_to_end_routable=topology_qualified and probe_fresh_success,
     ).public_dict()
     print(f"Restart config: {result['restart_config']}")
+    print(f"Topology: {topology_state}")
+    print(f"Topology reason: {topology_reason}")
+    print(f"Synthetic probe: {probe_state}")
     print(f"Readiness: {result['state']}")
     print(f"Reason: {result['reason']}")
     return 0

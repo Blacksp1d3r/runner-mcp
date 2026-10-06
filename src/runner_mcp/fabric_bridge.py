@@ -110,6 +110,18 @@ class FabricBridgeClient:
                 reason = "interface_incompatible"
             elif "build identity" in detail:
                 reason = "build_identity_incompatible"
+            elif "server identity" in detail:
+                reason = "server_identity_invalid"
+            elif "session identifier" in detail:
+                reason = "session_invalid"
+            elif (
+                "unsupported event stream" in detail
+                or "invalid JSON" in detail
+                or "response must be" in detail
+                or "response exceeds size limit" in detail
+                or "response must be UTF-8" in detail
+            ):
+                reason = "response_invalid"
             elif "initialization" in detail:
                 reason = "initialization_failed"
             elif "unavailable or rejected" in detail:

@@ -15,18 +15,35 @@ _RESOURCE_URL_KEY = "RUNNER_FABRIC_AGENT_RESOURCE_URL"
 _BEARER_TOKEN_KEY = "RUNNER_FABRIC_AGENT_BEARER_TOKEN"
 _EXTERNAL_TARGET_CONFIG_KEY = "RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"
 _KEYS = (_RESOURCE_URL_KEY, _BEARER_TOKEN_KEY)
-_A6_KEYS = (
+_RUNNER_MCP_SHARED_KEYS = (
+    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT",
+    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN",
+)
+_A6_EXCLUSIVE_KEYS = (
     "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT",
     "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN",
     "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN",
-    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT",
-    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN",
     "RUNNER_FABRIC_SYNTHETIC_PROBE_ID",
     "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT",
     "RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION",
     "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS",
     "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT",
     "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION",
+)
+_A6_KEYS = _A6_EXCLUSIVE_KEYS + _RUNNER_MCP_SHARED_KEYS
+_WORKER_QUALIFICATION_EXCLUSIVE_KEYS = (
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_WORKER_ID",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_GENERATION",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_NETWORK_PROFILE",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_CPU_UNITS",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_MEMORY_MIB",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_DISK_MIB",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_SOFT_RESERVE_CPU_UNITS",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_SOFT_RESERVE_MEMORY_MIB",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_POLICY_EXPIRES_AT",
+)
+_WORKER_QUALIFICATION_KEYS = (
+    _WORKER_QUALIFICATION_EXCLUSIVE_KEYS + _RUNNER_MCP_SHARED_KEYS
 )
 
 
@@ -81,20 +98,50 @@ def qualification_agent_environment_additions(
             )
         additions[_EXTERNAL_TARGET_CONFIG_KEY] = external_target_config
 
-    present = tuple(bool(values.get(key, "").strip()) for key in _A6_KEYS)
-    if any(present) and not all(present):
-        raise FabricAgentQualificationError(
-            "Runner Fabric A6 qualification configuration is incomplete"
+    a6_exclusive_present = any(
+        bool(values.get(key, "").strip()) for key in _A6_EXCLUSIVE_KEYS
+    )
+    if a6_exclusive_present:
+        _forward_complete_binding(
+            values,
+            additions,
+            keys=_A6_KEYS,
+            label="A6 qualification",
         )
-    if all(present):
-        for key in _A6_KEYS:
-            value = values[key]
-            if "\x00" in value or "\n" in value or "\r" in value:
-                raise FabricAgentQualificationError(
-                    "Runner Fabric A6 qualification configuration is invalid"
-                )
-            additions[key] = value
+
+    worker_exclusive_present = any(
+        bool(values.get(key, "").strip())
+        for key in _WORKER_QUALIFICATION_EXCLUSIVE_KEYS
+    )
+    if worker_exclusive_present:
+        _forward_complete_binding(
+            values,
+            additions,
+            keys=_WORKER_QUALIFICATION_KEYS,
+            label="worker qualification",
+        )
     return additions
+
+
+def _forward_complete_binding(
+    values: dict[str, str],
+    additions: dict[str, str],
+    *,
+    keys: tuple[str, ...],
+    label: str,
+) -> None:
+    present = tuple(bool(values.get(key, "").strip()) for key in keys)
+    if not all(present):
+        raise FabricAgentQualificationError(
+            f"Runner Fabric {label} configuration is incomplete"
+        )
+    for key in keys:
+        value = values[key]
+        if "\x00" in value or "\n" in value or "\r" in value:
+            raise FabricAgentQualificationError(
+                f"Runner Fabric {label} configuration is invalid"
+            )
+        additions[key] = value
 
 
 def run_fabric_agent_qualification_process(

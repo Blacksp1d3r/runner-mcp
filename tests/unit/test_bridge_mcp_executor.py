@@ -161,6 +161,80 @@ def test_decode_mcp_response_is_size_bounded() -> None:
         _decode_mcp_response(b"x" * (MAX_MCP_RESPONSE_BYTES + 1))
 
 
+def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18","serverInfo":{"name":"Runner MCP","version":"0.1.3"}}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+        FakeResponse(b""),
+    ]
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda request, timeout: responses.pop(0),
+    )
+    client = LocalMCPClient(_config())
+
+    client.initialize()
+
+    assert client.peer_identity == {
+        "protocol_version": "2025-06-18",
+        "server_name": "Runner MCP",
+        "server_version": "0.1.3",
+    }
+
+
+def test_client_rejects_observed_protocol_version_mismatch(monkeypatch) -> None:
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda request, timeout: FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}',
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+    )
+    client = LocalMCPClient(_config())
+
+    with pytest.raises(BridgeExecutionAdapterError, match="protocol version"):
+        client.initialize()
+
+
+@pytest.mark.parametrize(
+    "server_info",
+    [
+        {"name": "Runner MCP"},
+        {"name": "../private", "version": "1"},
+        {"name": "Runner MCP", "version": ""},
+        {"name": "Runner MCP", "version": "x" * 129},
+    ],
+)
+def test_client_rejects_invalid_observed_server_identity(
+    monkeypatch,
+    server_info: dict,
+) -> None:
+    payload = {
+        "jsonrpc": "2.0",
+        "id": 1,
+        "result": {
+            "protocolVersion": "2025-06-18",
+            "serverInfo": server_info,
+        },
+    }
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda request, timeout: FakeResponse(
+            json.dumps(payload).encode(),
+            headers={"Mcp-Session-Id": "session-123"},
+        ),
+    )
+    client = LocalMCPClient(_config())
+
+    with pytest.raises(BridgeExecutionAdapterError, match="server identity"):
+        client.initialize()
+
+
 def test_client_initializes_session_and_sends_authenticated_tool_call(
     monkeypatch,
 ) -> None:

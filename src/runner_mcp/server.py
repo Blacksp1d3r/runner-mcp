@@ -72,10 +72,6 @@ from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
 )
-from .fabric_worker_qualification_provisioning import (
-    FabricWorkerQualificationProvisioner,
-    FabricWorkerQualificationProvisioningError,
-)
 from .fabric_repository_mirror_activation import (
     FabricRepositoryMirrorActivationError,
     FabricRepositoryMirrorActivator,
@@ -85,6 +81,10 @@ from .fabric_repository_mirrors import (
     FabricRepositoryMirrorRunner,
 )
 from .fabric_update import FabricUpdateError, FabricUpdateManager
+from .fabric_worker_qualification_provisioning import (
+    FabricWorkerQualificationProvisioner,
+    FabricWorkerQualificationProvisioningError,
+)
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id

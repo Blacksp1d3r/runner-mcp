@@ -775,3 +775,23 @@ Only if concrete use cases remain unmet, add tightly allow-listed executable tem
 ## MVP completion
 
 The MVP is complete when one pilot project can be inspected, tested, backed up, migrated, deployed to staging, health-checked, and rolled back without a general remote-shell dependency, while all actions remain auditable and secrets stay inaccessible.
+
+## Fabric worker qualification provisioning — 2026-10-06
+
+- [x] Add fixed Runner-MCP executor for Runner Fabric worker qualification
+  provisioning (#445).
+- [x] Fence exact worker generation, enrollment plan digest, policy expiry,
+  Fabric revision and request fingerprint.
+- [x] Restrict capability to `bewind-ocr-qualification-v1`.
+- [x] Verify only the managed Runner-Fabric launcher; no generic install or
+  remote-command surface.
+- [x] Persist owner-only idempotent qualification state with
+  `normalActivationEnabled=false`.
+- [x] Expose audited bounded MCP tool with strict schema and reject unknown
+  host/path/shell-style inputs.
+- [ ] Wire the accepted Fabric provisioning contract through Runner Fabric
+  #1130.
+- [ ] Run actual aifordable-lab qualification under Runner Fabric #1113.
+- [ ] Only after green qualification, execute one Bewind OCR equivalence unit
+  under #1114.
+

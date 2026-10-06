@@ -726,3 +726,116 @@ def test_local_update_job_records_visible_source_class(
     status = manager.status(started["job_id"])
     assert status["state"] == "completed"
     assert status["source"] == "local-custody"
+
+
+def test_stage_local_bundle_builds_exact_validated_custody(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "7" * 40
+    token = "secret-" + ("x" * 40)
+    observed: list[tuple[str, ...]] = []
+
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: token,
+    )
+
+    def command(argv, *, cwd, env, category, timeout, capture=False):
+        observed.append(tuple(str(item) for item in argv))
+        assert token not in " ".join(str(item) for item in argv)
+        assert timeout > 0
+        if argv[1:3] == ["clone", "--depth=64"]:
+            source = Path(argv[-1])
+            source.mkdir(parents=True)
+        if argv[-2:] == ["rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(argv, 0, commit + "\n", "")
+        if argv[-2:] == ["status", "--porcelain"]:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if argv[-1] == "scripts/build_control_plane_update_bundle.py":
+            bundle = cwd / "bundle"
+            bundle.mkdir(mode=0o700)
+            with zipfile.ZipFile(io.BytesIO(_bundle(commit))) as archive:
+                for info in archive.infolist():
+                    target = bundle / info.filename
+                    target.write_bytes(archive.read(info))
+                    target.chmod(0o600)
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(manager, "_run_bundle_command", command)
+
+    result = manager.stage_local_bundle(commit)
+
+    assert result == {
+        "commit": commit,
+        "staged": True,
+        "bundleReady": True,
+        "source": "canonical-source",
+        "localCustody": True,
+        "alreadyStaged": False,
+    }
+    assert manager.local_readiness(commit)["artifact_ready"] is True
+    assert token not in json.dumps(result)
+    assert any(row[-1] == "scripts/build_control_plane_update_bundle.py" for row in observed)
+
+
+def test_stage_local_bundle_is_idempotent_after_exact_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "8" * 40
+    _local_bundle(manager, commit)
+
+    monkeypatch.setattr(
+        manager,
+        "_github_token",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("idempotent replay must not read credential")
+        ),
+    )
+
+    result = manager.stage_local_bundle(commit)
+
+    assert result["alreadyStaged"] is True
+    assert result["bundleReady"] is True
+
+
+def test_stage_local_bundle_builder_failure_leaves_no_partial_custody(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "9" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+
+    def command(argv, *, cwd, env, category, timeout, capture=False):
+        if argv[1:3] == ["clone", "--depth=64"]:
+            Path(argv[-1]).mkdir(parents=True)
+        if argv[-2:] == ["rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(argv, 0, commit + "\n", "")
+        if argv[-2:] == ["status", "--porcelain"]:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if argv[-1] == "scripts/build_control_plane_update_bundle.py":
+            raise FabricUpdateError("fabric_bundle_build_failed")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(manager, "_run_bundle_command", command)
+
+    with pytest.raises(FabricUpdateError, match="fabric_bundle_build_failed"):
+        manager.stage_local_bundle(commit)
+
+    assert not (manager.local_bundles_root / commit).exists()
+    assert not any(
+        path.name.startswith(".incoming-")
+        for path in manager.local_bundles_root.iterdir()
+    )

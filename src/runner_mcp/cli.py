@@ -296,10 +296,7 @@ def cmd_tunnel_status(args: argparse.Namespace) -> int:
         else False
     )
 
-    topology_state = "unavailable"
-    topology_reason = "runtime_identity_unavailable"
     topology_qualified = False
-    probe_state = "unavailable"
     probe_fresh_success = False
 
     if control_plane_authenticated:
@@ -309,8 +306,6 @@ def cmd_tunnel_status(args: argparse.Namespace) -> int:
                 config_dir,
                 runtime_instance_id=runtime_instance_id,
             )
-            topology_state = topology.state.value
-            topology_reason = topology.reason
             topology_qualified = topology.qualified
 
     if (
@@ -325,13 +320,8 @@ def cmd_tunnel_status(args: argparse.Namespace) -> int:
                     bearer_token=settings.fabric_bearer_token,
                 )
             ).synthetic_probe_fresh_success()
-            probe_state = (
-                "fresh_success"
-                if probe_fresh_success
-                else "not_fresh_success"
-            )
         except (FabricBridgeError, ValueError):
-            probe_state = "unavailable"
+            probe_fresh_success = False
 
     result = collect_tunnel_config_readiness(
         config_dir,
@@ -341,9 +331,6 @@ def cmd_tunnel_status(args: argparse.Namespace) -> int:
         end_to_end_routable=topology_qualified and probe_fresh_success,
     ).public_dict()
     print(f"Restart config: {result['restart_config']}")
-    print(f"Topology: {topology_state}")
-    print(f"Topology reason: {topology_reason}")
-    print(f"Synthetic probe: {probe_state}")
     print(f"Readiness: {result['state']}")
     print(f"Reason: {result['reason']}")
     return 0

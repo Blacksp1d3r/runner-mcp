@@ -4,8 +4,6 @@ on:
   push:
     branches:
       - ci/self-hosted-qualification
-  pull_request_target:
-    types: [opened, synchronize, reopened, ready_for_review]
   workflow_dispatch:
 
 permissions:
@@ -18,7 +16,7 @@ concurrency:
 jobs:
   qualify:
     name: Self-hosted qualification
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
     runs-on:
       - self-hosted
       - Linux
@@ -32,7 +30,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.head.sha || github.sha }}
+          ref: ${{ github.sha }}
 
       - name: Prepare isolated job home
         shell: bash

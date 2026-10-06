@@ -337,55 +337,6 @@ def preflight_known_project_source(
 
     repository_url = f"https://github.com/{project.repository}.git"
     try:
-        local_source = resolve_known_project_local_source(
-            raw=local_source_bindings_raw,
-            project_id=project.code,
-            expected_repository=project.repository,
-        )
-    except KnownProjectLocalSourceError as exc:
-        raise KnownProjectRegistrationError(
-            "Trusted local project source configuration is invalid"
-        ) from exc
-
-    if local_source is not None:
-        try:
-            materialize_known_project_local_source(
-                binding=local_source,
-                destination=temporary,
-                canonical_origin=repository_url,
-                runner=runner,
-            )
-            if not temporary.is_dir() or temporary.is_symlink():
-                raise KnownProjectRegistrationError(
-                    "Known project local materialization is invalid"
-                )
-            if (
-                _repository_for(temporary.resolve(strict=True), runner=runner)
-                != project.repository
-            ):
-                raise KnownProjectRegistrationError(
-                    "Known project local materialization verification failed"
-                )
-            temporary.replace(target)
-        except KnownProjectLocalSourceError as exc:
-            raise KnownProjectRegistrationError(
-                "Known project local materialization failed"
-            ) from exc
-        except OSError as exc:
-            raise KnownProjectRegistrationError(
-                "Known project local materialization failed"
-            ) from exc
-        finally:
-            if temporary.exists() and temporary != target:
-                shutil.rmtree(temporary, ignore_errors=True)
-        return {
-            "code": project.code,
-            "name": project.display_name,
-            "repository": project.repository,
-            "state": "prepared-local",
-        }
-
-    try:
         result = runner(
             [
                 "git",
@@ -490,6 +441,55 @@ def prepare_known_project(
         )
 
     repository_url = f"https://github.com/{project.repository}.git"
+    try:
+        local_source = resolve_known_project_local_source(
+            raw=local_source_bindings_raw,
+            project_id=project.code,
+            expected_repository=project.repository,
+        )
+    except KnownProjectLocalSourceError as exc:
+        raise KnownProjectRegistrationError(
+            "Trusted local project source configuration is invalid"
+        ) from exc
+
+    if local_source is not None:
+        try:
+            materialize_known_project_local_source(
+                binding=local_source,
+                destination=temporary,
+                canonical_origin=repository_url,
+                runner=runner,
+            )
+            if not temporary.is_dir() or temporary.is_symlink():
+                raise KnownProjectRegistrationError(
+                    "Known project local materialization is invalid"
+                )
+            if (
+                _repository_for(temporary.resolve(strict=True), runner=runner)
+                != project.repository
+            ):
+                raise KnownProjectRegistrationError(
+                    "Known project local materialization verification failed"
+                )
+            temporary.replace(target)
+        except KnownProjectLocalSourceError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project local materialization failed"
+            ) from exc
+        except OSError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project local materialization failed"
+            ) from exc
+        finally:
+            if temporary.exists() and temporary != target:
+                shutil.rmtree(temporary, ignore_errors=True)
+        return {
+            "code": project.code,
+            "name": project.display_name,
+            "repository": project.repository,
+            "state": "prepared-local",
+        }
+
     try:
         result = runner(
             [

@@ -104,7 +104,7 @@ def test_restore_writes_fixed_private_bootstrap(tmp_path: Path) -> None:
         "instance_binding_key": "bewind-ocr-guest",
         "instance_name": "rf-bewind-ocr",
         "network_binding_key": "bewind-ocr-net",
-        "network_name": "rf-bewind-ocr-net",
+        "network_name": "rf-bewind-net",
         "storage_binding_key": "default",
         "storage_pool_name": "default",
         "binding_created_at": "2026-10-07T15:00:00+00:00",
@@ -120,6 +120,7 @@ def test_restore_writes_fixed_private_bootstrap(tmp_path: Path) -> None:
     env_text = (config_dir / "runner-mcp.env").read_text(encoding="utf-8")
     assert "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG=" in env_text
     assert str(config_path) in env_text
+    assert len(payload["network_name"]) <= 15
 
 
 def test_restore_is_deterministic_except_timestamps(tmp_path: Path) -> None:

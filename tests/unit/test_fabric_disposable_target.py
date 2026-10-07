@@ -150,7 +150,41 @@ def test_private_or_unqualified_output_fails_closed(
         runner.run()
 
 
-def test_nonzero_result_is_sanitized(tmp_path: Path) -> None:
+def test_known_nonzero_result_returns_only_bounded_reason(tmp_path: Path) -> None:
+    home = managed_home(tmp_path)
+    config = tmp_path / "qualification.json"
+    config.write_text("{}", encoding="utf-8")
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            2,
+            stdout="",
+            stderr=(
+                "Runner Fabric disposable target qualification: "
+                "INVALID:guest-agent-not-ready\n"
+            ),
+        )
+
+    runner = FabricDisposableTargetQualificationRunner(
+        safety=safety(tmp_path),
+        environment={qualification_config_environment_key(): str(config)},
+        home=home,
+        runner=fake_run,
+    )
+
+    result = runner.run()
+
+    assert result == {
+        "schemaVersion": "runner-mcp/disposable-target-qualification-status/v1",
+        "state": "invalid",
+        "reasonCode": "guest-agent-not-ready",
+        "qualificationPassed": False,
+        "normalActivationEnabled": False,
+    }
+
+
+def test_unknown_nonzero_result_is_sanitized(tmp_path: Path) -> None:
     home = managed_home(tmp_path)
     config = tmp_path / "qualification.json"
     config.write_text("{}", encoding="utf-8")

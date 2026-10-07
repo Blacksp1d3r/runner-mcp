@@ -306,10 +306,20 @@ def test_fabric_agent_restart_is_argumentless_and_bounded(
     monkeypatch,
 ) -> None:
     calls: list[dict[str, object]] = []
+    repair_calls: list[dict[str, object]] = []
 
     class FakeFabricBridge:
         def __init__(self, _config) -> None:
             pass
+
+        def preflight(self):
+            return {
+                "state": "ready",
+                "source_revision": "e" * 40,
+            }
+
+    def fake_repair(**kwargs):
+        repair_calls.append(kwargs)
 
     def fake_restart(**kwargs):
         calls.append(kwargs)
@@ -326,6 +336,14 @@ def test_fabric_agent_restart_is_argumentless_and_bounded(
     monkeypatch.setattr(
         "runner_mcp.server.restart_fabric_qualification_agent",
         fake_restart,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.a6_state_requested",
+        lambda _state_root: True,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.repair_a6_qualification_binding",
+        fake_repair,
     )
 
     project_root = tmp_path / "project"
@@ -395,6 +413,10 @@ def test_fabric_agent_restart_is_argumentless_and_bounded(
         "healthy": True,
     }
     assert len(calls) == 1
+    assert len(repair_calls) == 1
+    assert repair_calls[0]["config_dir"] == tmp_path
+    assert repair_calls[0]["fabric_revision"] == "e" * 40
+    assert isinstance(repair_calls[0]["environment"], dict)
     assert calls[0]["config_dir"] == tmp_path
     assert calls[0]["resource_url"] == "http://127.0.0.1:9010/mcp"
     assert calls[0]["bearer_token"] == "f" * 32

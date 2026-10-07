@@ -56,8 +56,7 @@ def _load_image_inventory() -> object:
         completed = subprocess.run(
             (_INCUS_EXECUTABLE, "image", "list", "--format=json"),
             stdin=subprocess.DEVNULL,
-            stdout=subprocess.PIPE,
-            stderr=subprocess.PIPE,
+            capture_output=True,
             text=True,
             timeout=30,
             check=False,

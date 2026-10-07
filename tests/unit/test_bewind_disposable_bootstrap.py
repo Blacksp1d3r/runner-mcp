@@ -152,7 +152,7 @@ def test_restore_fails_closed_when_trusted_image_is_missing(tmp_path: Path) -> N
         config_dir=config_dir,
         hostname_provider=lambda: "aifordable-lab",
         now=lambda: datetime(2026, 10, 7, 15, 0, tzinfo=UTC),
-        image_inventory_provider=lambda: [],
+        image_inventory_provider=list,
     )
 
     with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):

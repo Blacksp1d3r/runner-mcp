@@ -15,9 +15,6 @@ from .agent_bus_worker import (
     run_agent_bus_worker_process,
 )
 from .approval_manager import ApprovalError, ApprovalManager
-from .bewind_worker_qualification_policy import (
-    BewindWorkerQualificationPolicyConfigurator,
-)
 from .autostart import (
     MANAGED_MARKER,
     TUNNEL_UNIT,
@@ -31,6 +28,9 @@ from .autostart import (
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
+from .bewind_worker_qualification_policy import (
+    BewindWorkerQualificationPolicyConfigurator,
+)
 from .ci_runner_cron import (
     CIRunnerCronError,
     ci_runner_cron_status,

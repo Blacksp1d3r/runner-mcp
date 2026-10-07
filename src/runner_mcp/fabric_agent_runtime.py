@@ -93,7 +93,7 @@ def _same_user_process(pid: int) -> bool:
     try:
         status_text = status.read_text(encoding="utf-8")
         raw_cmd = cmdline.read_bytes()
-    except OSError:
+    except (OSError, UnicodeDecodeError):
         return False
 
     uid_line = next(
@@ -106,16 +106,97 @@ def _same_user_process(pid: int) -> bool:
     if int(parts[1]) != os.geteuid():
         return False
 
-    argv = [
-        part.decode("utf-8", errors="strict")
-        for part in raw_cmd.split(b"\x00")
-        if part
-    ]
+    try:
+        argv = [
+            part.decode("utf-8", errors="strict")
+            for part in raw_cmd.split(b"\x00")
+            if part
+        ]
+    except UnicodeDecodeError:
+        return False
     return (
         len(argv) >= 2
         and any("runner-fabric" in item for item in argv)
         and "agent-serve-qualification" in argv
     )
+
+
+def _qualification_agent_pids() -> tuple[int, ...]:
+    try:
+        entries = tuple(Path("/proc").iterdir())
+    except OSError as exc:
+        raise FabricAgentRestartError(
+            "fabric_agent_process_inventory_unavailable"
+        ) from exc
+
+    matches: list[int] = []
+    for entry in entries:
+        if not entry.name.isdecimal():
+            continue
+        pid = int(entry.name)
+        if pid < 2 or not _same_user_process(pid):
+            continue
+        matches.append(pid)
+        if len(matches) > 16:
+            raise FabricAgentRestartError("fabric_agent_process_conflict")
+    return tuple(sorted(matches))
+
+
+def _listening_socket_inodes(port: int) -> frozenset[str]:
+    inodes: set[str] = set()
+    for table in (Path("/proc/net/tcp"), Path("/proc/net/tcp6")):
+        try:
+            lines = table.read_text(encoding="ascii").splitlines()[1:]
+        except FileNotFoundError:
+            continue
+        except (OSError, UnicodeDecodeError) as exc:
+            raise FabricAgentRestartError(
+                "fabric_agent_socket_inventory_unavailable"
+            ) from exc
+        for line in lines:
+            fields = line.split()
+            if len(fields) < 10 or fields[3] != "0A":
+                continue
+            local = fields[1]
+            try:
+                _address, encoded_port = local.rsplit(":", 1)
+                observed_port = int(encoded_port, 16)
+            except (ValueError, TypeError):
+                continue
+            inode = fields[9]
+            if observed_port == port and inode.isdecimal():
+                inodes.add(inode)
+    return frozenset(inodes)
+
+
+def _process_socket_inodes(pid: int) -> frozenset[str]:
+    try:
+        entries = tuple(Path(f"/proc/{pid}/fd").iterdir())
+    except OSError:
+        return frozenset()
+    inodes: set[str] = set()
+    for entry in entries:
+        try:
+            target = os.readlink(entry)
+        except OSError:
+            continue
+        if target.startswith("socket:[") and target.endswith("]"):
+            inode = target[8:-1]
+            if inode.isdecimal():
+                inodes.add(inode)
+    return frozenset(inodes)
+
+
+def _process_owns_listener(pid: int, resource_url: str) -> bool:
+    parsed = urlsplit(resource_url)
+    try:
+        port = parsed.port
+    except ValueError:
+        return False
+    if port is None:
+        port = 80
+    listening = _listening_socket_inodes(port)
+    return bool(listening.intersection(_process_socket_inodes(pid)))
 
 
 def _wait_process_exit(pid: int, timeout_seconds: float = 10.0) -> bool:
@@ -202,16 +283,39 @@ def restart_fabric_qualification_agent(
     log_file = config_root / "fabric-qualification.log"
 
     old_pid = _read_pid_if_present(pid_file)
+    stopped: set[int] = set()
     if old_pid is not None:
         if _same_user_process(old_pid):
             try:
                 os.kill(old_pid, signal.SIGTERM)
+            except ProcessLookupError:
+                pass
             except OSError as exc:
                 raise FabricAgentRestartError("fabric_agent_stop_failed") from exc
+            stopped.add(old_pid)
             if not _wait_process_exit(old_pid):
                 raise FabricAgentRestartError("fabric_agent_stop_timeout")
         elif _pid_exists(old_pid):
             raise FabricAgentRestartError("fabric_agent_process_mismatch")
+
+    for stale_pid in _qualification_agent_pids():
+        if stale_pid in stopped:
+            continue
+        try:
+            os.kill(stale_pid, signal.SIGTERM)
+        except ProcessLookupError:
+            continue
+        except OSError as exc:
+            raise FabricAgentRestartError("fabric_agent_stop_failed") from exc
+        if not _wait_process_exit(stale_pid):
+            raise FabricAgentRestartError("fabric_agent_stop_timeout")
+    if _qualification_agent_pids():
+        raise FabricAgentRestartError("fabric_agent_stop_timeout")
+
+    try:
+        pid_file.unlink(missing_ok=True)
+    except OSError as exc:
+        raise FabricAgentRestartError("fabric_agent_pid_unavailable") from exc
 
     env = {
         "HOME": str(home_root),
@@ -251,10 +355,18 @@ def restart_fabric_qualification_agent(
         or process.poll() is not None
         or not _wait_health(health_url)
         or process.poll() is not None
+        or not _same_user_process(process.pid)
+        or not _process_owns_listener(process.pid, resource_url)
     ):
         try:
             process.terminate()
         except OSError:
+            pass
+        try:
+            recorded = _read_pid_if_present(pid_file)
+            if recorded == process.pid:
+                pid_file.unlink(missing_ok=True)
+        except (OSError, FabricAgentRestartError):
             pass
         raise FabricAgentRestartError("fabric_agent_health_failed")
 

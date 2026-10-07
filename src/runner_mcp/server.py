@@ -1653,7 +1653,9 @@ def build_mcp(
             raise ValueError("Fabric agent restart is not configured")
         try:
             safety.assert_action_allowed(ActionClass.SERVICE)
-            a6_state_root = Path.home() / ".local" / "state" / "runner-fabric"
+            config_root = settings.projects_config.parent.expanduser().resolve()
+            service_home = config_root.parent.parent
+            a6_state_root = service_home / ".local" / "state" / "runner-fabric"
             if a6_state_requested(a6_state_root):
                 preflight = _require_fabric_bridge().preflight()
                 repair_a6_qualification_binding(

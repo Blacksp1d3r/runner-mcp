@@ -307,6 +307,7 @@ def test_fabric_agent_restart_is_argumentless_and_bounded(
 ) -> None:
     calls: list[dict[str, object]] = []
     repair_calls: list[dict[str, object]] = []
+    state_root_calls: list[Path] = []
 
     class FakeFabricBridge:
         def __init__(self, _config) -> None:
@@ -339,7 +340,7 @@ def test_fabric_agent_restart_is_argumentless_and_bounded(
     )
     monkeypatch.setattr(
         "runner_mcp.server.a6_state_requested",
-        lambda _state_root: True,
+        lambda state_root: state_root_calls.append(state_root) or True,
     )
     monkeypatch.setattr(
         "runner_mcp.server.repair_a6_qualification_binding",
@@ -414,6 +415,11 @@ def test_fabric_agent_restart_is_argumentless_and_bounded(
     }
     assert len(calls) == 1
     assert len(repair_calls) == 1
+    expected_state_root = (
+        tmp_path.resolve().parent.parent / ".local" / "state" / "runner-fabric"
+    )
+    assert state_root_calls == [expected_state_root]
+    assert repair_calls[0]["state_root"] == expected_state_root
     assert repair_calls[0]["config_dir"] == tmp_path
     assert repair_calls[0]["fabric_revision"] == "e" * 40
     assert isinstance(repair_calls[0]["environment"], dict)

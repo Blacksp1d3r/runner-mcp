@@ -25,7 +25,7 @@ def _safety(tmp_path: Path) -> OperatorSafetyGuard:
 
 def _runtime(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     config_dir = tmp_path / "config"
-    config_dir.mkdir(mode=0o700)
+    config_dir.mkdir(parents=True, mode=0o700)
     config_dir.chmod(0o700)
     env_file = config_dir / "runner-mcp.env"
     env_file.write_text("RUNNER_MCP_BEARER_TOKEN=" + "s" * 48 + "\n", encoding="utf-8")
@@ -138,7 +138,11 @@ def test_cli_calls_fixed_restorer(
     monkeypatch.setattr(
         cli,
         "read_private_runtime",
-        lambda config_dir: (type("Paths", (), {"env_file": env_file})(), object(), object()),
+        lambda config_dir: (
+            type("Paths", (), {"env_file": env_file})(),
+            object(),
+            object(),
+        ),
     )
     monkeypatch.setattr(
         cli,

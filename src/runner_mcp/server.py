@@ -749,6 +749,38 @@ def build_mcp(
                 "available",
             )
 
+        if fabric_bridge is None:
+            add(
+                "fabric_worker_qualification_readiness",
+                "warn",
+                "bridge_not_configured",
+            )
+        else:
+            try:
+                readiness = fabric_bridge.worker_qualification_readiness(
+                    "aifordable-lab",
+                    "bewind-ocr-qualification-v1",
+                )
+            except FabricBridgeError:
+                add(
+                    "fabric_worker_qualification_readiness",
+                    "warn",
+                    "unavailable",
+                )
+            else:
+                generation = readiness.get("currentGeneration")
+                ready = readiness.get("activationReady") is True
+                detail = (
+                    f"ready_generation_{generation}"
+                    if ready and isinstance(generation, int) and not isinstance(generation, bool)
+                    else "blocked"
+                )
+                add(
+                    "fabric_worker_qualification_readiness",
+                    "pass" if ready else "warn",
+                    detail,
+                )
+
         def storage_state(value: Path | None) -> tuple[str, str]:
             if value is None:
                 return "warn", "not_configured"

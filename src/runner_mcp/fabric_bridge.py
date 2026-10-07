@@ -27,6 +27,7 @@ _FABRIC_TOOLS = frozenset(
         "synthetic_probe_status",
         "a6_update_qualification_prepare",
         "a6_update_qualification_finalize",
+        "worker_qualification_readiness",
         "worker_qualification_provision",
         "run_work_unit",
         "get_work_unit",
@@ -274,6 +275,66 @@ class FabricBridgeClient:
             expected_correlation=correlation_id,
             expected_job_id=job_id,
         )
+
+    def worker_qualification_readiness(
+        self,
+        worker_id: str,
+        capability_profile: str,
+    ) -> dict[str, Any]:
+        result = self._call_tool(
+            "worker_qualification_readiness",
+            {
+                "worker_id": worker_id,
+                "capability_profile": capability_profile,
+            },
+        )
+        if not isinstance(result, dict):
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid worker qualification readiness"
+            )
+        expected = {
+            "schemaVersion",
+            "workerId",
+            "capabilityProfile",
+            "currentGeneration",
+            "capabilityAllowed",
+            "policyValid",
+            "activationReady",
+            "normalActivationEnabled",
+        }
+        if set(result) != expected:
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid worker qualification readiness"
+            )
+        if result["schemaVersion"] != "runner.fabric/worker-qualification-readiness/v1":
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid worker qualification readiness"
+            )
+        if result["workerId"] != worker_id or result["capabilityProfile"] != capability_profile:
+            raise FabricBridgeError(
+                "Runner Fabric returned mismatched worker qualification readiness"
+            )
+        generation = result["currentGeneration"]
+        if isinstance(generation, bool) or not isinstance(generation, int) or generation < 1:
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid worker qualification readiness"
+            )
+        for field in ("capabilityAllowed", "policyValid", "activationReady"):
+            if not isinstance(result[field], bool):
+                raise FabricBridgeError(
+                    "Runner Fabric returned invalid worker qualification readiness"
+                )
+        if result["normalActivationEnabled"] is not False:
+            raise FabricBridgeError(
+                "Runner Fabric returned invalid worker qualification readiness"
+            )
+        if result["activationReady"] != (
+            result["capabilityAllowed"] and result["policyValid"]
+        ):
+            raise FabricBridgeError(
+                "Runner Fabric returned contradictory worker qualification readiness"
+            )
+        return result
 
     def worker_qualification_provision(
         self,

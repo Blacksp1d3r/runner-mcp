@@ -930,6 +930,62 @@ def test_bridge_preflight_classifies_failures_without_private_detail(
     assert detail not in str(result)
 
 
+
+def worker_qualification_readiness_payload() -> dict:
+    return {
+        "schemaVersion": "runner.fabric/worker-qualification-readiness/v1",
+        "workerId": "aifordable-lab",
+        "capabilityProfile": "bewind-ocr-qualification-v1",
+        "currentGeneration": 1,
+        "capabilityAllowed": True,
+        "policyValid": True,
+        "activationReady": True,
+        "normalActivationEnabled": False,
+    }
+
+
+def test_worker_qualification_readiness_proxy_is_bounded() -> None:
+    payload = worker_qualification_readiness_payload()
+    bridge, fake = bridge_with_responses(payload)
+
+    result = bridge.worker_qualification_readiness(
+        "aifordable-lab",
+        "bewind-ocr-qualification-v1",
+    )
+
+    assert result == payload
+    assert fake.calls == [
+        (
+            "worker_qualification_readiness",
+            {
+                "worker_id": "aifordable-lab",
+                "capability_profile": "bewind-ocr-qualification-v1",
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"currentGeneration": 0}),
+        lambda payload: payload.update({"activationReady": False}),
+        lambda payload: payload.update({"normalActivationEnabled": True}),
+        lambda payload: payload.update({"workerId": "other-worker"}),
+    ],
+)
+def test_worker_qualification_readiness_rejects_invalid_payload(mutator) -> None:
+    payload = worker_qualification_readiness_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.worker_qualification_readiness(
+            "aifordable-lab",
+            "bewind-ocr-qualification-v1",
+        )
+
+
 def worker_qualification_payload(
     *,
     worker_id: str = "worker:aifordable-lab",

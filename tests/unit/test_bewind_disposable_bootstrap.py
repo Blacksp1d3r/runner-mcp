@@ -1,11 +1,13 @@
 from __future__ import annotations
 
+import argparse
 import json
 from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
 
+from runner_mcp import cli
 from runner_mcp.bewind_disposable_bootstrap import (
     BewindDisposableBootstrapError,
     BewindDisposableBootstrapRestorer,
@@ -120,3 +122,79 @@ def test_restore_is_deterministic_except_timestamps(tmp_path: Path) -> None:
     ).restore()
 
     assert first["targetAllocationId"] == second["targetAllocationId"]
+
+
+def test_cli_calls_fixed_restorer(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    capsys: pytest.CaptureFixture[str],
+) -> None:
+    env_file = tmp_path / "runner-mcp.env"
+    env_file.write_text("RUNNER_MCP_BEARER_TOKEN=" + "s" * 48 + "\n", encoding="utf-8")
+    env_file.chmod(0o600)
+    safety = object()
+    seen: dict[str, object] = {}
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda config_dir: (type("Paths", (), {"env_file": env_file})(), object(), object()),
+    )
+    monkeypatch.setattr(
+        cli,
+        "load_env_file",
+        lambda path: {"RUNNER_MCP_BEARER_TOKEN": "s" * 48},
+    )
+    monkeypatch.setattr(
+        cli,
+        "operator_stop_status",
+        lambda config_dir: (tmp_path / "operator.stop", safety),
+    )
+
+    class FakeRestorer:
+        def __init__(self, **kwargs: object) -> None:
+            seen.update(kwargs)
+
+        def restore(self) -> dict[str, object]:
+            return {
+                "schemaVersion": "runner-mcp/bewind-disposable-bootstrap/v1",
+                "state": "restored",
+                "workerId": "aifordable-lab",
+                "capabilityProfile": "bewind-ocr-qualification-v1",
+                "generation": 1,
+                "qualificationId": "bewind-ocr-lab-v1",
+                "targetAllocationId": "11111111-1111-5111-8111-111111111111",
+                "policyValid": True,
+                "normalActivationEnabled": False,
+            }
+
+    monkeypatch.setattr(cli, "BewindDisposableBootstrapRestorer", FakeRestorer)
+
+    result = cli.cmd_bewind_disposable_bootstrap(
+        argparse.Namespace(config_dir=str(tmp_path))
+    )
+
+    assert result == 0
+    assert seen["safety"] is safety
+    assert seen["config_dir"] == tmp_path.resolve()
+    output = capsys.readouterr().out
+    assert "State: restored" in output
+    assert "Worker: aifordable-lab" in output
+    assert "Normal activation enabled: no" in output
+
+
+def test_parser_accepts_only_fixed_restore_action() -> None:
+    parser = cli.build_parser()
+    args = parser.parse_args(["bewind-disposable-bootstrap", "restore"])
+    assert args.func is cli.cmd_bewind_disposable_bootstrap
+    assert args.bewind_disposable_bootstrap_action == "restore"
+
+    with pytest.raises(SystemExit):
+        parser.parse_args(
+            [
+                "bewind-disposable-bootstrap",
+                "restore",
+                "--path",
+                "/tmp/override",
+            ]
+        )

@@ -106,11 +106,14 @@ def _same_user_process(pid: int) -> bool:
     if int(parts[1]) != os.geteuid():
         return False
 
-    argv = [
-        part.decode("utf-8", errors="strict")
-        for part in raw_cmd.split(b"\x00")
-        if part
-    ]
+    try:
+        argv = [
+            part.decode("utf-8", errors="strict")
+            for part in raw_cmd.split(b"\x00")
+            if part
+        ]
+    except UnicodeDecodeError:
+        return False
     return (
         len(argv) >= 2
         and any("runner-fabric" in item for item in argv)

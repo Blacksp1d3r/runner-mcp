@@ -1699,6 +1699,30 @@ def build_mcp(
         )
         return result
 
+    def fabric_worker_qualification_readiness(
+        worker_id: str,
+        capability_profile: str,
+    ) -> dict:
+        """Return bounded Fabric-owned worker qualification readiness."""
+        try:
+            result = _require_fabric_bridge().worker_qualification_readiness(
+                worker_id,
+                capability_profile,
+            )
+        except FabricBridgeError as exc:
+            _audit_fabric(
+                "fabric_worker_qualification_readiness",
+                worker_id,
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_worker_qualification_readiness",
+            worker_id,
+            "ready" if result.get("activationReady") is True else "blocked",
+        )
+        return result
+
     def fabric_worker_qualification_activate(
         worker_id: str,
         capability_profile: str,
@@ -1806,6 +1830,7 @@ def build_mcp(
         mcp.tool()(fabric_agent_restart)
         mcp.tool()(fabric_a6_update_qualification_prepare)
         mcp.tool()(fabric_a6_update_qualification_finalize)
+        mcp.tool()(fabric_worker_qualification_readiness)
         mcp.tool()(fabric_worker_qualification_activate)
         mcp.tool()(fabric_operational_snapshot)
         mcp.tool()(fabric_run_work_unit)

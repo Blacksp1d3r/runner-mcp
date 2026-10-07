@@ -15,6 +15,7 @@ from runner_mcp.bridge_mcp_executor import (
     LocalMCPConfig,
     _decode_mcp_response,
     _validate_initialize_peer,
+    _validate_peer_build_identity,
     _validate_peer_tool_surface,
 )
 from runner_mcp.bridge_processor import BridgeExecutionAdapterError
@@ -244,6 +245,41 @@ def test_client_rejects_required_tools_outside_allowlist() -> None:
             _config(),
             allowed_tools=frozenset({"one"}),
             required_tools=frozenset({"two"}),
+        )
+
+
+def test_peer_build_identity_accepts_explicit_fabric_component() -> None:
+    digest = "d" * 64
+    payload = {
+        "component_id": "runner-fabric-agent-mcp",
+        "build_version": "0.0.1",
+        "source_revision": "a" * 40,
+        "artifact_digest": None,
+        "protocol_min": "2025-03-26",
+        "protocol_max": "2025-06-18",
+        "interface_schema_digest": digest,
+    }
+
+    assert _validate_peer_build_identity(
+        payload,
+        observed_interface_digest=digest,
+        negotiated_protocol_version="2025-06-18",
+        expected_component_id="runner-fabric-agent-mcp",
+    ) == payload
+
+    with pytest.raises(BridgeExecutionAdapterError, match="build identity"):
+        _validate_peer_build_identity(
+            payload,
+            observed_interface_digest=digest,
+            negotiated_protocol_version="2025-06-18",
+        )
+
+
+def test_client_rejects_invalid_expected_component_id() -> None:
+    with pytest.raises(ValueError, match="component id"):
+        LocalMCPClient(
+            _config(),
+            expected_component_id="../fabric",
         )
 
 

@@ -28,6 +28,7 @@ from .autostart import (
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
+from .bewind_disposable_bootstrap import BewindDisposableBootstrapRestorer
 from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
 )
@@ -287,6 +288,27 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
 
     return False
 
+
+
+def cmd_bewind_disposable_bootstrap(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    environment = load_env_file(paths.env_file)
+    _stop_path, safety = operator_stop_status(config_dir)
+
+    result = BewindDisposableBootstrapRestorer(
+        safety=safety,
+        environment=environment,
+        config_dir=config_dir,
+    ).restore()
+
+    print(f"State: {result['state']}")
+    print(f"Worker: {result['workerId']}")
+    print(f"Capability: {result['capabilityProfile']}")
+    print(f"Generation: {result['generation']}")
+    print(f"Qualification: {result['qualificationId']}")
+    print("Normal activation enabled: no")
+    return 0
 
 
 def cmd_bewind_worker_policy(args: argparse.Namespace) -> int:
@@ -2451,6 +2473,22 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PORT",
     )
     autostart_cron_run.set_defaults(func=cmd_autostart)
+
+    bewind_disposable_bootstrap = subparsers.add_parser(
+        "bewind-disposable-bootstrap",
+        help="Restore the fixed aifordable-lab Bewind disposable qualification bootstrap.",
+    )
+    bewind_disposable_bootstrap_sub = bewind_disposable_bootstrap.add_subparsers(
+        dest="bewind_disposable_bootstrap_action",
+        required=True,
+    )
+    bewind_disposable_bootstrap_restore = bewind_disposable_bootstrap_sub.add_parser(
+        "restore",
+        help="Restore only the fixed private Bewind disposable-target bootstrap.",
+    )
+    bewind_disposable_bootstrap_restore.set_defaults(
+        func=cmd_bewind_disposable_bootstrap
+    )
 
     bewind_worker_policy = subparsers.add_parser(
         "bewind-worker-policy",

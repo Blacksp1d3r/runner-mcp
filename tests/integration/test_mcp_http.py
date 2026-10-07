@@ -1880,6 +1880,24 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         def __init__(self, _config) -> None:
             pass
 
+        def worker_qualification_readiness(
+            self,
+            worker_id: str,
+            capability_profile: str,
+        ):
+            assert worker_id == "aifordable-lab"
+            assert capability_profile == "bewind-ocr-qualification-v1"
+            return {
+                "schemaVersion": "runner.fabric/worker-qualification-readiness/v1",
+                "workerId": worker_id,
+                "capabilityProfile": capability_profile,
+                "currentGeneration": 1,
+                "capabilityAllowed": True,
+                "policyValid": True,
+                "activationReady": True,
+                "normalActivationEnabled": False,
+            }
+
         def external_target_preflight(self):
             calls.append(("external_target_preflight", {}))
             return {
@@ -2074,6 +2092,31 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
             "fabric_cancel_work_unit",
         ):
             assert tool_name in listed.text
+
+        doctor = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 33,
+                "method": "tools/call",
+                "params": {
+                    "name": "runtime_doctor",
+                    "arguments": {},
+                },
+            },
+        )
+        doctor_payload = parse_tool_json(doctor)
+        readiness_check = next(
+            item
+            for item in doctor_payload["checks"]
+            if item["name"] == "fabric_worker_qualification_readiness"
+        )
+        assert readiness_check == {
+            "name": "fabric_worker_qualification_readiness",
+            "state": "pass",
+            "detail": "ready_generation_1",
+        }
 
         inspected = client.post(
             "/mcp",

@@ -1,3 +1,19 @@
+## 2026-10-08 — A6 live proof candidate after source/readiness recovery
+
+Fresh bounded reconciliation shows the former A6 infrastructure blocker is cleared: Runner-Fabric source is reachable, main is available, Actions read is readable, and the current managed Fabric update artifact is ready. Runner-MCP is operational and restart/recovery converged on exact main `2d2a905aea529155ce400fdfe88ce96dcb49228d`.
+
+This documentation-only revision is intentionally the next Runner-MCP candidate for the canonical A6 live proof. It changes no runtime behavior or authority.
+
+Required order:
+1. A6 prepare against this exact merged candidate;
+2. existing bounded self_update to the same exact commit;
+3. require completed update plus restart convergence;
+4. wait for a fresh configured A3 synthetic probe completed after the update;
+5. A6 finalize and require qualified/off_target with succeeded update, reconnect and probe outcomes;
+6. only then close Runner-Fabric #942 and begin A7/#943.
+
+Do not update to this candidate before A6 prepare succeeds. Do not bypass with shell/Desktop Commander and do not add another updater/proxy.
+
 ## 2026-10-06 — A6 live proof candidate after provenance repair
 
 Runner-MCP #454/#455 is merged and live. `build_identity.source_revision` now derives from the canonical private self-update state and exactly matches `runtime_status.last_installed_commit` after restart convergence.

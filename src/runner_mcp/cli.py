@@ -28,6 +28,9 @@ from .autostart import (
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
+from .bewind_worker_qualification_policy import (
+    BewindWorkerQualificationPolicyConfigurator,
+)
 from .ci_runner_cron import (
     CIRunnerCronError,
     ci_runner_cron_status,
@@ -284,6 +287,33 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
 
     return False
 
+
+
+def cmd_bewind_worker_policy(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    environment = load_env_file(paths.env_file)
+    _stop_path, safety = operator_stop_status(config_dir)
+
+    result = BewindWorkerQualificationPolicyConfigurator(
+        safety=safety,
+        environment=environment,
+        config_dir=config_dir,
+    ).configure()
+
+    print(f"State: {result['state']}")
+    print(f"Worker: {result['workerId']}")
+    print(f"Capability: {result['capabilityProfile']}")
+    print(f"Generation: {result['generation']}")
+    print(
+        "Agent restart required: "
+        + ("yes" if result["agentRestartRequired"] else "no")
+    )
+    print(
+        "Normal activation enabled: "
+        + ("yes" if result["normalActivationEnabled"] else "no")
+    )
+    return 0
 
 def cmd_tunnel_status(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
@@ -2421,6 +2451,20 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PORT",
     )
     autostart_cron_run.set_defaults(func=cmd_autostart)
+
+    bewind_worker_policy = subparsers.add_parser(
+        "bewind-worker-policy",
+        help="Prepare the fixed local Bewind OCR worker qualification policy.",
+    )
+    bewind_worker_policy_sub = bewind_worker_policy.add_subparsers(
+        dest="bewind_worker_policy_action",
+        required=True,
+    )
+    bewind_worker_policy_configure = bewind_worker_policy_sub.add_parser(
+        "configure",
+        help="Configure the fixed aifordable-lab Bewind worker policy.",
+    )
+    bewind_worker_policy_configure.set_defaults(func=cmd_bewind_worker_policy)
 
     topology_heartbeat = subparsers.add_parser(
         "topology-heartbeat",

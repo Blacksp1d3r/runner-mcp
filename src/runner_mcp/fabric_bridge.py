@@ -100,6 +100,7 @@ class FabricBridgeClient:
             client_name="runner-mcp-fabric-preflight",
             compatibility_preflight=True,
             required_tools=frozenset(),
+            expected_component_id="runner-fabric-agent-mcp",
         )
         try:
             client.initialize()
@@ -418,6 +419,7 @@ class FabricBridgeClient:
                 self._mcp_config,
                 allowed_tools=_FABRIC_TOOLS,
                 client_name="runner-mcp-fabric-bridge",
+                expected_component_id="runner-fabric-agent-mcp",
             )
             self._local.client = client
         return client

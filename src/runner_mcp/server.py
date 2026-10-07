@@ -670,9 +670,7 @@ def build_mcp(
                     utc_timestamp(),
                 )
             )
-            raise ValueError(
-                "Fabric continuity status is unavailable"
-            ) from None
+            raise ValueError(str(exc)) from None
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1000,7 +998,9 @@ def build_mcp(
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            raise ValueError(
+                "Fabric continuity status is unavailable"
+            ) from None
         audit.append(
             AuditEvent(
                 current_request_id(),

@@ -157,7 +157,8 @@ def test_fabric_continuity_status_is_zero_argument_and_read_only(
     assert "example/private" not in audit
 
 
-def test_fabric_continuity_status_exposes_only_bounded_failure_category(
+
+def test_runtime_doctor_exposes_only_bounded_continuity_failure_category(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
@@ -211,7 +212,7 @@ def test_fabric_continuity_status_exposes_only_bounded_failure_category(
                 "params": {},
             },
         )
-        status = client.post(
+        response = client.post(
             "/mcp",
             headers=headers,
             json={
@@ -219,15 +220,23 @@ def test_fabric_continuity_status_exposes_only_bounded_failure_category(
                 "id": 3,
                 "method": "tools/call",
                 "params": {
-                    "name": "fabric_continuity_status",
+                    "name": "runtime_doctor",
                     "arguments": {},
                 },
             },
         )
 
-    event = _event(status)
-    assert event["result"]["isError"] is True
-    rendered = json.dumps(event)
-    assert "fabric_continuity_status_configuration_unavailable" in rendered
+    payload = _tool_json(response)
+    check = next(
+        item
+        for item in payload["checks"]
+        if item["name"] == "fabric_continuity_status"
+    )
+    assert check == {
+        "name": "fabric_continuity_status",
+        "state": "warn",
+        "detail": "fabric_continuity_status_configuration_unavailable",
+    }
+    rendered = json.dumps(payload)
     assert "/private" not in rendered
     assert "token" not in rendered

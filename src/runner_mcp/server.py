@@ -961,11 +961,25 @@ def build_mcp(
         """Run the fixed bounded disposable-target qualification lifecycle."""
         try:
             result = fabric_disposable_target_runner.run()
-        except (
-            FabricDisposableTargetQualificationError,
-            OperatorStopActive,
-            SafetyConfigurationError,
-        ):
+        except FabricDisposableTargetQualificationError as exc:
+            reason = str(exc)
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_disposable_target_qualify",
+                    "runner-fabric:disposable-target",
+                    "authenticated-client",
+                    "invalid",
+                    utc_timestamp(),
+                )
+            )
+            return {
+                "schemaVersion": "runner-mcp/disposable-target-qualification-result/v1",
+                "state": "invalid",
+                "reasonCode": reason,
+                "normalActivationEnabled": False,
+            }
+        except (OperatorStopActive, SafetyConfigurationError):
             audit.append(
                 AuditEvent(
                     current_request_id(),

@@ -734,6 +734,21 @@ def build_mcp(
                 "readable" if actions_readiness.get("actions_readable") is True else "unavailable_or_unauthorized",
             )
 
+        try:
+            fabric_continuity_status_runner.status()
+        except FabricContinuityStatusError as exc:
+            add(
+                "fabric_continuity_status",
+                "warn",
+                str(exc),
+            )
+        else:
+            add(
+                "fabric_continuity_status",
+                "pass",
+                "available",
+            )
+
         def storage_state(value: Path | None) -> tuple[str, str]:
             if value is None:
                 return "warn", "not_configured"

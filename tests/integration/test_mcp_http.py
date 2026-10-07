@@ -107,7 +107,6 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             "runtime_doctor",
             "build_identity",
             "tunnel_topology_refresh",
-            "fabric_worker_qualification_readiness",
             "project_status",
             "read_project_file",
             "list_project_files",

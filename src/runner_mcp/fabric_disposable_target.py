@@ -19,6 +19,25 @@ _MAX_STDOUT_BYTES = 16_384
 _MAX_STDERR_BYTES = 16_384
 _QUALIFICATION_ID_RE = re.compile(r"^[a-z][a-z0-9._-]{0,95}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_FAILURE_PREFIX = "Runner Fabric disposable target qualification: INVALID:"
+_FAILURE_REASONS = frozenset(
+    {
+        "config-unavailable",
+        "config-invalid",
+        "time-invalid",
+        "clean-start",
+        "create",
+        "guest-agent-not-ready",
+        "guest-runtime-not-ready",
+        "isolation",
+        "destroy",
+        "recreate",
+        "recreate-isolation",
+        "final-destroy",
+        "recovery-cleanup",
+        "runtime-unavailable",
+    }
+)
 
 
 class FabricDisposableTargetQualificationError(RuntimeError):
@@ -80,6 +99,15 @@ class FabricDisposableTargetQualificationRunner:
                 "fabric_disposable_target_qualification_output_invalid"
             )
         if completed.returncode != 0:
+            reason = _bounded_failure_reason(stderr)
+            if reason is not None:
+                return {
+                    "schemaVersion": "runner-mcp/disposable-target-qualification-status/v1",
+                    "state": "invalid",
+                    "reasonCode": reason,
+                    "qualificationPassed": False,
+                    "normalActivationEnabled": False,
+                }
             raise FabricDisposableTargetQualificationError(
                 "fabric_disposable_target_qualification_failed"
             )
@@ -142,6 +170,19 @@ class FabricDisposableTargetQualificationRunner:
                 "fabric_disposable_target_qualification_config_unavailable"
             )
         return path
+
+
+def _bounded_failure_reason(stderr: str) -> str | None:
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    if len(lines) != 1:
+        return None
+    line = lines[0]
+    if not line.startswith(_FAILURE_PREFIX):
+        return None
+    reason = line.removeprefix(_FAILURE_PREFIX)
+    if reason not in _FAILURE_REASONS:
+        return None
+    return reason
 
 
 def _validate_payload(value: object) -> dict[str, Any]:

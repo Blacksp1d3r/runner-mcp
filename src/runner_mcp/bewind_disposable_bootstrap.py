@@ -1,7 +1,9 @@
 from __future__ import annotations
 
 import json
+import re
 import socket
+import subprocess
 from collections.abc import Callable, MutableMapping
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -37,12 +39,83 @@ _STORAGE_BINDING_KEY = "default"
 _STORAGE_POOL_NAME = "default"
 _INCUS_EXECUTABLE = "/usr/bin/incus"
 _IMAGE_REMOTE = "local"
-_IMAGE_FINGERPRINT = (
-    "879602ca696d63166965188337597d254083955bd154847284b030a4affd5fc9"
-)
+_HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
+_TRUSTED_IMAGE_OS = "ubuntu"
+_TRUSTED_IMAGE_RELEASE = "noble"
+_TRUSTED_IMAGE_TYPE = "virtual-machine"
+_TRUSTED_IMAGE_SERVER = "https://images.linuxcontainers.org"
+_TRUSTED_IMAGE_PROTOCOL = "simplestreams"
+_TRUSTED_IMAGE_ALIAS = "ubuntu/24.04"
 _CPU_COUNT = 4
 _MEMORY_MIB = 8192
 _ROOT_DISK_GIB = 20
+
+
+def _load_image_inventory() -> object:
+    try:
+        completed = subprocess.run(
+            (_INCUS_EXECUTABLE, "image", "list", "--format=json"),
+            stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+            check=False,
+            shell=False,
+            env={"LANG": "C", "LC_ALL": "C"},
+            cwd="/",
+        )
+    except (OSError, subprocess.SubprocessError) as exc:
+        raise BewindDisposableBootstrapError(
+            "bewind_disposable_bootstrap_image_inventory_unavailable"
+        ) from exc
+    if completed.returncode != 0:
+        raise BewindDisposableBootstrapError(
+            "bewind_disposable_bootstrap_image_inventory_unavailable"
+        )
+    try:
+        return json.loads(completed.stdout or "[]")
+    except json.JSONDecodeError as exc:
+        raise BewindDisposableBootstrapError(
+            "bewind_disposable_bootstrap_image_inventory_invalid"
+        ) from exc
+
+
+def _resolve_trusted_image_fingerprint(payload: object) -> str:
+    if not isinstance(payload, list):
+        raise BewindDisposableBootstrapError(
+            "bewind_disposable_bootstrap_image_inventory_invalid"
+        )
+    matches: list[str] = []
+    for item in payload:
+        if not isinstance(item, dict):
+            continue
+        properties = item.get("properties")
+        source = item.get("update_source")
+        fingerprint = item.get("fingerprint")
+        image_type = str(item.get("type", "")).strip().casefold()
+        if not isinstance(properties, dict) or not isinstance(source, dict):
+            continue
+        if image_type != _TRUSTED_IMAGE_TYPE:
+            continue
+        if str(properties.get("os", "")).strip().casefold() != _TRUSTED_IMAGE_OS:
+            continue
+        if str(properties.get("release", "")).strip().casefold() != _TRUSTED_IMAGE_RELEASE:
+            continue
+        if str(source.get("server", "")).strip() != _TRUSTED_IMAGE_SERVER:
+            continue
+        if str(source.get("protocol", "")).strip().casefold() != _TRUSTED_IMAGE_PROTOCOL:
+            continue
+        if str(source.get("alias", "")).strip() != _TRUSTED_IMAGE_ALIAS:
+            continue
+        if not isinstance(fingerprint, str) or _HEX64_RE.fullmatch(fingerprint) is None:
+            continue
+        matches.append(fingerprint)
+    if len(matches) != 1:
+        raise BewindDisposableBootstrapError(
+            "bewind_disposable_bootstrap_trusted_image_unavailable"
+        )
+    return matches[0]
 
 
 class BewindDisposableBootstrapError(RuntimeError):
@@ -60,12 +133,14 @@ class BewindDisposableBootstrapRestorer:
         config_dir: Path,
         hostname_provider: Callable[[], str] = socket.gethostname,
         now: Callable[[], datetime] | None = None,
+        image_inventory_provider: Callable[[], object] | None = None,
     ) -> None:
         self.safety = safety
         self.environment = environment
         self.config_dir = config_dir.expanduser().resolve()
         self.hostname_provider = hostname_provider
         self.now = now or (lambda: datetime.now(UTC))
+        self.image_inventory_provider = image_inventory_provider or _load_image_inventory
 
     def restore(self) -> dict[str, Any]:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
@@ -98,6 +173,10 @@ class BewindDisposableBootstrapRestorer:
                 "bewind_disposable_bootstrap_private_state_unavailable"
             ) from exc
 
+        image_fingerprint = _resolve_trusted_image_fingerprint(
+            self.image_inventory_provider()
+        )
+
         allocation_id = uuid5(
             _NAMESPACE,
             f"{_WORKER_ID}:{_CAPABILITY}:{_GENERATION}",
@@ -119,7 +198,7 @@ class BewindDisposableBootstrapRestorer:
             "binding_expires_at": expires_at.isoformat(),
             "incus_executable": _INCUS_EXECUTABLE,
             "image_remote": _IMAGE_REMOTE,
-            "image_fingerprint": _IMAGE_FINGERPRINT,
+            "image_fingerprint": image_fingerprint,
             "cpu_count": _CPU_COUNT,
             "memory_mib": _MEMORY_MIB,
             "root_disk_gib": _ROOT_DISK_GIB,

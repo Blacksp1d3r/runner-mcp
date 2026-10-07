@@ -46,6 +46,7 @@ _TRUSTED_IMAGE_TYPE = "virtual-machine"
 _TRUSTED_IMAGE_ALIAS = "aifordable/bewind-ocr-podman-v1"
 _TRUSTED_IMAGE_PROFILE = "bewind-ocr-podman-v1"
 _TRUSTED_IMAGE_RUNTIME = "podman-rootless-ready"
+_TRUSTED_IMAGE_USER = "fabric:1000:1000"
 _TRUSTED_IMAGE_BASE = "ubuntu/24.04"
 _CPU_COUNT = 4
 _MEMORY_MIB = 8192
@@ -112,6 +113,8 @@ def _resolve_trusted_image_fingerprint(payload: object) -> str:
         if str(properties.get("aifordable.profile", "")).strip() != _TRUSTED_IMAGE_PROFILE:
             continue
         if str(properties.get("aifordable.runtime", "")).strip() != _TRUSTED_IMAGE_RUNTIME:
+            continue
+        if str(properties.get("aifordable.user", "")).strip() != _TRUSTED_IMAGE_USER:
             continue
         if str(properties.get("aifordable.base", "")).strip() != _TRUSTED_IMAGE_BASE:
             continue

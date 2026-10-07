@@ -26,6 +26,10 @@ from starlette.routing import Mount, Route
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
+from .bewind_worker_qualification_policy import (
+    BewindWorkerQualificationPolicyConfigurator,
+    BewindWorkerQualificationPolicyError,
+)
 from .build_identity import (
     BuildIdentity,
     installed_source_revision,
@@ -546,6 +550,11 @@ def build_mcp(
     )
     worker_qualification_environment = dict(private_values)
     fabric_worker_qualification_provisioner = FabricWorkerQualificationProvisioner(
+        safety=safety,
+        environment=worker_qualification_environment,
+        config_dir=settings.projects_config.parent,
+    )
+    bewind_worker_policy_configurator = BewindWorkerQualificationPolicyConfigurator(
         safety=safety,
         environment=worker_qualification_environment,
         config_dir=settings.projects_config.parent,
@@ -1731,6 +1740,28 @@ def build_mcp(
         )
         return result
 
+    def fabric_worker_qualification_policy_configure() -> dict:
+        """Configure the fixed local Bewind worker qualification policy."""
+        try:
+            result = bewind_worker_policy_configurator.configure()
+        except (
+            BewindWorkerQualificationPolicyError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_fabric(
+                "fabric_worker_qualification_policy_configure",
+                "worker:aifordable-lab",
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "fabric_worker_qualification_policy_configure",
+            "worker:aifordable-lab",
+            str(result.get("state", "unknown")),
+        )
+        return result
+
     def fabric_worker_qualification_readiness(
         worker_id: str,
         capability_profile: str,
@@ -1850,6 +1881,8 @@ def build_mcp(
             str(result.get("status", "unknown")),
         )
         return result
+
+    mcp.tool()(fabric_worker_qualification_policy_configure)
 
     if fabric_bridge is not None:
         mcp.tool()(fabric_bridge_preflight)

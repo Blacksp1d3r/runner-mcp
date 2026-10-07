@@ -157,7 +157,6 @@ def test_fabric_continuity_status_is_zero_argument_and_read_only(
     assert "example/private" not in audit
 
 
-
 def test_runtime_doctor_exposes_only_bounded_continuity_failure_category(
     tmp_path: Path,
     monkeypatch,

@@ -241,6 +241,7 @@ def test_restore_rejects_prebaked_image_with_wrong_guest_identity(tmp_path: Path
     with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):
         restorer.restore()
 
+
 def test_cli_calls_fixed_restorer(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

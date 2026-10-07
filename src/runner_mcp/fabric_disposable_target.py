@@ -19,6 +19,26 @@ _MAX_STDOUT_BYTES = 16_384
 _MAX_STDERR_BYTES = 16_384
 _QUALIFICATION_ID_RE = re.compile(r"^[a-z][a-z0-9._-]{0,95}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_BOUNDED_FAILURE_PREFIX = "Runner Fabric disposable target qualification: INVALID:"
+_BOUNDED_FAILURE_REASONS = frozenset(
+    {
+        "config-unavailable",
+        "config-invalid",
+        "time-invalid",
+        "clean-start",
+        "create",
+        "guest-agent-not-ready",
+        "guest-runtime-not-ready",
+        "isolation",
+        "destroy",
+        "recreate",
+        "recreate-isolation",
+        "final-destroy",
+        "recovery-cleanup",
+        "runtime-unavailable",
+    }
+)
+
 
 
 class FabricDisposableTargetQualificationError(RuntimeError):
@@ -80,8 +100,10 @@ class FabricDisposableTargetQualificationRunner:
                 "fabric_disposable_target_qualification_output_invalid"
             )
         if completed.returncode != 0:
+            reason = _bounded_failure_reason(stderr)
+            suffix = f":{reason}" if reason is not None else ""
             raise FabricDisposableTargetQualificationError(
-                "fabric_disposable_target_qualification_failed"
+                "fabric_disposable_target_qualification_failed" + suffix
             )
 
         try:
@@ -142,6 +164,16 @@ class FabricDisposableTargetQualificationRunner:
                 "fabric_disposable_target_qualification_config_unavailable"
             )
         return path
+
+
+def _bounded_failure_reason(stderr: str) -> str | None:
+    detail = stderr.strip()
+    if not detail.startswith(_BOUNDED_FAILURE_PREFIX):
+        return None
+    reason = detail.removeprefix(_BOUNDED_FAILURE_PREFIX).strip()
+    if reason not in _BOUNDED_FAILURE_REASONS:
+        return None
+    return reason
 
 
 def _validate_payload(value: object) -> dict[str, Any]:

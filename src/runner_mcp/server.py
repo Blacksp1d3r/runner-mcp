@@ -63,6 +63,11 @@ from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
+from .fabric_a6_binding_repair import (
+    FabricA6BindingRepairError,
+    a6_state_requested,
+    repair_a6_qualification_binding,
+)
 from .fabric_agent_runtime import (
     FabricAgentRestartError,
     restart_fabric_qualification_agent,
@@ -1648,13 +1653,24 @@ def build_mcp(
             raise ValueError("Fabric agent restart is not configured")
         try:
             safety.assert_action_allowed(ActionClass.SERVICE)
+            a6_state_root = Path.home() / ".local" / "state" / "runner-fabric"
+            if a6_state_requested(a6_state_root):
+                preflight = _require_fabric_bridge().preflight()
+                repair_a6_qualification_binding(
+                    environment=worker_qualification_environment,
+                    config_dir=settings.projects_config.parent,
+                    state_root=a6_state_root,
+                    fabric_revision=preflight.get("source_revision"),
+                )
             result = restart_fabric_qualification_agent(
                 config_dir=settings.projects_config.parent,
                 resource_url=settings.fabric_resource_url,
                 bearer_token=settings.fabric_bearer_token,
             )
         except (
+            FabricA6BindingRepairError,
             FabricAgentRestartError,
+            FabricBridgeError,
             OperatorStopActive,
             SafetyConfigurationError,
         ) as exc:

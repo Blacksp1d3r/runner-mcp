@@ -150,7 +150,22 @@ def test_private_or_unqualified_output_fails_closed(
         runner.run()
 
 
-def test_known_nonzero_result_returns_only_bounded_reason(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "guest-agent-not-ready",
+        "isolation-management-authority",
+        "isolation-default-route",
+        "isolation-network-policy",
+        "recreate-isolation-management-authority",
+        "recreate-isolation-default-route",
+        "recreate-isolation-network-policy",
+    ],
+)
+def test_known_nonzero_result_returns_only_bounded_reason(
+    tmp_path: Path,
+    reason: str,
+) -> None:
     home = managed_home(tmp_path)
     config = tmp_path / "qualification.json"
     config.write_text("{}", encoding="utf-8")
@@ -162,7 +177,7 @@ def test_known_nonzero_result_returns_only_bounded_reason(tmp_path: Path) -> Non
             stdout="",
             stderr=(
                 "Runner Fabric disposable target qualification: "
-                "INVALID:guest-agent-not-ready\n"
+                f"INVALID:{reason}\n"
             ),
         )
 
@@ -178,7 +193,7 @@ def test_known_nonzero_result_returns_only_bounded_reason(tmp_path: Path) -> Non
     assert result == {
         "schemaVersion": "runner-mcp/disposable-target-qualification-status/v1",
         "state": "invalid",
-        "reasonCode": "guest-agent-not-ready",
+        "reasonCode": reason,
         "qualificationPassed": False,
         "normalActivationEnabled": False,
     }

@@ -177,3 +177,125 @@ def test_worker_qualification_provision_tool_is_strict_and_bounded(
     audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "fabric_worker_qualification_provision" in audit
     assert "/tmp/private" not in audit
+
+
+def test_worker_qualification_policy_configure_tool_is_zero_arg_and_bounded(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    calls = []
+
+    class FakePolicyConfigurator:
+        def __init__(self, **kwargs) -> None:
+            assert "environment" in kwargs
+            assert "safety" in kwargs
+            assert "config_dir" in kwargs
+
+        def configure(self):
+            calls.append(True)
+            return {
+                "schemaVersion": "runner-mcp/bewind-worker-qualification-policy/v1",
+                "state": "configured",
+                "workerId": "aifordable-lab",
+                "capabilityProfile": "bewind-ocr-qualification-v1",
+                "generation": 1,
+                "policyValid": True,
+                "sourceTargetReady": True,
+                "agentRestartRequired": True,
+                "normalActivationEnabled": False,
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindWorkerQualificationPolicyConfigurator",
+        FakePolicyConfigurator,
+    )
+
+    project_root = tmp_path / "project-policy"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "projects-policy.yml",
+        audit_log=tmp_path / "audit-policy.jsonl",
+        rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator-policy.stop",
+        retention_confirmed=True,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values={},
+    )
+    headers = _headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        listed = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 10,
+                "method": "tools/list",
+                "params": {},
+            },
+        )
+        assert "fabric_worker_qualification_policy_configure" in listed.text
+
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 11,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_worker_qualification_policy_configure",
+                    "arguments": {},
+                },
+            },
+        )
+        result = _tool_json(response)
+        assert result["state"] == "configured"
+        assert result["generation"] == 1
+        assert result["normalActivationEnabled"] is False
+        assert calls == [True]
+
+        rejected = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 12,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_worker_qualification_policy_configure",
+                    "arguments": {"path": "/tmp/private"},
+                },
+            },
+        )
+        event = _event(rejected)
+        assert event["result"]["isError"] is True
+        assert "/tmp/private" not in rejected.text
+        assert calls == [True]

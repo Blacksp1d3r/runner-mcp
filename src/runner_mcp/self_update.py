@@ -713,6 +713,40 @@ class SelfUpdateManager:
             )
             return latest.public_dict()
 
+    def _source_baseline_status(
+        self,
+        installed_commit: str | None = None,
+    ) -> dict[str, Any]:
+        baseline = self._installed_commit() if installed_commit is None else installed_commit
+        if baseline is None:
+            return {
+                "source_baseline_state": "unbootstrapped",
+                "source_commit": None,
+            }
+
+        try:
+            config = self._project_config()
+            root = config.root.resolve(strict=True)
+            source_state = clean_head(root)
+            source_commit = source_state.get("commit")
+        except (SelfUpdateError, SourceControlError, RuntimeError, OSError):
+            return {
+                "source_baseline_state": "unavailable",
+                "source_commit": None,
+            }
+
+        if not isinstance(source_commit, str) or not _COMMIT_RE.fullmatch(source_commit):
+            return {
+                "source_baseline_state": "unavailable",
+                "source_commit": None,
+            }
+        return {
+            "source_baseline_state": (
+                "aligned" if source_commit == baseline else "drift"
+            ),
+            "source_commit": source_commit,
+        }
+
     def runtime_status(self) -> dict[str, Any]:
         try:
             package_version = version("aifordable-runner-mcp")
@@ -728,6 +762,11 @@ class SelfUpdateManager:
         except SelfUpdateError:
             project_ready = False
         pending_restarts = restart_pending_count(self.config_dir)
+        source_baseline = self._source_baseline_status(last_commit)
+        source_ready = source_baseline["source_baseline_state"] in {
+            "aligned",
+            "unbootstrapped",
+        }
 
         return {
             "version": package_version,
@@ -737,8 +776,10 @@ class SelfUpdateManager:
                 and self._restart_ready()
                 and pending_restarts == 0
                 and not recovery_pending
+                and source_ready
             ),
             "last_installed_commit": last_commit,
+            **source_baseline,
             "active_update": any(
                 job.state not in _TERMINAL_SELF_UPDATE_STATES
                 for job in self._jobs.values()
@@ -769,6 +810,13 @@ class SelfUpdateManager:
             )
         installed_commit = self._installed_commit()
         if installed_commit is not None:
+            source_baseline = self._source_baseline_status(installed_commit)
+            if source_baseline["source_baseline_state"] == "drift":
+                raise SelfUpdateError("Runner MCP self-update source baseline drift")
+            if source_baseline["source_baseline_state"] != "aligned":
+                raise SelfUpdateError(
+                    "Runner MCP self-update source baseline is unavailable"
+                )
             reconcile_stale_restart_markers(
                 self.config_dir,
                 self._restart_components,

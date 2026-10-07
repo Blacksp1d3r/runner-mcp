@@ -670,7 +670,9 @@ def build_mcp(
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            raise ValueError(
+                "Fabric continuity status is unavailable"
+            ) from None
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -732,6 +734,21 @@ def build_mcp(
                 "runner_fabric_actions_read",
                 "pass" if actions_readiness.get("actions_readable") is True else "warn",
                 "readable" if actions_readiness.get("actions_readable") is True else "unavailable_or_unauthorized",
+            )
+
+        try:
+            fabric_continuity_status_runner.status()
+        except FabricContinuityStatusError as exc:
+            add(
+                "fabric_continuity_status",
+                "warn",
+                str(exc),
+            )
+        else:
+            add(
+                "fabric_continuity_status",
+                "pass",
+                "available",
             )
 
         def storage_state(value: Path | None) -> tuple[str, str]:
@@ -972,7 +989,7 @@ def build_mcp(
         """Return fixed read-only Runner Fabric continuity evidence."""
         try:
             result = fabric_continuity_status_runner.status()
-        except FabricContinuityStatusError as exc:
+        except FabricContinuityStatusError:
             audit.append(
                 AuditEvent(
                     current_request_id(),

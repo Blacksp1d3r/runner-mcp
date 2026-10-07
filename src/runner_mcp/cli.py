@@ -2476,7 +2476,10 @@ def build_parser() -> argparse.ArgumentParser:
 
     bewind_disposable_bootstrap = subparsers.add_parser(
         "bewind-disposable-bootstrap",
-        help="Restore the fixed aifordable-lab Bewind disposable qualification bootstrap.",
+        help=(
+            "Restore the fixed aifordable-lab Bewind disposable qualification "
+            "bootstrap."
+        ),
     )
     bewind_disposable_bootstrap_sub = bewind_disposable_bootstrap.add_subparsers(
         dest="bewind_disposable_bootstrap_action",

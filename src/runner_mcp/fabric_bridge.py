@@ -281,13 +281,21 @@ class FabricBridgeClient:
         worker_id: str,
         capability_profile: str,
     ) -> dict[str, Any]:
-        result = self._call_tool(
-            "worker_qualification_readiness",
-            {
-                "worker_id": worker_id,
-                "capability_profile": capability_profile,
-            },
-        )
+        _semantic_id(worker_id, "worker_id")
+        if capability_profile != "bewind-ocr-qualification-v1":
+            raise FabricBridgeError("unsupported worker qualification profile")
+        try:
+            result = self._client()._call_tool(
+                "worker_qualification_readiness",
+                {
+                    "worker_id": worker_id,
+                    "capability_profile": capability_profile,
+                },
+            )
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError(
+                "Runner Fabric worker qualification readiness failed"
+            ) from exc
         if not isinstance(result, dict):
             raise FabricBridgeError(
                 "Runner Fabric returned invalid worker qualification readiness"

@@ -172,6 +172,75 @@ def test_runtime_status_has_no_latest_job_before_first_update(
     assert manager.runtime_status()["latest_self_update_job"] is None
 
 
+def test_runtime_status_exposes_source_baseline_alignment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    baseline = "a" * 40
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": baseline, "clean": True},
+    )
+
+    aligned = manager.runtime_status()
+
+    assert aligned["source_baseline_state"] == "aligned"
+    assert aligned["source_commit"] == baseline
+    assert aligned["self_update_ready"] is True
+
+    drift = "b" * 40
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": drift, "clean": True},
+    )
+
+    drifted = manager.runtime_status()
+
+    assert drifted["source_baseline_state"] == "drift"
+    assert drifted["source_commit"] == drift
+    assert drifted["self_update_ready"] is False
+
+
+def test_self_update_rejects_source_baseline_drift_before_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    baseline = "1" * 40
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": "2" * 40, "clean": True},
+    )
+
+    with pytest.raises(SelfUpdateError, match="source baseline drift"):
+        manager.start("3" * 40)
+
+    assert manager._jobs == {}
+
+
+def test_runtime_status_marks_source_baseline_unavailable(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _root, _exits = make_manager(tmp_path)
+    manager._record_installed_commit("a" * 40)
+
+    def unavailable(_root: Path) -> dict[str, object]:
+        raise RuntimeError("private git failure")
+
+    monkeypatch.setattr("runner_mcp.self_update.clean_head", unavailable)
+
+    status = manager.runtime_status()
+
+    assert status["source_baseline_state"] == "unavailable"
+    assert status["source_commit"] is None
+    assert status["self_update_ready"] is False
+    assert "private git failure" not in repr(status)
+
+
 def test_bootstrap_baseline_requires_emergency_stop_and_exact_source(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

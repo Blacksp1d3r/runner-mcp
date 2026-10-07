@@ -45,6 +45,7 @@ def _trusted_inventory(fingerprint: str = "b" * 64) -> list[dict[str, object]]:
                 "release": "noble",
                 "aifordable.profile": "bewind-ocr-podman-v1",
                 "aifordable.runtime": "podman-rootless-ready",
+                "aifordable.user": "fabric:1000:1000",
                 "aifordable.base": "ubuntu/24.04",
             },
             "update_source": None,
@@ -222,6 +223,23 @@ def test_restore_rejects_prebaked_image_with_wrong_runtime_marker(tmp_path: Path
     with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):
         restorer.restore()
 
+
+
+def test_restore_rejects_prebaked_image_with_wrong_guest_identity(tmp_path: Path) -> None:
+    config_dir, values = _runtime(tmp_path)
+    inventory = _trusted_inventory()
+    inventory[0]["properties"]["aifordable.user"] = "ubuntu:1000:1000"
+    restorer = BewindDisposableBootstrapRestorer(
+        safety=_safety(tmp_path),
+        environment=values,
+        config_dir=config_dir,
+        hostname_provider=lambda: "aifordable-lab",
+        now=lambda: datetime(2026, 10, 7, 15, 0, tzinfo=UTC),
+        image_inventory_provider=lambda: inventory,
+    )
+
+    with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):
+        restorer.restore()
 
 def test_cli_calls_fixed_restorer(
     tmp_path: Path,

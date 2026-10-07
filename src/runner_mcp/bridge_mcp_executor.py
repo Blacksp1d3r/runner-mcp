@@ -487,6 +487,7 @@ def _validate_peer_build_identity(
     *,
     observed_interface_digest: str,
     negotiated_protocol_version: str,
+    expected_component_id: str = "runner-mcp",
 ) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise BridgeExecutionAdapterError(
@@ -501,7 +502,12 @@ def _validate_peer_build_identity(
         "protocol_max",
         "interface_schema_digest",
     }
-    if set(payload) != expected or payload.get("component_id") != "runner-mcp":
+    if (
+        not isinstance(expected_component_id, str)
+        or re.fullmatch(r"[a-z][a-z0-9._:-]{0,127}", expected_component_id) is None
+        or set(payload) != expected
+        or payload.get("component_id") != expected_component_id
+    ):
         raise BridgeExecutionAdapterError(
             "Runner MCP build identity is incompatible"
         )
@@ -661,6 +667,7 @@ class LocalMCPClient:
         client_name: str = "runner-mcp-github-watcher",
         compatibility_preflight: bool = False,
         required_tools: frozenset[str] | None = None,
+        expected_component_id: str = "runner-mcp",
     ) -> None:
         if not isinstance(allowed_tools, frozenset) or not allowed_tools:
             raise ValueError("MCP tool allow-list must be a non-empty frozenset")
@@ -679,6 +686,11 @@ class LocalMCPClient:
             raise TypeError("compatibility_preflight must be boolean")
         if required_tools is not None and not isinstance(required_tools, frozenset):
             raise TypeError("required_tools must be a frozenset or None")
+        if (
+            not isinstance(expected_component_id, str)
+            or re.fullmatch(r"[a-z][a-z0-9._:-]{0,127}", expected_component_id) is None
+        ):
+            raise ValueError("expected MCP component id is invalid")
         effective_required_tools = (
             allowed_tools if required_tools is None else required_tools
         )
@@ -689,6 +701,7 @@ class LocalMCPClient:
         self._required_tools = effective_required_tools
         self._client_name = client_name
         self._compatibility_preflight = compatibility_preflight
+        self._expected_component_id = expected_component_id
         self._session_id: str | None = None
         self._next_request_id = 1
         self._initialized = False
@@ -789,6 +802,7 @@ class LocalMCPClient:
                 _tool_result_payload(identity_response),
                 observed_interface_digest=observed_digest,
                 negotiated_protocol_version=self._peer_protocol_version,
+                expected_component_id=self._expected_component_id,
             )
             self._peer_tool_names = tool_names
             _log_peer_identity_observed(

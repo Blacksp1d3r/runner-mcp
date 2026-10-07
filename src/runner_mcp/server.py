@@ -26,6 +26,10 @@ from starlette.routing import Mount, Route
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .audit import AuditEvent, AuditLogger, utc_timestamp
+from .bewind_disposable_bootstrap import (
+    BewindDisposableBootstrapError,
+    BewindDisposableBootstrapRestorer,
+)
 from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
     BewindWorkerQualificationPolicyError,
@@ -550,6 +554,11 @@ def build_mcp(
     )
     worker_qualification_environment = dict(private_values)
     fabric_worker_qualification_provisioner = FabricWorkerQualificationProvisioner(
+        safety=safety,
+        environment=worker_qualification_environment,
+        config_dir=settings.projects_config.parent,
+    )
+    bewind_disposable_bootstrap_restorer = BewindDisposableBootstrapRestorer(
         safety=safety,
         environment=worker_qualification_environment,
         config_dir=settings.projects_config.parent,
@@ -1740,6 +1749,28 @@ def build_mcp(
         )
         return result
 
+    def bewind_disposable_bootstrap_restore() -> dict:
+        """Restore the fixed aifordable-lab Bewind disposable bootstrap."""
+        try:
+            result = bewind_disposable_bootstrap_restorer.restore()
+        except (
+            BewindDisposableBootstrapError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            _audit_fabric(
+                "bewind_disposable_bootstrap_restore",
+                "worker:aifordable-lab",
+                "denied",
+            )
+            raise ValueError(str(exc)) from None
+        _audit_fabric(
+            "bewind_disposable_bootstrap_restore",
+            "worker:aifordable-lab",
+            str(result.get("state", "unknown")),
+        )
+        return result
+
     def fabric_worker_qualification_policy_configure() -> dict:
         """Configure the fixed local Bewind worker qualification policy."""
         try:
@@ -1882,6 +1913,7 @@ def build_mcp(
         )
         return result
 
+    mcp.tool()(bewind_disposable_bootstrap_restore)
     mcp.tool()(fabric_worker_qualification_policy_configure)
 
     if fabric_bridge is not None:

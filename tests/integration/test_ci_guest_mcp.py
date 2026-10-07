@@ -512,3 +512,121 @@ def test_bewind_disposable_bootstrap_restore_is_fixed_and_bounded(
     assert "bewind_disposable_bootstrap_restore" in audit
     assert "127.0.0.1" not in audit
     assert "f" * 32 not in audit
+
+
+def test_worker_policy_configure_refreshes_bootstrap_first(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    calls: list[str] = []
+
+    class FakeFabricBridge:
+        def __init__(self, _config) -> None:
+            pass
+
+    class FakeRestorer:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def restore(self):
+            calls.append("restore")
+            return {
+                "schemaVersion": "runner-mcp/bewind-disposable-bootstrap/v1",
+                "state": "restored",
+                "workerId": "aifordable-lab",
+                "capabilityProfile": "bewind-ocr-qualification-v1",
+                "generation": 1,
+                "qualificationId": "bewind-ocr-lab-v1",
+                "targetAllocationId": "11111111-1111-5111-8111-111111111111",
+                "policyValid": True,
+                "normalActivationEnabled": False,
+            }
+
+    class FakePolicy:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def configure(self):
+            calls.append("configure")
+            return {
+                "schemaVersion": "runner-mcp/bewind-worker-qualification-policy/v1",
+                "state": "configured",
+                "workerId": "aifordable-lab",
+                "capabilityProfile": "bewind-ocr-qualification-v1",
+                "generation": 1,
+                "policyValid": True,
+                "sourceTargetReady": True,
+                "agentRestartRequired": True,
+                "normalActivationEnabled": False,
+            }
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricBridgeClient",
+        FakeFabricBridge,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindDisposableBootstrapRestorer",
+        FakeRestorer,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindWorkerQualificationPolicyConfigurator",
+        FakePolicy,
+    )
+
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "unused.yml",
+        audit_log=tmp_path / "audit-policy-refresh.jsonl",
+        rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator.stop",
+        retention_confirmed=True,
+        fabric_resource_url="http://127.0.0.1:9010/mcp",
+        fabric_bearer_token="f" * 32,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = _headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+        configured = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 42,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_worker_qualification_policy_configure",
+                    "arguments": {},
+                },
+            },
+        )
+        payload = _tool_json(configured)
+
+    assert calls == ["restore", "configure"]
+    assert payload["state"] == "configured"
+    assert payload["sourceTargetReady"] is True
+    assert payload["normalActivationEnabled"] is False

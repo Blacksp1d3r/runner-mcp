@@ -1772,10 +1772,12 @@ def build_mcp(
         return result
 
     def fabric_worker_qualification_policy_configure() -> dict:
-        """Configure the fixed local Bewind worker qualification policy."""
+        """Refresh the fixed Bewind bootstrap and configure its worker policy."""
         try:
+            bewind_disposable_bootstrap_restorer.restore()
             result = bewind_worker_policy_configurator.configure()
         except (
+            BewindDisposableBootstrapError,
             BewindWorkerQualificationPolicyError,
             OperatorStopActive,
             SafetyConfigurationError,

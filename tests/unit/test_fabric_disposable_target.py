@@ -150,6 +150,36 @@ def test_private_or_unqualified_output_fails_closed(
         runner.run()
 
 
+def test_nonzero_result_preserves_only_allowlisted_reason(tmp_path: Path) -> None:
+    home = managed_home(tmp_path)
+    config = tmp_path / "qualification.json"
+    config.write_text("{}", encoding="utf-8")
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            2,
+            stdout="",
+            stderr=(
+                "Runner Fabric disposable target qualification: "
+                "INVALID:guest-runtime-not-ready\n"
+            ),
+        )
+
+    runner = FabricDisposableTargetQualificationRunner(
+        safety=safety(tmp_path),
+        environment={qualification_config_environment_key(): str(config)},
+        home=home,
+        runner=fake_run,
+    )
+
+    with pytest.raises(
+        FabricDisposableTargetQualificationError,
+        match="qualification_failed:guest-runtime-not-ready",
+    ):
+        runner.run()
+
+
 def test_nonzero_result_is_sanitized(tmp_path: Path) -> None:
     home = managed_home(tmp_path)
     config = tmp_path / "qualification.json"

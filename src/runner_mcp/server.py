@@ -743,6 +743,35 @@ def build_mcp(
         )
 
         try:
+            self_update_status = self_update_manager.runtime_status()
+        except SelfUpdateError:
+            add(
+                "self_update_source_baseline",
+                "warn",
+                "unavailable",
+            )
+        else:
+            source_baseline_state = self_update_status.get("source_baseline_state")
+            if source_baseline_state == "drift":
+                add(
+                    "self_update_source_baseline",
+                    "fail",
+                    "drift",
+                )
+            elif source_baseline_state == "unavailable":
+                add(
+                    "self_update_source_baseline",
+                    "warn",
+                    "unavailable",
+                )
+            else:
+                add(
+                    "self_update_source_baseline",
+                    "pass",
+                    str(source_baseline_state or "unbootstrapped"),
+                )
+
+        try:
             actions_readiness = fabric_update_manager.actions_readiness()
         except FabricUpdateError:
             add(

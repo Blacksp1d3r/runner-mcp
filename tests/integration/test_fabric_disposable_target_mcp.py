@@ -4,6 +4,7 @@ from pathlib import Path
 from starlette.testclient import TestClient
 
 from runner_mcp.config import ProjectConfig, ProjectRegistry
+from runner_mcp.fabric_disposable_target import FabricDisposableTargetQualificationError
 from runner_mcp.server import Settings, create_app
 
 
@@ -170,3 +171,92 @@ def test_disposable_target_tool_is_zero_argument_and_bounded(
     audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "fabric_disposable_target_qualify" in audit
     assert "private-qualification" not in audit
+
+
+def test_disposable_target_tool_returns_bounded_invalid_reason(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeQualificationRunner:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def run(self):
+            raise FabricDisposableTargetQualificationError(
+                "fabric_disposable_target_qualification_failed:guest-agent-not-ready"
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricDisposableTargetQualificationRunner",
+        FakeQualificationRunner,
+    )
+
+    project_root = tmp_path / "project-invalid"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "projects-invalid.yml",
+        audit_log=tmp_path / "audit-invalid.jsonl",
+        rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator-invalid.stop",
+        retention_confirmed=True,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values={
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": (
+                str(tmp_path / "private-qualification.json")
+            )
+        },
+    )
+    headers = _headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 5,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_disposable_target_qualify",
+                    "arguments": {},
+                },
+            },
+        )
+        result = _tool_json(response)
+
+    assert result == {
+        "schemaVersion": "runner-mcp/disposable-target-qualification-result/v1",
+        "state": "invalid",
+        "reasonCode": (
+            "fabric_disposable_target_qualification_failed:"
+            "guest-agent-not-ready"
+        ),
+        "normalActivationEnabled": False,
+    }
+    assert "private-qualification" not in response.text

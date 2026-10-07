@@ -43,9 +43,10 @@ _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 _TRUSTED_IMAGE_OS = "ubuntu"
 _TRUSTED_IMAGE_RELEASE = "noble"
 _TRUSTED_IMAGE_TYPE = "virtual-machine"
-_TRUSTED_IMAGE_SERVER = "https://images.linuxcontainers.org"
-_TRUSTED_IMAGE_PROTOCOL = "simplestreams"
-_TRUSTED_IMAGE_ALIAS = "ubuntu/24.04"
+_TRUSTED_IMAGE_ALIAS = "aifordable/bewind-ocr-podman-v1"
+_TRUSTED_IMAGE_PROFILE = "bewind-ocr-podman-v1"
+_TRUSTED_IMAGE_RUNTIME = "podman-rootless-ready"
+_TRUSTED_IMAGE_BASE = "ubuntu/24.04"
 _CPU_COUNT = 4
 _MEMORY_MIB = 8192
 _ROOT_DISK_GIB = 20
@@ -90,22 +91,29 @@ def _resolve_trusted_image_fingerprint(payload: object) -> str:
         if not isinstance(item, dict):
             continue
         properties = item.get("properties")
-        source = item.get("update_source")
+        aliases = item.get("aliases")
         fingerprint = item.get("fingerprint")
         image_type = str(item.get("type", "")).strip().casefold()
-        if not isinstance(properties, dict) or not isinstance(source, dict):
+        if not isinstance(properties, dict) or not isinstance(aliases, list):
             continue
+        alias_names = {
+            str(alias.get("name", "")).strip()
+            for alias in aliases
+            if isinstance(alias, dict)
+        }
         if image_type != _TRUSTED_IMAGE_TYPE:
             continue
         if str(properties.get("os", "")).strip().casefold() != _TRUSTED_IMAGE_OS:
             continue
         if str(properties.get("release", "")).strip().casefold() != _TRUSTED_IMAGE_RELEASE:
             continue
-        if str(source.get("server", "")).strip() != _TRUSTED_IMAGE_SERVER:
+        if _TRUSTED_IMAGE_ALIAS not in alias_names:
             continue
-        if str(source.get("protocol", "")).strip().casefold() != _TRUSTED_IMAGE_PROTOCOL:
+        if str(properties.get("aifordable.profile", "")).strip() != _TRUSTED_IMAGE_PROFILE:
             continue
-        if str(source.get("alias", "")).strip() != _TRUSTED_IMAGE_ALIAS:
+        if str(properties.get("aifordable.runtime", "")).strip() != _TRUSTED_IMAGE_RUNTIME:
+            continue
+        if str(properties.get("aifordable.base", "")).strip() != _TRUSTED_IMAGE_BASE:
             continue
         if not isinstance(fingerprint, str) or _HEX64_RE.fullmatch(fingerprint) is None:
             continue

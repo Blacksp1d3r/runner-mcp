@@ -185,6 +185,25 @@ def test_worker_qualification_policy_configure_tool_is_zero_arg_and_bounded(
 ) -> None:
     calls = []
 
+    class FakeBootstrapRestorer:
+        def __init__(self, **kwargs) -> None:
+            assert "environment" in kwargs
+            assert "safety" in kwargs
+            assert "config_dir" in kwargs
+
+        def restore(self):
+            return {
+                "schemaVersion": "runner-mcp/bewind-disposable-bootstrap/v1",
+                "state": "restored",
+                "workerId": "aifordable-lab",
+                "capabilityProfile": "bewind-ocr-qualification-v1",
+                "generation": 1,
+                "qualificationId": "bewind-ocr-lab-v1",
+                "targetAllocationId": "11111111-1111-5111-8111-111111111111",
+                "policyValid": True,
+                "normalActivationEnabled": False,
+            }
+
     class FakePolicyConfigurator:
         def __init__(self, **kwargs) -> None:
             assert "environment" in kwargs
@@ -205,6 +224,10 @@ def test_worker_qualification_policy_configure_tool_is_zero_arg_and_bounded(
                 "normalActivationEnabled": False,
             }
 
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindDisposableBootstrapRestorer",
+        FakeBootstrapRestorer,
+    )
     monkeypatch.setattr(
         "runner_mcp.server.BewindWorkerQualificationPolicyConfigurator",
         FakePolicyConfigurator,

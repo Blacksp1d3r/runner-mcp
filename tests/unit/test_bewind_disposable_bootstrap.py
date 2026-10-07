@@ -33,6 +33,22 @@ def _runtime(tmp_path: Path) -> tuple[Path, dict[str, str]]:
     return config_dir, {"RUNNER_MCP_BEARER_TOKEN": "s" * 48}
 
 
+
+def _trusted_inventory(fingerprint: str = "b" * 64) -> list[dict[str, object]]:
+    return [
+        {
+            "fingerprint": fingerprint,
+            "type": "virtual-machine",
+            "properties": {"os": "Ubuntu", "release": "noble"},
+            "update_source": {
+                "server": "https://images.linuxcontainers.org",
+                "protocol": "simplestreams",
+                "alias": "ubuntu/24.04",
+            },
+        }
+    ]
+
+
 def test_restore_is_host_bound(tmp_path: Path) -> None:
     config_dir, values = _runtime(tmp_path)
     restorer = BewindDisposableBootstrapRestorer(
@@ -57,6 +73,7 @@ def test_restore_writes_fixed_private_bootstrap(tmp_path: Path) -> None:
         config_dir=config_dir,
         hostname_provider=lambda: "aifordable-lab",
         now=lambda: datetime(2026, 10, 7, 15, 0, tzinfo=UTC),
+        image_inventory_provider=_trusted_inventory,
     )
 
     result = restorer.restore()
@@ -90,7 +107,7 @@ def test_restore_writes_fixed_private_bootstrap(tmp_path: Path) -> None:
         "binding_expires_at": "2026-10-07T17:00:00+00:00",
         "incus_executable": "/usr/bin/incus",
         "image_remote": "local",
-        "image_fingerprint": "879602ca696d63166965188337597d254083955bd154847284b030a4affd5fc9",
+        "image_fingerprint": "b" * 64,
         "cpu_count": 4,
         "memory_mib": 8192,
         "root_disk_gib": 20,
@@ -112,6 +129,7 @@ def test_restore_is_deterministic_except_timestamps(tmp_path: Path) -> None:
         config_dir=first_dir,
         hostname_provider=lambda: "aifordable-lab",
         now=clock,
+        image_inventory_provider=_trusted_inventory,
     ).restore()
     second = BewindDisposableBootstrapRestorer(
         safety=_safety(tmp_path / "s2"),
@@ -119,9 +137,63 @@ def test_restore_is_deterministic_except_timestamps(tmp_path: Path) -> None:
         config_dir=second_dir,
         hostname_provider=lambda: "aifordable-lab",
         now=clock,
+        image_inventory_provider=_trusted_inventory,
     ).restore()
 
     assert first["targetAllocationId"] == second["targetAllocationId"]
+
+
+
+def test_restore_fails_closed_when_trusted_image_is_missing(tmp_path: Path) -> None:
+    config_dir, values = _runtime(tmp_path)
+    restorer = BewindDisposableBootstrapRestorer(
+        safety=_safety(tmp_path),
+        environment=values,
+        config_dir=config_dir,
+        hostname_provider=lambda: "aifordable-lab",
+        now=lambda: datetime(2026, 10, 7, 15, 0, tzinfo=UTC),
+        image_inventory_provider=lambda: [],
+    )
+
+    with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):
+        restorer.restore()
+
+
+def test_restore_fails_closed_when_trusted_image_is_ambiguous(tmp_path: Path) -> None:
+    config_dir, values = _runtime(tmp_path)
+    inventory = _trusted_inventory("b" * 64) + _trusted_inventory("c" * 64)
+    restorer = BewindDisposableBootstrapRestorer(
+        safety=_safety(tmp_path),
+        environment=values,
+        config_dir=config_dir,
+        hostname_provider=lambda: "aifordable-lab",
+        now=lambda: datetime(2026, 10, 7, 15, 0, tzinfo=UTC),
+        image_inventory_provider=lambda: inventory,
+    )
+
+    with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):
+        restorer.restore()
+
+
+def test_restore_rejects_wrong_source_metadata(tmp_path: Path) -> None:
+    config_dir, values = _runtime(tmp_path)
+    inventory = _trusted_inventory()
+    inventory[0]["update_source"] = {
+        "server": "https://example.invalid",
+        "protocol": "simplestreams",
+        "alias": "ubuntu/24.04",
+    }
+    restorer = BewindDisposableBootstrapRestorer(
+        safety=_safety(tmp_path),
+        environment=values,
+        config_dir=config_dir,
+        hostname_provider=lambda: "aifordable-lab",
+        now=lambda: datetime(2026, 10, 7, 15, 0, tzinfo=UTC),
+        image_inventory_provider=lambda: inventory,
+    )
+
+    with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):
+        restorer.restore()
 
 
 def test_cli_calls_fixed_restorer(

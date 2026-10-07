@@ -972,7 +972,7 @@ def build_mcp(
         """Return fixed read-only Runner Fabric continuity evidence."""
         try:
             result = fabric_continuity_status_runner.status()
-        except FabricContinuityStatusError:
+        except FabricContinuityStatusError as exc:
             audit.append(
                 AuditEvent(
                     current_request_id(),
@@ -983,9 +983,7 @@ def build_mcp(
                     utc_timestamp(),
                 )
             )
-            raise ValueError(
-                "Fabric continuity status is unavailable"
-            ) from None
+            raise ValueError(str(exc)) from None
         audit.append(
             AuditEvent(
                 current_request_id(),

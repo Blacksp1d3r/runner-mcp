@@ -31,6 +31,10 @@ from .bewind_disposable_bootstrap import (
     BewindDisposableBootstrapError,
     BewindDisposableBootstrapRestorer,
 )
+from .bewind_ocr_qualification_authority import (
+    BewindOcrQualificationExecutionAuthorityConfigurator,
+    BewindOcrQualificationExecutionAuthorityError,
+)
 from .bewind_ocr_qualification_execution import (
     BewindOcrQualificationExecutionError,
     BewindOcrQualificationRunner,
@@ -609,6 +613,13 @@ def build_mcp(
             custody=artifact_custody,
         )
     )
+    bewind_ocr_qualification_execution_authority = (
+        BewindOcrQualificationExecutionAuthorityConfigurator(
+            safety=safety,
+            environment=worker_qualification_environment,
+            config_dir=settings.projects_config.parent,
+        )
+    )
     bewind_ocr_qualification_stager = BewindOcrQualificationStager(
         safety=safety,
         environment=worker_qualification_environment,
@@ -1083,6 +1094,41 @@ def build_mcp(
                 current_request_id(),
                 "fabric_worker_qualification_provision",
                 "runner-fabric:worker-qualification",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def bewind_ocr_qualification_execution_authority_configure() -> dict:
+        """Configure the one fixed Bewind OCR qualification execution authority."""
+        try:
+            result = bewind_ocr_qualification_execution_authority.configure()
+        except (
+            BewindOcrQualificationExecutionAuthorityError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "bewind_ocr_qualification_execution_authority_configure",
+                    "bewind:ocr-qualification-execution-authority",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Bewind OCR qualification execution authority is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "bewind_ocr_qualification_execution_authority_configure",
+                "bewind:ocr-qualification-execution-authority",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
                 utc_timestamp(),

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -42,6 +43,9 @@ _MAX_CAPTURE = 64 * 1024
 _MAX_PAGES = 1000
 _GUEST_INPUT = "/tmp/bewind-qualification.pdf"
 _GUEST_SIDECAR = "/tmp/bewind-qualification-sidecar.txt"
+_SHARED_LOCK_FILENAME = ".runner-fabric-disposable-qualification.lock"
+_SHARED_LOCK_ATTEMPTS = 180
+_SHARED_LOCK_DELAY_SECONDS = 1.0
 
 
 class BewindOcrQualificationExecutionError(RuntimeError):
@@ -144,6 +148,10 @@ class BewindOcrQualificationRunner:
                 ),
                 "bewind_ocr_qualification_target_invalid": "target-invalid",
                 "bewind_ocr_qualification_target_expired": "target-expired",
+                "bewind_ocr_qualification_target_lock_unavailable": (
+                    "target-lock-unavailable"
+                ),
+                "bewind_ocr_qualification_target_busy": "target-busy",
             }
             return {
                 "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
@@ -184,6 +192,25 @@ class BewindOcrQualificationRunner:
                 ),
                 "normalActivationEnabled": False,
             }
+        try:
+            target_lock_fd = self._acquire_target_lock()
+        except BewindOcrQualificationExecutionError as exc:
+            reason_map = {
+                "bewind_ocr_qualification_target_lock_unavailable": (
+                    "target-lock-unavailable"
+                ),
+                "bewind_ocr_qualification_target_busy": "target-busy",
+            }
+            return {
+                "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
+                "state": "blocked",
+                "reasonCode": reason_map.get(
+                    str(exc),
+                    "execution-preflight-unavailable",
+                ),
+                "normalActivationEnabled": False,
+            }
+
         started = self._monotonic()
         start_load = self._bounded_load()
         sidecar_path = self.config_dir / "bewind-ocr-qualification" / "result-sidecar.txt"
@@ -243,6 +270,7 @@ class BewindOcrQualificationRunner:
                     sidecar_path.unlink()
             except OSError:
                 target_cleanup = False
+            self._release_target_lock(target_lock_fd)
 
         elapsed = round(max(0.0, self._monotonic() - started), 3)
         cleanup_ok = target_cleanup and staging_cleanup
@@ -299,6 +327,74 @@ class BewindOcrQualificationRunner:
             },
             "normalActivationEnabled": False,
         }
+
+    def _acquire_target_lock(self) -> int:
+        raw_path = self.environment.get(_TARGET_ENV)
+        if not isinstance(raw_path, str) or not raw_path or "\x00" in raw_path:
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_target_lock_unavailable"
+            )
+        config_path = Path(raw_path)
+        if not config_path.is_absolute():
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_target_lock_unavailable"
+            )
+
+        fd: int | None = None
+        try:
+            parent = config_path.parent.resolve(strict=True)
+            lock_path = parent / _SHARED_LOCK_FILENAME
+            flags = os.O_CREAT | os.O_RDWR | os.O_CLOEXEC
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(lock_path, flags, 0o600)
+            info = os.fstat(fd)
+            if (
+                not stat.S_ISREG(info.st_mode)
+                or info.st_uid != os.getuid()
+                or stat.S_IMODE(info.st_mode) != 0o600
+            ):
+                raise BewindOcrQualificationExecutionError(
+                    "bewind_ocr_qualification_target_lock_unavailable"
+                )
+
+            for attempt in range(_SHARED_LOCK_ATTEMPTS):
+                try:
+                    fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                    return fd
+                except BlockingIOError:
+                    if attempt + 1 < _SHARED_LOCK_ATTEMPTS:
+                        time.sleep(_SHARED_LOCK_DELAY_SECONDS)
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_target_busy"
+            )
+        except BewindOcrQualificationExecutionError:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            raise
+        except OSError as exc:
+            if fd is not None:
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_target_lock_unavailable"
+            ) from exc
+
+    @staticmethod
+    def _release_target_lock(fd: int) -> None:
+        try:
+            fcntl.flock(fd, fcntl.LOCK_UN)
+        except OSError:
+            pass
+        try:
+            os.close(fd)
+        except OSError:
+            pass
 
     def _execution_config(self) -> dict[str, str]:
         raw = self.environment.get(_EXECUTION_ENV)

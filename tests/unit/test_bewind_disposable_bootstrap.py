@@ -39,14 +39,15 @@ def _trusted_inventory(fingerprint: str = "b" * 64) -> list[dict[str, object]]:
         {
             "fingerprint": fingerprint,
             "type": "virtual-machine",
-            "aliases": [{"name": "aifordable/bewind-ocr-podman-v1"}],
+            "aliases": [{"name": "aifordable/bewind-ocr-runtime-v1"}],
             "properties": {
                 "os": "Ubuntu",
                 "release": "noble",
-                "aifordable.profile": "bewind-ocr-podman-v1",
-                "aifordable.runtime": "podman-rootless-ready",
+                "aifordable.profile": "bewind-ocr-runtime-v1",
+                "aifordable.runtime": "ocrmypdf-tesseract-nld-fra-deu-ready",
                 "aifordable.user": "fabric:1000:1000",
-                "aifordable.base": "ubuntu/24.04",
+                "aifordable.base": "aifordable/bewind-ocr-podman-v1",
+                "aifordable.languages": "nld+fra+deu",
             },
             "update_source": None,
         }
@@ -211,7 +212,7 @@ def test_restore_rejects_raw_noble_cache_without_prebaked_profile(tmp_path: Path
 def test_restore_rejects_prebaked_image_with_wrong_runtime_marker(tmp_path: Path) -> None:
     config_dir, values = _runtime(tmp_path)
     inventory = _trusted_inventory()
-    inventory[0]["properties"]["aifordable.runtime"] = "unknown"
+    inventory[0]["properties"]["aifordable.runtime"] = "podman-rootless-ready"
     restorer = BewindDisposableBootstrapRestorer(
         safety=_safety(tmp_path),
         environment=values,
@@ -321,3 +322,21 @@ def test_parser_accepts_only_fixed_restore_action() -> None:
                 "/tmp/override",
             ]
         )
+
+
+
+def test_restore_rejects_ocr_image_with_wrong_languages(tmp_path: Path) -> None:
+    config_dir, values = _runtime(tmp_path)
+    inventory = _trusted_inventory()
+    inventory[0]["properties"]["aifordable.languages"] = "nld+fra"
+    restorer = BewindDisposableBootstrapRestorer(
+        safety=_safety(tmp_path),
+        environment=values,
+        config_dir=config_dir,
+        hostname_provider=lambda: "aifordable-lab",
+        now=lambda: datetime(2026, 10, 7, 15, 0, tzinfo=UTC),
+        image_inventory_provider=lambda: inventory,
+    )
+
+    with pytest.raises(BewindDisposableBootstrapError, match="trusted_image_unavailable"):
+        restorer.restore()

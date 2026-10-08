@@ -1,7 +1,9 @@
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
+import os
 import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
@@ -620,3 +622,100 @@ def test_target_cleanup_failure_still_attempts_staging_cleanup(
         "targetDestroyed": False,
         "stagedInputRemoved": True,
     }
+
+    lock_path = target_path.parent / ".runner-fabric-disposable-qualification.lock"
+    fd = os.open(lock_path, os.O_RDWR | os.O_CLOEXEC)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    finally:
+        fcntl.flock(fd, fcntl.LOCK_UN)
+        os.close(fd)
+
+
+def test_shared_fabric_lock_blocks_concurrent_ocr_target_entry(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import runner_mcp.bewind_ocr_qualification_execution as module
+
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    target_path, _target = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+    )
+    monkeypatch.setattr(module, "_SHARED_LOCK_ATTEMPTS", 1)
+    monkeypatch.setattr(module, "_SHARED_LOCK_DELAY_SECONDS", 0.0)
+
+    lock_path = target_path.parent / module._SHARED_LOCK_FILENAME
+    held_fd = os.open(
+        lock_path,
+        os.O_CREAT | os.O_RDWR | os.O_CLOEXEC,
+        0o600,
+    )
+    try:
+        fcntl.flock(held_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        with pytest.raises(
+            BewindOcrQualificationExecutionError,
+            match="target_busy",
+        ):
+            runner._acquire_target_lock()
+    finally:
+        fcntl.flock(held_fd, fcntl.LOCK_UN)
+        os.close(held_fd)
+
+    acquired_fd = runner._acquire_target_lock()
+    runner._release_target_lock(acquired_fd)
+
+
+def test_shared_fabric_lock_rejects_unsafe_metadata(tmp_path: Path) -> None:
+    import runner_mcp.bewind_ocr_qualification_execution as module
+
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    target_path, _target = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+    )
+
+    lock_path = target_path.parent / module._SHARED_LOCK_FILENAME
+    lock_path.write_text("", encoding="utf-8")
+    lock_path.chmod(0o644)
+
+    with pytest.raises(
+        BewindOcrQualificationExecutionError,
+        match="target_lock_unavailable",
+    ):
+        runner._acquire_target_lock()

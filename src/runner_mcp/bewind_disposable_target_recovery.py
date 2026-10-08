@@ -48,6 +48,8 @@ class BewindDisposableTargetRecovery:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
         self._require_fixed_binding()
 
+        initial_project, initial_instance, initial_network = self._state()
+
         for attempt in range(_RETRIES):
             project_present, instance_present, network_present = self._state()
 
@@ -91,6 +93,9 @@ class BewindDisposableTargetRecovery:
                     "instanceAbsent": True,
                     "projectAbsent": True,
                     "networkAbsent": True,
+                    "staleInstancePresent": initial_instance,
+                    "staleProjectPresent": initial_project,
+                    "staleNetworkPresent": initial_network,
                     "normalActivationEnabled": False,
                 }
             if attempt + 1 < _RETRIES:

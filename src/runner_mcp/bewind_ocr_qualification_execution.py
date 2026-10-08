@@ -21,6 +21,7 @@ from .bewind_ocr_qualification_staging import (
 )
 from .fabric_disposable_target import FabricDisposableTargetQualificationRunner
 from .operational_safety import ActionClass, OperatorSafetyGuard
+from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
 _WORKER_ID = "aifordable-lab"
 _CAPABILITY = "bewind-ocr-qualification-v1"
@@ -28,6 +29,7 @@ _GENERATION = 1
 _LANGUAGES = "nld+fra+deu"
 _PIPELINE = "pre1997-ocrmypdf-sidecar-0.2.0"
 _SOURCE_ID = "2026/02/03_1.pdf"
+_SOURCE_SHA256 = "80a0fc4a561f26527aa7fb6dcc89209310f5af73a96e4e030f213faf76defa46"
 _REQUIRED_TERMS = (
     "Friedensgericht",
     "Bestellung eines Betreuers",
@@ -46,6 +48,8 @@ _GUEST_SIDECAR = "/tmp/bewind-qualification-sidecar.txt"
 _SHARED_LOCK_FILENAME = ".runner-fabric-disposable-qualification.lock"
 _SHARED_LOCK_ATTEMPTS = 180
 _SHARED_LOCK_DELAY_SECONDS = 1.0
+_RESULT_RECEIPT_FILENAME = "result-receipt.json"
+_MAX_RESULT_RECEIPT_BYTES = 256 * 1024
 
 
 class BewindOcrQualificationExecutionError(RuntimeError):
@@ -88,6 +92,9 @@ class BewindOcrQualificationRunner:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
         try:
             execution = self._execution_config()
+            completed = self._load_completed_result(execution)
+            if completed is not None:
+                return completed
             self._require_fabric_revision(execution["fabric_revision"])
             self._require_worker_readiness()
 
@@ -152,6 +159,9 @@ class BewindOcrQualificationRunner:
                     "target-lock-unavailable"
                 ),
                 "bewind_ocr_qualification_target_busy": "target-busy",
+                "bewind_ocr_qualification_result_receipt_invalid": (
+                    "result-receipt-invalid"
+                ),
             }
             return {
                 "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
@@ -298,7 +308,7 @@ class BewindOcrQualificationRunner:
                 "normalActivationEnabled": False,
             }
 
-        return {
+        result = {
             "schemaVersion": _RESULT_SCHEMA,
             "state": "qualified",
             "workerId": _WORKER_ID,
@@ -327,6 +337,192 @@ class BewindOcrQualificationRunner:
             },
             "normalActivationEnabled": False,
         }
+
+
+        try:
+            self._persist_completed_result(result)
+        except BewindOcrQualificationExecutionError:
+            return {
+                "schemaVersion": _RESULT_SCHEMA,
+                "state": "failed",
+                "workerId": _WORKER_ID,
+                "capabilityProfile": _CAPABILITY,
+                "generation": _GENERATION,
+                "bewindRevision": execution["bewind_revision"],
+                "fabricRevision": execution["fabric_revision"],
+                "pipeline": _PIPELINE,
+                "languages": _LANGUAGES,
+                "sourceId": _SOURCE_ID,
+                "sourceSha256": staged.source_sha256,
+                "failureCategory": "result-receipt-failed",
+                "cleanupReceipt": {
+                    "targetDestroyed": True,
+                    "stagedInputRemoved": True,
+                },
+                "normalActivationEnabled": False,
+            }
+        return result
+
+    def _result_receipt_path(self) -> Path:
+        return (
+            self.config_dir
+            / "bewind-ocr-qualification"
+            / _RESULT_RECEIPT_FILENAME
+        )
+
+    def _load_completed_result(
+        self,
+        execution: Mapping[str, str],
+    ) -> dict[str, Any] | None:
+        path = self._result_receipt_path()
+        try:
+            metadata = path.lstat()
+        except FileNotFoundError:
+            return None
+        except OSError as exc:
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            ) from exc
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or path.is_symlink()
+            or metadata.st_uid != os.getuid()
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+            or not 2 <= metadata.st_size <= _MAX_RESULT_RECEIPT_BYTES
+        ):
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            )
+        try:
+            payload = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeError, json.JSONDecodeError) as exc:
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            ) from exc
+        if not isinstance(payload, dict):
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            )
+
+        required = {
+            "schemaVersion",
+            "state",
+            "workerId",
+            "capabilityProfile",
+            "generation",
+            "bewindRevision",
+            "fabricRevision",
+            "pipeline",
+            "languages",
+            "sourceId",
+            "sourceSha256",
+            "pageCount",
+            "pageSha256",
+            "outputSha256",
+            "germanSentinelVerified",
+            "elapsedWallSeconds",
+            "cpuSecondsPerPage",
+            "loadSummary",
+            "failureCategory",
+            "cleanupReceipt",
+            "normalActivationEnabled",
+        }
+        if set(payload) != required:
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            )
+
+        if (
+            payload["fabricRevision"] != execution["fabric_revision"]
+            or payload["bewindRevision"] != execution["bewind_revision"]
+        ):
+            return None
+
+        page_count = payload["pageCount"]
+        page_hashes = payload["pageSha256"]
+        elapsed = payload["elapsedWallSeconds"]
+        cpu_per_page = payload["cpuSecondsPerPage"]
+        cleanup = payload["cleanupReceipt"]
+        if (
+            payload["schemaVersion"] != _RESULT_SCHEMA
+            or payload["state"] != "qualified"
+            or payload["workerId"] != _WORKER_ID
+            or payload["capabilityProfile"] != _CAPABILITY
+            or payload["generation"] != _GENERATION
+            or payload["pipeline"] != _PIPELINE
+            or payload["languages"] != _LANGUAGES
+            or payload["sourceId"] != _SOURCE_ID
+            or payload["sourceSha256"] != _SOURCE_SHA256
+            or isinstance(page_count, bool)
+            or not isinstance(page_count, int)
+            or not 1 <= page_count <= _MAX_PAGES
+            or not isinstance(page_hashes, list)
+            or len(page_hashes) != page_count
+            or any(
+                not isinstance(item, str)
+                or _SHA256_RE.fullmatch(item) is None
+                for item in page_hashes
+            )
+            or not isinstance(payload["outputSha256"], str)
+            or _SHA256_RE.fullmatch(payload["outputSha256"]) is None
+            or payload["germanSentinelVerified"] is not True
+            or isinstance(elapsed, bool)
+            or not isinstance(elapsed, (int, float))
+            or elapsed < 0
+            or isinstance(cpu_per_page, bool)
+            or not isinstance(cpu_per_page, (int, float))
+            or cpu_per_page < 0
+            or not isinstance(payload["loadSummary"], dict)
+            or payload["failureCategory"] is not None
+            or cleanup
+            != {
+                "targetDestroyed": True,
+                "stagedInputRemoved": True,
+            }
+            or payload["normalActivationEnabled"] is not False
+        ):
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            )
+        return payload
+
+    def _persist_completed_result(self, result: Mapping[str, Any]) -> None:
+        path = self._result_receipt_path()
+        try:
+            encoded = (
+                json.dumps(
+                    dict(result),
+                    sort_keys=True,
+                    separators=(",", ":"),
+                    ensure_ascii=True,
+                    allow_nan=False,
+                )
+                + "\n"
+            ).encode("utf-8")
+        except (TypeError, ValueError) as exc:
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            ) from exc
+        if not 2 <= len(encoded) <= _MAX_RESULT_RECEIPT_BYTES:
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            )
+        try:
+            atomic_replace_private(path, encoded)
+            metadata = path.lstat()
+        except (OSError, PrivateAtomicWriteError) as exc:
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            ) from exc
+        if (
+            not stat.S_ISREG(metadata.st_mode)
+            or path.is_symlink()
+            or metadata.st_uid != os.getuid()
+            or stat.S_IMODE(metadata.st_mode) != 0o600
+        ):
+            raise BewindOcrQualificationExecutionError(
+                "bewind_ocr_qualification_result_receipt_invalid"
+            )
 
     def _acquire_target_lock(self) -> int:
         raw_path = self.environment.get(_TARGET_ENV)

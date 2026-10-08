@@ -30,6 +30,10 @@ from .bewind_disposable_bootstrap import (
     BewindDisposableBootstrapError,
     BewindDisposableBootstrapRestorer,
 )
+from .bewind_ocr_qualification_staging import (
+    BewindOcrQualificationStager,
+    BewindOcrQualificationStagingError,
+)
 from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
     BewindWorkerQualificationPolicyError,
@@ -586,6 +590,11 @@ def build_mcp(
         environment=worker_qualification_environment,
         config_dir=settings.projects_config.parent,
     )
+    bewind_ocr_qualification_stager = BewindOcrQualificationStager(
+        safety=safety,
+        environment=worker_qualification_environment,
+        config_dir=settings.projects_config.parent,
+    )
     bewind_worker_policy_configurator = BewindWorkerQualificationPolicyConfigurator(
         safety=safety,
         environment=worker_qualification_environment,
@@ -1038,6 +1047,41 @@ def build_mcp(
                 current_request_id(),
                 "fabric_worker_qualification_provision",
                 "runner-fabric:worker-qualification",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def bewind_ocr_qualification_stage() -> dict:
+        """Stage the one fixed content-addressed Bewind OCR qualification source."""
+        try:
+            result = bewind_ocr_qualification_stager.stage()
+        except (
+            BewindOcrQualificationStagingError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "bewind_ocr_qualification_stage",
+                    "bewind:ocr-qualification-source",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Bewind OCR qualification source staging is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "bewind_ocr_qualification_stage",
+                "bewind:ocr-qualification-source",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
                 utc_timestamp(),

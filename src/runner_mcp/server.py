@@ -47,6 +47,10 @@ from .bewind_ocr_qualification_staging import (
     BewindOcrQualificationStager,
     BewindOcrQualificationStagingError,
 )
+from .bewind_ocr_runtime_image import (
+    BewindOcrRuntimeImagePrepareError,
+    BewindOcrRuntimeImagePreparer,
+)
 from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
     BewindWorkerQualificationPolicyError,
@@ -606,6 +610,9 @@ def build_mcp(
     artifact_custody = ContentAddressedArtifactCustody(
         config_dir=settings.projects_config.parent,
     )
+    bewind_ocr_runtime_image_preparer = BewindOcrRuntimeImagePreparer(
+        safety=safety,
+    )
     bewind_ocr_qualification_source_provisioner = (
         BewindOcrQualificationSourceProvisioner(
             safety=safety,
@@ -1094,6 +1101,41 @@ def build_mcp(
                 current_request_id(),
                 "fabric_worker_qualification_provision",
                 "runner-fabric:worker-qualification",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def bewind_ocr_runtime_image_prepare() -> dict:
+        """Prepare the one trusted pre-baked Bewind OCR runtime image."""
+        try:
+            result = bewind_ocr_runtime_image_preparer.prepare()
+        except (
+            BewindOcrRuntimeImagePrepareError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "bewind_ocr_runtime_image_prepare",
+                    "bewind:ocr-runtime-image",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Bewind OCR runtime image preparation is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "bewind_ocr_runtime_image_prepare",
+                "bewind:ocr-runtime-image",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
                 utc_timestamp(),
@@ -2068,8 +2110,15 @@ def build_mcp(
     def bewind_disposable_bootstrap_restore() -> dict:
         """Restore the fixed aifordable-lab Bewind disposable bootstrap."""
         try:
+            image = bewind_ocr_runtime_image_preparer.prepare()
             result = bewind_disposable_bootstrap_restorer.restore()
+            result = dict(result)
+            result["ocrRuntimeImageReady"] = (
+                image.get("builderClean") is True
+                and image.get("normalActivationEnabled") is False
+            )
         except (
+            BewindOcrRuntimeImagePrepareError,
             BewindDisposableBootstrapError,
             OperatorStopActive,
             SafetyConfigurationError,
@@ -2090,9 +2139,11 @@ def build_mcp(
     def fabric_worker_qualification_policy_configure() -> dict:
         """Refresh the fixed Bewind bootstrap and configure its worker policy."""
         try:
+            bewind_ocr_runtime_image_preparer.prepare()
             bewind_disposable_bootstrap_restorer.restore()
             result = bewind_worker_policy_configurator.configure()
         except (
+            BewindOcrRuntimeImagePrepareError,
             BewindDisposableBootstrapError,
             BewindWorkerQualificationPolicyError,
             OperatorStopActive,

@@ -137,6 +137,7 @@ from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
 from .tunnel_topology_refresh import (
     TunnelTopologyRefreshError,
+    bounded_tunnel_topology_refresh_reason,
     refresh_tunnel_topology_attestation,
 )
 
@@ -1781,16 +1782,23 @@ def build_mcp(
                 settings.projects_config.parent
             )
         except TunnelTopologyRefreshError as exc:
+            reason = bounded_tunnel_topology_refresh_reason(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "tunnel_topology_refresh",
                     None,
                     "authenticated-client",
-                    "denied",
+                    "blocked" if reason is not None else "denied",
                     utc_timestamp(),
                 )
             )
+            if reason is not None:
+                return {
+                    "state": "blocked",
+                    "reason": reason,
+                    "qualified": False,
+                }
             raise ValueError("Tunnel topology refresh is unavailable") from exc
         audit.append(
             AuditEvent(

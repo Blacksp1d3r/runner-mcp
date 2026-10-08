@@ -17,10 +17,28 @@ _INSTANCE_RE = re.compile(r"^[0-9a-f]{32}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
 _REVISION_RE = re.compile(r"^[a-z0-9][a-z0-9._:-]{0,63}$")
 _TUNNEL_ID_RE = re.compile(r"^tunnel_[0-9a-f]{32}$")
+_BOUNDED_REFRESH_REASONS = {
+    "AIfordable topology authority configuration is unavailable": "authority_configuration_unavailable",
+    "tunnel runtime identity is unavailable": "runtime_identity_unavailable",
+    "AIfordable topology authority rejected the refresh": "authority_rejected",
+    "AIfordable topology authority is unavailable": "authority_unavailable",
+    "AIfordable topology authority returned invalid evidence": "authority_invalid_evidence",
+    "AIfordable topology authority returned stale evidence": "authority_stale_evidence",
+    "topology evidence exceeds supported bounds": "evidence_oversized",
+    "topology evidence could not be persisted": "evidence_persist_failed",
+    "tunnel binding is unavailable": "tunnel_binding_unavailable",
+    "topology timestamp is invalid": "timestamp_invalid",
+}
 
 
 class TunnelTopologyRefreshError(RuntimeError):
     """Safe refresh failure without endpoint, credential or binding detail."""
+
+
+def bounded_tunnel_topology_refresh_reason(
+    error: TunnelTopologyRefreshError,
+) -> str | None:
+    return _BOUNDED_REFRESH_REASONS.get(str(error))
 
 
 def refresh_tunnel_topology_attestation(

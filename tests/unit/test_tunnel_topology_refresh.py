@@ -11,6 +11,7 @@ import pytest
 
 from runner_mcp.tunnel_topology_refresh import (
     TunnelTopologyRefreshError,
+    bounded_tunnel_topology_refresh_reason,
     refresh_tunnel_topology_attestation,
 )
 
@@ -239,3 +240,52 @@ def test_authority_http_error_is_secret_free(
     assert BINDING not in rendered
     assert TUNNEL_ID not in rendered
     assert "control.example.invalid" not in rendered
+
+
+@pytest.mark.parametrize(
+    ("message", "reason"),
+    [
+        (
+            "AIfordable topology authority configuration is unavailable",
+            "authority_configuration_unavailable",
+        ),
+        ("tunnel runtime identity is unavailable", "runtime_identity_unavailable"),
+        (
+            "AIfordable topology authority rejected the refresh",
+            "authority_rejected",
+        ),
+        (
+            "AIfordable topology authority is unavailable",
+            "authority_unavailable",
+        ),
+        (
+            "AIfordable topology authority returned invalid evidence",
+            "authority_invalid_evidence",
+        ),
+        (
+            "AIfordable topology authority returned stale evidence",
+            "authority_stale_evidence",
+        ),
+        ("topology evidence exceeds supported bounds", "evidence_oversized"),
+        ("topology evidence could not be persisted", "evidence_persist_failed"),
+        ("tunnel binding is unavailable", "tunnel_binding_unavailable"),
+        ("topology timestamp is invalid", "timestamp_invalid"),
+    ],
+)
+def test_bounded_refresh_reason_maps_only_known_safe_messages(
+    message: str,
+    reason: str,
+) -> None:
+    assert (
+        bounded_tunnel_topology_refresh_reason(
+            TunnelTopologyRefreshError(message)
+        )
+        == reason
+    )
+
+    assert (
+        bounded_tunnel_topology_refresh_reason(
+            TunnelTopologyRefreshError("private failure")
+        )
+        is None
+    )

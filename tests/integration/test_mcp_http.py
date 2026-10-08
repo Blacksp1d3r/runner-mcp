@@ -391,6 +391,58 @@ def test_topology_refresh_tool_is_zero_arg_and_secret_free(
         assert "/tmp/private" not in rejected.text
 
 
+def test_topology_refresh_known_failure_returns_bounded_reason(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from runner_mcp.tunnel_topology_refresh import TunnelTopologyRefreshError
+
+    monkeypatch.setattr(
+        "runner_mcp.server.refresh_tunnel_topology_attestation",
+        lambda _config_dir: (_ for _ in ()).throw(
+            TunnelTopologyRefreshError(
+                "AIfordable topology authority is unavailable"
+            )
+        ),
+    )
+    app = build_test_app(tmp_path)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 83,
+                "method": "tools/call",
+                "params": {
+                    "name": "tunnel_topology_refresh",
+                    "arguments": {},
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert parse_tool_json(response) == {
+        "state": "blocked",
+        "reason": "authority_unavailable",
+        "qualified": False,
+    }
+    assert str(tmp_path) not in response.text
+
+
 def test_topology_refresh_failure_is_sanitized(
     tmp_path: Path,
     monkeypatch,

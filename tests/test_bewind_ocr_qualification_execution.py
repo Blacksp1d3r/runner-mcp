@@ -193,6 +193,94 @@ def test_readiness_requires_exact_generation(tmp_path: Path) -> None:
 
 
 
+def test_run_returns_bounded_target_preflight_reason(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    target_path, _ = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+    )
+    monkeypatch.setattr(runner, "_require_fabric_revision", lambda _revision: None)
+    monkeypatch.setattr(runner, "_require_worker_readiness", lambda: None)
+
+    def expired_target():
+        raise BewindOcrQualificationExecutionError(
+            "bewind_ocr_qualification_target_expired"
+        )
+
+    monkeypatch.setattr(runner, "_target_config", expired_target)
+
+    result = runner.run()
+
+    assert result == {
+        "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
+        "state": "blocked",
+        "reasonCode": "target-expired",
+        "normalActivationEnabled": False,
+    }
+
+
+def test_run_returns_bounded_staging_preflight_reason(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FailingStager:
+        def require_staged(self):
+            raise BewindOcrQualificationStagingError(
+                "qualification staging state is unavailable"
+            )
+
+    target_path, _ = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FailingStager(),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+    )
+    monkeypatch.setattr(runner, "_require_fabric_revision", lambda _revision: None)
+    monkeypatch.setattr(runner, "_require_worker_readiness", lambda: None)
+
+    result = runner.run()
+
+    assert result == {
+        "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
+        "state": "blocked",
+        "reasonCode": "staging-state-unavailable",
+        "normalActivationEnabled": False,
+    }
+
+
 def test_guest_source_is_verified_after_push(tmp_path: Path) -> None:
     data = b"%PDF exact source"
     source = tmp_path / "source.pdf"

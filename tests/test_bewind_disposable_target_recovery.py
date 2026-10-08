@@ -74,6 +74,9 @@ def test_recovery_is_idempotent_when_target_is_already_absent(
     assert result["instanceAbsent"] is True
     assert result["projectAbsent"] is True
     assert result["networkAbsent"] is True
+    assert result["staleInstancePresent"] is False
+    assert result["staleProjectPresent"] is False
+    assert result["staleNetworkPresent"] is False
     assert result["normalActivationEnabled"] is False
 
 
@@ -151,6 +154,9 @@ def test_recovery_deletes_only_fixed_bound_target(tmp_path: Path) -> None:
     ).recover()
 
     assert result["state"] == "clean"
+    assert result["staleInstancePresent"] is True
+    assert result["staleProjectPresent"] is True
+    assert result["staleNetworkPresent"] is True
     assert any("rf-bewind-ocr" in args for args in calls)
     assert any("rf-bewind-qualification" in args for args in calls)
     assert any("rf-bewind-net" in args for args in calls)

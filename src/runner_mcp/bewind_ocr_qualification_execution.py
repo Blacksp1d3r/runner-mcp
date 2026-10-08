@@ -136,7 +136,7 @@ class BewindOcrQualificationRunner:
         finally:
             try:
                 target_cleanup = self._cleanup_target(target)
-            except Exception:
+            except _QualificationFailure:
                 target_cleanup = False
             try:
                 self.stager.cleanup()

@@ -444,6 +444,14 @@ def test_bewind_disposable_bootstrap_restore_is_fixed_and_bounded(
         def __init__(self, _config) -> None:
             pass
 
+    class FakeRecovery:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def recover(self):
+            calls.append({"recovery": True})
+            return {"state": "clean"}
+
     class FakeRuntimeImagePreparer:
         def __init__(self, **_kwargs) -> None:
             pass
@@ -477,6 +485,10 @@ def test_bewind_disposable_bootstrap_restore_is_fixed_and_bounded(
     monkeypatch.setattr(
         "runner_mcp.server.FabricBridgeClient",
         FakeFabricBridge,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindDisposableTargetRecovery",
+        FakeRecovery,
     )
     monkeypatch.setattr(
         "runner_mcp.server.BewindOcrRuntimeImagePreparer",
@@ -551,7 +563,8 @@ def test_bewind_disposable_bootstrap_restore_is_fixed_and_bounded(
     assert payload["workerId"] == "aifordable-lab"
     assert payload["normalActivationEnabled"] is False
     assert payload["ocrRuntimeImageReady"] is True
-    assert len(calls) == 3
+    assert payload["staleTargetRecovered"] is True
+    assert len(calls) == 4
     assert "f" * 32 not in restored.text
     audit = (tmp_path / "audit-bewind-bootstrap.jsonl").read_text(encoding="utf-8")
     assert "bewind_disposable_bootstrap_restore" in audit
@@ -568,6 +581,14 @@ def test_worker_policy_configure_refreshes_bootstrap_first(
     class FakeFabricBridge:
         def __init__(self, _config) -> None:
             pass
+
+    class FakeRecovery:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def recover(self):
+            calls.append("recovery")
+            return {"state": "clean"}
 
     class FakeRuntimeImagePreparer:
         def __init__(self, **_kwargs) -> None:
@@ -620,6 +641,10 @@ def test_worker_policy_configure_refreshes_bootstrap_first(
     monkeypatch.setattr(
         "runner_mcp.server.FabricBridgeClient",
         FakeFabricBridge,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindDisposableTargetRecovery",
+        FakeRecovery,
     )
     monkeypatch.setattr(
         "runner_mcp.server.BewindOcrRuntimeImagePreparer",
@@ -687,7 +712,7 @@ def test_worker_policy_configure_refreshes_bootstrap_first(
         )
         payload = _tool_json(configured)
 
-    assert calls == ["image", "restore", "configure"]
+    assert calls == ["recovery", "image", "restore", "configure"]
     assert payload["state"] == "configured"
     assert payload["sourceTargetReady"] is True
     assert payload["normalActivationEnabled"] is False

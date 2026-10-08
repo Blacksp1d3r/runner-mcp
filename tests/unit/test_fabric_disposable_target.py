@@ -156,8 +156,14 @@ def test_private_or_unqualified_output_fails_closed(
         "guest-agent-not-ready",
         "destroy-instance-delete-nonzero",
         "destroy-inspection-instance-after-delete",
+        "destroy-inspection-instance-before-delete-timeout",
+        "destroy-inspection-project-final-nonzero",
+        "destroy-inspection-network-final-invalid-json",
+        "destroy-inspection-version-invalid-shape",
         "final-destroy-network-persisted",
         "final-destroy-inspection-project-final",
+        "final-destroy-inspection-instance-final-timeout",
+        "final-destroy-inspection-network-initial-invalid-shape",
         "isolation-management-authority",
         "isolation-default-route",
         "isolation-network-policy",
@@ -216,6 +222,47 @@ def test_unlisted_destroy_reason_is_rejected(tmp_path: Path) -> None:
             stderr=(
                 "Runner Fabric disposable target qualification: "
                 "INVALID:destroy-arbitrary-provider-detail\n"
+            ),
+        )
+
+    runner = FabricDisposableTargetQualificationRunner(
+        safety=safety(tmp_path),
+        environment={qualification_config_environment_key(): str(config)},
+        home=home,
+        runner=fake_run,
+    )
+
+    with pytest.raises(
+        FabricDisposableTargetQualificationError,
+        match="qualification_failed",
+    ):
+        runner.run()
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "destroy-inspection-instance-before-delete-busy",
+        "destroy-inspection-caller-selected-timeout",
+        "final-destroy-inspection-instance-before-delete-private",
+    ],
+)
+def test_unlisted_inspection_phase_kind_reason_is_rejected(
+    tmp_path: Path,
+    reason: str,
+) -> None:
+    home = managed_home(tmp_path)
+    config = tmp_path / "qualification.json"
+    config.write_text("{}", encoding="utf-8")
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            2,
+            stdout="",
+            stderr=(
+                "Runner Fabric disposable target qualification: "
+                f"INVALID:{reason}\n"
             ),
         )
 

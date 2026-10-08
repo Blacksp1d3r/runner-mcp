@@ -1474,3 +1474,77 @@ def test_local_recovery_qualification_interrupts_after_install_and_recovers(
     assert manager.runtime_status()["install_recovery_pending"] is False
     assert manager.runtime_status()["last_installed_commit"] == baseline
     assert manager.status(result["job_id"])["state"] == "interrupted"
+
+
+def test_runtime_status_exposes_source_baseline_alignment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    installed = "a" * 40
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["last_installed_commit"] == installed
+    assert status["source_commit"] == installed
+    assert status["source_baseline_aligned"] is True
+    assert status["self_update_ready"] is True
+
+
+def test_source_baseline_drift_blocks_before_job_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    installed = "a" * 40
+    source = "b" * 40
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": source, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["last_installed_commit"] == installed
+    assert status["source_commit"] == source
+    assert status["source_baseline_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="source baseline drift detected"):
+        manager.start("c" * 40)
+
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_source_baseline_unavailable_blocks_before_job_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    installed = "a" * 40
+    manager._record_installed_commit(installed)
+
+    def unavailable(_root: Path):
+        from runner_mcp.source_control import SourceControlError
+
+        raise SourceControlError("private source detail")
+
+    monkeypatch.setattr("runner_mcp.self_update.clean_head", unavailable)
+
+    status = manager.runtime_status()
+
+    assert status["source_commit"] is None
+    assert status["source_baseline_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="source baseline is unavailable") as captured:
+        manager.start("c" * 40)
+
+    assert "private source detail" not in str(captured.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None

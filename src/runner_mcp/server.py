@@ -743,6 +743,43 @@ def build_mcp(
         )
 
         try:
+            self_update_status = self_update_manager.runtime_status()
+        except SelfUpdateError:
+            add(
+                "self_update_source_baseline",
+                "warn",
+                "unavailable",
+            )
+        else:
+            installed_commit = self_update_status.get("last_installed_commit")
+            source_commit = self_update_status.get("source_commit")
+            aligned = self_update_status.get("source_baseline_aligned")
+            if aligned is True:
+                add(
+                    "self_update_source_baseline",
+                    "pass",
+                    "aligned",
+                )
+            elif installed_commit is None:
+                add(
+                    "self_update_source_baseline",
+                    "warn",
+                    "not_recorded",
+                )
+            elif source_commit is None:
+                add(
+                    "self_update_source_baseline",
+                    "fail",
+                    "source_unavailable",
+                )
+            else:
+                add(
+                    "self_update_source_baseline",
+                    "fail",
+                    "source_baseline_drift",
+                )
+
+        try:
             actions_readiness = fabric_update_manager.actions_readiness()
         except FabricUpdateError:
             add(

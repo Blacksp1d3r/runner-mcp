@@ -53,7 +53,7 @@ def safety(tmp_path: Path) -> OperatorSafetyGuard:
 
 def config_dir(tmp_path: Path) -> Path:
     value = tmp_path / "config"
-    value.mkdir(mode=0o700)
+    value.mkdir(mode=0o700, parents=True)
     value.chmod(0o700)
     return value
 

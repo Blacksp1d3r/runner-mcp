@@ -2127,6 +2127,15 @@ def build_mcp(
                 and image.get("normalActivationEnabled") is False
             )
             result["staleTargetRecovered"] = recovery.get("state") == "clean"
+            result["staleInstancePresent"] = (
+                recovery.get("staleInstancePresent") is True
+            )
+            result["staleProjectPresent"] = (
+                recovery.get("staleProjectPresent") is True
+            )
+            result["staleNetworkPresent"] = (
+                recovery.get("staleNetworkPresent") is True
+            )
         except (
             BewindDisposableTargetRecoveryError,
             BewindOcrRuntimeImagePrepareError,

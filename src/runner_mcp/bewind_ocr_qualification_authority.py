@@ -16,7 +16,7 @@ from .operational_safety import ActionClass, OperatorSafetyGuard
 _WORKER_ID = "aifordable-lab"
 _CAPABILITY = "bewind-ocr-qualification-v1"
 _GENERATION = 1
-_FABRIC_REVISION = "3bd24f96844341e418618ea44adcbd625cc7bb60"
+_FABRIC_REVISION = "8595159bb3136e6a0c1b400425161c7301e56164"
 _BEWIND_REVISION = "cf16b9e7481bdb56b8c308ff29c6f305cd1a0a48"
 _EXECUTION_ENV = "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON"
 _SCHEMA = "runner-mcp/bewind-ocr-qualification-execution/v1"

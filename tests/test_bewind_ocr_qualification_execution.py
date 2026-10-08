@@ -196,6 +196,58 @@ def test_readiness_requires_exact_generation(tmp_path: Path) -> None:
 
 
 
+def test_run_exposes_bounded_internal_disposable_reason(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class InvalidQualifier:
+        def run(self):
+            return {
+                "schemaVersion": (
+                    "runner-mcp/disposable-target-qualification-status/v1"
+                ),
+                "state": "invalid",
+                "reasonCode": "clean-start",
+                "qualificationPassed": False,
+                "normalActivationEnabled": False,
+            }
+
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    target_path, _ = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=InvalidQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+    )
+    monkeypatch.setattr(runner, "_require_fabric_revision", lambda _revision: None)
+    monkeypatch.setattr(runner, "_require_worker_readiness", lambda: None)
+
+    result = runner.run()
+
+    assert result == {
+        "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
+        "state": "blocked",
+        "reasonCode": "disposable-preflight-failed",
+        "disposableReasonCode": "clean-start",
+        "normalActivationEnabled": False,
+    }
+
+
 def test_run_returns_bounded_target_preflight_reason(
     tmp_path: Path,
     monkeypatch,

@@ -8,7 +8,6 @@ import socket
 import subprocess
 import time
 from collections.abc import Callable
-from pathlib import Path
 from typing import Any
 
 from .operational_safety import ActionClass, OperatorSafetyGuard
@@ -140,8 +139,6 @@ class BewindOcrRuntimeImagePreparer:
                     ("image", "set-property", _TARGET_ALIAS, key, value),
                     category="image-metadata-failed",
                 )
-        except BewindOcrRuntimeImagePrepareError:
-            raise
         finally:
             if self._instance_exists(_BUILDER):
                 result = self._incus(

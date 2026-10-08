@@ -1,0 +1,34 @@
+schemaVersion: runner-mcp/diagnostic-component-registry/v1
+cross_project_standard: "Blacksp1d3r/AIfordable#485"
+status: active
+field_lineage: FIELD_LINEAGE.md
+implementation_map: IMPLEMENTATION_MAP.md
+test_evidence_map: TEST_EVIDENCE_MAP.md
+failure_index: FAILURE_INDEX.md
+components:
+  - id: 01-runtime-self-update
+    downstream: [10-service-lifecycle, 12-diagnostics-audit]
+  - id: 02-project-source
+    downstream: [01-runtime-self-update, 03-test-execution, 07-deploy-migrate-backup, 13-artifact-mirror-custody]
+  - id: 03-test-execution
+    downstream: [01-runtime-self-update, 12-diagnostics-audit]
+  - id: 04-mailbox-watchers
+    downstream: [05-fabric-bridge, 12-diagnostics-audit]
+  - id: 05-fabric-bridge
+    downstream: [06-qualification-bootstrap, 09-ci-runner, 12-diagnostics-audit]
+  - id: 06-qualification-bootstrap
+    downstream: [05-fabric-bridge, 13-artifact-mirror-custody]
+  - id: 07-deploy-migrate-backup
+    downstream: [12-diagnostics-audit]
+  - id: 08-safety-approval-retention
+    downstream: [01-runtime-self-update, 03-test-execution, 07-deploy-migrate-backup, 09-ci-runner, 10-service-lifecycle]
+  - id: 09-ci-runner
+    downstream: [05-fabric-bridge, 12-diagnostics-audit]
+  - id: 10-service-lifecycle
+    downstream: [11-tunnel-connectivity, 12-diagnostics-audit]
+  - id: 11-tunnel-connectivity
+    downstream: [04-mailbox-watchers, 05-fabric-bridge, 12-diagnostics-audit]
+  - id: 12-diagnostics-audit
+    downstream: []
+  - id: 13-artifact-mirror-custody
+    downstream: [01-runtime-self-update, 06-qualification-bootstrap, 07-deploy-migrate-backup]

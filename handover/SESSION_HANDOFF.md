@@ -1,3 +1,15 @@
+## 2026-10-08 — Diagnostic-topology handoff
+
+Runner-MCP #569 is a docs-only cross-project diagnostic rollout. Use `docs/diagnostics/README.md` + `component_registry.yml` for troubleshooting after this change lands. The structure deliberately does not alter or claim completion of active Fleet A6, Bewind OCR, update, qualification or runtime work.
+
+The four migrated reusable failure classes are:
+- RMCP-F-0001: local queue idle does not prove end-to-end idle;
+- RMCP-F-0002: healthy Fabric agent process does not prove peer tools/private qualification binding;
+- RMCP-F-0003: source authorization/reachability is independent of runtime health;
+- RMCP-F-0004: live server capability does not imply an already-open client refreshed its tool catalogue.
+
+Future fixes should register the earliest failing lineage edge and link the regression test rather than adding another ad-hoc handover-only explanation.
+
 ## 2026-10-08 — Bewind OCR qualification staging + execution live; client schema refresh next
 
 Runner-MCP #529 / PR #532 merged as `7f53f92a721dbc6ab9493030bb264e0bab50a277`: fixed zero-argument content-addressed staging for the canonical Bewind German OCR sentinel. Runner-MCP #528 / PR #533 merged as `b6a50eedad8b7448f73e3d13dc9c8be08c1a0668`: fixed zero-argument one-shot Bewind OCR qualification execution using the canonical `pre1997-ocrmypdf-sidecar-0.2.0` contract with exact `nld+fra+deu`, bounded hash/timing/load/failure evidence, final disposable-target destruction and staged-input cleanup. Both keep normal activation false and do not touch active Bewind v3.

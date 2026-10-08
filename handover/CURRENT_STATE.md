@@ -1,3 +1,11 @@
+## 2026-10-08 — Diagnostic topology adoption in review
+
+Tracking: #569.
+
+A documentation-only diagnostic architecture is being added under `docs/diagnostics/` following the merged AIfordable cross-project standard. It maps 14 Runner-MCP components, their sources, state lineage, physical store classes, public tool/result lineage, tests and reusable failures. It does not change runtime behavior, MCP schemas, private configuration, services or the active Fleet/Bewind work.
+
+Reusable failures already indexed include local-idle versus end-to-end-busy, source authorization independent of runtime health, healthy Fabric process versus missing peer capability, and stale client tool-catalogue state.
+
 ## 2026-10-08 — Bewind OCR source custody + scalable artifact cache merged; client refresh remains
 
 Runner-MCP #541 / PR #542 merged as `9b0560d3b07bbd7cca548ce72d790ea5fe3f50bd`: workload-neutral private content-addressed worker artifact custody keyed by exact SHA-256 + size, with owner-only atomic storage, cache hit/miss semantics and fail-closed re-verification. No generic MCP/file-transfer/path/URL authority was added.

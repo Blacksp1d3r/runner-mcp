@@ -93,6 +93,14 @@ Before material work, every ChatGPT/Claude/other-agent session must read and rec
 
 GitHub current state wins if a handoff file is stale. Reconcile first; do not continue from stale assumptions.
 
+## Diagnostic topology — mandatory troubleshooting rule
+
+For non-trivial troubleshooting, regression analysis, new bounded components or changes to source/state/evidence flow, read `docs/diagnostics/README.md` and resolve the owning component in `docs/diagnostics/component_registry.yml` before changing behavior.
+
+Then inspect that component's `ROADMAP.md`, `SOURCES.md`, `DATA_LINEAGE.md` and `FAILURES.md`, plus `FIELD_LINEAGE.md` for public tool/result fields. Diagnose from the visible symptom upstream to the earliest proven expected/observed divergence. Do not patch a downstream status/result merely because it is where the error became visible.
+
+The diagnostic structure must remain public-safe: no real hostnames, ports, paths, usernames, service names, endpoints, credential values or customer payloads. Infrastructure/credential facts reference the canonical AIfordable/Runner-Fabric authorities instead of being copied here. Existing `.github/ISSUE_TEMPLATE/failure-record.md` and `docs/SAFE_DIAGNOSTICS.md` remain canonical detailed failure/runtime-diagnostic contracts.
+
 Project-wide agent reviews, blockers, assignments and handoffs belong in `handover/AGENT_EXCHANGE.md`; code-specific review comments stay on the PR. Newest exchange entries go first and must not contain secrets, customer data or full test logs.
 
 Feature/code work remains branch -> PR -> review/tests. Handoff/coordination files may be updated on the agreed documentation/coordination surface without a separate feature PR for every message.

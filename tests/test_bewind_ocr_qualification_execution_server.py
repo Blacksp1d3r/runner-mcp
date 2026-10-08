@@ -74,11 +74,11 @@ def test_bewind_ocr_qualification_run_tool_is_zero_argument_and_bounded(
                 "sourceId": "2026/02/03_1.pdf",
                 "sourceSha256": "a" * 64,
                 "pageCount": 160,
-                "pageSha256": ["d" * 64],
+                "pageSha256": ["d" * 64 for _ in range(160)],
                 "outputSha256": "e" * 64,
                 "germanSentinelVerified": True,
                 "elapsedWallSeconds": 1.5,
-                "cpuSecondsPerPage": None,
+                "cpuSecondsPerPage": 2.0,
                 "loadSummary": {
                     "start": {"logicalCpus": 8, "load1m": 0.1, "load5m": 0.2, "load15m": 0.3},
                     "end": {"logicalCpus": 8, "load1m": 0.2, "load5m": 0.2, "load15m": 0.3},

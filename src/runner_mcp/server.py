@@ -30,6 +30,10 @@ from .bewind_disposable_bootstrap import (
     BewindDisposableBootstrapError,
     BewindDisposableBootstrapRestorer,
 )
+from .bewind_ocr_qualification_execution import (
+    BewindOcrQualificationExecutionError,
+    BewindOcrQualificationRunner,
+)
 from .bewind_ocr_qualification_staging import (
     BewindOcrQualificationStager,
     BewindOcrQualificationStagingError,
@@ -630,6 +634,23 @@ def build_mcp(
         else None
     )
 
+    def bewind_qualification_readiness() -> Mapping[str, Any]:
+        if fabric_bridge is None:
+            raise FabricBridgeError("Runner Fabric bridge is not configured")
+        return fabric_bridge.worker_qualification_readiness(
+            "aifordable-lab",
+            "bewind-ocr-qualification-v1",
+        )
+
+    bewind_ocr_qualification_runner = BewindOcrQualificationRunner(
+        safety=safety,
+        environment=worker_qualification_environment,
+        config_dir=settings.projects_config.parent,
+        stager=bewind_ocr_qualification_stager,
+        disposable_qualifier=fabric_disposable_target_runner,
+        readiness_provider=bewind_qualification_readiness,
+    )
+
     ci_guest_specs = {
         "aifordable-lab-ci": CIRunnerGuestSpec(
             alias="aifordable-lab-ci",
@@ -1082,6 +1103,41 @@ def build_mcp(
                 current_request_id(),
                 "bewind_ocr_qualification_stage",
                 "bewind:ocr-qualification-source",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def bewind_ocr_qualification_run() -> dict:
+        """Run exactly one fixed Bewind OCR qualification unit."""
+        try:
+            result = bewind_ocr_qualification_runner.run()
+        except (
+            BewindOcrQualificationExecutionError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "bewind_ocr_qualification_run",
+                    "bewind:ocr-qualification",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Bewind OCR qualification execution is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "bewind_ocr_qualification_run",
+                "bewind:ocr-qualification",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
                 utc_timestamp(),

@@ -8,6 +8,7 @@ import stat
 from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
+from urllib.error import URLError
 from urllib.request import Request, urlopen
 
 from .artifact_custody import ArtifactCustodyError, ContentAddressedArtifactCustody
@@ -122,7 +123,7 @@ class BewindOcrQualificationSourceProvisioner:
                 data = response.read(_MAX_DOWNLOAD_BYTES)
         except BewindOcrQualificationSourceProvisionError:
             raise
-        except Exception as exc:
+        except (OSError, URLError, ValueError) as exc:
             raise BewindOcrQualificationSourceProvisionError(
                 "qualification source download unavailable"
             ) from exc

@@ -6,7 +6,10 @@ from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
+import pytest
+
 from runner_mcp.bewind_ocr_qualification_execution import (
+    BewindOcrQualificationExecutionError,
     BewindOcrQualificationRunner,
 )
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
@@ -154,12 +157,11 @@ def test_execution_authority_rejects_wrong_worker(tmp_path: Path) -> None:
         },
     )
 
-    try:
+    with pytest.raises(
+        BewindOcrQualificationExecutionError,
+        match="authority_invalid",
+    ):
         runner._execution_config()
-    except Exception as exc:
-        assert "authority_invalid" in str(exc)
-    else:
-        raise AssertionError("wrong worker authority accepted")
 
 
 def test_readiness_requires_exact_generation(tmp_path: Path) -> None:
@@ -182,9 +184,8 @@ def test_readiness_requires_exact_generation(tmp_path: Path) -> None:
         },
     )
 
-    try:
+    with pytest.raises(
+        BewindOcrQualificationExecutionError,
+        match="readiness_blocked",
+    ):
         runner._require_worker_readiness()
-    except Exception as exc:
-        assert "readiness_blocked" in str(exc)
-    else:
-        raise AssertionError("wrong generation accepted")

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import subprocess
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from types import SimpleNamespace
@@ -117,9 +118,9 @@ def test_output_validation_hashes_pages_and_requires_german_terms(tmp_path: Path
     )
     sidecar = tmp_path / "sidecar.txt"
     sidecar.write_text(
-        "Friedensgericht\n"
-        "Bestellung eines Betreuers\n"
-        "Schutzregelung der Vertretung\f"
+        "FRIEDENSGERICHT\n"
+        "Bestellung   eines\n Betreuers\n"
+        "schutzregelung der vertretung\f"
         "second page\f",
         encoding="utf-8",
     )
@@ -189,3 +190,290 @@ def test_readiness_requires_exact_generation(tmp_path: Path) -> None:
         match="readiness_blocked",
     ):
         runner._require_worker_readiness()
+
+
+
+def test_guest_source_is_verified_after_push(tmp_path: Path) -> None:
+    data = b"%PDF exact source"
+    source = tmp_path / "source.pdf"
+    source.write_bytes(data)
+    digest = hashlib.sha256(data).hexdigest()
+    target_path, target = target_config(tmp_path)
+    calls: list[tuple[str, ...]] = []
+
+    def fake_run(command, **_kwargs):
+        calls.append(tuple(command))
+        if "sha256sum" in command:
+            stdout = f"{digest}  /tmp/bewind-qualification.pdf\n"
+        elif "stat" in command and "%s" in command:
+            stdout = f"{len(data)}\n"
+        else:
+            stdout = ""
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=stdout,
+            stderr="",
+        )
+
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+        command_runner=fake_run,
+    )
+
+    runner._push_source(
+        target,
+        source,
+        expected_sha=digest,
+        expected_size=len(data),
+    )
+
+    assert any("sha256sum" in command for command in calls)
+    assert any("stat" in command and "%s" in command for command in calls)
+
+
+def test_guest_source_digest_mismatch_fails_closed(tmp_path: Path) -> None:
+    data = b"%PDF exact source"
+    source = tmp_path / "source.pdf"
+    source.write_bytes(data)
+    digest = hashlib.sha256(data).hexdigest()
+    target_path, target = target_config(tmp_path)
+
+    def fake_run(command, **_kwargs):
+        stdout = ""
+        if "sha256sum" in command:
+            stdout = f"{'0' * 64}  /tmp/bewind-qualification.pdf\n"
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=stdout,
+            stderr="",
+        )
+
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+        command_runner=fake_run,
+    )
+
+    with pytest.raises(RuntimeError, match="source-transfer-verification-failed"):
+        runner._push_source(
+            target,
+            source,
+            expected_sha=digest,
+            expected_size=len(data),
+        )
+
+
+def test_guest_cpu_measurement_uses_busy_ticks(tmp_path: Path) -> None:
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    target_path, target = target_config(tmp_path)
+
+    def fake_run(command, **_kwargs):
+        if "getconf" in command:
+            stdout = "100\n"
+        elif "/proc/stat" in command:
+            stdout = "cpu 100 10 20 1000 50 5 5 0 0 0\n"
+        else:
+            stdout = ""
+        return subprocess.CompletedProcess(
+            command,
+            0,
+            stdout=stdout,
+            stderr="",
+        )
+
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+        command_runner=fake_run,
+    )
+
+    assert runner._guest_cpu_seconds(target) == pytest.approx(1.4)
+
+
+def test_success_result_contains_measured_cpu_seconds_per_page(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    stager = FakeStager(source, digest)
+    target_path, target = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=stager,
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+        loadavg=lambda: (0.1, 0.2, 0.3),
+    )
+    monkeypatch.setattr(runner, "_require_fabric_revision", lambda _revision: None)
+    monkeypatch.setattr(runner, "_require_worker_readiness", lambda: None)
+    monkeypatch.setattr(runner, "_target_config", lambda: target)
+    monkeypatch.setattr(runner, "_require_clean_start", lambda _target: None)
+    monkeypatch.setattr(runner, "_create_target", lambda _target: None)
+    monkeypatch.setattr(runner, "_require_guest_runtime", lambda _target: None)
+    monkeypatch.setattr(
+        runner,
+        "_push_source",
+        lambda _target, _path, **_kwargs: None,
+    )
+    monkeypatch.setattr(runner, "_page_count", lambda _target: 2)
+    cpu_samples = iter((10.0, 14.0))
+    monkeypatch.setattr(
+        runner,
+        "_guest_cpu_seconds",
+        lambda _target: next(cpu_samples),
+    )
+    monkeypatch.setattr(runner, "_execute_ocr", lambda _target: None)
+    monkeypatch.setattr(
+        runner,
+        "_pull_sidecar",
+        lambda _target, _path: None,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_validate_output",
+        lambda _path, **_kwargs: (("d" * 64, "e" * 64), "f" * 64),
+    )
+    monkeypatch.setattr(runner, "_cleanup_target", lambda _target: True)
+
+    result = runner.run()
+
+    assert result["state"] == "qualified"
+    assert result["cpuSecondsPerPage"] == 2.0
+    assert stager.cleaned is True
+
+
+def test_target_cleanup_failure_still_attempts_staging_cleanup(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    import runner_mcp.bewind_ocr_qualification_execution as module
+
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    stager = FakeStager(source, digest)
+    target_path, target = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=stager,
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+        loadavg=lambda: (0.1, 0.2, 0.3),
+    )
+    monkeypatch.setattr(runner, "_require_fabric_revision", lambda _revision: None)
+    monkeypatch.setattr(runner, "_require_worker_readiness", lambda: None)
+    monkeypatch.setattr(runner, "_target_config", lambda: target)
+    monkeypatch.setattr(runner, "_require_clean_start", lambda _target: None)
+    monkeypatch.setattr(runner, "_create_target", lambda _target: None)
+    monkeypatch.setattr(runner, "_require_guest_runtime", lambda _target: None)
+    monkeypatch.setattr(
+        runner,
+        "_push_source",
+        lambda _target, _path, **_kwargs: None,
+    )
+    monkeypatch.setattr(runner, "_page_count", lambda _target: 1)
+    cpu_samples = iter((1.0, 2.0))
+    monkeypatch.setattr(
+        runner,
+        "_guest_cpu_seconds",
+        lambda _target: next(cpu_samples),
+    )
+    monkeypatch.setattr(runner, "_execute_ocr", lambda _target: None)
+    monkeypatch.setattr(
+        runner,
+        "_pull_sidecar",
+        lambda _target, _path: None,
+    )
+    monkeypatch.setattr(
+        runner,
+        "_validate_output",
+        lambda _path, **_kwargs: (("d" * 64,), "f" * 64),
+    )
+
+    def cleanup_failure(_target):
+        raise module._QualificationFailure("cleanup-failed")
+
+    monkeypatch.setattr(runner, "_cleanup_target", cleanup_failure)
+
+    result = runner.run()
+
+    assert stager.cleaned is True
+    assert result["state"] == "recovery-required"
+    assert result["failureCategory"] == "cleanup-failed"
+    assert result["cleanupReceipt"] == {
+        "targetDestroyed": False,
+        "stagedInputRemoved": True,
+    }

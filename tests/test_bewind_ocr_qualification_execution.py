@@ -493,6 +493,7 @@ def test_success_result_contains_measured_cpu_seconds_per_page(
     digest = hashlib.sha256(b"pdf").hexdigest()
     monkeypatch.setattr(module, "_SOURCE_SHA256", digest)
     stager = FakeStager(source, digest)
+    (tmp_path / "bewind-ocr-qualification").mkdir(mode=0o700)
     target_path, target = target_config(tmp_path)
     runner = BewindOcrQualificationRunner(
         safety=safety(tmp_path),

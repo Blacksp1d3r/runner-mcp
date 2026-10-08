@@ -2,6 +2,6 @@
 
 | Failure ID | Status | Earliest layer | Symptom | Root cause/evidence | Prevention/regression | Tracking |
 |---|---|---|---|---|---|---|
-| none-migrated | — | — | No additional component-specific reusable failure migrated yet | — | global taxonomy + existing tests | #569 |
+| RMCP-F-0002 | KNOWN | qualification/private binding | Qualification agent can restart successfully while A6/qualification capability remains unavailable | required private qualification bindings or peer tool registration can be absent/stale independently of agent process health | sanitized state/binding preflight + peer interface preflight before qualification; fail closed on partial binding state | Fleet A6 historical #509 |
 
-Use stable failure IDs once a reusable root cause is proven; keep historical entries after resolution.
+Project-specific qualification failures should additionally link their project issue, artifact hash/revision evidence and cleanup result without copying sensitive paths.

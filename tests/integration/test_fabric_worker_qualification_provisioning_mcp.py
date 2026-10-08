@@ -185,6 +185,14 @@ def test_worker_qualification_policy_configure_tool_is_zero_arg_and_bounded(
 ) -> None:
     calls = []
 
+    class FakeRecovery:
+        def __init__(self, **kwargs) -> None:
+            assert "environment" in kwargs
+            assert "safety" in kwargs
+
+        def recover(self):
+            return {"state": "clean"}
+
     class FakeRuntimeImagePreparer:
         def __init__(self, **kwargs) -> None:
             assert "safety" in kwargs
@@ -235,6 +243,10 @@ def test_worker_qualification_policy_configure_tool_is_zero_arg_and_bounded(
                 "normalActivationEnabled": False,
             }
 
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindDisposableTargetRecovery",
+        FakeRecovery,
+    )
     monkeypatch.setattr(
         "runner_mcp.server.BewindOcrRuntimeImagePreparer",
         FakeRuntimeImagePreparer,

@@ -2117,8 +2117,21 @@ def build_mcp(
                 image.get("builderClean") is True
                 and image.get("normalActivationEnabled") is False
             )
+        except BewindOcrRuntimeImagePrepareError as exc:
+            _audit_fabric(
+                "bewind_disposable_bootstrap_restore",
+                "worker:aifordable-lab",
+                "invalid",
+            )
+            return {
+                "schemaVersion": "runner-mcp/bewind-disposable-bootstrap/v1",
+                "state": "invalid",
+                "reasonCode": str(exc),
+                "workerId": "aifordable-lab",
+                "capabilityProfile": "bewind-ocr-qualification-v1",
+                "normalActivationEnabled": False,
+            }
         except (
-            BewindOcrRuntimeImagePrepareError,
             BewindDisposableBootstrapError,
             OperatorStopActive,
             SafetyConfigurationError,

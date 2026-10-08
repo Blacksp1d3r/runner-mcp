@@ -486,9 +486,12 @@ def test_success_result_contains_measured_cpu_seconds_per_page(
     tmp_path: Path,
     monkeypatch,
 ) -> None:
+    import runner_mcp.bewind_ocr_qualification_execution as module
+
     source = tmp_path / "source.pdf"
     source.write_bytes(b"pdf")
     digest = hashlib.sha256(b"pdf").hexdigest()
+    monkeypatch.setattr(module, "_SOURCE_SHA256", digest)
     stager = FakeStager(source, digest)
     target_path, target = target_config(tmp_path)
     runner = BewindOcrQualificationRunner(
@@ -546,6 +549,26 @@ def test_success_result_contains_measured_cpu_seconds_per_page(
     assert result["state"] == "qualified"
     assert result["cpuSecondsPerPage"] == 2.0
     assert stager.cleaned is True
+
+    receipt = (
+        tmp_path
+        / "bewind-ocr-qualification"
+        / "result-receipt.json"
+    )
+    assert receipt.is_file()
+    assert receipt.stat().st_mode & 0o777 == 0o600
+
+    class ExplodingQualifier:
+        def run(self):
+            raise AssertionError("completed result should replay before qualification")
+
+    runner.disposable_qualifier = ExplodingQualifier()
+    replayed = runner.run()
+    assert replayed == result
+
+    mismatched = json.loads(execution_config())
+    mismatched["fabric_revision"] = "d" * 40
+    assert runner._load_completed_result(mismatched) is None
 
 
 def test_target_cleanup_failure_still_attempts_staging_cleanup(
@@ -719,3 +742,41 @@ def test_shared_fabric_lock_rejects_unsafe_metadata(tmp_path: Path) -> None:
         match="target_lock_unavailable",
     ):
         runner._acquire_target_lock()
+
+
+def test_completed_result_receipt_rejects_unsafe_metadata(
+    tmp_path: Path,
+) -> None:
+    source = tmp_path / "source.pdf"
+    source.write_bytes(b"pdf")
+    digest = hashlib.sha256(b"pdf").hexdigest()
+    target_path, _target = target_config(tmp_path)
+    runner = BewindOcrQualificationRunner(
+        safety=safety(tmp_path),
+        environment={
+            "RUNNER_MCP_BEWIND_OCR_QUALIFICATION_EXECUTION_JSON": (
+                execution_config()
+            ),
+            "RUNNER_FABRIC_DISPOSABLE_TARGET_QUALIFICATION_CONFIG": str(
+                target_path
+            ),
+        },
+        config_dir=tmp_path,
+        stager=FakeStager(source, digest),
+        disposable_qualifier=FakeQualifier(),
+        readiness_provider=lambda: {
+            "activationReady": True,
+            "currentGeneration": 1,
+        },
+    )
+
+    receipt = runner._result_receipt_path()
+    receipt.parent.mkdir(parents=True, exist_ok=True)
+    receipt.write_text("{}", encoding="utf-8")
+    receipt.chmod(0o644)
+
+    with pytest.raises(
+        BewindOcrQualificationExecutionError,
+        match="result_receipt_invalid",
+    ):
+        runner._load_completed_result(json.loads(execution_config()))

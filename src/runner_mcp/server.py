@@ -2110,8 +2110,15 @@ def build_mcp(
     def bewind_disposable_bootstrap_restore() -> dict:
         """Restore the fixed aifordable-lab Bewind disposable bootstrap."""
         try:
+            image = bewind_ocr_runtime_image_preparer.prepare()
             result = bewind_disposable_bootstrap_restorer.restore()
+            result = dict(result)
+            result["ocrRuntimeImageReady"] = (
+                image.get("builderClean") is True
+                and image.get("normalActivationEnabled") is False
+            )
         except (
+            BewindOcrRuntimeImagePrepareError,
             BewindDisposableBootstrapError,
             OperatorStopActive,
             SafetyConfigurationError,
@@ -2132,9 +2139,11 @@ def build_mcp(
     def fabric_worker_qualification_policy_configure() -> dict:
         """Refresh the fixed Bewind bootstrap and configure its worker policy."""
         try:
+            bewind_ocr_runtime_image_preparer.prepare()
             bewind_disposable_bootstrap_restorer.restore()
             result = bewind_worker_policy_configurator.configure()
         except (
+            BewindOcrRuntimeImagePrepareError,
             BewindDisposableBootstrapError,
             BewindWorkerQualificationPolicyError,
             OperatorStopActive,

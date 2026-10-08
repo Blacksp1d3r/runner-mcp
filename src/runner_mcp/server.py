@@ -25,6 +25,7 @@ from starlette.routing import Mount, Route
 
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
+from .artifact_custody import ContentAddressedArtifactCustody
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .bewind_disposable_bootstrap import (
     BewindDisposableBootstrapError,
@@ -33,6 +34,10 @@ from .bewind_disposable_bootstrap import (
 from .bewind_ocr_qualification_execution import (
     BewindOcrQualificationExecutionError,
     BewindOcrQualificationRunner,
+)
+from .bewind_ocr_qualification_source import (
+    BewindOcrQualificationSourceProvisioner,
+    BewindOcrQualificationSourceProvisionError,
 )
 from .bewind_ocr_qualification_staging import (
     BewindOcrQualificationStager,
@@ -594,6 +599,16 @@ def build_mcp(
         environment=worker_qualification_environment,
         config_dir=settings.projects_config.parent,
     )
+    artifact_custody = ContentAddressedArtifactCustody(
+        config_dir=settings.projects_config.parent,
+    )
+    bewind_ocr_qualification_source_provisioner = (
+        BewindOcrQualificationSourceProvisioner(
+            safety=safety,
+            config_dir=settings.projects_config.parent,
+            custody=artifact_custody,
+        )
+    )
     bewind_ocr_qualification_stager = BewindOcrQualificationStager(
         safety=safety,
         environment=worker_qualification_environment,
@@ -1068,6 +1083,41 @@ def build_mcp(
                 current_request_id(),
                 "fabric_worker_qualification_provision",
                 "runner-fabric:worker-qualification",
+                "authenticated-client",
+                str(result.get("state", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def bewind_ocr_qualification_source_provision() -> dict:
+        """Provision the one canonical Bewind OCR qualification source."""
+        try:
+            result = bewind_ocr_qualification_source_provisioner.provision()
+        except (
+            BewindOcrQualificationSourceProvisionError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ):
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "bewind_ocr_qualification_source_provision",
+                    "bewind:ocr-qualification-source",
+                    "authenticated-client",
+                    "denied",
+                    utc_timestamp(),
+                )
+            )
+            raise ValueError(
+                "Bewind OCR qualification source provisioning is unavailable"
+            ) from None
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "bewind_ocr_qualification_source_provision",
+                "bewind:ocr-qualification-source",
                 "authenticated-client",
                 str(result.get("state", "unknown")),
                 utc_timestamp(),

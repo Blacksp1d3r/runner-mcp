@@ -238,3 +238,53 @@ def test_tampered_staged_input_fails_closed(tmp_path: Path) -> None:
         match="size does not match",
     ):
         manager.require_staged()
+
+
+
+def test_stage_accepts_private_file_backed_source_binding(tmp_path: Path) -> None:
+    data = b"%PDF synthetic sentinel"
+    source = tmp_path / "sentinel.pdf"
+    source.write_bytes(data)
+    source.chmod(0o600)
+    cfg = config_dir(tmp_path)
+    root = cfg / "bewind-ocr-qualification"
+    root.mkdir(mode=0o700)
+    root.chmod(0o700)
+    binding = root / "source-binding.json"
+    binding.write_text(private_config(source, data), encoding="utf-8")
+    binding.chmod(0o600)
+
+    manager = BewindOcrQualificationStager(
+        safety=safety(tmp_path),
+        environment={},
+        config_dir=cfg,
+    )
+
+    result = manager.stage()
+
+    assert result["state"] == "ready"
+    assert result["sourceSha256"] == hashlib.sha256(data).hexdigest()
+
+
+def test_file_backed_binding_must_remain_private(tmp_path: Path) -> None:
+    data = b"%PDF synthetic sentinel"
+    source = tmp_path / "sentinel.pdf"
+    source.write_bytes(data)
+    cfg = config_dir(tmp_path)
+    root = cfg / "bewind-ocr-qualification"
+    root.mkdir(mode=0o700)
+    binding = root / "source-binding.json"
+    binding.write_text(private_config(source, data), encoding="utf-8")
+    binding.chmod(0o644)
+
+    manager = BewindOcrQualificationStager(
+        safety=safety(tmp_path),
+        environment={},
+        config_dir=cfg,
+    )
+
+    with pytest.raises(
+        BewindOcrQualificationStagingError,
+        match="state is unsafe",
+    ):
+        manager.stage()

@@ -51,6 +51,7 @@ class BewindOcrQualificationStager:
         self._root = self.config_dir / "bewind-ocr-qualification"
         self._stage_dir = self._root / "staged"
         self._receipt = self._root / "stage-receipt.json"
+        self._source_binding = self._root / "source-binding.json"
 
     def stage(self) -> dict[str, Any]:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
@@ -175,20 +176,31 @@ class BewindOcrQualificationStager:
 
     def _private_config(self) -> dict[str, Any]:
         raw = self.environment.get(_CONFIG_ENV)
-        if not isinstance(raw, str) or not raw.strip():
-            raise BewindOcrQualificationStagingError(
-                "qualification source authority is unavailable"
-            )
-        if len(raw.encode("utf-8")) > 16 * 1024:
-            raise BewindOcrQualificationStagingError(
-                "qualification source authority is invalid"
-            )
-        try:
-            payload = json.loads(raw)
-        except json.JSONDecodeError as exc:
-            raise BewindOcrQualificationStagingError(
-                "qualification source authority is invalid"
-            ) from exc
+        if isinstance(raw, str) and raw.strip():
+            if len(raw.encode("utf-8")) > 16 * 1024:
+                raise BewindOcrQualificationStagingError(
+                    "qualification source authority is invalid"
+                )
+            try:
+                payload = json.loads(raw)
+            except json.JSONDecodeError as exc:
+                raise BewindOcrQualificationStagingError(
+                    "qualification source authority is invalid"
+                ) from exc
+        else:
+            self._require_private_file(self._source_binding)
+            try:
+                if self._source_binding.stat().st_size > 16 * 1024:
+                    raise BewindOcrQualificationStagingError(
+                        "qualification source authority is invalid"
+                    )
+                payload = json.loads(
+                    self._source_binding.read_text(encoding="utf-8")
+                )
+            except (OSError, json.JSONDecodeError) as exc:
+                raise BewindOcrQualificationStagingError(
+                    "qualification source authority is unavailable"
+                ) from exc
         if not isinstance(payload, dict) or set(payload) != {
             "schemaVersion",
             "worker_id",

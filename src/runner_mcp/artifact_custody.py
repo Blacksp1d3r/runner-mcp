@@ -48,6 +48,26 @@ class ContentAddressedArtifactCustody:
             expected_sha256=expected_sha256,
             expected_size_bytes=expected_size_bytes,
         )
+        return self.publish_bytes(
+            data=data,
+            expected_sha256=expected_sha256,
+            expected_size_bytes=expected_size_bytes,
+        )
+
+    def publish_bytes(
+        self,
+        *,
+        data: bytes,
+        expected_sha256: str,
+        expected_size_bytes: int,
+    ) -> ArtifactObject:
+        self._validate_identity(expected_sha256, expected_size_bytes)
+        if not isinstance(data, bytes):
+            raise ArtifactCustodyError("artifact payload is invalid")
+        if len(data) != expected_size_bytes:
+            raise ArtifactCustodyError("artifact payload size mismatch")
+        if hashlib.sha256(data).hexdigest() != expected_sha256:
+            raise ArtifactCustodyError("artifact payload digest mismatch")
         self._ensure_private_tree()
 
         object_dir = self._root / expected_sha256[:2]

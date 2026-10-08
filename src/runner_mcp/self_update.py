@@ -18,7 +18,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from .config import ProjectRegistry
+from .config import ProjectConfig, ProjectRegistry
 from .operational_safety import ActionClass, OperatorSafetyGuard
 from .self_update_install import PackageInstallError, SelfUpdatePackageInstaller
 from .source_control import SourceControlError, SourceSynchronizer, clean_head

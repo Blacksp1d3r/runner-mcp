@@ -13,6 +13,9 @@ from runner_mcp.bewind_ocr_qualification_execution import (
     BewindOcrQualificationExecutionError,
     BewindOcrQualificationRunner,
 )
+from runner_mcp.bewind_ocr_qualification_staging import (
+    BewindOcrQualificationStagingError,
+)
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
 
 

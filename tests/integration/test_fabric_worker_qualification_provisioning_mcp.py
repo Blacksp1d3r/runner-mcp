@@ -185,6 +185,17 @@ def test_worker_qualification_policy_configure_tool_is_zero_arg_and_bounded(
 ) -> None:
     calls = []
 
+    class FakeRuntimeImagePreparer:
+        def __init__(self, **kwargs) -> None:
+            assert "safety" in kwargs
+
+        def prepare(self):
+            return {
+                "state": "ready",
+                "builderClean": True,
+                "normalActivationEnabled": False,
+            }
+
     class FakeBootstrapRestorer:
         def __init__(self, **kwargs) -> None:
             assert "environment" in kwargs
@@ -224,6 +235,10 @@ def test_worker_qualification_policy_configure_tool_is_zero_arg_and_bounded(
                 "normalActivationEnabled": False,
             }
 
+    monkeypatch.setattr(
+        "runner_mcp.server.BewindOcrRuntimeImagePreparer",
+        FakeRuntimeImagePreparer,
+    )
     monkeypatch.setattr(
         "runner_mcp.server.BewindDisposableBootstrapRestorer",
         FakeBootstrapRestorer,

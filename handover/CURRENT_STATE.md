@@ -1,3 +1,23 @@
+## 2026-10-08 — Bewind OCR source custody + scalable artifact cache merged; client refresh remains
+
+Runner-MCP #541 / PR #542 merged as `9b0560d3b07bbd7cca548ce72d790ea5fe3f50bd`: workload-neutral private content-addressed worker artifact custody keyed by exact SHA-256 + size, with owner-only atomic storage, cache hit/miss semantics and fail-closed re-verification. No generic MCP/file-transfer/path/URL authority was added.
+
+Runner-MCP #538 / PR #543 merged as `3af622efa95c694946814a7bc33b54e7870bff7f`: zero-argument canonical Bewind OCR source provisioner. It fetches only the fixed public eJustice sentinel `2026/02/03_1.pdf`, pins HTTPS authority, verifies exact SHA-256 `80a0fc4a561f26527aa7fb6dcc89209310f5af73a96e4e030f213faf76defa46` and size `2811759`, publishes it into content-addressed local custody, and writes a private file-backed source binding consumed by the existing staging tool. Exact cache hits avoid redownload. Normal/multi-host activation remains disabled.
+
+Exact-head #538 validation was fully green before merge: attribution, compile, Ruff, 2323+ pytest suite, MCP Registry metadata, whitespace, built release artifact and clean demo.
+
+Live self-update job `f1c924bb4680409caf2012da4970f6ce` completed to exact `3af622efa95c694946814a7bc33b54e7870bff7f`. Runtime status proves installed/source/active runtime revision aligned and no install recovery pending. One restart marker remains pending in the currently connected MCP process/session; the current ChatGPT tool catalog was loaded before the new zero-argument `bewind_ocr_qualification_source_provision` tool existed and does not expose it yet.
+
+Scalability follow-up is Runner-Fabric #1249 (child of #986): content-addressed artifact publish/worker-cache replication with authorization manifests, one-publish/many-reference, backpressure, resumable replication, retention/leases and corruption refetch. #538 is the first consumer, not a Bewind-only transfer architecture.
+
+Next exact action after connector/tool-catalog refresh:
+1. confirm `bewind_ocr_qualification_source_provision`, `bewind_ocr_qualification_stage` and `bewind_ocr_qualification_run` are visible;
+2. call source provision exactly once and require ready + canonical SHA/size + bindingReady=true + normalActivationEnabled=false;
+3. call stage exactly once and require ready + same SHA/size + singleUse=true;
+4. call run exactly once;
+5. validate the bounded result through Bewind #101 and compare hashes/timing/CPU/load against the canonical route;
+6. keep production/multi-host activation disabled until Runner-Fabric #1110 qualification is accepted.
+
 ## 2026-10-08 — Bewind OCR qualification staging + execution live; client schema refresh next
 
 Runner-MCP #529 / PR #532 merged as `7f53f92a721dbc6ab9493030bb264e0bab50a277`: fixed zero-argument content-addressed staging for the canonical Bewind German OCR sentinel. Runner-MCP #528 / PR #533 merged as `b6a50eedad8b7448f73e3d13dc9c8be08c1a0668`: fixed zero-argument one-shot Bewind OCR qualification execution using the canonical `pre1997-ocrmypdf-sidecar-0.2.0` contract with exact `nld+fra+deu`, bounded hash/timing/load/failure evidence, final disposable-target destruction and staged-input cleanup. Both keep normal activation false and do not touch active Bewind v3.

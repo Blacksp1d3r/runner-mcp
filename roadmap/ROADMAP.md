@@ -1,3 +1,13 @@
+## 2026-10-08 — DIAG component topology, data lineage and failure registry
+
+Tracking: #569. Cross-project authority: Blacksp1d3r/AIfordable#485; canonical standard merged through AIfordable PR #486.
+
+Runner-MCP is decomposed into 14 stable diagnostic components covering runtime/self-update, project/source, tests, mailbox/watchers, Fabric bridge, qualification/bootstrap, deploy/migrate/backup, safety/approval/retention, CI runners, service lifecycle, tunnel/connectivity, diagnostics/audit, artifact/mirror custody and the MCP server/client interface.
+
+Each component owns ROADMAP/SOURCES/DATA_LINEAGE/FAILURES. Global maps cover physical store classes, public field/action lineage, implementation paths, test/evidence surfaces and reusable failures. Existing failure-record and safe-diagnostics contracts are reused rather than duplicated.
+
+Troubleshooting rule: identify the public symptom/tool, walk upstream to the earliest divergent source/state/policy/interface edge, and only then repair. Process health, runtime health, peer capability, source authorization and client catalogue freshness remain independent states. Public docs never copy private infrastructure or credential details.
+
 ## 2026-10-06 — fixed Fabric worker-qualification provisioning executor in validation
 
 Tracking: #445; orchestration owner: Blacksp1d3r/Runner-Fabric#1130/#1113/#1110.

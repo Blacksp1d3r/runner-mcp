@@ -155,7 +155,9 @@ def test_private_or_unqualified_output_fails_closed(
     [
         "guest-agent-not-ready",
         "destroy-instance-delete-nonzero",
+        "destroy-inspection-instance-after-delete",
         "final-destroy-network-persisted",
+        "final-destroy-inspection-project-final",
         "isolation-management-authority",
         "isolation-default-route",
         "isolation-network-policy",

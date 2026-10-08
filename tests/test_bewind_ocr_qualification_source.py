@@ -8,11 +8,10 @@ import pytest
 
 from runner_mcp.artifact_custody import ContentAddressedArtifactCustody
 from runner_mcp.bewind_ocr_qualification_source import (
-    BewindOcrQualificationSourceProvisionError,
-    BewindOcrQualificationSourceProvisioner,
-    _EXPECTED_SHA256,
     _EXPECTED_SIZE_BYTES,
     _SOURCE_URL,
+    BewindOcrQualificationSourceProvisioner,
+    BewindOcrQualificationSourceProvisionError,
 )
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
 

@@ -598,21 +598,29 @@ class BewindOcrQualificationRunner:
             ("--project", p, "list", "--format=json"),
             category="cleanup-failed",
         ) if self._project_exists(p) else set()
-        if i in instances:
-            if self._incus(("--project", p, "delete", i, "--force")).returncode != 0:
-                ok = False
-        if self._project_exists(p):
-            if self._incus(("project", "delete", p)).returncode != 0:
-                ok = False
+        if (
+            i in instances
+            and self._incus(("--project", p, "delete", i, "--force")).returncode
+            != 0
+        ):
+            ok = False
+        if (
+            self._project_exists(p)
+            and self._incus(("project", "delete", p)).returncode != 0
+        ):
+            ok = False
         networks = self._json_names(
             ("--project", "default", "network", "list", "--format=json"),
             category="cleanup-failed",
         )
-        if n in networks:
-            if self._incus(
+        if (
+            n in networks
+            and self._incus(
                 ("--project", "default", "network", "delete", n)
-            ).returncode != 0:
-                ok = False
+            ).returncode
+            != 0
+        ):
+            ok = False
         return ok and not self._project_exists(p) and n not in self._json_names(
             ("--project", "default", "network", "list", "--format=json"),
             category="cleanup-failed",

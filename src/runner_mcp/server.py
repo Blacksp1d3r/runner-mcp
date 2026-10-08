@@ -1138,11 +1138,13 @@ def build_mcp(
 
     @mcp.tool()
     def bewind_ocr_qualification_source_provision() -> dict:
-        """Provision the one canonical Bewind OCR qualification source."""
+        """Provision the canonical source and its fixed execution authority."""
         try:
             result = bewind_ocr_qualification_source_provisioner.provision()
+            authority = bewind_ocr_qualification_execution_authority.configure()
         except (
             BewindOcrQualificationSourceProvisionError,
+            BewindOcrQualificationExecutionAuthorityError,
             OperatorStopActive,
             SafetyConfigurationError,
         ):
@@ -1159,6 +1161,15 @@ def build_mcp(
             raise ValueError(
                 "Bewind OCR qualification source provisioning is unavailable"
             ) from None
+        result = dict(result)
+        result["executionAuthorityReady"] = (
+            authority.get("state") == "configured"
+            and authority.get("normalActivationEnabled") is False
+        )
+        if result["executionAuthorityReady"] is not True:
+            raise ValueError(
+                "Bewind OCR qualification execution authority is unavailable"
+            )
         audit.append(
             AuditEvent(
                 current_request_id(),

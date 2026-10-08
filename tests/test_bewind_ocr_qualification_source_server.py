@@ -45,6 +45,19 @@ def test_bewind_source_provision_tool_is_zero_argument_and_secret_free(
 ) -> None:
     calls = []
 
+    class FakeAuthorityConfigurator:
+        def __init__(self, **kwargs) -> None:
+            assert "safety" in kwargs
+            assert "environment" in kwargs
+            assert "config_dir" in kwargs
+
+        def configure(self):
+            calls.append("authority")
+            return {
+                "state": "configured",
+                "normalActivationEnabled": False,
+            }
+
     class FakeProvisioner:
         def __init__(self, **kwargs) -> None:
             assert "safety" in kwargs
@@ -71,6 +84,11 @@ def test_bewind_source_provision_tool_is_zero_argument_and_secret_free(
     monkeypatch.setattr(
         "runner_mcp.server.BewindOcrQualificationSourceProvisioner",
         FakeProvisioner,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server."
+        "BewindOcrQualificationExecutionAuthorityConfigurator",
+        FakeAuthorityConfigurator,
     )
 
     project_root = tmp_path / "project"
@@ -137,8 +155,9 @@ def test_bewind_source_provision_tool_is_zero_argument_and_secret_free(
         result = _tool_json(response)
         assert result["state"] == "ready"
         assert result["bindingReady"] is True
+        assert result["executionAuthorityReady"] is True
         assert result["normalActivationEnabled"] is False
-        assert calls == ["provision"]
+        assert calls == ["provision", "authority"]
 
         rejected = client.post(
             "/mcp",
@@ -155,7 +174,7 @@ def test_bewind_source_provision_tool_is_zero_argument_and_secret_free(
         )
         event = _event(rejected)
         assert event["result"]["isError"] is True
-        assert calls == ["provision"]
+        assert calls == ["provision", "authority"]
 
     rendered = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "bewind_ocr_qualification_source_provision" in rendered

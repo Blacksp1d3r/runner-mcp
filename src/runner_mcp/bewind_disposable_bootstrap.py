@@ -43,11 +43,12 @@ _HEX64_RE = re.compile(r"^[0-9a-f]{64}$")
 _TRUSTED_IMAGE_OS = "ubuntu"
 _TRUSTED_IMAGE_RELEASE = "noble"
 _TRUSTED_IMAGE_TYPE = "virtual-machine"
-_TRUSTED_IMAGE_ALIAS = "aifordable/bewind-ocr-podman-v1"
-_TRUSTED_IMAGE_PROFILE = "bewind-ocr-podman-v1"
-_TRUSTED_IMAGE_RUNTIME = "podman-rootless-ready"
+_TRUSTED_IMAGE_ALIAS = "aifordable/bewind-ocr-runtime-v1"
+_TRUSTED_IMAGE_PROFILE = "bewind-ocr-runtime-v1"
+_TRUSTED_IMAGE_RUNTIME = "ocrmypdf-tesseract-nld-fra-deu-ready"
 _TRUSTED_IMAGE_USER = "fabric:1000:1000"
-_TRUSTED_IMAGE_BASE = "ubuntu/24.04"
+_TRUSTED_IMAGE_BASE = "aifordable/bewind-ocr-podman-v1"
+_TRUSTED_IMAGE_LANGUAGES = "nld+fra+deu"
 _CPU_COUNT = 4
 _MEMORY_MIB = 8192
 _ROOT_DISK_GIB = 20
@@ -117,6 +118,11 @@ def _resolve_trusted_image_fingerprint(payload: object) -> str:
         if str(properties.get("aifordable.user", "")).strip() != _TRUSTED_IMAGE_USER:
             continue
         if str(properties.get("aifordable.base", "")).strip() != _TRUSTED_IMAGE_BASE:
+            continue
+        if (
+            str(properties.get("aifordable.languages", "")).strip()
+            != _TRUSTED_IMAGE_LANGUAGES
+        ):
             continue
         if not isinstance(fingerprint, str) or _HEX64_RE.fullmatch(fingerprint) is None:
             continue

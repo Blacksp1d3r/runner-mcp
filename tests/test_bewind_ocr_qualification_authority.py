@@ -42,7 +42,7 @@ def test_configure_persists_fixed_private_authority_and_updates_runtime(
     assert first["capabilityProfile"] == "bewind-ocr-qualification-v1"
     assert first["generation"] == 1
     assert first["fabricRevision"] == (
-        "be71bd95c60ad858ab1878fe1c8e662a0b6ffddc"
+        "9294a41001d7a50f0163fbdfe19522fe21b9728c"
     )
     assert first["bewindRevision"] == (
         "cf16b9e7481bdb56b8c308ff29c6f305cd1a0a48"
@@ -56,7 +56,7 @@ def test_configure_persists_fixed_private_authority_and_updates_runtime(
         "worker_id": "aifordable-lab",
         "capability_profile": "bewind-ocr-qualification-v1",
         "generation": 1,
-        "fabric_revision": "be71bd95c60ad858ab1878fe1c8e662a0b6ffddc",
+        "fabric_revision": "9294a41001d7a50f0163fbdfe19522fe21b9728c",
         "bewind_revision": "cf16b9e7481bdb56b8c308ff29c6f305cd1a0a48",
     }
 

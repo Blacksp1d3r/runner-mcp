@@ -42,7 +42,6 @@ _MAX_CAPTURE = 64 * 1024
 _MAX_PAGES = 1000
 _GUEST_INPUT = "/tmp/bewind-qualification.pdf"
 _GUEST_SIDECAR = "/tmp/bewind-qualification-sidecar.txt"
-_GUEST_CPU_TIME = "/tmp/bewind-qualification-cpu.txt"
 
 
 class BewindOcrQualificationExecutionError(RuntimeError):
@@ -121,8 +120,13 @@ class BewindOcrQualificationRunner:
                 expected_size=staged.size_bytes,
             )
             pages = self._page_count(target)
-            cpu_seconds = self._execute_ocr(target)
-            cpu_seconds_per_page = round(cpu_seconds / pages, 6)
+            cpu_before = self._guest_cpu_seconds(target)
+            self._execute_ocr(target)
+            cpu_after = self._guest_cpu_seconds(target)
+            cpu_seconds_per_page = round(
+                max(0.0, cpu_after - cpu_before) / pages,
+                6,
+            )
             self._pull_sidecar(target, sidecar_path)
             page_hashes, output_sha = self._validate_output(
                 sidecar_path,
@@ -136,7 +140,12 @@ class BewindOcrQualificationRunner:
         finally:
             try:
                 target_cleanup = self._cleanup_target(target)
-            except _QualificationFailure:
+            except (
+                OSError,
+                subprocess.SubprocessError,
+                ValueError,
+                _QualificationFailure,
+            ):
                 target_cleanup = False
             try:
                 self.stager.cleanup()
@@ -482,10 +491,6 @@ class BewindOcrQualificationRunner:
             ("--project", p, "exec", i, "--", "ocrmypdf", "--version"),
             category="ocr-runtime-unavailable",
         )
-        self._require_ok(
-            ("--project", p, "exec", i, "--", "/usr/bin/time", "--version"),
-            category="ocr-runtime-unavailable",
-        )
         langs = self._require_ok(
             ("--project", p, "exec", i, "--", "tesseract", "--list-langs"),
             category="ocr-runtime-unavailable",
@@ -524,26 +529,45 @@ class BewindOcrQualificationRunner:
         )
         digest = self._require_ok(
             (
-                "--project", p, "exec", i, "--",
-                "sha256sum", _GUEST_INPUT,
+                "--project",
+                p,
+                "exec",
+                i,
+                "--",
+                "sha256sum",
+                _GUEST_INPUT,
             ),
-            category="source-verification-failed",
-        ).stdout.strip().split()
-        if len(digest) != 2 or digest[0] != expected_sha:
-            raise _QualificationFailure("source-verification-failed")
-        size_text = self._require_ok(
+            category="source-transfer-verification-failed",
+        ).stdout.split()
+        if (
+            len(digest) < 1
+            or _SHA256_RE.fullmatch(digest[0]) is None
+            or digest[0] != expected_sha
+        ):
+            raise _QualificationFailure("source-transfer-verification-failed")
+
+        size_result = self._require_ok(
             (
-                "--project", p, "exec", i, "--",
-                "stat", "-c", "%s", _GUEST_INPUT,
+                "--project",
+                p,
+                "exec",
+                i,
+                "--",
+                "stat",
+                "-c",
+                "%s",
+                _GUEST_INPUT,
             ),
-            category="source-verification-failed",
-        ).stdout.strip()
+            category="source-transfer-verification-failed",
+        )
         try:
-            guest_size = int(size_text)
+            observed_size = int(size_result.stdout.strip())
         except ValueError as exc:
-            raise _QualificationFailure("source-verification-failed") from exc
-        if guest_size != expected_size:
-            raise _QualificationFailure("source-verification-failed")
+            raise _QualificationFailure(
+                "source-transfer-verification-failed"
+            ) from exc
+        if observed_size != expected_size:
+            raise _QualificationFailure("source-transfer-verification-failed")
 
     def _page_count(self, target: Mapping[str, Any]) -> int:
         p = str(target["project_name"])
@@ -562,15 +586,75 @@ class BewindOcrQualificationRunner:
                     return pages
         raise _QualificationFailure("source-inspection-failed")
 
-    def _execute_ocr(self, target: Mapping[str, Any]) -> float:
+    def _guest_cpu_seconds(self, target: Mapping[str, Any]) -> float:
+        p = str(target["project_name"])
+        i = str(target["instance_name"])
+        tick_result = self._require_ok(
+            (
+                "--project",
+                p,
+                "exec",
+                i,
+                "--",
+                "getconf",
+                "CLK_TCK",
+            ),
+            category="cpu-measurement-unavailable",
+        )
+        try:
+            ticks_per_second = int(tick_result.stdout.strip())
+        except ValueError as exc:
+            raise _QualificationFailure(
+                "cpu-measurement-unavailable"
+            ) from exc
+        if not 1 <= ticks_per_second <= 1_000_000:
+            raise _QualificationFailure("cpu-measurement-unavailable")
+
+        stat_result = self._require_ok(
+            (
+                "--project",
+                p,
+                "exec",
+                i,
+                "--",
+                "cat",
+                "/proc/stat",
+            ),
+            category="cpu-measurement-unavailable",
+        )
+        cpu_line = next(
+            (
+                line
+                for line in stat_result.stdout.splitlines()
+                if line.startswith("cpu ")
+            ),
+            None,
+        )
+        if cpu_line is None:
+            raise _QualificationFailure("cpu-measurement-unavailable")
+        fields = cpu_line.split()[1:]
+        if len(fields) < 8:
+            raise _QualificationFailure("cpu-measurement-unavailable")
+        try:
+            ticks = [int(value) for value in fields[:8]]
+        except ValueError as exc:
+            raise _QualificationFailure(
+                "cpu-measurement-unavailable"
+            ) from exc
+        if any(value < 0 for value in ticks):
+            raise _QualificationFailure("cpu-measurement-unavailable")
+
+        # Linux /proc/stat fields: user nice system idle iowait irq softirq steal.
+        # Exclude idle + iowait; the VM is dedicated to this one bounded run.
+        busy_ticks = sum(ticks[index] for index in (0, 1, 2, 5, 6, 7))
+        return busy_ticks / ticks_per_second
+
+    def _execute_ocr(self, target: Mapping[str, Any]) -> None:
         p = str(target["project_name"])
         i = str(target["instance_name"])
         self._require_ok(
             (
                 "--project", p, "exec", i, "--",
-                "/usr/bin/time",
-                "-f", "%U %S",
-                "-o", _GUEST_CPU_TIME,
                 "ocrmypdf",
                 "--force-ocr",
                 "--output-type", "none",
@@ -584,23 +668,6 @@ class BewindOcrQualificationRunner:
             timeout=600,
             category="ocr-execution-failed",
         )
-        measurement = self._require_ok(
-            (
-                "--project", p, "exec", i, "--",
-                "cat", _GUEST_CPU_TIME,
-            ),
-            category="ocr-measurement-unavailable",
-        ).stdout.strip().split()
-        if len(measurement) != 2:
-            raise _QualificationFailure("ocr-measurement-unavailable")
-        try:
-            user_seconds, system_seconds = (float(item) for item in measurement)
-        except ValueError as exc:
-            raise _QualificationFailure("ocr-measurement-unavailable") from exc
-        cpu_seconds = user_seconds + system_seconds
-        if not 0.0 <= cpu_seconds <= 86400.0:
-            raise _QualificationFailure("ocr-measurement-unavailable")
-        return cpu_seconds
 
     def _pull_sidecar(self, target: Mapping[str, Any], destination: Path) -> None:
         p = str(target["project_name"])
@@ -641,12 +708,11 @@ class BewindOcrQualificationRunner:
             pages.pop()
         if len(pages) != expected_pages:
             raise _QualificationFailure("ocr-page-count-mismatch")
-        normalized_text = " ".join(text.split()).casefold()
-        normalized_terms = tuple(
-            " ".join(term.split()).casefold()
+        normalized = " ".join(text.casefold().split())
+        if not all(
+            " ".join(term.casefold().split()) in normalized
             for term in _REQUIRED_TERMS
-        )
-        if not all(term in normalized_text for term in normalized_terms):
+        ):
             raise _QualificationFailure("german-sentinel-missing")
         page_hashes = tuple(
             hashlib.sha256((page.rstrip() + "\n").encode("utf-8")).hexdigest()

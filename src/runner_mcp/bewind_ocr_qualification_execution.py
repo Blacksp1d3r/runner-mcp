@@ -93,9 +93,26 @@ class BewindOcrQualificationRunner:
                 or qualification.get("finalState") != "destroyed"
                 or qualification.get("normalActivationEnabled") is not False
             ):
-                raise BewindOcrQualificationExecutionError(
-                    "bewind_ocr_qualification_preflight_failed"
-                )
+                disposable_reason = qualification.get("reasonCode")
+                if (
+                    not isinstance(disposable_reason, str)
+                    or not disposable_reason
+                    or len(disposable_reason) > 96
+                    or any(
+                        ch not in "abcdefghijklmnopqrstuvwxyz0123456789-"
+                        for ch in disposable_reason
+                    )
+                ):
+                    disposable_reason = "unavailable"
+                return {
+                    "schemaVersion": (
+                        "runner-mcp/bewind-ocr-qualification-preflight/v1"
+                    ),
+                    "state": "blocked",
+                    "reasonCode": "disposable-preflight-failed",
+                    "disposableReasonCode": disposable_reason,
+                    "normalActivationEnabled": False,
+                }
 
             staged = self.stager.require_staged()
             target = self._target_config()

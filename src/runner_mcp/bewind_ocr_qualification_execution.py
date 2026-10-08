@@ -82,22 +82,91 @@ class BewindOcrQualificationRunner:
 
     def run(self) -> dict[str, Any]:
         self.safety.assert_action_allowed(ActionClass.DEPLOY)
-        execution = self._execution_config()
-        self._require_fabric_revision(execution["fabric_revision"])
-        self._require_worker_readiness()
+        try:
+            execution = self._execution_config()
+            self._require_fabric_revision(execution["fabric_revision"])
+            self._require_worker_readiness()
 
-        qualification = self.disposable_qualifier.run()
-        if (
-            qualification.get("qualificationPassed") is not True
-            or qualification.get("finalState") != "destroyed"
-            or qualification.get("normalActivationEnabled") is not False
-        ):
-            raise BewindOcrQualificationExecutionError(
-                "bewind_ocr_qualification_preflight_failed"
-            )
+            qualification = self.disposable_qualifier.run()
+            if (
+                qualification.get("qualificationPassed") is not True
+                or qualification.get("finalState") != "destroyed"
+                or qualification.get("normalActivationEnabled") is not False
+            ):
+                raise BewindOcrQualificationExecutionError(
+                    "bewind_ocr_qualification_preflight_failed"
+                )
 
-        staged = self.stager.require_staged()
-        target = self._target_config()
+            staged = self.stager.require_staged()
+            target = self._target_config()
+        except BewindOcrQualificationExecutionError as exc:
+            reason_map = {
+                "bewind_ocr_qualification_execution_authority_unavailable": (
+                    "execution-authority-unavailable"
+                ),
+                "bewind_ocr_qualification_execution_authority_invalid": (
+                    "execution-authority-invalid"
+                ),
+                "bewind_ocr_qualification_fabric_revision_unavailable": (
+                    "fabric-revision-unavailable"
+                ),
+                "bewind_ocr_qualification_fabric_revision_mismatch": (
+                    "fabric-revision-mismatch"
+                ),
+                "bewind_ocr_qualification_readiness_unavailable": (
+                    "readiness-unavailable"
+                ),
+                "bewind_ocr_qualification_readiness_blocked": (
+                    "readiness-blocked"
+                ),
+                "bewind_ocr_qualification_preflight_failed": (
+                    "disposable-preflight-failed"
+                ),
+                "bewind_ocr_qualification_target_unavailable": (
+                    "target-unavailable"
+                ),
+                "bewind_ocr_qualification_target_invalid": "target-invalid",
+                "bewind_ocr_qualification_target_expired": "target-expired",
+            }
+            return {
+                "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
+                "state": "blocked",
+                "reasonCode": reason_map.get(
+                    str(exc),
+                    "execution-preflight-unavailable",
+                ),
+                "normalActivationEnabled": False,
+            }
+        except BewindOcrQualificationStagingError as exc:
+            reason_map = {
+                "qualification staging state is unavailable": (
+                    "staging-state-unavailable"
+                ),
+                "qualification staging state is unsafe": (
+                    "staging-state-unsafe"
+                ),
+                "qualification staging receipt is invalid": (
+                    "staging-receipt-invalid"
+                ),
+                "staged qualification source is unavailable": (
+                    "staged-source-unavailable"
+                ),
+                "staged qualification source size does not match": (
+                    "staged-source-size-mismatch"
+                ),
+                "staged qualification source digest does not match": (
+                    "staged-source-digest-mismatch"
+                ),
+            }
+            return {
+                "schemaVersion": "runner-mcp/bewind-ocr-qualification-preflight/v1",
+                "state": "blocked",
+                "reasonCode": reason_map.get(
+                    str(exc),
+                    "staging-preflight-unavailable",
+                ),
+                "normalActivationEnabled": False,
+            }
         started = self._monotonic()
         start_load = self._bounded_load()
         sidecar_path = self.config_dir / "bewind-ocr-qualification" / "result-sidecar.txt"

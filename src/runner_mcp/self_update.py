@@ -397,6 +397,7 @@ class SelfUpdateManager:
         server_reexec: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
+        active_revision_provider: Callable[[], str | None] | None = None,
     ) -> None:
         root = config_dir.expanduser()
         if root.exists() and root.is_symlink():
@@ -470,6 +471,9 @@ class SelfUpdateManager:
                     self._server_port = port
         self._server_reexec = server_reexec
         self._restart_components = _normalize_restart_components(restart_components)
+        if active_revision_provider is not None and not callable(active_revision_provider):
+            raise SelfUpdateError("Active runtime revision provider is invalid")
+        self._active_revision_provider = active_revision_provider
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()
@@ -713,6 +717,19 @@ class SelfUpdateManager:
             )
             return latest.public_dict()
 
+    def _active_runtime_revision(self) -> str | None:
+        if self._active_revision_provider is None:
+            return None
+        try:
+            revision = self._active_revision_provider()
+        except (OSError, RuntimeError, TypeError, ValueError):
+            return None
+        if revision is None:
+            return None
+        if not isinstance(revision, str) or _COMMIT_RE.fullmatch(revision) is None:
+            return None
+        return revision
+
     def _source_baseline_status(
         self,
         config: ProjectConfig,
@@ -736,6 +753,10 @@ class SelfUpdateManager:
 
         last_commit = self._installed_commit()
         recovery_pending = self._pending_install_transaction() is not None
+        active_revision = self._active_runtime_revision()
+        runtime_activation_aligned: bool | None = None
+        if last_commit is not None and self._active_revision_provider is not None:
+            runtime_activation_aligned = active_revision == last_commit
 
         source_commit: str | None = None
         source_baseline_aligned: bool | None = None
@@ -753,12 +774,18 @@ class SelfUpdateManager:
             last_commit is None
             or source_baseline_aligned is True
         )
+        activation_ready = (
+            last_commit is None
+            or self._active_revision_provider is None
+            or runtime_activation_aligned is True
+        )
 
         return {
             "version": package_version,
             "self_update_ready": (
                 project_ready
                 and source_ready
+                and activation_ready
                 and self._required_profiles_available()
                 and self._restart_ready()
                 and pending_restarts == 0
@@ -767,6 +794,8 @@ class SelfUpdateManager:
             "last_installed_commit": last_commit,
             "source_commit": source_commit,
             "source_baseline_aligned": source_baseline_aligned,
+            "active_runtime_revision": active_revision,
+            "runtime_activation_aligned": runtime_activation_aligned,
             "active_update": any(
                 job.state not in _TERMINAL_SELF_UPDATE_STATES
                 for job in self._jobs.values()
@@ -797,6 +826,12 @@ class SelfUpdateManager:
             )
         installed_commit = self._installed_commit()
         if installed_commit is not None:
+            if self._active_revision_provider is not None:
+                active_revision = self._active_runtime_revision()
+                if active_revision != installed_commit:
+                    raise SelfUpdateError(
+                        "Runner MCP self-update activation is not proven"
+                    )
             source_commit, source_baseline_aligned = self._source_baseline_status(
                 config,
                 installed_commit,

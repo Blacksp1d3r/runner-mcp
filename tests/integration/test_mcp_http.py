@@ -223,6 +223,8 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         runtime_payload = json.loads(runtime_event["result"]["content"][0]["text"])
         assert runtime_payload["projects"] == 1
         assert runtime_payload["retention_confirmed"] is True
+        assert runtime_payload["active_runtime_revision"] is None
+        assert runtime_payload["runtime_activation_aligned"] is None
         assert str(tmp_path) not in runtime.text
         assert "https://" not in runtime.text
 
@@ -253,6 +255,16 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         )
         assert baseline_check == {
             "name": "self_update_source_baseline",
+            "state": "warn",
+            "detail": "not_recorded",
+        }
+        activation_check = next(
+            item
+            for item in doctor_payload["checks"]
+            if item["name"] == "self_update_runtime_activation"
+        )
+        assert activation_check == {
+            "name": "self_update_runtime_activation",
             "state": "warn",
             "detail": "not_recorded",
         }

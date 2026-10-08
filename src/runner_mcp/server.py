@@ -524,6 +524,18 @@ def build_mcp(
         if settings.approval_root is not None
         else None
     )
+
+    def active_runtime_revision() -> str | None:
+        if build_identity_provider is None:
+            return None
+        try:
+            identity = build_identity_provider()
+        except (RuntimeError, TypeError, ValueError):
+            return None
+        if not isinstance(identity, BuildIdentity):
+            return None
+        return identity.source_revision
+
     self_update_manager = SelfUpdateManager(
         config_dir=settings.projects_config.parent,
         registry=registry,
@@ -537,6 +549,11 @@ def build_mcp(
             self_update_restart_components
             if self_update_restart_components is not None
             else frozenset({"server"})
+        ),
+        active_revision_provider=(
+            active_runtime_revision
+            if build_identity_provider is not None
+            else None
         ),
     )
     fabric_bootstrap_manager = FabricBootstrapManager(
@@ -777,6 +794,35 @@ def build_mcp(
                     "self_update_source_baseline",
                     "fail",
                     "source_baseline_drift",
+                )
+
+            active_revision = self_update_status.get("active_runtime_revision")
+            activation_aligned = self_update_status.get(
+                "runtime_activation_aligned"
+            )
+            if activation_aligned is True:
+                add(
+                    "self_update_runtime_activation",
+                    "pass",
+                    "aligned",
+                )
+            elif installed_commit is None:
+                add(
+                    "self_update_runtime_activation",
+                    "warn",
+                    "not_recorded",
+                )
+            elif active_revision is None:
+                add(
+                    "self_update_runtime_activation",
+                    "fail",
+                    "active_revision_unavailable",
+                )
+            else:
+                add(
+                    "self_update_runtime_activation",
+                    "fail",
+                    "runtime_activation_drift",
                 )
 
         try:

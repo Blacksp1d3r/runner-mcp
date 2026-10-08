@@ -116,6 +116,7 @@ def make_manager(
     installer_runner=subprocess.run,
     seed_compatibility: bool = True,
     restart_components=None,
+    active_revision_provider=None,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -136,6 +137,7 @@ def make_manager(
         server_reexec=lambda: exits.append(75),
         restart_delay_seconds=1,
         restart_components=restart_components,
+        active_revision_provider=active_revision_provider,
     )
     pyproject = project / "pyproject.toml"
     pyproject.write_text(
@@ -1547,4 +1549,86 @@ def test_source_baseline_unavailable_blocks_before_job_queue(
         manager.start("c" * 40)
 
     assert "private source detail" not in str(captured.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_runtime_status_proves_active_runtime_alignment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed = "a" * 40
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        active_revision_provider=lambda: installed,
+    )
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["active_runtime_revision"] == installed
+    assert status["runtime_activation_aligned"] is True
+    assert status["self_update_ready"] is True
+
+
+def test_old_active_runtime_blocks_next_self_update_before_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed = "b" * 40
+    active = "a" * 40
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        active_revision_provider=lambda: active,
+    )
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["active_runtime_revision"] == active
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="activation is not proven"):
+        manager.start("c" * 40)
+
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_unavailable_active_runtime_identity_fails_closed_when_proof_is_required(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed = "a" * 40
+
+    def unavailable() -> str:
+        raise RuntimeError("private runtime detail")
+
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        active_revision_provider=unavailable,
+    )
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["active_runtime_revision"] is None
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="activation is not proven") as captured:
+        manager.start("c" * 40)
+
+    assert "private runtime detail" not in str(captured.value)
     assert manager.runtime_status()["latest_self_update_job"] is None

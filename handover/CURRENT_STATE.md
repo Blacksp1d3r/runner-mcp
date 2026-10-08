@@ -1,3 +1,31 @@
+## 2026-10-08 — Bewind OCR qualification staging + execution live; client schema refresh next
+
+Runner-MCP #529 / PR #532 merged as `7f53f92a721dbc6ab9493030bb264e0bab50a277`: fixed zero-argument content-addressed staging for the canonical Bewind German OCR sentinel. Runner-MCP #528 / PR #533 merged as `b6a50eedad8b7448f73e3d13dc9c8be08c1a0668`: fixed zero-argument one-shot Bewind OCR qualification execution using the canonical `pre1997-ocrmypdf-sidecar-0.2.0` contract with exact `nld+fra+deu`, bounded hash/timing/load/failure evidence, final disposable-target destruction and staged-input cleanup. Both keep normal activation false and do not touch active Bewind v3.
+
+Exact-head #528 validation is fully green: attribution, compile, Ruff, pytest, MCP Registry metadata, whitespace, built release artifact and clean demo. Initial CI had only five Ruff authoring diagnostics (three SIM102 cleanup conditions and two overly broad test exception catches); these were corrected on the same branch and are not treated as a reusable operational Failure Museum class.
+
+Live Runner-MCP self-update job `5e8b7494552a436792f3f44ca236399d` completed successfully to exact `b6a50eedad8b7448f73e3d13dc9c8be08c1a0668`. Runtime status then proved installed/source/active runtime revisions all exactly aligned with no restart or install-recovery pending.
+
+Immediately after update, the Fabric loopback bridge was unavailable. The fixed zero-argument `fabric_worker_qualification_policy_configure` restored the trusted Bewind worker policy (generation 1, policy valid, source target ready, normal activation false), after which bounded `fabric_agent_restart` returned restarted/pid_changed/healthy. Final live proof:
+- Fabric bridge preflight: ready;
+- Fabric source revision: `3bd24f96844341e418618ea44adcbd625cc7bb60`;
+- worker: `aifordable-lab`;
+- capability: `bewind-ocr-qualification-v1`;
+- generation: 1;
+- capabilityAllowed/policyValid/activationReady: true;
+- normalActivationEnabled: false;
+- Runner-MCP doctor: 0 failed checks.
+
+Current blocker is client schema only: this already-open ChatGPT runner-mcp-control tool catalog was loaded before #528/#529 became live, so `bewind_ocr_qualification_stage` and `bewind_ocr_qualification_run` are not callable in this session. Do not use shell/Desktop Commander as a bypass.
+
+Next exact action in a fresh first-party client/chat after connector tool refresh:
+1. confirm both new zero-argument tools are visible;
+2. call `bewind_ocr_qualification_stage` exactly once;
+3. require ready state, canonical source id `2026/02/03_1.pdf`, content hash/size evidence, singleUse=true and normalActivationEnabled=false;
+4. call `bewind_ocr_qualification_run` exactly once;
+5. require `state=qualified`, exact `nld+fra+deu`, pipeline `pre1997-ocrmypdf-sidecar-0.2.0`, German sentinel verified, page/output hashes, cleanupReceipt.targetDestroyed=true, cleanupReceipt.stagedInputRemoved=true, normalActivationEnabled=false;
+6. return bounded result to Runner-Fabric #1114/#1110 for canonical-route equivalence comparison before any multi-host/production activation.
+
 ## 2026-10-06 — Cross-project authority binding
 
 Runner-MCP is bound to the AIfordable Infrastructure + Credential Authority. Do not maintain a separate full server/token map here. Resolve scoped current context before infrastructure mutation or credential repair; unknown/stale/conflicting context fails closed.

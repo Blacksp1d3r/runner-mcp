@@ -7,8 +7,8 @@ import json
 import stat
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
 from urllib.error import URLError
+from urllib.parse import urlparse
 from urllib.request import Request, urlopen
 
 from .artifact_custody import ArtifactCustodyError, ContentAddressedArtifactCustody

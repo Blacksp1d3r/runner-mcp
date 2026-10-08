@@ -31,6 +31,10 @@ from .bewind_disposable_bootstrap import (
     BewindDisposableBootstrapError,
     BewindDisposableBootstrapRestorer,
 )
+from .bewind_disposable_target_recovery import (
+    BewindDisposableTargetRecovery,
+    BewindDisposableTargetRecoveryError,
+)
 from .bewind_ocr_qualification_authority import (
     BewindOcrQualificationExecutionAuthorityConfigurator,
     BewindOcrQualificationExecutionAuthorityError,
@@ -601,6 +605,10 @@ def build_mcp(
         safety=safety,
         environment=worker_qualification_environment,
         config_dir=settings.projects_config.parent,
+    )
+    bewind_disposable_target_recovery = BewindDisposableTargetRecovery(
+        safety=safety,
+        environment=worker_qualification_environment,
     )
     bewind_disposable_bootstrap_restorer = BewindDisposableBootstrapRestorer(
         safety=safety,
@@ -2110,6 +2118,7 @@ def build_mcp(
     def bewind_disposable_bootstrap_restore() -> dict:
         """Restore the fixed aifordable-lab Bewind disposable bootstrap."""
         try:
+            recovery = bewind_disposable_target_recovery.recover()
             image = bewind_ocr_runtime_image_preparer.prepare()
             result = bewind_disposable_bootstrap_restorer.restore()
             result = dict(result)
@@ -2117,7 +2126,11 @@ def build_mcp(
                 image.get("builderClean") is True
                 and image.get("normalActivationEnabled") is False
             )
-        except BewindOcrRuntimeImagePrepareError as exc:
+            result["staleTargetRecovered"] = recovery.get("state") == "clean"
+        except (
+            BewindDisposableTargetRecoveryError,
+            BewindOcrRuntimeImagePrepareError,
+        ) as exc:
             _audit_fabric(
                 "bewind_disposable_bootstrap_restore",
                 "worker:aifordable-lab",
@@ -2152,10 +2165,12 @@ def build_mcp(
     def fabric_worker_qualification_policy_configure() -> dict:
         """Refresh the fixed Bewind bootstrap and configure its worker policy."""
         try:
+            bewind_disposable_target_recovery.recover()
             bewind_ocr_runtime_image_preparer.prepare()
             bewind_disposable_bootstrap_restorer.restore()
             result = bewind_worker_policy_configurator.configure()
         except (
+            BewindDisposableTargetRecoveryError,
             BewindOcrRuntimeImagePrepareError,
             BewindDisposableBootstrapError,
             BewindWorkerQualificationPolicyError,

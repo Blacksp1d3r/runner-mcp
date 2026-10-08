@@ -155,3 +155,30 @@ def test_invalid_identity_is_rejected(
 
     with pytest.raises(ArtifactCustodyError, match="identity is invalid"):
         custody.resolve(expected_sha256=digest, expected_size_bytes=size)
+
+
+
+def test_publish_bytes_supports_verified_ingest_without_source_path(
+    tmp_path: Path,
+) -> None:
+    data = b"downloaded immutable artifact"
+    digest = hashlib.sha256(data).hexdigest()
+    custody = ContentAddressedArtifactCustody(
+        config_dir=private_config_dir(tmp_path)
+    )
+
+    stored = custody.publish_bytes(
+        data=data,
+        expected_sha256=digest,
+        expected_size_bytes=len(data),
+    )
+
+    assert stored.cache_state == "miss"
+    assert stored.path.read_bytes() == data
+
+    with pytest.raises(ArtifactCustodyError, match="digest mismatch"):
+        custody.publish_bytes(
+            data=b"wrong",
+            expected_sha256=digest,
+            expected_size_bytes=5,
+        )

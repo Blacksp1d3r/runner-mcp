@@ -246,6 +246,16 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         doctor_event = json.loads(doctor_event_line.removeprefix("data: "))
         doctor_payload = json.loads(doctor_event["result"]["content"][0]["text"])
         assert doctor_payload["failed_checks"] == 0
+        baseline_check = next(
+            item
+            for item in doctor_payload["checks"]
+            if item["name"] == "self_update_source_baseline"
+        )
+        assert baseline_check == {
+            "name": "self_update_source_baseline",
+            "state": "warn",
+            "detail": "not_recorded",
+        }
         assert str(tmp_path) not in doctor.text
         assert "mcp.example.invalid" not in doctor.text
 

@@ -634,7 +634,7 @@ def build_mcp(
         else None
     )
 
-    def bewind_qualification_readiness() -> Mapping[str, Any]:
+    def bewind_qualification_readiness() -> Mapping[str, object]:
         if fabric_bridge is None:
             raise FabricBridgeError("Runner Fabric bridge is not configured")
         return fabric_bridge.worker_qualification_readiness(

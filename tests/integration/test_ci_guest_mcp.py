@@ -450,7 +450,12 @@ def test_bewind_disposable_bootstrap_restore_is_fixed_and_bounded(
 
         def recover(self):
             calls.append({"recovery": True})
-            return {"state": "clean"}
+            return {
+                "state": "clean",
+                "staleInstancePresent": True,
+                "staleProjectPresent": True,
+                "staleNetworkPresent": False,
+            }
 
     class FakeRuntimeImagePreparer:
         def __init__(self, **_kwargs) -> None:
@@ -562,6 +567,9 @@ def test_bewind_disposable_bootstrap_restore_is_fixed_and_bounded(
     assert payload["state"] == "restored"
     assert payload["workerId"] == "aifordable-lab"
     assert payload["normalActivationEnabled"] is False
+    assert payload["staleInstancePresent"] is True
+    assert payload["staleProjectPresent"] is True
+    assert payload["staleNetworkPresent"] is False
     assert payload["ocrRuntimeImageReady"] is True
     assert payload["staleTargetRecovered"] is True
     assert len(calls) == 4

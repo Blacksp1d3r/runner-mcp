@@ -83,7 +83,7 @@ def test_wrong_runtime_metadata_fails_closed(tmp_path: Path) -> None:
 
 def test_preparer_uses_fixed_install_and_publishes_profile(tmp_path: Path) -> None:
     calls = []
-    inventories = iter([[], [], [trusted_image("b" * 64)]])
+    inventories = iter([[], [trusted_image("b" * 64)]])
 
     def runner(argv, **_kwargs):
         calls.append(argv)

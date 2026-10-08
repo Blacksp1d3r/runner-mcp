@@ -15,5 +15,6 @@
 | tunnel/connectivity | tunnel config/health/readiness/runtime/topology tests |
 | diagnostics/audit | safe diagnostics, audit, build identity, text redaction, host integrity tests |
 | artifact/mirror custody | artifact custody + repository mirror integration/unit tests |
+| MCP server/interface | `tests/integration/test_mcp_http.py`, `tests/integration/test_ci_guest_mcp.py`, `tests/security/test_http_security.py`, plugin-package tests |
 
 Use the narrowest invariant test first. Broad MCP/clean-demo tests are final integration evidence, not the first debugging layer.

@@ -1,3 +1,7 @@
+## 2026-10-09 — ChatGPT -> ALL: Faster-13 #514 integration complete
+
+Prior WAITING_CI status for existing PR #514 is superseded. Exact head `1f329ff57e1ef5b8262f813b4a72100aa410820a`: attribution `37957744577` SUCCESS, full validation `37957744262` SUCCESS, squash merge `46f9a8b86dc00586cfa24a2368e146f234345d2f`. Do not restack or duplicate #514. #383 remains OPEN for full polling/event/real-world comparison; shadow MCP measurements are not OCR throughput evidence. No production configuration/tunnel change.
+
 ## 2026-10-09 — ChatGPT -> ALL: Faster-13 existing PR #514 active; do not duplicate
 
 Existing PR #514 `perf/faster13-local-mcp-benchmark` was restacked onto current main with force-with-lease against old exact head (not cloned to a parallel PR). Local synthetic benchmark retained unchanged; seven negative/CLI boundary tests added. Current exact head `1f329ff57e1ef5b8262f813b4a72100aa410820a`, attribution `37957744577` GREEN and validation `37957744262` Ruff/pytest and build GREEN, clean-demo job not terminal as last observed. State `WAITING_CI`, do not merge until exact full workflow passes. Previous head's Ruff import formatting error was diagnosed/fixed, not an infrastructure issue. Do not infer OCR acceleration from transport shadow numbers; #383 remains owner. Separately #599 stale last_success requires real external poll producer cadence, no speculative TTL.

@@ -13,7 +13,11 @@ import pytest
 
 import runner_mcp.fabric_update as fabric_update_module
 from runner_mcp.fabric_bootstrap import FabricBootstrapError
-from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
+from runner_mcp.fabric_update import (
+    FabricUpdateError,
+    FabricUpdateManager,
+    bounded_local_custody_failure_reason,
+)
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
 
 
@@ -838,4 +842,40 @@ def test_stage_local_bundle_builder_failure_leaves_no_partial_custody(
     assert not any(
         path.name.startswith(".incoming-")
         for path in manager.local_bundles_root.iterdir()
+    )
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "fabric_update_commit_invalid",
+        "operator_stop",
+        "runner_mcp_state_unavailable",
+        "runner_mcp_self_update_active",
+        "runner_mcp_restart_pending",
+        "runner_mcp_install_recovery_pending",
+        "fabric_launcher_unmanaged",
+        "actions_run_unavailable",
+        "fabric_bundle_storage_conflict",
+        "fabric_bundle_invalid",
+        "fabric_bundle_source_unavailable",
+        "fabric_bundle_source_invalid",
+        "fabric_bundle_secret_cleanup_failed",
+        "fabric_bundle_build_failed",
+    ],
+)
+def test_local_custody_failure_reason_allows_only_bounded_categories(
+    reason: str,
+) -> None:
+    assert (
+        bounded_local_custody_failure_reason(FabricUpdateError(reason))
+        == reason
+    )
+
+
+def test_local_custody_failure_reason_rejects_unknown_detail() -> None:
+    assert (
+        bounded_local_custody_failure_reason(
+            FabricUpdateError("/private/path token=secret")
+        )
+        is None
     )

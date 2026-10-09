@@ -17,6 +17,7 @@ from runner_mcp.config import (
 )
 from runner_mcp.config import TestProfile as RunnerTestProfile
 from runner_mcp.fabric_bridge import FabricBridgeError
+from runner_mcp.fabric_update import FabricUpdateError
 from runner_mcp.server import Settings, create_app
 from runner_mcp.service_manager import ServiceState
 
@@ -514,6 +515,86 @@ def parse_tool_json(response) -> object:
     if isinstance(structured, dict) and "result" in structured:
         return structured["result"]
     return json.loads(result["content"][0]["text"])
+
+
+def test_local_fabric_custody_failures_are_bounded_over_mcp(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeFabricUpdateManager:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def stage_local_bundle(self, _commit: str):
+            raise FabricUpdateError("fabric_bundle_source_unavailable")
+
+        def local_readiness(self, _commit: str):
+            raise FabricUpdateError("fabric_bundle_invalid")
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricUpdateManager",
+        FakeFabricUpdateManager,
+    )
+    app = build_test_app(tmp_path)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        staged = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 90,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_local_bundle_stage",
+                    "arguments": {"commit": "a" * 40},
+                },
+            },
+        )
+        assert parse_tool_json(staged) == {
+            "state": "blocked",
+            "reasonCode": "fabric_bundle_source_unavailable",
+            "staged": False,
+            "bundleReady": False,
+            "source": "canonical-source",
+            "localCustody": True,
+        }
+
+        readiness = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 91,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_local_update_readiness",
+                    "arguments": {"commit": "a" * 40},
+                },
+            },
+        )
+        assert parse_tool_json(readiness) == {
+            "state": "blocked",
+            "reasonCode": "fabric_bundle_invalid",
+            "artifact_ready": False,
+            "source": "local-custody",
+        }
+
+    assert str(tmp_path) not in staged.text
+    assert str(tmp_path) not in readiness.text
 
 
 def test_mcp_controlled_test_job_lifecycle(tmp_path: Path) -> None:

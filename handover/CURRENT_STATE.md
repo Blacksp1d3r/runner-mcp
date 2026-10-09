@@ -1,3 +1,7 @@
+## 2026-10-09 — Faster-13 synthetic benchmark integrated
+
+PR #514 exact head `1f329ff57e1ef5b8262f813b4a72100aa410820a` passed attribution `37957744577` and full validation `37957744262`, then squash merged `46f9a8b86dc00586cfa24a2368e146f234345d2f`. Includes existing bounded shadow benchmark and seven CLI input rejection tests. No real OCR acceleration claim, local runtime/deploy or workload change. #383 broader Faster-13 remains open. The earlier WAITING_CI note below is superseded. Connector response tracing PR #608 and sanitized playbook PR #607 also merged; #590 external return-path still unqualified.
+
 ## 2026-10-09 — MCP connector response identity and Faster-13 benchmark
 
 **Completed:** PR #607 sanitized operator playbook fully green merged `6dc5160c93815b223214302ffb50cebbb304e49d`. PR #608 existing HTTP middleware trace/request-ID negative and concurrent tests fully green merged `e0250205ee33cd39f5ffc501ff8fa86861679d30`. Tests prove local response identity, not external tunnel return path. User/operator observed enabled/active tunnel, readiness 200, zero service restarts; boot drill pending. #590 remains open for live first failing response edge, #540 generation fencing open, #333 reboot readiness open; no live reconfiguration.

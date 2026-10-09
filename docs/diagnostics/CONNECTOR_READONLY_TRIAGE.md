@@ -32,3 +32,22 @@ A client reporting only `The tool failed internally.` has not proven that its re
 - Historical OCR qualification is complete; Faster performance work is separately tracked by #514/#458 and must not be re-triggered as a connector test.
 
 Public documents must not contain private endpoints, hostnames, port maps, absolute deployment paths, credentials, token fragments or customer payloads.
+
+## 2026-10-09 restored tunnel: differential diagnosis without retry loops
+
+Operator-verified state: system service **enabled/active**, local tunnel readiness **HTTP 200**, restart counter **0**, local MCP health **HTTP 200**, authenticated MCP client initialized, and control-plane tunnel route established. At least two requests reached the local MCP dispatcher. All of `runtime_status`, `runtime_doctor`, `list_projects`, and `worker_status` have returned structured results at least once, but at other times generic client errors. A new matched read-only pair returned `list_projects=SUCCESS` and `runtime_status=GENERIC_FAILURE`. This is **partial recovery**; it does not justify changing the known-working MCP or tunnel health listeners. The active profile's old descriptive label may refer to a historical lab host: verify actual target privately before changing labels or routes.
+
+### Correlation protocol (one pair, stop on ambiguity)
+
+1. Under authorized operation, capture a single client invocation's **UTC timestamp, tool name, outcome class**, and any correlation ID that the supported client exposes. Do not manufacture correlation IDs after the event.
+2. Compare to the tunnel's **sanitized** dispatcher observation within that exact window. Record `received / forwarded / completed / timed-out / unknown` independently; forwarding is not completion. Do not enable raw HTTP logging, payload capture, or expose full `journalctl` lines.
+3. If forwarded, look for a corresponding **sanitized** MCP-server receipt and completion status using an already approved audit/diagnostic surface. A server receipt with completed response but generic client failure localizes downstream; no receipt despite tunnel forward points at the tunnel-to-MCP edge; unknown evidence stays UNKNOWN.
+4. If no tunnel receipt, inspect supported client catalogue, session/transport admission and control-plane command status. Cross-check existing #297 / #540 generation ownership before proposing changes; avoid duplicate implementations.
+5. If two endpoints show cross-over success/failure, avoid inferring a deterministic per-method code bug or wrong port. Re-test only **after** a separately justified fix. Existing PR #595 establishes green local authenticated MCP dispatch in CI but cannot clear the live path.
+
+### Acceptance and incident exit
+
+- One sanitized lineage record shows the earliest failing edge for a controlled failure, without sensitive topology, credential or customer data.
+- `list_projects`, `runtime_status` and `runtime_doctor` return structured consistent responses in an authorized fresh connector session after correction; no repeated generic internal failures during bounded qualification.
+- Tunnel local READY + enabled/active system service are already observed, but post-reboot recovery remains separately pending a coordinated maintenance window with active CI runners.
+- Do not merge/mutate deployed components merely to suppress optional Harpoon HTTP warnings or missing optional OAuth metadata; do not relax transport security.

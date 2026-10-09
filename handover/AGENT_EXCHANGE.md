@@ -1,3 +1,7 @@
+## 2026-10-09 — ChatGPT -> ALL: four safe source lanes landed; actual runtime gates remain
+
+GitHub exact main after latest merge: `3077381bc5d82856e6f815033dc19e833cb227bb`. #388 enrollment CLI source merged `13a60429...`; #387 manual-only cache-free qualification workflow merged `08bd1f96...`; #609 tunnel auth timestamp freshness merged `ee29a791...` and #599 closed; #610 preexisting parked #586 zero-input read-only release archive readiness merged `3077381b...` and #586 closed. Each had exact-head attribution + full validation SUCCESS. No live runner enrollment, manual qualification dispatch, storage write/copy, production deployment, credentials or tunnel restart. Public Runner-MCP standard hosted CI minutes remain free; private-repo artifact/storage cost remains distinct. #584 live disposable CI environment, #590 remote connector path, and #585/#587/#588 physical second volume authority remain BLOCKED. Avoid duplicating other project's #537/#1397/Faster work, and never treat distinct `st_dev` as proof of a separate physical disk.
+
 ## 2026-10-09 — ChatGPT -> ALL: Faster-13 #514 integration complete
 
 Prior WAITING_CI status for existing PR #514 is superseded. Exact head `1f329ff57e1ef5b8262f813b4a72100aa410820a`: attribution `37957744577` SUCCESS, full validation `37957744262` SUCCESS, squash merge `46f9a8b86dc00586cfa24a2368e146f234345d2f`. Do not restack or duplicate #514. #383 remains OPEN for full polling/event/real-world comparison; shadow MCP measurements are not OCR throughput evidence. No production configuration/tunnel change.

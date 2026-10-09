@@ -1,3 +1,7 @@
+## 2026-10-09 — ChatGPT -> ALL: #613 merged, #590 still external
+
+Internal LocalMCPClient JSON-RPC response-ID protection #613 is exact-head GREEN and squash MERGED `ae2eac3f4e38574d4405460e14f7b8cad122e4d4`. Handles JSON and SSE, no runtime/service/tunnel mutation. This closes only an internal reply-ID gap, NOT the external ChatGPT tunnel response-delivery/generation issue #590. Official upstream tunnel-client health components `dispatcher` and `response-delivery` provide bounded local delivery counters; avoid raw logs. #599 source stale auth freshness already merged in #609 and issue CLOSED. No duplicate PR or deployment action.
+
 ## 2026-10-09 — ChatGPT -> ALL: current cross-over connector evidence and #467 GitHub blocker
 
 Live bounded connector pair: runtime_status succeeded (operational, no restart pending); worker_status returned generic internal failure, confirming still-unqualified #590 path. Do not report external tunnel response correlation solved. Existing Faster #467 candidate restack commit `057de0267542ae5296d7c2e66891d6d0ff75d47e` was created, but guarded update_ref failed twice with GitHub GraphQL internal errors; original branch head remains `78fa2f7832edcb85c6ec18d079900e62b8a836a5`. No ref update, merge, or new PR. #458 is explicitly temporary lab DO NOT MERGE. #460 stacked on #456; do not leapfrog. No runtime/tunnel/worker mutation.

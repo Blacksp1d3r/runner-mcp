@@ -63,3 +63,27 @@ def test_local_mcp_accepts_correct_response_id(monkeypatch: pytest.MonkeyPatch) 
     assert client._post(
         {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
     ) == {"jsonrpc": "2.0", "id": 2, "result": {"ok": True}}
+
+
+@pytest.mark.parametrize("returned_id", [2, 7])
+def test_local_mcp_checks_id_in_sse_response(
+    monkeypatch: pytest.MonkeyPatch,
+    returned_id: int,
+) -> None:
+    def fake_open(_: urllib.request.Request, **kwargs: object) -> _FakeResponse:
+        del kwargs
+        response = _FakeResponse(returned_id)
+        response.body = b"event: message\\ndata: " + response.body + b"\\n\\n"
+        return response
+
+    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    client = LocalMCPClient(
+        LocalMCPConfig(endpoint="http://127.0.0.1:9001/mcp", bearer_token="test-token"),
+        allowed_tools=frozenset({"runtime_status"}),
+    )
+    payload = {"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}}
+    if returned_id != 2:
+        with pytest.raises(BridgeExecutionAdapterError, match="mismatched JSON-RPC"):
+            client._post(payload)
+    else:
+        assert client._post(payload)["id"] == 2

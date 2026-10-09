@@ -1,3 +1,7 @@
+## 2026-10-09 — Faster-13 local MCP baseline landed
+
+Existing PR #514 was restacked (not duplicated) and exact-head green with validation `37957744262` and attribution `37957744577`, then squash merged `46f9a8b86dc00586cfa24a2368e146f234345d2f`. It adds shadow-only bounded local MCP communication benchmarking and fail-closed CLI argument tests. **Does not imply real Bewind OCR speedup**, and does not authorize a faster production transport or close broader Faster #383. Next performance steps require reproducible qualified workload segments and connection/session lifecycle evidence; no live workloads measured here.
+
 ## 2026-10-09 — Connector response lineage and tunnel authentication freshness
 
 - #590: local HTTP response trace isolation COMPLETE via PR #608 / `e0250205ee33cd39f5ffc501ff8fa86861679d30`, with exact-head attribution #37956025846 SUCCESS and validation #37956026036 SUCCESS. This covers request-ID isolation, traceparent inheritance and malformed context; external tunnel return association remains **BLOCKED on first failing-edge evidence**, not confirmed healthy.

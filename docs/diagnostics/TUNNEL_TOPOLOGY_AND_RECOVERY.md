@@ -7,7 +7,7 @@ Status: **observed partial outage; no runtime repair performed**. Owner: Runner-
 ```text
 ChatGPT connector (calls currently fail generically)
   -> OpenAI tunnel control plane (live routing/auth not verified)
-  -> tunnel-client daemon (NOT observed running on github-runner)
+  -> tunnel-client daemon (NOT observed running on the private runner host)
   -> local Runner-MCP MCP endpoint (serve process observed, bound to loopback)
   -> bounded MCP tools / local watchers / Agent Bus (process presence != end-to-end health)
   -> GitHub or strictly admitted project work units
@@ -17,10 +17,10 @@ Runner Fabric is a separate trust/policy and execution orchestration component, 
 
 ## Evidence ledger (privacy-preserving)
 
-- 2026-10-09 ~16:59 CEST: host reported as github-runner. Process list: local Runner-MCP MCP server, GitHub watcher, completion watcher, Agent Bus worker parent, and Actions runner supervisor/listener. No process matching tunnel-client. Local server actual HTTP health *not yet checked*.
+- 2026-10-09 ~16:59 CEST: host reported as the private runner host. Process list: local Runner-MCP MCP server, GitHub watcher, completion watcher, Agent Bus worker parent, and Actions runner supervisor/listener. No process matching tunnel-client. Local server actual HTTP health *not yet checked*.
 - The operator's account resolves tunnel-client binary; its help output identifies an outbound long-lived daemon plus `doctor`, `health`, `profiles`, `run`, and `runtimes`. Installed binary version and binary reproducibility/hash **not yet verified**.
-- Service inventories shown for system-wide and operator's user services contain no matching tunnel service. **This does not exhaust gha-runner's own user units, cron, or other supervisors.**
-- A tunnel YAML profile exists readable only by the gha-runner service account, last modified Oct 7. Earlier backups exist. Never publish their contents, sensitive env names/values, internal endpoints or profile diff to GitHub.
+- Service inventories shown for system-wide and operator's user services contain no matching tunnel service. **This does not exhaust the designated service account's own user units, cron, or other supervisors.**
+- A tunnel YAML profile exists readable only by the the designated service account service account, last modified Oct 7. Earlier backups exist. Never publish their contents, sensitive env names/values, internal endpoints or profile diff to GitHub.
 - 2026-10-09: ChatGPT read-only runtime_status and project_status failed with generic internal errors, consistent with but not proof of the missing tunnel.
 - Previous #590 and diagnostics/CONNECTOR_READONLY_TRIAGE.md remain the owner for the earliest failing edge; no claim of connector recovery.
 
@@ -49,12 +49,8 @@ Never commit real YAML, tokens, profile backups, full env, internal hostnames, p
 
 ## Next bounded operator commands
 
-```bash
-sudo -u gha-runner -H systemctl --user list-unit-files --type=service --no-pager
-sudo -u gha-runner -H crontab -l
-/home/gerard/.local/bin/tunnel-client --version
-/home/gerard/.local/bin/tunnel-client run --help
-/home/gerard/.local/bin/tunnel-client doctor --help
+```text
+Use only approved, private operator diagnostics to inspect the service account, active supervisor and installed executable version. Do not paste live commands containing real identities or paths into public repositories.
 ```
 The first command can fail when the service user's D-Bus user manager is unavailable; record the error instead of improvising `XDG_RUNTIME_DIR`. Do not publish cron environment lines containing secrets. The executable path above is *observational host-specific* and intentionally does not define a canonical production installer.
 
@@ -67,7 +63,7 @@ The first command can fail when the service user's D-Bus user manager is unavail
 - `tunnel-client --version`: **0.0.16**, source build fingerprint `5f99daabd4aa4a77049e6d81d54a0d8c18335397`. This is tunnel-client's own upstream build fingerprint, **not** the Runner-MCP installed commit or tunnel profile schema version.
 - `run --help` confirms supported `--profile`, `--profile-file`, `--profile-dir` and `--config` selectors, with precedence flags > environment > YAML > defaults. Supported MCP target and control-plane key references are documented in CLI; do not serialize their actual values in public git.
 - `doctor --help` confirms offline/preflight command accepts `--profile`, `--profile-file`, `--json`, `--explain`. Doctor success alone cannot establish authenticated external round trip.
-- `sudo -u gha-runner -H systemctl --user list-unit-files ...` returned `Failed to connect to bus: No medium found`; this means the service account's user bus is unavailable in this invocation, **not** proof that no user unit exists.
+- `sudo -u <SERVICE_ACCOUNT> -H systemctl --user list-unit-files ...` returned `Failed to connect to bus: No medium found`; this means the service account's user bus is unavailable in this invocation, **not** proof that no user unit exists.
 - The operator account has an executable, but `command -v tunnel-client` is empty under service account. **Do not** point a root-run service at an operator-home executable as a permanent deployment. First establish supported installation/package custody and service-account executable location, then choose a stable, access-controlled installation method.
 
 **Next read-only checks:** inspect current supervisor/cron inventory without printing secret environment or configuration, then run the existing profile's doctor using a service-account-readable installed binary only after validating binary provenance and permissions. Record results privately with sanitized summaries. Avoid ad-hoc daemon startups, profile edits, copy/restore of secrets, and systemd unit enablement until the exact intended owner and authenticated health are verified.
@@ -104,7 +100,7 @@ Disambiguate two distinct incidents: (1) Oct 7 previously resolved missing-profi
 ## Service-owned executable installation — operator evidence 2026-10-09
 
 - Operator created a service-account-owned private executable directory and copied the existing tunnel-client 0.0.16 executable with file mode 0750; invoking `--version` as service account succeeded and returned upstream build `5f99daabd4aa4a77049e6d81d54a0d8c18335397`.
-- Attempted SHA256 of the private copy as operator failed with `Permission denied` (expected for mode 0750 when operator is not owner or group member). This does **not** establish a checksum mismatch. Run `sudo -u gha-runner sha256sum` and compare to known source SHA256 `01260ee973d5510861bc32979739561edd33869f99f9f8cd324f6d0da5b2e692`.
+- Attempted SHA256 of the private copy as operator failed with `Permission denied` (expected for mode 0750 when operator is not owner or group member). This does **not** establish a checksum mismatch. Run `sudo -u <SERVICE_ACCOUNT> sha256sum` and compare to known source SHA256 `01260ee973d5510861bc32979739561edd33869f99f9f8cd324f6d0da5b2e692`.
 - Executable provenance is not yet vendor-verified, profile doctor not yet run, and no daemon/service started. Copying as observed is a temporary controlled deployment step, not approved automatic update custody.
 
 ## Profile doctor / exact credential dependency — 2026-10-09
@@ -156,7 +152,7 @@ Operator's 10-minute tunnel-unit journal count for regex `error|failed|timeout` 
 
 ## Port hypothesis and intermittent tool behavior — 2026-10-09
 
-Current observed private topology distinguishes Runner-MCP MCP listener 8000 from tunnel-client local health/UI listener 8080; these are different functions. Logs show `mcp session initialized`, `control-plane route resolved`, and two `dispatcher forwarded command to MCP server` messages. Only startup warning classes counted: one OAuth auth-server metadata fetch failure and three Harpoon loopback HTTP auto-registration failures; there is no evidence from these observations that the MCP target port is wrong. ChatGPT bounded `list_projects` later succeeded returning six configured project entries while `runtime_status` in the same pair gave generic internal failure, reversing previous success/failure pattern. Treat as intermittent tool/transport/session behavior, not port misrouting proven. Confirm endpoint identity against current profile privately, without publishing topology or opening ports. Avoid noisy repeated probes and unqualified permission or plaintext-HTTP changes.
+Current observed private topology distinguishes Runner-MCP MCP loopback listener from tunnel-client local health/UI health/UI loopback listener; these are different functions. Logs show `mcp session initialized`, `control-plane route resolved`, and two `dispatcher forwarded command to MCP server` messages. Only startup warning classes counted: one OAuth auth-server metadata fetch failure and three Harpoon loopback HTTP auto-registration failures; there is no evidence from these observations that the MCP target port is wrong. ChatGPT bounded `list_projects` later succeeded returning six configured project entries while `runtime_status` in the same pair gave generic internal failure, reversing previous success/failure pattern. Treat as intermittent tool/transport/session behavior, not port misrouting proven. Confirm endpoint identity against current profile privately, without publishing topology or opening ports. Avoid noisy repeated probes and unqualified permission or plaintext-HTTP changes.
 
 ## Additional read-only connector sampling — 2026-10-09
 

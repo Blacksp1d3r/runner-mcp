@@ -141,6 +141,34 @@ def test_symlinked_ledger_target_is_never_followed(tmp_path):
     assert outside.read_text(encoding="utf-8") == "other application"
 
 
+def test_relative_or_parent_traversal_storage_binding_rejected(tmp_path):
+    with pytest.raises(RecoveryQuarantineError, match="storage path is invalid"):
+        RecoveryQuarantineLedger(tmp_path / ".." / "quarantine.json")
+    with pytest.raises(RecoveryQuarantineError, match="storage path is invalid"):
+        RecoveryQuarantineLedger("quarantine.json")
+
+
+def test_symlinked_parent_directory_does_not_receive_quarantine_records(tmp_path):
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    link = tmp_path / "linked-parent"
+    link.symlink_to(outside, target_is_directory=True)
+    ledger = RecoveryQuarantineLedger(link / "quarantine.json")
+
+    with pytest.raises(RecoveryQuarantineError, match="directory is unsafe"):
+        _fail(ledger)
+    assert not (outside / "quarantine.json").exists()
+
+
+def test_corrupted_utf8_ledger_fails_with_public_safe_error(tmp_path):
+    target = tmp_path / "quarantine.json"
+    target.write_bytes(b"\\xff")
+    ledger = _ledger(tmp_path)
+
+    with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
+        ledger.inspect("req-poison")
+
+
 def test_broad_file_or_parent_permissions_fail_closed(tmp_path):
     ledger = _ledger(tmp_path)
     _fail(ledger)

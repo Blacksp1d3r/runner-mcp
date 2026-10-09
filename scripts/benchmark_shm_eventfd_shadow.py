@@ -170,7 +170,6 @@ def _benchmark_shared_memory(
             raise RuntimeError("benchmark shared-memory worker did not stop")
         if process.exitcode != 0:
             raise RuntimeError("benchmark shared-memory worker failed")
-        mapping.close()
         return result
     finally:
         if "process" in locals() and process.is_alive():

@@ -213,7 +213,7 @@ def _safe_work_folder(spec: CIRunnerSpec) -> str:
     except ValueError as exc:
         raise CIRunnerEnrollmentError("CI runner work root is unsafe") from exc
     value = relative.as_posix()
-    if not value or value.startswith("../") or value == ".":
+    if not relative.parts or ".." in relative.parts or value == ".":
         raise CIRunnerEnrollmentError("CI runner work folder is unsafe")
     return value
 

@@ -284,7 +284,7 @@ def collect_control_plane_authenticated(
     ):
         return False
     try:
-        observed = datetime.fromisoformat(last_success.replace("Z", "+00:00"))
+        observed = datetime.fromisoformat(last_success)
     except ValueError:
         return False
     now = clock()

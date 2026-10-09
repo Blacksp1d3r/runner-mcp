@@ -1,3 +1,7 @@
+## 2026-10-09 — #599 stale poll-authentication evidence reconciled
+
+Issue #599 is **COMPLETE** on source: existing PR #609 exact head `04d0f493db9ba0ea00c4aa10e403e3823785e30b` passed validation `37957581774` and attribution `37958136637`, squash merged `ee29a791bb8dab96275ae3efc9987c6548a57bdd`. Current source rejects malformed, stale (>90s), or over-future (>5s) control-plane last_success; clock is injectable for deterministic tests, threshold grounded in documented 30s long-poll default. The issue was explicitly closed after source reconciliation. This does **not** prove the external connector route; #590 stays open. Independent internal LocalMCPClient JSON-RPC response-ID check is underway as draft PR #613, with no live tunnel changes. Do not recreate #599.
+
 ## 2026-10-09 — CI, tunnel and independent archive source gates landed
 
 - Runner-MCP #584: #388 bounded local CLI **SOURCE COMPLETE** (`13a60429...`), #387 operator-dispatched cache-free qualifier **SOURCE COMPLETE** (`08bd1f96...`); live disposable guest, protected labels/network and no production secrets remain **BLOCKED**. Public hosted standard CI is free; no automatic replacement of current check selectors. Preserve exact required check names.

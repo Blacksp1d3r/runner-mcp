@@ -176,6 +176,17 @@ def _bounded_failure_reason(stderr: str) -> str | None:
     return reason
 
 
+def bounded_public_qualification_reason(
+    error: FabricDisposableTargetQualificationError,
+) -> str:
+    """Return only exact public error codes; never reflect an arbitrary exception."""
+    detail = str(error)
+    prefix = "fabric_disposable_target_qualification_failed:"
+    if detail.startswith(prefix) and detail.removeprefix(prefix) in _BOUNDED_FAILURE_REASONS:
+        return detail
+    return "fabric_disposable_target_qualification_failed"
+
+
 def _validate_payload(value: object) -> dict[str, Any]:
     if not isinstance(value, dict):
         raise FabricDisposableTargetQualificationError(

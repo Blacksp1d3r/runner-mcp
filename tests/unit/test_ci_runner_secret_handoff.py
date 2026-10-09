@@ -240,3 +240,29 @@ def test_create_uses_one_clock_sample_for_expiry_and_file_mtime(tmp_path: Path) 
     assert sampled == [1]
     assert record.expires_at == 2300
     assert int((root / record.handoff_id).stat().st_mtime) == 2000
+
+
+@pytest.mark.parametrize("bad_time", [None, True, "2000", float("nan"), float("inf"), -1, 0])
+def test_reap_invalid_clock_fails_before_any_deletion(
+    tmp_path: Path, bad_time: object,
+) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: bad_time)  # type: ignore[arg-type]
+    with pytest.raises(CIRunnerSecretHandoffError, match="cleanup clock"):
+        store.reap_expired()
+    assert expired.exists()
+
+
+def test_reap_valid_clock_still_cleans_expired(tmp_path: Path) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: 2000.0)
+    assert store.reap_expired() == 1
+    assert not expired.exists()

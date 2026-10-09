@@ -151,7 +151,8 @@ def inspect_ci_runner(spec: CIRunnerSpec) -> CIRunnerStatus:
 
     runner_ready = _safe_directory(spec.runner_root)
     work_ready = _safe_directory(spec.work_root)
-    registered = runner_ready and (spec.runner_root / ".runner").is_file()
+    marker = spec.runner_root / ".runner"
+    registered = runner_ready and marker.is_file() and not marker.is_symlink()
 
     return CIRunnerStatus(
         alias=spec.alias,

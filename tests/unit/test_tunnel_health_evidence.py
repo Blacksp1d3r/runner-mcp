@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -234,10 +235,84 @@ def test_control_plane_successful_poll_is_authenticated(
     assert collect_control_plane_authenticated(
         tmp_path,
         opener=opener,
+        clock=lambda: datetime(2026, 10, 5, 18, 0, 30, tzinfo=UTC),
     ) is True
     request, timeout = requests[0]
     assert request.full_url == "http://127.0.0.1:48123/health/control-plane"
     assert timeout == 2.0
+
+
+@pytest.mark.parametrize(
+    ("offset_seconds", "accepted"),
+    [
+        (0, True),
+        (-35, True),
+        (-90, True),
+        (-91, False),
+        (-300, False),
+        (5, True),
+        (6, False),
+    ],
+)
+def test_control_plane_auth_requires_bounded_freshness(
+    tmp_path: Path,
+    offset_seconds: int,
+    accepted: bool,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    current = datetime(2026, 10, 9, 16, 0, tzinfo=UTC)
+    success = current + timedelta(seconds=offset_seconds)
+    payload = {
+        "schema_version": 1,
+        "component": "control-plane",
+        "status": "ok",
+        "state": "polling",
+        "details": {
+            "last_success": success.isoformat().replace("+00:00", "Z"),
+        },
+    }
+    result = collect_control_plane_authenticated(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(
+            json.dumps(payload).encode("utf-8")
+        ),
+        clock=lambda: current,
+    )
+    assert result is accepted
+
+
+@pytest.mark.parametrize(
+    "invalid_timestamp",
+    [
+        None,
+        "",
+        "yesterday",
+        "2026-10-09 16:00:00Z",
+        "2026-99-09T16:00:00Z",
+        "2026-10-09T16:00:00",
+        "2026-10-09T16:00:00Z" + "x" * 66,
+        20261009,
+    ],
+)
+def test_control_plane_auth_rejects_invalid_timestamp(
+    tmp_path: Path,
+    invalid_timestamp: object,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = {
+        "schema_version": 1,
+        "component": "control-plane",
+        "status": "ok",
+        "state": "idle",
+        "details": {"last_success": invalid_timestamp},
+    }
+    assert collect_control_plane_authenticated(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(
+            json.dumps(payload).encode("utf-8")
+        ),
+        clock=lambda: datetime(2026, 10, 9, 16, 0, tzinfo=UTC),
+    ) is False
 
 
 @pytest.mark.parametrize(

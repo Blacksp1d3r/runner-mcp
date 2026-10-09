@@ -94,7 +94,7 @@ class CIRunnerSecretHandoffStore:
         try:
             clock_value = self._now()
             if isinstance(clock_value, bool) or not isinstance(clock_value, (int, float)):
-                raise ValueError("invalid clock type")
+                raise TypeError("invalid clock type")
             created_at = int(clock_value)
         except (TypeError, ValueError, OverflowError) as exc:
             raise CIRunnerSecretHandoffError("handoff clock is invalid") from exc

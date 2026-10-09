@@ -61,3 +61,13 @@ The first command can fail when the service user's D-Bus user manager is unavail
 ## Change history
 
 - 2026-10-09: initial evidence/topology/recovery ledger proposed. No production changes, daemon start, service creation, token or profile modification.
+
+## Operator evidence update — 2026-10-09 ~17:00 CEST
+
+- `tunnel-client --version`: **0.0.16**, source build fingerprint `5f99daabd4aa4a77049e6d81d54a0d8c18335397`. This is tunnel-client's own upstream build fingerprint, **not** the Runner-MCP installed commit or tunnel profile schema version.
+- `run --help` confirms supported `--profile`, `--profile-file`, `--profile-dir` and `--config` selectors, with precedence flags > environment > YAML > defaults. Supported MCP target and control-plane key references are documented in CLI; do not serialize their actual values in public git.
+- `doctor --help` confirms offline/preflight command accepts `--profile`, `--profile-file`, `--json`, `--explain`. Doctor success alone cannot establish authenticated external round trip.
+- `sudo -u gha-runner -H systemctl --user list-unit-files ...` returned `Failed to connect to bus: No medium found`; this means the service account's user bus is unavailable in this invocation, **not** proof that no user unit exists.
+- The operator account has an executable, but `command -v tunnel-client` is empty under service account. **Do not** point a root-run service at an operator-home executable as a permanent deployment. First establish supported installation/package custody and service-account executable location, then choose a stable, access-controlled installation method.
+
+**Next read-only checks:** inspect current supervisor/cron inventory without printing secret environment or configuration, then run the existing profile's doctor using a service-account-readable installed binary only after validating binary provenance and permissions. Record results privately with sanitized summaries. Avoid ad-hoc daemon startups, profile edits, copy/restore of secrets, and systemd unit enablement until the exact intended owner and authenticated health are verified.

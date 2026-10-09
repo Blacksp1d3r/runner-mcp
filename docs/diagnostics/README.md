@@ -38,3 +38,7 @@ Runner-MCP
 This public repository never records real hostnames, private paths, ports, tokens, credentials or customer payloads. Infrastructure and credential identity remain owned by the canonical AIfordable/Runner-Fabric authorities.
 
 Existing `.github/ISSUE_TEMPLATE/failure-record.md` remains the detailed incident/failure template. Existing `docs/SAFE_DIAGNOSTICS.md` remains the runtime-safe diagnostic output contract.
+
+## Connector failure guidance
+
+When tools are visible but every read-only call returns an unstructured internal error, use `CONNECTOR_READONLY_TRIAGE.md` and canonical RMCP-MCP-0005/#590. Do not infer runtime health or execute ad-hoc shell commands. The read-only triage must distinguish client schema, invocation transport, server dispatch and application response before any operational recovery.

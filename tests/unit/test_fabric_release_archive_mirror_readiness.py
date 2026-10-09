@@ -14,11 +14,7 @@ MIRROR = "RUNNER_MCP_FABRIC_RELEASE_MIRROR_ROOT"
 
 def _private(path: Path) -> None:
     path.mkdir(parents=True, mode=0o700)
-    current = path
-    while current.name and current != current.parent:
-        if current.exists():
-            os.chmod(current, 0o700)
-        current = current.parent
+    os.chmod(path, 0o700)
 
 
 def _fixture(tmp_path: Path):

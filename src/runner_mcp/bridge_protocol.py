@@ -87,6 +87,7 @@ class BridgeAction(StrEnum):
     RUNTIME_STATUS = "runtime_status"
     RUNTIME_DOCTOR = "runtime_doctor"
     FABRIC_OPERATIONAL_SNAPSHOT = "fabric_operational_snapshot"
+    FABRIC_CONTINUITY_STATUS = "fabric_continuity_status"
     SELF_UPDATE = "self_update"
     SELF_UPDATE_STATUS = "self_update_status"
     FABRIC_BOOTSTRAP = "fabric_bootstrap"
@@ -163,6 +164,7 @@ class BridgeRequest(BaseModel):
             BridgeAction.RUNTIME_STATUS,
             BridgeAction.RUNTIME_DOCTOR,
             BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT,
+            BridgeAction.FABRIC_CONTINUITY_STATUS,
         }:
             if (
                 self.project is not None
@@ -633,6 +635,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
         BridgeAction.RUNTIME_STATUS,
         BridgeAction.RUNTIME_DOCTOR,
         BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT,
+        BridgeAction.FABRIC_CONTINUITY_STATUS,
     }:
         return request.action.value, {}
 

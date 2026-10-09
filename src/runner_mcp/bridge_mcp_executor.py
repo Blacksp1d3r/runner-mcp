@@ -648,6 +648,7 @@ _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
         "runtime_status",
         "runtime_doctor",
         "fabric_operational_snapshot",
+        "fabric_continuity_status",
         "self_update",
         "self_update_status",
         "fabric_bootstrap",
@@ -1009,6 +1010,9 @@ class LocalMCPBridgeExecutor:
 
     def runtime_doctor(self) -> Any:
         return self._client()._call_tool("runtime_doctor", {})
+
+    def fabric_continuity_status(self) -> Any:
+        return self._client()._call_tool("fabric_continuity_status", {})
 
     def self_update(self, commit: str) -> Any:
         if not re.fullmatch(r"[0-9a-f]{40}", commit):

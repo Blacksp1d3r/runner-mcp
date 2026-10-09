@@ -200,10 +200,17 @@ def _safe_runner_script(root: Path, name: str) -> Path:
         raise CIRunnerEnrollmentError("CI runner root is unavailable") from exc
     if not resolved_root.is_dir():
         raise CIRunnerEnrollmentError("CI runner root is unavailable")
+    # Enrollment passes a short-lived GitHub registration token to config.sh.
+    # A directory writable by another local user allows script replacement
+    # before token delivery, even when config.sh itself is not a symlink.
+    if resolved_root.stat().st_mode & 0o022:
+        raise CIRunnerEnrollmentError("CI runner root permissions are unsafe")
 
     script = resolved_root / name
     if script.is_symlink() or not script.is_file() or not os.access(script, os.X_OK):
         raise CIRunnerEnrollmentError("CI runner configuration script is unavailable")
+    if script.stat().st_mode & 0o022:
+        raise CIRunnerEnrollmentError("CI runner configuration script permissions are unsafe")
     return script
 
 

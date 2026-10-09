@@ -1,3 +1,26 @@
+## 2026-10-09 ~13:33 CEST — Runner-MCP continuation / master-safe reconciliation
+
+This handover supersedes the preceding pending #593 state; GitHub main and exact run state remain authoritative.
+
+**Three green, exact-head merges in the Runner-MCP lane:**
+- #591 `ea519720454b54c326ebadc2fed51e8b384fe18f`: cap and fail-close temporary CI secret-handoff directory scan, no deletion if over 4096 entries.
+- #592 `3c9e16b56d2b62978bdf5b0802dac1327e32217f`: public CI handoff ID type and positive 53-bit expiry validation.
+- #593 `91299d1bc71474440c923b42d5fa922253421217`: sample/validate finite, positive, TTL-safe clock BEFORE writing any CI registration secret; one sample for returned expiry and record mtime. Initial Foundation failed only Ruff TRY004, corrected on exact head `cc55d30b916f260132de9fa33151af7af145b86c`; rerun via new commit completed attribution 37924023172 and Foundation 37924023194 both SUCCESS before merge.
+
+**One open CI PR, independent cost-saving child of #584:**
+- #594 branch `ci/584-cancel-superseded-attribution`, head `57467a40bfd8a4a2c25424e416dbd9b0aab68c10`: add per-PR/ref `concurrency` with `cancel-in-progress` to commit-attribution-policy workflow (normal validation already had it); no changed job/check name, permissions, triggers, hosted runner selector, branch protections or trusted release rules. Attribution run 37924161842 SUCCESS. Foundation validation 37924161737 IN_PROGRESS at 13:32:47; Ruff/pytest and built artifact completed green; clean demo still in progress. DO NOT MERGE before entire exact-head run shows SUCCESS. This can reduce redundant GitHub-hosted minutes but is not $0 hosted migration.
+
+**#584 isolation still BLOCKED:** Draft #589 already holds admission docs; #387 qualification workflow and #388 enrollment CLI exist; current GitHub integration disallows direct Actions runner inventory endpoint. No independent safe disposable runner capacity proven, no `runs-on` change/enrollment/deployment. Shared/private infrastructure untouched.
+
+**#590 connector still UNLOCATED:** four read-only MCP tools all returned generic internal error (runtime_status, runtime_doctor, list_projects, worker_status). Generic error does not prove server crash or worker capacity. Read-only triage `docs/diagnostics/CONNECTOR_READONLY_TRIAGE.md` indexed from diagnostics README and failure RMCP-MCP-0005 under component14. Do not blind retry or shell/tunnel/restart bypass.
+
+**Faster/OCR:** prior OCR qualification completed; speed improvement is distinct. Reused hosted shadow CI #458 run 37522524389 job 112471504336, noted synthetic p50 urllib 0.7799ms vs persistent HTTP 40.9038ms and Unix E2E 52.288us vs reference 132.698us. These are *not* real OCR throughput measurements. Existing #514/#458/#467/#537 own bench/measurement; no duplicate benchmarks, paid CI speed runs, OCR jobs, production workloads. New `docs/OCR_ACCELERATION_MEASUREMENT_PLAN.md` separates source/queue/VM boot/transfer/language detection/OCR CPU/postprocess/cleanup stages with privacy and safety gates.
+
+Updated main: component 09 ROADMAP/FAILURES (RMCP-CI-0001..0004), component14 FAILURES (RMCP-MCP-0005), diagnostic README/read-only connector triage, OCR measurement plan and issue comments #584/#514/#537. Public docs exclude private deployment identifiers and secrets.
+
+Next: check exact SHA #594 Foundation CI, merge only all green, reconcile #584 cost-saving note; then restore connector #590 through authorized owner evidence (client catalogue/transport/private bounded health) before any runtime activation or live performance assertion. This chat stays in Runner-MCP, **not** Runner-Fabric. Continue separate ongoing projects without interference.
+
+
 ## 2026-10-09 — Runner-MCP CI safety / connector / Faster checkpoint (updated)
 
 This is the **Runner-MCP** lane only. Do not resume Runner-Fabric F17/F20 code from this chat. Check active PRs first; do not duplicate #584 docs-only #589, admission workflow #387 or enrollment CLI #388. No production/worker/host/port/credential/tunnel mutations performed.

@@ -98,7 +98,7 @@ from .fabric_live_overview import (
     FabricLiveOverviewError,
     run_fabric_live_overview_process,
 )
-from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
+from .github_mailbox import GitHubApiSession
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
@@ -1132,7 +1132,9 @@ def cmd_ci_runner(args: argparse.Namespace) -> int:
         raise RuntimeError("Unknown or disabled CI runner")
 
     if args.ci_runner_action == "enroll":
-        github_token = values.get(GITHUB_TOKEN_ENV, "").strip()
+        # Runner enrollment needs elevated repository Actions administration.
+        # Never silently reuse the normal mailbox/transport token for it.
+        github_token = values.get("RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN", "").strip()
         if not github_token:
             raise RuntimeError("CI runner enrollment is not configured")
         manager = CIRunnerEnrollmentManager(

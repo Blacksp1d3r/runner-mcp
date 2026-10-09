@@ -7,7 +7,6 @@ from hashlib import sha256
 import pytest
 
 from runner_mcp import recovery_quarantine
-
 from runner_mcp.recovery_quarantine import (
     RecoveryFailureKind,
     RecoveryQuarantineError,

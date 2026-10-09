@@ -111,6 +111,9 @@ from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
 )
+from .fabric_release_archive_mirror_readiness import (
+    FabricReleaseArchiveMirrorReadiness,
+)
 from .fabric_repository_mirror_activation import (
     FabricRepositoryMirrorActivationError,
     FabricRepositoryMirrorActivator,
@@ -648,6 +651,9 @@ def build_mcp(
     fabric_disposable_target_runner = FabricDisposableTargetQualificationRunner(
         safety=safety,
         environment=worker_qualification_environment,
+    )
+    release_archive_mirror_readiness = FabricReleaseArchiveMirrorReadiness(
+        environment=private_values,
     )
     mirror_runtime_environment = dict(private_values)
     fabric_repository_mirror_runner = FabricRepositoryMirrorRunner(
@@ -1404,6 +1410,22 @@ def build_mcp(
                 "runner-fabric:continuity-status",
                 "authenticated-client",
                 str(result.get("mode", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_release_archive_mirror_readiness() -> dict:
+        """Inspect independent release-archive volume readiness without mutation."""
+        result = release_archive_mirror_readiness.status()
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_release_archive_mirror_readiness",
+                "runner-fabric:release-archive-mirror",
+                "authenticated-client",
+                str(result.get("reasonCode", "unknown")),
                 utc_timestamp(),
             )
         )

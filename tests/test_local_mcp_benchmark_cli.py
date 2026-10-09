@@ -8,7 +8,6 @@ from pathlib import Path
 
 import pytest
 
-
 _SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_local_mcp_transport.py"
 
 

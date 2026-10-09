@@ -169,3 +169,7 @@ Ten-minute tunnel-unit journal histogram returned exactly five occurrences of `d
 ## Thirty-minute event distribution — 2026-10-09
 
 Operator supplied a 30-minute tunnel journal message histogram: five `dispatcher forwarded command to MCP server` events, one MCP session initialized, one successful control-plane route resolution, one OAuth auth-server metadata fetch warning, three Harpoon host auto-registration warnings, and no separately named completion event in the reported message labels. Absence of a completion-labelled event is **not evidence of failure**: this runtime may not emit completion logs at this level. Do not request repetitive message histograms; next inspect a single bounded, redacted request-response trace or dedicated structured completion metrics, correlated across MCP server/tunnel/connector. Preserve credentials, identifiers and customer data. No operational mutation.
+
+## Tunnel health acceptance — 2026-10-09 operator evidence
+
+Operator read-only checks: loopback tunnel `/readyz` returned HTTP **200**; systemd state `ActiveState=active`, `SubState=running`, `NRestarts=0`. Operator previously verified `is-enabled=enabled`. Therefore readiness at the tunnel's local interface and no systemd-detected restarts during the current service lifetime are proven. This is not proof of a post-reboot recovery or 100% MCP request success. Preserve running service, do not adjust ports or auth on the strength of these checks, and address intermittent tool responses as an independent issue.

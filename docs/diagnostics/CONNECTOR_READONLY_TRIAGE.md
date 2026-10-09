@@ -51,3 +51,28 @@ Operator-verified state: system service **enabled/active**, local tunnel readine
 - `list_projects`, `runtime_status` and `runtime_doctor` return structured consistent responses in an authorized fresh connector session after correction; no repeated generic internal failures during bounded qualification.
 - Tunnel local READY + enabled/active system service are already observed, but post-reboot recovery remains separately pending a coordinated maintenance window with active CI runners.
 - Do not merge/mutate deployed components merely to suppress optional Harpoon HTTP warnings or missing optional OAuth metadata; do not relax transport security.
+
+## Single-route response-correlation qualification (2026-10-09)
+
+The *logical request/response association* matters; requiring the same physical TCP connection is neither warranted nor sufficient. Do not claim that a successful MCP tool response proves a unique tunnel identity when that identity is not returned by a qualified provenance surface.
+
+### Ownership and nonduplication
+
+- #333 owns persisted tunnel credential/readiness and boot recovery. Operator observed a running enabled tunnel with loopback readiness, but a reboot acceptance test is pending.
+- #540 owns tool-catalog and runtime generation binding; do not recreate this mechanism in #590.
+- #590 owns locating intermittent live tool failures and proving request/response lineage. Existing #595 covers local authenticated dispatch only.
+- Runner-Fabric#1210 and #1220 own cross-project generation and failure context, not this tunnel's operational service.
+
+### Safe qualification matrix
+
+| Test | Required evidence | Fail-closed interpretation |
+|---|---|---|
+| One successful read | Client outcome, UTC window, authorized correlation handle, server completed status | Missing handle => route identity unproven |
+| One failed read | Client failure class, nearest tunnel ingress/forwarding/completion states, MCP server receipt state | Missing stage => UNKNOWN; no speculative attribution |
+| Server restart or tool catalog change (disposable only) | Pre/post generation fingerprints and client reconnection behavior (#540) | Old generation blocked with stable reason |
+| Tunnel process restart (maintenance window) | At-most-one active instance, readiness, logical tunnel/session identity verified privately, new bounded read | Boot/persistence unqualified without post-restart evidence |
+| Cross-channel ambiguity | Demonstrably different logical identities in a synthetic test without real credentials; no replay to another channel | Refuse mismatched identity and stale response |
+
+Never put actual tunnel IDs, internal endpoints, correlation tokens, request payloads, or credential values in public logs or PRs. Avoid network reconfiguration, raw HTTP capture, app mutations, live production restart or repeated probe loops as part of documentation qualification.
+
+**Current result: INCOMPLETE.** Operator confirmed tunnel ready and enabled, and connector intermittent success; there is no supported proof that every request and answer share the expected logical tunnel generation. #590 remains open until first failing edge is identified; #333 and #540 keep their distinct acceptance gates.

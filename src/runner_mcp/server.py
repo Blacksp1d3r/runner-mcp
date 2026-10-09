@@ -91,6 +91,7 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
     a6_state_requested,
+    inspect_a6_binding_state,
     repair_a6_qualification_binding,
 )
 from .fabric_agent_runtime import (
@@ -702,6 +703,11 @@ def build_mcp(
         readiness_provider=bewind_qualification_readiness,
     )
 
+    def _a6_state_root() -> Path:
+        config_root = settings.projects_config.parent.expanduser().resolve()
+        service_home = config_root.parent.parent
+        return service_home / ".local" / "state" / "runner-fabric"
+
     ci_guest_specs = {
         "aifordable-lab-ci": CIRunnerGuestSpec(
             alias="aifordable-lab-ci",
@@ -906,6 +912,45 @@ def build_mcp(
                     "fail",
                     "runtime_activation_drift",
                 )
+
+        try:
+            a6_state = inspect_a6_binding_state(
+                config_dir=settings.projects_config.parent,
+                state_root=_a6_state_root(),
+            )
+        except FabricA6BindingRepairError:
+            add(
+                "fabric_a6_binding_state",
+                "warn",
+                "unavailable",
+            )
+        else:
+            roots = str(a6_state.get("state_roots", "unknown"))
+            count = a6_state.get("binding_count")
+            total = a6_state.get("binding_total")
+            complete = a6_state.get("binding_complete") is True
+            if (
+                roots == "ready"
+                and complete
+                and isinstance(count, int)
+                and isinstance(total, int)
+            ):
+                detail = f"ready_{count}_of_{total}"
+                state = "pass"
+            elif (
+                roots == "absent"
+                and count == 0
+                and isinstance(total, int)
+            ):
+                detail = f"not_configured_0_of_{total}"
+                state = "pass"
+            elif isinstance(count, int) and isinstance(total, int):
+                detail = f"{roots}_{count}_of_{total}"
+                state = "warn"
+            else:
+                detail = "unavailable"
+                state = "warn"
+            add("fabric_a6_binding_state", state, detail)
 
         try:
             actions_readiness = fabric_update_manager.actions_readiness()

@@ -134,6 +134,27 @@ def test_runner_inventory_count_must_match_received_rows(
         CIRunnerGitHubController(session).status(spec(tmp_path))
 
 
+@pytest.mark.parametrize(
+    "malformed",
+    [None, 7, {}, {"name": 5}, {"name": ""}],
+)
+@pytest.mark.parametrize("target_visible", [False, True])
+def test_incomplete_identity_rows_cannot_authorize_runner_decision(
+    tmp_path: Path,
+    malformed: object,
+    target_visible: bool,
+) -> None:
+    session = FakeSession()
+    rows = [runner_payload() if target_visible else {"name": "other-runner"}]
+    rows.append(malformed)
+    session.responses.append({"total_count": len(rows), "runners": rows})
+
+    with pytest.raises(CIRunnerGitHubError, match="inventory item is invalid"):
+        CIRunnerGitHubController(session).status(spec(tmp_path))
+
+    assert len(session.calls) == 1
+
+
 def test_registration_and_remove_tokens_remain_internal(tmp_path: Path) -> None:
     session = FakeSession()
     session.responses.extend(

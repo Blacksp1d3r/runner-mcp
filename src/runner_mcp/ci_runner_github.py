@@ -72,6 +72,15 @@ class CIRunnerGitHubController:
         # registration; likewise a first-page match could be ambiguous.
         if total_count != len(runners):
             raise CIRunnerGitHubError("GitHub runner inventory is incomplete")
+        # Even a nonmatching malformed row can conceal the configured runner.
+        # A complete count is not proof that each enumerated identity is valid.
+        if any(
+            not isinstance(item, dict)
+            or not isinstance(item.get("name"), str)
+            or not item["name"]
+            for item in runners
+        ):
+            raise CIRunnerGitHubError("GitHub runner inventory item is invalid")
 
         matches = [
             item

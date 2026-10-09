@@ -14,7 +14,7 @@
 | service lifecycle | `service_manager.py`, `service_journal.py`, `autostart.py`, `cron_autostart.py`, `autostart_activation.py` |
 | tunnel/connectivity | `tunnel_*.py`, `aifordable_relay.py` |
 | diagnostics/audit | `safe_diagnostics.py`, `audit.py`, `text_redaction.py`, `host_integrity*.py`, `build_identity.py` |
-| artifact/mirror custody | `artifact_custody.py`, `fabric_repository_mirrors.py`, `fabric_repository_mirror_activation.py`, `fabric_update.py` |
+| artifact/mirror custody | `artifact_custody.py`, `fabric_repository_mirrors.py`, `fabric_repository_mirror_activation.py`, `fabric_release_archive_mirror_readiness.py`, `fabric_update.py` |
 | MCP server/interface | `server.py`, `http_middleware.py`, `plugin_package.py`, public MCP/HTTP integration tests |
 
 Project-specific fixed adapters such as current Bewind qualification modules remain children of qualification/artifact components, not separate generic authority.

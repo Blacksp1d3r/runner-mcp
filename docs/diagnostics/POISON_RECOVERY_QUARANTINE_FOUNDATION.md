@@ -24,6 +24,8 @@ When `GitHubMailboxWatcher.run_cycle` discovers an ambiguous claim or malformed 
 4. Negative end-to-end tests for poison item + later good request, restart, changed head, duplicate poison identity and disk/full-write failure
 5. Protected local source binding, capacity planning, scheduled retention and recovery from interrupted writes; no live activation without these
 
-The current file rewrite is fsynced under an exclusive lock and a corrupt/interrupted JSON state fails closed. It is **not crash-atomic**, so the future production integration must add independently reviewed crash-safe write/recovery before using it for authoritative cursor advancement.
+The ledger now uses a separate, stable, owner-private `.lock` inode and writes a new, private temp file, fsyncs it, atomically replaces the JSON and fsyncs the parent directory while holding that lock. Failures before replacement leave the prior complete JSON unchanged. Failures between replacement and directory sync may leave the old **or** new complete state and must be treated as unproven until reread; no partial JSON is ever intentionally published. Synthetic interrupted-replace/temp-fsync and concurrent writer tests check the invariants. This is a source-level proof, not a power-loss test on the real filesystem.
+
+Still to qualify before watcher activation: operator rearm audit/provenance must preserve previous terminal evidence; a data-layer boolean is not authorization. Request fingerprints must be constructed from trusted canonical evidence, and cursor advancement must be atomic with terminal quarantine evidence (children #616/#617).
 
 This PR provides a testable state foundation only. Its green CI must not be represented as an end-to-end watcher convergence fix or operational qualification.

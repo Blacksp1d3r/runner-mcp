@@ -157,7 +157,7 @@ def test_intermediate_symlink_is_rejected(tmp_path):
 
 
 def test_directory_is_not_accepted_as_mount(tmp_path):
-    environment, primary, mount, mirror = _fixture(tmp_path)
+    environment, _, _, _ = _fixture(tmp_path)
 
     result = FabricReleaseArchiveMirrorReadiness(
         environment=environment,
@@ -171,7 +171,7 @@ def test_directory_is_not_accepted_as_mount(tmp_path):
 
 
 def test_same_device_is_rejected(tmp_path):
-    environment, primary, mount, mirror = _fixture(tmp_path)
+    environment, _, mount, _ = _fixture(tmp_path)
 
     result = FabricReleaseArchiveMirrorReadiness(
         environment=environment,

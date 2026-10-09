@@ -1,3 +1,9 @@
+## 2026-10-09 — #619 exact-head GREEN and MERGED (supersedes WAITING_CI)
+
+New bounded source-only PR #619 (`fix/windows-service-backend-admission-20261009`) exact head `b426692798092edf263d0182a205ae7ba9a6dc2b`, attribution run `37975695602` SUCCESS, full validation run `37975695551` SUCCESS (Ruff/pytest, built release artifact, clean demo), squash merge `bac86a97f1493ff943ef5f3d01228814e3ed61c0`. `ServiceManager._backend()` refuses default Linux SystemdUserBackend on Windows/unsupported host before instantiation; existing Linux and explicitly injected backends unchanged. Three regression cases passed. This does NOT implement Windows SCM, change actual Windows startup, grant remote authority, or activate any server. Broader #489 remains open for least-privilege SCM adapter and isolated Windows CI.
+
+This session's other exact-green source merges: Faster shadow #460 `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`, first platform contract #490 `816c7e5abd5ddbf91d0e580e6a7102bb0308faf0`. All are GitHub source changes only; no runtime/self-update/tunnel, CI enrollment, credentials, production/worker mutation. #590 remains OPEN, external response return route unqualified. Prior temporary WAITING_CI paragraphs below are superseded. Safe next independent work is review/reconcile existing owned open PRs (#526, #519, #518 etc.), not duplicate or merge without fresh head and ownership checks.
+
 ## 2026-10-09 — Faster-13 eventfd shadow + Windows host contract
 
 #460 (shadow-only shared-memory/eventfd benchmark) exact-head attribution `37974721744` and full validation `37974721750` GREEN; squash merged `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`. Added 5s response deadline and guaranteed worker cleanup on failure with positive and negative tests. Not a production transport or OCR throughput improvement.

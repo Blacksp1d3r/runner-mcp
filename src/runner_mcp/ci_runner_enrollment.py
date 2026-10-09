@@ -226,6 +226,14 @@ def _ensure_work_root(spec: CIRunnerSpec) -> None:
     except OSError as exc:
         raise CIRunnerEnrollmentError("CI runner root is unavailable") from exc
 
+    # A missing work directory can have a symlinked parent outside the
+    # runner root. Validate containment before any filesystem mutation.
+    try:
+        resolved_parent = spec.work_root.parent.resolve(strict=True)
+        resolved_parent.relative_to(resolved_root)
+    except (OSError, ValueError) as exc:
+        raise CIRunnerEnrollmentError("CI runner work root is unsafe") from exc
+
     if spec.work_root.exists():
         try:
             resolved_work = spec.work_root.resolve(strict=True)

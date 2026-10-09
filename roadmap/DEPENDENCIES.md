@@ -1,3 +1,10 @@
+## 2026-10-09 — Source gates versus live operator authority (reconciled)
+
+1. #388 enrollment CLI on main after all standard CI green, but no enrollment executed or admin credential provided; `RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN` must remain independent of ordinary mailbox token. #387 manual-only, no-cache qualification workflow likewise merged but has **never proved** a live disposable runner. No PR source code may use deployment-capable host as a substitute.
+2. Source-only #599 control-plane authenticated freshness complete; the documented default tunnel-client long-poll is 30s plus 5s deadline guard, the local maximum successful-poll age policy is 90s and future skew 5s. External #590 and #333 operator/session/route readiness are independent; a stale or failed auth poll is not a diagnosis that the MCP process is down.
+3. #586 independent-volume read-only status source merged. AIfordable #537 machine-readable storage topology and Runner-Fabric #1397 fixed archive namespace are still OPEN; exact separate physical volume identity, owner-private mirror, real mounted second storage and fully qualified protected archive copy remain **BLOCKED**. #587 mirror mutation and #588 restore must not run/land ahead of separately approved real gates.
+4. All checked-in admission results are synthetic or hosted CI source evidence unless identified as operator-owned live evidence. No physical backup move, filesystem privilege change, production action, extra paid service or secret disclosure occurred.
+
 ## 2026-10-09 — Runner registration CI isolation and credentials (issue #584)
 
 1. Public repository GitHub-hosted standard CI minutes are free; avoid exchanging a trusted hosted PR boundary for privileged self-hosted execution on a false cost assumption. Private Actions storage and hosted releases belong to separate project issues.

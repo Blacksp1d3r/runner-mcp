@@ -204,3 +204,39 @@ def test_public_handoff_record_rejects_invalid_expiry_bounds(
 def test_public_handoff_record_accepts_valid_expiry_boundary() -> None:
     record = CIRunnerSecretHandoff(handoff_id="ab" * 16, expires_at=(1 << 53) - 1)
     assert record.to_payload()["expires_at"] == (1 << 53) - 1
+
+
+@pytest.mark.parametrize(
+    "invalid_clock",
+    [float("nan"), float("inf"), float("-inf"), -1.0, 0.0, float(1 << 54), True, "2000"],
+)
+def test_create_with_bad_clock_writes_no_secret_file(
+    tmp_path: Path, invalid_clock: object,
+) -> None:
+    root = private_root(tmp_path)
+    store = CIRunnerSecretHandoffStore(
+        root=root,
+        now=lambda: invalid_clock,
+        random_bytes=lambda _size: b"\x12" * 16,
+    )
+    with pytest.raises(CIRunnerSecretHandoffError, match="clock"):
+        store.create(CIRunnerRegistrationSecret("s" * 32))
+    assert list(root.iterdir()) == []
+
+
+def test_create_uses_one_clock_sample_for_expiry_and_file_mtime(tmp_path: Path) -> None:
+    root = private_root(tmp_path)
+    sampled = []
+
+    def clock() -> float:
+        sampled.append(1)
+        return 2000.0 + len(sampled) - 1
+
+    record = CIRunnerSecretHandoffStore(
+        root=root,
+        now=clock,
+        random_bytes=lambda _size: b"\x34" * 16,
+    ).create(CIRunnerRegistrationSecret("s" * 32))
+    assert sampled == [1]
+    assert record.expires_at == 2300
+    assert int((root / record.handoff_id).stat().st_mtime) == 2000

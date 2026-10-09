@@ -91,6 +91,15 @@ class CIRunnerSecretHandoffStore:
                 "secret must be CIRunnerRegistrationSecret"
             )
         self._validate_root()
+        try:
+            clock_value = self._now()
+            if isinstance(clock_value, bool) or not isinstance(clock_value, (int, float)):
+                raise TypeError("invalid clock type")
+            created_at = int(clock_value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise CIRunnerSecretHandoffError("handoff clock is invalid") from exc
+        if not 1 <= created_at <= (1 << 53) - 1 - self._ttl_seconds:
+            raise CIRunnerSecretHandoffError("handoff clock is outside policy")
 
         raw = secret.value.encode("ascii")
         if not 16 <= len(raw) <= _MAX_SECRET_BYTES:
@@ -137,7 +146,6 @@ class CIRunnerSecretHandoffStore:
             else:
                 os.close(fd)
 
-            created_at = int(self._now())
             try:
                 os.utime(path, (created_at, created_at), follow_symlinks=False)
             except OSError as exc:

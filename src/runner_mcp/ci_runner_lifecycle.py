@@ -38,6 +38,10 @@ class CIRunnerSpec:
             raise CIRunnerLifecycleError("CI runner name is invalid")
         if not self.runner_root.is_absolute() or not self.work_root.is_absolute():
             raise CIRunnerLifecycleError("CI runner paths must be absolute")
+        # Lexical containment is not physical containment when ".." survives
+        # in an absolute configured path.
+        if ".." in self.runner_root.parts or ".." in self.work_root.parts:
+            raise CIRunnerLifecycleError("CI runner paths must not traverse parents")
         if self.runner_root == self.work_root:
             raise CIRunnerLifecycleError("CI runner work root must be separate")
         try:
@@ -150,7 +154,14 @@ def inspect_ci_runner(spec: CIRunnerSpec) -> CIRunnerStatus:
         raise TypeError("spec must be CIRunnerSpec")
 
     runner_ready = _safe_directory(spec.runner_root)
-    work_ready = _safe_directory(spec.work_root)
+    work_ready = runner_ready and _safe_directory(spec.work_root)
+    if work_ready:
+        try:
+            spec.work_root.resolve(strict=True).relative_to(
+                spec.runner_root.resolve(strict=True)
+            )
+        except (OSError, ValueError):
+            work_ready = False
     marker = spec.runner_root / ".runner"
     registered = runner_ready and marker.is_file() and not marker.is_symlink()
 

@@ -281,6 +281,36 @@ def test_symlink_config_script_is_rejected_before_token_fetch(tmp_path: Path) ->
     assert github.token_calls == 0
 
 
+def test_enrollment_rejects_symlinked_work_parent_before_token(
+    tmp_path: Path,
+) -> None:
+    original = setup_spec(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (original.runner_root / "link").symlink_to(
+        outside, target_is_directory=True
+    )
+    spec = CIRunnerSpec(
+        alias=original.alias,
+        repository=original.repository,
+        runner_name=original.runner_name,
+        runner_root=original.runner_root,
+        work_root=original.runner_root / "link" / "_work",
+        labels=original.labels,
+    )
+    github = FakeGitHub()
+    github.states.append(None)
+
+    with pytest.raises(CIRunnerEnrollmentError, match="work root is unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+    assert not (outside / "_work").exists()
+
+
 def test_registration_must_become_visible(tmp_path: Path) -> None:
     spec = setup_spec(tmp_path)
     github = FakeGitHub()

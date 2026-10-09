@@ -150,6 +150,31 @@ def test_symlinked_registration_marker_is_not_reported_as_registered(
     assert plan_ci_runner(spec).enrollment_required is True
 
 
+def test_work_root_cannot_escape_using_parent_segments(tmp_path: Path) -> None:
+    runner_root = tmp_path / "runner"
+    escaped = runner_root / "intermediate" / ".." / ".." / "escaped"
+
+    with pytest.raises(CIRunnerLifecycleError, match="traverse parents"):
+        parse_ci_runner_specs(raw(runner_root, escaped))
+
+
+def test_read_only_status_rejects_symlinked_work_parent(tmp_path: Path) -> None:
+    runner_root = tmp_path / "runner"
+    runner_root.mkdir()
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "_work").mkdir()
+    (runner_root / "link").symlink_to(outside, target_is_directory=True)
+    work = runner_root / "link" / "_work"
+
+    spec = parse_ci_runner_specs(raw(runner_root, work))["aifordable-lab-ci"]
+    status = inspect_ci_runner(spec)
+
+    assert status.runner_root_ready is True
+    assert status.work_root_ready is False
+    assert status.registered is False
+
+
 def test_work_root_must_be_inside_runner_root(tmp_path: Path) -> None:
     root = tmp_path / "runner"
     outside = tmp_path / "outside"

@@ -162,7 +162,7 @@ def test_symlinked_parent_directory_does_not_receive_quarantine_records(tmp_path
 
 def test_corrupted_utf8_ledger_fails_with_public_safe_error(tmp_path):
     target = tmp_path / "quarantine.json"
-    target.write_bytes(b"\\xff")
+    target.write_bytes(bytes([255]))
     ledger = _ledger(tmp_path)
 
     with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):

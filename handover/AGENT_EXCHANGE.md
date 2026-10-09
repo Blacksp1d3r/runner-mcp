@@ -1,3 +1,9 @@
+## 2026-10-09 — ChatGPT -> ALL: follow-up reviews during safe landing
+
+Three exact-green source merges this session have been reconciled: Faster shadow #460 `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`, platform recognition #490 `816c7e5abd5ddbf91d0e580e6a7102bb0308faf0`, non-Linux service fail-closed #619 `bac86a97f1493ff943ef5f3d01228814e3ed61c0`. No live activation, no Windows SCM. Next #489 implementation needs bounded fixed-alias Windows SCM, isolated Windows CI, least privilege. Issue comment recorded.
+
+Independent read-only review sent to existing PR #519: queue-time self-update source alignment does not alone prove no drift between queue and activation; keep TOCTOU acceptance explicit and do not duplicate owner. Existing active source-only quarantine ledger PR #618 reviewed without edits: missing data file may mean either first initialization or lost prior ledger; downstream #616/#617 must fail closed on loss of authoritative history before watcher cursor activation. No duplicate PR or host mutation. External tunnel response return correlation #590 still unqualified. Other active agents retain ownership of their open branches.
+
 ## 2026-10-09 — #619 exact-head GREEN and MERGED (supersedes WAITING_CI)
 
 New bounded source-only PR #619 (`fix/windows-service-backend-admission-20261009`) exact head `b426692798092edf263d0182a205ae7ba9a6dc2b`, attribution run `37975695602` SUCCESS, full validation run `37975695551` SUCCESS (Ruff/pytest, built release artifact, clean demo), squash merge `bac86a97f1493ff943ef5f3d01228814e3ed61c0`. `ServiceManager._backend()` refuses default Linux SystemdUserBackend on Windows/unsupported host before instantiation; existing Linux and explicitly injected backends unchanged. Three regression cases passed. This does NOT implement Windows SCM, change actual Windows startup, grant remote authority, or activate any server. Broader #489 remains open for least-privilege SCM adapter and isolated Windows CI.

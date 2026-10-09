@@ -9,7 +9,6 @@ from pathlib import Path
 
 import pytest
 
-
 _SCRIPT = Path(__file__).resolve().parents[1] / "scripts" / "benchmark_shm_eventfd_shadow.py"
 _LINUX_EVENTFD = sys.platform == "linux" and hasattr(os, "memfd_create") and hasattr(os, "eventfd")
 

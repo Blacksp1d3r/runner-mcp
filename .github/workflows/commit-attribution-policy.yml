@@ -10,6 +10,11 @@ permissions:
   contents: read
   pull-requests: read
 
+# Keep the most recent run for each PR or protected branch; no required check is skipped.
+concurrency:
+  group: runner-mcp-attribution-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
 jobs:
   commit-attribution-policy:
     name: Commit attribution policy

@@ -95,6 +95,45 @@ def test_ambiguous_runner_name_fails_closed(tmp_path: Path) -> None:
         CIRunnerGitHubController(session).status(spec(tmp_path))
 
 
+@pytest.mark.parametrize("include_first_page_match", [False, True])
+def test_incomplete_runner_inventory_fails_before_identity_decision(
+    tmp_path: Path,
+    include_first_page_match: bool,
+) -> None:
+    session = FakeSession()
+    rows = [{"name": "unrelated"} for _ in range(100)]
+    if include_first_page_match:
+        rows[0] = runner_payload()
+    session.responses.append({"total_count": 101, "runners": rows})
+
+    with pytest.raises(CIRunnerGitHubError, match="incomplete"):
+        CIRunnerGitHubController(session).status(spec(tmp_path))
+
+    assert len(session.calls) == 1
+
+
+@pytest.mark.parametrize("invalid_count", [True, -1, "1", None])
+def test_invalid_runner_inventory_count_fails_closed(
+    tmp_path: Path,
+    invalid_count: object,
+) -> None:
+    session = FakeSession()
+    session.responses.append({"total_count": invalid_count, "runners": []})
+
+    with pytest.raises(CIRunnerGitHubError, match="invalid"):
+        CIRunnerGitHubController(session).status(spec(tmp_path))
+
+
+def test_runner_inventory_count_must_match_received_rows(
+    tmp_path: Path,
+) -> None:
+    session = FakeSession()
+    session.responses.append({"total_count": 1, "runners": []})
+
+    with pytest.raises(CIRunnerGitHubError, match="incomplete"):
+        CIRunnerGitHubController(session).status(spec(tmp_path))
+
+
 def test_registration_and_remove_tokens_remain_internal(tmp_path: Path) -> None:
     session = FakeSession()
     session.responses.extend(

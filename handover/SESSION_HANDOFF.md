@@ -1,3 +1,7 @@
+## 2026-10-09 — Faster-13 shadow merges #467 and #465; #456 awaiting clean demo
+
+Exact-head attribution and full validation SUCCESS: existing PR #467 Unix-envelope E2E head `f918a91c9824f747c1a3ad429cf28d9f8960dc91`, attribution `37962618491`, validation `37962618480`, squash merge `4bba36e877d96246c93eb8064d6bf0d4af72de05`; existing PR #465 compact-envelope head `9d1344beaef929acc9bac236a6c8d692dd48b988`, attribution `37962706609`, validation `37962706712`, squash merge `365a7a1f32f82e01da75004b800ed2948516fa9e`. #456 same-Linux-host Unix IPC head `c2ff700ed4e87cd0a6dd400975a5c47c4016c2a8`, attribution `37962833940` SUCCESS, validation `37962833262`: Ruff/pytest and built artifact SUCCESS, clean demo IN_PROGRESS at last check, state `WAITING_CI`. #460 is STACKED on #456 and must not merge first. #458 hosted synthetic lab DO NOT MERGE. These are measurements only: no actual OCR speedup, live worker load, runtime transport change, service or tunnel mutation. Prior #467 GraphQL diagnostic retracted: incorrect branch name caused failure; exact branch solved it. #590 external connector still OPEN despite #613 local bridge reply-ID hardening.
+
 ## 2026-10-09 — Faster-13 restored existing PRs (CI pending)
 
 After exact-green merge #613 (`ae2eac3f4e38574d4405460e14f7b8cad122e4d4`) and source-level #599 closure, existing measurement PRs were reconciled instead of duplicated:

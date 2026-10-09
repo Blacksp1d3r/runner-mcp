@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import secrets
 import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
@@ -1137,6 +1138,9 @@ def cmd_ci_runner(args: argparse.Namespace) -> int:
         github_token = values.get("RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN", "").strip()
         if not github_token:
             raise RuntimeError("CI runner enrollment is not configured")
+        mailbox_token = values.get("RUNNER_MCP_GITHUB_TOKEN", "").strip()
+        if mailbox_token and secrets.compare_digest(github_token, mailbox_token):
+            raise RuntimeError("CI runner enrollment requires distinct credentials")
         manager = CIRunnerEnrollmentManager(
             github=CIRunnerGitHubController(
                 GitHubApiSession(token=github_token)

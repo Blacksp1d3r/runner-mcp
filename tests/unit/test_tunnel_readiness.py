@@ -136,5 +136,5 @@ def test_nonboolean_tunnel_evidence_cannot_be_truthy_or_falsy(
         "end_to_end_routable": True,
     }
     evidence[field] = invalid
-    with pytest.raises(ValueError, match="boolean"):
+    with pytest.raises(TypeError, match="boolean"):
         TunnelReadinessEvidence(**evidence)  # type: ignore[arg-type]

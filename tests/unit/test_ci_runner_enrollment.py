@@ -263,6 +263,49 @@ def test_failure_does_not_expose_process_output_or_token(tmp_path: Path) -> None
     assert "r" * 40 not in rendered
 
 
+@pytest.mark.parametrize("target", ["runner-root", "config-script"])
+@pytest.mark.parametrize("unsafe_bit", [0o020, 0o002])
+def test_enrollment_refuses_writable_root_or_config_before_token(
+    tmp_path: Path,
+    target: str,
+    unsafe_bit: int,
+) -> None:
+    spec = setup_spec(tmp_path)
+    selected = (
+        spec.runner_root if target == "runner-root"
+        else spec.runner_root / "config.sh"
+    )
+    selected.chmod(0o700 | unsafe_bit)
+    github = FakeGitHub()
+
+    with pytest.raises(CIRunnerEnrollmentError, match="permissions are unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+
+
+def test_normal_nonwritable_shared_read_permissions_are_accepted(
+    tmp_path: Path,
+) -> None:
+    spec = setup_spec(tmp_path)
+    spec.runner_root.chmod(0o755)
+    (spec.runner_root / "config.sh").chmod(0o755)
+    (spec.runner_root / ".runner").write_text("private", encoding="utf-8")
+    github = FakeGitHub()
+    github.states.append(remote(online=True))
+
+    result = CIRunnerEnrollmentManager(
+        github=github,
+        uid_provider=lambda: 1000,
+    ).enroll(spec)
+
+    assert result.state == "already-registered"
+    assert github.token_calls == 0
+
+
 def test_symlink_config_script_is_rejected_before_token_fetch(tmp_path: Path) -> None:
     spec = setup_spec(tmp_path)
     real = spec.runner_root / "real-config.sh"

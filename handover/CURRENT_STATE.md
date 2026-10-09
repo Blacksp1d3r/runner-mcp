@@ -1,3 +1,9 @@
+## 2026-10-09 — MCP connector response identity and Faster-13 benchmark
+
+**Completed:** PR #607 sanitized operator playbook fully green merged `6dc5160c93815b223214302ffb50cebbb304e49d`. PR #608 existing HTTP middleware trace/request-ID negative and concurrent tests fully green merged `e0250205ee33cd39f5ffc501ff8fa86861679d30`. Tests prove local response identity, not external tunnel return path. User/operator observed enabled/active tunnel, readiness 200, zero service restarts; boot drill pending. #590 remains open for live first failing response edge, #540 generation fencing open, #333 reboot readiness open; no live reconfiguration.
+
+**Active:** Existing Faster-13 #514 was cleanly restacked in-place onto current main, with seven fail-closed CLI argument tests. Latest head `1f329ff57e1ef5b8262f813b4a72100aa410820a`; exact-head attribution `37957744577` SUCCESS, Runner MCP validation `37957744262` Ruff/pytest and built artifact SUCCESS, clean demo IN_PROGRESS at last check; `WAITING_CI` overall. Earlier Ruff formatting failure `37957558080` repaired; no production benchmark was run. #383 remains open; no OCR throughput claim or production transport switch.
+
 ## 2026-10-08 — Diagnostic topology adoption in review
 
 Tracking: #569.

@@ -1,3 +1,13 @@
+## 2026-10-09 — Faster-13 eventfd shadow + Windows host contract
+
+#460 (shadow-only shared-memory/eventfd benchmark) exact-head attribution `37974721744` and full validation `37974721750` GREEN; squash merged `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`. Added 5s response deadline and guaranteed worker cleanup on failure with positive and negative tests. Not a production transport or OCR throughput improvement.
+
+#490 (host-platform capability contract) exact-head attribution `37975249864` and validation `37975249793` GREEN; squash merged `816c7e5abd5ddbf91d0e580e6a7102bb0308faf0`. Platform family `supported` is not Windows backend readiness: explicit `serviceAdapterImplemented` false for Windows, true for Linux implementation, false unsupported. Runtime Windows SCM not installed or qualified.
+
+#619 implements a narrow further fail-closed guard on default service-manager backend selection for non-Linux. Latest head `b426692798092edf263d0182a205ae7ba9a6dc2b`, attribution `37975695602` GREEN, full validation `37975695551` IN_PROGRESS. No merge until exact-head green. Linux normal/injected test backends remain unchanged. Subsequent Windows SCM implementation requires separate least-privilege, isolated Windows CI and deployment approval. #489 remains broader owner.
+
+#590 external tunnel return-path identity remains OPEN; #599 source freshness guard already closed. No live host/tunnel changes.
+
 ## 2026-10-09 — Final landing: #456 fully GREEN and MERGED
 
 Supersedes earlier #456 WAITING_CI: PR #456 exact head `c2ff700ed4e87cd0a6dd400975a5c47c4016c2a8`, attribution `37962833940` SUCCESS, validation `37962833262` SUCCESS (Ruff/pytest, release artifact, clean demo), squash merge `fc034b094c633b51889e2a13cc86727e2b1941fe`. Together with exact-green merges #465 `365a7a1f32f82e01da75004b800ed2948516fa9e`, #467 `4bba36e877d96246c93eb8064d6bf0d4af72de05` and #613 `ae2eac3f4e38574d4405460e14f7b8cad122e4d4`, all four code PRs are integrated; no live server, CI selector, tunnel, credential or production transport mutation. New next-safe CI-aware action in following session: reconcile existing stacked PR #460 against merged #456 and newest main (do NOT duplicate PR), inspect CI and rebase only using exact branch name. #458 is a temporary hosted benchmark lab and explicitly DO NOT MERGE. #590 external connector response delivery still OPEN despite local JSON-RPC ID guard; remote health dispatcher/response-delivery snapshots remain unproven. #599 source-level auth freshness is closed. No OCR throughput claims from synthetic measurements.

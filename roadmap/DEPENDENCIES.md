@@ -1,3 +1,9 @@
+## 2026-10-09 — Windows source prerequisites integrated; runtime still gated
+
+Source-only host platform contract #490 (merge `816c7e5abd5ddbf91d0e580e6a7102bb0308faf0`) and explicit non-Linux default service backend rejection #619 (merge `bac86a97f1493ff943ef5f3d01228814e3ed61c0`) both passed exact-head attribution and full Runner MCP validation. Windows is recognized but `serviceAdapterImplemented=false`, and `ServiceManager` now fails closed rather than attempting Linux systemd on a Windows/unknown host. This is **not** Windows SCM support, Windows autostart, customer-host qualification or activation. No live Windows test or deployment was attempted.
+
+Next permissible #489 child: explicit fixed-alias Windows SCM adapter using the existing `ServiceBackend` Protocol, rights separation, state normalization, unsupported-backend denial and isolated Windows CI; only after its exact test proof may Windows service lifecycle be considered. Preserve existing Linux integration tests and zero generic PowerShell/argv/path/service selector authority. Do not conflate known-host capability with an admission token.
+
 ## 2026-10-09 — First-class Windows host without premature activation
 
 - #489 owns OS-neutral service lifecycle adaptation; existing #490 is a source-only recognized-host contract, NOT operational Windows support. It now distinguishes `supported` (known host family) from `serviceAdapterImplemented` (service backend implemented). Windows is known but its SCM adapter remains unavailable and **must fail closed**.

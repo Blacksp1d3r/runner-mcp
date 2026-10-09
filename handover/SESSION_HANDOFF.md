@@ -1,3 +1,7 @@
+## 2026-10-09 — Next autonomous session: existing Faster-13 PR reconciliation
+
+Latest GitHub open-PR review: #514 was already merged and removed from open set; temporary benchmark runner PR #458 explicitly states DO NOT MERGE. Existing #467 Unix-envelope E2E benchmark contains a single shadow script, not a runtime transport change. A clean tree/commit candidate `057de0267542ae5296d7c2e66891d6d0ff75d47e` was created against observed main `f9ac09a52b11f55c5b0ee9612b7dc63130d55db6`, but guarded update_ref failed twice with GitHub GraphQL internal errors. Original PR #467 head remains `78fa2f7832edcb85c6ec18d079900e62b8a836a5`; **NOT UPDATED, NOT MERGED, NO NEW CI**. Issue comment on #467 records blocking evidence. Do not blindly repeat branch rewrite or create duplicate PR; reconcile platform health and fresh main/head before any future change. #460 remains stacked on #456; cannot bypass dependency. #599 remains open pending poll producer cadence; no guessed TTL. #590 remains open for live client/tunnel response correlation. No live runner/tunnel/product changes.
+
 ## 2026-10-09 — Multi-lane exact-green landing: CI runner, tunnel freshness, release archive
 
 Canonical handoff: `MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` v1.2 in the Library. This entry supersedes earlier `WAITING_CI`/open-source-PR statuses for the items below. Main verified after latest merge: `3077381bc5d82856e6f815033dc19e833cb227bb`.

@@ -199,6 +199,8 @@ class RecoveryQuarantineLedger:
         nofollow = getattr(os, "O_NOFOLLOW", 0)
         if nofollow == 0:
             raise RecoveryQuarantineError("quarantine symlink protection unavailable")
+        if self._path.is_symlink():
+            raise RecoveryQuarantineError("quarantine file is unsafe")
         try:
             fd = os.open(self._path, os.O_RDONLY | nofollow)
         except FileNotFoundError:
@@ -289,7 +291,9 @@ class RecoveryQuarantineLedger:
             finally:
                 os.close(fd)
             os.replace(temporary, self._path)
-            dir_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
+            dir_fd = os.open(
+                parent, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0)
+            )
             try:
                 os.fsync(dir_fd)
             finally:

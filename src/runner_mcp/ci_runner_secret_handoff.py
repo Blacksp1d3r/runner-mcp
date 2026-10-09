@@ -28,13 +28,15 @@ class CIRunnerSecretHandoff:
     expires_at: int
 
     def __post_init__(self) -> None:
-        if _HANDOFF_RE.fullmatch(self.handoff_id) is None:
+        if not isinstance(self.handoff_id, str) or _HANDOFF_RE.fullmatch(self.handoff_id) is None:
             raise CIRunnerSecretHandoffError("handoff id is invalid")
         if isinstance(self.expires_at, bool) or not isinstance(
             self.expires_at,
             int,
         ):
             raise CIRunnerSecretHandoffError("handoff expiry is invalid")
+        if not 1 <= self.expires_at <= (1 << 53) - 1:
+            raise CIRunnerSecretHandoffError("handoff expiry is outside bounds")
 
     def to_payload(self) -> dict[str, object]:
         return {

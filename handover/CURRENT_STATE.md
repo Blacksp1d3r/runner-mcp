@@ -1,3 +1,9 @@
+## 2026-10-09 — Local MCP reply-ID guard merged; three Faster shadow PRs in validation
+
+PR #613 exact head `6b5dc2c2c646aba0fdc45a0ae9a08a6af83a8f97` passed attribution `37962077429` and full validation `37962077446`, merged `ae2eac3f4e38574d4405460e14f7b8cad122e4d4`; internal JSON/SSE replies without exact numeric JSON-RPC id are rejected. Externally intermittent connector/route issue #590 remains OPEN. Issue #599 source freshness was already merged via #609 and closed on reconciliation. Official upstream tunnel-client diagnostics define loopback-only dispatcher and response-delivery counters, documented in triage.
+
+Existing shadow-only Faster PRs (no deployment) restacked to main, original PRs preserved: #467 head `f918a91c9824f747c1a3ad429cf28d9f8960dc91`, CI `37962618480`; #465 head `9d1344beaef929acc9bac236a6c8d692dd48b988`, CI `37962706712`; #456 head `c2ff700ed4e87cd0a6dd400975a5c47c4016c2a8`, CI `37962833262`. Attribution green for all; Ruff/pytest green for all, full demo pending at last check. `WAITING_CI`, no merge claim. #460 remains stacked behind #456; #458 temporary benchmark lab is DO NOT MERGE. No live service, worker, CI selector, tunnel, credentials or customer data touched.
+
 ## 2026-10-09 — Faster-13 synthetic benchmark integrated
 
 PR #514 exact head `1f329ff57e1ef5b8262f813b4a72100aa410820a` passed attribution `37957744577` and full validation `37957744262`, then squash merged `46f9a8b86dc00586cfa24a2368e146f234345d2f`. Includes existing bounded shadow benchmark and seven CLI input rejection tests. No real OCR acceleration claim, local runtime/deploy or workload change. #383 broader Faster-13 remains open. The earlier WAITING_CI note below is superseded. Connector response tracing PR #608 and sanitized playbook PR #607 also merged; #590 external return-path still unqualified.

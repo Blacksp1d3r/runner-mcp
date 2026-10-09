@@ -1,3 +1,13 @@
+## 2026-10-09 — Corrected CI runner priority, enrollment integrity
+
+Tracking: #584; source hardening #604/#605 merged and exact-head green, after earlier #600/#601/#602. Documentation #589 merged and current. Runner-MCP PUBLIC standard hosted PR CI is free; migration to isolated self-hosted is **optional**, not a paid-minute emergency.
+
+- CI-0 validated GitHub inventory, registration marker/path and filesystem writable-mode guards: source COMPLETE; no live executor claimed.
+- CI-1 local bounded enrollment CLI #388 + independent elevated credential: PR_OPEN / not live. Do not merge or execute ahead of security review.
+- CI-2 self-hosted qualification workflow #387: PR_OPEN, real disposable VM/cache/process isolation proof BLOCKED.
+- CI-3 selector migration after CI-2 acceptance: NOT STARTED. Maintain required checks and hosted fallback.
+- CI-4 monitor actual private Actions artifact/package storage in project-owning issues, not inferred from public hosted minutes: ONGOING cross-project.
+
 ## 2026-10-08 — DIAG component topology, data lineage and failure registry
 
 Tracking: #569. Cross-project authority: Blacksp1d3r/AIfordable#485; canonical standard merged through AIfordable PR #486.

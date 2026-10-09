@@ -131,6 +131,25 @@ def test_symlink_runner_root_is_never_ready(tmp_path: Path) -> None:
 
 
 
+def test_symlinked_registration_marker_is_not_reported_as_registered(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    outside = tmp_path / "external-marker"
+    outside.write_text("untrusted", encoding="utf-8")
+    (root / ".runner").symlink_to(outside)
+    spec = parse_ci_runner_specs(raw(root, work))["aifordable-lab-ci"]
+
+    status = inspect_ci_runner(spec)
+    assert status.runner_root_ready is True
+    assert status.work_root_ready is True
+    assert status.registered is False
+    assert plan_ci_runner(spec).enrollment_required is True
+
+
 def test_work_root_must_be_inside_runner_root(tmp_path: Path) -> None:
     root = tmp_path / "runner"
     outside = tmp_path / "outside"

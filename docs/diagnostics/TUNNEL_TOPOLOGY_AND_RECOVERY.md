@@ -149,3 +149,7 @@ Next: repeat neither failing call in a loop nor any write action; check bounded 
 ## Persistence verified / mixed endpoint results — 2026-10-09
 
 Operator confirmed `systemctl is-enabled` = `enabled`, `is-active` = `active`. Boot-start configuration is now verified; a true post-reboot recovery test is still pending. Post-activation ChatGPT read-only checks: `worker_status` SUCCESS (concurrency_limit 2, available_workers 2, claimed_jobs 0, running_jobs 0); `runtime_doctor` generic internal failure. Previous `runtime_status` SUCCESS, `list_projects` generic internal failure. Thus connectivity is partially operational with method-dependent errors; avoid asserting complete recovery or triggering write tests. Track the failing bounded endpoints via #590 without blind retries.
+
+## Bounded log count — 2026-10-09 operator check
+
+Operator's 10-minute tunnel-unit journal count for regex `error|failed|timeout` returned **5 lines**. This is only a count of matching log lines (possibly repeated startup warnings, not five unique incidents), and does not establish which endpoint failed. Next classify sanitized distinct message labels and timestamps, avoiding raw logs or secrets; do not restart the healthy active tunnel while connector has partial success.

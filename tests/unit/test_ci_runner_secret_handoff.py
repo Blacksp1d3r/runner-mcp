@@ -208,10 +208,10 @@ def test_public_handoff_record_accepts_valid_expiry_boundary() -> None:
 
 @pytest.mark.parametrize(
     "invalid_clock",
-    [float("nan"), float("inf"), float("-inf"), -1.0, 0.0, float(1 << 54)],
+    [float("nan"), float("inf"), float("-inf"), -1.0, 0.0, float(1 << 54), True, "2000"],
 )
 def test_create_with_bad_clock_writes_no_secret_file(
-    tmp_path: Path, invalid_clock: float,
+    tmp_path: Path, invalid_clock: object,
 ) -> None:
     root = private_root(tmp_path)
     store = CIRunnerSecretHandoffStore(

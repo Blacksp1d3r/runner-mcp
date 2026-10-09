@@ -58,8 +58,20 @@ class CIRunnerGitHubController:
         if not isinstance(payload, dict):
             raise CIRunnerGitHubError("GitHub runner inventory is invalid")
         runners = payload.get("runners")
-        if not isinstance(runners, list):
+        total_count = payload.get("total_count")
+        if (
+            not isinstance(runners, list)
+            or isinstance(total_count, bool)
+            or not isinstance(total_count, int)
+            or total_count < 0
+            or len(runners) > int(_MAX_RUNNERS_PAGE)
+        ):
             raise CIRunnerGitHubError("GitHub runner inventory is invalid")
+        # Only the first page is requested. Without complete inventory,
+        # treating an unfound name as absent could authorize a duplicate
+        # registration; likewise a first-page match could be ambiguous.
+        if total_count != len(runners):
+            raise CIRunnerGitHubError("GitHub runner inventory is incomplete")
 
         matches = [
             item

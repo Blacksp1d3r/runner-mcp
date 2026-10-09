@@ -7,6 +7,7 @@ import stat
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 
 from .ci_runner_guest_enrollment import CIRunnerRegistrationSecret
@@ -14,6 +15,7 @@ from .ci_runner_guest_enrollment import CIRunnerRegistrationSecret
 _HANDOFF_RE = re.compile(r"^[0-9a-f]{32}$")
 _MAX_SECRET_BYTES = 4096
 _DEFAULT_TTL_SECONDS = 300
+_MAX_REAP_ENTRIES = 4096
 
 
 class CIRunnerSecretHandoffError(RuntimeError):
@@ -189,11 +191,16 @@ class CIRunnerSecretHandoffStore:
         now = self._now()
         removed = 0
         try:
-            entries = list(self._root.iterdir())
+            entries = list(islice(self._root.iterdir(), _MAX_REAP_ENTRIES + 1))
         except OSError as exc:
             raise CIRunnerSecretHandoffError(
                 "handoff root could not be inspected"
             ) from exc
+
+        if len(entries) > _MAX_REAP_ENTRIES:
+            raise CIRunnerSecretHandoffError(
+                "handoff root contains too many entries"
+            )
 
         for path in entries:
             if _HANDOFF_RE.fullmatch(path.name) is None:

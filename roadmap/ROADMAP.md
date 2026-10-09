@@ -1,3 +1,10 @@
+## 2026-10-09 — CI, tunnel and independent archive source gates landed
+
+- Runner-MCP #584: #388 bounded local CLI **SOURCE COMPLETE** (`13a60429...`), #387 operator-dispatched cache-free qualifier **SOURCE COMPLETE** (`08bd1f96...`); live disposable guest, protected labels/network and no production secrets remain **BLOCKED**. Public hosted standard CI is free; no automatic replacement of current check selectors. Preserve exact required check names.
+- Tunnel #599: conservative authenticated-poll freshness (`ee29a791...`) **MERGED / issue closed**, 30s documented default long-poll, 5s guardrail, 90s bounded age / 5s future skew; customized longer/backpressure not a tunnel-outage claim. External #590 remains **BLOCKED / UNLOCATED**, no production tunnel mutation.
+- I5 independent protected release archive #586: zero-argument READ-ONLY semantic volume gate (`3077381b...`) **MERGED / issue closed**. No mirror-copy/restore performed; #585 parent still OPEN. Next hard dependencies AIfordable #537 and Runner-Fabric #1397 plus real operator volume/machine binding. #587 backup mutation and #588 restore qualification **BLOCKED** until those gates. Distinct filesystem `st_dev` is not physical disk identity or off-site DR.
+- Other agents' Faster-13 / connector trace merges preserved; no requalification or duplicate branch.
+
 ## 2026-10-09 — Faster-13 local MCP baseline landed
 
 Existing PR #514 was restacked (not duplicated) and exact-head green with validation `37957744262` and attribution `37957744577`, then squash merged `46f9a8b86dc00586cfa24a2368e146f234345d2f`. It adds shadow-only bounded local MCP communication benchmarking and fail-closed CLI argument tests. **Does not imply real Bewind OCR speedup**, and does not authorize a faster production transport or close broader Faster #383. Next performance steps require reproducible qualified workload segments and connection/session lifecycle evidence; no live workloads measured here.

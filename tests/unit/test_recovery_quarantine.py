@@ -187,6 +187,20 @@ def test_concurrent_process_style_lock_serializes_distinct_records(tmp_path):
     assert all(reopened.inspect(f"req-{i:03d}") == results[i] for i in range(20))
 
 
+def test_empty_existing_ledger_is_not_equivalent_to_missing_file(tmp_path):
+    ledger = _ledger(tmp_path)
+    _fail(ledger)
+    target = tmp_path / "quarantine.json"
+    target.write_bytes(b"")
+    target.chmod(0o600)
+
+    with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
+        ledger.inspect("req-poison")
+    with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
+        _fail(ledger)
+    assert target.read_bytes() == b""
+
+
 def test_corrupted_disk_record_fails_closed_and_remains_on_disk(tmp_path):
     ledger = _ledger(tmp_path)
     _fail(ledger)

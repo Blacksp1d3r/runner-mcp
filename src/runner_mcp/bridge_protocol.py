@@ -635,6 +635,7 @@ def bridge_tool_call(request: BridgeRequest) -> tuple[str, dict[str, str | int]]
         BridgeAction.RUNTIME_STATUS,
         BridgeAction.RUNTIME_DOCTOR,
         BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT,
+        BridgeAction.FABRIC_CONTINUITY_STATUS,
     }:
         return request.action.value, {}
 

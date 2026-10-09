@@ -1,3 +1,22 @@
+## 2026-10-09 — CI runner admission safety, public billing and secret separation
+
+Canonical master: Library `MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` v1.2. Source of truth: GitHub current main, PR state and exact-head CI, not chat history.
+
+**Main verified when branch was cut:** `d4d41c7bae76e42e93d90d152edcba99a670f3a4`. Previous confirmed green merges:
+- #605 head `54438e950b97409f372e82dcb72d6c1494590d6e`, attribution #37953567350 SUCCESS and Foundation #37953568018 SUCCESS (Ruff/pytest, demo and built release artifact); squash merged `07362be6e13a735fe72548629b15178b2d7125ae`. Complete GitHub runner inventory now refuses any malformed/missing identity row.
+- #604 head `d8b37be2b155f9860e821fd1ce26644e114ab999`, attribution #37953755539 SUCCESS and Foundation #37953755592 SUCCESS; squash merged `d4d41c7bae76e42e93d90d152edcba99a670f3a4`. Runner root, config.sh, existing work root and its nested parents must not be group/world-writable before short-lived runner-token minting. Residual process argv and TOCTOU/ownership risks require dedicated trusted VM/user; file modes alone are NOT full isolation.
+- #589 admission document already merged `f597d76a4665e2c6aa6ff500caae1dc2189a442d` after stale-base recovery. Do not resurrect older snapshots.
+
+**Still open/blocked (not reported complete):**
+- #388 existing local enrollment-CLI PR, branch `ci/bounded-runner-enroll-cli`, now uses an explicit `RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN` separate from `RUNNER_MCP_GITHUB_TOKEN`. Tests and operator checklist are on PR branch; exact head/CI must be reconciled before any merge. No admin credential was configured or used, and no live runner was enrolled.
+- #387 existing dedicated self-hosted qualification workflow PR remains open. Its persisted `RUNNER_TOOL_CACHE` is NOT disposable-job isolation; no live runner proof. Preserve the review and do not start PR-sourced code on an untrusted shared host.
+- #584 was retitled to reflect the billing correction: Runner-MCP is PUBLIC and standard GitHub-hosted runners there are free. Self-hosted migration is OPTIONAL and requires actual isolation benefit; private repo Actions artifacts/storage remain a separate billing concern.
+- #590 external Runner-MCP connector generic internal errors still unqualified. Local authenticated dispatch smoke in #595 is NOT a live ChatGPT connector success.
+
+**What was NOT done:** no runner registration, CI selector switch, local host/service/VM/credential mutation, production deployment, stored artifact deletion, paid tier change, or backup removal.
+
+Next safe action: verify exact latest #388 CI and review its elevated auth semantics, preserve #387/#584 admission gate, then use authorized operator-only evidence to prove a disposable nonproduction runner. No downstream `runs-on` change before that proof. If CI awaits, classify `WAITING_CI`, not test failure.
+
 ## 2026-10-09 ~14:22 CEST — Runner-MCP master v1.2 safe landing reconciliation
 
 This session's first material GitHub toolcall was approx 14:04 CEST; useful Runner-MCP-only development and reconciliation continued through the prescribed >=18-minute master window when safe. Do NOT resume Runner-Fabric implementation from this chat. No live server/tunnel, credential, worker, host, CI runner enrollment, port or customer-production changes.

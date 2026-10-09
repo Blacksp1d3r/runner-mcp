@@ -38,6 +38,10 @@ class CIRunnerSpec:
             raise CIRunnerLifecycleError("CI runner name is invalid")
         if not self.runner_root.is_absolute() or not self.work_root.is_absolute():
             raise CIRunnerLifecycleError("CI runner paths must be absolute")
+        # Lexical containment is not physical containment when ".." survives
+        # in an absolute configured path.
+        if ".." in self.runner_root.parts or ".." in self.work_root.parts:
+            raise CIRunnerLifecycleError("CI runner paths must not traverse parents")
         if self.runner_root == self.work_root:
             raise CIRunnerLifecycleError("CI runner work root must be separate")
         try:

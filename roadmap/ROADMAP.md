@@ -1,3 +1,7 @@
+## 2026-10-09 — Local MCP JSON-RPC response identity guard landed
+
+PR #613 head `6b5dc2c2c646aba0fdc45a0ae9a08a6af83a8f97`: commit attribution `37962077429` SUCCESS and full validation `37962077446` SUCCESS, squash merged `ae2eac3f4e38574d4405460e14f7b8cad122e4d4`. Internal `LocalMCPClient._post` now refuses replies with absent, mismatched, wrong-type JSON-RPC IDs; nine regression variants cover normal JSON and SSE. This does not prove external ChatGPT tunnel response delivery; issue #590 stays OPEN. #599 freshness source safeguard already merged via #609 and issue closed. Upstream `tunnel-client` local dispatcher/response-delivery component counters are documented as next safe first-failing-edge evidence, not a replacement for per-request identity proof.
+
 ## 2026-10-09 — #599 stale poll-authentication evidence reconciled
 
 Issue #599 is **COMPLETE** on source: existing PR #609 exact head `04d0f493db9ba0ea00c4aa10e403e3823785e30b` passed validation `37957581774` and attribution `37958136637`, squash merged `ee29a791bb8dab96275ae3efc9987c6548a57bdd`. Current source rejects malformed, stale (>90s), or over-future (>5s) control-plane last_success; clock is injectable for deterministic tests, threshold grounded in documented 30s long-poll default. The issue was explicitly closed after source reconciliation. This does **not** prove the external connector route; #590 stays open. Independent internal LocalMCPClient JSON-RPC response-ID check is underway as draft PR #613, with no live tunnel changes. Do not recreate #599.

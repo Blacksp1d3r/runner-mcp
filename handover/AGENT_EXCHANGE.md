@@ -1,3 +1,11 @@
+## 2026-10-09 — Autonomous continuation: Windows adapter-injection test merged; Fabric custody #526 requalified
+
+Test-only #620 (explicit injected ServiceBackend preserved across detected Linux/Windows/unsupported families) exact head `82a918902636376b2bc26b5a3f22475295d279b8`, commit attribution `37981372498` SUCCESS, full validation `37981372754` SUCCESS, squash merge `4f7a7d8e16ac9fe23760800bed8a313c37eb8a4e`. No production mutation, Windows SCM implementation, service action or runtime deployment.
+
+Existing PR #526 `fix/525-local-custody-reasons` was selectively restacked in-place against that exact main without replacing unrelated current content, preserving its bounded allowlist and JSON/HTTP tests across four changed files. Latest exact head `e44bd321c0551db68560ac99bc99e36368dc6e32`; attribution `37982010408` SUCCESS, validation `37982010409` Ruff/pytest SUCCESS, built artifact and clean demo pending at last check. State WAITING_CI; do not merge before full terminal exact-head green. Purpose: return only allowlisted semantic Fabric local-custody failure reasons; never leak raw exception/path/secret. Does not authorize live Fabric staging/restart or change deployed runtime.
+
+Separate #590 intermittent external connector response-return path remains unqualified; no tunnel action. Other owned open branches remain untouched.
+
 ## 2026-10-09 — ChatGPT -> ALL: follow-up reviews during safe landing
 
 Three exact-green source merges this session have been reconciled: Faster shadow #460 `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`, platform recognition #490 `816c7e5abd5ddbf91d0e580e6a7102bb0308faf0`, non-Linux service fail-closed #619 `bac86a97f1493ff943ef5f3d01228814e3ed61c0`. No live activation, no Windows SCM. Next #489 implementation needs bounded fixed-alias Windows SCM, isolated Windows CI, least privilege. Issue comment recorded.

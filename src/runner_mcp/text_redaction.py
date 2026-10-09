@@ -12,19 +12,19 @@ _OUTPUT_TRUNCATED_MARKER = "\n[OUTPUT TRUNCATED BY RUNNER MCP]\n"
 _GENERIC_SECRET_RULES = (
     (
         # Redact URI credentials as a unit, including percent-encoded userinfo.
-        re.compile(r"(?i)\\b([a-z][a-z0-9+.-]{1,32}://)[^\\s/@]+@"),
-        r"\\1[REDACTED]@",
+        re.compile(r"(?i)\b([a-z][a-z0-9+.-]{1,32}://)[^\s/@]+@"),
+        r"\1[REDACTED]@",
     ),
     (
         re.compile(
-            r"(?i)\\b((?:password|passwd|token|secret|api[_-]?key)"
-            r"(?:%3[aAdD]))[^\\s&]{8,}"
+            r"(?i)\b((?:password|passwd|token|secret|api[_-]?key)"
+            r"(?:%3[aAdD]))[^\s&]{8,}"
         ),
-        r"\\1[REDACTED]",
+        r"\1[REDACTED]",
     ),
     (
-        re.compile(r"(?i)(Bearer(?:\\s+|%20))[A-Za-z0-9._~+/=%-]{12,}"),
-        r"\\1[REDACTED]",
+        re.compile(r"(?i)(Bearer(?:\s+|%20))[A-Za-z0-9._~+/=%-]{12,}"),
+        r"\1[REDACTED]",
     ),
     (
         re.compile(r"(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]{12,}"),

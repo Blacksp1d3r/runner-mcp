@@ -6,7 +6,7 @@ Status: **CODE-ONLY / NOT LIVE-AUTHORIZED**. This CLI operation must not be perf
 
 - Normal source/mailbox transport: `RUNNER_MCP_GITHUB_TOKEN`. Do **not** give this token repository administration/runner-registration permissions.
 - Explicit one-off operator enrollment: `RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN`. This must be a **different** credential with narrowly scoped repository runner registration authority, short lifetime and a private local delivery method.
-- There is no fallback to the normal mailbox credential. With only `RUNNER_MCP_GITHUB_TOKEN` configured, `ci-runner enroll <configured-alias>` must refuse before requesting a registration token.
+- There is no fallback to the normal mailbox credential. With only `RUNNER_MCP_GITHUB_TOKEN` configured, `ci-runner enroll <configured-alias>` must refuse before requesting a registration token. If both variables contain the **same** credential value, the command also refuses; a second environment-key name does not create a separate security principal.
 - Never store real token contents in Git, Actions logs, issues, CI caches or public handover docs. Configure the one-off credential only in the approved private runtime environment. Retire it after successful enrollment.
 
 ## Operator admission before invoking enrollment

@@ -161,7 +161,9 @@ class RecoveryQuarantineLedger:
                 self._write(handle, records)
                 return restored
         except OSError as exc:
-            raise RecoveryQuarantineError("quarantine rearm unavaila    def _open(self) -> int:
+            raise RecoveryQuarantineError("quarantine rearm unavailable") from exc
+
+    def _open(self) -> int:
         """Open the stable lock inode, never the replaceable data-file inode."""
         parent = self._path.parent
         try:
@@ -303,8 +305,6 @@ class RecoveryQuarantineLedger:
         finally:
             if os.path.exists(temporary):
                 os.unlink(temporary)
-
-ndle.fileno())
 
     @staticmethod
     def _check_request_id(value: str) -> None:

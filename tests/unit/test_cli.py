@@ -3428,7 +3428,8 @@ def test_ci_runner_enroll_uses_private_spec_and_token_only(
     paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
     secret = "github-token-must-not-leak"
     values = {
-        "RUNNER_MCP_GITHUB_TOKEN": secret,
+        "RUNNER_MCP_GITHUB_TOKEN": "separate-mailbox-token",
+        "RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN": secret,
         "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
             [
                 {
@@ -3519,6 +3520,8 @@ def test_ci_runner_enroll_requires_private_github_token(
     work.mkdir()
     paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
     values = {
+        # Shared mailbox authority must not be accepted for enrollment.
+        "RUNNER_MCP_GITHUB_TOKEN": "mailbox-only-not-runner-admin",
         "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
             [
                 {

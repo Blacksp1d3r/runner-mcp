@@ -6,6 +6,7 @@ import math
 import mmap
 import multiprocessing as mp
 import os
+import select
 import statistics
 import struct
 import time
@@ -151,6 +152,9 @@ def _benchmark_shared_memory(
             outgoing = _payload(sequence, payload_bytes)
             _write_slot(mapping, 0, sequence, outgoing)
             os.eventfd_write(request_eventfd, 1)
+            ready, _, _ = select.select([response_eventfd], [], [], 5.0)
+            if not ready:
+                raise RuntimeError("benchmark shared-memory response timed out")
             os.eventfd_read(response_eventfd)
             returned_sequence, incoming = _read_slot(mapping, _SLOT_SIZE)
             if returned_sequence != sequence:
@@ -169,6 +173,11 @@ def _benchmark_shared_memory(
         mapping.close()
         return result
     finally:
+        if "process" in locals() and process.is_alive():
+            process.terminate()
+            process.join(timeout=5)
+        if "mapping" in locals():
+            mapping.close()
         os.close(response_eventfd)
         os.close(request_eventfd)
         os.close(memfd)

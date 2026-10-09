@@ -1,3 +1,11 @@
+## 2026-10-09 — Faster-13 #460 merged; Windows source contract #490 pending exact CI
+
+#460 existing shadow memfd/eventfd benchmark: head `26580dbead954e19e1732db0770ca66a51841eaa`, attribution `37974721744` SUCCESS, full Runner MCP validation `37974721750` SUCCESS, squash `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`. Fixed a potential infinite `eventfd_read` wait via bounded select and guaranteed worker cleanup; added positive and timeout tests. Entirely synthetic: no live transport switch, host workload or OCR speed claim. #383 overall remains open.
+
+#490 existing branch `feature/489-host-platform-contract` source-only Linux/Windows contract was reviewed and restacked on live main. Added explicit `serviceAdapterImplemented` flag (Linux true, Windows false, unsupported false) so Windows recognition cannot imply working SCM adapter; no production behavior changed. First new CI run `37975043315` Ruff GREEN but pytest found missing Windows constructor field (2 failures, 2539 pass); fixed in new head `a82f7d90bd8eb400aed329a0e9b414d6ff0f7771`. Validation `37975249793` IN_PROGRESS at last check; DO NOT MERGE until terminal exact-head success. #489 source-only next adapter sequence remains controlled; no Windows service activation or local host mutation.
+
+#590 external connector response association still unqualified; prior local reply-ID gate #613 was merged. No changes to working tunnel, runner enrollment, or credentials. Source freshness #599 previously merged and closed.
+
 ## 2026-10-09 — ARCHITECTURE DECISION: ONE FABRIC CONTROL PLANE (operator accepted)
 Canonical local copy: [ADR-2026-10-09-ONE-FABRIC-CONTROL-PLANE](../docs/architecture/ADR-2026-10-09-ONE-FABRIC-CONTROL-PLANE.md). **Runner Fabric alone** owns worker admission/registration/scheduling, capability/evidence, lifecycle intent, leases/fencing, recovery, audit and Cockpit control. Runner-MCP/Agent Bus provides bounded communications and host-local execution only; AIfordable Claude worker runs under dedicated coder identity with fixed actuator; EnerCue consumes qualified Fabric work units. No second control plane, no generic cross-user shell/sudo, no live activation from this decision. Cross-repo coordination: Fabric #1172/#240; runner-mcp #381/#590; AIfordable #370; EnerCue #88/#89 (dispatch BLOCKED pending end-to-end READY).
 

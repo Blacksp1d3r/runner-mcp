@@ -80,10 +80,18 @@ class CIRunnerEnrollmentManager:
         marker = spec.runner_root / ".runner"
 
         remote = self._safe_remote_status(spec)
+        # A symlink to a regular file satisfies Path.is_file(), but must never
+        # be accepted as an existing runner registration.
+        if marker.is_symlink():
+            raise CIRunnerEnrollmentError("local CI runner registration marker is unsafe")
         if marker.is_file():
             if remote is None:
                 raise CIRunnerEnrollmentError(
                     "local CI runner registration is not present on GitHub"
+                )
+            if set(remote.custom_labels) != set(spec.labels):
+                raise CIRunnerEnrollmentError(
+                    "existing CI runner registration labels do not match"
                 )
             return _result("already-registered", spec, remote)
 

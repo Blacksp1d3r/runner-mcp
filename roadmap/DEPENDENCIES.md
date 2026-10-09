@@ -1,3 +1,12 @@
+## 2026-10-09 — Runner registration CI isolation and credentials (issue #584)
+
+1. Public repository GitHub-hosted standard CI minutes are free; avoid exchanging a trusted hosted PR boundary for privileged self-hosted execution on a false cost assumption. Private Actions storage and hosted releases belong to separate project issues.
+2. Source-level intake hardening COMPLETE on main: #600 symlink registration/label drift, #601 inventory page completeness, #602 work root traversal, #605 malformed inventory identity rows, #604 local group/world-write boundaries.
+3. Local CLI #388 is still a PR, not live admission. Its proposed `RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN` must be independent of ordinary mailbox `RUNNER_MCP_GITHUB_TOKEN`. A successful source merge does NOT authorize registration.
+4. Before #387 self-hosted qualification/any workflow selector activation, prove dedicated disposable nonproduction VM per untrusted job, strict owner/mode, short-lived register token process visibility, negative tests, cache provenance, network/secret separation, exact custom labels, job teardown and stable required checks.
+5. Live ChatGPT connector/runner capacity UNKNOWN while #590 remains unlocated; no inference from GitHub code or synthetic tests. No production/deployment runner can be the shortcut.
+6. Preserve independent release/provenance/rollback gates and status `BLOCKED` for actual runner admission until verified. Do not start downstream tasks on a speculative future runner.
+
 ## 2026-10-06 customer update safety dependency
 
 Tracking: #414; Fabric authority/policy: Blacksp1d3r/Runner-Fabric#1063; AIfordable contract: Blacksp1d3r/AIfordable#401.

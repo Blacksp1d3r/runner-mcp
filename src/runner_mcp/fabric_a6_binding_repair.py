@@ -5,7 +5,6 @@ import re
 from collections.abc import MutableMapping
 from pathlib import Path
 
-from .onboarding import load_env_file
 from .fabric_worker_qualification_provisioning import (
     FabricWorkerQualificationProvisioningError,
     _merge_private_env,
@@ -61,6 +60,8 @@ def inspect_a6_binding_state(
     state_root: Path,
 ) -> dict[str, object]:
     """Return sanitized fixed A6 persistence state without paths or values."""
+
+    from .onboarding import load_env_file
 
     config = config_dir.expanduser().resolve()
     env_path = config / "runner-mcp.env"

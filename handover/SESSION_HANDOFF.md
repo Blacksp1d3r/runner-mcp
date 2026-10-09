@@ -1,3 +1,20 @@
+## 2026-10-09 — Runner-MCP scope-correct continuation (CI admission / connector / Faster)
+
+This session belongs exclusively to Runner-MCP; the Runner-Fabric active implementation lane remains owned by its other project chat. Read GitHub current state before edits; no production or shared infrastructure mutation has been performed.
+
+**#584 self-hosted CI migration:** still BLOCKED on proof of a dedicated disposable isolated runner, not missing policy text. Existing docs-only draft PR #589 owns admission and selector-change plan; separate pre-existing #387 and #388 own qualification/enrollment CLI. Do not duplicate any of them or retarget untrusted PR jobs to privileged/shared runners.
+
+**Completed in this session:** PR #591 (branch `fix/590-ci-handoff-reap-bounds`) exact head `e365787148f456ed49eb7cf4d3859d56ae4f07df` passed attribution run 37922815224 and validation run 37922815197, then squash-merged `ea519720454b54c326ebadc2fed51e8b384fe18f`. It caps private CI registration-secret handoff root scanning to 4097 candidate entries; if >4096, refuse with NO deletion, protecting against unbounded `list(root.iterdir())` memory cost. Exact-bound and over-bound tests are present. This does NOT enroll or qualify any runner. Failure record RMCP-CI-0001 linked in component 09.
+
+**Actual connector blocker #590:** `runtime_status`, `runtime_doctor`, `list_projects`, `worker_status` all fail in this ChatGPT session with generic `The tool failed internally.` No structured payload is available, so actual runtime/worker/isolation health cannot be determined. The first failing network/catalogue/application edge has NOT been established; do not restart servers or replay arbitrary shell actions. Failure RMCP-MCP-0005 logged under component 14. Next owner-safe diagnostics: fresh client/catalogue + bounded connector/session check, then private read-only transport/health proof, then single runtime status/doctor verification.
+
+**Faster/OCR optimization:** core OCR qualification has already been completed; only acceleration/measurement remains interesting. Existing Runner-MCP PRs #514 baseline (green last known exact head), #458 hosted shadow lab, #467 Unix envelope E2E, #537 measurement hardening are OPEN/owned and must not be duplicated/merged blindly. Read-only evidence from hosted CI #458 run 37522524389 job 112471504336: urllib loopback p50 0.7799 ms, persistent HTTP p50 40.9038 ms (worse in this setup); Unix-envelope synthetic p50 52.288 µs versus reference 132.698 µs, stated 2.538x p50 speedup. These are TRANSPORT synthetic measurements, not OCR runtime performance. Note added to #514. Next performance step: isolate staging/transfer/worker startup/OCR/page/post-process costs before optimizing transport; no real OCR work rerun without need.
+
+Updated main docs: component 09 ROADMAP/FAILURES, component 14 FAILURES, this handover; issue #584 has an independent progress note; #590 is the generic connector error tracker. Do not publish private host paths, addresses, credentials, tunnel configuration or keys in public repo.
+
+Next safe work: review #590 authorized connector diagnostics and #584 runner-admission evidence when tools recover; investigate other unrelated CI admission fail-safe bugs only in new bounded children after checking active projects. Preserve exact-head validation before merging.
+
+
 ## 2026-10-08 — Diagnostic-topology handoff
 
 Runner-MCP #569 is a docs-only cross-project diagnostic rollout. Use `docs/diagnostics/README.md` + `component_registry.yml` for troubleshooting after this change lands. The structure deliberately does not alter or claim completion of active Fleet A6, Bewind OCR, update, qualification or runtime work.

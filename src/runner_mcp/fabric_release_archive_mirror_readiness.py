@@ -71,7 +71,7 @@ class FabricReleaseArchiveMirrorReadiness:
                 reason_code="primary-custody-unavailable",
             )
 
-        mount_directory_ready = _private_directory(mount)
+        mount_directory_ready = _safe_mount_directory(mount)
         if not mount_directory_ready:
             return _result(
                 configuration_state="configured",
@@ -90,7 +90,7 @@ class FabricReleaseArchiveMirrorReadiness:
                 reason_code="mirror-mount-not-mounted",
             )
 
-        mirror_ready = _private_directory(mirror)
+        mirror_ready = _private_directory(mirror, require_write=True)
         if not mirror_ready:
             return _result(
                 configuration_state="configured",
@@ -197,17 +197,40 @@ def _bounded_absolute_path(value: object) -> Path | None:
     return path
 
 
-def _private_directory(path: Path) -> bool:
+def _private_directory(path: Path, *, require_write: bool = False) -> bool:
     if not path.is_absolute():
         return False
     try:
         metadata = path.lstat()
+        resolved = path.resolve(strict=True)
+    except OSError:
+        return False
+    required_access = os.R_OK | os.X_OK
+    if require_write:
+        required_access |= os.W_OK
+    return (
+        resolved == path
+        and stat.S_ISDIR(metadata.st_mode)
+        and not stat.S_ISLNK(metadata.st_mode)
+        and metadata.st_uid == os.getuid()
+        and not (metadata.st_mode & 0o077)
+        and os.access(path, required_access)
+    )
+
+
+def _safe_mount_directory(path: Path) -> bool:
+    if not path.is_absolute():
+        return False
+    try:
+        metadata = path.lstat()
+        resolved = path.resolve(strict=True)
     except OSError:
         return False
     return (
-        stat.S_ISDIR(metadata.st_mode)
+        resolved == path
+        and stat.S_ISDIR(metadata.st_mode)
         and not stat.S_ISLNK(metadata.st_mode)
-        and stat.S_IMODE(metadata.st_mode) == 0o700
+        and not (metadata.st_mode & 0o022)
         and os.access(path, os.R_OK | os.X_OK)
     )
 

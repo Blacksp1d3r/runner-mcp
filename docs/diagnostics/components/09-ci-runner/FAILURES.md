@@ -9,4 +9,6 @@
 
 | RMCP-CI-0004 | GREEN/MERGED #594 | attribution workflow concurrency | Repeated PR `synchronize`/`edited` triggers can leave older commit-attribution checks consuming GitHub-hosted minutes; validation already cancels superseded runs but attribution lacks this guard | Workflow source audit 2026-10-09, not a host fault | Per-PR/ref `concurrency` and `cancel-in-progress`, preserving check name, permissions and hosted runner; exact-head attribution/validation green, squash `3c3a2b04...` | #584 / #594 |
 
+| RMCP-CI-0005 | PR_OPEN #596 | private handoff TTL cleanup | Unvalidated provider clock in `reap_expired()` could produce raw exceptions or indeterminate retention decisions | source audit, not confirmed live incident | refuse nonnumeric/nonfinite/invalid clock before any record deletion; negative tests preserve secret files; exact-head CI required | #596 |
+
 A closed failure remains recorded with fix/revision and regression evidence.

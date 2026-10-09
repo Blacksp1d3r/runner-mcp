@@ -1,3 +1,13 @@
+## 2026-10-09 — Windows host admission and Faster-13 integration checkpoint
+
+Existing Faster-13 PR #460 head `26580dbead954e19e1732db0770ca66a51841eaa`: exact attribution `37974721744` SUCCESS and full validation `37974721750` SUCCESS, squash merge `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`. Shadow-only memfd/eventfd includes bounded response wait, fail-closed worker timeout cleanup, and positive/negative tests. No live runtime change or OCR speedup claim. Broader #383 remains open.
+
+Existing #490 host family recognition PR head `a82f7d90bd8eb400aed329a0e9b414d6ff0f7771`: attribution `37975249864` SUCCESS and validation `37975249793` SUCCESS, squash merge `816c7e5abd5ddbf91d0e580e6a7102bb0308faf0`. Explicit `serviceAdapterImplemented` distinguishes Windows recognized family (true) from unimplemented Windows SCM backend (false), preserving Linux source behavior. First CI failure (Windows constructor missing field) corrected; full rerun green.
+
+New bounded source-only child #619 branch `fix/windows-service-backend-admission-20261009`, head `b426692798092edf263d0182a205ae7ba9a6dc2b`, adds fail-closed default backend selection: Windows/unsupported host must not instantiate Linux SystemdUserBackend; injected test backend and Linux path unchanged. Attribution run `37975695602` SUCCESS, full validation `37975695551` IN_PROGRESS at last check. State WAITING_CI; do not merge before exact-head full green. This does not implement Windows SCM or authorize Windows service operations. Issue #489 remains open for later real Windows backend CI/qualification. No live servers, tunnels, credentials or workers changed.
+
+#590 external connector return-path intermittence remains unqualified. Do not infer a live fix from server-side source tests or tunnel readiness alone. Existing #519 separate self-update source baseline PR received review warning about queue-time vs activation-time TOCTOU; no code mutation.
+
 ## 2026-10-09 — Faster-13 #460 merged; Windows source contract #490 pending exact CI
 
 #460 existing shadow memfd/eventfd benchmark: head `26580dbead954e19e1732db0770ca66a51841eaa`, attribution `37974721744` SUCCESS, full Runner MCP validation `37974721750` SUCCESS, squash `6a9ed29197ee7b58c8c6a672c313dfc4edccc160`. Fixed a potential infinite `eventfd_read` wait via bounded select and guaranteed worker cleanup; added positive and timeout tests. Entirely synthetic: no live transport switch, host workload or OCR speed claim. #383 overall remains open.

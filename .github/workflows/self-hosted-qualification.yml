@@ -1,9 +1,8 @@
 name: Runner MCP self-hosted qualification
 
 on:
-  push:
-    branches:
-      - ci/self-hosted-qualification
+  # Admission is operator driven. Do not enqueue unqualified self-hosted
+  # workers automatically on PR or branch pushes.
   workflow_dispatch:
 
 permissions:
@@ -16,7 +15,7 @@ concurrency:
 jobs:
   qualify:
     name: Self-hosted qualification
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' }}
+    if: ${{ github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' }}
     runs-on:
       - self-hosted
       - Linux
@@ -57,69 +56,13 @@ jobs:
           rm -rf .venv-ci
           python3 -m venv .venv-ci
 
-      - name: Seed immutable local dependency wheelhouse
+      - name: Install fresh dependencies without persistent runner caches
         shell: bash
         run: |
           set -euo pipefail
-          fingerprint=$(python3 - <<'PY'
-          import hashlib
-          import pathlib
-          import platform
-          import sys
-
-          source_digest = hashlib.sha256()
-          for path in sorted(pathlib.Path("src").rglob("*.py")):
-              source_digest.update(path.as_posix().encode())
-              source_digest.update(b"\0")
-              source_digest.update(path.read_bytes())
-              source_digest.update(b"\0")
-          payload = pathlib.Path("pyproject.toml").read_bytes() + b"\0" + source_digest.digest()
-          identity = f"{sys.implementation.name}-{platform.python_version()}-{platform.machine()}".encode()
-          print(hashlib.sha256(identity + b"\0" + payload).hexdigest()[:24])
-          PY
-          )
-          cache_root="${RUNNER_TOOL_CACHE:-$HOME/.cache}/runner-mcp/validation-wheels"
-          wheelhouse="$cache_root/$fingerprint"
-          if [ ! -f "$wheelhouse/.complete" ]; then
-            staging="$wheelhouse.tmp.$$"
-            rm -rf "$staging"
-            mkdir -p "$staging"
-            python3 -m pip wheel --disable-pip-version-check --wheel-dir "$staging" '.[dev]'
-            touch "$staging/.complete"
-            mkdir -p "$(dirname "$wheelhouse")"
-            if ! mv "$staging" "$wheelhouse" 2>/dev/null; then
-              rm -rf "$staging"
-              test -f "$wheelhouse/.complete"
-            fi
-          fi
-          test -f "$wheelhouse/.complete"
-          printf '%s\n' "$wheelhouse" > "$RUNNER_TEMP/runner-mcp-wheelhouse"
-          printf '%s\n' "$fingerprint" > "$RUNNER_TEMP/runner-mcp-fingerprint"
-
-      - name: Install immutable validation dependencies
-        shell: bash
-        run: |
-          set -euo pipefail
-          site_packages=$(.venv-ci/bin/python -c 'import sysconfig; print(sysconfig.get_paths()["purelib"])')
-          wheelhouse=$(cat "$RUNNER_TEMP/runner-mcp-wheelhouse")
-          fingerprint=$(cat "$RUNNER_TEMP/runner-mcp-fingerprint")
-          installed_root="${RUNNER_TOOL_CACHE:-$HOME/.cache}/runner-mcp/validation-installed"
-          installed_tree="$installed_root/$fingerprint"
-          if [ ! -f "$installed_tree/.complete" ]; then
-            staging="$installed_tree.tmp.$$"
-            rm -rf "$staging"
-            mkdir -p "$staging/site-packages"
-            python3 -m pip install --disable-pip-version-check --no-index --find-links "$wheelhouse" --target "$staging/site-packages" 'aifordable-runner-mcp[dev]'
-            chmod -R a-w "$staging/site-packages"
-            touch "$staging/.complete"
-            mkdir -p "$installed_root"
-            if ! mv "$staging" "$installed_tree" 2>/dev/null; then
-              chmod -R u+w "$staging" 2>/dev/null || true
-              rm -rf "$staging"
-              test -f "$installed_tree/.complete"
-            fi
-          fi
-          printf '%s\n' "$installed_tree/site-packages" > "$site_packages/runner-mcp-immutable-deps.pth"
+          # Each qualification must resolve/install its dependencies afresh.
+          # No cross-job RUNNER_TOOL_CACHE trees or unverified .complete marker.
+          .venv-ci/bin/python -m pip install --disable-pip-version-check --no-cache-dir -e '.[dev]'
 
       - name: Compile Python
         run: .venv-ci/bin/python -m compileall -q src tests
@@ -137,24 +80,16 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          cache_root="${RUNNER_TOOL_CACHE:-$HOME/.cache}/runner-mcp/mcp-publisher"
-          binary="$cache_root/$MCP_PUBLISHER_VERSION/mcp-publisher"
-          if [ ! -x "$binary" ]; then
-            staging="$cache_root/$MCP_PUBLISHER_VERSION.tmp.$$"
-            rm -rf "$staging"
-            mkdir -p "$staging"
-            url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
-            curl --fail --silent --show-error --location "$url" --output "$staging/mcp-publisher.tar.gz"
-            printf '%s  %s\n' "$MCP_PUBLISHER_SHA256" "$staging/mcp-publisher.tar.gz" | sha256sum --check -
-            tar -xzf "$staging/mcp-publisher.tar.gz" -C "$staging" mcp-publisher
-            chmod 0755 "$staging/mcp-publisher"
-            mkdir -p "$cache_root"
-            if ! mv "$staging" "$cache_root/$MCP_PUBLISHER_VERSION" 2>/dev/null; then
-              rm -rf "$staging"
-              test -x "$binary"
-            fi
-          fi
-          "$binary" validate server.json
+          # Never execute a publisher binary left by an earlier runner job.
+          publisher_root="$RUNNER_TEMP/runner-mcp-publisher"
+          install -d -m 700 "$publisher_root"
+          archive="$publisher_root/mcp-publisher.tar.gz"
+          url="https://github.com/modelcontextprotocol/registry/releases/download/${MCP_PUBLISHER_VERSION}/mcp-publisher_linux_amd64.tar.gz"
+          curl --fail --silent --show-error --location "$url" --output "$archive"
+          printf '%s  %s\\n' "$MCP_PUBLISHER_SHA256" "$archive" | sha256sum --check -
+          tar -xzf "$archive" -C "$publisher_root" mcp-publisher
+          chmod 0700 "$publisher_root/mcp-publisher"
+          "$publisher_root/mcp-publisher" validate server.json
 
       - name: Whitespace check
         shell: bash

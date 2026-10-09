@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import re
 import secrets
@@ -198,7 +199,17 @@ class CIRunnerSecretHandoffStore:
 
     def reap_expired(self) -> int:
         self._validate_root()
-        now = self._now()
+        try:
+            now = self._now()
+            if (
+                isinstance(now, bool)
+                or not isinstance(now, (int, float))
+                or not math.isfinite(now)
+                or not 1 <= now <= (1 << 53) - 1
+            ):
+                raise CIRunnerSecretHandoffError("handoff cleanup clock is invalid")
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise CIRunnerSecretHandoffError("handoff cleanup clock is invalid") from exc
         removed = 0
         try:
             entries = list(islice(self._root.iterdir(), _MAX_REAP_ENTRIES + 1))

@@ -223,7 +223,9 @@ class RecoveryQuarantineLedger:
         if len(raw.encode("utf-8")) > MAX_QUARANTINE_FILE_BYTES:
             raise RecoveryQuarantineError("quarantine data exceeds bound")
         if not raw:
-            return {}
+            # Missing file means no history; an existing *empty* file means
+            # history may have been truncated and must not be silently reset.
+            raise RecoveryQuarantineError("quarantine data is invalid")
         try:
             data = json.loads(raw)
         except (ValueError, TypeError) as exc:

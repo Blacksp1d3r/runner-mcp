@@ -1,3 +1,22 @@
+## 2026-10-09 ~14:22 CEST — Runner-MCP master v1.2 safe landing reconciliation
+
+This session's first material GitHub toolcall was approx 14:04 CEST; useful Runner-MCP-only development and reconciliation continued through the prescribed >=18-minute master window when safe. Do NOT resume Runner-Fabric implementation from this chat. No live server/tunnel, credential, worker, host, CI runner enrollment, port or customer-production changes.
+
+**Four own PRs are exact-head GREEN and squash MERGED:**
+- #595 head `0c66f43f7abede4cfa938d3f54a4e6737a720d81`, attribution 37927827207 and validation 37927827247 SUCCESS, merge `beb192fba89a0dbcadac8a5b06348e03a8d716b8`. Authenticated in-process MCP HTTP read-only smoke for list_projects/runtime_status/runtime_doctor; local schema/dispatch proof only, NOT external connector health.
+- #596 head `febc3a27776c806cd81af8a7ae2dc3798e9e4e28`, attribution 37928039438 and validation 37928039405 SUCCESS, merge `30e9e50b6e7c675a1779abf57f9ec223bbcdad17`. Invalid clock in private CI secret handoff cleanup fails closed without deleting files.
+- #597 head `beabb7889642ac61ae8de3de6d620de3beb22970`, attribution 37928933459 and validation 37928933273 SUCCESS, merge `6491d2972e95ec7af0bf6a0b6c5a2d7b95e801d9`. Exact bool tunnel readiness evidence, 25 negative cases; initial Ruff TRY004 diagnosed and corrected to TypeError.
+- #598 head `4a0786abf6f5fa89d1b312f610a123e341e62de6`, attribution 37928825612 and validation 37928825684 SUCCESS, merge `d720a2192f0228e0b1863c27674c8eb39ff368b7`. Explicit degraded/error/stopped current local MCP health defeats stale startup success.
+
+Existing blocked tracks remain explicitly distinct:
+- #590 current ChatGPT connector generic internal errors on four read-only tools; local smoke #595 GREEN does not prove live connection. Historical #333 Oct5 tunnel loss is a plausible *pattern*, not proven present cause; Oct8 operational tunnel's different topology_refresh wrapper issue already resolved #523/#524. #540 stale catalogue fencing still open. Read-only private client/tunnel first-failing-edge evidence needed before any repair or live health claim.
+- #584 hosted CI cost goal still BLOCKED on real isolated disposable runner proof; draft #589 and #387/#388 already own admission/enrollment. No workflow selector or protected host changes.
+- #599 new focused risk: `collect_control_plane_authenticated` accepts any nonempty last_success timestamp as current auth. Next child must first derive actual health poll cadence and deterministic clock bounds; no speculative TTL.
+- OCR full qualification previously finished. Existing #514/#458/#467/#537 own Faster microbench and timing; don't duplicate or claim synthetic transport improvements as real OCR speedup.
+
+Permanent docs: component11 DATA_LINEAGE/FAILURES RMCP-TUN-0001/0002 (green) and 0003 (open), component14 RMCP-MCP-0005, component09 CI guard; `docs/diagnostics/CONNECTOR_READONLY_TRIAGE.md`; issue comments #333/#590. No new own code PR remains pending. Continue safe independent work from real main state in next session; do not claim connector recovered without external evidence.
+
+
 ## 2026-10-09 ~14:20 CEST — scope-correct Runner-MCP continuation checkpoint
 
 This chat owns Runner-MCP ONLY, not Runner-Fabric. First material toolcall ~14:04 CEST; canonical Library master v1.2 requires productive independent work through >=18 minutes when safe and no new major lane after minute 18. Do not pretend a tooltime budget can be read directly. Public GitHub files must not expose private tunnel/host/token/port/path/credential data.

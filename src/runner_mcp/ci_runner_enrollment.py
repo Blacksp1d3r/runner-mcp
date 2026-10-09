@@ -200,10 +200,17 @@ def _safe_runner_script(root: Path, name: str) -> Path:
         raise CIRunnerEnrollmentError("CI runner root is unavailable") from exc
     if not resolved_root.is_dir():
         raise CIRunnerEnrollmentError("CI runner root is unavailable")
+    # Enrollment passes a short-lived GitHub registration token to config.sh.
+    # A directory writable by another local user allows script replacement
+    # before token delivery, even when config.sh itself is not a symlink.
+    if resolved_root.stat().st_mode & 0o022:
+        raise CIRunnerEnrollmentError("CI runner root permissions are unsafe")
 
     script = resolved_root / name
     if script.is_symlink() or not script.is_file() or not os.access(script, os.X_OK):
         raise CIRunnerEnrollmentError("CI runner configuration script is unavailable")
+    if script.stat().st_mode & 0o022:
+        raise CIRunnerEnrollmentError("CI runner configuration script permissions are unsafe")
     return script
 
 
@@ -233,6 +240,16 @@ def _ensure_work_root(spec: CIRunnerSpec) -> None:
         resolved_parent.relative_to(resolved_root)
     except (OSError, ValueError) as exc:
         raise CIRunnerEnrollmentError("CI runner work root is unsafe") from exc
+    # All path components from runner_root to the work parent must resist
+    # writes from other local users while the registration token is live.
+    current = resolved_parent
+    try:
+        while current != resolved_root:
+            if current.stat().st_mode & 0o022:
+                raise CIRunnerEnrollmentError("CI runner work parent permissions are unsafe")
+            current = current.parent
+    except OSError as exc:
+        raise CIRunnerEnrollmentError("CI runner work parent is unsafe") from exc
 
     if spec.work_root.exists():
         try:
@@ -242,6 +259,8 @@ def _ensure_work_root(spec: CIRunnerSpec) -> None:
             raise CIRunnerEnrollmentError("CI runner work root is unsafe") from exc
         if not resolved_work.is_dir():
             raise CIRunnerEnrollmentError("CI runner work root is unsafe")
+        if resolved_work.stat().st_mode & 0o022:
+            raise CIRunnerEnrollmentError("CI runner work root permissions are unsafe")
         return
 
     try:

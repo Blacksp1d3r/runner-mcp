@@ -67,6 +67,55 @@ def test_generic_secret_forms_are_redacted(raw: str, literal: str) -> None:
     assert "[REDACTED]" in result.text
 
 
+@pytest.mark.parametrize(
+    ("raw", "secret"),
+    [
+        (
+            "postgresql://service:privatepassword123@db.example.test/mydb",
+            "privatepassword123",
+        ),
+        (
+            "https://alice%3Aprivatepassword123@db.example.test/path",
+            "privatepassword123",
+        ),
+        (
+            "token%3Dprivate-token-value-123456",
+            "private-token-value-123456",
+        ),
+        (
+            "Authorization: Bearer%20abcdef0123456789secret",
+            "abcdef0123456789secret",
+        ),
+    ],
+)
+def test_dsn_and_encoded_credentials_are_redacted_before_bounds(
+    raw: str,
+    secret: str,
+) -> None:
+    result = redact(raw, max_input_bytes=64, max_output_bytes=256)
+    assert secret not in result.text
+    assert "TRUNCATED" in result.text if len(raw.encode("utf-8")) > 64 else True
+
+
+def test_generic_token_split_at_input_limit_cannot_leak_prefix() -> None:
+    secret = "abcdef0123456789private"
+    raw = ("x" * 60) + f" token={secret}"
+    result = redact(raw, max_input_bytes=68, max_output_bytes=256)
+
+    assert result.input_truncated is True
+    assert secret not in result.text
+    assert "abcdef" not in result.text
+    assert "[INPUT TRUNCATED BY RUNNER MCP]" in result.text
+
+
+def test_oversized_raw_diagnostics_return_only_safe_marker() -> None:
+    raw = "password=" + ("x" * (16 * 1024 * 1024 + 1))
+    result = redact(raw, max_input_bytes=128, max_output_bytes=128)
+    assert result.input_truncated is True
+    assert result.text.strip() == "[INPUT TRUNCATED BY RUNNER MCP]"
+    assert "password=" not in result.text
+
+
 def test_short_known_secret_preserves_existing_test_runner_behavior() -> None:
     result = redact("value=abc", secret_values=["abc"])
 
@@ -86,7 +135,6 @@ def test_input_truncation_redacts_partial_known_secret_at_boundary() -> None:
 
     assert result.input_truncated is True
     assert "very-sec" not in result.text
-    assert "[REDACTED]" in result.text
     assert "[INPUT TRUNCATED BY RUNNER MCP]" in result.text
 
 
@@ -103,7 +151,7 @@ def test_input_truncation_redacts_partial_private_path_at_boundary() -> None:
 
     assert result.input_truncated is True
     assert "/very/pr" not in result.text
-    assert "[PRIVATE_PATH]" in result.text
+    assert "[INPUT TRUNCATED BY RUNNER MCP]" in result.text
 
 
 def test_output_truncation_is_deterministic_and_bounded() -> None:

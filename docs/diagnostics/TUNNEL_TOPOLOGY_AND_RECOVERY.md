@@ -77,3 +77,11 @@ The first command can fail when the service user's D-Bus user manager is unavail
 Operator read-only checks establish that root's crontab does not contain tunnel/MCP matching lines; the service account crontab contains **four** `RUNNER MCP AUTOSTART v1` once-per-minute `cron-run` entries: server, github-watcher, agent-bus-worker, completion-watcher. No tunnel-client entry appears in those returned matching lines. System-wide service inventory (`list-units --all` filtered for tunnel/mcp) returned no matching units. Service account user-systemd query failed due to unavailable bus, so presence of user units is still UNKNOWN. This is evidence of an absent tunnel supervisor in the inspected mechanisms, not proof of every possible startup method or the cause of the previous shutdown.
 
 **Important:** do not replace existing cron-based MCP watchdogs with systemd during tunnel repair; preserve and monitor them separately. Before changing anything, examine the operator account's own cron/user services and alternative launchers (bounded names only), check service-account ability to run an independently installed tunnel-client, and classify missing auth/dependency dependencies without disclosing configs. Proposed tunnel systemd unit requires a dedicated stable executable, private profile/secret custody and rollback/boot acceptance; not yet approved or installed.
+
+## Additional operator inventory — 2026-10-09
+
+- Operator's own crontab filtered for tunnel/mcp: no matches.
+- System-wide active/inactive service listing filtered for tunnel/mcp: no matches.
+- Service-account and system-wide candidate executable paths reported absent; executable only previously observed under operator account.
+- `loginctl show-user` reported UID not logged in or lingering: user-systemd not available for account at inspection time. A system-managed service does not require enabling linger.
+- This strengthens the absent-observed-autostart hypothesis, but does not prove tunnel profile validity, credential availability, server health or external connection. Next classify service-account-readable installed binary and secret reference mechanisms without copying configuration into public sources. Do not execute an unvalidated daemon.

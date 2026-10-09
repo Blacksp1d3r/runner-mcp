@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import secrets
 import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
@@ -38,6 +39,8 @@ from .ci_runner_cron import (
     install_ci_runner_cron,
     remove_ci_runner_cron,
 )
+from .ci_runner_enrollment import CIRunnerEnrollmentManager
+from .ci_runner_github import CIRunnerGitHubController
 from .ci_runner_lifecycle import (
     CIRunnerLifecycleError,
     parse_ci_runner_specs,
@@ -101,6 +104,7 @@ from .fabric_live_overview import (
     FabricLiveOverviewError,
     run_fabric_live_overview_process,
 )
+from .github_mailbox import GitHubApiSession
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
@@ -1217,6 +1221,31 @@ def cmd_ci_runner(args: argparse.Namespace) -> int:
     spec = specs.get(args.alias)
     if spec is None:
         raise RuntimeError("Unknown or disabled CI runner")
+
+    if args.ci_runner_action == "enroll":
+        # Runner enrollment needs elevated repository Actions administration.
+        # Never silently reuse the normal mailbox/transport token for it.
+        github_token = values.get("RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN", "").strip()
+        if not github_token:
+            raise RuntimeError("CI runner enrollment is not configured")
+        mailbox_token = values.get("RUNNER_MCP_GITHUB_TOKEN", "").strip()
+        if mailbox_token and secrets.compare_digest(github_token, mailbox_token):
+            raise RuntimeError("CI runner enrollment requires distinct credentials")
+        manager = CIRunnerEnrollmentManager(
+            github=CIRunnerGitHubController(
+                GitHubApiSession(token=github_token)
+            ),
+            environment=values,
+        )
+        result = manager.enroll(spec).to_payload()
+        print(
+            f"alias={result['alias']} "
+            f"state={result['state']} "
+            f"registered={'yes' if result['registered'] else 'no'} "
+            f"online={'yes' if result['online'] else 'no'} "
+            f"busy={'yes' if result['busy'] else 'no'}"
+        )
+        return 0
 
     supervisor = CIRunnerSupervisor(environment=values)
 
@@ -2373,6 +2402,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ci_runner_status.add_argument("alias")
     ci_runner_status.set_defaults(func=cmd_ci_runner)
+    ci_runner_enroll = ci_runner_sub.add_parser(
+        "enroll",
+        help="Register one preconfigured CI runner without exposing its token.",
+    )
+    ci_runner_enroll.add_argument("alias")
+    ci_runner_enroll.set_defaults(func=cmd_ci_runner)
     ci_runner_run = ci_runner_sub.add_parser(
         "run",
         help=argparse.SUPPRESS,

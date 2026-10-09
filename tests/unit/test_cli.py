@@ -3570,6 +3570,157 @@ def test_ci_runner_status_uses_private_alias_only(
     assert "Blacksp1d3r/AIfordable" not in captured.out
 
 
+def test_ci_runner_enroll_uses_private_spec_and_token_only(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    secret = "github-token-must-not-leak"
+    values = {
+        "RUNNER_MCP_GITHUB_TOKEN": "separate-mailbox-token",
+        "RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN": secret,
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "runner-mcp-validation",
+                    "repository": "Blacksp1d3r/runner-mcp",
+                    "runner_name": "runner-mcp-validation",
+                    "runner_root": str(root),
+                    "work_root": str(work),
+                    "labels": ["runner-mcp-validation"],
+                }
+            ]
+        ),
+    }
+    seen: dict[str, object] = {}
+
+    class FakeSession:
+        def __init__(self, *, token):
+            seen["token"] = token
+
+    class FakeGitHub:
+        def __init__(self, session):
+            seen["session"] = session
+
+    class FakeResult:
+        def to_payload(self):
+            return {
+                "state": "registered",
+                "alias": "runner-mcp-validation",
+                "runner_name": "runner-mcp-validation",
+                "registered": True,
+                "online": True,
+                "busy": False,
+                "custom_labels": ["runner-mcp-validation"],
+            }
+
+    class FakeManager:
+        def __init__(self, *, github, environment):
+            seen["github"] = github
+            assert environment is values
+
+        def enroll(self, spec):
+            seen["alias"] = spec.alias
+            seen["repository"] = spec.repository
+            return FakeResult()
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+    monkeypatch.setattr(cli, "GitHubApiSession", FakeSession)
+    monkeypatch.setattr(cli, "CIRunnerGitHubController", FakeGitHub)
+    monkeypatch.setattr(cli, "CIRunnerEnrollmentManager", FakeManager)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "enroll",
+            "runner-mcp-validation",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert seen["token"] == secret
+    assert seen["alias"] == "runner-mcp-validation"
+    assert seen["repository"] == "Blacksp1d3r/runner-mcp"
+    assert captured.out.strip() == (
+        "alias=runner-mcp-validation state=registered "
+        "registered=yes online=yes busy=no"
+    )
+    assert secret not in captured.out
+    assert str(root) not in captured.out
+    assert "Blacksp1d3r/runner-mcp" not in captured.out
+
+
+@pytest.mark.parametrize("reuse_mailbox_token", [False, True])
+def test_ci_runner_enroll_requires_private_github_token(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    reuse_mailbox_token: bool,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    values = {
+        # Shared mailbox authority must not be accepted for enrollment.
+        "RUNNER_MCP_GITHUB_TOKEN": "mailbox-only-not-runner-admin",
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "runner-mcp-validation",
+                    "repository": "Blacksp1d3r/runner-mcp",
+                    "runner_name": "runner-mcp-validation",
+                    "runner_root": str(root),
+                    "work_root": str(work),
+                    "labels": ["runner-mcp-validation"],
+                }
+            ]
+        ),
+    }
+    if reuse_mailbox_token:
+        values["RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN"] = values["RUNNER_MCP_GITHUB_TOKEN"]
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "enroll",
+            "runner-mcp-validation",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    expected_error = (
+        "CI runner enrollment requires distinct credentials"
+        if reuse_mailbox_token else "CI runner enrollment is not configured"
+    )
+    assert expected_error in captured.err
+    assert str(root) not in captured.err
+
+
 def test_ci_runner_run_delegates_only_preconfigured_alias(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,

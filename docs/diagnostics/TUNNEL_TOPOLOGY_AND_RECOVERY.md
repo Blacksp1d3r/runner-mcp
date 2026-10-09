@@ -85,3 +85,10 @@ Operator read-only checks establish that root's crontab does not contain tunnel/
 - Service-account and system-wide candidate executable paths reported absent; executable only previously observed under operator account.
 - `loginctl show-user` reported UID not logged in or lingering: user-systemd not available for account at inspection time. A system-managed service does not require enabling linger.
 - This strengthens the absent-observed-autostart hypothesis, but does not prove tunnel profile validity, credential availability, server health or external connection. Next classify service-account-readable installed binary and secret reference mechanisms without copying configuration into public sources. Do not execute an unvalidated daemon.
+
+## Operator local health and execution evidence — 2026-10-09 ~17:00 CEST
+
+- Authenticated operator local GET `/healthz` at loopback Runner-MCP endpoint returned **HTTP 200**. This proves only that endpoint responded; it does not prove MCP tool execution or external tunnel connectivity.
+- Attempting the operator-home tunnel-client binary as the service account returned **Permission denied**; profile doctor similarly could not execute. This is an executable/path traversal permission barrier (exact component not yet isolated), not doctor failure or proof the YAML is invalid.
+- Do not chmod operator home, change directory traversal permissions, run privileged tunnel daemon, or copy a possibly out-of-custody executable directly into privileged executable directories without provenance checks.
+- Next diagnose path traversal with `namei -l` on the executable (review privately), and determine the binary installation and SHA256 via controlled package provenance. Plan a dedicated, root-owned, service-account-executable stable location and exact systemd unit only after private auth/profile preflight and ownership review.

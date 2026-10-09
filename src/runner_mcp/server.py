@@ -80,6 +80,7 @@ from .fabric_continuity_status import (
 from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
+    bounded_public_qualification_reason,
 )
 from .fabric_repository_mirror_activation import (
     FabricRepositoryMirrorActivationError,
@@ -962,7 +963,7 @@ def build_mcp(
         try:
             result = fabric_disposable_target_runner.run()
         except FabricDisposableTargetQualificationError as exc:
-            reason = str(exc)
+            reason = bounded_public_qualification_reason(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),

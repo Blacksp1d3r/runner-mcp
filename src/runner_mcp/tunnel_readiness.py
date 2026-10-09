@@ -32,6 +32,17 @@ class TunnelReadinessEvidence:
     control_plane_authenticated: bool = False
     end_to_end_routable: bool = False
 
+    def __post_init__(self) -> None:
+        for field in (
+            "configured",
+            "process_running",
+            "local_mcp_ready",
+            "control_plane_authenticated",
+            "end_to_end_routable",
+        ):
+            if not isinstance(getattr(self, field), bool):
+                raise ValueError("tunnel readiness evidence must be boolean")
+
 
 @dataclass(frozen=True, slots=True)
 class TunnelReadiness:

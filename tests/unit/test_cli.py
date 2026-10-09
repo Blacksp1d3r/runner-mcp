@@ -3509,10 +3509,12 @@ def test_ci_runner_enroll_uses_private_spec_and_token_only(
     assert "Blacksp1d3r/runner-mcp" not in captured.out
 
 
+@pytest.mark.parametrize("reuse_mailbox_token", [False, True])
 def test_ci_runner_enroll_requires_private_github_token(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
     monkeypatch: pytest.MonkeyPatch,
+    reuse_mailbox_token: bool,
 ) -> None:
     root = tmp_path / "runner"
     work = root / "_work"
@@ -3535,6 +3537,8 @@ def test_ci_runner_enroll_requires_private_github_token(
             ]
         ),
     }
+    if reuse_mailbox_token:
+        values["RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN"] = values["RUNNER_MCP_GITHUB_TOKEN"]
 
     monkeypatch.setattr(
         cli,
@@ -3555,7 +3559,11 @@ def test_ci_runner_enroll_requires_private_github_token(
     captured = capsys.readouterr()
 
     assert result == 2
-    assert "CI runner enrollment is not configured" in captured.err
+    expected_error = (
+        "CI runner enrollment requires distinct credentials"
+        if reuse_mailbox_token else "CI runner enrollment is not configured"
+    )
+    assert expected_error in captured.err
     assert str(root) not in captured.err
 
 

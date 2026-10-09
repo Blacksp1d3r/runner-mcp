@@ -76,6 +76,8 @@ class RecoveryQuarantineLedger:
             raise RecoveryQuarantineError("quarantine entry limit is invalid")
         if type(failure_budget) is not int or not 1 <= failure_budget <= 16:
             raise RecoveryQuarantineError("quarantine retry budget is invalid")
+        if not isinstance(path, Path) or not path.is_absolute() or ".." in path.parts:
+            raise RecoveryQuarantineError("quarantine storage path is invalid")
         self._path = path
         self._max_records = max_records
         self._failure_budget = failure_budget
@@ -164,6 +166,8 @@ class RecoveryQuarantineLedger:
         parent = self._path.parent
         try:
             info = parent.lstat()
+            if parent.resolve(strict=True) != parent:
+                raise RecoveryQuarantineError("quarantine directory is unsafe")
             if (
                 not stat.S_ISDIR(info.st_mode)
                 or stat.S_ISLNK(info.st_mode)
@@ -192,7 +196,10 @@ class RecoveryQuarantineLedger:
 
     def _read(self, handle) -> dict[str, RecoveryQuarantineRecord]:
         handle.seek(0)
-        raw = handle.read(MAX_QUARANTINE_FILE_BYTES + 1)
+        try:
+            raw = handle.read(MAX_QUARANTINE_FILE_BYTES + 1)
+        except UnicodeError as exc:
+            raise RecoveryQuarantineError("quarantine data is invalid") from exc
         if len(raw.encode("utf-8")) > MAX_QUARANTINE_FILE_BYTES:
             raise RecoveryQuarantineError("quarantine data exceeds bound")
         if not raw:

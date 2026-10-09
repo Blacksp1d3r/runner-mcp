@@ -173,9 +173,24 @@ def test_disposable_target_tool_is_zero_argument_and_bounded(
     assert "private-qualification" not in audit
 
 
+@pytest.mark.parametrize(
+    ("injected_error", "expected"),
+    [
+        (
+            "fabric_disposable_target_qualification_failed:guest-agent-not-ready",
+            "fabric_disposable_target_qualification_failed:guest-agent-not-ready",
+        ),
+        (
+            "/private/path token=secret",
+            "fabric_disposable_target_qualification_failed",
+        ),
+    ],
+)
 def test_disposable_target_tool_returns_bounded_invalid_reason(
     tmp_path: Path,
     monkeypatch,
+    injected_error: str,
+    expected: str,
 ) -> None:
     class FakeQualificationRunner:
         def __init__(self, **_kwargs) -> None:
@@ -183,7 +198,7 @@ def test_disposable_target_tool_returns_bounded_invalid_reason(
 
         def run(self):
             raise FabricDisposableTargetQualificationError(
-                "fabric_disposable_target_qualification_failed:guest-agent-not-ready"
+                injected_error
             )
 
     monkeypatch.setattr(
@@ -253,10 +268,8 @@ def test_disposable_target_tool_returns_bounded_invalid_reason(
     assert result == {
         "schemaVersion": "runner-mcp/disposable-target-qualification-result/v1",
         "state": "invalid",
-        "reasonCode": (
-            "fabric_disposable_target_qualification_failed:"
-            "guest-agent-not-ready"
-        ),
+        "reasonCode": expected,
         "normalActivationEnabled": False,
     }
     assert "private-qualification" not in response.text
+    assert "token=secret" not in response.text

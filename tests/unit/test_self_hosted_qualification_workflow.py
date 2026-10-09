@@ -13,7 +13,7 @@ WORKFLOW_PATH = (
 
 def test_unadmitted_runner_qualification_is_never_automatically_queued() -> None:
     text = WORKFLOW_PATH.read_text(encoding="utf-8")
-    events = text.split("on:\\n", 1)[1].split("\\npermissions:", 1)[0]
+    events = text.split("on:\n", 1)[1].split("\npermissions:", 1)[0]
 
     assert "workflow_dispatch:" in events
     assert "  push:" not in events

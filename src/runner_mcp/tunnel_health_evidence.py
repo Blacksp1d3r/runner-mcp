@@ -17,8 +17,8 @@ MAX_HEALTH_RESPONSE_BYTES = 32_768
 _HEALTH_TIMEOUT_SECONDS = 2.0
 _INSTANCE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _RFC3339_RE = re.compile(
-    r"^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}"
-    r"(?:\\.\\d{1,9})?(?:Z|[+-]\\d{2}:\\d{2})$"
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
+    r"(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
 )
 # tunnel-client's documented default is a 30-second long poll plus 5-second
 # deadline guard. Three nominal polls (90s) is a bounded freshness policy,

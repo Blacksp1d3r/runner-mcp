@@ -41,7 +41,7 @@ class TunnelReadinessEvidence:
             "end_to_end_routable",
         ):
             if not isinstance(getattr(self, field), bool):
-                raise ValueError("tunnel readiness evidence must be boolean")
+                raise TypeError("tunnel readiness evidence must be boolean")
 
 
 @dataclass(frozen=True, slots=True)

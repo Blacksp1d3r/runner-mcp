@@ -11,6 +11,7 @@ from runner_mcp.ci_runner_guest_enrollment import (
     CIRunnerRegistrationSecret,
 )
 from runner_mcp.ci_runner_secret_handoff import (
+    CIRunnerSecretHandoff,
     CIRunnerSecretHandoffError,
     CIRunnerSecretHandoffStore,
     validate_handoff_id,
@@ -182,3 +183,24 @@ def test_reap_accepts_exact_directory_entry_limit(
     store = CIRunnerSecretHandoffStore(root=root, now=lambda: 2000.0)
     assert store.reap_expired() == 1
     assert not expired.exists()
+
+
+@pytest.mark.parametrize("bad", [None, 123, [], b"a" * 16])
+def test_public_handoff_record_rejects_nonstrings_without_typeerror(
+    bad: object,
+) -> None:
+    with pytest.raises(CIRunnerSecretHandoffError, match="handoff id"):
+        CIRunnerSecretHandoff(handoff_id=bad, expires_at=2000)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("bad", [0, -1, 1 << 53, True, "2000"])
+def test_public_handoff_record_rejects_invalid_expiry_bounds(
+    bad: object,
+) -> None:
+    with pytest.raises(CIRunnerSecretHandoffError, match="expiry"):
+        CIRunnerSecretHandoff(handoff_id="ab" * 16, expires_at=bad)  # type: ignore[arg-type]
+
+
+def test_public_handoff_record_accepts_valid_expiry_boundary() -> None:
+    record = CIRunnerSecretHandoff(handoff_id="ab" * 16, expires_at=(1 << 53) - 1)
+    assert record.to_payload()["expires_at"] == (1 << 53) - 1

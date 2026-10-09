@@ -46,6 +46,7 @@ _ALLOWED_OPERATIONS = {
     "runtime_status": BridgeAction.RUNTIME_STATUS,
     "runtime_doctor": BridgeAction.RUNTIME_DOCTOR,
     "fabric_operational_snapshot": BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT,
+    "fabric_continuity_status": BridgeAction.FABRIC_CONTINUITY_STATUS,
 }
 
 

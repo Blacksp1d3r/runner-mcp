@@ -232,7 +232,16 @@ def test_readiness_performs_no_filesystem_mutation(tmp_path, monkeypatch):
     def forbidden(*args, **kwargs):
         raise AssertionError("readiness attempted a mutation")
 
-    for name in ("mkdir", "chmod", "unlink", "rename", "replace", "write_text", "write_bytes"):
+    mutation_methods = (
+        "mkdir",
+        "chmod",
+        "unlink",
+        "rename",
+        "replace",
+        "write_text",
+        "write_bytes",
+    )
+    for name in mutation_methods:
         monkeypatch.setattr(Path, name, forbidden)
 
     result = _ready_subject(environment, primary, mount, mirror).status()

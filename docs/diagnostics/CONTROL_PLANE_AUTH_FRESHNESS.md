@@ -38,4 +38,3 @@ a separate qualification gate (#590).
 - malformed/empty/naive/invalid RFC3339: rejected;
 - degraded/stopped/unknown statuses: rejected regardless of old success;
 - operator must not infer remote routability from a successful poll alone.
-

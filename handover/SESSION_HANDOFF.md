@@ -1,3 +1,7 @@
+## 2026-10-09 — #613 exact-green MERGED; supersedes WAITING_CI below
+
+PR #613 response-ID guard exact head `6b5dc2c2c646aba0fdc45a0ae9a08a6af83a8f97`, attribution `37962077429` SUCCESS, validation `37962077446` SUCCESS (Ruff/pytest, release, clean demo), squash merged `ae2eac3f4e38574d4405460e14f7b8cad122e4d4`. Nine tests include JSON and SSE normal/mismatched ID; missing/type-confused IDs fail closed. First Ruff and synthetic SSE fixture failures were investigated and fixed (not service faults). No live tunnel or runtime deployment. #590 remains OPEN: external ChatGPT connector responses intermittently generic internal error and actual tunnel delivery correlation unproven. Official upstream `openai/tunnel-client/docs/health.md` confirms local-only dispatcher vs response-delivery counters; see issue #590 and `docs/diagnostics/CONNECTOR_READONLY_TRIAGE.md`. #599 previously merged/closed; do not repeat. Existing #467 ref move was blocked by GitHub GraphQL; reconcile before continuation.
+
 ## 2026-10-09 — Current continuation: #599 closed; #613 source hardening awaiting CI
 
 GitHub truth supersedes earlier handoff: #599 was already merged via PR #609 `ee29a791bb8dab96275ae3efc9987c6548a57bdd`; exact-head full validation `37957581774` SUCCESS, attribution `37958136637` SUCCESS. Current source enforces RFC3339 freshness (90-second max age, 5-second future skew; documented 30-second poll + 5-second guard). Issue #599 has now been closed as source COMPLETE. This does NOT prove live external tunnel routing; #590 remains open.

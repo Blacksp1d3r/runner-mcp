@@ -32,3 +32,14 @@ A client reporting only `The tool failed internally.` has not proven that its re
 - Historical OCR qualification is complete; Faster performance work is separately tracked by #514/#458 and must not be re-triggered as a connector test.
 
 Public documents must not contain private endpoints, hostnames, port maps, absolute deployment paths, credentials, token fragments or customer payloads.
+
+## External tunnel read-only response-delivery evidence (2026-10-09)
+
+The official tunnel-client health contract documents separate loopback-only component projections for `dispatcher`, `response-delivery`, `queue` and `control-plane`. They provide a safer first-hop diagnosis than counting journal message labels. Relevant semantics:
+
+- `dispatcher`: active operations, completion/failure/timeout counters and bounded oldest active age. Forwarded requests do **not** imply completed operations.
+- `response-delivery`: attempts, retries, active deliveries, HTTP 200 acceptance and logical completion; compatible benign HTTP 404 is **not** acceptance.
+- `queue`: local commands waiting/enqueued/dequeued and backpressure; not remote queue depth.
+- `control-plane`: polls/last successful observations, but a historical success is not current authentication without freshness policy (source fix #599 already complete).
+
+Reference: upstream `openai/tunnel-client/docs/health.md`. The upstream documentation explicitly notes observations are historical snapshots, not continuous connectivity guarantees. To locate #590, use an authorized operator's local, private **read-only** snapshots of only sanitized counter/status fields immediately before and after a single bounded client invocation; correlate to server receipt/completion and user-visible outcome. Do not upload health payloads containing private connection identities or addresses, do not enable raw HTTP logging, and do not expose listener addresses, credentials or tunnel IDs in public issues. If the available projection does not expose a qualified per-request association, classify exact return-route identity as UNKNOWN even when counters move. No operator-only live state is inferred by this document.

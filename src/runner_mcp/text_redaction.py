@@ -11,6 +11,22 @@ _OUTPUT_TRUNCATED_MARKER = "\n[OUTPUT TRUNCATED BY RUNNER MCP]\n"
 
 _GENERIC_SECRET_RULES = (
     (
+        # Redact URI credentials as a unit, including percent-encoded userinfo.
+        re.compile(r"(?i)\b([a-z][a-z0-9+.-]{1,32}://)[^\s/@]+@"),
+        r"\1[REDACTED]@",
+    ),
+    (
+        re.compile(
+            r"(?i)\b((?:password|passwd|token|secret|api[_-]?key)"
+            r"(?:%3[aAdD]))[^\s&]{8,}"
+        ),
+        r"\1[REDACTED]",
+    ),
+    (
+        re.compile(r"(?i)(Bearer(?:\s+|%20))[A-Za-z0-9._~+/=%-]{12,}"),
+        r"\1[REDACTED]",
+    ),
+    (
         re.compile(r"(?i)(Bearer\s+)[A-Za-z0-9._~+/=-]{12,}"),
         r"\1[REDACTED]",
     ),
@@ -83,28 +99,6 @@ def _unique_sensitive_values(
     )
 
 
-def _redact_boundary_partial(
-    text: str,
-    *,
-    values: tuple[str, ...],
-    replacement: str,
-) -> str:
-    if not text:
-        return text
-    best = 0
-    for value in values:
-        upper = min(len(value) - 1, len(text))
-        for length in range(upper, 0, -1):
-            if length <= best:
-                break
-            if text.endswith(value[:length]):
-                best = length
-                break
-    if best:
-        return text[:-best] + replacement
-    return text
-
-
 def _bound_output(text: str, max_bytes: int) -> tuple[str, bool]:
     encoded = _encode(text)
     if len(encoded) <= max_bytes:
@@ -137,28 +131,32 @@ def redact_bounded_text(
     secrets = _unique_sensitive_values(secret_values, min_length=4)
     paths = _unique_sensitive_values(private_paths, min_length=1)
 
-    redacted, input_truncated = _bounded_prefix(text, max_input_bytes)
+    # An unbounded attacker-supplied string must never be copied through a
+    # partial-secret prefix. Refuse to render it beyond the global bound.
+    if len(text) > _MAX_LIMIT_BYTES:
+        bounded, output_truncated = _bound_output(
+            _INPUT_TRUNCATED_MARKER,
+            max_output_bytes,
+        )
+        return RedactedText(
+            text=bounded,
+            input_truncated=True,
+            output_truncated=output_truncated,
+        )
 
+    original_bytes = len(_encode(text))
+    redacted = text
     for value in secrets:
         redacted = redacted.replace(value, "[REDACTED]")
     for value in paths:
         redacted = redacted.replace(value, "[PRIVATE_PATH]")
-
-    if input_truncated:
-        redacted = _redact_boundary_partial(
-            redacted,
-            values=secrets,
-            replacement="[REDACTED]",
-        )
-        redacted = _redact_boundary_partial(
-            redacted,
-            values=paths,
-            replacement="[PRIVATE_PATH]",
-        )
-
     for pattern, replacement in _GENERIC_SECRET_RULES:
         redacted = pattern.sub(replacement, redacted)
 
+    # Bound only the already-redacted text. The old ordering could expose a
+    # truncated fragment of a secret that no longer matched a generic rule.
+    redacted, was_bounded = _bounded_prefix(redacted, max_input_bytes)
+    input_truncated = original_bytes > max_input_bytes or was_bounded
     if input_truncated:
         redacted += _INPUT_TRUNCATED_MARKER
 

@@ -4,6 +4,7 @@ import pytest
 
 from runner_mcp.fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
+    inspect_a6_binding_state,
     repair_a6_qualification_binding,
 )
 from runner_mcp.onboarding import load_env_file
@@ -118,3 +119,66 @@ def test_repair_fails_closed_on_partial_or_unsafe_a6_state(tmp_path: Path) -> No
             state_root=state,
             fabric_revision="f" * 40,
         )
+
+def test_inspection_reports_sanitized_binding_and_state_root_counts(
+    tmp_path: Path,
+) -> None:
+    config, state, environment = _private_runtime(tmp_path)
+
+    before = inspect_a6_binding_state(
+        config_dir=config,
+        state_root=state,
+    )
+    assert before == {
+        "state_roots": "ready",
+        "binding_count": 0,
+        "binding_total": 11,
+        "binding_complete": False,
+    }
+
+    repair_a6_qualification_binding(
+        environment=environment,
+        config_dir=config,
+        state_root=state,
+        fabric_revision="f" * 40,
+    )
+    after = inspect_a6_binding_state(
+        config_dir=config,
+        state_root=state,
+    )
+    assert after == {
+        "state_roots": "ready",
+        "binding_count": 11,
+        "binding_total": 11,
+        "binding_complete": True,
+    }
+
+
+def test_inspection_distinguishes_absent_roots_from_shared_bindings(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "config"
+    config.mkdir(mode=0o700)
+    env_path = config / "runner-mcp.env"
+    env_path.write_text(
+        "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT=http://127.0.0.1:8000/mcp\n"
+        + "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN="
+        + ("r" * 48)
+        + "\n",
+        encoding="utf-8",
+    )
+    env_path.chmod(0o600)
+    state = tmp_path / "state"
+    state.mkdir(mode=0o700)
+
+    observed = inspect_a6_binding_state(
+        config_dir=config,
+        state_root=state,
+    )
+
+    assert observed == {
+        "state_roots": "absent",
+        "binding_count": 2,
+        "binding_total": 11,
+        "binding_complete": False,
+    }

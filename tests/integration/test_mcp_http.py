@@ -2373,3 +2373,47 @@ def test_fabric_host_inspect_failure_returns_bounded_diagnostic(
 
     audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "fabric_host_inspect" in audit_text
+
+
+def test_connector_readonly_smoke_matrix_through_authenticated_mcp(tmp_path: Path) -> None:
+    """Separates a functional local server from an unlocated remote connector error."""
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        session_id = initialized.headers.get("mcp-session-id")
+        assert session_id
+        headers["Mcp-Session-Id"] = session_id
+        assert client.post(
+            "/mcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        ).status_code == 202
+
+        for call_id, tool_name in enumerate(
+            ("list_projects", "runtime_status", "runtime_doctor"), start=20
+        ):
+            response = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": call_id,
+                    "method": "tools/call",
+                    "params": {"name": tool_name, "arguments": {}},
+                },
+            )
+            assert response.status_code == 200
+            assert '"isError":true' not in response.text
+            payload = parse_tool_json(response)
+            assert isinstance(payload, (dict, list))
+            assert ("x" * 32) not in response.text
+            assert str(tmp_path) not in response.text
+            assert "mcp.example.invalid" not in response.text
+            if tool_name == "list_projects":
+                assert [project["code"] for project in payload] == ["demo"]
+            elif tool_name == "runtime_status":
+                assert payload["projects"] == 1
+            else:
+                assert isinstance(payload["checks"], list)

@@ -73,7 +73,7 @@ def test_local_mcp_checks_id_in_sse_response(
     def fake_open(_: urllib.request.Request, **kwargs: object) -> _FakeResponse:
         del kwargs
         response = _FakeResponse(returned_id)
-        response.body = b"event: message\\ndata: " + response.body + b"\\n\\n"
+        response.body = b"event: message\ndata: " + response.body + b"\n\n"
         return response
 
     monkeypatch.setattr(urllib.request, "urlopen", fake_open)

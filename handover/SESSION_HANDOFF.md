@@ -1,3 +1,11 @@
+## 2026-10-09 — Self-update source alignment and A6 dependency reconciliation
+
+Existing PR #519 was CLOSED UNMERGED after explicit live-main proof that its requested source baseline protection is already implemented with stronger current `source_commit`, `source_baseline_aligned`, active runtime revision and `runtime_doctor` evidence. Main `SelfUpdateManager.start` rejects source drift and unavailability before queuing; current security tests cover aligned, drift, unavailable and nonleaking error outcomes. Prior #519 branch is stale; do not reopen or override current source. Queue-to-activation TOCTOU remains independently reviewable and not proven solved by queue-time checking alone.
+
+Open PR #518 still adds a distinct, sanitized A6 binding diagnostic, NOT yet on main. Review identified possible unverified derivation of its state root from projects-config folder nesting; owner must prove it matches the same private canonical A6 root as restart on nondefault configurations or fail closed. No A6 prepare, agent restart or live update until exact proof. Reviewed on original PR, no duplicate branch created.
+
+External #590 intermittent ChatGPT tunnel response route still OPEN. No live host, tunnel, credentials, CI runner, server service or customer workload touched.
+
 ## 2026-10-09 — Final autonomous checkpoint: #620/#526 merged, #511 superseded
 
 - Exact-green PR #620 explicit ServiceBackend injection test: head `82a918902636376b2bc26b5a3f22475295d279b8`, attribution `37981372498` SUCCESS, Runner MCP validation `37981372754` SUCCESS, squash merged `4f7a7d8e16ac9fe23760800bed8a313c37eb8a4e`. Test-only. No Windows SCM adapter/service activation.

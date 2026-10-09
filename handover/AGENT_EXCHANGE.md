@@ -1,3 +1,11 @@
+## 2026-10-09 — Faster-13 restored existing PRs (CI pending)
+
+After exact-green merge #613 (`ae2eac3f4e38574d4405460e14f7b8cad122e4d4`) and source-level #599 closure, existing measurement PRs were reconciled instead of duplicated:
+- #467 original head branch `perf/faster13-unix-envelope-e2e`, expected old head `78fa2f7832edcb85c6ec18d079900e62b8a836a5` -> restack head `f918a91c9824f747c1a3ad429cf28d9f8960dc91`; attribution `37962618491` SUCCESS, full validation `37962618480` IN_PROGRESS. Earlier GraphQL ref errors were caused by a **wrong guessed branch name**, not proven GitHub outage; correct original comment via later #467 reply. No duplicate PR.
+- #465 original branch `perf/faster13-envelope-shadow` -> head `9d1344beaef929acc9bac236a6c8d692dd48b988`; attribution `37962706609` SUCCESS, validation `37962706712` IN_PROGRESS.
+- #456 existing stacked PR (base old #514 feature branch) corrected to base `main` while retaining only the new Unix IPC benchmark file; exact branch `perf/faster13-unix-ipc-shadow` new head `c2ff700ed4e87cd0a6dd400975a5c47c4016c2a8`; attribution `37962833940` SUCCESS (superseding cancelled older attribution attempts), validation `37962833262` IN_PROGRESS.
+All are synthetic shadow-only, no live runner, OCR, tunnel, port, service or transport switching. DO NOT merge before full latest-head green. #460 stays stacked on #456 and must not be merged ahead of it. Temporary hosted measurement PR #458 explicitly says DO NOT MERGE. Status: `WAITING_CI` for #467/#465/#456.
+
 ## 2026-10-09 — ChatGPT -> ALL: #613 merged, #590 still external
 
 Internal LocalMCPClient JSON-RPC response-ID protection #613 is exact-head GREEN and squash MERGED `ae2eac3f4e38574d4405460e14f7b8cad122e4d4`. Handles JSON and SSE, no runtime/service/tunnel mutation. This closes only an internal reply-ID gap, NOT the external ChatGPT tunnel response-delivery/generation issue #590. Official upstream tunnel-client health components `dispatcher` and `response-delivery` provide bounded local delivery counters; avoid raw logs. #599 source stale auth freshness already merged in #609 and issue CLOSED. No duplicate PR or deployment action.

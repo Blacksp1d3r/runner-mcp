@@ -6,6 +6,7 @@ from pathlib import Path
 
 import pytest
 
+import runner_mcp.ci_runner_secret_handoff as handoff_module
 from runner_mcp.ci_runner_guest_enrollment import (
     CIRunnerRegistrationSecret,
 )
@@ -149,3 +150,35 @@ def test_valid_handoff_id_is_safe_for_transport() -> None:
     value = "01" * 16
 
     assert validate_handoff_id(value) == value
+
+
+def test_reap_refuses_oversized_directory_without_deleting_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    (root / "ignored-one").touch()
+    (root / "ignored-two").touch()
+    monkeypatch.setattr(handoff_module, "_MAX_REAP_ENTRIES", 2)
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: 2000.0)
+    with pytest.raises(CIRunnerSecretHandoffError, match="too many entries"):
+        store.reap_expired()
+    assert expired.exists()
+
+
+def test_reap_accepts_exact_directory_entry_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    (root / "ignored").touch()
+    monkeypatch.setattr(handoff_module, "_MAX_REAP_ENTRIES", 2)
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: 2000.0)
+    assert store.reap_expired() == 1
+    assert not expired.exists()

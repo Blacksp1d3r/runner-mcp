@@ -60,6 +60,7 @@ def platform_contract(system_name: str | None = None) -> HostPlatformContract:
             permission_backend_family="ntfs-acl",
             isolation_backend_candidates=("windows-job-object", "hyper-v"),
             supported=True,
+            service_adapter_implemented=False,
         )
     return HostPlatformContract(
         platform=host_platform,

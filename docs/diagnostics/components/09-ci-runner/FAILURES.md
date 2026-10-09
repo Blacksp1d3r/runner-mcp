@@ -2,6 +2,6 @@
 
 | Failure ID | Status | Earliest layer | Symptom | Root cause/evidence | Prevention/regression | Tracking |
 |---|---|---|---|---|---|---|
-| none-migrated | — | — | No additional component-specific reusable failure migrated yet | — | global failure taxonomy + existing component tests | #569 |
+| RMCP-CI-0001 | PR_OPEN #591 | private registration handoff cleanup | `reap_expired` materialized the whole directory before checking names, allowing unbounded memory use when private handoff root fills | Source inspection #591, no live host incident claimed | bounded `islice` intake <=4097; fail closed above 4096 without deleting records; max/exact-bound unit tests, exact-head CI pending | #584 / #591 |
 
 A closed failure remains recorded with fix/revision and regression evidence.

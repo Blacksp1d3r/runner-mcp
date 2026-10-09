@@ -234,6 +234,8 @@ def collect_local_mcp_ready(
     ):
         return True
 
+    if payload.get("status") not in {"ok", "unknown"}:
+        return False
     details = payload.get("details")
     if not isinstance(details, dict) or details.get("transport") != "http-streamable":
         return False

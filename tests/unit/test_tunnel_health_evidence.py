@@ -364,3 +364,25 @@ def test_invalid_health_payload_fails_closed(
             tmp_path,
             opener=lambda *_args, **_kwargs: FakeResponse(payload),
         )
+
+
+@pytest.mark.parametrize("negative_status", ["degraded", "error", "failed", "stopped"])
+@pytest.mark.parametrize("prior_probe", ["succeeded", "auth_required"])
+def test_explicit_negative_mcp_health_overrides_historical_startup(
+    tmp_path: Path, negative_status: str, prior_probe: str,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = json.dumps({
+        "schema_version": 1,
+        "component": "mcp",
+        "status": negative_status,
+        "state": "not_observed",
+        "details": {
+            "transport": "http-streamable",
+            "startup_probe": {"state": prior_probe},
+        },
+    }).encode("utf-8")
+    assert collect_local_mcp_ready(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(payload),
+    ) is False

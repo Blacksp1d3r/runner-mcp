@@ -5,6 +5,7 @@ import re
 from collections.abc import MutableMapping
 from pathlib import Path
 
+from .onboarding import load_env_file
 from .fabric_worker_qualification_provisioning import (
     FabricWorkerQualificationProvisioningError,
     _merge_private_env,

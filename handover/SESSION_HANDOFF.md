@@ -1,3 +1,9 @@
+## 2026-10-09 — Follow-up #489 explicit backend selection regression (WAITING_CI)
+
+Existing source #490/#619 are already merged and preserve Linux behavior while refusing automatic systemd backend selection on Windows. Fresh tiny test-only PR #620 `test/489-explicit-backend-platform-qualification`, head `82a918902636376b2bc26b5a3f22475295d279b8`, ensures an explicitly injected `ServiceBackend` is not replaced by automatic systemd selection regardless of detected Linux, Windows or unsupported family. Exact-head attribution `37981372498` SUCCESS, validation `37981372754` Ruff/pytest SUCCESS, release/demo IN_PROGRESS as of the last observation. No production code or runtime changes in #620. Do not merge until both full validation and attribution are terminal green; broad Windows SCM adapter remains unimplemented (#489).
+
+PR #526 read-only review: its bounded Fabric custody reason-code allowlist changes shared server/fabric files and is stale/nonmergeable against current main. Do not restack by blindly overwriting large shared files; reconcile owner and changes before progressing. The live tunnel return-path issue #590 is still separate and unproven.
+
 ## 2026-10-09 — #619 exact-head GREEN and MERGED (supersedes WAITING_CI)
 
 New bounded source-only PR #619 (`fix/windows-service-backend-admission-20261009`) exact head `b426692798092edf263d0182a205ae7ba9a6dc2b`, attribution run `37975695602` SUCCESS, full validation run `37975695551` SUCCESS (Ruff/pytest, built release artifact, clean demo), squash merge `bac86a97f1493ff943ef5f3d01228814e3ed61c0`. `ServiceManager._backend()` refuses default Linux SystemdUserBackend on Windows/unsupported host before instantiation; existing Linux and explicitly injected backends unchanged. Three regression cases passed. This does NOT implement Windows SCM, change actual Windows startup, grant remote authority, or activate any server. Broader #489 remains open for least-privilege SCM adapter and isolated Windows CI.

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import urllib.request
+from typing import Self
 
 import pytest
 
@@ -21,7 +22,7 @@ class _FakeResponse:
         ).encode("utf-8")
         self.headers: dict[str, str] = {}
 
-    def __enter__(self) -> _FakeResponse:
+    def __enter__(self) -> Self:
         return self
 
     def __exit__(self, *_: object) -> None:

@@ -122,7 +122,11 @@ from .fabric_repository_mirrors import (
     FabricRepositoryMirrorError,
     FabricRepositoryMirrorRunner,
 )
-from .fabric_update import FabricUpdateError, FabricUpdateManager
+from .fabric_update import (
+    FabricUpdateError,
+    FabricUpdateManager,
+    bounded_local_custody_failure_reason,
+)
 from .fabric_worker_qualification_provisioning import (
     FabricWorkerQualificationProvisioner,
     FabricWorkerQualificationProvisioningError,
@@ -1583,17 +1587,27 @@ def build_mcp(
         try:
             result = fabric_update_manager.stage_local_bundle(commit)
         except FabricUpdateError as exc:
+            reason = bounded_local_custody_failure_reason(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_local_bundle_stage",
                     "runner-fabric",
                     "authenticated-client",
-                    "denied",
+                    "blocked" if reason is not None else "denied",
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            if reason is not None:
+                return {
+                    "state": "blocked",
+                    "reasonCode": reason,
+                    "staged": False,
+                    "bundleReady": False,
+                    "source": "canonical-source",
+                    "localCustody": True,
+                }
+            raise ValueError("Fabric local bundle staging is unavailable") from None
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1612,17 +1626,25 @@ def build_mcp(
         try:
             result = fabric_update_manager.local_readiness(commit)
         except FabricUpdateError as exc:
+            reason = bounded_local_custody_failure_reason(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_local_update_readiness",
                     "runner-fabric",
                     "authenticated-client",
-                    "denied",
+                    "blocked" if reason is not None else "denied",
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            if reason is not None:
+                return {
+                    "state": "blocked",
+                    "reasonCode": reason,
+                    "artifact_ready": False,
+                    "source": "local-custody",
+                }
+            raise ValueError("Fabric local update readiness is unavailable") from None
         audit.append(
             AuditEvent(
                 current_request_id(),

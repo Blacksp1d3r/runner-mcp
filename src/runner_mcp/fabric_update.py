@@ -43,8 +43,35 @@ _MAX_FILES = 160
 _TERMINAL = frozenset({"completed", "error", "interrupted"})
 
 
+_LOCAL_CUSTODY_FAILURE_REASONS = frozenset(
+    {
+        "fabric_update_commit_invalid",
+        "operator_stop",
+        "runner_mcp_state_unavailable",
+        "runner_mcp_self_update_active",
+        "runner_mcp_restart_pending",
+        "runner_mcp_install_recovery_pending",
+        "fabric_launcher_unmanaged",
+        "actions_run_unavailable",
+        "fabric_bundle_storage_conflict",
+        "fabric_bundle_invalid",
+        "fabric_bundle_source_unavailable",
+        "fabric_bundle_source_invalid",
+        "fabric_bundle_secret_cleanup_failed",
+        "fabric_bundle_build_failed",
+    }
+)
+
+
 class FabricUpdateError(RuntimeError):
     """Bounded managed Runner Fabric update failure."""
+
+
+def bounded_local_custody_failure_reason(
+    error: FabricUpdateError,
+) -> str | None:
+    detail = str(error)
+    return detail if detail in _LOCAL_CUSTODY_FAILURE_REASONS else None
 
 
 class FabricUpdateState(StrEnum):

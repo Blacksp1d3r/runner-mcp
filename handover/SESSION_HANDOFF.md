@@ -1,3 +1,23 @@
+## 2026-10-09 — Runner-MCP CI safety / connector / Faster checkpoint (updated)
+
+This is the **Runner-MCP** lane only. Do not resume Runner-Fabric F17/F20 code from this chat. Check active PRs first; do not duplicate #584 docs-only #589, admission workflow #387 or enrollment CLI #388. No production/worker/host/port/credential/tunnel mutations performed.
+
+Exact green merges this session:
+- #591 squash `ea519720454b54c326ebadc2fed51e8b384fe18f`, head `e365787148f456ed49eb7cf4d3859d56ae4f07df`: bound private CI registration-handoff reap directory materialization to 4096 entries, fail closed with no deletion over limit.
+- #592 squash `3c9e16b56d2b62978bdf5b0802dac1327e32217f`, head `09bfd4dee7bf20dacc8b29176b655ce06fdec6a0`: reject wrong-type handoff IDs and invalid public expiry timestamps with sanitized error.
+
+Active exact-head PRs:
+- #593, `fix/ci-handoff-clock-preflight`, head `cc55d30b916f260132de9fa33151af7af145b86c`: check finite/positive/TTL-safe numeric clock **before** writing any registration secret, one sample shared for mtime/expiry. First validation run failed Ruff TRY004 only; fixed exact diagnostic on new head. Commit attribution 37924023172 SUCCESS; validation 37924023194 IN_PROGRESS at checkpoint. Merge only exact green.
+- #594, `ci/584-cancel-superseded-attribution`, head `57467a40bfd8a4a2c25424e416dbd9b0aab68c10`: per-PR/ref concurrency cancellation for redundant commit-attribution Actions, existing triggers/check names/permissions/runs-on remain unchanged. Commit attribution 37924161842 SUCCESS; validation 37924161737 IN_PROGRESS. Partial hosted-minute savings only, NOT #584 runner isolation.
+- #584 still BLOCKED on proven disposable self-hosted runner admission. Draft #589 already contains admission docs; #387/#388 have distinct owners. GitHub runners inventory endpoint is not accessible via available connector; do not assert eligible capacity or relabel PR workflows.
+- #590 live connector: four read-only tools (runtime_status, runtime_doctor, list_projects, worker_status) all return `The tool failed internally.`; no structured runtime result. Generic transport/app layer unlocated. No blind retry, shell, process or tunnel restart. Diagnosable guide `docs/diagnostics/CONNECTOR_READONLY_TRIAGE.md`, canonical RMCP-MCP-0005.
+- FASTER/OCR: OCR qualification is already historical/complete; acceleration measurements only. Existing #514/#458/#467/#537 active, do not duplicate. Hosted CI #458 log showed synthetic persistent HTTP p50 ~40.90ms vs urllib ~0.78ms (slower), Unix envelope p50 52.288us vs reference 132.698us (synthetic, not real OCR throughput). Tracked in #514 comment and `docs/OCR_ACCELERATION_MEASUREMENT_PLAN.md`. No OCR job or live worker executed.
+
+Docs updated: component 09 ROADMAP/FAILURES including RMCP-CI-0001..0004; component 14 FAILURES including RMCP-MCP-0005; diagnostic README/connector guide; OCR stage measurement plan; #584 and #514 issue comments. Public GitHub contains no private coordinates or secret values.
+
+Next: check exact-head CI #593/#594, inspect logs before fixing failures, merge only fully green, update this handover with merge SHA. Isolated CI admission #584 requires separate host-owner proof/approval; do not move workflow selectors prematurely. Once connector #590 is resolved by authorized operator, confirm bounded list_projects/status/doctor and then measure actual OCR stage timing only if needed, not whole qualification.
+
+
 ## 2026-10-09 — Runner-MCP scope-correct continuation (CI admission / connector / Faster)
 
 This session belongs exclusively to Runner-MCP; the Runner-Fabric active implementation lane remains owned by its other project chat. Read GitHub current state before edits; no production or shared infrastructure mutation has been performed.

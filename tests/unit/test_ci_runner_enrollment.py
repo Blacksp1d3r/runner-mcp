@@ -167,6 +167,50 @@ def test_existing_local_and_remote_registration_is_idempotent(tmp_path: Path) ->
     assert github.token_calls == 0
 
 
+def test_symlinked_existing_marker_is_rejected_before_idempotency(
+    tmp_path: Path,
+) -> None:
+    spec = setup_spec(tmp_path)
+    outside = tmp_path / "outside-marker"
+    outside.write_text("not runner-owned", encoding="utf-8")
+    (spec.runner_root / ".runner").symlink_to(outside)
+    github = FakeGitHub()
+    github.states.append(remote(online=True))
+
+    with pytest.raises(CIRunnerEnrollmentError, match="marker is unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+    assert outside.read_text(encoding="utf-8") == "not runner-owned"
+
+
+def test_existing_registration_refuses_unexpected_remote_labels(
+    tmp_path: Path,
+) -> None:
+    spec = setup_spec(tmp_path)
+    (spec.runner_root / ".runner").write_text("private", encoding="utf-8")
+    github = FakeGitHub()
+    github.states.append(
+        GitHubRunnerState(
+            runner_id=42,
+            online=True,
+            busy=False,
+            custom_labels=("unapproved-label",),
+        )
+    )
+
+    with pytest.raises(CIRunnerEnrollmentError, match="labels do not match"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+
+
 def test_remote_identity_without_local_marker_fails_closed(tmp_path: Path) -> None:
     spec = setup_spec(tmp_path)
     github = FakeGitHub()

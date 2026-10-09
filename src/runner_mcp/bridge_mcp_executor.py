@@ -969,7 +969,17 @@ class LocalMCPClient:
                 "Runner MCP is unavailable or rejected the request"
             ) from exc
 
-        return _decode_mcp_response(raw)
+        response_payload = _decode_mcp_response(raw)
+        if "id" in payload:
+            if (
+                not isinstance(response_payload, dict)
+                or type(response_payload.get("id")) is not int
+                or response_payload["id"] != payload["id"]
+            ):
+                raise BridgeExecutionAdapterError(
+                    "Runner MCP returned a mismatched JSON-RPC response id"
+                )
+        return response_payload
 
 
 class LocalMCPBridgeExecutor:

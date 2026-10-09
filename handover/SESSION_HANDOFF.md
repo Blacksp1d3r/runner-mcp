@@ -1,3 +1,25 @@
+## 2026-10-09 ~14:20 CEST — scope-correct Runner-MCP continuation checkpoint
+
+This chat owns Runner-MCP ONLY, not Runner-Fabric. First material toolcall ~14:04 CEST; canonical Library master v1.2 requires productive independent work through >=18 minutes when safe and no new major lane after minute 18. Do not pretend a tooltime budget can be read directly. Public GitHub files must not expose private tunnel/host/token/port/path/credential data.
+
+Exact-green merged this session:
+- #595 head `0c66f43f7abede4cfa938d3f54a4e6737a720d81`, validation 37927827247 and attribution 37927827207 SUCCESS, squash `beb192fba89a0dbcadac8a5b06348e03a8d716b8`: authenticated in-process MCP regression tests for list_projects/runtime_status/runtime_doctor, structured/sanitized response. Does NOT prove ChatGPT live connector.
+- #596 head `febc3a27776c806cd81af8a7ae2dc3798e9e4e28`, validation 37928039405 and attribution 37928039438 SUCCESS, squash `30e9e50b6e7c675a1779abf57f9ec223bbcdad17`: fail-closed cleanup clock preflight before any temporary CI registration-secret handoff deletion.
+- #598 head `4a0786abf6f5fa89d1b312f610a123e341e62de6`, validation 37928825684 and attribution 37928825612 SUCCESS, squash `d720a2192f0228e0b1863c27674c8eb39ff368b7`: explicit degraded/error/failed/stopped tunnel MCP health overrides historic succeeded/auth-required startup probe.
+
+One current session PR still waiting full CI:
+- #597 branch `fix/333-tunnel-readiness-exact-bool-evidence`, latest head `beabb7889642ac61ae8de3de6d620de3beb22970`. Commit attribution 37928933459 SUCCESS; Foundation/Runner MCP validation 37928933273 IN_PROGRESS (Ruff/pytest and release artifact green; clean demo still running at last check). Initial head had only Ruff TRY004; fixed code to use TypeError for nonboolean field and test expectation. 25 negative cases cover strings/numbers/null across all five readiness gates. Merge only if entire exact-head workflow SUCCESS.
+
+Current #590 connector generic internal error remains OPEN/UNLOCATED. Earlier read-only tool attempts (runtime_status, doctor, list_projects, worker_status) returned no structured payload. New local smoke #595 green narrows local server behavior, **not** the live client/tunnel/server boundary. Historical #333 Oct5 loss of tunnel client and Oct8 live-but-specific topology_refresh generic error; latter was already fixed in #523/#524, do not reimplement. Existing #540 handles exact runtime catalogue generation. Live read-only owner checks of connector/catalogue/tunnel needed before claiming health; no host restart attempted.
+
+#584 isolated self-hosted CI cost migration BLOCKED on actual disposable runner proof, draft #589 owns admission docs, #387/#388 other owned lanes. Prior #594 already reduces overlapping hosted attribution jobs. No workflow selector/permission or live runner changed.
+
+#599 newly filed: `collect_control_plane_authenticated` treats any nonempty last_success as fresh auth; must inspect actual writer/poll cadence before implementing RFC3339 freshness. Coordinate with #598 (same source file) and #333 evidence owner. No stale assumption or arbitrary TTL yet.
+
+Other docs: component 11 DATA_LINEAGE/FAILURES maps tunnel evidence gates; component 14 maps read-only connector failures. OCR core qualification complete; only existing Faster #514/#458/#467/#537 stage-performance analysis, no duplicate tests or live OCR workloads. No customer/server/worker/credential/port/runtime mutations this session.
+
+Next safe actions: reconcile exact-head #597 required CI, merge only if GREEN; update component11 Failure Museum / #333 and this handover with SHA. If still in progress near master landing, classify WAITING_CI and leave exact commit/run. For #590 wait for authorized private tunnel/client evidence, no blind retries or unqualified production changes.
+
 ## 2026-10-09 ~13:34 CEST — master-safe Runner-MCP completed work/landing
 
 Scope is Runner-MCP only; do not duplicate Runner-Fabric code, #584 admission docs draft #589 or existing Runner-MCP FASTER benchmark PRs. This session continued through approximately the 18-minute productive minimum before landing. No live host, runner, credentials, tunnel, process or production state was modified.

@@ -1,3 +1,11 @@
+## 2026-10-09 — Connector response lineage and tunnel authentication freshness
+
+- #590: local HTTP response trace isolation COMPLETE via PR #608 / `e0250205ee33cd39f5ffc501ff8fa86861679d30`, with exact-head attribution #37956025846 SUCCESS and validation #37956026036 SUCCESS. This covers request-ID isolation, traceparent inheritance and malformed context; external tunnel return association remains **BLOCKED on first failing-edge evidence**, not confirmed healthy.
+- #333: tunnel service enabled/active/readiness 200 observed by operator, but no coordinated post-reboot qualification. Preserve the running service.
+- #540: stale runtime/tool catalog generation binding remains separately open; do not create a second generation mechanism under #590.
+- #599: code inspection confirms control-plane `last_success` accepts any nonempty string regardless of timestamp validity or age. Next code child must derive actual poll cadence/clock source before enforcing an age bound, test invalid/stale/future/fresh and not confuse a past successful poll with current authentication. No active tunnel mutation.
+- Sanitized operations playbook PR #607 merged `6dc5160c93815b223214302ffb50cebbb304e49d`; superseded #603 closed unmerged. Privacy: historical Git refs are not erased merely by closing PR.
+
 ## 2026-10-09 — Corrected CI runner priority, enrollment integrity
 
 Tracking: #584; source hardening #604/#605 merged and exact-head green, after earlier #600/#601/#602. Documentation #589 merged and current. Runner-MCP PUBLIC standard hosted PR CI is free; migration to isolated self-hosted is **optional**, not a paid-minute emergency.

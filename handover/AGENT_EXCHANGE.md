@@ -1,3 +1,11 @@
+## 2026-10-09 — Latest continuation: #620 and #526 exact green MERGED
+
+PR #620 test-only explicit service backend injection, exact head `82a918902636376b2bc26b5a3f22475295d279b8`: attribution `37981372498` SUCCESS, full validation `37981372754` SUCCESS, squash merge `4f7a7d8e16ac9fe23760800bed8a313c37eb8a4e`. Tests injected backend remains selected on Linux, Windows, unknown host families. No SCM implementation or live runtime mutation.
+
+Existing Fabric custody PR #526 requalified in-place by selective source patch onto current main (four files, current content preserved), exact head `e44bd321c0551db68560ac99bc99e36368dc6e32`: attribution `37982010408` SUCCESS, full validation `37982010409` SUCCESS (Ruff/pytest, artifact, clean demo), squash merge `cfd7101c9f370728d0aa0b5117d2ef0a40244700`. Known allowlisted local-custody `FabricUpdateError` values return bounded `blocked/reasonCode`, unknown categories generic. This is a source-only diagnostic improvement; no live Fabric staging, server update or credentials changed. #525 may be auto-closed by merge; verify before manual state change.
+
+Independent review on existing Bewind OCR PR #537 notes CPU time from `/proc/stat` may include host-wide load under Incus containers and must not be interpreted as OCR-only CPU/page without VM/cgroup qualification. No OCR job performed. External connector response path #590 remains unproven. No Desktop Commander, no production host/tunnel change.
+
 ## 2026-10-09 — Autonomous continuation: Windows adapter-injection test merged; Fabric custody #526 requalified
 
 Test-only #620 (explicit injected ServiceBackend preserved across detected Linux/Windows/unsupported families) exact head `82a918902636376b2bc26b5a3f22475295d279b8`, commit attribution `37981372498` SUCCESS, full validation `37981372754` SUCCESS, squash merge `4f7a7d8e16ac9fe23760800bed8a313c37eb8a4e`. No production mutation, Windows SCM implementation, service action or runtime deployment.

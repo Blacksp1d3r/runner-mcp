@@ -1,3 +1,21 @@
+## 2026-10-09 ~13:34 CEST — master-safe Runner-MCP completed work/landing
+
+Scope is Runner-MCP only; do not duplicate Runner-Fabric code, #584 admission docs draft #589 or existing Runner-MCP FASTER benchmark PRs. This session continued through approximately the 18-minute productive minimum before landing. No live host, runner, credentials, tunnel, process or production state was modified.
+
+Four independently qualified exact-head green PRs merged:
+1. #591 `ea519720454b54c326ebadc2fed51e8b384fe18f` — private CI registration-secret reaper caps candidate directory scan to <=4097; refuse before deleting anything when >4096.
+2. #592 `3c9e16b56d2b62978bdf5b0802dac1327e32217f` — canonical handoff ID type and positive 53-bit expiry boundaries.
+3. #593 `91299d1bc71474440c923b42d5fa922253421217` — validate single bounded clock before any secret file creation; negative tests require no leftover file; exact-head CI green after fixing TRY004 authoring error.
+4. #594 `3c3a2b04238d4491a7470ef87d1d96b8e78708bc` — attribution workflow now cancels superseded PR/ref runs (required check name, trigger, permissions and hosted runner selector unchanged); exact-head commit attribution 37924161842 and validation 37924161737 SUCCESS before squash merge.
+
+Outstanding Runner-MCP blockers are **separate** and NOT claimed resolved:
+- #584: actual isolated disposable self-hosted CI runner admission absent; #589 draft, #387 and #388 owners unchanged. Four workflow jobs remain hosted; #594 reduces avoidable overlap, not total hosted minutes to zero. Direct Actions runner inventory unavailable through current GitHub connector.
+- #590: all four read-only connector calls previously failed internally with no structured response. Read-only triage and RMCP-MCP-0005 indexed; actual runtime health, isolation and worker capacity UNKNOWN. Authorized connector repair required before live probes.
+- OCR qualification is historical COMPLETE; improvement is measurement only. Existing #514/#458/#467/#537 active, synthetic transport CI evidence noted in #514, and new `docs/OCR_ACCELERATION_MEASUREMENT_PLAN.md` guides stage timing with integrity/privacy gates. No fresh OCR job executed.
+
+Main diagnostic/roadmap and handover notes reconciled with RMCP-CI-0001..0004, RMCP-MCP-0005 and tested commits. No new PR from this session remains open. Next: safely qualify #590 connector transport and #584 disposable runner admission without duplicated work or unapproved runtime mutation; continue Faster shadow analysis rather than requalifying OCR.
+
+
 ## 2026-10-09 ~13:33 CEST — Runner-MCP continuation / master-safe reconciliation
 
 This handover supersedes the preceding pending #593 state; GitHub main and exact run state remain authoritative.

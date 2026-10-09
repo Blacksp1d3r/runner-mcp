@@ -1,3 +1,10 @@
+## 2026-10-09 — First-class Windows host without premature activation
+
+- #489 owns OS-neutral service lifecycle adaptation; existing #490 is a source-only recognized-host contract, NOT operational Windows support. It now distinguishes `supported` (known host family) from `serviceAdapterImplemented` (service backend implemented). Windows is known but its SCM adapter remains unavailable and **must fail closed**.
+- Current Linux `ServiceManager` already accepts an OS-neutral `ServiceBackend` Protocol with fixed project/service aliases and bounded start/stop/restart authorization, but its default is lazily `SystemdUserBackend`. Next child must choose the backend deterministically from approved host capabilities, never infer Windows readiness from platform recognition.
+- Before any Windows action: implement and unit-test an explicit Windows SCM adapter behind that same alias/allowlist boundary, normalize service states, require a least-privilege service identity, and run isolated Windows CI with unsupported/no-backend rejection. No arbitrary PowerShell/argv/path/service selectors, WSL workaround, or customer-host activation before those gates.
+- Exact-head #490 validation remains prerequisite for merging its contract; subsequent adapter activation is a separate PR and approval gate. This does not alter the existing Linux service behavior.
+
 ## 2026-10-09 — Source gates versus live operator authority (reconciled)
 
 1. #388 enrollment CLI on main after all standard CI green, but no enrollment executed or admin credential provided; `RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN` must remain independent of ordinary mailbox token. #387 manual-only, no-cache qualification workflow likewise merged but has **never proved** a live disposable runner. No PR source code may use deployment-capable host as a substitute.

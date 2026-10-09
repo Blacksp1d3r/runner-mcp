@@ -7,6 +7,8 @@ import stat
 import urllib.error
 import urllib.parse
 import urllib.request
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 from typing import Any
 
@@ -14,6 +16,15 @@ MAX_HEALTH_URL_BYTES = 2_048
 MAX_HEALTH_RESPONSE_BYTES = 32_768
 _HEALTH_TIMEOUT_SECONDS = 2.0
 _INSTANCE_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+_RFC3339_RE = re.compile(
+    r"^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}"
+    r"(?:\.\d{1,9})?(?:Z|[+-]\d{2}:\d{2})$"
+)
+# tunnel-client's documented default is a 30-second long poll plus 5-second
+# deadline guard. Three nominal polls (90s) is a bounded freshness policy,
+# NOT a claim that custom longer poll configurations remain accepted.
+_MAX_CONTROL_PLANE_AUTH_AGE = timedelta(seconds=90)
+_MAX_CONTROL_PLANE_FUTURE_SKEW = timedelta(seconds=5)
 
 
 class TunnelHealthEvidenceError(RuntimeError):
@@ -249,8 +260,9 @@ def collect_control_plane_authenticated(
     config_dir: Path,
     *,
     opener=_open_loopback,
+    clock: Callable[[], datetime] = lambda: datetime.now(UTC),
 ) -> bool:
-    """Use only tunnel-client's local control-plane poll health as auth evidence."""
+    """Require a recent authenticated poll, not merely historical success."""
 
     payload = _collect_health_component(
         config_dir,
@@ -265,4 +277,19 @@ def collect_control_plane_authenticated(
     if not isinstance(details, dict):
         return False
     last_success = details.get("last_success")
-    return isinstance(last_success, str) and bool(last_success.strip())
+    if (
+        not isinstance(last_success, str)
+        or len(last_success) > 64
+        or _RFC3339_RE.fullmatch(last_success) is None
+    ):
+        return False
+    try:
+        observed = datetime.fromisoformat(last_success)
+    except ValueError:
+        return False
+    now = clock()
+    if now.tzinfo is None or now.utcoffset() is None:
+        return False
+    if observed > now + _MAX_CONTROL_PLANE_FUTURE_SKEW:
+        return False
+    return now - observed <= _MAX_CONTROL_PLANE_AUTH_AGE

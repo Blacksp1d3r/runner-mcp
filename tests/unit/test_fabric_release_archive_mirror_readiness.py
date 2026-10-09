@@ -216,14 +216,26 @@ def test_mirror_root_must_report_mount_device(tmp_path):
     assert result["reasonCode"] == "independent-device-required"
 
 
-@pytest.mark.parametrize("key", [PRIMARY, MOUNT, MIRROR])
-def test_broad_directory_permissions_are_rejected(tmp_path, key):
+@pytest.mark.parametrize(
+    ("key", "mode"),
+    [(PRIMARY, 0o755), (MOUNT, 0o777), (MIRROR, 0o755)],
+)
+def test_unsafe_directory_permissions_are_rejected(tmp_path, key, mode):
     environment, primary, mount, mirror = _fixture(tmp_path)
-    os.chmod(Path(environment[key]), 0o755)
+    os.chmod(Path(environment[key]), mode)
 
     result = _ready_subject(environment, primary, mount, mirror).status()
 
     assert result["ready"] is False
+
+
+def test_non_writable_style_mount_mode_0755_is_allowed(tmp_path):
+    environment, primary, mount, mirror = _fixture(tmp_path)
+    os.chmod(mount, 0o755)
+
+    result = _ready_subject(environment, primary, mount, mirror).status()
+
+    assert result["ready"] is True
 
 
 def test_readiness_performs_no_filesystem_mutation(tmp_path, monkeypatch):

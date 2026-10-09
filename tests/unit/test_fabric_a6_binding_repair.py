@@ -4,8 +4,8 @@ import pytest
 
 from runner_mcp.fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
-    repair_a6_qualification_binding,
     inspect_a6_binding_state,
+    repair_a6_qualification_binding,
 )
 from runner_mcp.onboarding import load_env_file
 

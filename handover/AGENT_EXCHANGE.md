@@ -1,3 +1,12 @@
+## 2026-10-10 — Chat recovery / active ownership handoff
+Runner-MCP owner lane: issue #587 source-only final proof strengthening is underway via **draft PR #626**, branch `fix/587-final-mirror-reverification`, exact head `abd2c4eb05348b86b87e09f65acd5cf149d98972`; CI attribution `38038139765` SUCCESS, validation `38038139723` IN_PROGRESS at checkpoint. Guard rereads two protected pins, BACKUP stop policy, #586 complete independent-volume admission, and both secondary custody verifications before overall success; tests simulate final mount loss, checksum degradation, operator stop, and pin promotion. Do not start parallel duplicate fixes. Treat #621-#625 as already merged, green; don't trust old UI state.
+
+AIfordable #537 owner: draft #553 head `fea120cb18ab87d8ece7627b539ff27a981bd5a7`, CI `38035068769` failed 9 topology tests (1,352 passed) because a test-only 2026-10-08 evaluation clock now precedes canonical `last_reviewed=2026-10-10`; fix test fixtures without disabling future-dated rejection and recheck exact CI. GitHub #553 comment already posted. **Avoid double editing that branch**.
+
+Fabric #1397 owner: PR #1426/#1427 merged source-only, fixed live independent release-archive namespace/bootstrap still awaiting qualified AIfordable authority. Runner-MCP #587/#588 remain OPEN with zero 2/2 physical mirrors or offline reader/bootstrap restore receipts. Public docs must not include private path/host/UUID/credential, and no provider artifacts may be deleted until physical recovery is proven.
+
+Connector #590 updated observation: read-only `runtime_doctor` returned structured warning with 0 failed/3 warnings, but `runtime_status` and `build_identity` still failed internally. F34 mirror activation shows unconfigured/storage-binding-unavailable, separate from release archive #587. Work only through bounded read-only proof; do not repeatedly restart/poll tunnel. Runner-MCP #618 stays draft OPEN pending explicit publisher/external proof despite previously verified green local CI.
+
 ## 2026-10-10 — Mirror and restore protected pin drift guards MERGED
 
 Source-only PR #624 head `b962dcaff11a78b2ae244fe14f59399555c41837`, attribution `38029722100` SUCCESS, validation `38029722174` SUCCESS, squash `8460283b1fe34ffd2fe4be9426682ff3d1cf6f83`. Denies MIRROR before each copy/final success if protected active/rollback pair changed.

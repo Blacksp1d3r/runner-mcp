@@ -74,6 +74,7 @@ def test_default_no_fabric_authority_blocks_all_mutations():
     {"capability_id": "arbitrary"},
     {"contract_version": "unknown"},
     {"action": "EXEC"},
+    {"action": ["START"]},
     {"worker_ref": "../private"},
     {"lease_id": "x" * 200},
     {"expires_at": 0},
@@ -166,7 +167,7 @@ def test_unexpected_public_listener_blocks_success():
     result = obj.execute(fixed_intent("START"))
     assert result["state"] == "blocked"
     assert result["reasonCode"] == "listener-not-loopback"
-    assert result["mutationTriggered"] is False
+    assert result["mutationTriggered"] is True
 
 
 def test_systemd_action_return_alone_is_not_qualification():

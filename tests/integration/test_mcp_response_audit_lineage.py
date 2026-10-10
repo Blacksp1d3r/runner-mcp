@@ -98,8 +98,8 @@ def test_one_authenticated_session_correlates_success_and_degraded_response(
 
     assert len({x[1] for x in responses}) == 2
     assert len({x[2] for x in responses}) == 2
-    assert isinstance(responses[0][3], list)
-    assert responses[0][3][0]["code"] == "demo"
+    # MCP serializes this single project's array item as one text content.
+    assert responses[0][3]["code"] == "demo"
     assert responses[1][3] == {
         "schemaVersion": "runner-mcp/runtime-status-degraded/v1",
         "state": "degraded",

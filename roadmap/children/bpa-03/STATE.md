@@ -8,7 +8,7 @@ lease_generation: null
 base_revision: 4b51e9e6a84a2567f9b6bebec3572cd997e0fe27
 head_revision: pending
 branch_or_worktree: docs/630-bpa03-legacy-child-index
-pr_or_change_request: pending
+pr_or_change_request: 632
 ci_or_test_evidence: []
 blocker_refs: []
 last_verified_at: 2026-10-10

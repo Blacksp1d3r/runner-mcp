@@ -1,6 +1,6 @@
 # #381 — Claude worker lifecycle (independent child roadmap)
 
-State: SOURCE_IMPLEMENTATION; parent: Runner-MCP #381; priority HIGH (Claude multi-project acceleration).
+State: PR_OPEN; source-only; no host activation; parent: Runner-MCP #381; priority HIGH (Claude multi-project acceleration).
 
 ## Authority / topology
 - One Fabric control plane: policy/capability/lease/fence/plan owns admission (#1172/#240).
@@ -10,9 +10,9 @@ State: SOURCE_IMPLEMENTATION; parent: Runner-MCP #381; priority HIGH (Claude mul
 - Connected github-runner instance cannot assume that aifordable-lab service is registered. No cross-host run or privileged shell.
 
 ## TASK + STATE
-- TASK-381-01: strict versioned Fabric issued envelope syntax (status/start/stop/restart) — PR #TBD, source tests.
-- TASK-381-02: fixed `aifordable-coder` user-manager adapter — PR #TBD, source tests.
-- TASK-381-03: local host identity and loopback-only observation — PR #TBD, source tests.
+- TASK-381-01: strict versioned Fabric issued envelope syntax (status/start/stop/restart) — PR #628, source tests.
+- TASK-381-02: fixed `aifordable-coder` user-manager adapter — PR #628, source tests.
+- TASK-381-03: local host identity and loopback-only observation — PR #628, source tests.
 - TASK-381-04: operator-private Fabric authority and lease/fence adapter — BLOCKED on Fabric typed contract finalization; never substitute a caller-supplied `allowed` bit.
 - TASK-381-05: dedicated-host rootless helper deployment and verified listener disappearance after STOP — BLOCKED on host/operator authority.
 - TASK-381-06: final fixed coding-worker service projection with negative arbitrary user/unit injection — BLOCKED until ready.

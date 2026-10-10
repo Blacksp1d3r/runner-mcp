@@ -27,4 +27,6 @@ This index complements the existing failure-record issue template.
 
 | RMCP-F-0017 | fixed coding worker pre-action listener ownership | SOURCE_FIXED_LIVE_UNQUALIFIED | local service START could race an already occupied exact loopback port, with later listener presence mistaken for worker start evidence | no coherent fixed unit + listener pre-state checked before mutation | #637 merged 16230a35698abf43d274cae27150ad0eeecce3b9, green CI; pre-action coherent snapshot with negative synthetic tests blocks mismatched/foreign occupancy before fixed systemd action, while real PID/authority/fence proof remains separate | #381 / PR #637 |
 
+| RMCP-F-0018 | draft repository manifest schema regression | PREVENTIVE_SOURCE_TEST | draft schema instance tests passed only through a handwritten mini-validator, so schema syntax and full Draft 2020-12 semantics were not independently checked | test helper reimplemented a subset of JSON Schema and could disagree with actual consumers; no production failure established | PR #638 replaces the helper with Draft202012Validator.check_schema and .validate, dev-only explicit dependency and synthetic denial coverage for nested/required/type/authority misclaims; NOT operator authorization | #630 / #634 / PR #638 |
+
 Closed/known failures remain here after fixes. Do not include private host/path/token values.

@@ -10,6 +10,8 @@
 
 | RMCP-F-0020 | SOURCE_FIXED_LIVE_UNQUALIFIED | Q7 application handler to MCP reply | known operator/launcher/config problems appeared as one generic exception; after possibly launched subprocess, retry effect was ambiguous | server tool mapped all bounded Q7 exceptions to generic ValueError | PR #646 merged a8833190b62e1ace6d88617951116cca541cf8ba; strict fixed error result distinguishes not_started from unknown effect, always denies dispatch/retry; authenticated MCP negative tests pass. Installed client/response route still needs #590 acceptance | #381 / #590 / PR #646 |
 
+| RMCP-F-0021 | SOURCE_FIXED_LIVE_UNQUALIFIED | Q7 result count type validation | a Q7 availability response could represent assignment count as JSON true or 1.0 and satisfy expected one | equality-only check in Python without strict integer type | merged #647 d078781d28f98398359e4db163dd8c248a77264d; 2772 tests and exact CI green, no live worker calls; require exact int one and reject JSON bool/float/string values | #381 / #972 / PR #647 |
+
 Use the repository failure-record template for a new recurrence with concrete bounded evidence.
 
 ## RMCP-MCP-0005 — 2026-10-10 operator-verified catalogue split and route evidence

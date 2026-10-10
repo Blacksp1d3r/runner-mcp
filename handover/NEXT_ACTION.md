@@ -1,5 +1,17 @@
 # NEXT ACTION
 
+## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)
+This chat did **not** touch #381 (separate active Claude owner/chat).
+
+BPA-03 [PR #632](https://github.com/Blacksp1d3r/runner-mcp/pull/632), exact head `a3614c5172a06879ac672c34033a9fb462aa8223`, attribution `38046631374` and validation `38046631455` ALL SUCCESS; merge `a59875b943441b19ba864ae6643ef9458541020c`. Legacy task index and future TASK/STATE convention merged; `bpa-03/STATE.md` COMPLETE. Historical #381 child never modified.
+BPA-02 draft-only symbolic YAML and JSON Schema [PR #633](https://github.com/Blacksp1d3r/runner-mcp/pull/633), exact head `bcf90a3c7525c46956bb2a11a3d7a426d7455817`, attribution `38046821035` and validation `38046821043` ALL SUCCESS, merge `261aed632fd2539af33896ba6574ff4d6b05d536`. Synthetic invalid authority/private-field tests added; early Ruff I001 corrected, Failure Museum RMCP-F-0014. `bpa-02/STATE.md` COMPLETE means *design source only*, no qualified root manifest.
+Remaining host/source authority [issue #634](https://github.com/Blacksp1d3r/runner-mcp/issues/634) has blocked `bpa-02b/{TASK,STATE}.md` from docs [PR #635](https://github.com/Blacksp1d3r/runner-mcp/pull/635), exact head `014445d226b6da6f03b77ab87bad3d02433e43fe`, attribution `38047164866` + full CI `38047164865` ALL SUCCESS, reviewed and MERGED `5e364a0224afce8ce7004bd4fd65ad326e0e9c6b`. `bpa-02b/STATE.md` remains BLOCKED explicitly; #630 and #634 must remain OPEN.
+
+There is **no root `project.yml`**, no verified local Git primary, delegated independent storage/fenced mirror/restore evidence or true Fabric lease/approval. The proposed `project_manifest_candidate.yml` is documentation outside root, `BLOCKED_AUTHORITY` and `UNKNOWN`, not an authorized runtime input. No GitHub artifact deletion, live backup copies, restore, host/tunnel/service/restart/credential/mount/storage changes. #587/#588 still waiting for independent physical custody, #590 installed version/response lineage unqualified, Fabric #1397 owned separately.
+
+Next safe operator-owned step: #634 BPA-02B.1 **approved private read-only** canonical Git/source authority admission; then isolated restore/fencing and separate strict promoted manifest/approval. Do not resume issue #381 from this lane or bypass AIfordable/Fabric authority. No further safe independent code mutation is implied by these docs.
+
+
 ## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled
 User explicitly assigned operational Claude #381 to a **different active chat**. Do not claim, branch on, restart, deploy or duplicate that work; issue #381 remains operationally OPEN there.
 

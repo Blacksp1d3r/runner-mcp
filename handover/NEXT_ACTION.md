@@ -1,5 +1,14 @@
 # NEXT ACTION
 
+## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged
+
+Independent BPA-02-T source-test [PR #638](https://github.com/Blacksp1d3r/runner-mcp/pull/638), exact reviewed head `3c02f04167075e59f6d872359ce1b404b02c90cc`: attribution `38052880661` SUCCESS, validation `38052880714` Ruff/pytest + built artifact + clean five-minute demo all SUCCESS, Clean Ubuntu installer `38052880727` SUCCESS; squash MERGED `5231c6814d8bc80d9ddc7eba7a2e5fb44212e708`. `roadmap/children/bpa-02-schema-validation/{TASK,STATE}.md` and child index now mark COMPLETE_SOURCE_ONLY. Existing `tests/unit/test_repository_manifest_candidate.py` had self-tested with a bespoke miniature interpreter; now uses dev-only OSS `jsonschema>=4.23,<5` and real `Draft202012Validator.check_schema/validate` with synthetic fail-closed negative cases. No changes to proposal YAML/JSON schema or executable runtime configuration; Failure Museum RMCP-F-0018.
+
+**Live authority remains BLOCKED.** #630/#634 still OPEN: no proven Git primary/single writer, physical isolated restore, independent storage receipt, correct Fabric lease/fence or operator approval; root `project.yml` remains absent. #590 installed build/tunnel request↔response lineage still unverified; #587/#588 physical backup/restore still unproven, preserve GitHub artifacts. #381 is exclusively under another active chat (that chat's #637 source changed main before this task; do not duplicate). Fabric #1428 and PR #618 remain separate owner/review lanes. No production host/tunnel/service/mount/credential/deletion/Claude action took place.
+
+Next: #634 owner-approved private read-only Git/storage evidence and isolated restore in its own lane; #590 approved installed build/catalog plus opaque request↔response correlation. A docs/source CI pass never grants deployment or storage authority.
+
+
 ## 2026-10-10 — NEXT #381 Claude lifecycle: source guard #637 merged, real Fabric authority still first blocker
 
 - [#381](https://github.com/Blacksp1d3r/runner-mcp/issues/381) is OPEN. New scoped hardening [PR #637](https://github.com/Blacksp1d3r/runner-mcp/pull/637), exact reviewed head `e8e696d880729705c1e88a2055d60828fc66558a`, exact-head CI attribution `38052268180` + full validation `38052268203` ALL SUCCESS, 2701 pytest, Ruff, release artifact, clean demo; squash MERGED `16230a35698abf43d274cae27150ad0eeecce3b9`. Pre-action local service and port coherent snapshot prevents foreign listener or double START/STOP/RESTART. `roadmap/children/381-preaction-snapshot/STATE.md` COMPLETE_SOURCE_ONLY; failure RMCP-F-0017. No right-host deployment or local PID/port attestation.

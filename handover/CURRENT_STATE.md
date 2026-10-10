@@ -1,3 +1,10 @@
+## 2026-10-10 — Runner-MCP main after PR #626
+#626 safety(#587): final independent archive mirror verification is **MERGED** via `5aba8423594290a7837208e53721234dfe0df778` (exact reviewed PR head `abd2c4eb05348b86b87e09f65acd5cf149d98972`). GitHub Actions attribution run `38038139765` and full validation `38038139723` all SUCCESS. #587 and #588 remain OPEN, 0 live independently mirrored release archives and 0 recovery proof. No deletion/cleanup/mount/service/production mutation.
+
+#590 status split: doctor structured 0 fail / 3 warns, but status and identity generic tool error. Source currently re-raises raw manager exception text from `runtime_status`; diagnosed as plausible error-handling/sanitization gap, not yet proven root cause, recorded in issue #590. F34 repository mirror activation distinct and remains unconfigured.
+
+AIfordable draft #553 CI red due 9 legacy test clocks (2026-10-08) versus storage authority registry review (2026-10-10); issue documented in PR comment. Fabric #1397 operator-qualified namespace/bootstrap pending. Physical path remains #537 -> #1397 -> #586 -> #587 two immutable copy receipts -> #588 genuine no-network reader/bootstrap recoveries -> provider artifact disposition only then.
+
 ## 2026-10-10 — Actual current Runner-MCP state after chat rollback
 Prior #621/#622/#623/#624/#625 **already MERGED**; #625 exact-head `ea88bb010cfc866bdf0ee8e1de7299be8c4fd8e9`, attribution `38030008919` SUCCESS and full validation `38030008996` SUCCESS including clean demo; merge `2e274c5b4ed9bf14842803a832689f79cbb805c9`. Do not restore old pending-CI status as current.
 

@@ -2,6 +2,14 @@
 
 State: SOURCE_MERGED; HOST_AND_FABRIC_ACCEPTANCE_BLOCKED; no Claude work dispatch; parent: Runner-MCP #381; priority HIGH (Claude multi-project acceleration).
 
+## 2026-10-10 evening — fixed unit MainPID / socket attribution source milestone
+
+Runner-MCP [PR #645](https://github.com/Blacksp1d3r/runner-mcp/pull/645), exact head `446a1edc8129a51421a6ef1b6516f2a84e1ab93f`, attribution `38071120207` + `38071261321` SUCCESS, full validation `38071120259` SUCCESS (Ruff, 2752 pytest PASS, release artifact, clean demo) and squash MERGED `e29105cf6ed5baed42849dcdc8d706df97b182bc`. Child `roadmap/children/381-fixed-service-listener-owner/{TASK,STATE}.md` is COMPLETE_SOURCE_ONLY.
+
+The fixed rootless local actuator now accepts the exact loopback listener as locally corroborated only if **every** matching kernel TCP socket inode is among the file descriptors of the single dedicated `systemd --user` unit `MainPID`. Dedicated effective UID must own that process; a second MainPID observation must not drift. Missing/foreign/ambiguous/reused-port socket PID or IPv6/public binding fails closed; `UNVERIFIED` blocks START/STOP/RESTART or a misleading healthy STATUS. Original test fixtures had literal escaped newlines (first validation red, no live runtime failure); corrected on exact green head. This is a **non-atomic process snapshot**, not a cryptographic service identity, peer authentication, actual installed-host evidence or Fabric signed/fenced/leased mutation authority. A unit that delegates socket ownership to a child is intentionally blocked until separate cgroup attestation is designed and qualified.
+
+External status remains: Fabric #1433, #1446/#1447/#1448 now source-merged, including synthetic authenticated localhost MCP tests; no actual AIfordable rootless Claude-worker round-trip under the installed right host. Runner-MCP #643 source-merged zero-argument Q7 preflight but installed connected client lacks that tool and build identity is failing generically. Fabric #1400/#1398/#1172 trusted shared durable lease/issuer/JIT stop and right-host AIfordable #370 service receipts remain OPEN, as does Fabric #972. Claude project dispatch continues NO_DISPATCH and no paid provider API fallback.
+
 ## Hercontrole 2026-10-10 (12:52 CEST) — exact first blocker
 
 **Current evidence:** #381 OPEN, #628 source MERGED and all CI green; Fabric readiness PR #1430 is MERGED (head `7b79664381602efd57869377c0a0ed8fac190745`, Foundation `38046362894` + attribution `38046362913` SUCCESS) but is only a non-authorizing review predicate, always `dispatch_authorized=false`. Fabric #1172 and draft #1422 cannot yet issue authenticated lease/fenced lifecycle authority to the fixed source actuator. AIfordable #370 rootless packaged lifecycle remains open; Fabric #972 exact loopback/read-back admission remains open.

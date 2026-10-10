@@ -1,20 +1,22 @@
 # #590 — Local MCP HTTP bearer egress child state
 
 - owner: Runner-MCP communication lane, bounded deferred after #650
-- status: SOURCE_IN_PROGRESS
+- status: COMPLETE_SOURCE_ONLY; LIVE_ACCEPTANCE_BLOCKED
 - risk_class: SOURCE_GAP_DISCOVERED_NOT_LIVE_INCIDENT_PROVEN
 - current_defect: standard urllib.request.urlopen follows environment proxies/HTTP redirects despite initial loopback URL validation; validated offline via standard-library redirect_request source showing original Authorization header retained except Content-Length/Content-Type and default opener having both ProxyHandler and HTTPRedirectHandler
-- source_change: IMPLEMENTED_SOURCE_ONLY
-- PR: DRAFT_PENDING
-- exact_head_ci: PENDING
+- source_change: MERGED_SOURCE_ONLY
+- PR: #651 MERGED
+- exact_head_ci: reviewed HEAD d588c72619fc277d8423b680f473c8d62e3c992a; commit attribution 38086367280 SUCCESS; full validation 38086367281 SUCCESS (Ruff, 2813 pytest, built release artifact, clean demo)
 - source_landing_dependency: Runner-MCP #650 MERGED 8608ddde46f228d045d64189f12e7464a1919fb9; branch based on post-#650 main
 - transport_precedent: Runner-Fabric #1446 MERGED source only
 - live_host_or_tunnel_mutations: NONE
 - blocker: Fabric A6 #942 / A7 #943 live fleet safety; #590 installed process/route proof unknown
 - #381 Claude dispatch: NO_DISPATCH
 
+- squash_merge: 68093ab85bee293a8cc7616340d2893d5e4c24a0
+
 ## Next safe action
-Review exact-head CI for fixed `_private_loopback_opener` using `ProxyHandler({})` and `_NoLocalMCPRedirects` and `tests/unit/test_local_mcp_bearer_egress.py`. Existing bridge tests now inject the narrow `_open_local_mcp_request` seam instead of monkeypatching `urllib.request.urlopen` process-wide. Keep #650 no-replay and full build/schema reconnect semantics unchanged. Merge only after exact-head attribution, Ruff, pytest, artifact and demo green. Still requires live A6/A7 before rollout.
+PR #651 source merge verified green with 2813 pytest. Next **operational** #590: independently approved A6 off-target update journal + A7 disconnected local rollback proof, then qualified live exact active build/client catalogue and ingress→response-delivery correlation; no tunnel guessing. Closed source risk does not imply active runtime uses new opener.
 
 ## Verified offline source detail (2026-10-10)
 

@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+## 2026-10-10 evening — Q7 communication / #381 next safe steps
+
+1. Runner-MCP PR #646 source-only Q7 typed failure delivery MERGED `a8833190b62e1ace6d88617951116cca541cf8ba`, CI 2768 pytest/Ruff/artifact/demo/attribution SUCCESS. Pre-execution `not_started` vs post-launch `unknown` effect, never dispatch/retry implicitly. Child 381-q7-communication-errors SOURCE_COMPLETE.
+2. Runner-MCP PR #647, HEAD `ea6e27bb1b3dcfe256b561ff8955bf31c0cdd768` fixes strict Q7 `assignment_requests` int type (reject bool and float equal to 1). Ruff+2772 pytest PASS, artifact/demo running at checkpoint. Require final exact-head full green before merge; then update child STATE and Failure Museum.
+3. Live #590 and #540 remain: authenticated connected `list_projects` works (six projects), `runtime_doctor` still older 12 checks, `runtime_status` opaque failure and source #643 Q7 preflight not in connected tool catalogue. FIRST missing proof: qualified installed build+tools/list schema across managed hosts and a single known-good/failing opaque request correlated through original inbound and response-delivery route. A6/#942 and A7/#943 physical guarded rollout must precede any live source replacement. No speculative restart/second tunnel.
+4. Fabric #1398/#1400 owned by Fabric chat (NOT Runner-MCP), AIfordable #370 owns real rootless worker, Fabric #972 real Q7 same-route and Q7 ACK. Runner-MCP #381 remains OPEN and Claude/EnerCue #89 NO_DISPATCH until all live gates and durable fencing proof.
+
+
 ## 2026-10-10 evening — #381 immediate action after exact-green PR #645 merge
 
 Runner-MCP #381 remains OPEN/NO_DISPATCH (operator priority). Local source-only PR #645 fixed exact user-service MainPID↔socket inode verification; head `446a1edc8129a51421a6ef1b6516f2a84e1ab93f`, attribution `38071120207` + `38071261321` SUCCESS, full validation `38071120259` SUCCESS (2752 pytest, Ruff, artifact, demo), squash `e29105cf6ed5baed42849dcdc8d706df97b182bc`. Dedicated child `roadmap/children/381-fixed-service-listener-owner/STATE.md` SOURCE_COMPLETE; RMCP-F-0019 records foreign port spoofing. Source CI or local PID match does **not** authorize mutation. #381 operational issue must stay OPEN.

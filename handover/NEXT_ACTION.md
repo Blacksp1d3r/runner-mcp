@@ -1,5 +1,12 @@
 # NEXT ACTION
 
+## 2026-10-10 late — After Q7 communication #646/#647 source merge
+
+- Q7 app response source issues FIXED: PR #646 merged `a8833190b62e1ace6d88617951116cca541cf8ba`, 2768 pytest/all CI green; strict not_started vs unknown-effect reason and no auto retry. PR #647 merged `d078781d28f98398359e4db163dd8c248a77264d`, 2772 pytest/all CI green; exact integer 1 assignment count. Child STATE marked COMPLETE_SOURCE_ONLY; Failure Museum RMCP-F-0020/0021.
+- **Remaining Runner-MCP communications:** issue #590 installed current build identity and advertised MCP schema must be independently verified. Connected client has mixed good and generic failing tools (known-good list_projects, older 12-check doctor, failing runtime_status, missing Q7 preflight). A source PR does NOT fix a stale live installed runtime or prove request↔response correlation. Owner-approved A6/#942 + A7/#943 real rollback-ready fleet canary then qualified single exact desired release; private read-only one-good/one-failing request trace through source/admission/response-delivery and fresh client catalogue. Host-only denial #642 separate owner.
+- Fabric #1398/#1400 trusted shared durable lease/fence/issuer belongs to Fabric chat; AIfordable #370 real dedicated rootless service; Fabric #972 true authenticated Q7 peer and Agent Bus result/ACK. Do not route via generic tool, restart blindly, copy subscription credentials or use paid provider API as fallback. Runner-MCP #381 remains OPEN, Claude/EnerCue #89 NO_DISPATCH.
+
+
 ## 2026-10-10 evening — Q7 communication / #381 next safe steps
 
 1. Runner-MCP PR #646 source-only Q7 typed failure delivery MERGED `a8833190b62e1ace6d88617951116cca541cf8ba`, CI 2768 pytest/Ruff/artifact/demo/attribution SUCCESS. Pre-execution `not_started` vs post-launch `unknown` effect, never dispatch/retry implicitly. Child 381-q7-communication-errors SOURCE_COMPLETE.

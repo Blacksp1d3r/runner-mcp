@@ -2588,3 +2588,49 @@ def test_runtime_status_rejects_non_object_manager_evidence(tmp_path: Path, monk
     assert payload["reasonCode"] == "fabric-bootstrap-state-unavailable"
     assert payload["runtimeEvidenceComplete"] is False
     assert "/private/" not in response.text
+
+def test_build_identity_unavailable_is_structured_over_mcp_http(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Corrupt private identity projection must not produce an opaque tool error."""
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        assert client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        ).status_code == 202
+
+        def invalid_identity(_self):
+            raise OSError("/private/build-identity.json token=NEVER_EXPOSE")
+
+        with monkeypatch.context() as patch:
+            patch.setattr("runner_mcp.server.BuildIdentity.to_payload", invalid_identity)
+            response = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 73,
+                    "method": "tools/call",
+                    "params": {"name": "build_identity", "arguments": {}},
+                },
+            )
+    assert response.status_code == 200
+    assert '"isError":true' not in response.text
+    assert parse_tool_json(response) == {
+        "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": "build-identity-unavailable",
+        "identityEvidenceComplete": False,
+    }
+    assert "NEVER_EXPOSE" not in response.text
+    assert "/private/" not in response.text

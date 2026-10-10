@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 import yaml
 
-
 ROOT = Path(__file__).resolve().parents[2]
 PROPOSAL = ROOT / "docs" / "standards" / "project_manifest_candidate.yml"
 SCHEMA = ROOT / "docs" / "standards" / "project_manifest_candidate.schema.json"

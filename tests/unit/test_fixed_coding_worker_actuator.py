@@ -89,7 +89,7 @@ def test_untrusted_fields_expiry_or_injected_targets_fail_before_verifier(mutati
     obj = actuator.FixedCodingWorkerActuator(
         verify_fabric_intent=lambda raw: calls.append(raw) or True, host=host
     )
-    outcome = obj.execute(fixed_intent("START", **mutation))
+    outcome = obj.execute({**fixed_intent("START"), **mutation})
     assert outcome["state"] == "blocked"
     assert outcome["reasonCode"] == "invalid-fabric-intent"
     assert calls == []

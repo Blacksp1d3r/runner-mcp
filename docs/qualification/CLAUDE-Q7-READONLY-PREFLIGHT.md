@@ -1,3 +1,14 @@
+## Application-level Q7 communication errors — 2026-10-10
+
+Runner-MCP [PR #646](https://github.com/Blacksp1d3r/runner-mcp/pull/646) source-merged `a8833190b62e1ace6d88617951116cca541cf8ba` after exact-head Ruff/2768 pytest/release/demo/attribution SUCCESS. The authenticated `fabric_coding_availability_qualify` tool now returns a fixed response schema `runner-mcp/coding-availability-qualification-unavailable/v1` for known application-level failures. This is **NOT** the successful Fabric qualification schema.
+
+Constant values:
+- `blocked/invalid_fixed_case`, `blocked/invalid_fixed_revision`, `blocked/operator_stop_active`, `blocked/operator_safety_unqualified`, `wait/fabric_launcher_unqualified`, `wait/q7_private_configuration_incomplete` are certain pre-invocation failures with `qualification_effect=not_started`.
+- `unknown/q7_execution_unverified` and `unknown/q7_output_unverified` represent an *uncertain* effect after possible subprocess/transport invocation; require independent per-request execution/receipt reconciliation, do not resubmit blindly.
+- Every failure has `result_verified=false`, `dispatch_authorized=false`, `retry_authorized=false`, no work-unit count or provider/session/private endpoint details. Fixed sanitized reason only goes to audit.
+
+This distinguishes handler-known failures **on the installed matching release** only. A generic client/tunnel failure **before the MCP handler executes** remains #590 UNQUALIFIED. The connected client still reports the old doctor vocabulary and lacks source-merged `fabric_coding_availability_preflight` in its advertised tool set. No claim of live rollout or actual AIfordable worker/auth readiness follows. Requires qualified exact A6/A7 fleet release and request→response association without host/tunnel changes as a workaround.
+
 # Claude Pro coding worker — bounded Q7 bridge preflight
 
 The Claude Pro coding worker is already implemented on AIfordable behind a

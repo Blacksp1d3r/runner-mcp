@@ -1,5 +1,14 @@
 # NEXT ACTION
 
+## HIGH PRIORITY 2026-10-10 — #381 Claude fixed host-local lifecycle (user requested)
+
+Owner: Runner-MCP #381. Source draft [PR #628](https://github.com/Blacksp1d3r/runner-mcp/pull/628), branch `feat/381-fixed-rootless-coder-actuator`, expected current head `e7b0c4866fcbf1767e9ea73ad048c8ec89d7ae48`. Check actual current GitHub HEAD first. CI attribution `38045392637` and validation `38045392668` initially QUEUED. Previous head failed Ruff UP022 (fixed), no merge before full exact-head green.
+
+Next implementer: (1) validate #628 Ruff/pytest, release artifact and clean demo; fix exact CI defects in #628 only; (2) review/merge bounded source-only capability only with all checks green; (3) keep #381 OPEN: missing trusted Fabric #1172/#1422 lease/intent binding, fixed dedicated-user first-party execution endpoint on correct host, AIfordable #370 real start/status/stop/disabled proof and Fabric #972 loopback+return qualification. (4) EnerCue #89/other real Claude tasks remain NO_DISPATCH until Fabric single-plane READY. Existing same-user ServiceManager must never be widened to sudo/UID/unit selector or fake alias on github-runner; no API fallback; do not reinstall Claude.
+
+Canonical task tree: `roadmap/children/381-claude-worker-lifecycle.md`; architecture `docs/architecture/FIXED_CODING_WORKER_ACTUATOR.md`. After #381 safe readiness, resume independent #587/#588 backup work in its owning lanes.
+
+
 ## Latest coordination: 2026-10-10 — Fabric #1428 remains OWNER_IN_PROGRESS, WAITING_CI_FIX
 
 Runner-Fabric #1397 dedicated owner has draft [#1428](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1428), exact head `e3521f49ba996b378fdc132b8a922cc04b2bebcf`, attribution `38042060760` SUCCESS; Foundation `38042060585` FAILED only Ruff `C408` (unnecessary `dict()` in `tests/test_storage_binding_evidence_gate.py:9`), while tests and doctor SUCCESS. Diagnosis sent to Fabric owner in PR comment #6096292386; DO NOT duplicate edit or rerun its lane here. Require owner's new exact HEAD and green CI, then separately prove real private binding + physical namespace. No archives mirrored/restored/retired.

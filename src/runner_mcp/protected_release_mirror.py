@@ -107,6 +107,11 @@ class ProtectedReleaseMirror:
         for revision in pins:
             try:
                 self._safety.assert_action_allowed(ActionClass.BACKUP)
+                if self._pins() != pins:
+                    return _result(
+                        "protected-set-changed", copied=copied,
+                        already=already, verified=verified,
+                    )
                 if not _admitted_readiness(self._readiness()):
                     return _result(
                         "independent-volume-not-ready", copied=copied,
@@ -138,6 +143,14 @@ class ProtectedReleaseMirror:
                     "mirror-operation-blocked", copied=copied,
                     already=already, verified=verified,
                 )
+        try:
+            if self._pins() != pins:
+                return _result(
+                    "protected-set-changed", copied=copied,
+                    already=already, verified=verified,
+                )
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError):
+            return _result("protected-set-unavailable", copied=copied, verified=verified, already=already)
         return _result(
             "protected-set-verified", state="verified",
             copied=copied, already=already, verified=verified, device_ready=True,

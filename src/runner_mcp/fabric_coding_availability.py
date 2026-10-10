@@ -339,6 +339,7 @@ def _validate_payload(
         or value["reason_code"] != expected_reason
         or value["work_unit_reason_code"] != expected_work_unit_reason
         or value["expected_revision"] != requested_revision
+        or type(value["assignment_requests"]) is not int
         or value["assignment_requests"] != 1
         or value["workspace_clean"] is not True
     ):

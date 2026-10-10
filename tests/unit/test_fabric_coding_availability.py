@@ -165,6 +165,10 @@ def test_invalid_inputs_fail_before_process(
     [
         lambda item: item.update({"privatePath": "/srv/private"}),
         lambda item: item.update({"assignment_requests": 2}),
+        lambda item: item.update({"assignment_requests": True}),
+        lambda item: item.update({"assignment_requests": 1.0}),
+        lambda item: item.update({"assignment_requests": "1"}),
+        lambda item: item.update({"assignment_requests": False}),
         lambda item: item.update({"workspace_clean": False}),
         lambda item: item.update({"state": "run"}),
         lambda item: item.update({"expected_revision": "c" * 40}),

@@ -1,5 +1,13 @@
 # #381 — Claude worker lifecycle (independent child roadmap)
 
+## 2026-10-10 evening — Q7 source advances and real-host admission gate
+
+Source merges since the earlier 12:52 CEST review: Runner-MCP [#643](https://github.com/Blacksp1d3r/runner-mcp/pull/643) adds non-authorizing read-only `fabric_coding_availability_preflight()`, CI attribution `38066933996` and validation `38066934022` SUCCESS, squash `edbe8a78f82019635aff5b5795d6d126ceee99a6`. Fabric [#1446](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1446), [#1447](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1447), [#1448](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1448) merged transport safety and isolated synthetic actual-HTTP tests. **No true right-host Claude/Q7 transport, durable admission or result ACK is proven.**
+
+Read-only connected probe results: `runtime_doctor` zero failures/three warnings and `queue_status` no active jobs/two generic test workers; runtime/bridge/snapshot/worker-status and AIfordable service enumeration have opaque tool errors; available tool catalogue omits newly merged Q7 preflight. Do not infer broken OAuth, inactive Claude service or readiness from these failures; installation/loaded SHA/catalogue return provenance remains #590/#540 and fleet #642 with protected A6/A7 upgrade gates.
+
+**Next owner-qualified work** (no new competing actor): Fabric #1398/#1400/#1399 durable issuer/lease/fencing/JIT; Runner-MCP fixed trusted verifier identity (#381); AIfordable #370 verified rootless service on actual correct host; Fabric #972 authenticated actual subscription-worker non-billing availability/result round-trip and Agent Bus ACK; finally independent single admission and EnerCue #89. Source merges #643/#1446–#1448 do not grant execution permission. NO_DISPATCH remains.
+
 State: SOURCE_MERGED; HOST_AND_FABRIC_ACCEPTANCE_BLOCKED; no Claude work dispatch; parent: Runner-MCP #381; priority HIGH (Claude multi-project acceleration).
 
 ## Hercontrole 2026-10-10 (12:52 CEST) — exact first blocker

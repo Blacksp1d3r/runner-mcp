@@ -1,5 +1,12 @@
 # NEXT ACTION
 
+## 2026-10-10 evening — #381 immediate action after exact-green PR #645 merge
+
+Runner-MCP #381 remains OPEN/NO_DISPATCH (operator priority). Local source-only PR #645 fixed exact user-service MainPID↔socket inode verification; head `446a1edc8129a51421a6ef1b6516f2a84e1ab93f`, attribution `38071120207` + `38071261321` SUCCESS, full validation `38071120259` SUCCESS (2752 pytest, Ruff, artifact, demo), squash `e29105cf6ed5baed42849dcdc8d706df97b182bc`. Dedicated child `roadmap/children/381-fixed-service-listener-owner/STATE.md` SOURCE_COMPLETE; RMCP-F-0019 records foreign port spoofing. Source CI or local PID match does **not** authorize mutation. #381 operational issue must stay OPEN.
+
+**First real dependency: Fabric #1400/#1398/#1172 authorized shared durable lease/fencing/issuer + JIT executor and source-release A6/A7 qualification.** Existing Fabric #1432/#1433/#1435/#1436 only type/consistency checks; #1448 real wire test uses a synthetic peer. After trusted issuer and exact enrolled host authority, AIfordable #370 owner proves real rootless fixed service preflight/start/stop and unit+port PID ownership, unchanged default disable, then Fabric #972 real authenticated Q7 round-trip and ACK. Only then separate Claude project work-unit authorization. The connected current tool catalogue lacks the source-merged #643 read-only preflight, and live build_identity errored; do not bypass with generic remote shell or restart. Other independent #630/#634, #587/#588 work remains separate.
+
+
 ## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged
 
 Independent BPA-02-T source-test [PR #638](https://github.com/Blacksp1d3r/runner-mcp/pull/638), exact reviewed head `3c02f04167075e59f6d872359ce1b404b02c90cc`: attribution `38052880661` SUCCESS, validation `38052880714` Ruff/pytest + built artifact + clean five-minute demo all SUCCESS, Clean Ubuntu installer `38052880727` SUCCESS; squash MERGED `5231c6814d8bc80d9ddc7eba7a2e5fb44212e708`. `roadmap/children/bpa-02-schema-validation/{TASK,STATE}.md` and child index now mark COMPLETE_SOURCE_ONLY. Existing `tests/unit/test_repository_manifest_candidate.py` had self-tested with a bespoke miniature interpreter; now uses dev-only OSS `jsonschema>=4.23,<5` and real `Draft202012Validator.check_schema/validate` with synthetic fail-closed negative cases. No changes to proposal YAML/JSON schema or executable runtime configuration; Failure Museum RMCP-F-0018.

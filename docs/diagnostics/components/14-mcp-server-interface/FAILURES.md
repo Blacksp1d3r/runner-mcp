@@ -22,3 +22,28 @@ Status: **OPEN / FIRST FAILED EDGE UNKNOWN**. This is a recurrence of the existi
 - Acceptance requires both hosts' independently verified runtime build identities, exact `tools/list` names **and schemas**, host-scoped negative tests for all five OCR-only capabilities, one authorized known-good and one failing request correlated through the first-party inbound→dispatch→response-delivery→client path, and a durable local database record with verified write/read-back. **No local authoritative database write has been verified**; GitHub issue/docs are not a substitute.
 
 Next action: qualify a first-party bounded incident evidence `record/read` connector to the operator's own database, not arbitrary SQL or shell. Prefer local durable storage and nightly verified backup; GitHub only for source-level regression/failure knowledge.
+
+### RMCP-MCP-0005 — subsequent process-vs-disk and fleet requirement evidence
+
+2026-10-10 operator-private read-only host measurements (abstract host roles,
+no private endpoint or service identity):
+- both intentionally distinct MCP servers each have exactly one loopback
+  server process; primary's installed `server.py` mtime is **newer than its
+  server process start**, while worker's is not. Thus primary disk-source
+  content is **not trustworthy as loaded-process evidence**;
+- recorded self-update source revisions belong to the same Git ancestry but
+  differ by 123 commits; source declarations contain 63 and 68 tools
+  respectively, with five known lab-specific OCR declarations; current
+  development main has a 69th separate mirror-readiness declaration;
+- PyPI package metadata remains `0.1.3` for both. Package version and
+  source declarations alone cannot prove currently running security controls;
+- the required remedy is an **exact common, promoted security release for all
+  managed hosts**, independently attested live process/catalogue/response
+  generation, and explicit host-local tool permission denials. Fabric PR #1439
+  added a source-only fleet-target reconciliation contract. It does not update
+  these machines or authorize rollout; A6/A7 safety acceptance is still open.
+
+Failure class remains **OPEN, live root cause and active-process generation
+UNVERIFIED**; do not infer that a stale binary caused the failed connected
+`runtime_status` request. Distinguish security drift admission from the
+separate exact request/return-path diagnosis.

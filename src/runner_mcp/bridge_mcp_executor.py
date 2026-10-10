@@ -775,47 +775,60 @@ class LocalMCPClient:
             }
         )
         if self._compatibility_preflight or self._requires_verified_reconnect:
-            tool_surface = self._post(
-                {
-                    "jsonrpc": "2.0",
-                    "id": self._allocate_request_id(),
-                    "method": "tools/list",
-                    "params": {},
-                }
-            )
-            observed_digest, tool_names = _validate_peer_tool_surface(
-                tool_surface,
-                required_tools=self._required_tools,
-            )
-            identity_response = self._post(
-                {
-                    "jsonrpc": "2.0",
-                    "id": self._allocate_request_id(),
-                    "method": "tools/call",
-                    "params": {
-                        "name": "build_identity",
-                        "arguments": {},
-                    },
-                }
-            )
-            if self._peer_protocol_version is None:
-                raise BridgeExecutionAdapterError(
-                    "Runner MCP protocol version is unavailable"
+            try:
+                tool_surface = self._post(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self._allocate_request_id(),
+                        "method": "tools/list",
+                        "params": {},
+                    }
                 )
-            self._peer_build_identity = _validate_peer_build_identity(
-                _tool_result_payload(identity_response),
-                observed_interface_digest=observed_digest,
-                negotiated_protocol_version=self._peer_protocol_version,
-                expected_component_id=self._expected_component_id,
-            )
-            self._peer_tool_names = tool_names
-            _log_peer_identity_observed(
-                protocol_version=self._peer_protocol_version,
-                server_name=self._peer_server_name,
-                server_version=self._peer_server_version,
-                build_identity=self._peer_build_identity,
-            )
-            self._requires_verified_reconnect = False
+                observed_digest, tool_names = _validate_peer_tool_surface(
+                    tool_surface,
+                    required_tools=self._required_tools,
+                )
+                identity_response = self._post(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self._allocate_request_id(),
+                        "method": "tools/call",
+                        "params": {
+                            "name": "build_identity",
+                            "arguments": {},
+                        },
+                    }
+                )
+                if self._peer_protocol_version is None:
+                    raise BridgeExecutionAdapterError(
+                        "Runner MCP protocol version is unavailable"
+                    )
+                self._peer_build_identity = _validate_peer_build_identity(
+                    _tool_result_payload(identity_response),
+                    observed_interface_digest=observed_digest,
+                    negotiated_protocol_version=self._peer_protocol_version,
+                    expected_component_id=self._expected_component_id,
+                )
+                self._peer_tool_names = tool_names
+                _log_peer_identity_observed(
+                    protocol_version=self._peer_protocol_version,
+                    server_name=self._peer_server_name,
+                    server_version=self._peer_server_version,
+                    build_identity=self._peer_build_identity,
+                )
+                self._requires_verified_reconnect = False
+            except BridgeExecutionAdapterError:
+                # A failed generation proof leaves no reusable partially
+                # established session. Repeated caller calls cannot inherit
+                # a stale/foreign authenticated identity accidentally.
+                self._session_id = None
+                self._peer_protocol_version = None
+                self._peer_server_name = None
+                self._peer_server_version = None
+                self._peer_build_identity = None
+                self._peer_tool_names = frozenset()
+                self._requires_verified_reconnect = True
+                raise
         self._initialized = True
 
     def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:

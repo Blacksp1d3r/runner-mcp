@@ -22,3 +22,22 @@ Status: **OPEN / FIRST FAILED EDGE UNKNOWN**. This is a recurrence of the existi
 - Acceptance requires both hosts' independently verified runtime build identities, exact `tools/list` names **and schemas**, host-scoped negative tests for all five OCR-only capabilities, one authorized known-good and one failing request correlated through the first-party inbound→dispatch→response-delivery→client path, and a durable local database record with verified write/read-back. **No local authoritative database write has been verified**; GitHub issue/docs are not a substitute.
 
 Next action: qualify a first-party bounded incident evidence `record/read` connector to the operator's own database, not arbitrary SQL or shell. Prefer local durable storage and nightly verified backup; GitHub only for source-level regression/failure knowledge.
+
+### RMCP-MCP-0005 — 2026-10-10 mitigations, NOT resolved
+
+Operator-mandated exact security release parity and host-local denial:
+Runner-MCP PR #641 (`4e32a260`) merged the source-only
+`host_tool_admission.py` decision contract and adversarial tests. A tool
+that is in the shared catalog but not granted on a host should yield
+`HOST_TOOL_NOT_PERMITTED`, including stale or unknown policy/build/schema.
+This is **not yet wired into MCP dispatch**, and no installed host has been
+upgraded or authoritatively requalified from these tests. Runtime admission
+integration/audit and all-host positive/negative tool-path proof are tracked
+under Runner-MCP #642; previous docs PR #640 remains OPEN.
+
+Fabric A7 #943 was restored to OPEN after erroneous completion from source
+work. Merged Fabric #1443/#1444/#1445 cover offline watchdog intent, protected
+prior-wheel escrow and an isolated synthetic disconnected recovery path, not
+actual self-hosted supervisor/restore, reboot or real return ACK. A6 #942
+off-target physical evidence remains OPEN. No source-only success resolves
+opaque connected `runtime_status` failure #590 or stale catalog issue #540.

@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+## 2026-10-10 — NEXT #381 Claude lifecycle: source guard #637 merged, real Fabric authority still first blocker
+
+- [#381](https://github.com/Blacksp1d3r/runner-mcp/issues/381) is OPEN. New scoped hardening [PR #637](https://github.com/Blacksp1d3r/runner-mcp/pull/637), exact reviewed head `e8e696d880729705c1e88a2055d60828fc66558a`, exact-head CI attribution `38052268180` + full validation `38052268203` ALL SUCCESS, 2701 pytest, Ruff, release artifact, clean demo; squash MERGED `16230a35698abf43d274cae27150ad0eeecce3b9`. Pre-action local service and port coherent snapshot prevents foreign listener or double START/STOP/RESTART. `roadmap/children/381-preaction-snapshot/STATE.md` COMPLETE_SOURCE_ONLY; failure RMCP-F-0017. No right-host deployment or local PID/port attestation.
+- Cross-owner: Fabric #1432 typed shape preflight MERGED (always non-authorizing), Fabric #1433 receipt correlation DRAFT (non-authorizing); AIfordable #555 test checklist MERGED. **BLOCKER:** Fabric #1172/#1400/#1398 durable signed or authenticated intent issuer + JIT current lease/fence/topology authority, #1422 accepted design still draft. Never substitute an unchecked caller flag, repo issue comment or source CI as executor authority.
+- After trusted Fabric source qualification: bind first-party verifier to exact enrolled dedicated host/user and fixed unit with operator/site approval, independently attribute fixed listener to the real service, prove source revision/preflight/start/status/stop/disabled/port-gone under AIfordable #370 owner, then Fabric #972 bounded authentic synthetic availability + exact receipt/fence/return route. Claude/EnerCue #89 NO_DISPATCH until verified and separately reviewed.
+- Other chat owns #630/#634 source-Git blueprint authority; do not overwrite or duplicate it. Backup #587/#588 stay OPEN, no GitHub artifact deletion. Do not change live host/tunnel/service or paid API billing to force progress.
+
+
 ## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)
 
 [PR #636](https://github.com/Blacksp1d3r/runner-mcp/pull/636) exact head `e35513459760107e0e555f66313360b5f5884fbc`, attribution `38052251708` SUCCESS and full validation `38052251712` Ruff/pytest, built artifact, clean demo all SUCCESS; reviewed, squash MERGED `74faab4c1a5f1b9111cf0c847e2e931af91d2619`. New `docs/diagnostics/CONNECTOR_PROBE_MATRIX_2026-10-10.md` and canonical triage/Failure Museum updates record one connected session's bounded facts.

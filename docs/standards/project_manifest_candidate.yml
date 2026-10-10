@@ -1,0 +1,26 @@
+# Draft only; NOT a root project.yml, an executor input or evidence of local authority.
+schema_version: ai-repository-blueprint/v1
+proposal_state: BLOCKED_AUTHORITY
+project_id: runner-mcp
+profile: expanded
+owner_domain: runtime-controls
+source_of_truth:
+  code: UNKNOWN
+  evidence: UNKNOWN
+  coordination: UNKNOWN
+mirrors:
+  github: reference_only
+master_session_protocol: MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL
+roadmap: roadmap/ROADMAP.md
+child_root: roadmap/children/
+child_contract:
+  - TASK.md
+  - STATE.md
+execution:
+  auto_claim: false
+  max_write_lanes: 1
+  protected_mutations: human_approved
+policy_profile: runner-mcp-deny-by-default-v1
+privacy:
+  personal_data_in_git: false
+  synthetic_tests_only: true

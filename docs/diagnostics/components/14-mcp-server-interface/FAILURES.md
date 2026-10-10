@@ -78,3 +78,10 @@ updates, exact active process/runtime/catalogue and real correlatable ACK.
 Do not infer there is no Claude worker, install a second provider adapter,
 enable paid API fallback, claim credentials are expired or restart the tunnel
 from a sanitized generic error.
+
+### 2026-10-10 source-only response and schema regression evidence (NOT a live connector fix)
+
+- Runner-MCP [PR #648](https://github.com/Blacksp1d3r/runner-mcp/pull/648) squash `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e`, exact CI `38075662792` GREEN (Ruff, 2773 pytest, artifact, demo), commit attribution `38075662830` GREEN: actual isolated authenticated MCP HTTP session confirms unique X-Request-ID / W3C child span / JSON-RPC response and exactly one matching audit record for successful `list_projects` and synthetic degraded `runtime_status` requests.
+- Runner-MCP [PR #649](https://github.com/Blacksp1d3r/runner-mcp/pull/649) squash `2a8ca54272fe6cf1cc12a2f2aa7919caf8481359`, exact CI `38076184096` GREEN (Ruff, 2774 pytest, artifact, demo), attribution `38076184097` GREEN: same initialized authenticated MCP session's live `tools/list` names+inputSchema+outputSchema hash EXACTLY matches the in-process `build_identity.interface_schema_digest`.
+- **Not proven**: that the presently connected ChatGPT tool catalogue, installed process build, second fleet host and tunnel response-delivery originate from these source revisions. The historical mixed outcome (good `list_projects`, 12-check stale doctor, opaque status error, missing new Q7 preflight) remains OPEN/UNLOCATED under #590/#540. The first required operator-private gate is installed process+client catalogue fingerprints AND one-good/one-failing opaque request through actual dispatcher, ingress, bounded audit, return-delivery HTTP-200 and originating client, with A6/A7 restore-readiness before any release.
+

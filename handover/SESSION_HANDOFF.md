@@ -1,3 +1,7 @@
+## 2026-10-10 — #588 auto-closure corrected
+
+After source-only PR #622 merged, GitHub auto-closed #588 as `completed` even though the independent second-volume recovery lifecycle has NOT happened. Reopened #588 explicitly on 2026-10-10; acceptance remains blocked by actual 2/2 physical protected-mirror receipts (#587), AIfordable #537 topology and Fabric #1397 namespace authority, and real disposable no-network reader/bootstrap preflight/apply/rollback+cleanup. Never treat source-only CI as recovery proof. Both #587 and #588 now OPEN.
+
 ## 2026-10-10 — HIGH PRIORITY backup safety gates integrated; PHYSICAL BACKUP STILL BLOCKED
 
 User explicitly prioritized #587 (real independently mirrored protected releases) then #588 (actual restore proof) to unblock other projects. Both issues MUST remain OPEN until on-host authoritative physical evidence. Existing #586 zero-arg read-only separate-volume readiness already merged via #610; its live status was not available in this conversation (runtime/safety connector generic internal failure). Do not mistake source tests or device-number difference for genuine independent physical disk readiness.

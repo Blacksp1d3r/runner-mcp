@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+## Latest: 2026-10-10 — #627 source-only diagnostic CI / storage authority model merged
+
+- Runner-MCP PR [#627](https://github.com/Blacksp1d3r/runner-mcp/pull/627): source-only bounded status failure response, exact HEAD `e70e11702504c3fe161900ced4afceff8c7df084`. Commit attribution `38042225385` SUCCESS, full validation `38042225393` Ruff/pytest and artifact SUCCESS, five-minute clean demo pending at latest snapshot. **Do not merge until exact-head full terminal CI**. #590 remains OPEN for live installed-build/route correlation.
+- AIfordable #553 **MERGED** at `486896fe0feac1ffbda51a8b8c3ca002f1161eb5`, CI `38038298136` SUCCESS, but storage binding still `qualified:false`. Fabric #1397 cannot skip trusted fixed namespace/bootstrap, and physical #587/#588 remain unverified.
+- Connected doctor result structurally differs from current source: three mandatory diagnostic names missing, while `runtime_status` and `build_identity` failed. Classify installed/catalog/route generation as unknown. No tunnel/server restart or provider artifact deletion.
+- See top of `handover/SESSION_HANDOFF.md` for exact dependencies, PR/head, test evidence and next actions. **This 2026-10-10 section supersedes older queued/success examples, including the 2026-10-03 instruction to restart watchers.**
+
+
 ## Latest: 2026-10-10 — supersedes the 2026-10-03 live-restart notes below
 
 1. **Do not replay October 3 launcher/restart suggestions without authorized current state.** Installed runtime is not proven by this chat: `runtime_status` and `build_identity` returned generic errors, `runtime_doctor` returned WARN (0 failures, 3 warnings). See #590 and latest `handover/SESSION_HANDOFF.md`.

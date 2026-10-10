@@ -1,3 +1,8 @@
+## 2026-10-10 — #626 final mirror verification security slice DONE, live backups still gated
+Runner-MCP PR #626 exact head `abd2c4eb05348b86b87e09f65acd5cf149d98972` passed attribution `38038139765` and full validation `38038139723`; squash merged `5aba8423594290a7837208e53721234dfe0df778`. Performed source-only final BACKUP operator/pins/independent-volume + dual-secondary verification with four regressions. #587/#588 open for physical 2/2 verified copies and offline restorability; no artifact deletion authority.
+
+AIfordable #553 CI fail from obsolete 2026-10-08 test clock versus registry dated 2026-10-10 remains separate owner. Fabric #1397 dedicated archive namespace still needs trusted live provider/bootstrap. Next safe independent Runner-MCP lane #590 error-channel sanitization with HTTP tests; code audit finds `ValueError(str(exc))` on manager failure, while `runtime_doctor` returns WARN. Do not claim proven root cause without safe runtime evidence.
+
 ## 2026-10-10 — Source-only protected mirror finalization child active
 PR [#626](https://github.com/Blacksp1d3r/runner-mcp/pull/626) (DRAFT, `fix/587-final-mirror-reverification`, head `abd2c4eb05348b86b87e09f65acd5cf149d98972`) closes a source-only TOCTOU gap after both mirror copies: final operator stop, protected pair, full #586 admission and both secondary custody checks, followed by second pin check. Four negative regression tests; attribution `38038139765` SUCCESS, validation `38038139723` IN_PROGRESS at first check. Require exact-head 100% green (Ruff/pytest + clean demo + artifact + attribution), then review and merge; **do not close #587** without actual 2/2 verified second-volume copies.
 

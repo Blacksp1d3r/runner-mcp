@@ -783,22 +783,37 @@ def build_mcp(
             "approvals_configured": approval_manager is not None,
             "fabric_bridge_configured": fabric_bridge is not None,
         }
-        try:
-            result.update(self_update_manager.runtime_status())
-            result.update(fabric_bootstrap_manager.runtime_status())
-            result.update(fabric_update_manager.runtime_status())
-        except (SelfUpdateError, FabricBootstrapError, FabricUpdateError) as exc:
-            audit.append(
-                AuditEvent(
-                    current_request_id(),
-                    "runtime_status",
-                    None,
-                    "authenticated-client",
-                    "denied",
-                    utc_timestamp(),
+        # Each first-party manager is an independent evidence source. Return
+        # only categorical failure facts if any source is unreadable: no
+        # partial status can be mistaken for complete runtime health, and raw
+        # storage/configuration exception text must not cross the MCP boundary.
+        for reason, read_status in (
+            ("self-update-state-unavailable", self_update_manager.runtime_status),
+            ("fabric-bootstrap-state-unavailable", fabric_bootstrap_manager.runtime_status),
+            ("fabric-update-state-unavailable", fabric_update_manager.runtime_status),
+        ):
+            try:
+                state = read_status()
+                if not isinstance(state, dict):
+                    raise TypeError("runtime manager returned non-object status")
+                result.update(state)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                audit.append(
+                    AuditEvent(
+                        current_request_id(),
+                        "runtime_status",
+                        None,
+                        "authenticated-client",
+                        "denied",
+                        utc_timestamp(),
+                    )
                 )
-            )
-            raise ValueError(str(exc)) from None
+                return {
+                    "schemaVersion": "runner-mcp/runtime-status-degraded/v1",
+                    "state": "degraded",
+                    "reasonCode": reason,
+                    "runtimeEvidenceComplete": False,
+                }
         audit.append(
             AuditEvent(
                 current_request_id(),

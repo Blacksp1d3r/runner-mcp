@@ -1669,7 +1669,100 @@ def test_stale_session_next_explicit_call_requires_build_and_schema_preflight(
     ]
     assert json.loads(calls[-1].data)["params"]["name"] == "build_identity"
     assert client._requires_verified_reconnect is True
+    assert client._session_id is None
+    assert client.peer_build_identity is None
+    assert client.peer_tool_names == ()
     # A mismatched new release never receives a replayed work-unit tool call.
+
+
+def test_stale_session_explicit_next_request_proceeds_only_after_new_verified_peer(
+    monkeypatch,
+) -> None:
+    tools = [
+        {
+            "name": "build_identity",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+        {
+            "name": "list_projects",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+    ]
+    digest, _tool_names = _validate_peer_tool_surface(
+        {"result": {"tools": tools}},
+        required_tools=frozenset({"list_projects"}),
+    )
+    identity = {
+        "component_id": "runner-mcp",
+        "build_version": "0.1.3",
+        "source_revision": None,
+        "artifact_digest": None,
+        "protocol_min": "2025-03-26",
+        "protocol_max": "2025-06-18",
+        "interface_schema_digest": digest,
+    }
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18"}}',
+            headers={"Mcp-Session-Id": "session-old"},
+        ),
+        FakeResponse(b""),
+        urllib.error.HTTPError(
+            "http://127.0.0.1:8000/mcp", 404, "not found", None, None,
+        ),
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":3,"result":{"protocolVersion":"2025-06-18"}}',
+            headers={"Mcp-Session-Id": "session-new"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(json.dumps({
+            "jsonrpc": "2.0", "id": 4, "result": {"tools": tools},
+        }).encode()),
+        FakeResponse(json.dumps({
+            "jsonrpc": "2.0", "id": 5, "result": {
+                "isError": False,
+                "content": [{"type": "text", "text": json.dumps(identity)}],
+            },
+        }).encode()),
+        FakeResponse(json.dumps({
+            "jsonrpc": "2.0", "id": 6, "result": {
+                "content": [{"type": "text", "text": json.dumps({"ok": True})}],
+            },
+        }).encode()),
+    ]
+    calls = []
+
+    def respond(request, timeout):
+        del timeout
+        calls.append(request)
+        reply = responses.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    client = LocalMCPClient(
+        _config(),
+        allowed_tools=frozenset({"list_projects"}),
+        compatibility_preflight=False,
+    )
+    with pytest.raises(BridgeExecutionAdapterError, match="MCP_SESSION_STALE"):
+        client._call_tool("list_projects", {})
+    assert [json.loads(request.data)["method"] for request in calls] == [
+        "initialize", "notifications/initialized", "tools/call",
+    ]
+    assert client._call_tool("list_projects", {}) == {"ok": True}
+    assert [json.loads(request.data)["method"] for request in calls] == [
+        "initialize", "notifications/initialized", "tools/call",
+        "initialize", "notifications/initialized", "tools/list",
+        "tools/call", "tools/call",
+    ]
+    assert json.loads(calls[-2].data)["params"]["name"] == "build_identity"
+    assert json.loads(calls[-1].data)["params"]["name"] == "list_projects"
+    assert _request_session_id(calls[-1]) == "session-new"
+    assert client._requires_verified_reconnect is False
+    assert client.peer_build_identity == identity
+    assert responses == []
 
 
 @pytest.mark.parametrize(

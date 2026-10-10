@@ -16,4 +16,6 @@ This index complements the existing failure-record issue template.
 
 | RMCP-F-0010 | source/runtime diagnostic schema drift | INVESTIGATING | connected doctor's 12 checks omit three names guaranteed by current main code | installed source vs client tool catalogue vs tunnel response generation unproven; generic status/identity errors prevent build proof | get approved private sanitized installed-build and route lineage; never assume same runtime or restart based on tool listing | #590 / PR #627 |
 
+| RMCP-F-0011 | downstream Fabric storage admission CI | OPEN_EXTERNAL | source-only #1428 gate tests/doctor pass but full Foundation CI red | Ruff C408 on an unnecessary dict() constructor in tests/test_storage_binding_evidence_gate.py line 9 | Fabric owner informed: literal replacement followed by exact-head full Foundation + attribution; never use red source gate as physical admission | Runner-Fabric #1428 / #1397 |
+
 Closed/known failures remain here after fixes. Do not include private host/path/token values.

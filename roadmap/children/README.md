@@ -12,8 +12,8 @@ This is an **index**, not a second task backlog or execution authority. Actual P
 | Historical Claude review queue | [CURRENT_ASSIGNMENT.md](../../claude_feedback/CURRENT_ASSIGNMENT.md) | No; legacy queue is preserved | Its claims/PRs and current GitHub evidence win; do not rewrite old tasks |
 | Diagnostic component children | [component registry](../../docs/diagnostics/component_registry.yml) and [components](../../docs/diagnostics/components/) | No; existing ROADMAP/SOURCES/DATA_LINEAGE/FAILURES are canonical | Diagnose by component registry; do not rename or copy diagnostic files |
 | BPA-01 — standards reference | [bpa-01/TASK.md](bpa-01/TASK.md), [STATE.md](bpa-01/STATE.md) | Yes | COMPLETE with merge proof, no runtime/storage authority implied |
-| BPA-02 — symbolic manifest authority | Future [#630](https://github.com/Blacksp1d3r/runner-mcp/issues/630) child | Not yet | Source-of-truth/local Git/storage identity remains unqualified. No root project.yml without gate |
-| BPA-03 — this index and future contract | [bpa-03/TASK.md](bpa-03/TASK.md), [STATE.md](bpa-03/STATE.md) | Yes | Documentation-only, requires exact-head CI and review |
+| BPA-02 — symbolic manifest draft | [bpa-02/TASK.md](bpa-02/TASK.md), [STATE.md](bpa-02/STATE.md) | Yes | Design/tests landed in PR #633; operational primary Git, storage, lease and root project.yml remain BLOCKED_AUTHORITY |
+| BPA-03 — this index and future contract | [bpa-03/TASK.md](bpa-03/TASK.md), [STATE.md](bpa-03/STATE.md) | Yes | COMPLETE: PR #632 reviewed and CI green; existing children unchanged |
 
 ## Canonical rule for new executable children
 

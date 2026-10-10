@@ -1,3 +1,6 @@
+## 2026-10-10 — Final #630 issue closure reconciliation
+After docs-only PR #635 merged, GitHub read-only checks unexpectedly found parent #630 `CLOSED` while #634 remained `OPEN`. The closure trigger/actor is not independently proven; it must not be interpreted as acceptance. Explicitly REOPENED #630 via GitHub, with `state_reason=reopened`, and kept operator gate #634 OPEN. Failure Museum `RMCP-F-0016` records this recurrence. #381 still belongs to other active chat, not this lane. All three blueprint PRs #632/#633/#635 are merged with exact full CI green; no approved root project.yml, physical Git authority, independent restore, Fabric lease, service/tunnel/host change or archive deletion. Next owner action is read-only #634 authority qualification, not rerunning completed source changes.
+
 ## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)
 This chat did **not** touch #381 (separate active Claude owner/chat).
 

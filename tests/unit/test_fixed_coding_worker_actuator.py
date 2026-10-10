@@ -387,19 +387,19 @@ def test_main_pid_is_from_exact_fixed_unit_and_rejects_unreliable_pid(monkeypatc
 
     def fixed_systemd(_self, operation):
         recorded.append(operation)
-        return "MainPID=4567\\n"
+        return "MainPID=4567\n"
 
     monkeypatch.setattr(actuator.RootlessCodingWorkerHost, "_systemctl", fixed_systemd)
     host = actuator.RootlessCodingWorkerHost()
     assert host._main_pid() == 4567
     assert recorded == ["PID"]
-    for response in ("MainPID=0\\n", "MainPID=1\\n"):
+    for response in ("MainPID=0\n", "MainPID=1\n"):
         monkeypatch.setattr(
             actuator.RootlessCodingWorkerHost, "_systemctl",
             lambda _self, _op, data=response: data,
         )
         assert host._main_pid() is None
-    for response in ("MainPID=-2\\n", "MainPID=nan\\n", "Private=abc\\n", "MainPID=42\\nMainPID=9\\n"):
+    for response in ("MainPID=-2\n", "MainPID=nan\n", "Private=abc\n", "MainPID=42\nMainPID=9\n"):
         monkeypatch.setattr(
             actuator.RootlessCodingWorkerHost, "_systemctl",
             lambda _self, _op, data=response: data,
@@ -432,10 +432,10 @@ def test_listener_refuses_foreign_socket_even_on_expected_loopback(
 ):
     rows = {
         "/proc/net/tcp": (
-            "sl local_address rem_address st\\n"
-            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\\n"
+            "sl local_address rem_address st\n"
+            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\n"
         ),
-        "/proc/net/tcp6": "sl local_address rem_address st\\n",
+        "/proc/net/tcp6": "sl local_address rem_address st\n",
     }
     original = Path.read_text
 
@@ -458,11 +458,11 @@ def test_listener_refuses_foreign_socket_even_on_expected_loopback(
 def test_listener_requires_all_reuseport_inodes_belong_to_fixed_service(monkeypatch):
     rows = {
         "/proc/net/tcp": (
-            "sl local_address rem_address st\\n"
-            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\\n"
-            "2: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9002\\n"
+            "sl local_address rem_address st\n"
+            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\n"
+            "2: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9002\n"
         ),
-        "/proc/net/tcp6": "sl local_address rem_address st\\n",
+        "/proc/net/tcp6": "sl local_address rem_address st\n",
     }
     original = Path.read_text
     monkeypatch.setattr(
@@ -481,10 +481,10 @@ def test_listener_stale_main_pid_change_fails_closed(monkeypatch):
     calls = iter((4567, 4568))
     rows = {
         "/proc/net/tcp": (
-            "sl local_address rem_address st\\n"
-            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\\n"
+            "sl local_address rem_address st\n"
+            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\n"
         ),
-        "/proc/net/tcp6": "sl local_address rem_address st\\n",
+        "/proc/net/tcp6": "sl local_address rem_address st\n",
     }
     original = Path.read_text
     monkeypatch.setattr(

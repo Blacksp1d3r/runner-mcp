@@ -4,7 +4,6 @@ import time
 from pathlib import Path
 
 import pytest
-
 from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 from starlette.testclient import TestClient
 

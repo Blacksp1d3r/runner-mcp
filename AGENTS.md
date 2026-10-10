@@ -4,6 +4,12 @@
 
 Build Runner MCP as a small, auditable, deny-by-default operations interface. Prefer narrow capabilities over generic remote execution.
 
+## Canonical cross-project standards
+
+For every session follow Library `/Standards/MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` v1.2; for repository/bootstrap design follow Library `/Standards/AI_REPOSITORY_BLUEPRINT_STANDARD.md` v1.0. These standards complement, rather than replace, the stricter Runner-MCP security and ownership rules below. The Library master never grants host, filesystem, Git or production privileges.
+
+Runner-MCP predates the blueprint. Apply its `COMPATIBLE/PARTIAL/NEEDS_REVIEW/BLOCKED` migration mapping in `docs/standards/REPOSITORY_BLUEPRINT_COMPATIBILITY.md`: preserve current `roadmap/children`, handover, diagnostic topology and live agent ownership. **Do not** mass-rename existing children or infer qualified local Git/storage authority. New bounded child tasks should use `TASK.md` + `STATE.md`, with a reference to legacy issue documents when relevant. Any Fabric automatic scaffold plan/apply is a separately authorized future capability, not an available Runner-MCP execution surface.
+
 ## Non-negotiable security rules
 
 1. Never commit real server or infrastructure details to this public repository.

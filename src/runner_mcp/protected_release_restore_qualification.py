@@ -68,6 +68,8 @@ class ProtectedReleaseRestoreQualification:
         qualified = 0
         for revision in pins:
             try:
+                if self._pins() != pins:
+                    return _blocked("protected-set-changed", qualified)
                 if not _admitted_readiness(self._admission()):
                     return _blocked("independent-volume-not-ready", qualified)
                 if self._verified(revision) is not True:
@@ -97,6 +99,11 @@ class ProtectedReleaseRestoreQualification:
                 return _blocked("live-transaction-changed", qualified)
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError):
             return _blocked("live-transaction-state-unavailable", qualified)
+        try:
+            if self._pins() != pins:
+                return _blocked("protected-set-changed", qualified)
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError):
+            return _blocked("protected-set-unavailable", qualified)
         result = _blocked("both-protected-restores-qualified", 2)
         result["state"] = "qualified"
         return result

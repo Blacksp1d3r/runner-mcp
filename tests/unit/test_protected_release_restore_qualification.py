@@ -128,3 +128,37 @@ def test_wrong_revision_receipt_cannot_qualify_second_pin():
     assert result["reasonCode"] == "disposable-proof-incomplete"
     assert result["qualifiedRevisionCount"] == 1
     assert calls == [A, B]
+
+
+def test_protected_set_promoted_between_offline_restore_proofs():
+    obj, calls = _case()
+    polls = 0
+
+    def moving_pins():
+        nonlocal polls
+        polls += 1
+        return (A, B) if polls <= 2 else (A, "c" * 40)
+
+    obj._pins = moving_pins
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "protected-set-changed"
+    assert result["qualifiedRevisionCount"] == 1
+    assert calls == [A]
+
+
+def test_protected_set_promoted_before_final_restore_success():
+    obj, calls = _case()
+    polls = 0
+
+    def moving_pins():
+        nonlocal polls
+        polls += 1
+        return (A, B) if polls <= 3 else (A, "c" * 40)
+
+    obj._pins = moving_pins
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "protected-set-changed"
+    assert result["qualifiedRevisionCount"] == 2
+    assert calls == [A, B]

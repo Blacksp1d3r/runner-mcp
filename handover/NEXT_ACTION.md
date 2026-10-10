@@ -1,5 +1,10 @@
 # NEXT ACTION
 
+## Latest coordination: 2026-10-10 — Fabric #1428 remains OWNER_IN_PROGRESS, WAITING_CI_FIX
+
+Runner-Fabric #1397 dedicated owner has draft [#1428](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1428), exact head `e3521f49ba996b378fdc132b8a922cc04b2bebcf`, attribution `38042060760` SUCCESS; Foundation `38042060585` FAILED only Ruff `C408` (unnecessary `dict()` in `tests/test_storage_binding_evidence_gate.py:9`), while tests and doctor SUCCESS. Diagnosis sent to Fabric owner in PR comment #6096292386; DO NOT duplicate edit or rerun its lane here. Require owner's new exact HEAD and green CI, then separately prove real private binding + physical namespace. No archives mirrored/restored/retired.
+
+
 ## Latest: 2026-10-10 — #627 merged, live connector and real backup evidence remain BLOCKED
 
 - #590 source security [PR #627](https://github.com/Blacksp1d3r/runner-mcp/pull/627) exact head `e70e11702504c3fe161900ced4afceff8c7df084`, attribution `38042225385` and full validation `38042225393` ALL SUCCESS, squash `e06fe5b7f44c92ae22d4fa291a142b6b67803db3` MERGED. Previous pending-CI section below is superseded.

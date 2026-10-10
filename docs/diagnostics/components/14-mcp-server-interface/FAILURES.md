@@ -8,6 +8,8 @@
 
 | RMCP-MCP-0005 / 2026-10-10 reconfirmed | OPEN/LIVE UNLOCATED | partial read-only tool dispatch | `list_projects`, `queue_status`, `safety_status`, `project_capabilities` return structured; `project_status`, `build_identity`, `worker_status` and mirror admission fail; doctor has only 12 checks | See [bounded matrix](../../CONNECTOR_PROBE_MATRIX_2026-10-10.md); mixed success constrains diagnosis but still does not prove same target runtime/client route | Approved opaque-ID ingress → dispatch → response-delivery correlation; separately prove build/catalogue generation, no blind restart | #590 / #634 |
 
+| RMCP-F-0020 | SOURCE_FIXED_LIVE_UNQUALIFIED | Q7 application handler to MCP reply | known operator/launcher/config problems appeared as one generic exception; after possibly launched subprocess, retry effect was ambiguous | server tool mapped all bounded Q7 exceptions to generic ValueError | PR #646 merged a8833190b62e1ace6d88617951116cca541cf8ba; strict fixed error result distinguishes not_started from unknown effect, always denies dispatch/retry; authenticated MCP negative tests pass. Installed client/response route still needs #590 acceptance | #381 / #590 / PR #646 |
+
 Use the repository failure-record template for a new recurrence with concrete bounded evidence.
 
 ## RMCP-MCP-0005 — 2026-10-10 operator-verified catalogue split and route evidence

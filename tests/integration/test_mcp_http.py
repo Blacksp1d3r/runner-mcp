@@ -2553,7 +2553,7 @@ def test_runtime_status_returns_bounded_degraded_result(
     assert "NEVER_EXPOSE" not in response.text
     assert str(tmp_path) not in response.text
     audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
-    assert '"action": "runtime_status"' in audit
+    assert '"tool":"runtime_status"' in audit
     assert "NEVER_EXPOSE" not in audit
 
 

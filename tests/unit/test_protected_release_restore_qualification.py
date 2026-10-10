@@ -24,9 +24,10 @@ def _readiness():
     }
 
 
-def _receipt():
+def _receipt(sha=A):
     return {
         "schemaVersion": "runner-mcp/offline-disposable-release-restore/v1",
+        "commitSha": sha,
         "revisionVerified": True,
         "localCustodyReaderAccepted": True,
         "offlineNetworkDisabled": True,
@@ -42,7 +43,7 @@ def _case(*, pins=(A, B), good=True, proof=None, transaction=None):
     calls = []
     def qualify(sha):
         calls.append(sha)
-        return _receipt() if proof is None else proof(sha)
+        return _receipt(sha) if proof is None else proof(sha)
     obj = ProtectedReleaseRestoreQualification(
         protected_pins=lambda: pins,
         mirror_admission=_readiness,
@@ -95,7 +96,7 @@ def test_mirror_corruption_blocks_before_offline_import():
 
 def test_one_failed_second_revision_is_not_success():
     def second(sha):
-        return _receipt() if sha == A else {**_receipt(), "bootstrapRollbackPassed": False}
+        return _receipt(sha) if sha == A else {**_receipt(sha), "bootstrapRollbackPassed": False}
     obj, calls = _case(proof=second)
     result = obj.run()
     assert result["state"] == "blocked"
@@ -119,3 +120,11 @@ def test_private_failure_detail_is_not_exposed():
     assert result["state"] == "blocked"
     assert "private" not in str(result)
     assert "secret" not in str(result)
+
+
+def test_wrong_revision_receipt_cannot_qualify_second_pin():
+    obj, calls = _case(proof=lambda _sha: _receipt(A))
+    result = obj.run()
+    assert result["reasonCode"] == "disposable-proof-incomplete"
+    assert result["qualifiedRevisionCount"] == 1
+    assert calls == [A, B]

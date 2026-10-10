@@ -1,5 +1,12 @@
 # NEXT ACTION
 
+## 2026-10-10 evening — #651 exact-green SOURCE fix landed; first remaining #590 LIVE blocker
+
+- PR #651 merged `68093ab85bee293a8cc7616340d2893d5e4c24a0`, exact head `d588c72619fc277d8423b680f473c8d62e3c992a`; attribution 38086367280 and full CI 38086367281 SUCCESS (**2813 pytest** + Ruff + artifact + demo). Risk RMCP-F-0024 proxy/redirect bearer egress SOURCE_FIXED_LIVE_UNQUALIFIED. Child 590-local-mcp-transport-egress COMPLETE_SOURCE_ONLY.
+- Source closes the last known urllib loopback Bearer redirect/proxy gap **in repository**, not currently installed runtime. First remaining live #590/#540 gate is correct active process build identity, currently advertised client tool catalog/schema generation and one safe known-good/failing request correlated through original ingress, execution/audit and response-delivery ACK to the same calling client. Previous connected `list_projects` good, `project_status(runner-mcp)` generic internal error; do not infer root cause.
+- Fabric A6 #942 journal and A7 #943 independent rollback/ACK remain open; do not update or restart Runner-MCP fleet without their proven acceptance. #642 host-local policy separate owner. #381 Claude NO_DISPATCH until real AIfordable #370, Fabric #972 and #1398/#1400 signed durable admission are independently qualified. No live host/tunnel credentials changed.
+
+
 ## 2026-10-10 late — #540 no-replay fix MERGED; next connector lane
 
 - Source #540 PR #650 MERGED `8608ddde46f228d045d64189f12e7464a1919fb9`, exact head `154b9444a1ea67023588ce75fdc86628687e60ff`, attribution `38085233372` and `38085481144` SUCCESS, full `38085233326` SUCCESS (Ruff, 2781 pytest, artifact, demo). Before fix, stale-session HTTP 404 caused blind re-initialization and reexecution of any tool, even mutations. Now static `MCP_SESSION_STALE_EFFECT_UNKNOWN_RECONNECT_REQUIRED`, no automatic replay, cached identity cleared, separate new call must prove exact peer `tools/list`/build schema. Mismatch refuses before dispatch; source child `540-stale-session-no-replay/STATE.md` COMPLETE_SOURCE_ONLY, RMCP-F-0023 in Failure Museum.

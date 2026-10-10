@@ -94,16 +94,19 @@ def bounded_qualification_failure(
         state, reason, effect = "blocked", "operator_stop_active", "not_started"
     elif isinstance(failure, SafetyConfigurationError):
         state, reason, effect = "blocked", "operator_safety_unqualified", "not_started"
-    elif isinstance(failure, FabricCodingAvailabilityQualificationError):
-        # Only exact first-party constant strings are classified. Arbitrary
-        # exception messages MUST NEVER become a public response.
-        if len(failure.args) == 1 and type(failure.args[0]) is str:
-            key = failure.args[0]
-            if key in _PRE_RUN_FAILURES:
-                state, reason = _PRE_RUN_FAILURES[key]
-                effect = "not_started"
-            elif key in _POST_RUN_FAILURES:
-                reason = _POST_RUN_FAILURES[key]
+    # Only exact first-party constant strings are classified. Arbitrary
+    # exception messages MUST NEVER become a public response.
+    elif (
+        isinstance(failure, FabricCodingAvailabilityQualificationError)
+        and len(failure.args) == 1
+        and type(failure.args[0]) is str
+    ):
+        key = failure.args[0]
+        if key in _PRE_RUN_FAILURES:
+            state, reason = _PRE_RUN_FAILURES[key]
+            effect = "not_started"
+        elif key in _POST_RUN_FAILURES:
+            reason = _POST_RUN_FAILURES[key]
     return {
         "schemaVersion": _FAILURE_SCHEMA,
         "state": state,

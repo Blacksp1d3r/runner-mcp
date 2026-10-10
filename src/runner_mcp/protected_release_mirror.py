@@ -45,6 +45,22 @@ def _result(
     }
 
 
+def _admitted_readiness(value: object) -> bool:
+    return (
+        isinstance(value, Mapping)
+        and value.get("schemaVersion")
+        == "runner-mcp/fabric-release-archive-mirror-readiness/v1"
+        and value.get("configurationState") == "configured"
+        and value.get("ready") is True
+        and value.get("primaryCustodyReady") is True
+        and value.get("mountReady") is True
+        and value.get("mirrorRootReady") is True
+        and value.get("distinctDeviceReady") is True
+        and value.get("mutationEnabled") is False
+        and value.get("reasonCode") == "ready"
+    )
+
+
 class ProtectedReleaseMirror:
     """Call only a prebound, first-party per-revision custody operation."""
 
@@ -79,7 +95,7 @@ class ProtectedReleaseMirror:
                 or pins[0] == pins[1]
             ):
                 return _result("protected-set-unavailable")
-            if self._readiness().get("ready") is not True:
+            if not _admitted_readiness(self._readiness()):
                 return _result("independent-volume-not-ready")
             for revision in pins:
                 if self._verify_primary(revision) is not True:
@@ -96,6 +112,8 @@ class ProtectedReleaseMirror:
                         "independent-volume-not-ready", copied=copied,
                         already=already, verified=verified,
                     )
+                if self._verify_primary(revision) is not True:
+                    return _result("primary-custody-invalid", copied=copied, already=already, verified=verified)
                 evidence = self._mirror_exact(revision)
                 if (
                     evidence.get("separateDevice") is not True

@@ -175,3 +175,37 @@ def test_readiness_schema_change_after_preflight_prevents_first_copy(tmp_path):
     obj._readiness = changing_readiness
     assert obj.run()["reasonCode"] == "independent-volume-not-ready"
     assert calls == []
+
+
+def test_protected_pins_change_before_second_copy_blocks(tmp_path):
+    obj, calls = make_case(tmp_path)
+    reads = 0
+
+    def moving_pins():
+        nonlocal reads
+        reads += 1
+        return (A, B) if reads <= 2 else (A, "c" * 40)
+
+    obj._pins = moving_pins
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "protected-set-changed"
+    assert result["verifiedCount"] == 1
+    assert calls == [("mirror", A)]
+
+
+def test_protected_pins_change_after_both_copies_is_not_success(tmp_path):
+    obj, calls = make_case(tmp_path)
+    reads = 0
+
+    def moving_pins():
+        nonlocal reads
+        reads += 1
+        return (A, B) if reads <= 3 else (A, "c" * 40)
+
+    obj._pins = moving_pins
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "protected-set-changed"
+    assert result["verifiedCount"] == 2
+    assert calls == [("mirror", A), ("mirror", B)]

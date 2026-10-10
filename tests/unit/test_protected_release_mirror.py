@@ -23,7 +23,17 @@ def make_case(tmp_path, *, pins=(A, B), ready=True, existing=(), primary_ok=True
         return {"alreadyStored": revision in existing, "separateDevice": True}
     obj = ProtectedReleaseMirror(
         safety=safety,
-        readiness=lambda: {"ready": ready},
+        readiness=lambda: {
+            "schemaVersion": "runner-mcp/fabric-release-archive-mirror-readiness/v1",
+            "configurationState": "configured",
+            "ready": ready,
+            "primaryCustodyReady": True,
+            "mountReady": True,
+            "mirrorRootReady": True,
+            "distinctDeviceReady": ready,
+            "mutationEnabled": False,
+            "reasonCode": "ready" if ready else "mirror-mount-not-mounted",
+        },
         protected_pins=lambda: pins,
         verify_primary=lambda sha: primary_ok,
         mirror_exact=mirror,
@@ -86,3 +96,24 @@ def test_second_copy_failure_preserves_first_receipt_without_false_success(tmp_p
 def test_repeat_is_idempotent(tmp_path):
     obj, _ = make_case(tmp_path, existing=(A, B))
     assert obj.run() == obj.run()
+
+
+def test_mismatched_admission_schema_is_never_sufficient(tmp_path):
+    obj, calls = make_case(tmp_path)
+    obj._readiness = lambda: {"ready": True}
+    assert obj.run()["reasonCode"] == "independent-volume-not-ready"
+    assert calls == []
+
+
+def test_pre_copy_source_recheck_blocks_race(tmp_path):
+    obj, calls = make_case(tmp_path)
+    observations = []
+    def source_state(sha):
+        observations.append(sha)
+        return len(observations) < 4
+
+    obj._verify_primary = source_state
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "primary-custody-invalid"
+    assert calls == [("mirror", A)]

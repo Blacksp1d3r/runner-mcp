@@ -9,7 +9,7 @@ Convert the **draft only** symbolic repository candidate to an actual root `proj
 No current host/volume path inspection through unrestricted shell or Desktop Commander, no guessed local Git primary, blanket repo-create or shell capability, tunnel/service restart, sudo, private data, credential rotation, production restore, archival deletion, Fabric scheduler parallelism, Claude #381 execution or bootstrap, or modifications to the #590/#587/#588 owner lanes. GitHub source success or a memory of an 8TB disk is **not** mount/namespace authorization.
 
 ## Sources, data lineage, topology
-- Public: [blueprint](../../docs/standards/PROJECT_MANIFEST_CANDIDATE.md), candidate YAML/schema, `AGENTS.md`, roadmap, CURRENT_STATE, issue and GitHub exact HEAD.
+- Public: [blueprint candidate](../../../docs/standards/PROJECT_MANIFEST_CANDIDATE.md), candidate YAML/schema, `AGENTS.md`, roadmap, CURRENT_STATE, issue and GitHub exact HEAD.
 - Trusted private authorities (must be accessed by approved read-only bounded operator tools, never copied here): canonical inventory mapping of project -> service/runtime -> host -> Git primary -> independent storage volume/delegated namespace; owner/mode/symlink/freshness evidence; Fabric lease/fencing policies.
 - Outputs: sanitized evidence *identifiers*, never raw paths, hostnames, mount IDs, tokens, personal data or private logs. Future proposed manifest will reference only symbolic authority IDs and approved revisions.
 

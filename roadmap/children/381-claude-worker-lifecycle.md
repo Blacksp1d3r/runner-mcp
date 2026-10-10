@@ -2,6 +2,16 @@
 
 State: SOURCE_MERGED; HOST_AND_FABRIC_ACCEPTANCE_BLOCKED; no Claude work dispatch; parent: Runner-MCP #381; priority HIGH (Claude multi-project acceleration).
 
+## Hercontrole 2026-10-10 (12:52 CEST) — exact first blocker
+
+**Current evidence:** #381 OPEN, #628 source MERGED and all CI green; Fabric readiness PR #1430 is MERGED (head `7b79664381602efd57869377c0a0ed8fac190745`, Foundation `38046362894` + attribution `38046362913` SUCCESS) but is only a non-authorizing review predicate, always `dispatch_authorized=false`. Fabric #1172 and draft #1422 cannot yet issue authenticated lease/fenced lifecycle authority to the fixed source actuator. AIfordable #370 rootless packaged lifecycle remains open; Fabric #972 exact loopback/read-back admission remains open.
+
+**First non-duplicative engineering task:** Runner-MCP owner to define and qualify the **first-party trusted local verifier binding** to Fabric's finalized typed intent on the dedicated host, not a caller-injected boolean. No network/public status endpoint, no unit/user/path authority and no live service mutation until source contract finalization and owner approval. Fabric chat owns issuer/lease/fence/Agent Bus and AIfordable chat owns real right-host packaged service lifecycle. Claude project dispatch remains explicitly `NO_DISPATCH`.
+
+Read-only attempts during this review: connected `fabric_operational_snapshot` failed internally; `list_services(project=aifordable)` produced an execution error. These do not prove absence of an installed service or identify which runtime answered, and must not drive speculative restarts or account changes.
+
+**Correct operational acceptance:** trusted issuer/verifier+exact worker binding -> preinstalled fixed helper/user-manager authorization -> owner-controlled STATUS/START/STOP with loopback and listener-gone receipt -> Fabric #972 real authenticated non-billable availability/correlation/lease tests -> separate synthetic work admission. A static `READY_FOR_REVIEW` from Fabric #1430 does not grant dispatch.
+
 ## Authority / topology
 - One Fabric control plane: policy/capability/lease/fence/plan owns admission (#1172/#240).
 - Local Runner-MCP actuator: only fixed exact service and account on the correct rootless worker host.

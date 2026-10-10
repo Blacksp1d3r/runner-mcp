@@ -8,6 +8,7 @@ import pytest
 from runner_mcp.build_identity import (
     BuildIdentity,
     BuildIdentityError,
+    bounded_build_identity_payload,
     installed_source_revision,
     runner_mcp_build_identity,
     runner_mcp_mcp_build_identity,
@@ -131,3 +132,42 @@ def test_runner_mcp_identity_accepts_proven_source_revision() -> None:
 
     assert identity.source_revision == commit
     assert mcp_identity.source_revision == commit
+
+def test_bounded_identity_keeps_valid_identity_unchanged() -> None:
+    identity = runner_mcp_build_identity("0.1.3", source_revision="a" * 40)
+    assert bounded_build_identity_payload(lambda: identity) == identity.to_payload()
+
+
+@pytest.mark.parametrize("error_type", [OSError, RuntimeError, TypeError, ValueError])
+def test_bounded_identity_reports_unavailable_without_private_exception(
+    error_type: type[Exception],
+) -> None:
+    def broken_provider() -> BuildIdentity:
+        raise error_type("/private/config/state.json token=NEVER_EXPOSE")
+
+    result = bounded_build_identity_payload(broken_provider)
+    assert result == {
+        "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": "build-identity-unavailable",
+        "identityEvidenceComplete": False,
+    }
+    assert "NEVER_EXPOSE" not in str(result)
+
+
+def test_bounded_identity_rejects_missing_provider_and_wrong_type() -> None:
+    expected = bounded_build_identity_payload(None)
+    assert expected["state"] == "unavailable"
+    assert expected["identityEvidenceComplete"] is False
+    assert bounded_build_identity_payload(lambda: {"source_revision": "a" * 40}) == expected
+
+
+def test_bounded_identity_rejects_malformed_serialization(monkeypatch) -> None:
+    identity = runner_mcp_build_identity("0.1.3")
+    monkeypatch.setattr(BuildIdentity, "to_payload", lambda _self: { "private": "NEVER_EXPOSE" })
+    assert bounded_build_identity_payload(lambda: identity) == {
+        "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": "build-identity-unavailable",
+        "identityEvidenceComplete": False,
+    }

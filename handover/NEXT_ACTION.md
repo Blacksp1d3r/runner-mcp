@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+## 2026-10-10 late — #540 no-replay fix MERGED; next connector lane
+
+- Source #540 PR #650 MERGED `8608ddde46f228d045d64189f12e7464a1919fb9`, exact head `154b9444a1ea67023588ce75fdc86628687e60ff`, attribution `38085233372` and `38085481144` SUCCESS, full `38085233326` SUCCESS (Ruff, 2781 pytest, artifact, demo). Before fix, stale-session HTTP 404 caused blind re-initialization and reexecution of any tool, even mutations. Now static `MCP_SESSION_STALE_EFFECT_UNKNOWN_RECONNECT_REQUIRED`, no automatic replay, cached identity cleared, separate new call must prove exact peer `tools/list`/build schema. Mismatch refuses before dispatch; source child `540-stale-session-no-replay/STATE.md` COMPLETE_SOURCE_ONLY, RMCP-F-0023 in Failure Museum.
+- Fresh currently connected bounded reads: `list_projects` succeeded with six configured projects; `project_status(runner-mcp)` generic tool error. No per-call ingress/delivery evidence. #590 and #540 live gate remain OPEN; installed source and client catalog generation unqualified.
+- First safe independent source candidate: `roadmap/children/590-local-mcp-transport-egress/{TASK,STATE}.md` UNCLAIMED; after reconciling #650 merged main and other owners, prevent default urllib `urlopen` from honoring environment proxies or redirects with loopback Bearer credentials. Follow source-only pattern from Fabric #1446; strict hostile proxy + redirect negative tests, no live network change. Verify exact-head full CI then update central failure records. Do not conflate risk with confirmed exfiltration.
+- Still BLOCKED: A6 Fabric #942 journal and A7 #943 independent rollback; physical rollout, authenticated source/interface/route ACK, #590, #540, #381, Fabric #1398/#1400 lease and AIfordable #370/Fabric #972 real Claude. No automatic paid API or worker dispatch, no generic remote shell or guessed server restart.
+
+
 ## 2026-10-10 late evening — first live blocker now isolated after #648/#649
 
 - #590 SOURCE: PR #648 MERGED `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e`, exact head `403eedf2429fda7d4b84839aa70790a3a6e71ae5`, exact full CI `38075662792` 2773 pytest/Ruff/artifact/demo SUCCESS + attribution `38075662830` SUCCESS. Local authenticated good/degraded MCP HTTP result↔request ID/trace/audit matches exactly.

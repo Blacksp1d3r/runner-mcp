@@ -180,3 +180,103 @@ def test_coding_availability_tool_is_bounded(
     assert "fabric_coding_availability_qualify" in audit
     assert "/srv/private" not in audit
     assert "s" * 48 not in audit
+
+
+def test_q7_preflight_returns_safe_reason_without_running_any_assignment(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    calls = []
+
+    class ReadOnlyQualificationRunner:
+        def __init__(self, **kwargs):
+            assert "environment" in kwargs
+            assert "safety" in kwargs
+
+        def preflight(self):
+            calls.append("preflight")
+            return {
+                "schemaVersion": "runner-mcp/coding-availability-preflight/v1",
+                "state": "wait",
+                "reason_code": "q7_private_configuration_incomplete",
+                "qualification_executed": False,
+                "provider_session_checked": False,
+                "dispatch_authorized": False,
+            }
+
+        def run(self, *_args, **_kwargs):
+            raise AssertionError("read-only preflight may not execute Q7")
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricCodingAvailabilityQualificationRunner",
+        ReadOnlyQualificationRunner,
+    )
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "projects.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator.stop",
+        retention_confirmed=True,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo", repository="example/demo", root=project_root,
+            )
+        }
+    )
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values={"RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN": "s" * 48},
+    )
+    headers = _headers()
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        )
+        catalog = client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
+        )
+        assert "fabric_coding_availability_preflight" in catalog.text
+        response = client.post(
+            "/mcp", headers=headers,
+            json={
+                "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                "params": {
+                    "name": "fabric_coding_availability_preflight",
+                    "arguments": {},
+                },
+            },
+        )
+        report = _tool_json(response)
+        assert report["state"] == "wait"
+        assert report["reason_code"] == "q7_private_configuration_incomplete"
+        assert report["dispatch_authorized"] is False
+        assert report["provider_session_checked"] is False
+        assert "s" * 48 not in response.text
+        assert "RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN" not in response.text
+        assert calls == ["preflight"]
+        rejected = client.post(
+            "/mcp", headers=headers,
+            json={
+                "jsonrpc": "2.0", "id": 4, "method": "tools/call",
+                "params": {
+                    "name": "fabric_coding_availability_preflight",
+                    "arguments": {"provider": "claude", "command": "run"},
+                },
+            },
+        )
+        assert _event(rejected)["result"]["isError"] is True
+        assert calls == ["preflight"]
+    audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "q7_private_configuration_incomplete" in audit
+    assert "s" * 48 not in audit

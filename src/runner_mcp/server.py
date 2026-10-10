@@ -1401,6 +1401,22 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def fabric_coding_availability_preflight() -> dict:
+        """Read bounded local Q7 configuration readiness; no provider/work."""
+        report = fabric_coding_availability_runner.preflight()
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_coding_availability_preflight",
+                "runner-fabric:coding-availability",
+                "authenticated-client",
+                str(report["reason_code"]),
+                utc_timestamp(),
+            )
+        )
+        return report
+
+    @mcp.tool()
     def fabric_coding_availability_qualify(
         case: str,
         expected_revision: str,

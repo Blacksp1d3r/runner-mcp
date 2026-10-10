@@ -80,8 +80,17 @@ class RootlessCodingWorkerHost:
             "DBUS_SESSION_BUS_ADDRESS": f"unix:path={bus}",
         }
 
-    def _systemctl(self, *args: str) -> str:
-        # All arguments are fixed in code, including the exact service unit.
+    def _systemctl(self, operation: str) -> str:
+        # No caller can supply even a private arbitrary systemctl argument.
+        if operation == "STATUS":
+            args = [
+                "show", _UNIT, "--property=LoadState",
+                "--property=ActiveState", "--no-page",
+            ]
+        elif operation in {"START", "STOP", "RESTART"}:
+            args = [operation.lower(), _UNIT]
+        else:
+            raise FixedActuatorError("unsupported fixed action")
         environment = self._environment()
         try:
             result = subprocess.run(
@@ -102,10 +111,7 @@ class RootlessCodingWorkerHost:
         return result.stdout
 
     def status(self) -> str:
-        lines = self._systemctl(
-            "show", _UNIT, "--property=LoadState",
-            "--property=ActiveState", "--no-page",
-        ).splitlines()
+        lines = self._systemctl("STATUS").splitlines()
         values: dict[str, str] = {}
         for line in lines:
             key, sep, value = line.partition("=")
@@ -127,7 +133,7 @@ class RootlessCodingWorkerHost:
     def action(self, operation: str) -> None:
         if operation not in {"START", "STOP", "RESTART"}:
             raise FixedActuatorError("unsupported fixed action")
-        self._systemctl(operation.lower(), _UNIT)
+        self._systemctl(operation)
 
     def listener(self) -> str:
         # An exact loopback-only observation; no URL, token, socket
@@ -216,6 +222,7 @@ class FixedCodingWorkerActuator:
             return _result("blocked", "invalid-fabric-intent")
         if self._verify is None:
             return _result("blocked", "fabric-authority-unavailable")
+        attempted_mutation = False
         try:
             if self._verify(intent) is not True:
                 return _result("blocked", "fabric-intent-not-admitted")
@@ -229,11 +236,15 @@ class FixedCodingWorkerActuator:
                 return _result("blocked", "dedicated-identity-unavailable")
             action = intent["action"]
             if action != "STATUS":
+                attempted_mutation = True
                 self._host.action(action)
             state = self._host.status()
             listener = self._host.listener()
         except (OSError, RuntimeError, ValueError, TypeError, KeyError):
-            return _result("blocked", "fixed-actuator-unavailable")
+            return _result(
+                "blocked", "fixed-actuator-unavailable",
+                mutation=attempted_mutation,
+            )
         if listener == "UNSAFE":
             return _result(
                 "blocked", "listener-not-loopback",

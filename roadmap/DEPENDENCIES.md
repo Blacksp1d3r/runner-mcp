@@ -1,3 +1,8 @@
+## 2026-10-10 — #626 complete; physical custody prerequisites unchanged
+Runner-MCP #626 source final copy-integrity gate merged `5aba8423594290a7837208e53721234dfe0df778`, exact-head full CI green. Security code complete, not a physical backup: #587/#588 remain OPEN and require separately trusted AIfordable #537 volume binding -> Fabric #1397 distinct fixed host-owned release-custody namespace/bootstrap -> #586 live zero-arg readiness -> #587 verified exact 2/2 release mirror on independent physical storage -> #588 isolated no-network real reader/bootstrap restore+cleanup proof. Do not delete GitHub provider artifacts or alter any host/mount/credential to bypass.
+
+Secondary independent issue #590: per-tool live behavior differs and `runtime_status` has a plausible uncategorized exception re-raise; source-only bounded/error-sanitized contract and integration regressions would be useful, but live cause unconfirmed. AIfordable #553 owner to fix CI fixture date before #537 can be marked qualified.
+
 ## 2026-10-10 — Release-archive custody gates (latest)
 - Runner-MCP #587 source-only finish: child PR #626 draft HEAD `abd2c4eb05348b86b87e09f65acd5cf149d98972`, attribution `38038139765` SUCCESS, validation `38038139723` IN_PROGRESS. Requires full exact-head CI and review; source proof is not real storage receipt.
 - AIfordable #537 / draft #553 is still unqualified (`AF-SB-0001` qualified=false). CI `38035068769` FAILED solely in the Test API step with 9 dated topology-guard fixture failures; 1352 other tests passed. Canonical registry dated 2026-10-10 but test `TODAY`/mock clock 2026-10-08 => `TOPOLOGY_FUTURE_DATED` (fail closed correctly). Owning lane to repair fixtures, preserve negative future-date coverage; no concurrent branch work.

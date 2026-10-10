@@ -22,6 +22,28 @@ class _StaleMCPSessionError(BridgeExecutionAdapterError):
     """Internal marker for a confirmed stale downstream MCP session."""
 
 
+class _NoLocalMCPRedirects(urllib.request.HTTPRedirectHandler):
+    """Never forward the first-party loopback bearer to a redirected target."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _private_loopback_opener() -> urllib.request.OpenerDirector:
+    """Ignore ambient HTTP(S) proxies and prohibit all local MCP redirects."""
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoLocalMCPRedirects(),
+    )
+
+
+def _open_local_mcp_request(
+    request: urllib.request.Request, *, timeout: float
+):
+    """One fixed, mockable transport seam for the bearer-bound local MCP."""
+    return _private_loopback_opener().open(request, timeout=timeout)
+
+
 MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
 MAX_MCP_JOB_ID_CHARS = 32
@@ -954,7 +976,7 @@ class LocalMCPClient:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(
+            with _open_local_mcp_request(
                 request,
                 timeout=self._config.request_timeout_seconds,
             ) as response:

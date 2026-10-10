@@ -1,3 +1,7 @@
+## 2026-10-10 — #623 full storage re-admission MERGED (supersedes prior WAITING_CI)
+
+Draft #623 head `80058882e30487d251ff347c5e34af3ecbb30c40`: attribution `38029219757` SUCCESS and full validation `38029219729` SUCCESS, including Ruff/pytest, release artifact, clean demo; squash merged `d755cce23a18130189335d8ad6775f80f19d8525`. Pre-copy admission in the source-only protected mirror orchestrator now rechecks full versioned #586 readiness before EVERY copy, not just `ready=True`; regression tests cover device/mount degradation after first copy and schema drift before first. Real independent storage remains NOT connected: AIfordable #537 and Fabric #1397 open, #587 and #588 live physical acceptance open. No backup copy, archive pruning, server/tunnel/runner mutation or restore performed.
+
 ## 2026-10-10 — HIGH PRIORITY backup safety gates integrated; PHYSICAL BACKUP STILL BLOCKED
 
 User explicitly prioritized #587 (real independently mirrored protected releases) then #588 (actual restore proof) to unblock other projects. Both issues MUST remain OPEN until on-host authoritative physical evidence. Existing #586 zero-arg read-only separate-volume readiness already merged via #610; its live status was not available in this conversation (runtime/safety connector generic internal failure). Do not mistake source tests or device-number difference for genuine independent physical disk readiness.

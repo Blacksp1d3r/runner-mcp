@@ -87,6 +87,8 @@ class RootlessCodingWorkerHost:
                 "show", _UNIT, "--property=LoadState",
                 "--property=ActiveState", "--no-page",
             ]
+        elif operation == "PID":
+            args = ["show", _UNIT, "--property=MainPID", "--no-page"]
         elif operation in {"START", "STOP", "RESTART"}:
             args = [operation.lower(), _UNIT]
         else:
@@ -134,10 +136,46 @@ class RootlessCodingWorkerHost:
             raise FixedActuatorError("unsupported fixed action")
         self._systemctl(operation)
 
+    def _main_pid(self) -> int | None:
+        # MainPID is obtained for the one fixed user unit. It is not a
+        # caller-supplied process selector or independent execution authority.
+        lines = self._systemctl("PID").splitlines()
+        if len(lines) != 1 or not lines[0].startswith("MainPID="):
+            raise FixedActuatorError("fixed service PID unavailable")
+        value = lines[0].removeprefix("MainPID=")
+        if not value.isascii() or not value.isdecimal() or len(value) > 8:
+            raise FixedActuatorError("fixed service PID invalid")
+        pid = int(value)
+        return pid if pid > 1 else None
+
+    @staticmethod
+    def _pid_socket_inodes(pid: int) -> set[str] | None:
+        # Only inspect the fixed systemd MainPID's open socket references.
+        # No process command line, environment or worker output is read.
+        root = Path("/proc") / str(pid)
+        try:
+            owner = root.stat()
+            if owner.st_uid != os.geteuid():
+                return None
+            sockets: set[str] = set()
+            with os.scandir(root / "fd") as entries:
+                for index, entry in enumerate(entries):
+                    if index >= 4096:
+                        return None
+                    target = os.readlink(entry.path)
+                    if target.startswith("socket:[") and target.endswith("]"):
+                        inode = target[8:-1]
+                        if inode.isascii() and inode.isdecimal():
+                            sockets.add(inode)
+            return sockets
+        except OSError:
+            return None
+
     def listener(self) -> str:
-        # An exact loopback-only observation; no URL, token, socket
-        # ownership or raw kernel output enters the public result.
-        found = False
+        # Socket address alone cannot identify the intended worker: a foreign
+        # process can occupy an identical loopback port. Match EVERY observed
+        # matching socket inode to the fixed unit's dedicated MainPID as well.
+        inodes: set[str] = set()
         for filename in ("/proc/net/tcp", "/proc/net/tcp6"):
             try:
                 lines = Path(filename).read_text(encoding="ascii").splitlines()[1:]
@@ -158,8 +196,27 @@ class RootlessCodingWorkerHost:
                     continue
                 if filename.endswith("tcp6") or host_port[0] != "0100007F":
                     return "UNSAFE"
-                found = True
-        return "LOOPBACK_ONLY" if found else "ABSENT"
+                if len(columns) < 10:
+                    return "UNVERIFIED"
+                inode = columns[9]
+                if not inode.isascii() or not inode.isdecimal() or inode == "0":
+                    return "UNVERIFIED"
+                inodes.add(inode)
+        if not inodes:
+            return "ABSENT"
+        try:
+            pid = self._main_pid()
+            if pid is None:
+                return "UNVERIFIED"
+            held = self._pid_socket_inodes(pid)
+            if held is None or not inodes.issubset(held):
+                return "UNVERIFIED"
+            # Catch obvious service stop/restart during the read.
+            if self._main_pid() != pid:
+                return "UNVERIFIED"
+        except FixedActuatorError:
+            return "UNVERIFIED"
+        return "LOOPBACK_ONLY"
 
 
 def _safe_intent(intent: object, now: int) -> bool:
@@ -244,6 +301,11 @@ class FixedCodingWorkerActuator:
                     "blocked", "listener-not-loopback",
                     observed=before_state,
                 )
+            if before_listener == "UNVERIFIED":
+                return _result(
+                    "blocked", "listener-owner-unverified",
+                    observed=before_state,
+                )
             if (
                 (before_state, before_listener)
                 not in {("INACTIVE", "ABSENT"), ("ACTIVE", "LOOPBACK_ONLY")}
@@ -281,6 +343,11 @@ class FixedCodingWorkerActuator:
         if listener == "UNSAFE":
             return _result(
                 "blocked", "listener-not-loopback",
+                observed=state, mutation=action != "STATUS",
+            )
+        if listener == "UNVERIFIED":
+            return _result(
+                "blocked", "listener-owner-unverified",
                 observed=state, mutation=action != "STATUS",
             )
         if action == "STATUS":

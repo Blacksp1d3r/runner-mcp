@@ -16,6 +16,8 @@
 
 | RMCP-F-0023 | SOURCE_FIXED_LIVE_UNQUALIFIED | local MCP client stale session reconnect/retry | an HTTP 404 after established MCP session triggered automatic resubmission of original tools/call, risking duplicate effects for mutating tools | implicit recovery retried before independent caller reconciliation or active build/interface requalification | #650 squash 8608ddde46f228d045d64189f12e7464a1919fb9; negative cases for several read/write tool names, stale side-effect uncertainty, forced new build/schema verification, partial-session discard, separately requested verified recovery; 2781 pytest exact CI green. No physical fleet proof | #540 / #590 / PR #650 |
 
+| RMCP-F-0024 | OPEN_SOURCE_RISK_NO_LIVE_LEAK_PROOF | local MCP client urllib bearer egress | inherited proxy and post-loopback redirect could send Authorization beyond initial approved endpoint | standard urllib default ProxyHandler/HTTPRedirectHandler; offline standard-library redirect_request preserves Authorization header on 30x POST->GET | source child 590-local-mcp-transport-egress UNCLAIMED; implement no-proxy/no-redirect opener and full negative tests; independent Fabric #1446 example. NO EVIDENCE live leak happened | #590 / #540 |
+
 Use the repository failure-record template for a new recurrence with concrete bounded evidence.
 
 ## RMCP-MCP-0005 — 2026-10-10 operator-verified catalogue split and route evidence

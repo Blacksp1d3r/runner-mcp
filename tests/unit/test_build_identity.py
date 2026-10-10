@@ -164,7 +164,7 @@ def test_bounded_identity_rejects_missing_provider_and_wrong_type() -> None:
 
 def test_bounded_identity_rejects_malformed_serialization(monkeypatch) -> None:
     identity = runner_mcp_build_identity("0.1.3")
-    monkeypatch.setattr(BuildIdentity, "to_payload", lambda _self: { "private": "NEVER_EXPOSE" })
+    monkeypatch.setattr(BuildIdentity, "to_payload", lambda _self: {"private": "NEVER_EXPOSE"})
     assert bounded_build_identity_payload(lambda: identity) == {
         "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
         "state": "unavailable",

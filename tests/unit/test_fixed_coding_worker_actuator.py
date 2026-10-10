@@ -236,7 +236,7 @@ def test_listener_checks_only_exact_ipv4_loopback_and_rejects_wildcard(monkeypat
     samples = {
         "/proc/net/tcp": (
             "sl local_address rem_address st\n"
-            "1: 0100007F:1F5E 00000000:0000 0A\n"
+            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\n"
         ),
         "/proc/net/tcp6": "sl local_address rem_address st\n",
     }
@@ -248,11 +248,18 @@ def test_listener_checks_only_exact_ipv4_loopback_and_rejects_wildcard(monkeypat
         return original(self, **kwargs)
 
     monkeypatch.setattr(Path, "read_text", read)
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_main_pid", lambda _: 345,
+    )
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_pid_socket_inodes",
+        staticmethod(lambda pid: {"9001"} if pid == 345 else None),
+    )
     host = actuator.RootlessCodingWorkerHost()
     assert host.listener() == "LOOPBACK_ONLY"
     samples["/proc/net/tcp"] = (
         "sl local_address rem_address st\n"
-        "1: 00000000:1F5E 00000000:0000 0A\n"
+        "1: 00000000:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\n"
     )
     assert host.listener() == "UNSAFE"
     samples["/proc/net/tcp"] = "sl local_address rem_address st\n"
@@ -373,3 +380,165 @@ def test_start_blocks_existing_foreign_loopback_listener_before_any_start():
     result = obj.execute(fixed_intent("START"))
     assert result["reasonCode"] == "pre-action-state-conflict"
     assert host.calls == []
+
+
+def test_main_pid_is_from_exact_fixed_unit_and_rejects_unreliable_pid(monkeypatch):
+    recorded = []
+
+    def fixed_systemd(_self, operation):
+        recorded.append(operation)
+        return "MainPID=4567\\n"
+
+    monkeypatch.setattr(actuator.RootlessCodingWorkerHost, "_systemctl", fixed_systemd)
+    host = actuator.RootlessCodingWorkerHost()
+    assert host._main_pid() == 4567
+    assert recorded == ["PID"]
+    for response in ("MainPID=0\\n", "MainPID=1\\n"):
+        monkeypatch.setattr(
+            actuator.RootlessCodingWorkerHost, "_systemctl",
+            lambda _self, _op, data=response: data,
+        )
+        assert host._main_pid() is None
+    for response in ("MainPID=-2\\n", "MainPID=nan\\n", "Private=abc\\n", "MainPID=42\\nMainPID=9\\n"):
+        monkeypatch.setattr(
+            actuator.RootlessCodingWorkerHost, "_systemctl",
+            lambda _self, _op, data=response: data,
+        )
+        with pytest.raises(actuator.FixedActuatorError):
+            host._main_pid()
+
+
+def test_unknown_private_systemctl_operation_still_blocks_without_environment(monkeypatch):
+    seen = []
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_environment",
+        staticmethod(lambda: seen.append("env") or {}),
+    )
+    host = actuator.RootlessCodingWorkerHost()
+    with pytest.raises(actuator.FixedActuatorError):
+        host._systemctl("PID_FROM_CALLER")
+    assert seen == []
+
+
+@pytest.mark.parametrize("pid,held,expected", [
+    (None, {"9001"}, "UNVERIFIED"),
+    (4567, set(), "UNVERIFIED"),
+    (4567, {"9002"}, "UNVERIFIED"),
+    (4567, None, "UNVERIFIED"),
+    (4567, {"9001"}, "LOOPBACK_ONLY"),
+])
+def test_listener_refuses_foreign_socket_even_on_expected_loopback(
+    monkeypatch, pid, held, expected
+):
+    rows = {
+        "/proc/net/tcp": (
+            "sl local_address rem_address st\\n"
+            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\\n"
+        ),
+        "/proc/net/tcp6": "sl local_address rem_address st\\n",
+    }
+    original = Path.read_text
+
+    def read(self, **kwargs):
+        if str(self) in rows:
+            return rows[str(self)]
+        return original(self, **kwargs)
+
+    monkeypatch.setattr(Path, "read_text", read)
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_main_pid", lambda _: pid,
+    )
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_pid_socket_inodes",
+        staticmethod(lambda _: held),
+    )
+    assert actuator.RootlessCodingWorkerHost().listener() == expected
+
+
+def test_listener_requires_all_reuseport_inodes_belong_to_fixed_service(monkeypatch):
+    rows = {
+        "/proc/net/tcp": (
+            "sl local_address rem_address st\\n"
+            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\\n"
+            "2: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9002\\n"
+        ),
+        "/proc/net/tcp6": "sl local_address rem_address st\\n",
+    }
+    original = Path.read_text
+    monkeypatch.setattr(
+        Path, "read_text",
+        lambda self, **kw: rows.get(str(self)) if str(self) in rows else original(self, **kw),
+    )
+    monkeypatch.setattr(actuator.RootlessCodingWorkerHost, "_main_pid", lambda _: 4567)
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_pid_socket_inodes",
+        staticmethod(lambda _: {"9001"}),
+    )
+    assert actuator.RootlessCodingWorkerHost().listener() == "UNVERIFIED"
+
+
+def test_listener_stale_main_pid_change_fails_closed(monkeypatch):
+    calls = iter((4567, 4568))
+    rows = {
+        "/proc/net/tcp": (
+            "sl local_address rem_address st\\n"
+            "1: 0100007F:1F5E 00000000:0000 0A 0000:0000 00:00000000 00000000 100 0 9001\\n"
+        ),
+        "/proc/net/tcp6": "sl local_address rem_address st\\n",
+    }
+    original = Path.read_text
+    monkeypatch.setattr(
+        Path, "read_text",
+        lambda self, **kw: rows.get(str(self)) if str(self) in rows else original(self, **kw),
+    )
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_main_pid", lambda _: next(calls),
+    )
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_pid_socket_inodes",
+        staticmethod(lambda _: {"9001"}),
+    )
+    assert actuator.RootlessCodingWorkerHost().listener() == "UNVERIFIED"
+
+
+@pytest.mark.parametrize("action", ["START", "STOP", "RESTART", "STATUS"])
+def test_unverified_socket_owner_never_returns_successful_status_or_runs_action(action):
+    host = SyntheticHost(
+        state="INACTIVE" if action == "START" else "ACTIVE",
+        listen="UNVERIFIED",
+    )
+    obj = actuator.FixedCodingWorkerActuator(
+        verify_fabric_intent=lambda _: True, host=host,
+    )
+    result = obj.execute(fixed_intent(action))
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "listener-owner-unverified"
+    assert result["mutationTriggered"] is False
+    assert host.calls == []
+
+
+def test_pid_owner_check_does_not_read_process_command_env(monkeypatch):
+    from types import SimpleNamespace
+
+    class MockFDs:
+        def __enter__(self):
+            return iter([
+                SimpleNamespace(path="/proc/4567/fd/3"),
+                SimpleNamespace(path="/proc/4567/fd/4"),
+            ])
+
+        def __exit__(self, *_args):
+            return False
+
+    accessed = []
+    monkeypatch.setattr(
+        Path, "stat", lambda p: SimpleNamespace(st_uid=7654),
+    )
+    monkeypatch.setattr(actuator.os, "geteuid", lambda: 7654)
+    monkeypatch.setattr(actuator.os, "scandir", lambda p: MockFDs())
+    def readlink(path):
+        accessed.append(path)
+        return "socket:[9001]" if path.endswith("/3") else "pipe:[99]"
+    monkeypatch.setattr(actuator.os, "readlink", readlink)
+    assert actuator.RootlessCodingWorkerHost._pid_socket_inodes(4567) == {"9001"}
+    assert accessed == ["/proc/4567/fd/3", "/proc/4567/fd/4"]

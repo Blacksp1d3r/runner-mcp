@@ -1539,7 +1539,20 @@ def _request_protocol_version(request) -> str | None:
     )
 
 
-def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
+@pytest.mark.parametrize(
+    "tool_name",
+    [
+        "list_projects",
+        "runtime_status",
+        "sync_project",
+        "run_tests",
+        "self_update",
+        "start_service",
+    ],
+)
+def test_stale_mcp_session_does_not_transparently_replay_any_tool(
+    monkeypatch, tool_name,
+) -> None:
     calls = []
     responses = [
         FakeResponse(
@@ -1548,36 +1561,12 @@ def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
         ),
         FakeResponse(b""),
         urllib.error.HTTPError(
-            "http://127.0.0.1:8000/mcp",
-            404,
-            "not found",
-            None,
-            None,
-        ),
-        FakeResponse(
-            b'{"jsonrpc":"2.0","id":3,"result":{"protocolVersion":"2025-03-26"}}',
-            headers={"Mcp-Session-Id": "session-new"},
-        ),
-        FakeResponse(b""),
-        FakeResponse(
-            json.dumps(
-                {
-                    "jsonrpc": "2.0",
-                    "id": 4,
-                    "result": {
-                        "content": [
-                            {
-                                "type": "text",
-                                "text": json.dumps({"ok": True}),
-                            }
-                        ]
-                    },
-                }
-            ).encode()
+            "http://127.0.0.1:8000/mcp", 404, "not found", None, None,
         ),
     ]
 
     def respond(request, timeout):
+        del timeout
         calls.append(request)
         response = responses.pop(0)
         if isinstance(response, Exception):
@@ -1586,39 +1575,101 @@ def test_client_recovers_once_from_confirmed_stale_session(monkeypatch) -> None:
 
     monkeypatch.setattr(urllib.request, "urlopen", respond)
     client = LocalMCPClient(
+        _config(), allowed_tools=frozenset({tool_name}),
+    )
+    with pytest.raises(
+        BridgeExecutionAdapterError,
+        match="MCP_SESSION_STALE_EFFECT_UNKNOWN_RECONNECT_REQUIRED",
+    ):
+        client._call_tool(tool_name, {})
+    assert responses == []
+    assert [json.loads(request.data)["method"] for request in calls] == [
+        "initialize", "notifications/initialized", "tools/call",
+    ]
+    assert [_request_session_id(request) for request in calls] == [
+        None, "session-old", "session-old",
+    ]
+    assert not client._initialized
+    assert client._session_id is None
+    assert client._peer_build_identity is None
+    assert client.peer_tool_names == ()
+    assert client._requires_verified_reconnect is True
+
+
+def test_stale_session_next_explicit_call_requires_build_and_schema_preflight(
+    monkeypatch,
+) -> None:
+    tools = [
+        {
+            "name": "build_identity",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+        {
+            "name": "list_projects",
+            "inputSchema": {"type": "object", "properties": {}, "required": []},
+        },
+    ]
+    identity = {
+        "component_id": "runner-mcp",
+        "build_version": "0.1.3",
+        "source_revision": None,
+        "artifact_digest": None,
+        "protocol_min": "2025-03-26",
+        "protocol_max": "2025-06-18",
+        "interface_schema_digest": "f" * 64,  # deliberate mismatch
+    }
+    responses = [
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2025-06-18"}}',
+            headers={"Mcp-Session-Id": "session-old"},
+        ),
+        FakeResponse(b""),
+        urllib.error.HTTPError(
+            "http://127.0.0.1:8000/mcp", 404, "not found", None, None,
+        ),
+        FakeResponse(
+            b'{"jsonrpc":"2.0","id":3,"result":{"protocolVersion":"2025-06-18"}}',
+            headers={"Mcp-Session-Id": "session-new"},
+        ),
+        FakeResponse(b""),
+        FakeResponse(json.dumps({
+            "jsonrpc": "2.0", "id": 4, "result": {"tools": tools},
+        }).encode()),
+        FakeResponse(json.dumps({
+            "jsonrpc": "2.0", "id": 5, "result": {
+                "isError": False,
+                "content": [{"type": "text", "text": json.dumps(identity)}],
+            },
+        }).encode()),
+    ]
+    calls = []
+
+    def respond(request, timeout):
+        del timeout
+        calls.append(request)
+        reply = responses.pop(0)
+        if isinstance(reply, Exception):
+            raise reply
+        return reply
+
+    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    client = LocalMCPClient(
         _config(),
         allowed_tools=frozenset({"list_projects"}),
+        compatibility_preflight=False,  # stale event overrides this default
     )
-
-    assert client._call_tool("list_projects", {}) == {"ok": True}
+    with pytest.raises(BridgeExecutionAdapterError, match="MCP_SESSION_STALE"):
+        client._call_tool("list_projects", {})
+    with pytest.raises(BridgeExecutionAdapterError, match="interface schema|build identity"):
+        client._call_tool("list_projects", {})
     assert responses == []
-
-    payloads = [json.loads(request.data) for request in calls]
-    assert [payload["method"] for payload in payloads] == [
-        "initialize",
-        "notifications/initialized",
-        "tools/call",
-        "initialize",
-        "notifications/initialized",
-        "tools/call",
+    assert [json.loads(request.data)["method"] for request in calls] == [
+        "initialize", "notifications/initialized", "tools/call",
+        "initialize", "notifications/initialized", "tools/list", "tools/call",
     ]
-    assert [payload.get("id") for payload in payloads] == [1, None, 2, 3, None, 4]
-    assert [_request_session_id(request) for request in calls] == [
-        None,
-        "session-old",
-        "session-old",
-        None,
-        "session-new",
-        "session-new",
-    ]
-    assert [_request_protocol_version(request) for request in calls] == [
-        None,
-        "2025-06-18",
-        "2025-06-18",
-        None,
-        "2025-03-26",
-        "2025-03-26",
-    ]
+    assert json.loads(calls[-1].data)["params"]["name"] == "build_identity"
+    assert client._requires_verified_reconnect is True
+    # A mismatched new release never receives a replayed work-unit tool call.
 
 
 @pytest.mark.parametrize(

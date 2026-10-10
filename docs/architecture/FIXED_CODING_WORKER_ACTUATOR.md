@@ -1,6 +1,12 @@
 # Runner-MCP #381 — fixed rootless Claude subscription actuator (source-only)
 
-Status: `PR_OPEN / SOURCE_ONLY` until CI and Fabric admission. Cross-repo owners: Runner-Fabric #1172/#240 (one control plane), Runner-MCP #381 (host-local actuator only), AIfordable #370 (rootless worker proof), Fabric #972 (loopback qualification). EnerCue #89 remains NO_DISPATCH until full end-to-end proof.
+Status: `SOURCE_MERGED / LIVE_AUTHORITY_BLOCKED`; CI complete, Fabric admission and dedicated-host qualification still outstanding. Cross-repo owners: Runner-Fabric #1172/#240 (one control plane), Runner-MCP #381 (host-local actuator only), AIfordable #370 (rootless worker proof), Fabric #972 (loopback qualification). EnerCue #89 remains NO_DISPATCH until full end-to-end proof.
+
+## Verified source checkpoint (2026-10-10)
+
+- PR [#628](https://github.com/Blacksp1d3r/runner-mcp/pull/628), exact head `e88e880c1c8db307d94c558250d12ee119c35e48`, attribution `38045484328` SUCCESS and full validation `38045484330` SUCCESS (Ruff, 2,659 pytest PASS, release artifact, clean demo); squash merge `4981fa648aa127e5d2e0538b9eefec170f816466`.
+- Issue #381 is intentionally **OPEN**: GitHub mistakenly auto-closed it when the source PR merged, and it was reopened. Source integration does not imply live Claude readiness.
+- Source-only ownership complete. Next work belongs to the trusted Fabric lease/verifier+right-host operator qualification; no alternative shell or second scheduler.
 
 ## Why same-user ServiceManager must NOT be reused
 
@@ -32,10 +38,10 @@ The `RootlessCodingWorkerHost` actuator is a library component. It is NOT curren
 
 | Child | Task | Current status | Owner |
 |---|---|---|---|
-| 381.1 | Strict fixed intent schema and wrong-target rejection | SOURCE PR | Runner-MCP |
-| 381.2 | Dedicated-user rootless systemctl + listener observation, no sudo | SOURCE PR | Runner-MCP |
-| 381.3 | Synthetic no-mutation & identity/listener negative tests | SOURCE PR | Runner-MCP |
-| 381.4 | Exact-head validation incl Ruff/pytest, built artifact and clean demo | WAITING_CI | Runner-MCP |
+| 381.1 | Strict fixed intent schema and wrong-target rejection | SOURCE_COMPLETE | Runner-MCP |
+| 381.2 | Dedicated-user rootless systemctl + listener observation, no sudo | SOURCE_COMPLETE | Runner-MCP |
+| 381.3 | Synthetic no-mutation & identity/listener negative tests | SOURCE_COMPLETE | Runner-MCP |
+| 381.4 | Exact-head validation incl Ruff/pytest, built artifact and clean demo | COMPLETE | Runner-MCP |
 | 381.5 | Bind trusted Fabric intent/lease/fencing verifier and one exact fixed transport to the right local host | BLOCKED_EXTERNAL | Fabric #1172/#1422 + site owner |
 | 381.6 | Install/verify actuator as dedicated rootless identity without allowing arbitrary invocations | BLOCKED_OPERATOR | AIfordable #370 / operator |
 | 381.7 | Controlled start/status/stop/listener-gone packaged service qualification; do not enable permanently | BLOCKED_OPERATOR | AIfordable #370 |

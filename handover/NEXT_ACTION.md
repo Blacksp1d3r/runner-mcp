@@ -1,5 +1,12 @@
 # NEXT ACTION
 
+## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN
+
+Na volledige broncode-merge van #651 en handover heeft een afzonderlijke actor/werklijn issue [#540](https://github.com/Blacksp1d3r/runner-mcp/issues/540) om 2026-10-10 21:10:33 UTC met `state_reason=completed` gesloten; issue-evenementen bevestigen de sluiting, maar de hier beschikbare first-party connected probes bewijzen nog **niet** dat de live geïnstalleerde MCP-server, clientcatalogus en antwoordaflevering overeenkomen. De Runner-MCP-communicatiechat **heropent of overschrijft #540 niet**. Eerder genoteerde #540 OPEN is nu historisch/verouderd; behandel #540 als CLOSED (source/other-owner decision), niet als operationeel bewijs voor #590.
+
+Runner-MCP [#590](https://github.com/Blacksp1d3r/runner-mcp/issues/590) blijft OPEN: eerst een geautoriseerde private exacte actieve build/catalogus en één bekende geslaagde + één falende verzoek-ID door ingress/dispatcher/serveraudit/response-delivery/oorspronkelijke client; voor vervanging blijven Fabric A6 #942 en A7 #943 aparte live uitrolgates. Geen productie- of tunnelwijziging.
+
+
 ## 2026-10-10 evening — #651 exact-green SOURCE fix landed; first remaining #590 LIVE blocker
 
 - PR #651 merged `68093ab85bee293a8cc7616340d2893d5e4c24a0`, exact head `d588c72619fc277d8423b680f473c8d62e3c992a`; attribution 38086367280 and full CI 38086367281 SUCCESS (**2813 pytest** + Ruff + artifact + demo). Risk RMCP-F-0024 proxy/redirect bearer egress SOURCE_FIXED_LIVE_UNQUALIFIED. Child 590-local-mcp-transport-egress COMPLETE_SOURCE_ONLY.

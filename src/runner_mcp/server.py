@@ -104,6 +104,7 @@ from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeE
 from .fabric_coding_availability import (
     FabricCodingAvailabilityQualificationError,
     FabricCodingAvailabilityQualificationRunner,
+    bounded_qualification_failure,
 )
 from .fabric_continuity_status import (
     FabricContinuityStatusError,
@@ -1431,20 +1432,22 @@ def build_mcp(
             FabricCodingAvailabilityQualificationError,
             OperatorStopActive,
             SafetyConfigurationError,
-        ):
+        ) as exc:
+            # Even a process/transport failure can follow a dispatched Q7
+            # assignment. Return a fixed effect-unknown result instead of
+            # a generic MCP error that could invite blind retries.
+            report = bounded_qualification_failure(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_coding_availability_qualify",
                     "runner-fabric:coding-availability",
                     "authenticated-client",
-                    "denied",
+                    str(report["reason_code"]),
                     utc_timestamp(),
                 )
             )
-            raise ValueError(
-                "Fabric coding availability qualification is unavailable"
-            ) from None
+            return report
         audit.append(
             AuditEvent(
                 current_request_id(),

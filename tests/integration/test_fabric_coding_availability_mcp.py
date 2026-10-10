@@ -280,3 +280,159 @@ def test_q7_preflight_returns_safe_reason_without_running_any_assignment(
     audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "q7_private_configuration_incomplete" in audit
     assert "s" * 48 not in audit
+
+
+def test_q7_failed_tool_returns_bounded_result_with_no_unsafe_retry(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    from runner_mcp.fabric_coding_availability import (
+        FabricCodingAvailabilityQualificationError,
+    )
+
+    calls = []
+
+    class FailedQualificationRunner:
+        def __init__(self, **kwargs):
+            assert "environment" in kwargs
+            assert "safety" in kwargs
+
+        def run(self, case: str, expected_revision: str):
+            calls.append((case, expected_revision))
+            raise FabricCodingAvailabilityQualificationError(
+                "fabric_coding_availability_qualification_failed"
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricCodingAvailabilityQualificationRunner",
+        FailedQualificationRunner,
+    )
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "projects.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        operator_stop_file=tmp_path / "operator.stop",
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo", repository="example/demo", root=project_root,
+            )
+        }
+    )
+    app = create_app(
+        settings=settings,
+        registry=registry,
+        secret_values={"RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN": "s" * 48},
+    )
+    headers = _headers()
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp", headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized", "params": {},
+            },
+        )
+        response = client.post(
+            "/mcp", headers=headers,
+            json={
+                "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                "params": {
+                    "name": "fabric_coding_availability_qualify",
+                    "arguments": {
+                        "case": "subscription-auth-required",
+                        "expected_revision": "a" * 40,
+                    },
+                },
+            },
+        )
+        event = _event(response)
+        assert event["result"]["isError"] is False
+        result = _tool_json(response)
+        assert result["schemaVersion"] == (
+            "runner-mcp/coding-availability-qualification-unavailable/v1"
+        )
+        assert result["reason_code"] == "q7_execution_unverified"
+        assert result["state"] == "unknown"
+        assert result["result_verified"] is False
+        assert result["qualification_effect"] == "unknown"
+        assert result["dispatch_authorized"] is False
+        assert result["retry_authorized"] is False
+        assert "assignment_requests" not in result
+        assert "s" * 48 not in response.text
+        assert calls == [("subscription-auth-required", "a" * 40)]
+    audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert "q7_execution_unverified" in audit
+    assert "s" * 48 not in audit
+
+
+def test_q7_invalid_case_produces_non_started_safe_error_over_mcp(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    from runner_mcp.fabric_coding_availability import (
+        FabricCodingAvailabilityQualificationError,
+    )
+
+    class PreRunError:
+        def __init__(self, **_kwargs):
+            pass
+
+        def run(self, _case, _revision):
+            raise FabricCodingAvailabilityQualificationError(
+                "fabric_coding_availability_qualification_case_invalid"
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricCodingAvailabilityQualificationRunner",
+        PreRunError,
+    )
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "projects.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        operator_stop_file=tmp_path / "operator.stop",
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo", repository="example/demo", root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = _headers()
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        )
+        response = client.post(
+            "/mcp", headers=headers,
+            json={
+                "jsonrpc": "2.0", "id": 3, "method": "tools/call",
+                "params": {
+                    "name": "fabric_coding_availability_qualify",
+                    "arguments": {
+                        "case": "invalid",
+                        "expected_revision": "a" * 40,
+                    },
+                },
+            },
+        )
+        result = _tool_json(response)
+        assert result["state"] == "blocked"
+        assert result["reason_code"] == "invalid_fixed_case"
+        assert result["qualification_effect"] == "not_started"
+        assert result["retry_authorized"] is False

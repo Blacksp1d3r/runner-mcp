@@ -52,6 +52,72 @@ class FabricCodingAvailabilityQualificationError(RuntimeError):
     """Sanitized bounded coding availability qualification failure."""
 
 
+
+_FAILURE_SCHEMA = "runner-mcp/coding-availability-qualification-unavailable/v1"
+_PRE_RUN_FAILURES = {
+    "fabric_coding_availability_qualification_case_invalid": (
+        "blocked", "invalid_fixed_case",
+    ),
+    "fabric_coding_availability_qualification_revision_invalid": (
+        "blocked", "invalid_fixed_revision",
+    ),
+    "fabric_coding_availability_qualification_launcher_unavailable": (
+        "wait", "fabric_launcher_unqualified",
+    ),
+    "fabric_coding_availability_qualification_launcher_unmanaged": (
+        "wait", "fabric_launcher_unqualified",
+    ),
+    "fabric_coding_availability_qualification_config_unavailable": (
+        "wait", "q7_private_configuration_incomplete",
+    ),
+}
+_POST_RUN_FAILURES = {
+    "fabric_coding_availability_qualification_unavailable": "q7_execution_unverified",
+    "fabric_coding_availability_qualification_failed": "q7_execution_unverified",
+    "fabric_coding_availability_qualification_output_invalid": "q7_output_unverified",
+}
+
+
+def bounded_qualification_failure(
+    failure: BaseException,
+) -> dict[str, object]:
+    """Public-safe failure with explicit uncertain side-effect semantics.
+
+    Never copy exception text, private task output, endpoint or credentials.
+    The Q7 runner may already have issued a call before a transport/process
+    failure, so an uncertain result cannot be retried as a harmless preflight.
+    """
+    reason = "q7_execution_unverified"
+    state = "unknown"
+    effect = "unknown"
+    if isinstance(failure, OperatorStopActive):
+        state, reason, effect = "blocked", "operator_stop_active", "not_started"
+    elif isinstance(failure, SafetyConfigurationError):
+        state, reason, effect = "blocked", "operator_safety_unqualified", "not_started"
+    # Only exact first-party constant strings are classified. Arbitrary
+    # exception messages MUST NEVER become a public response.
+    elif (
+        isinstance(failure, FabricCodingAvailabilityQualificationError)
+        and len(failure.args) == 1
+        and type(failure.args[0]) is str
+    ):
+        key = failure.args[0]
+        if key in _PRE_RUN_FAILURES:
+            state, reason = _PRE_RUN_FAILURES[key]
+            effect = "not_started"
+        elif key in _POST_RUN_FAILURES:
+            reason = _POST_RUN_FAILURES[key]
+    return {
+        "schemaVersion": _FAILURE_SCHEMA,
+        "state": state,
+        "reason_code": reason,
+        "result_verified": False,
+        "qualification_effect": effect,
+        "dispatch_authorized": False,
+        "retry_authorized": False,
+    }
+
+
 class FabricCodingAvailabilityQualificationRunner:
     def __init__(
         self,

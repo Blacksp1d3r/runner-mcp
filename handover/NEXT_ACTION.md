@@ -1,5 +1,14 @@
 # NEXT ACTION
 
+## 2026-10-10 12:52 CEST — #381 verified priority and precise remaining authority gap
+
+1. [Runner-MCP #381](https://github.com/Blacksp1d3r/runner-mcp/issues/381) OPEN. Original issue description updated to fit one-Fabric-control-plane ADR: no ordinary same-user `aifordable` service alias to another identity/host. Source #628 MERGED, green exact CI; dedicated coding actuator exists only as a library without any exposed live control endpoint/installed dedicated-host helper.
+2. New [Fabric PR #1430](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1430) MERGED, green exact-head CI. **Readiness review only**, `dispatch_authorized=false` even if all synthetic flags true. Does not unblock Claude dispatch.
+3. **First actionable dependency:** Fabric #1172/draft #1422 must supply centrally authenticated/fenced trusted worker lifecycle issuer/verifier and fixed pre-registered host binding. Runner-MCP owner then attaches the helper only under the correct dedicated rootless identity; never treat a local `lambda:True`, user/host input, or mere socket-listening state as authorization.
+4. AIfordable #370 owner separately proves actual packaged rootless STATUS/START/STOP, only fixed localhost listener and its removal after stop with independently verified service ownership, no production enable. Fabric #972 owner then performs real authenticated availability, lease/fence, correlation/return-path and bounded synthetic no-billing work. Until both: Claude/EnerCue #89 **NO_DISPATCH**.
+5. Client read-only snapshot and `list_services(aifordable)` failed internally in this check; no installed-runtime identity proof, and no service/tunnel/host mutation warranted. Other owner's #630 blueprint and #587/#588 physical backup work remain independent. See updated #381 body, handover and child roadmap.
+
+
 ## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated
 [Runner-MCP #630](https://github.com/Blacksp1d3r/runner-mcp/issues/630) is OPEN. BPA-01 docs-only [PR #631](https://github.com/Blacksp1d3r/runner-mcp/pull/631), exact HEAD `f23c12079b2a2cdbb15b6ce2a2fa24c9b68c66f9`, attribution `38045941135` SUCCESS, full validation `38045941103` Ruff/pytest + artifact + clean demo all SUCCESS, reviewed and MERGED `20c19970d14b9402ce6a2393477f3056602498bd`. Final `roadmap/children/bpa-01/STATE.md` marked COMPLETE. `AGENTS.md` now references Library master v1.2 and repository blueprint v1.0; `docs/standards/REPOSITORY_BLUEPRINT_COMPATIBILITY.md` explicitly maps legacy structure and gaps. No mass rename, manifest/authority fabrication or runtime change.
 

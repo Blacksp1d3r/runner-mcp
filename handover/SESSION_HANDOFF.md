@@ -1,3 +1,11 @@
+## 2026-10-10 — Mirror and restore protected pin drift guards MERGED
+
+Source-only PR #624 head `b962dcaff11a78b2ae244fe14f59399555c41837`, attribution `38029722100` SUCCESS, validation `38029722174` SUCCESS, squash `8460283b1fe34ffd2fe4be9426682ff3d1cf6f83`. Denies MIRROR before each copy/final success if protected active/rollback pair changed.
+
+Source-only PR #625 restacked on latest main head `ea88bb010cfc866bdf0ee8e1de7299be8c4fd8e9`, attribution `38030008919` SUCCESS, validation `38030008996` SUCCESS, squash `2e274c5b4ed9bf14842803a832689f79cbb805c9`. Denies RESTORE qualification before each disposable proof/final success if protected active/rollback pair changed. Exact-head CI includes Ruff/pytest, release artifact and clean demo.
+
+Fabric namespace admission source #1426 and read-only authority gate source #1427 merged, but AIfordable #537 authoritative private fresh host-runtime-storage mapping and Fabric #1397 qualified live namespace/bootstrap still OPEN. No 2/2 physical second-device copy receipts, no installed reader offline recovery, no deletion authority. Keep #587 and #588 OPEN regardless source PR merge, preserve provider artifacts. No runtime host, storage, service, runner or tunnel mutation.
+
 ## 2026-10-10 — Protected pair drift hardening while physical backup gated
 
 #587 accidental closure corrected: issue explicitly REOPENED. Fabric #1426 first policy-only admission MERGED, but #1397 fixed live namespace bootstrap and AIfordable #537 private fresh host/runtime/physical volume authority OPEN; no 2/2 second-volume archive receipts exist. Source-only PR #624 exact head `b962dcaff11a78b2ae244fe14f59399555c41837`, attribution `38029722100` SUCCESS, full validation `38029722174` SUCCESS; squash merged `8460283b1fe34ffd2fe4be9426682ff3d1cf6f83`. It compares the trusted active+rollback pin pair before every copy and final success, refusing a mid-copy release promotion; tests cover change after first and after both copies. No physical copy happened.

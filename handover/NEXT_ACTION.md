@@ -1,5 +1,14 @@
 # NEXT ACTION
 
+## NEXT CRITICAL: 2026-10-10 — Claude #381 source landed, live qualification is the blocker
+
+- #381 remains USER TOP PRIORITY. Source PR #628 exact head `e88e880c1c8db307d94c558250d12ee119c35e48` full CI `38045484330` SUCCESS (2,659 pytest, Ruff, built artifact, clean demo), attribution `38045484328` SUCCESS; squash merged `4981fa648aa127e5d2e0538b9eefec170f816466`. GitHub erroneously auto-closed #381, which was deliberately **REOPENED**; verify still OPEN before next work.
+- Source module `src/runner_mcp/fixed_coding_worker_actuator.py` is fail-closed and NOT installed/wired; no live Claude dispatch. Exact local account/unit only; no cross-user sudo or generic service selector. Architecture and complete TASK+STATE in `docs/architecture/FIXED_CODING_WORKER_ACTUATOR.md` and `roadmap/children/381-claude-worker-lifecycle.md`.
+- **Next external prerequisite:** Fabric #1172 / draft PR #1422 (single control plane) must expose a genuine trusted, signed/fenced/leased/idempotent intent verifier bound to the correct pre-registered worker and local helper identity. Do NOT invent authority with a caller-supplied boolean, deploy an unverified local endpoint, or create a second scheduler.
+- Then AIfordable #370 correct host under rootless `aifordable-coder`: packaged unit install/preflight, fixed STATUS/START/STOP, listener loopback-only 8030, listener disappears after stop and service remains disabled on boot; operator-private evidence only. Then Fabric #972 authenticated availability and exact lease/fence/correlation proof, read-only/synthetic bounded work, then EnerCue #89 isolated task. Claude work remains NO_DISPATCH until all gates.
+- #587/#588 backup proof remains independent and OPEN; never delete GitHub artifacts merely because #381 source merged.
+
+
 ## HIGH PRIORITY 2026-10-10 — #381 Claude fixed host-local lifecycle (user requested)
 
 Owner: Runner-MCP #381. Source draft [PR #628](https://github.com/Blacksp1d3r/runner-mcp/pull/628), branch `feat/381-fixed-rootless-coder-actuator`, expected current head `e7b0c4866fcbf1767e9ea73ad048c8ec89d7ae48`. Check actual current GitHub HEAD first. CI attribution `38045392637` and validation `38045392668` initially QUEUED. Previous head failed Ruff UP022 (fixed), no merge before full exact-head green.

@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+## 2026-10-10 late evening — first live blocker now isolated after #648/#649
+
+- #590 SOURCE: PR #648 MERGED `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e`, exact head `403eedf2429fda7d4b84839aa70790a3a6e71ae5`, exact full CI `38075662792` 2773 pytest/Ruff/artifact/demo SUCCESS + attribution `38075662830` SUCCESS. Local authenticated good/degraded MCP HTTP result↔request ID/trace/audit matches exactly.
+- #540 SOURCE: PR #649 MERGED `2a8ca54272fe6cf1cc12a2f2aa7919caf8481359`, exact head `8c0ad02ac315e28b7f09e69e09fe0846053f26ea`, exact full CI `38076184096` 2774 pytest/Ruff/artifact/demo SUCCESS + attribution `38076184097` SUCCESS. Actual locally advertised `tools/list` name/input/output schema hash equals returned `build_identity.interface_schema_digest`. Both child TASK+STATE COMPLETE_SOURCE_ONLY.
+- FIRST ACTUAL LIVE GAP #590/#540: privately verify exact installed process build SHA/interface schema, client advertised catalog generation and route provenance; correlate precisely one known-good and one failing read-only opaque-ID request from the **same approved client route** through authenticated MCP ingress, application audit, dispatcher, response-delivery HTTP 200 acceptance and client-visible result. If a bounded edge is not available, keep UNKNOWN and request first-party evidence; don't substitute an inferred duplicate tunnel.
+- Enforce release precondition Fabric A6 #942 off-target journal + A7 #943 disconnected rollback and independently verified return ACK before installing/promoting a uniform Runner-MCP security release on all enrolled hosts; do not restart or deploy by guess. #642 host-local permit is a separate policy gate. Fabric #1398/#1400 remains Fabric-chat-owned; AIfordable #370 real rootless worker + Fabric #972 real signed Q7 remain blocked. #381/#590/#540 OPEN, Claude NO_DISPATCH.
+
+
 ## 2026-10-10 evening — #590 live request-delivery edge is NOW first blocker
 
 1. Runner-MCP PR #648 source test **MERGED** `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e`, exact reviewed head `403eedf2429fda7d4b84839aa70790a3a6e71ae5`, attribution `38075662830` SUCCESS; full `38075662792` SUCCESS (Ruff, 2773 pytest, built release artifact, clean demo). Child `roadmap/children/590-mcp-response-audit-lineage/{TASK,STATE}.md` COMPLETE_SOURCE_ONLY. HTTP X-Request-ID / W3C trace / one matching bounded audit for local same-session good `list_projects` and synthetic degraded `runtime_status` proven. Initial framing mismatch in test fixed (RMCP-F-0022). No installed runtime repair.

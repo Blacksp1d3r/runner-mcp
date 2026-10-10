@@ -1,3 +1,9 @@
+## 2026-10-10 evening — source-only lineage / catalog verification now green
+
+[PR #648](https://github.com/Blacksp1d3r/runner-mcp/pull/648) merged `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e` (exact-head full CI incl 2773 pytest green): one in-process authenticated MCP session demonstrates two different response request IDs + W3C spans, correct JSON-RPC good/degraded payloads, and exactly corresponding bounded audit records. [PR #649](https://github.com/Blacksp1d3r/runner-mcp/pull/649) merged `2a8ca54272fe6cf1cc12a2f2aa7919caf8481359` (exact-head full CI incl 2774 pytest green): current source's advertised HTTP `tools/list` exact name/input/output schema digest equals the active source build identity digest.
+
+Both are SOURCE tests, **not evidence** that the connected client uses the same host/process build, that its cached tool schema is current or that one failing response traveled through the expected tunnel. Previously observed live mixed outcome below is unchanged. Operator-private accepted live evidence still requires a qualified installed process and client schema fingerprint, a known-good and failing opaque-ID request through ingress/dispatch/audit/response-delivery/client, and approved A6 off-target journal + A7 independent rollback before any fleet upgrade. Leave #590/#540 OPEN and Claude NO_DISPATCH.
+
 # 2026-10-10 — Connected MCP read-only probe matrix
 
 Tracking: [Runner-MCP #590](https://github.com/Blacksp1d3r/runner-mcp/issues/590). Adjacent authority gate: [#634](https://github.com/Blacksp1d3r/runner-mcp/issues/634). Owner: MCP interface/component 14 and tunnel/component 11. Source of evidence: one authenticated ChatGPT-connected session, **not** a qualified independent operator/local runtime inspection. Capture window: 2026-10-10 afternoon Europe/Brussels. Main GitHub tree checked at `167cc30c402d1d23dd1fb57ce33c7f422bae104b`.

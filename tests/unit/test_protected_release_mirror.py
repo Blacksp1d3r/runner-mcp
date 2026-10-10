@@ -209,3 +209,76 @@ def test_protected_pins_change_after_both_copies_is_not_success(tmp_path):
     assert result["reasonCode"] == "protected-set-changed"
     assert result["verifiedCount"] == 2
     assert calls == [("mirror", A), ("mirror", B)]
+
+
+def test_final_mount_loss_after_two_copies_blocks_success(tmp_path):
+    obj, calls = make_case(tmp_path)
+    original_readiness = obj._readiness
+    polls = 0
+
+    def mount_disappears_before_final_success():
+        nonlocal polls
+        polls += 1
+        evidence = original_readiness()
+        return {**evidence, "mountReady": False} if polls == 4 else evidence
+
+    obj._readiness = mount_disappears_before_final_success
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "independent-volume-not-ready"
+    assert result["verifiedCount"] == 2
+    assert calls == [("mirror", A), ("mirror", B)]
+    assert polls == 4
+
+
+def test_final_verification_detects_first_mirror_corruption(tmp_path):
+    obj, calls = make_case(tmp_path)
+    verified = []
+
+    def secondary_is_corrupted_by_second_copy(revision):
+        verified.append(revision)
+        return verified != [A, B, A]
+
+    obj._verify_secondary = secondary_is_corrupted_by_second_copy
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "secondary-custody-invalid"
+    assert result["verifiedCount"] == 2
+    assert verified == [A, B, A]
+    assert calls == [("mirror", A), ("mirror", B)]
+
+
+def test_operator_stop_after_second_copy_blocks_final_success(tmp_path):
+    obj, calls = make_case(tmp_path)
+    original_mirror = obj._mirror_exact
+
+    def stop_after_copy(revision):
+        evidence = original_mirror(revision)
+        if revision == B:
+            (tmp_path / "stop").write_text("stop")
+        return evidence
+
+    obj._mirror_exact = stop_after_copy
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "operator-safety-blocked"
+    assert result["verifiedCount"] == 2
+    assert calls == [("mirror", A), ("mirror", B)]
+
+
+def test_pin_promotion_during_final_secondary_verification_blocks_success(tmp_path):
+    obj, calls = make_case(tmp_path)
+    polls = 0
+
+    def promoted_after_final_secondary_checks():
+        nonlocal polls
+        polls += 1
+        return (A, B) if polls <= 4 else (A, "c" * 40)
+
+    obj._pins = promoted_after_final_secondary_checks
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "protected-set-changed"
+    assert result["verifiedCount"] == 2
+    assert polls == 5
+    assert calls == [("mirror", A), ("mirror", B)]

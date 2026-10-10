@@ -143,14 +143,43 @@ class ProtectedReleaseMirror:
                     "mirror-operation-blocked", copied=copied,
                     already=already, verified=verified,
                 )
+        # The first mirror may have disappeared or become corrupt while the
+        # second was copied. Pre-copy admission and per-copy checks alone do
+        # not prove that both archives still exist on the independent medium.
+        try:
+            self._safety.assert_action_allowed(ActionClass.BACKUP)
+        except (OSError, RuntimeError, ValueError):
+            return _result(
+                "operator-safety-blocked", copied=copied,
+                already=already, verified=verified,
+            )
         try:
             if self._pins() != pins:
                 return _result(
                     "protected-set-changed", copied=copied,
                     already=already, verified=verified,
                 )
+            if not _admitted_readiness(self._readiness()):
+                return _result(
+                    "independent-volume-not-ready", copied=copied,
+                    already=already, verified=verified,
+                )
+            for revision in pins:
+                if self._verify_secondary(revision) is not True:
+                    return _result(
+                        "secondary-custody-invalid", copied=copied,
+                        already=already, verified=verified, device_ready=True,
+                    )
+            if self._pins() != pins:
+                return _result(
+                    "protected-set-changed", copied=copied,
+                    already=already, verified=verified,
+                )
         except (OSError, RuntimeError, ValueError, TypeError, AttributeError):
-            return _result("protected-set-unavailable", copied=copied, verified=verified, already=already)
+            return _result(
+                "final-verification-unavailable", copied=copied,
+                already=already, verified=verified,
+            )
         return _result(
             "protected-set-verified", state="verified",
             copied=copied, already=already, verified=verified, device_ready=True,

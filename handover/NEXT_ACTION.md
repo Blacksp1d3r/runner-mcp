@@ -1,5 +1,14 @@
 # NEXT ACTION
 
+## Latest: 2026-10-10 — #627 merged, live connector and real backup evidence remain BLOCKED
+
+- #590 source security [PR #627](https://github.com/Blacksp1d3r/runner-mcp/pull/627) exact head `e70e11702504c3fe161900ced4afceff8c7df084`, attribution `38042225385` and full validation `38042225393` ALL SUCCESS, squash `e06fe5b7f44c92ae22d4fa291a142b6b67803db3` MERGED. Previous pending-CI section below is superseded.
+- The actual connected runtime is NOT proven to run this code. Current main doctor necessarily includes three checks absent from observed 12-check connected doctor, while status/identity tool calls fail. To progress #590, require bounded *operator-private read-only* proof of installed source/protocol/client catalog and request-response lineage; no speculative tunnel or service restart. See docs/diagnostics/CONNECTOR_READONLY_TRIAGE.md.
+- AIfordable #553 MERGED with green CI but storage binding remains unqualified. Fabric #1397 still OPEN for authorized dedicated release archive namespace/bootstrap. Runner-MCP #587/#588 OPEN, 0 real independent mirror and offline restore receipts. Physical proof remains prerequisite to GitHub artifact deletion.
+- Next safe source lane: inspect #590 build identity error-unavailable handling or another independent roadmap child only after checking no agent already owns it. Do not falsely claim a source merge repairs the live connector.
+- Refer to the top of `handover/SESSION_HANDOFF.md` and `roadmap/DEPENDENCIES.md` for exact SHAs, owners, tests and dependency sequence.
+
+
 ## Latest: 2026-10-10 — #627 source-only diagnostic CI / storage authority model merged
 
 - Runner-MCP PR [#627](https://github.com/Blacksp1d3r/runner-mcp/pull/627): source-only bounded status failure response, exact HEAD `e70e11702504c3fe161900ced4afceff8c7df084`. Commit attribution `38042225385` SUCCESS, full validation `38042225393` Ruff/pytest and artifact SUCCESS, five-minute clean demo pending at latest snapshot. **Do not merge until exact-head full terminal CI**. #590 remains OPEN for live installed-build/route correlation.

@@ -11,7 +11,6 @@ from __future__ import annotations
 import os
 import pwd
 import re
-import socket
 import stat
 import subprocess
 import time
@@ -162,7 +161,7 @@ def _safe_intent(intent: object, now: int) -> bool:
     if not isinstance(intent, Mapping) or set(intent) != _FIELDS:
         return False
     action = intent.get("action")
-    if action not in {"STATUS", "START", "STOP", "RESTART"}:
+    if not isinstance(action, str) or action not in {"STATUS", "START", "STOP", "RESTART"}:
         return False
     if intent.get("contract_version") != _CONTRACT:
         return False
@@ -236,7 +235,10 @@ class FixedCodingWorkerActuator:
         except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             return _result("blocked", "fixed-actuator-unavailable")
         if listener == "UNSAFE":
-            return _result("blocked", "listener-not-loopback", observed=state)
+            return _result(
+                "blocked", "listener-not-loopback",
+                observed=state, mutation=action != "STATUS",
+            )
         if action == "STATUS":
             return _result(
                 "observed", "read-only-observation",

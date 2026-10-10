@@ -61,6 +61,7 @@ from .bewind_worker_qualification_policy import (
 )
 from .build_identity import (
     BuildIdentity,
+    bounded_build_identity_payload,
     installed_source_revision,
     runner_mcp_build_identity,
     runner_mcp_mcp_build_identity,
@@ -743,17 +744,9 @@ def build_mcp(
         raise TypeError("build_identity_provider must be callable")
 
     def build_identity() -> dict[str, object]:
-        """Return bounded first-party build/protocol/interface identity."""
+        """Return proven identity or a bounded explicit unavailable result."""
 
-        if build_identity_provider is None:
-            raise ValueError("build_identity_unavailable")
-        try:
-            identity = build_identity_provider()
-        except (RuntimeError, TypeError, ValueError):
-            raise ValueError("build_identity_unavailable") from None
-        if not isinstance(identity, BuildIdentity):
-            raise TypeError("build_identity_unavailable")
-        return identity.to_payload()
+        return bounded_build_identity_payload(build_identity_provider)
 
     if build_identity_provider is not None:
         mcp.tool()(build_identity)

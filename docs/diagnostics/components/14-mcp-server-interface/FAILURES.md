@@ -41,3 +41,34 @@ prior-wheel escrow and an isolated synthetic disconnected recovery path, not
 actual self-hosted supervisor/restore, reboot or real return ACK. A6 #942
 off-target physical evidence remains OPEN. No source-only success resolves
 opaque connected `runtime_status` failure #590 or stale catalog issue #540.
+
+### RMCP-MCP-0005 / Q7-20261010 — generic coding qualification error hides safe blocker
+
+Observed on currently connected Runner-MCP source revision
+`a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a`: fixed
+`fabric_coding_availability_qualify` returned an opaque MCP/tool error, so
+no valid Q7 state (WAIT/OPERATOR_REQUIRED/BLOCKED) or session/worker
+authorization can be claimed. Separate successful `runtime_doctor` exposed
+`fabric_continuity_status_configuration_unavailable` and worker qualification
+readiness unavailable; intermittently successful Fabric snapshot showed
+agent-bus.relay `evidence-unavailable`, execution/mutation disabled.
+The continuity configuration warning belongs to source/CI continuity;
+it is **not proven to cause** the missing Agent Bus relay evidence.
+Neither check demonstrates a failed Claude OAuth subscription.
+
+Corrective source-only Runner-MCP #643 merged as `edbe8a78`: sanitized
+`fabric_coding_availability_preflight()` distinguishes operator stop,
+unqualified Fabric launcher and missing private Q7 binding without invoking
+Claude or revealing sensitive values. Successful preflight means ONLY
+attemptability, never READY or dispatch. Fabric #1446 merged `6b308156`:
+reject HTTP redirects and environment proxies before bearer-bound coding
+loopback MCP requests. Both commits passed exact-head CI; they are NOT
+installed on the old control host.
+
+Operational status: **OPEN/NO_DISPATCH**. To close: correct-host rootless
+Claude #370/#381 qualification, authenticated Q7 loopback #972, durable Fabric
+issuer+lease/fencing #1398/#1400, independent A6/A7 #942/#943 safe fleet
+updates, exact active process/runtime/catalogue and real correlatable ACK.
+Do not infer there is no Claude worker, install a second provider adapter,
+enable paid API fallback, claim credentials are expired or restart the tunnel
+from a sanitized generic error.

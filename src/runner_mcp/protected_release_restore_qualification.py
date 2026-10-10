@@ -76,6 +76,7 @@ class ProtectedReleaseRestoreQualification:
                 if (
                     not isinstance(evidence, Mapping)
                     or evidence.get("schemaVersion") != _PROOF
+                    or evidence.get("commitSha") != revision
                     or evidence.get("revisionVerified") is not True
                     or evidence.get("localCustodyReaderAccepted") is not True
                     or evidence.get("offlineNetworkDisabled") is not True

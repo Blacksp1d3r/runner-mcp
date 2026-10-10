@@ -9,7 +9,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from .operational_safety import ActionClass, OperatorSafetyGuard
+from .operational_safety import (
+    ActionClass,
+    OperatorSafetyGuard,
+    OperatorStopActive,
+    SafetyConfigurationError,
+)
 
 _SCHEMA = "runner.fabric/coding-agent-availability-qualification/v1"
 _MAX_STDOUT_BYTES = 16_384
@@ -60,6 +65,42 @@ class FabricCodingAvailabilityQualificationRunner:
         self.environment = environment
         self.home = (home or Path.home()).expanduser().resolve()
         self._runner = runner
+
+    def preflight(self) -> dict[str, object]:
+        """Safe local *attemptability* signal, never Claude readiness.
+
+        Checks the same fixed launch environment as run() without starting
+        a process, probing a provider, reading token content into output,
+        making a worker request or changing an operator stop.
+        """
+
+        schema = "runner-mcp/coding-availability-preflight/v1"
+
+        def report(state: str, reason: str) -> dict[str, object]:
+            return {
+                "schemaVersion": schema,
+                "state": state,
+                "reason_code": reason,
+                "qualification_executed": False,
+                "provider_session_checked": False,
+                "dispatch_authorized": False,
+            }
+
+        try:
+            self.safety.assert_action_allowed(ActionClass.TEST)
+        except (OperatorStopActive, SafetyConfigurationError) as exc:
+            if isinstance(exc, OperatorStopActive):
+                return report("blocked", "operator_stop_active")
+            return report("blocked", "operator_safety_unqualified")
+        try:
+            self._validated_launcher()
+        except FabricCodingAvailabilityQualificationError:
+            return report("wait", "fabric_launcher_unqualified")
+        try:
+            self._private_environment()
+        except FabricCodingAvailabilityQualificationError:
+            return report("wait", "q7_private_configuration_incomplete")
+        return report("ready-for-qualification", "bounded_q7_preflight_passed")
 
     def run(self, case: str, expected_revision: str) -> dict[str, Any]:
         expected = _expected_case(case)

@@ -145,7 +145,10 @@ def test_status_is_read_only_and_public_safe():
 def test_only_exact_rootless_actions_produce_observed_terminal_evidence(
     action, expected_state, listener
 ):
-    host = SyntheticHost()
+    host = SyntheticHost(
+        state="INACTIVE" if action == "START" else "ACTIVE",
+        listen="ABSENT" if action == "START" else "LOOPBACK_ONLY",
+    )
     obj = actuator.FixedCodingWorkerActuator(
         verify_fabric_intent=lambda _: True, host=host
     )
@@ -283,3 +286,90 @@ def test_exception_after_action_intent_does_not_claim_no_mutation():
     assert result["reasonCode"] == "fixed-actuator-unavailable"
     assert result["mutationTriggered"] is True
     assert "/private/" not in str(result)
+
+
+@pytest.mark.parametrize("action,state,listener", [
+    ("START", "INACTIVE", "LOOPBACK_ONLY"),
+    ("START", "INACTIVE", "UNSAFE"),
+    ("START", "ACTIVE", "LOOPBACK_ONLY"),
+    ("START", "ACTIVE", "ABSENT"),
+    ("START", "FAILED", "ABSENT"),
+    ("START", "TRANSITIONING", "ABSENT"),
+    ("STOP", "INACTIVE", "ABSENT"),
+    ("STOP", "INACTIVE", "LOOPBACK_ONLY"),
+    ("STOP", "ACTIVE", "ABSENT"),
+    ("STOP", "FAILED", "LOOPBACK_ONLY"),
+    ("RESTART", "INACTIVE", "ABSENT"),
+    ("RESTART", "ACTIVE", "UNSAFE"),
+    ("RESTART", "TRANSITIONING", "LOOPBACK_ONLY"),
+])
+def test_fixed_actuator_blocks_inconsistent_pre_action_snapshots_without_mutation(
+    action, state, listener
+):
+    host = SyntheticHost(state=state, listen=listener)
+    obj = actuator.FixedCodingWorkerActuator(
+        verify_fabric_intent=lambda _: True, host=host
+    )
+    result = obj.execute(fixed_intent(action))
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] in {
+        "pre-action-state-conflict", "listener-not-loopback",
+    }
+    assert result["mutationTriggered"] is False
+    assert result["observedState"] == state
+    assert host.calls == []
+
+
+def test_status_preserves_bounded_failed_service_evidence():
+    host = SyntheticHost(state="FAILED", listen="ABSENT")
+    obj = actuator.FixedCodingWorkerActuator(
+        verify_fabric_intent=lambda _: True, host=host
+    )
+    result = obj.execute(fixed_intent("STATUS"))
+    assert result["state"] == "observed"
+    assert result["observedState"] == "FAILED"
+    assert result["listenerEvidence"] == "ABSENT"
+    assert result["mutationTriggered"] is False
+    assert host.calls == []
+
+
+def test_failed_preflight_observation_does_not_mutate():
+    host = SyntheticHost()
+
+    def fail():
+        raise OSError("/private/secret-service.sock")
+
+    host.listener = fail
+    obj = actuator.FixedCodingWorkerActuator(
+        verify_fabric_intent=lambda _: True, host=host
+    )
+    result = obj.execute(fixed_intent("START"))
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "fixed-actuator-unavailable"
+    assert result["mutationTriggered"] is False
+    assert "/private/" not in str(result)
+    assert host.calls == []
+
+
+def test_stop_must_start_from_active_coherent_state():
+    host = SyntheticHost(state="ACTIVE", listen="LOOPBACK_ONLY")
+    obj = actuator.FixedCodingWorkerActuator(
+        verify_fabric_intent=lambda _: True, host=host
+    )
+    first = obj.execute(fixed_intent("STOP"))
+    assert first["reasonCode"] == "fixed-action-observed"
+    assert host.calls == ["STOP"]
+    second = obj.execute(fixed_intent("STOP"))
+    assert second["reasonCode"] == "pre-action-state-conflict"
+    assert second["mutationTriggered"] is False
+    assert host.calls == ["STOP"]
+
+
+def test_start_blocks_existing_foreign_loopback_listener_before_any_start():
+    host = SyntheticHost(state="INACTIVE", listen="LOOPBACK_ONLY")
+    obj = actuator.FixedCodingWorkerActuator(
+        verify_fabric_intent=lambda _: True, host=host
+    )
+    result = obj.execute(fixed_intent("START"))
+    assert result["reasonCode"] == "pre-action-state-conflict"
+    assert host.calls == []

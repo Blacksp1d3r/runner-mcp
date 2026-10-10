@@ -711,6 +711,9 @@ class LocalMCPClient:
         self._peer_server_version: str | None = None
         self._peer_build_identity: dict[str, object] | None = None
         self._peer_tool_names: frozenset[str] = frozenset()
+        # A lost session must be followed by an independently verified
+        # build/catalogue before any caller-initiated next invocation.
+        self._requires_verified_reconnect = False
 
     @property
     def peer_identity(self) -> dict[str, str | None]:
@@ -771,7 +774,7 @@ class LocalMCPClient:
                 "params": {},
             }
         )
-        if self._compatibility_preflight:
+        if self._compatibility_preflight or self._requires_verified_reconnect:
             tool_surface = self._post(
                 {
                     "jsonrpc": "2.0",
@@ -812,6 +815,7 @@ class LocalMCPClient:
                 server_version=self._peer_server_version,
                 build_identity=self._peer_build_identity,
             )
+            self._requires_verified_reconnect = False
         self._initialized = True
 
     def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
@@ -829,6 +833,10 @@ class LocalMCPClient:
         try:
             response = self._post(payload)
         except _StaleMCPSessionError:
+            # A 404 may have been synthesized by a proxy after the original
+            # request crossed an execution boundary. Reissuing tools/call is
+            # unsafe, including when the tool is usually read-only: callers
+            # must observe the uncertainty and choose any future invocation.
             self._session_id = None
             self._initialized = False
             self._peer_protocol_version = None
@@ -836,12 +844,10 @@ class LocalMCPClient:
             self._peer_server_version = None
             self._peer_build_identity = None
             self._peer_tool_names = frozenset()
-            self.initialize()
-            payload = {
-                **payload,
-                "id": self._allocate_request_id(),
-            }
-            response = self._post(payload)
+            self._requires_verified_reconnect = True
+            raise BridgeExecutionAdapterError(
+                "MCP_SESSION_STALE_EFFECT_UNKNOWN_RECONNECT_REQUIRED"
+            ) from None
         if response is None or not isinstance(response, dict):
             raise BridgeExecutionAdapterError(
                 "Runner MCP returned an empty tool response"

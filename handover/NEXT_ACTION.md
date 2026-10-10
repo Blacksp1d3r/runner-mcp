@@ -1,5 +1,13 @@
 # NEXT ACTION
 
+## 2026-10-10 evening — #590 live request-delivery edge is NOW first blocker
+
+1. Runner-MCP PR #648 source test **MERGED** `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e`, exact reviewed head `403eedf2429fda7d4b84839aa70790a3a6e71ae5`, attribution `38075662830` SUCCESS; full `38075662792` SUCCESS (Ruff, 2773 pytest, built release artifact, clean demo). Child `roadmap/children/590-mcp-response-audit-lineage/{TASK,STATE}.md` COMPLETE_SOURCE_ONLY. HTTP X-Request-ID / W3C trace / one matching bounded audit for local same-session good `list_projects` and synthetic degraded `runtime_status` proven. Initial framing mismatch in test fixed (RMCP-F-0022). No installed runtime repair.
+2. Owner-qualified private first-party installed-source identity + client `tools/list` name/schema exact hash on both managed Runner-MCP hosts; distinguish current on-disk source, loaded running process, client cached schema and which tunnel generation answered. Previously doctor had old 12 checks and Q7 preflight missing even though source merged. Do not infer second tunnel/host fault from client generic exception.
+3. Use **one** authorized read-only known-good and **one** failing client call with opaque IDs to match client admission, dispatcher, installed-process audited execution/denial, response-delivery acceptance and resulting client outcome. Record first missing/mismatched edge, not guessed cause. No raw URL/IP/path/token logging. If no per-call trusted correlation, keep #590 OPEN/UNKNOWN.
+4. Before changing any live control path, Fabric A6 #942 off-target journal and A7 #943 local independent rollback + cross-route ACK and one exact qualified fleet release convergence; no blind restart/sudo/tunnel changes. #540 stale session and #642 host permit remain independent. Fabric #1398/#1400 owned by Fabric chat. AIfordable #370 and Fabric #972 real Q7 proof not yet complete. #381 OPEN, Claude/EnerCue NO_DISPATCH.
+
+
 ## 2026-10-10 late — After Q7 communication #646/#647 source merge
 
 - Q7 app response source issues FIXED: PR #646 merged `a8833190b62e1ace6d88617951116cca541cf8ba`, 2768 pytest/all CI green; strict not_started vs unknown-effect reason and no auto retry. PR #647 merged `d078781d28f98398359e4db163dd8c248a77264d`, 2772 pytest/all CI green; exact integer 1 assignment count. Child STATE marked COMPLETE_SOURCE_ONLY; Failure Museum RMCP-F-0020/0021.

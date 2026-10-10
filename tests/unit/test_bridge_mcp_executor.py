@@ -297,9 +297,7 @@ def test_client_records_bounded_peer_handshake_identity(monkeypatch) -> None:
         ),
         FakeResponse(b""),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(_config())
@@ -421,7 +419,7 @@ def test_client_preflights_required_surface_and_build_identity(
         captured.append(json.loads(request.data))
         return responses.pop(0)
 
-    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", respond)
     client = LocalMCPClient(
         _config(),
         allowed_tools=frozenset({"list_projects"}),
@@ -490,9 +488,7 @@ def test_client_preflight_rejects_missing_required_tool(monkeypatch) -> None:
             ).encode()
         ),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(
@@ -569,9 +565,7 @@ def test_client_preflight_rejects_peer_digest_mismatch(monkeypatch) -> None:
             ).encode()
         ),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(
@@ -602,16 +596,14 @@ def test_client_sends_negotiated_protocol_header(monkeypatch) -> None:
         captured.append(request.get_header("Mcp-protocol-version"))
         return responses.pop(0)
 
-    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", respond)
     LocalMCPClient(_config()).initialize()
 
     assert captured == [None, "2025-03-26"]
 
 
 def test_client_rejects_observed_protocol_version_mismatch(monkeypatch) -> None:
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: FakeResponse(
             b'{"jsonrpc":"2.0","id":1,"result":{"protocolVersion":"2024-11-05"}}',
             headers={"Mcp-Session-Id": "session-123"},
@@ -643,9 +635,7 @@ def test_client_rejects_invalid_observed_server_identity(
             "serverInfo": server_info,
         },
     }
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: FakeResponse(
             json.dumps(payload).encode(),
             headers={"Mcp-Session-Id": "session-123"},
@@ -697,7 +687,7 @@ def test_client_initializes_session_and_sends_authenticated_tool_call(
         )
         return responses.pop(0)
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fake_urlopen)
     client = LocalMCPClient(_config())
 
     result = client._call_tool("list_projects", {})
@@ -744,7 +734,7 @@ def test_client_propagates_only_bound_traceparent(monkeypatch) -> None:
         captured.append(request.get_header("Traceparent"))
         return responses.pop(0)
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fake_urlopen)
     client = LocalMCPClient(_config())
 
     assert client._call_tool("runtime_status", {}) is None
@@ -771,7 +761,7 @@ def test_client_omits_traceparent_without_bound_request(monkeypatch) -> None:
         captured.append(request.get_header("Traceparent"))
         return responses.pop(0)
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fake_urlopen)
     LocalMCPClient(_config()).initialize()
 
     assert captured == [None, None]
@@ -799,9 +789,7 @@ def test_client_accepts_multi_item_list_tool_content(monkeypatch) -> None:
             ).encode()
         ),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(_config())
@@ -834,9 +822,7 @@ def test_client_rejects_multi_item_non_list_tool_content(monkeypatch) -> None:
             ).encode()
         ),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(_config())
@@ -860,7 +846,7 @@ def test_client_initialize_is_idempotent(monkeypatch) -> None:
         calls += 1
         return responses.pop(0)
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_urlopen)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fake_urlopen)
     client = LocalMCPClient(_config())
 
     client.initialize()
@@ -870,9 +856,7 @@ def test_client_initialize_is_idempotent(monkeypatch) -> None:
 
 
 def test_client_rejects_invalid_session_identifier(monkeypatch) -> None:
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: FakeResponse(
             b'{"jsonrpc":"2.0","id":1,"result":{}}',
             headers={"Mcp-Session-Id": "bad session"},
@@ -895,9 +879,7 @@ def test_client_rejects_server_jsonrpc_error(monkeypatch) -> None:
             b'{"jsonrpc":"2.0","id":2,"error":{"code":-32000,"message":"private"}}'
         ),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(_config())
@@ -918,9 +900,7 @@ def test_client_rejects_tool_error_without_leaking_text(monkeypatch) -> None:
             b'"content":[{"type":"text","text":"private detail"}]}}'
         ),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(_config())
@@ -957,9 +937,7 @@ def test_client_rejects_unsupported_tool_content(monkeypatch, content: dict) -> 
             json.dumps({"jsonrpc": "2.0", "id": 2, "result": content}).encode()
         ),
     ]
-    monkeypatch.setattr(
-        urllib.request,
-        "urlopen",
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request",
         lambda request, timeout: responses.pop(0),
     )
     client = LocalMCPClient(_config())
@@ -993,7 +971,7 @@ def test_client_normalizes_transport_failures(monkeypatch, error) -> None:
     def fail(request, timeout):
         raise error
 
-    monkeypatch.setattr(urllib.request, "urlopen", fail)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fail)
     client = LocalMCPClient(_config())
 
     with pytest.raises(BridgeExecutionAdapterError) as caught:
@@ -1573,7 +1551,7 @@ def test_stale_mcp_session_does_not_transparently_replay_any_tool(
             raise response
         return response
 
-    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", respond)
     client = LocalMCPClient(
         _config(), allowed_tools=frozenset({tool_name}),
     )
@@ -1652,7 +1630,7 @@ def test_stale_session_next_explicit_call_requires_build_and_schema_preflight(
             raise reply
         return reply
 
-    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", respond)
     client = LocalMCPClient(
         _config(),
         allowed_tools=frozenset({"list_projects"}),
@@ -1740,7 +1718,7 @@ def test_stale_session_explicit_next_request_proceeds_only_after_new_verified_pe
             raise reply
         return reply
 
-    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", respond)
     client = LocalMCPClient(
         _config(),
         allowed_tools=frozenset({"list_projects"}),
@@ -1807,7 +1785,7 @@ def test_client_does_not_retry_ambiguous_failure_after_session_established(
             raise response
         return response
 
-    monkeypatch.setattr(urllib.request, "urlopen", respond)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", respond)
     client = LocalMCPClient(
         _config(),
         allowed_tools=frozenset({"list_projects"}),

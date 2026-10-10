@@ -1,5 +1,16 @@
 # NEXT ACTION
 
+## Latest: 2026-10-10 — supersedes the 2026-10-03 live-restart notes below
+
+1. **Do not replay October 3 launcher/restart suggestions without authorized current state.** Installed runtime is not proven by this chat: `runtime_status` and `build_identity` returned generic errors, `runtime_doctor` returned WARN (0 failures, 3 warnings). See #590 and latest `handover/SESSION_HANDOFF.md`.
+2. Protected backup #587 code gates #621–#626 are MERGED with full exact-head green CI; latest #626 squash `5aba8423594290a7837208e53721234dfe0df778`. Both #587 and #588 remain OPEN for **physical proof**, not more synthetic/source-only merge.
+3. Current dependency chain: AIfordable #537/PR #553 fix isolated topology test clocks and qualify live storage authority (binding currently unqualified) -> Fabric #1397 qualified dedicated archive namespace/bootstrap -> Runner-MCP #586 live read-only readiness -> #587 2/2 physical active+rollback archive mirror and receipts -> #588 actual offline independent restore and cleanup -> provider artifact disposition review. No deletion/mount/sudo/tunnel or operator action until prior gates genuinely passed.
+4. AIfordable #553 exact previous head `fea120cb18ab87d8ece7627b539ff27a981bd5a7`, CI `38035068769` FAILED 9 topology tests (1,352 passed), owner notified to fix test date 2026-10-08 versus registry date 2026-10-10 while keeping fail-closed future-dated rejection.
+5. Safe independent source task: review #590 per-tool status/identity error handling. Issue has bounded code-path hypothesis and tests proposal; don't treat it as confirmed tunnel failure. Check upstream current PR/CI before opening duplicate branch.
+6. Master v1.2: verify GitHub state and CI at exact head before all merges; update all canonical handovers and Failure Index at material changes.
+
+---
+
 Updated: 2026-10-03
 
 ## Goal

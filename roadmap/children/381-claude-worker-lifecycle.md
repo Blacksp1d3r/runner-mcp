@@ -12,6 +12,14 @@ Read-only attempts during this review: connected `fabric_operational_snapshot` f
 
 **Correct operational acceptance:** trusted issuer/verifier+exact worker binding -> preinstalled fixed helper/user-manager authorization -> owner-controlled STATUS/START/STOP with loopback and listener-gone receipt -> Fabric #972 real authenticated non-billable availability/correlation/lease tests -> separate synthetic work admission. A static `READY_FOR_REVIEW` from Fabric #1430 does not grant dispatch.
 
+## SOURCE safety milestone 2026-10-10 — PRE-ACTION child complete
+
+[Runner-MCP PR #637](https://github.com/Blacksp1d3r/runner-mcp/pull/637) merged at `16230a35698abf43d274cae27150ad0eeecce3b9`, exact head `e8e696d880729705c1e88a2055d60828fc66558a`. Attribution `38052268180` and complete validation `38052268203` ALL SUCCESS: Ruff, 2,701 pytest, built release artifact and clean demo. Child `roadmap/children/381-preaction-snapshot/{TASK,STATE}.md` is COMPLETE_SOURCE_ONLY, without live service permission.
+
+Fixed actuator now refuses START unless service INACTIVE + listener ABSENT, refuses STOP/RESTART unless ACTIVE + LOOPBACK_ONLY; foreign/existing listener, duplicate stop/start, unknown or incoherent snapshot blocks **before** any systemd action. This is a local supplementary guard, not process/socket owner attestation or Fabric trusted lease/fence. Parent #381 intentionally remains OPEN, AIfordable #370 and Fabric #972 still unqualified, Claude NO_DISPATCH.
+
+External improvements: Fabric #1432 typed structural preflight merged but non-authorizing; Fabric #1433 typed response correlation is an unmerged draft, also non-authorizing; AIfordable #555 lifecycle evidence runbook merged. Actual first upstream blocker remains central signed authenticated durable #1172/#1400/#1398 Fabric authority + JIT fencing; then correct dedicated host enrollment/proof and Fabric #972 loopback. Never add generic user/systemctl authority or activate paid API as workaround.
+
 ## Authority / topology
 - One Fabric control plane: policy/capability/lease/fence/plan owns admission (#1172/#240).
 - Local Runner-MCP actuator: only fixed exact service and account on the correct rootless worker host.

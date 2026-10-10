@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -154,3 +155,39 @@ def _bounded_text(value: object, field: str) -> str:
     ):
         raise BuildIdentityError(f"{field} is invalid")
     return value
+
+def bounded_build_identity_payload(
+    provider: Callable[[], BuildIdentity] | None,
+) -> dict[str, object]:
+    """Return an explicit unverified result when build identity cannot be proved.
+
+    A provider failure must never become a raw MCP tool exception or a guessed
+    build/source revision. The normal proven identity schema is unchanged.
+    """
+
+    unavailable: dict[str, object] = {
+        "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": "build-identity-unavailable",
+        "identityEvidenceComplete": False,
+    }
+    if provider is None:
+        return unavailable
+    try:
+        identity = provider()
+        if not isinstance(identity, BuildIdentity):
+            return unavailable
+        payload = identity.to_payload()
+        if not isinstance(payload, dict) or set(payload) != {
+            "component_id",
+            "build_version",
+            "source_revision",
+            "artifact_digest",
+            "protocol_min",
+            "protocol_max",
+            "interface_schema_digest",
+        }:
+            return unavailable
+        return payload
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return unavailable

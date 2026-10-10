@@ -2,6 +2,14 @@
 
 State: SOURCE_MERGED; HOST_AND_FABRIC_ACCEPTANCE_BLOCKED; no Claude work dispatch; parent: Runner-MCP #381; priority HIGH (Claude multi-project acceleration).
 
+## 2026-10-10 night — Runner-MCP Q7 communication source defects corrected
+
+[PR #646](https://github.com/Blacksp1d3r/runner-mcp/pull/646) source MERGED `a8833190b62e1ace6d88617951116cca541cf8ba`, exact-head CI `38073594605` (Ruff, 2768 pytest, release artifact, clean demo) SUCCESS + attribution. Q7 app-level failures no longer collapse into unstructured generic MCP errors: strict safe response, known pre-launch `qualification_effect=not_started`, possible post-launch `qualification_effect=unknown`, `result_verified=false`, `dispatch_authorized=false`, `retry_authorized=false`. Standalone `roadmap/children/381-q7-communication-errors/{TASK,STATE}.md` COMPLETE_SOURCE_ONLY; Failure Museum RMCP-F-0020.
+
+[PR #647](https://github.com/Blacksp1d3r/runner-mcp/pull/647) source MERGED `d078781d28f98398359e4db163dd8c248a77264d`, head `ea6e27bb1b3dcfe256b561ff8955bf31c0cdd768`, attribution `38073911858` + `38074186402` SUCCESS, full `38073911864` (Ruff, 2772 pytest, artifact, demo) SUCCESS. Q7 strict response rejects JSON `true`, floating 1.0 and string "1" as request count; only exact integer 1 passes. Child `381-q7-assignment-count/{TASK,STATE}.md` COMPLETE_SOURCE_ONLY; Failure Museum RMCP-F-0021.
+
+**Installed/live route still NOT repaired/proven:** connected client `list_projects` structured PASS with six projects, `runtime_doctor` old 12-check WARN and `runtime_status` opaque internal failure, while source-merged `fabric_coding_availability_preflight` is absent from the client's schema. Source merges do not update installed binaries or transport. #590/#540/#642 require qualified exact fleet build and per-request ingress/dispatch/response-delivery proof after safe A6/A7. Fabric #1400/#1398 trusted durable issuer+lease/fencing external (other Fabric chat); AIfordable #370 actual service and Fabric #972 actual right-host Q7 still pending. **#381 remains OPEN; Claude NO_DISPATCH.** No host, tunnel, provider API or service actions.
+
 ## 2026-10-10 evening — fixed unit MainPID / socket attribution source milestone
 
 Runner-MCP [PR #645](https://github.com/Blacksp1d3r/runner-mcp/pull/645), exact head `446a1edc8129a51421a6ef1b6516f2a84e1ab93f`, attribution `38071120207` + `38071261321` SUCCESS, full validation `38071120259` SUCCESS (Ruff, 2752 pytest PASS, release artifact, clean demo) and squash MERGED `e29105cf6ed5baed42849dcdc8d706df97b182bc`. Child `roadmap/children/381-fixed-service-listener-owner/{TASK,STATE}.md` is COMPLETE_SOURCE_ONLY.

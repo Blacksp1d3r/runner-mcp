@@ -60,8 +60,6 @@ def test_same_tool_names_but_different_local_rights():
     assert allowed.allowed is True
     assert allowed.reason_code == "exact_host_capability_granted"
     assert allowed.response_code == "OK"
-    # Both machines still present the same registered schema/name set.
-    assert NAMES == NAMES
 
 
 def test_missing_host_policy_is_explicit_denial_not_missing_tool():

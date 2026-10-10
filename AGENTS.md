@@ -23,6 +23,16 @@ Runner-MCP predates the blueprint. Apply its `COMPATIBLE/PARTIAL/NEEDS_REVIEW/BL
 9. All operational actions must be auditable.
 10. Security tests are part of the definition of done.
 
+## Mandatory security-release parity across managed Runner-MCP hosts
+
+The operator's 2026-10-10 binding decision is **one exact approved Runner-MCP code/security generation for every managed host**. An MCP host that needs fewer enabled tools does not get an older code build or narrower tool catalogue; it gets a trusted, host-local, fail-closed capability policy. An advertised but forbidden tool returns a fixed audited permission denial (for example `HOST_TOOL_NOT_PERMITTED`), never execution, a missing tool, a private exception or an implicit redirect to another host.
+
+Every security-relevant source change/release must create a Fabric-wide *desired exact release* obligation for **all registered Runner-MCP installations**, including disconnected/sleeping nodes which remain pending/quarantined. Always distinguish the public package version from the exact source commit, immutable artifact digest, live process build/generation and real MCP `tools/list` input/output schema digest. A match against the current GitHub branch is not sufficient to claim release readiness; only the promoted, provenance-checked artifact is a deployable target. Source and update-state equality do not independently prove a running-process revision.
+
+**No fleet update is accepted until every required host reports the exact generation through the qualified end-to-end result/ACK path.** Fabric #924 is the sole rollout policy/control plane. Runner-MCP #341 supplies fixed local actuators, not a competing fleet scheduler. Fleet independent off-target journal (#942) and a local post-activation commit-confirmed revert supervisor (#943) remain mandatory before automated active control-path rollout. A green PR, a successful install, an HTTP 200 from an unrelated historical response, or a restarted service is never acceptance. Do not restart/update all servers simultaneously; qualify one canary, then safely converge the remaining roster. Missing safety evidence fails closed, and a node at an unverified older security generation cannot be promoted as fully qualified.
+
+See Fabric `docs/qualification/F30-MANDATORY-RUNNER-MCP-RELEASE-PARITY.md`, Runner-MCP #540/#590 and the existing two-host inventory authority in AIfordable. Never re-diagnose these intentionally separate local MCP hosts as accidental duplicate servers.
+
 ## First-party control path — hard rule
 
 Routine AI-assisted operations must prefer AIfordable-owned bounded control surfaces over broad

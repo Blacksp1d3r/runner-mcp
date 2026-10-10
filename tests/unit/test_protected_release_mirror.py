@@ -117,3 +117,61 @@ def test_pre_copy_source_recheck_blocks_race(tmp_path):
     assert result["state"] == "blocked"
     assert result["reasonCode"] == "primary-custody-invalid"
     assert calls == [("mirror", A)]
+
+
+def test_mount_identity_drift_after_first_copy_blocks_second_copy(tmp_path):
+    obj, calls = make_case(tmp_path)
+    good = {
+        "schemaVersion": "runner-mcp/fabric-release-archive-mirror-readiness/v1",
+        "configurationState": "configured",
+        "ready": True,
+        "primaryCustodyReady": True,
+        "mountReady": True,
+        "mirrorRootReady": True,
+        "distinctDeviceReady": True,
+        "mutationEnabled": False,
+        "reasonCode": "ready",
+    }
+    observations = 0
+
+    def changing_readiness():
+        nonlocal observations
+        observations += 1
+        if observations >= 3:
+            return {**good, "distinctDeviceReady": False}
+        return good
+
+    obj._readiness = changing_readiness
+    result = obj.run()
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "independent-volume-not-ready"
+    assert result["mirroredCount"] == 1
+    assert result["verifiedCount"] == 1
+    assert calls == [("mirror", A)]
+
+
+def test_readiness_schema_change_after_preflight_prevents_first_copy(tmp_path):
+    obj, calls = make_case(tmp_path)
+    good = {
+        "schemaVersion": "runner-mcp/fabric-release-archive-mirror-readiness/v1",
+        "configurationState": "configured",
+        "ready": True,
+        "primaryCustodyReady": True,
+        "mountReady": True,
+        "mirrorRootReady": True,
+        "distinctDeviceReady": True,
+        "mutationEnabled": False,
+        "reasonCode": "ready",
+    }
+    observations = 0
+
+    def changing_readiness():
+        nonlocal observations
+        observations += 1
+        if observations == 2:
+            return {**good, "schemaVersion": "unknown"}
+        return good
+
+    obj._readiness = changing_readiness
+    assert obj.run()["reasonCode"] == "independent-volume-not-ready"
+    assert calls == []

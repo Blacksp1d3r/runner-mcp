@@ -107,7 +107,7 @@ class ProtectedReleaseMirror:
         for revision in pins:
             try:
                 self._safety.assert_action_allowed(ActionClass.BACKUP)
-                if self._readiness().get("ready") is not True:
+                if not _admitted_readiness(self._readiness()):
                     return _result(
                         "independent-volume-not-ready", copied=copied,
                         already=already, verified=verified,

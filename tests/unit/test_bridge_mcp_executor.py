@@ -2,7 +2,6 @@ import json
 import logging
 import threading
 import urllib.error
-import urllib.request
 
 import pytest
 from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS

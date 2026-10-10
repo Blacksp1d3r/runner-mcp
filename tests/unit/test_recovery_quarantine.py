@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 
 import pytest
 
+from runner_mcp import recovery_quarantine
 from runner_mcp.recovery_quarantine import (
     RecoveryFailureKind,
     RecoveryQuarantineError,
@@ -116,6 +118,86 @@ def test_invalid_ids_and_fingerprints_rejected_without_unsafe_file_writes(tmp_pa
     with pytest.raises(RecoveryQuarantineError, match="fingerprint is invalid"):
         _fail(ledger, fingerprint="z" * 64)
     assert not (tmp_path / "quarantine.json").exists()
+
+
+def test_quarantine_lock_inode_survives_atomic_data_replacement(tmp_path):
+    ledger = _ledger(tmp_path)
+    first = _fail(ledger)
+    lock_path = tmp_path / "quarantine.json.lock"
+    data_path = tmp_path / "quarantine.json"
+    locked_inode = lock_path.stat().st_ino
+    data_inode = data_path.stat().st_ino
+
+    second = _fail(ledger)
+    assert second.attempts == first.attempts + 1
+    assert lock_path.stat().st_ino == locked_inode
+    assert data_path.stat().st_ino != data_inode
+    assert _ledger(tmp_path).inspect("req-poison") == second
+
+
+def test_failed_atomic_replace_keeps_complete_previous_record(tmp_path, monkeypatch):
+    ledger = _ledger(tmp_path)
+    initial = _fail(ledger)
+    original_bytes = (tmp_path / "quarantine.json").read_bytes()
+
+    def fail_replace(_source, _destination):
+        raise OSError("simulated interrupted atomic replace")
+
+    monkeypatch.setattr(recovery_quarantine.os, "replace", fail_replace)
+    with pytest.raises(RecoveryQuarantineError, match="failure record unavailable"):
+        _fail(ledger)
+
+    assert ledger.inspect("req-poison") == initial
+    assert (tmp_path / "quarantine.json").read_bytes() == original_bytes
+    assert not list(tmp_path.glob(".quarantine-*"))
+
+
+def test_failed_temp_fsync_does_not_truncate_previous_record(tmp_path, monkeypatch):
+    ledger = _ledger(tmp_path)
+    initial = _fail(ledger)
+    original_bytes = (tmp_path / "quarantine.json").read_bytes()
+
+    def fail_fsync(_fd):
+        raise OSError("simulated fsync failure")
+
+    monkeypatch.setattr(recovery_quarantine.os, "fsync", fail_fsync)
+    with pytest.raises(RecoveryQuarantineError, match="failure record unavailable"):
+        _fail(ledger)
+
+    assert ledger.inspect("req-poison") == initial
+    assert (tmp_path / "quarantine.json").read_bytes() == original_bytes
+    assert not list(tmp_path.glob(".quarantine-*"))
+
+
+def test_concurrent_process_style_lock_serializes_distinct_records(tmp_path):
+    ledger = _ledger(tmp_path)
+
+    def attempt(i):
+        return _fail(
+            ledger, request_id=f"req-{i:03d}", fingerprint=_digest(str(i).encode())
+        )
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        results = list(pool.map(attempt, range(20)))
+
+    assert len(results) == 20
+    assert all(item.attempts == 1 for item in results)
+    reopened = _ledger(tmp_path)
+    assert all(reopened.inspect(f"req-{i:03d}") == results[i] for i in range(20))
+
+
+def test_empty_existing_ledger_is_not_equivalent_to_missing_file(tmp_path):
+    ledger = _ledger(tmp_path)
+    _fail(ledger)
+    target = tmp_path / "quarantine.json"
+    target.write_bytes(b"")
+    target.chmod(0o600)
+
+    with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
+        ledger.inspect("req-poison")
+    with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
+        _fail(ledger)
+    assert target.read_bytes() == b""
 
 
 def test_corrupted_disk_record_fails_closed_and_remains_on_disk(tmp_path):

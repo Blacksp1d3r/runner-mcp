@@ -11,6 +11,7 @@ import json
 import os
 import re
 import stat
+import tempfile
 from dataclasses import asdict, dataclass
 from enum import StrEnum
 from pathlib import Path
@@ -163,47 +164,70 @@ class RecoveryQuarantineLedger:
             raise RecoveryQuarantineError("quarantine rearm unavailable") from exc
 
     def _open(self) -> int:
+        """Open the stable lock inode, never the replaceable data-file inode."""
         parent = self._path.parent
         try:
             info = parent.lstat()
-            if parent.resolve(strict=True) != parent:
-                raise RecoveryQuarantineError("quarantine directory is unsafe")
-            if (
+            if parent.resolve(strict=True) != parent or (
                 not stat.S_ISDIR(info.st_mode)
                 or stat.S_ISLNK(info.st_mode)
                 or info.st_uid != os.getuid()
                 or (info.st_mode & 0o077)
             ):
                 raise RecoveryQuarantineError("quarantine directory is unsafe")
-            if self._path.is_symlink():
-                raise RecoveryQuarantineError("quarantine file is unsafe")
-            flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0)
+            lock_path = parent / (self._path.name + ".lock")
+            if lock_path.is_symlink():
+                raise RecoveryQuarantineError("quarantine lock is unsafe")
             nofollow = getattr(os, "O_NOFOLLOW", 0)
             if nofollow == 0:
                 raise RecoveryQuarantineError("quarantine symlink protection unavailable")
-            fd = os.open(self._path, flags | nofollow, 0o600)
-            opened = os.fstat(fd)
+            fd = os.open(
+                lock_path, os.O_RDWR | os.O_CREAT | nofollow | getattr(os, "O_CLOEXEC", 0),
+                0o600,
+            )
+            metadata = os.fstat(fd)
             if (
-                not stat.S_ISREG(opened.st_mode)
-                or opened.st_uid != os.getuid()
-                or (opened.st_mode & 0o077)
+                not stat.S_ISREG(metadata.st_mode)
+                or metadata.st_uid != os.getuid()
+                or (metadata.st_mode & 0o077)
             ):
                 os.close(fd)
-                raise RecoveryQuarantineError("quarantine file permissions are unsafe")
+                raise RecoveryQuarantineError("quarantine lock permissions are unsafe")
             return fd
         except OSError as exc:
             raise RecoveryQuarantineError("quarantine storage unavailable") from exc
 
-    def _read(self, handle) -> dict[str, RecoveryQuarantineRecord]:
-        handle.seek(0)
+    def _read(self, _lock_handle) -> dict[str, RecoveryQuarantineRecord]:
+        nofollow = getattr(os, "O_NOFOLLOW", 0)
+        if nofollow == 0:
+            raise RecoveryQuarantineError("quarantine symlink protection unavailable")
+        if self._path.is_symlink():
+            raise RecoveryQuarantineError("quarantine file is unsafe")
         try:
-            raw = handle.read(MAX_QUARANTINE_FILE_BYTES + 1)
+            fd = os.open(self._path, os.O_RDONLY | nofollow)
+        except FileNotFoundError:
+            return {}
+        except OSError as exc:
+            raise RecoveryQuarantineError("quarantine data is unavailable") from exc
+        opened = os.fstat(fd)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_uid != os.getuid()
+            or (opened.st_mode & 0o077)
+        ):
+            os.close(fd)
+            raise RecoveryQuarantineError("quarantine file permissions are unsafe")
+        try:
+            with os.fdopen(fd, "r", encoding="utf-8", closefd=True) as handle:
+                raw = handle.read(MAX_QUARANTINE_FILE_BYTES + 1)
         except UnicodeError as exc:
             raise RecoveryQuarantineError("quarantine data is invalid") from exc
         if len(raw.encode("utf-8")) > MAX_QUARANTINE_FILE_BYTES:
             raise RecoveryQuarantineError("quarantine data exceeds bound")
         if not raw:
-            return {}
+            # Missing file means no history; an existing *empty* file means
+            # history may have been truncated and must not be silently reset.
+            raise RecoveryQuarantineError("quarantine data is invalid")
         try:
             data = json.loads(raw)
         except (ValueError, TypeError) as exc:
@@ -240,7 +264,11 @@ class RecoveryQuarantineLedger:
             )
         return records
 
-    def _write(self, handle, records: dict[str, RecoveryQuarantineRecord]) -> None:
+    def _write(self, _lock_handle, records: dict[str, RecoveryQuarantineRecord]) -> None:
+        """Fsync private temp file, replace atomically, then fsync directory.
+
+        This method always executes while holding the stable separate .lock.
+        """
         encoded = json.dumps(
             {
                 "schemaVersion": _SCHEMA_VERSION,
@@ -251,15 +279,32 @@ class RecoveryQuarantineLedger:
         ).encode("utf-8")
         if len(encoded) > MAX_QUARANTINE_FILE_BYTES:
             raise RecoveryQuarantineError("quarantine data exceeds bound")
-        handle.seek(0)
-        handle.truncate()
-        view = memoryview(encoded)
-        while view:
-            written = os.write(handle.fileno(), view)
-            if written <= 0:
-                raise RecoveryQuarantineError("quarantine write unavailable")
-            view = view[written:]
-        os.fsync(handle.fileno())
+        if self._path.is_symlink():
+            raise RecoveryQuarantineError("quarantine file is unsafe")
+        parent = self._path.parent
+        fd, temporary = tempfile.mkstemp(prefix=".quarantine-", dir=parent)
+        try:
+            try:
+                view = memoryview(encoded)
+                while view:
+                    written = os.write(fd, view)
+                    if written <= 0:
+                        raise RecoveryQuarantineError("quarantine write unavailable")
+                    view = view[written:]
+                os.fsync(fd)
+            finally:
+                os.close(fd)
+            os.replace(temporary, self._path)
+            dir_fd = os.open(
+                parent, os.O_RDONLY | os.O_NOFOLLOW | getattr(os, "O_DIRECTORY", 0)
+            )
+            try:
+                os.fsync(dir_fd)
+            finally:
+                os.close(dir_fd)
+        finally:
+            if os.path.exists(temporary):
+                os.unlink(temporary)
 
     @staticmethod
     def _check_request_id(value: str) -> None:

@@ -1,3 +1,12 @@
+## 2026-10-10 — Actual current Runner-MCP state after chat rollback
+Prior #621/#622/#623/#624/#625 **already MERGED**; #625 exact-head `ea88bb010cfc866bdf0ee8e1de7299be8c4fd8e9`, attribution `38030008919` SUCCESS and full validation `38030008996` SUCCESS including clean demo; merge `2e274c5b4ed9bf14842803a832689f79cbb805c9`. Do not restore old pending-CI status as current.
+
+Current source child of #587: draft [PR #626](https://github.com/Blacksp1d3r/runner-mcp/pull/626) `fix/587-final-mirror-reverification`, HEAD `abd2c4eb05348b86b87e09f65acd5cf149d98972`; attribution `38038139765` SUCCESS; validation `38038139723` IN_PROGRESS (check again before merge). Post-second-copy finalization revalidates safety, pinned pair, volume admission, secondary integrity of **both** protected archives and pins again. Four bounded tests; no live binding or copy.
+
+Cross-project storage gate: AIfordable #553/`#537` draft red CI `38035068769`, failure = 9 stale 2026-10-08 topology test clocks versus canonical 2026-10-10 registry (1,352 passed). Root cause sent to owning PR comment. Fabric #1397 policy/read gates merged (#1426/#1427), live namespace/bootstrap still OPEN. Runner-MCP #587 and #588 OPEN, 0 actual second-disk protected copies or offline recovery proof. Never prune provider archives merely to free GitHub quota.
+
+Read-only connector probe #590 partially works: doctor=warn 0 failed/3 warning, runtime_status and build_identity generic internal error, F34 mirror activation unconfigured. No host, service, tunnel, mounted media, job, credential, deployment or physical backup actions performed. Next = #626 full exact-head CI then dependent live authority/storage admission chain, or independent bounded diagnostic work.
+
 ## 2026-10-10 — latest protected-storage prerequisites and CI
 
 Runner-Fabric #1426 (policy-only namespace admission) and #1427 (source-only trusted authority inspection) are now merged, but NO operator-qualified live provider or private dedicated namespace bootstrap exists. AIfordable #537 canonical fresh host/runtime/independent-volume machine authority remains OPEN. Thus Runner-MCP #587 and #588 remain OPEN: zero verified physically independent active+rollback mirror receipts, zero real offline restore proofs.

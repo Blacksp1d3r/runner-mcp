@@ -254,3 +254,32 @@ def test_listener_checks_only_exact_ipv4_loopback_and_rejects_wildcard(monkeypat
     assert host.listener() == "UNSAFE"
     samples["/proc/net/tcp"] = "sl local_address rem_address st\n"
     assert host.listener() == "ABSENT"
+
+
+def test_unknown_private_systemctl_selector_denied_even_inside_host(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        actuator.RootlessCodingWorkerHost, "_environment",
+        staticmethod(lambda: calls.append("environment") or {}),
+    )
+    host = actuator.RootlessCodingWorkerHost()
+    with pytest.raises(actuator.FixedActuatorError):
+        host._systemctl("enable")
+    assert calls == []
+
+
+def test_exception_after_action_intent_does_not_claim_no_mutation():
+    host = SyntheticHost()
+
+    def partial(_operation):
+        raise RuntimeError("/private/systemd attempted command, state unknown")
+
+    host.action = partial
+    obj = actuator.FixedCodingWorkerActuator(
+        verify_fabric_intent=lambda _: True, host=host
+    )
+    result = obj.execute(fixed_intent("START"))
+    assert result["state"] == "blocked"
+    assert result["reasonCode"] == "fixed-actuator-unavailable"
+    assert result["mutationTriggered"] is True
+    assert "/private/" not in str(result)

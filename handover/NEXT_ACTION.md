@@ -1,5 +1,11 @@
 # NEXT ACTION
 
+## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated
+[Runner-MCP #630](https://github.com/Blacksp1d3r/runner-mcp/issues/630) is OPEN. BPA-01 docs-only [PR #631](https://github.com/Blacksp1d3r/runner-mcp/pull/631), exact HEAD `f23c12079b2a2cdbb15b6ce2a2fa24c9b68c66f9`, attribution `38045941135` SUCCESS, full validation `38045941103` Ruff/pytest + artifact + clean demo all SUCCESS, reviewed and MERGED `20c19970d14b9402ce6a2393477f3056602498bd`. Final `roadmap/children/bpa-01/STATE.md` marked COMPLETE. `AGENTS.md` now references Library master v1.2 and repository blueprint v1.0; `docs/standards/REPOSITORY_BLUEPRINT_COMPATIBILITY.md` explicitly maps legacy structure and gaps. No mass rename, manifest/authority fabrication or runtime change.
+
+Next #630 BPA-02: independently qualify symbolic project manifest schema and canonical local Git/storage authority before asserting local-first or creating `project.yml`; status BLOCKED/REVIEW_REQUIRED where not proven. BPA-03: map old issue/roadmap children while requiring TASK+STATE on new children, without duplicating canonical truth or clobbering active claims. Separate Fabric-owned automatic scaffolding remains unimplemented, not authorized here. Claude #381 source PR #628 landed but operational issue OPEN pending Fabric/AIfordable trusted lifecycle; #590 source #627/#629 merged but installed catalog/return-route unqualified; #587/#588 still no real 2/2 independent mirror or offline recovery, retain provider artifacts. Other AI owners' work untouched.
+
+
 ## NEXT CRITICAL: 2026-10-10 — Claude #381 source landed, live qualification is the blocker
 
 - #381 remains USER TOP PRIORITY. Source PR #628 exact head `e88e880c1c8db307d94c558250d12ee119c35e48` full CI `38045484330` SUCCESS (2,659 pytest, Ruff, built artifact, clean demo), attribution `38045484328` SUCCESS; squash merged `4981fa648aa127e5d2e0538b9eefec170f816466`. GitHub erroneously auto-closed #381, which was deliberately **REOPENED**; verify still OPEN before next work.

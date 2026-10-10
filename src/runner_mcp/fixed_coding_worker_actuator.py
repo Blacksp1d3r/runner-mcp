@@ -234,11 +234,45 @@ class FixedCodingWorkerActuator:
             elif os.geteuid() != pwd.getpwnam(_USER).pw_uid:
                 return _result("blocked", "dedicated-identity-unavailable")
             action = intent["action"]
+            # Observe the local unit AND port before mutating it. An
+            # unrelated process can listen on the expected loopback port,
+            # so listener presence alone must never authorize start/stop.
+            before_state = self._host.status()
+            before_listener = self._host.listener()
+            if before_listener == "UNSAFE":
+                return _result(
+                    "blocked", "listener-not-loopback",
+                    observed=before_state,
+                )
+            if (
+                (before_state, before_listener)
+                not in {("INACTIVE", "ABSENT"), ("ACTIVE", "LOOPBACK_ONLY")}
+                and action != "STATUS"
+            ):
+                return _result(
+                    "blocked", "pre-action-state-conflict",
+                    observed=before_state, listener=before_listener,
+                )
+            if action == "START" and (before_state, before_listener) != ("INACTIVE", "ABSENT"):
+                return _result(
+                    "blocked", "pre-action-state-conflict",
+                    observed=before_state, listener=before_listener,
+                )
+            if action in {"STOP", "RESTART"} and (
+                before_state, before_listener
+            ) != ("ACTIVE", "LOOPBACK_ONLY"):
+                return _result(
+                    "blocked", "pre-action-state-conflict",
+                    observed=before_state, listener=before_listener,
+                )
             if action != "STATUS":
                 attempted_mutation = True
                 self._host.action(action)
-            state = self._host.status()
-            listener = self._host.listener()
+                state = self._host.status()
+                listener = self._host.listener()
+            else:
+                state = before_state
+                listener = before_listener
         except (OSError, RuntimeError, ValueError, TypeError, KeyError):
             return _result(
                 "blocked", "fixed-actuator-unavailable",

@@ -1,5 +1,16 @@
 # NEXT ACTION
 
+## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)
+
+[PR #636](https://github.com/Blacksp1d3r/runner-mcp/pull/636) exact head `e35513459760107e0e555f66313360b5f5884fbc`, attribution `38052251708` SUCCESS and full validation `38052251712` Ruff/pytest, built artifact, clean demo all SUCCESS; reviewed, squash MERGED `74faab4c1a5f1b9111cf0c847e2e931af91d2619`. New `docs/diagnostics/CONNECTOR_PROBE_MATRIX_2026-10-10.md` and canonical triage/Failure Museum updates record one connected session's bounded facts.
+
+Structured responses: `list_projects` includes runner-mcp in six staging projects; `project_capabilities` generic adapter/project root available; `queue_status` zero queued/claimed/running and two available workers; `safety_status` operator stop inactive; `runtime_doctor` WARN with only 12 checks, 0 failures and 3 warnings. Generic tool errors for `build_identity`, `project_status`, `worker_status`, file metadata, project preflight and Fabric mirror/bridge/host readiness; some private Fabric preflights surfaced only generic nested `INVALID_ARGUMENT`. Same source `cfg.public_summary` supports list/status projection, so classification is **mixed-success unlocated ingress/dispatch/serialization/return-lineage**, NOT a proven bad Git project, total tunnel outage, correct installed generation or qualified physical storage.
+
+#590 is **OPEN** for approved operator-private installed build/schema/client catalog fingerprint and single known-good vs failing request with opaque ingress/dispatch/delivery correlation; do not restart/update/rotate keys or invent host identity. #634 / #630 remain **OPEN/BLOCKED_EXTERNAL_AUTHORITY** for actual local Git primary, one-writer fencing and isolated restore. `project_root_available=true` does not qualify primary or independent archive. #587/#588 remain physically unproved; preserve provider artifacts. #381 work exclusively belongs to the separate active chat; no competing branch/runner/Claude tasks touched. No production mutation or private topology exposure.
+
+Next safe external operator step: perform the authorized read-only first-divergent-edge correlation for #590 or approved private source authority admission for #634; independently assigned reviewers handle PR #618 and Fabric #1428. Avoid a new source-only code fix until the installed generation and failing edge are known.
+
+
 ## 2026-10-10 — Final #630 issue closure reconciliation
 After docs-only PR #635 merged, GitHub read-only checks unexpectedly found parent #630 `CLOSED` while #634 remained `OPEN`. The closure trigger/actor is not independently proven; it must not be interpreted as acceptance. Explicitly REOPENED #630 via GitHub, with `state_reason=reopened`, and kept operator gate #634 OPEN. Failure Museum `RMCP-F-0016` records this recurrence. #381 still belongs to other active chat, not this lane. All three blueprint PRs #632/#633/#635 are merged with exact full CI green; no approved root project.yml, physical Git authority, independent restore, Fabric lease, service/tunnel/host change or archive deletion. Next owner action is read-only #634 authority qualification, not rerunning completed source changes.
 

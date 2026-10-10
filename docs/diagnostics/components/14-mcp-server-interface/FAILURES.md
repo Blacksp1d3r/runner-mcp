@@ -12,6 +12,8 @@
 
 | RMCP-F-0021 | SOURCE_FIXED_LIVE_UNQUALIFIED | Q7 result count type validation | a Q7 availability response could represent assignment count as JSON true or 1.0 and satisfy expected one | equality-only check in Python without strict integer type | merged #647 d078781d28f98398359e4db163dd8c248a77264d; 2772 tests and exact CI green, no live worker calls; require exact int one and reject JSON bool/float/string values | #381 / #972 / PR #647 |
 
+| RMCP-F-0022 | SOURCE_TEST_FIXED_LIVE_UNQUALIFIED | isolated MCP framing / audit correlation | initial #648 one-project response assertion expected a JSON list but MCP presents individual text content | test fixture modeled noncanonical framing, not a live runtime failure | exact green #648 source regression now confirms HTTP request-ID + trace + audit match for good and degraded calls in one authenticated MCP session (2773 pytest pass); physical tunnel/client response delivery still unqualified | #590 / PR #648 |
+
 Use the repository failure-record template for a new recurrence with concrete bounded evidence.
 
 ## RMCP-MCP-0005 — 2026-10-10 operator-verified catalogue split and route evidence

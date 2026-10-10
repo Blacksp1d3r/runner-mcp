@@ -5,7 +5,6 @@ import pytest
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
 from runner_mcp.protected_release_mirror import ProtectedReleaseMirror
 
-
 A = "a" * 40
 B = "b" * 40
 

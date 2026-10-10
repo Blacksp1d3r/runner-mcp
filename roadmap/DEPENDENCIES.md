@@ -1,7 +1,7 @@
 ## 2026-10-10 evening — #381 Q7 acceptance DAG (not executable)
 
 - **Complete source-only:** Runner-MCP PR #628/#637/#643; Fabric PR #1446/#1447/#1448. These do not authorize live work.
-- **First external security gate:** Fabric #1399 review and #1398/#1400 durable multi-resource lease, monotonic fence, first-party trusted intent/JIT verifier.
+- **First external security gate:** Fabric PR #1399 already MERGED (non-authorizing conflict projector); Fabric #1398/#1400 still need durable multi-resource lease, monotonic fence, first-party trusted intent/JIT verifier.
 - **In parallel, independent private evidence:** AIfordable #370 correct-host fixed `aifordable-coder` account, rootless packaged service and ownership receipt. Runner-MCP #381 exact first-party fixed actuator binding only after lease/authority qualification.
 - **Control-path gate:** A6 #942/A7 #943 qualified off-target rollback and fleet #642 uniform active security release; connector #590/#540 exact build/catalogue and request→response provenance.
 - **Then:** Fabric #972 real authenticated producer-consumer Q7 loopback with bounded WAIT/OPERATOR_REQUIRED/BLOCKED, single work item, result correlation/Agent Bus ACK; independent synthetic work admission; finally EnerCue #89 from NO_DISPATCH by its owner.

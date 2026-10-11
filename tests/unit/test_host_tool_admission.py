@@ -310,4 +310,3 @@ def test_policy_host_identity_must_be_builtin_string():
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
-

@@ -27,3 +27,8 @@ Status: **BLOCKED_EXTERNAL / SOURCE_INSPECTED**. This is a coordination/evidence
 ## Coordination and safety
 
 No production updates, restarts, tunnel, host policy, services, credentials, secret files, protected data or Claude dispatch occurred in this checkpoint. No duplicate updater or Fabric authority. Fabric #943 is a separate owner; Runner-MCP #590 response-delivery route is a separate acceptance dependency. Relevant linked issues: #341, #509, #590, #642, PR #438, Fabric #942/#943. Canonical project Failure Museum already covers A6 family RMCP-F-0002; do not duplicate.
+
+## Read-only connected identity observation — later 2026-10-11
+
+Same client session returned a structured `build_identity` with advertised component `runner-mcp`, version `0.1.3`, revision `a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a`, interface schema SHA256 `711f96eb3d9cc5dcd2c6476f87ab70f34b69dc87c394b33d0d5b4ae8f308045f`, **artifact_digest null**. This is a self-reported connected build, **not** a privately attested physical host identity or verified running-process revision, signed release artifact, two-host catalogue equality, or original-client request ACK. The same `runtime_doctor` again returned the old 12-check contract (A6-specific check absent); `runtime_status` failed generically, showing intermittent route capability. Issues #509 and #590 carry exact read-only evidence. NO HOST ACTION is authorized.
+

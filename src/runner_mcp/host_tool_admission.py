@@ -39,7 +39,7 @@ class QualifiedHostToolPolicy:
 
     def __post_init__(self) -> None:
         if (
-            not isinstance(self.service_asset_id, str)
+            type(self.service_asset_id) is not str
             or _ASSET.fullmatch(self.service_asset_id) is None
             or not isinstance(self.release_source_revision, str)
             or _COMMIT.fullmatch(self.release_source_revision) is None

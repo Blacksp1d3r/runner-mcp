@@ -1,3 +1,7 @@
+## 2026-10-11 — #509 live host diagnosis child and repeated docs CI failure
+
+New independent `roadmap/children/509-a6-live-host-diagnosis/{TASK,STATE}.md` is `BLOCKED_EXTERNAL`: first attested asset/process/source/artifact/client lineage under #590; bridge can be READY while A6 prepare and probe remain FALSE. Do not duplicate existing fixed binding repair or Fabric #942/#943. #653 earlier docs-only CI failures from trailing blank EOF lines are recorded as canonical RMCP-F-0028, including 2813 pytest passing but full workflow failing at `git diff --check`; ensure one newline at EOF and exact-head complete validation. #656 source-only host-ID oracle exact `71eb6343c15cc478ae7cf7724149fd5c62d2f85d` both workflows SUCCESS, review-ready; not real dispatcher. No production update/restart/Claude dispatch.
+
 ## 2026-10-11 — drie PR's exact-head CI groen, nog niet gemerged
 
 #653 head `a20fb8dbe31968d805936e79e0ae94732366d5a0`: validatie `38128716494` SUCCESS, attributie `38128716500` SUCCESS. #654 head `ed58704223d424b5d8155f690f2cb538fa929a56`: validatie `38128315342` SUCCESS, attributie `38128315344` SUCCESS. #655 head `c8dc9b7340eb92e467cbd749c885f3b605eef411`: validatie `38127697809` SUCCESS, attributie `38127697888` SUCCESS. Open PR's, geen onafhankelijke APPROVE. Het bijbehorende #642 kind-STATE is bijgewerkt; de nieuwe docs-branchhead moet zelf nog exact-head CI krijgen. Bron- en synthetisch testbewijs ≠ actieve host, ondertekend beleid, originele-client ACK, A6 off-target journaal of A7 rollback. Geen productie-update of Claude-dispatch.

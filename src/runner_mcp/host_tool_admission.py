@@ -115,7 +115,7 @@ def evaluate_host_tool_admission(
     if policy is None:
         return deny("host_policy_unavailable")
     if (
-        not isinstance(verified_service_asset_id, str)
+        type(verified_service_asset_id) is not str
         or _ASSET.fullmatch(verified_service_asset_id) is None
         or verified_service_asset_id != policy.service_asset_id
     ):

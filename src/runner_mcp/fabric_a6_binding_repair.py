@@ -174,7 +174,7 @@ def _require_private_state_dir(root: Path, name: str) -> Path:
         resolved_root = root.resolve(strict=True)
         resolved = target.resolve(strict=True)
         stat = resolved.stat()
-    except OSError as exc:
+    except (OSError, RuntimeError) as exc:
         raise FabricA6BindingRepairError("fabric_a6_state_unavailable") from exc
     if (
         resolved.parent != resolved_root

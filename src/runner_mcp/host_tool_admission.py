@@ -45,10 +45,10 @@ class QualifiedHostToolPolicy:
             or _COMMIT.fullmatch(self.release_source_revision) is None
             or not isinstance(self.interface_schema_sha256, str)
             or _DIGEST.fullmatch(self.interface_schema_sha256) is None
-            or not isinstance(self.permitted_tool_names, frozenset)
+            or type(self.permitted_tool_names) is not frozenset
             or len(self.permitted_tool_names) > _MAX_TOOLS
             or any(
-                not isinstance(tool, str)
+                type(tool) is not str
                 or _TOOL.fullmatch(tool) is None
                 for tool in self.permitted_tool_names
             )
@@ -93,12 +93,12 @@ def evaluate_host_tool_admission(
     OperatorSafetyGuard, Fabric policy/lease/fence or high-risk approval gates.
     """
     if (
-        not isinstance(tool_name, str)
+        type(tool_name) is not str
         or _TOOL.fullmatch(tool_name) is None
-        or not isinstance(registered_tool_names, frozenset)
+        or type(registered_tool_names) is not frozenset
         or len(registered_tool_names) > _MAX_TOOLS
         or any(
-            not isinstance(name, str) or _TOOL.fullmatch(name) is None
+            type(name) is not str or _TOOL.fullmatch(name) is None
             for name in registered_tool_names
         )
         or type(now_epoch) is not int

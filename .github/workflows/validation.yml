@@ -41,7 +41,11 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          base="$(git merge-base HEAD origin/main)"
+          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
+            base="$(git rev-parse HEAD^)"
+          else
+            base="$(git merge-base HEAD origin/main)"
+          fi
           python scripts/check_release_version.py --base "$base"
 
       - name: Compile Python

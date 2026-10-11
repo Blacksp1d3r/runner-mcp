@@ -53,10 +53,19 @@ def verify(base: str | None) -> tuple[tuple[int, int, int], bool]:
     current = check_metadata(
         Path("pyproject.toml").read_bytes(), Path("server.json").read_bytes()
     )
-    package_version = ".".join(map(str, current))
-    marker = Path("src/runner_mcp/__init__.py").read_text(encoding="utf-8")
+    version = ".".join(map(str, current))
+    runtime_text = Path("src/runner_mcp/__init__.py").read_text(encoding="utf-8")
     if not re.search(
-        rf'(?m)^__version__ = "{re.escape(package_version)}"    original = check_metadata(
+        rf'(?m)^__version__ = "{re.escape(version)}"$',
+        runtime_text,
+    ):
+        raise ValueError("runtime __version__ differs from pyproject")
+    glama = json.loads(Path("glama.json").read_text(encoding="utf-8"))
+    if not isinstance(glama, dict) or glama.get("version") != version:
+        raise ValueError("discovery metadata version differs from pyproject")
+    if base is None:
+        return current, False
+    original = check_metadata(
         git("show", f"{base}:pyproject.toml"),
         git("show", f"{base}:server.json"),
     )

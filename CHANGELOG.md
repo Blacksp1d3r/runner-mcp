@@ -6,6 +6,9 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ## Unreleased
 
+- Source package and MCP manifest versions advance to 0.1.4; this is a **pending candidate**, not a published release or deployment.
+- Release guard prevents any source, tools, installer, scripts or workflow changes without a strictly higher version and matching metadata.
+
 ### Added
 
 - local first-party ChatGPT/Codex plugin package rendering for the existing Runner MCP MCP

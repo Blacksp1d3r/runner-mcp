@@ -1,3 +1,7 @@
+## 2026-10-11 — Green cross-host type-confusion regressions
+
+Runner-MCP #656 exact head `9825fb84b15fdc1240ee946734acbd88cd8e2dc6`: validation `38134140545` SUCCESS, attribution `38134140401` SUCCESS; reject malicious Python `str` subclasses for both authenticated service asset and qualified policy asset IDs. DRAFT integration reference #657 exact head `bed509bc9429065b79cddbcfde55d190d2de44a9`: validation `38134126832` SUCCESS, attribution `38134126801` SUCCESS. No independent APPROVE or merge, and no verified live first-party service identity. #654 must be reviewed/merged first; #656 then rebased and compatibility tests ported; docs #653 reconciled last. No production action.
+
 ## 2026-10-11 — #509 live host diagnosis child and repeated docs CI failure
 
 New independent `roadmap/children/509-a6-live-host-diagnosis/{TASK,STATE}.md` is `BLOCKED_EXTERNAL`: first attested asset/process/source/artifact/client lineage under #590; bridge can be READY while A6 prepare and probe remain FALSE. Do not duplicate existing fixed binding repair or Fabric #942/#943. #653 earlier docs-only CI failures from trailing blank EOF lines are recorded as canonical RMCP-F-0028, including 2813 pytest passing but full workflow failing at `git diff --check`; ensure one newline at EOF and exact-head complete validation. #656 source-only host-ID oracle exact `71eb6343c15cc478ae7cf7724149fd5c62d2f85d` both workflows SUCCESS, review-ready; not real dispatcher. No production update/restart/Claude dispatch.

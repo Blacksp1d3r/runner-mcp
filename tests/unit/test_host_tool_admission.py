@@ -378,3 +378,25 @@ def test_combined_oracle_rejects_policy_subclass():
     )
     with pytest.raises(HostToolPolicyError, match="invalid"):
         evaluate("runtime_status", permit=forged)
+
+def test_combined_oracle_rejects_frozenset_override_on_both_sides():
+    class ForgedSet(frozenset):
+        def __contains__(self, item):
+            return True
+
+        def issubset(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), permitted_tool_names=ForgedSet({"runtime_status"}))
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=ForgedSet({"runtime_status"}),
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=policy(),
+            now_epoch=1_000,
+        )
+

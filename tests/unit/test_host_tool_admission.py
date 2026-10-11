@@ -254,3 +254,33 @@ def test_registered_catalogue_rejects_forged_tool_set_member():
             policy=policy(),
             now_epoch=1_000,
         )
+
+@pytest.mark.parametrize("field", ["revision", "digest"])
+def test_runtime_digest_subclass_cannot_fake_matching_generation(field):
+    class ForgedDigest(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    fake = ForgedDigest(("c" * 40) if field == "revision" else ("c" * 64))
+    result = evaluate("runtime_status", permit=policy(), **{field: fake})
+    assert result.allowed is False
+    assert result.reason_code == "runtime_generation_mismatch"
+
+
+@pytest.mark.parametrize("field,invalid", [
+    ("release_source_revision", "c" * 40),
+    ("interface_schema_sha256", "c" * 64),
+])
+def test_policy_digest_subclass_is_invalid(field, invalid):
+    class ForgedDigest(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), **{field: ForgedDigest(invalid)})

@@ -22,3 +22,11 @@ Pinned old source: `a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a`. Main base at task
 5. No production update, tunnel/service restart, current host disk writes, backup media change or remote Claude call performed.
 
 Next safe task: share receipt to parent #341/#590 and Fabric #942; defer ephemeral workflow merge; qualify active package digest via first-party correct-host collector with private results and full Python 3.12 rehearsal.
+
+## Second independent Python 3.12 build + artifact comparison (2026-10-11)
+
+- GitHub-hosted run [38172776852](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/38172776852) SUCCESS, artifact id `11715250071`, Python 3.12.15 isolated venv wheel installation/compile/uninstall SUCCESS; this is not a running MCP service test and uses no runtime dependencies.
+- New downloaded ZIP size `296572` bytes, SHA256 `797a64412a2298de0229f6a2062e79c32d7bf071482914f98103a360ca529ea8`.
+- New contained wheel `aifordable_runner_mcp-0.1.3-py3-none-any.whl`, size `302031` bytes, SHA256 `2fe8ed42a51ad9ba351b74f8f651da4d0e89ce36b84cfb97bc70ac207142b5bc`.
+- Old wheel SHA256 was `f3b6513f7dfa1800fab9efbbc001f6e0dbb33ae81b522578f3804c002d62a8b2`. The two wheels had EXACTLY the same 91 member paths AND the SHA256 of each uncompressed member was identical; their overall ZIP/wheel byte hashes differ. Thus the source-package payload is stable while binary archive-level reproducibility remains **UNQUALIFIED** (likely wrapper metadata, not proven). Release signing/restoring must PIN the actual selected binary SHA256; do not substitute a differently hashed rebuild merely because version and source match.
+- New artifact privately retained separately from previous ZIP at Library `/Backups/Runner-MCP/Recovery-Wheels/runner-mcp-a0fd964c-python312-proof-20261011.zip`; previous artifact untouched. Still no active host loaded-module proof, full dependency restore, immutable signature or original-client ACK.

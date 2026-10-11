@@ -1,3 +1,7 @@
+## 2026-10-11 — PR #653 exacte CI-root-cause en herstel
+
+Runner MCP validation `38128420738` op oude docs-head `663498d749b5f4033c477a928818a7f3899346e7` FAILED uitsluitend op `git diff --check`: één lege EOF-regel in `handover/FLEET_RELEASE_GATES_2026-10-11.md` en één in `roadmap/children/642-dispatch-admission/STATE.md`. Dezelfde job toonde **2813 pytest PASS**, en registry publisher validatie PASS; artifact/demo SKIPPED door whitespace-stop, dus NIET full-green. Gerichte EOF-correctie op dezelfde PR #653, nieuwste head `79178e04fea957db799075aa31cb39a0ec0000ad`; exacte nieuwe CI is vereist. #654 head `ed58704223d424b5d8155f690f2cb538fa929a56` attribution `38128315344` plus validation `38128315342` SUCCESS; #655 head `c8dc9b7340eb92e467cbd749c885f3b605eef411` attribution `38127697888` en validation `38127697809` SUCCESS. Geen host-, toolrechten-, updater- of Claude-mutatie.
+
 ## 2026-10-11 continued Runner-MCP owner handoff — fixture drift and exact-head CI
 
 PR #655 latest `c8dc9b7340eb92e467cbd749c885f3b605eef411` full validation `38127697809` SUCCESS and attribution `38127697888` SUCCESS. Source-only A6 parent+child symlink rejection; no independent approval, active host or A6 journal proof.

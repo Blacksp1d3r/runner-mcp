@@ -62,6 +62,50 @@ def test_same_tool_names_but_different_local_rights():
     assert allowed.response_code == "OK"
 
 
+
+def test_five_lab_only_tools_are_denied_by_primary_without_catalogue_removal():
+    """The same registered names must not silently become host permissions."""
+    lab_only = frozenset({
+        "bewind_ocr_qualification_run",
+        "bewind_ocr_qualification_stage",
+        "bewind_ocr_qualification_prepare",
+        "bewind_ocr_qualification_status",
+        "bewind_ocr_qualification_cleanup",
+    })
+    shared_names = NAMES | lab_only
+    primary = policy()
+    lab = replace(
+        primary,
+        service_asset_id="service:lab",
+        permitted_tool_names=primary.permitted_tool_names | lab_only,
+    )
+    for name in sorted(lab_only):
+        primary_result = evaluate_host_tool_admission(
+            name,
+            registered_tool_names=shared_names,
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=primary,
+            now_epoch=1_000,
+        )
+        lab_result = evaluate_host_tool_admission(
+            name,
+            registered_tool_names=shared_names,
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=lab,
+            now_epoch=1_000,
+        )
+        assert primary_result.to_public_payload() == {
+            "allowed": False,
+            "reasonCode": "tool_not_granted_on_host",
+            "code": "HOST_TOOL_NOT_PERMITTED",
+        }
+        assert lab_result.allowed is True
+    # This is only an oracle test: no live tools/list schema or dispatch is qualified.
+
+
+
 def test_missing_host_policy_is_explicit_denial_not_missing_tool():
     result = evaluate("runtime_status")
     assert result.to_public_payload() == {

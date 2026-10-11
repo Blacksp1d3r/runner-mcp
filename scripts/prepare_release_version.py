@@ -69,8 +69,15 @@ def plan(
         raise VersionAllocationError("branch HEAD changed: rebase and revalidate")
     if _git("-C", str(root), "status", "--porcelain", "--untracked-files=no"):
         raise VersionAllocationError("working tree has uncommitted tracked changes")
-    if not root.is_dir():
-        raise VersionAllocationError("repository is missing")
+    if not root.is_dir() or root.is_symlink():
+        raise VersionAllocationError("repository root is missing or unsafe")
+    root_real = root.resolve()
+    for relative_path in _VERSION_FILES:
+        candidate = root / relative_path
+        if candidate.is_symlink() or not candidate.is_file():
+            raise VersionAllocationError("release metadata path is missing or unsafe")
+        if not candidate.resolve().is_relative_to(root_real):
+            raise VersionAllocationError("release metadata path escapes repository")
     current = tomllib.loads((root / _VERSION_FILES[0]).read_text())["project"]["version"]
     if current != expected_version:
         raise VersionAllocationError("source version has changed; do not reuse claim")
@@ -79,10 +86,14 @@ def plan(
     module = (root / _VERSION_FILES[2]).read_text()
     glama = json.loads((root / _VERSION_FILES[3]).read_text())
     if (
-        server.get("version") != current
+        not isinstance(server, dict)
+        or server.get("version") != current
         or not isinstance(server.get("packages"), list)
         or not server["packages"]
-        or any(pkg.get("version") != current for pkg in server["packages"])
+        or any(
+            not isinstance(pkg, dict) or pkg.get("version") != current
+            for pkg in server["packages"]
+        )
         or not isinstance(glama, dict) or glama.get("version") != current
         or module.count(f'__version__ = "{current}"') != 1
     ):

@@ -64,3 +64,38 @@ def test_conflicting_version_refuses(tmp_path, monkeypatch):
             root=tmp_path, kind="patch",
             expected_version="0.1.3", expected_head="a" * 40
         )
+
+
+def test_metadata_symlink_outside_repo_is_denied(tmp_path, monkeypatch):
+    _fixture(tmp_path)
+    outside = tmp_path.parent / "release-metadata-outside-guard.json"
+    outside.write_text(json.dumps({"version": "0.1.4"}))
+    glama = tmp_path / "glama.json"
+    glama.unlink()
+    glama.symlink_to(outside)
+    monkeypatch.setattr(_MOD, "_git", lambda *args: "a" * 40 if "rev-parse" in args else "")
+    with pytest.raises(_MOD.VersionAllocationError, match="unsafe"):
+        _MOD.plan(
+            root=tmp_path, kind="patch",
+            expected_version="0.1.4", expected_head="a" * 40
+        )
+    assert json.loads(outside.read_text())["version"] == "0.1.4"
+
+
+def test_cli_apply_updates_all_four_files(tmp_path, monkeypatch):
+    import sys
+
+    _fixture(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(_MOD, "_git", lambda *args: "a" * 40 if "rev-parse" in args else "")
+    monkeypatch.setattr(sys, "argv", [
+        "prepare_release_version.py", "--kind", "patch", "--expected-version",
+        "0.1.4", "--expected-head", "a" * 40, "--apply",
+    ])
+    assert _MOD.main() == 0
+    assert 'version = "0.1.5"' in (tmp_path / "pyproject.toml").read_text()
+    assert json.loads((tmp_path / "server.json").read_text())["version"] == "0.1.5"
+    assert json.loads((tmp_path / "glama.json").read_text())["version"] == "0.1.5"
+    assert '__version__ = "0.1.5"' in (
+        tmp_path / "src/runner_mcp/__init__.py"
+    ).read_text()

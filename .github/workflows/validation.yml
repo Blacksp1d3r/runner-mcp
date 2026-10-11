@@ -44,8 +44,10 @@ jobs:
           if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
             base="$(git rev-parse HEAD^)"
           else
-            base="$(git merge-base HEAD origin/main)"
+            git fetch --no-tags origin "refs/heads/$GITHUB_BASE_REF"
+            base="$(git merge-base HEAD FETCH_HEAD)"
           fi
+          echo "RUNNER_MCP_BASE_COMMIT=$base" >> "$GITHUB_ENV"
           python scripts/check_release_version.py --base "$base"
 
       - name: Compile Python
@@ -73,8 +75,7 @@ jobs:
       - name: Whitespace check
         shell: bash
         run: |
-          base="$(git merge-base HEAD origin/main)"
-          git diff --check "$base"..HEAD
+          git diff --check "$RUNNER_MCP_BASE_COMMIT"..HEAD
 
 
   demo-smoke:

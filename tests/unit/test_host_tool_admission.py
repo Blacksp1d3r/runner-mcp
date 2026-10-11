@@ -84,6 +84,9 @@ def test_five_ocr_policy_names_are_declared_in_real_mcp_server_source():
         "bewind_ocr_runtime_image_prepare",
         "bewind_ocr_qualification_source_provision",
         "bewind_ocr_qualification_execution_authority_configure",
+        "fabric_disposable_target_qualify",
+        "runtime_status",
+        "queue_status",
     } <= declared
 
 

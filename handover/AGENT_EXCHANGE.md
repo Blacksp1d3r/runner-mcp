@@ -1,3 +1,7 @@
+## 2026-10-11 14:24 CEST — Runner-MCP verified source-only owner exchange
+
+#655 `bf0cc6c07b16fe4fe07533a008b9f33b19fe3d97`: both CI green, A6 ancestor symlink-loop path resolution sanitized, no config writes in negative test. #654 `3c30d6287161c8427ff966063bea2f17e6bb19df`: new 70-declared-source-tool catalogue/grammar regression, exact full CI still pending at this handoff. #656 `f40b2375950aab927265c1291ecc7e14cd869db0`: both CI green with 2830 pytest. DRAFT integration-only #657 `62c015afa7c35771f5a66532653c5dd15b1ee1ed`: new catalogue test, CI pending. Security approvals absent. Keep signed host-policy issuance, same-client ACK, A6 off-target journal, A7 isolated guest reboot and Claude #381/#972/#370 under their existing owners. No host mutation. Shared index rows RMCP-F-0025..0030 all distinct across four source/docs PRs.
+
 ## 2026-10-11 — Green cross-host type-confusion regressions
 
 Runner-MCP #656 exact head `9825fb84b15fdc1240ee946734acbd88cd8e2dc6`: validation `38134140545` SUCCESS, attribution `38134140401` SUCCESS; reject malicious Python `str` subclasses for both authenticated service asset and qualified policy asset IDs. DRAFT integration reference #657 exact head `bed509bc9429065b79cddbcfde55d190d2de44a9`: validation `38134126832` SUCCESS, attribution `38134126801` SUCCESS. No independent APPROVE or merge, and no verified live first-party service identity. #654 must be reviewed/merged first; #656 then rebased and compatibility tests ported; docs #653 reconciled last. No production action.

@@ -17,3 +17,6 @@ next_safe_action: "Obtain first-party enrolled asset+active process identity tie
 ## Source-vs-runtime checkpoint
 
 Current main server has sanitized `fabric_a6_binding_state` and activation checks; connected runtime had stale 12-check doctor or generic error. Connected build_identity returned source a0fd964c... and null artifact. Connected Fabric bridge appeared ready but A6 named tool flags false and operational Agent-Bus relay evidence unavailable. Classify this as incomplete identity/capability evidence, not a proven config root cause. Reuse RMCP-F-0002 and issue #509 chronology rather than duplicate an incident.
+## 2026-10-11 exact source-provenance correction
+
+Read-only `build_identity.py` confirms installed_source_revision reads `self-update-state.json` `commit` and `runner_mcp_mcp_build_identity` always sets artifact_digest None; the connected source SHA is a stored installation fact, not independently verified active process code. `server.py` computes interface schema at lifespan from registered tool declarations but this does not bind the reported stored source revision to the running PID. Demand separate trusted process-source/artifact evidence, not self-reported SHA alone.

@@ -336,4 +336,3 @@ def test_forged_policy_grants_frozenset_subclass_is_rejected():
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), permitted_tool_names=ForgedGrants({"runtime_status"}))
-

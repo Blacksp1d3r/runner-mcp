@@ -1,10 +1,19 @@
 """Every shipping code/tool change must carry its own monotonically increasing version."""
 
+import importlib.util
 import json
+from pathlib import Path
 
 import pytest
 
-from scripts.check_release_version import check_metadata, needs_bump, version_tuple
+_GATE_FILE = Path(__file__).resolve().parents[2] / "scripts/check_release_version.py"
+_SPEC = importlib.util.spec_from_file_location("runner_mcp_release_gate", _GATE_FILE)
+assert _SPEC is not None and _SPEC.loader is not None
+_GATE = importlib.util.module_from_spec(_SPEC)
+_SPEC.loader.exec_module(_GATE)
+check_metadata = _GATE.check_metadata
+needs_bump = _GATE.needs_bump
+version_tuple = _GATE.version_tuple
 
 
 @pytest.mark.parametrize("path", [

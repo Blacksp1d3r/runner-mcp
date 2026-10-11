@@ -34,6 +34,7 @@ def evaluate(tool, *, permit=None, revision=REVISION, digest=SCHEMA, now=1_000):
     return evaluate_host_tool_admission(
         tool,
         registered_tool_names=NAMES,
+        verified_service_asset_id="service:lab" if permit is not None and permit.service_asset_id == "service:lab" else "service:primary",
         runtime_source_revision=revision,
         runtime_interface_schema_sha256=digest,
         policy=permit,
@@ -138,6 +139,7 @@ def test_bad_client_inputs_never_create_permission():
         args = {
             "tool_name": "runtime_status",
             "registered_tool_names": NAMES,
+            "verified_service_asset_id": "service:primary",
             "runtime_source_revision": REVISION,
             "runtime_interface_schema_sha256": SCHEMA,
             "policy": policy(),
@@ -146,3 +148,36 @@ def test_bad_client_inputs_never_create_permission():
         args.update(extra)
         with pytest.raises(HostToolPolicyError, match="invalid"):
             evaluate_host_tool_admission(**args)
+
+
+def test_foreign_host_permit_denied_even_with_exact_code_and_schema():
+    qualified = policy()
+    result = evaluate_host_tool_admission(
+        "runtime_status",
+        registered_tool_names=NAMES,
+        verified_service_asset_id="service:lab",
+        runtime_source_revision=REVISION,
+        runtime_interface_schema_sha256=SCHEMA,
+        policy=qualified,
+        now_epoch=1_000,
+    )
+    assert result.to_public_payload() == {
+        "allowed": False,
+        "reasonCode": "host_identity_mismatch",
+        "code": "HOST_TOOL_NOT_PERMITTED",
+    }
+
+
+@pytest.mark.parametrize("unverified", [None, "", "FORGED/HOST", True])
+def test_missing_or_invalid_verified_host_identity_denied(unverified):
+    result = evaluate_host_tool_admission(
+        "runtime_status",
+        registered_tool_names=NAMES,
+        verified_service_asset_id=unverified,
+        runtime_source_revision=REVISION,
+        runtime_interface_schema_sha256=SCHEMA,
+        policy=policy(),
+        now_epoch=1_000,
+    )
+    assert result.reason_code == "host_identity_mismatch"
+    assert result.allowed is False

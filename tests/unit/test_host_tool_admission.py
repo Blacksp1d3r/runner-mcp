@@ -308,3 +308,32 @@ def test_qualified_policy_subclass_cannot_override_grants():
             policy=altered,
             now_epoch=1_000,
         )
+
+def test_forged_catalogue_frozenset_subclass_is_rejected():
+    class ForgedCatalogue(frozenset):
+        def __contains__(self, item):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=ForgedCatalogue({"runtime_status"}),
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=policy(),
+            now_epoch=1_000,
+        )
+
+
+def test_forged_policy_grants_frozenset_subclass_is_rejected():
+    class ForgedGrants(frozenset):
+        def __contains__(self, item):
+            return True
+
+        def issubset(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), permitted_tool_names=ForgedGrants({"runtime_status"}))
+

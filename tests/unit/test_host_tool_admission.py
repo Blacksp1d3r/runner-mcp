@@ -208,4 +208,3 @@ def test_forged_policy_id_string_subclass_is_rejected():
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
-

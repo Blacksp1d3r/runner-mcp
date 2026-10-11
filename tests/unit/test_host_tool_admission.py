@@ -30,10 +30,14 @@ def policy(*, granted=frozenset({"runtime_status", "queue_status"})):
     )
 
 
-def evaluate(tool, *, permit=None, revision=REVISION, digest=SCHEMA, now=1_000):
+def evaluate(
+    tool, *, permit=None, host="service:primary",
+    revision=REVISION, digest=SCHEMA, now=1_000,
+):
     return evaluate_host_tool_admission(
         tool,
         registered_tool_names=NAMES,
+        verified_service_asset_id=host,
         runtime_source_revision=revision,
         runtime_interface_schema_sha256=digest,
         policy=permit,
@@ -53,13 +57,14 @@ def test_same_tool_names_but_different_local_rights():
     )
     tool = "bewind_ocr_qualification_run"
     denied = evaluate(tool, permit=control)
-    allowed = evaluate(tool, permit=lab)
+    allowed = evaluate(tool, permit=lab, host="service:lab")
     assert denied.allowed is False
     assert denied.response_code == "HOST_TOOL_NOT_PERMITTED"
     assert denied.reason_code == "tool_not_granted_on_host"
     assert allowed.allowed is True
     assert allowed.reason_code == "exact_host_capability_granted"
     assert allowed.response_code == "OK"
+    assert evaluate(tool, permit=lab).reason_code == "host_identity_mismatch"
 
 
 def test_missing_host_policy_is_explicit_denial_not_missing_tool():
@@ -138,6 +143,7 @@ def test_bad_client_inputs_never_create_permission():
         args = {
             "tool_name": "runtime_status",
             "registered_tool_names": NAMES,
+            "verified_service_asset_id": "service:primary",
             "runtime_source_revision": REVISION,
             "runtime_interface_schema_sha256": SCHEMA,
             "policy": policy(),
@@ -146,3 +152,187 @@ def test_bad_client_inputs_never_create_permission():
         args.update(extra)
         with pytest.raises(HostToolPolicyError, match="invalid"):
             evaluate_host_tool_admission(**args)
+
+
+def test_foreign_host_permit_denied_even_with_exact_code_and_schema():
+    qualified = policy()
+    result = evaluate_host_tool_admission(
+        "runtime_status",
+        registered_tool_names=NAMES,
+        verified_service_asset_id="service:lab",
+        runtime_source_revision=REVISION,
+        runtime_interface_schema_sha256=SCHEMA,
+        policy=qualified,
+        now_epoch=1_000,
+    )
+    assert result.to_public_payload() == {
+        "allowed": False,
+        "reasonCode": "host_identity_mismatch",
+        "code": "HOST_TOOL_NOT_PERMITTED",
+    }
+
+
+@pytest.mark.parametrize("unverified", [None, "", "FORGED/HOST", True])
+def test_missing_or_invalid_verified_host_identity_denied(unverified):
+    result = evaluate_host_tool_admission(
+        "runtime_status",
+        registered_tool_names=NAMES,
+        verified_service_asset_id=unverified,
+        runtime_source_revision=REVISION,
+        runtime_interface_schema_sha256=SCHEMA,
+        policy=policy(),
+        now_epoch=1_000,
+    )
+    assert result.reason_code == "host_identity_mismatch"
+    assert result.allowed is False
+
+def test_verified_asset_subclass_cannot_override_identity_comparison():
+    class ForgedHost(str):
+        def __ne__(self, other):
+            return False
+
+        def __eq__(self, other):
+            return True
+
+    result = evaluate("runtime_status", permit=policy(), host=ForgedHost("service:lab"))
+    assert result.allowed is False
+    assert result.reason_code == "host_identity_mismatch"
+
+def test_forged_policy_id_string_subclass_is_rejected():
+    class ForgedPolicyAsset(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
+
+def test_admission_refuses_forged_tool_name_hash_and_equality():
+    class ForgedTool(str):
+        def __hash__(self):
+            return hash("runtime_status")
+
+        def __eq__(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate(
+            ForgedTool("fabric_hidden_command"),
+            permit=policy(),
+        )
+
+
+def test_policy_rejects_forged_tool_set_member_hash_and_equality():
+    class ForgedTool(str):
+        def __hash__(self):
+            return hash("runtime_status")
+
+        def __eq__(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), permitted_tool_names=frozenset({ForgedTool("fabric_hidden_command")}))
+
+
+def test_registered_catalogue_rejects_forged_tool_set_member():
+    class ForgedTool(str):
+        def __hash__(self):
+            return hash("runtime_status")
+
+        def __eq__(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=frozenset({ForgedTool("fabric_hidden_command")}),
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=policy(),
+            now_epoch=1_000,
+        )
+
+@pytest.mark.parametrize("field", ["revision", "digest"])
+def test_runtime_digest_subclass_cannot_fake_matching_generation(field):
+    class ForgedDigest(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    fake = ForgedDigest(("c" * 40) if field == "revision" else ("c" * 64))
+    result = evaluate("runtime_status", permit=policy(), **{field: fake})
+    assert result.allowed is False
+    assert result.reason_code == "runtime_generation_mismatch"
+
+
+@pytest.mark.parametrize("field,invalid", [
+    ("release_source_revision", "c" * 40),
+    ("interface_schema_sha256", "c" * 64),
+])
+def test_policy_digest_subclass_is_invalid(field, invalid):
+    class ForgedDigest(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), **{field: ForgedDigest(invalid)})
+
+def test_qualified_policy_subclass_cannot_override_grants():
+    # A subclass is invalid even if it otherwise carries matching source facts.
+    # Construct without changing real policy class or invoking a live host.
+    class DeceptivePolicy(QualifiedHostToolPolicy):
+        pass
+
+    altered = DeceptivePolicy(
+        service_asset_id="service:primary",
+        release_source_revision=REVISION,
+        interface_schema_sha256=SCHEMA,
+        permitted_tool_names=frozenset({"runtime_status"}),
+        expires_at_epoch=2_000,
+    )
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=NAMES,
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=altered,
+            now_epoch=1_000,
+        )
+
+def test_forged_catalogue_frozenset_subclass_is_rejected():
+    class ForgedCatalogue(frozenset):
+        def __contains__(self, item):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=ForgedCatalogue({"runtime_status"}),
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=policy(),
+            now_epoch=1_000,
+        )
+
+
+def test_forged_policy_grants_frozenset_subclass_is_rejected():
+    class ForgedGrants(frozenset):
+        def __contains__(self, item):
+            return True
+
+        def issubset(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), permitted_tool_names=ForgedGrants({"runtime_status"}))

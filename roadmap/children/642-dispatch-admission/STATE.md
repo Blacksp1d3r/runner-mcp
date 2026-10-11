@@ -26,3 +26,6 @@ Merged #641 source-only oracle is NOT wired into MCPServer.call_tool. No real ho
 - #654 current head `ed58704223d424b5d8155f690f2cb538fa929a56`: validation `38128315342` SUCCESS; attribution `38128315344` SUCCESS.
 - #655 current head `c8dc9b7340eb92e467cbd749c885f3b605eef411`: validation `38127697809` SUCCESS; attribution `38127697888` SUCCESS.
 - All three remain unmerged and lack independent approving reviews. These results qualify synthetic/source changes only; they do not authorize the unqualified dispatcher or fleet update.
+## 2026-10-11 source-only cross-host policy guard
+
+Draft PR #656 adds required independently verified service asset ID to the pure admission evaluator and fails closed on foreign or missing identity; no live identity provider, signature verification or real dispatcher integration. Current PR #656 head `e510e334c8df34525ca000592754d93c95a4a2c4` requires exact-head CI and independent security review. IMPORTANT merge order: #654's tests use prior evaluator call shape, so merge/reconcile #654 first, then rebase #656 and adapt the extra #654 invocations, validating the rebased exact head. Do not merge #656 ahead of #654. No host authority or production impact.

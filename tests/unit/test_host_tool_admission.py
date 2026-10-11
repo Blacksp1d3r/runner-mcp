@@ -280,3 +280,21 @@ def test_ci_installed_sdk_handler_calls_public_tool_seam():
         and node.func.value.id == "self"
         for node in ast.walk(tree)
     )
+
+
+def test_verified_host_identity_cannot_override_equality():
+    """An adversarial str subclass must not make a foreign permit look local."""
+    class DeceptiveAssetId(str):
+        def __ne__(self, other):
+            return False
+
+        def __eq__(self, other):
+            return True
+
+    result = evaluate(
+        "runtime_status",
+        permit=policy(),
+        host=DeceptiveAssetId("service:lab"),
+    )
+    assert result.allowed is False
+    assert result.reason_code == "host_identity_mismatch"

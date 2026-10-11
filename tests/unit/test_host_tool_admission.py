@@ -1,4 +1,7 @@
 """Same advertised tools everywhere; host execution remains independently denied."""
+import ast
+import inspect
+import textwrap
 from dataclasses import replace
 
 import pytest
@@ -61,6 +64,27 @@ def test_same_tool_names_but_different_local_rights():
     assert allowed.reason_code == "exact_host_capability_granted"
     assert allowed.response_code == "OK"
 
+
+
+
+def test_five_ocr_policy_names_are_declared_in_real_mcp_server_source():
+    """Detect fixture drift without claiming live host tools/list qualification."""
+    from runner_mcp.server import build_mcp
+
+    declared = {
+        node.name
+        for node in ast.walk(
+            ast.parse(textwrap.dedent(inspect.getsource(build_mcp)))
+        )
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    assert {
+        "bewind_ocr_qualification_run",
+        "bewind_ocr_qualification_stage",
+        "bewind_ocr_runtime_image_prepare",
+        "bewind_ocr_qualification_source_provision",
+        "bewind_ocr_qualification_execution_authority_configure",
+    } <= declared
 
 
 def test_five_real_ocr_tool_names_denied_by_primary_in_synthetic_policy():

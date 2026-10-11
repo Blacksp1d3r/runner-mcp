@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Release version gate: fail if shipping changes retain their numeric version."""
 
 from __future__ import annotations

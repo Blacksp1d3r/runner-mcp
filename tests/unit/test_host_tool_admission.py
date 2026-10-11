@@ -33,10 +33,14 @@ def policy(*, granted=frozenset({"runtime_status", "queue_status"})):
     )
 
 
-def evaluate(tool, *, permit=None, revision=REVISION, digest=SCHEMA, now=1_000):
+def evaluate(
+    tool, *, permit=None, host="service:primary",
+    revision=REVISION, digest=SCHEMA, now=1_000,
+):
     return evaluate_host_tool_admission(
         tool,
         registered_tool_names=NAMES,
+        verified_service_asset_id=host,
         runtime_source_revision=revision,
         runtime_interface_schema_sha256=digest,
         policy=permit,
@@ -56,7 +60,9 @@ def test_same_tool_names_but_different_local_rights():
     )
     tool = "bewind_ocr_qualification_run"
     denied = evaluate(tool, permit=control)
-    allowed = evaluate(tool, permit=lab)
+    allowed = evaluate(tool, permit=lab, host="service:lab")
+    replayed = evaluate(tool, permit=lab, host="service:primary")
+    assert replayed.reason_code == "host_identity_mismatch"
     assert denied.allowed is False
     assert denied.response_code == "HOST_TOOL_NOT_PERMITTED"
     assert denied.reason_code == "tool_not_granted_on_host"
@@ -110,6 +116,7 @@ def test_five_real_ocr_tool_names_denied_by_primary_in_synthetic_policy():
         primary_result = evaluate_host_tool_admission(
             name,
             registered_tool_names=shared_names,
+            verified_service_asset_id="service:primary",
             runtime_source_revision=REVISION,
             runtime_interface_schema_sha256=SCHEMA,
             policy=primary,
@@ -118,6 +125,7 @@ def test_five_real_ocr_tool_names_denied_by_primary_in_synthetic_policy():
         lab_result = evaluate_host_tool_admission(
             name,
             registered_tool_names=shared_names,
+            verified_service_asset_id="service:lab",
             runtime_source_revision=REVISION,
             runtime_interface_schema_sha256=SCHEMA,
             policy=lab,
@@ -209,6 +217,7 @@ def test_bad_client_inputs_never_create_permission():
         args = {
             "tool_name": "runtime_status",
             "registered_tool_names": NAMES,
+            "verified_service_asset_id": "service:primary",
             "runtime_source_revision": REVISION,
             "runtime_interface_schema_sha256": SCHEMA,
             "policy": policy(),
@@ -217,3 +226,13 @@ def test_bad_client_inputs_never_create_permission():
         args.update(extra)
         with pytest.raises(HostToolPolicyError, match="invalid"):
             evaluate_host_tool_admission(**args)
+
+
+def test_foreign_policy_does_not_grant_permission_on_primary():
+    foreign = replace(policy(), service_asset_id="service:lab")
+    result = evaluate("runtime_status", permit=foreign, host="service:primary")
+    assert result.to_public_payload() == {
+        "allowed": False,
+        "reasonCode": "host_identity_mismatch",
+        "code": "HOST_TOOL_NOT_PERMITTED",
+    }

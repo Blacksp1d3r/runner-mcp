@@ -399,3 +399,27 @@ def test_combined_oracle_rejects_frozenset_override_on_both_sides():
             policy=policy(),
             now_epoch=1_000,
         )
+
+def test_entire_declared_mcp_catalogue_is_policy_name_compatible():
+    """Guard all source declarations, not only the eight OCR fixtures."""
+    from runner_mcp.server import build_mcp
+
+    nodes = ast.walk(ast.parse(textwrap.dedent(inspect.getsource(build_mcp))))
+    decorated_names = [
+        node.name
+        for node in nodes
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(decorator, ast.Call)
+            and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "tool"
+            and isinstance(decorator.func.value, ast.Name)
+            and decorator.func.value.id == "mcp"
+            for decorator in node.decorator_list
+        )
+    ]
+    assert decorated_names
+    assert len(decorated_names) == len(set(decorated_names))
+    assert len(decorated_names) <= 256
+    permit = policy(granted=frozenset(decorated_names))
+    assert permit.permitted_tool_names == frozenset(decorated_names)

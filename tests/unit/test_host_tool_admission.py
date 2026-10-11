@@ -284,3 +284,27 @@ def test_policy_digest_subclass_is_invalid(field, invalid):
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), **{field: ForgedDigest(invalid)})
+
+def test_qualified_policy_subclass_cannot_override_grants():
+    # A subclass is invalid even if it otherwise carries matching source facts.
+    # Construct without changing real policy class or invoking a live host.
+    class DeceptivePolicy(QualifiedHostToolPolicy):
+        pass
+
+    altered = DeceptivePolicy(
+        service_asset_id="service:primary",
+        release_source_revision=REVISION,
+        interface_schema_sha256=SCHEMA,
+        permitted_tool_names=frozenset({"runtime_status"}),
+        expires_at_epoch=2_000,
+    )
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=NAMES,
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=altered,
+            now_epoch=1_000,
+        )

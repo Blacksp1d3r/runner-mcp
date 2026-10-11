@@ -20,4 +20,3 @@ Merged #641 source-only oracle is NOT wired into MCPServer.call_tool. No real ho
 - #655 latest head c8dc9b7340eb92e467cbd749c885f3b605eef411: Runner MCP validation 38127697809 SUCCESS, attribution 38127697888 SUCCESS; parent+child A6 symlink guard is SOURCE only. Separate approver still absent.
 - #653 head 691606d53da2e715988dce853470a2755cb18f52: validation 38127251289 SUCCESS, attribution 38127251251 SUCCESS.
 - No host-provenance issuer, trusted policy signature, installed exact process/catalogue, real dispatcher deny or original-client delivered response was established. Preserve BLOCKED; never promote green synthetic tests to runtime authorization.
-

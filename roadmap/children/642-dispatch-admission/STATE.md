@@ -12,3 +12,12 @@ next_safe_action: "Obtain first-party attested expiring host permit bound to ser
 
 ## Checkpoint 2026-10-11
 Merged #641 source-only oracle is NOT wired into MCPServer.call_tool. No real host permission authority was identified or fabricated. Interception point resolved in src/runner_mcp/server.py build_mcp. PR #654 tests remain oracle-only. No deploy/restart or Claude dispatch.
+
+## 2026-10-11 continuation — qualified source fixture, NOT live policy
+
+- #654 last completed prior head dbf1b0bd12185369f365b40d3d953574444f5ebf: Runner MCP validation 38128064882 SUCCESS and attribution 38128064884 SUCCESS.
+- New #654 head ed58704223d424b5d8155f690f2cb538fa929a56 adds AST validation for all eight test fixture tool names (five OCR plus runtime_status, queue_status, fabric_disposable_target_qualify); its exact-head CI is not yet accepted until both checks finish.
+- #655 latest head c8dc9b7340eb92e467cbd749c885f3b605eef411: Runner MCP validation 38127697809 SUCCESS, attribution 38127697888 SUCCESS; parent+child A6 symlink guard is SOURCE only. Separate approver still absent.
+- #653 head 691606d53da2e715988dce853470a2755cb18f52: validation 38127251289 SUCCESS, attribution 38127251251 SUCCESS.
+- No host-provenance issuer, trusted policy signature, installed exact process/catalogue, real dispatcher deny or original-client delivered response was established. Preserve BLOCKED; never promote green synthetic tests to runtime authorization.
+

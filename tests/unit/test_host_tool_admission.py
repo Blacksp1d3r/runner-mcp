@@ -198,3 +198,14 @@ def test_verified_asset_subclass_cannot_override_identity_comparison():
     assert result.allowed is False
     assert result.reason_code == "host_identity_mismatch"
 
+def test_forged_policy_id_string_subclass_is_rejected():
+    class ForgedPolicyAsset(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
+

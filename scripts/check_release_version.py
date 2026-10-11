@@ -11,7 +11,7 @@ import tomllib
 from pathlib import Path
 
 _VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-_RELEASE_FILES = frozenset({"install.sh", "pyproject.toml", "server.json"})
+_RELEASE_FILES = frozenset({"install.sh", "pyproject.toml", "server.json", "glama.json"})
 _RELEASE_PREFIXES = ("src/runner_mcp/", "scripts/", ".github/workflows/")
 
 
@@ -53,6 +53,50 @@ def verify(base: str | None) -> tuple[tuple[int, int, int], bool]:
     current = check_metadata(
         Path("pyproject.toml").read_bytes(), Path("server.json").read_bytes()
     )
+    package_version = ".".join(map(str, current))
+    marker = Path("src/runner_mcp/__init__.py").read_text(encoding="utf-8")
+    if not re.search(
+        rf'(?m)^__version__ = "{re.escape(package_version)}"    original = check_metadata(
+        git("show", f"{base}:pyproject.toml"),
+        git("show", f"{base}:server.json"),
+    )
+    changed = [
+        x.decode("utf-8") for x in git("diff", "--name-only", "-z", base, "HEAD").split(b"\0")
+        if x
+    ]
+    release = needs_bump(changed)
+    if current < original:
+        raise ValueError("release version decreased")
+    if release and current == original:
+        raise ValueError("shipping tools/code changed without a new version")
+    if current > original and not {
+        "pyproject.toml", "server.json", "src/runner_mcp/__init__.py", "glama.json"
+    } <= set(changed):
+        raise ValueError("version change must update all four metadata files")
+    return current, release
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--base", help="git merge-base of this PR against main")
+    args = parser.parse_args()
+    try:
+        version, shipping = verify(args.base)
+    except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
+        print(f"RELEASE_VERSION_GATE: FAIL ({exc})", file=sys.stderr)
+        return 1
+    print(f"RELEASE_VERSION_GATE: PASS {'.'.join(map(str, version))} shipping={shipping}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
+, marker
+    ):
+        raise ValueError("runtime __version__ differs from pyproject")
+    glama = json.loads(Path("glama.json").read_text(encoding="utf-8"))
+    if not isinstance(glama, dict) or glama.get("version") != package_version:
+        raise ValueError("discovery metadata version differs from pyproject")
     if base is None:
         return current, False
     original = check_metadata(

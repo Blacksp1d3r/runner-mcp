@@ -191,7 +191,7 @@ def test_repair_rejects_dangling_a6_root_symlink_before_noop(
     config = tmp_path / "config"
     config.mkdir(mode=0o700)
     env_path = config / "runner-mcp.env"
-    env_path.write_text("UNRELATED_VALUE=keep\\n", encoding="utf-8")
+    env_path.write_text("UNRELATED_VALUE=keep\n", encoding="utf-8")
     env_path.chmod(0o600)
     state = tmp_path / "state"
     state.mkdir(mode=0o700)

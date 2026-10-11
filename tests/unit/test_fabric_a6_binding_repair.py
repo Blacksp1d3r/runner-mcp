@@ -207,3 +207,24 @@ def test_repair_rejects_dangling_a6_root_symlink_before_noop(
         )
     assert load_env_file(env_path) == {"UNRELATED_VALUE": "keep"}
     assert "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT" not in environment
+
+
+def test_symlinked_a6_parent_root_blocks_repair_and_diagnostic(
+    tmp_path: Path,
+) -> None:
+    config, real_state, environment = _private_runtime(tmp_path)
+    linked_root = tmp_path / "linked-state"
+    linked_root.symlink_to(real_state, target_is_directory=True)
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+        repair_a6_qualification_binding(
+            environment=environment,
+            config_dir=config,
+            state_root=linked_root,
+            fabric_revision="f" * 40,
+        )
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+        inspect_a6_binding_state(config_dir=config, state_root=linked_root)
+    assert load_env_file(config / "runner-mcp.env") == {
+        "UNRELATED_VALUE": "keep",
+    }
+    assert "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT" not in environment

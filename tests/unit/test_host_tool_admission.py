@@ -19,7 +19,7 @@ NAMES = frozenset({
     "queue_status",
     "bewind_ocr_qualification_run",
     "bewind_ocr_qualification_stage",
-    "restart_service",
+    "fabric_disposable_target_qualify",
 })
 
 
@@ -175,10 +175,10 @@ def test_undeclared_tool_or_unqualified_catalogue_refused():
 
 
 def test_shared_high_risk_tool_is_not_implicitly_permitted():
-    denied = evaluate("restart_service", permit=policy())
+    denied = evaluate("fabric_disposable_target_qualify", permit=policy())
     assert denied.allowed is False
     assert denied.reason_code == "tool_not_granted_on_host"
-    assert "restart_service" not in denied.to_public_payload().values()
+    assert "fabric_disposable_target_qualify" not in denied.to_public_payload().values()
 
 
 @pytest.mark.parametrize(

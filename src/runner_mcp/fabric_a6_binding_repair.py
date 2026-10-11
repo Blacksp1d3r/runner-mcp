@@ -48,6 +48,8 @@ def a6_state_requested(state_root: Path) -> bool:
     root = state_root.expanduser().resolve()
     journal = root / _JOURNAL_DIR
     evidence = root / _EVIDENCE_DIR
+    if journal.is_symlink() or evidence.is_symlink():
+        raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
     present = (journal.exists(), evidence.exists())
     if any(present) and not all(present):
         raise FabricA6BindingRepairError("fabric_a6_state_incomplete")

@@ -30,15 +30,14 @@ def policy(*, granted=frozenset({"runtime_status", "queue_status"})):
     )
 
 
-def evaluate(tool, *, permit=None, revision=REVISION, digest=SCHEMA, now=1_000):
+def evaluate(
+    tool, *, permit=None, host="service:primary",
+    revision=REVISION, digest=SCHEMA, now=1_000,
+):
     return evaluate_host_tool_admission(
         tool,
         registered_tool_names=NAMES,
-        verified_service_asset_id=(
-            "service:lab"
-            if permit is not None and permit.service_asset_id == "service:lab"
-            else "service:primary"
-        ),
+        verified_service_asset_id=host,
         runtime_source_revision=revision,
         runtime_interface_schema_sha256=digest,
         policy=permit,
@@ -58,13 +57,14 @@ def test_same_tool_names_but_different_local_rights():
     )
     tool = "bewind_ocr_qualification_run"
     denied = evaluate(tool, permit=control)
-    allowed = evaluate(tool, permit=lab)
+    allowed = evaluate(tool, permit=lab, host="service:lab")
     assert denied.allowed is False
     assert denied.response_code == "HOST_TOOL_NOT_PERMITTED"
     assert denied.reason_code == "tool_not_granted_on_host"
     assert allowed.allowed is True
     assert allowed.reason_code == "exact_host_capability_granted"
     assert allowed.response_code == "OK"
+    assert evaluate(tool, permit=lab).reason_code == "host_identity_mismatch"
 
 
 def test_missing_host_policy_is_explicit_denial_not_missing_tool():

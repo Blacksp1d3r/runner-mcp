@@ -185,3 +185,16 @@ def test_missing_or_invalid_verified_host_identity_denied(unverified):
     )
     assert result.reason_code == "host_identity_mismatch"
     assert result.allowed is False
+
+def test_verified_asset_subclass_cannot_override_identity_comparison():
+    class ForgedHost(str):
+        def __ne__(self, other):
+            return False
+
+        def __eq__(self, other):
+            return True
+
+    result = evaluate("runtime_status", permit=policy(), host=ForgedHost("service:lab"))
+    assert result.allowed is False
+    assert result.reason_code == "host_identity_mismatch"
+

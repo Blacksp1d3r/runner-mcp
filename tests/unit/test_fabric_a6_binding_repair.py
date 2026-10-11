@@ -253,4 +253,3 @@ def test_a6_symlink_cycle_in_parent_is_sanitized_before_mutation(
         "UNRELATED_VALUE": "keep",
     }
     assert "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT" not in environment
-

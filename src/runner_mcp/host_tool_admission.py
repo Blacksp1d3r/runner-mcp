@@ -39,16 +39,16 @@ class QualifiedHostToolPolicy:
 
     def __post_init__(self) -> None:
         if (
-            not isinstance(self.service_asset_id, str)
+            type(self.service_asset_id) is not str
             or _ASSET.fullmatch(self.service_asset_id) is None
-            or not isinstance(self.release_source_revision, str)
+            or type(self.release_source_revision) is not str
             or _COMMIT.fullmatch(self.release_source_revision) is None
-            or not isinstance(self.interface_schema_sha256, str)
+            or type(self.interface_schema_sha256) is not str
             or _DIGEST.fullmatch(self.interface_schema_sha256) is None
-            or not isinstance(self.permitted_tool_names, frozenset)
+            or type(self.permitted_tool_names) is not frozenset
             or len(self.permitted_tool_names) > _MAX_TOOLS
             or any(
-                not isinstance(tool, str)
+                type(tool) is not str
                 or _TOOL.fullmatch(tool) is None
                 for tool in self.permitted_tool_names
             )
@@ -77,6 +77,7 @@ def evaluate_host_tool_admission(
     tool_name: str,
     *,
     registered_tool_names: frozenset[str],
+    verified_service_asset_id: str | None,
     runtime_source_revision: str | None,
     runtime_interface_schema_sha256: str | None,
     policy: QualifiedHostToolPolicy | None,
@@ -84,23 +85,25 @@ def evaluate_host_tool_admission(
 ) -> HostToolAdmission:
     """Return fixed denial unless every independent local fact agrees.
 
+    Verified service identity must come from trusted local provenance, never
+    from caller tool inputs, untrusted environment or the policy itself.
     The trusted host identity, policy signature, active process generation,
     exact registered MCP `tools/list`, lifecycle lease and audit write are
     external prerequisites. A positive result does NOT bypass existing
     OperatorSafetyGuard, Fabric policy/lease/fence or high-risk approval gates.
     """
     if (
-        not isinstance(tool_name, str)
+        type(tool_name) is not str
         or _TOOL.fullmatch(tool_name) is None
-        or not isinstance(registered_tool_names, frozenset)
+        or type(registered_tool_names) is not frozenset
         or len(registered_tool_names) > _MAX_TOOLS
         or any(
-            not isinstance(name, str) or _TOOL.fullmatch(name) is None
+            type(name) is not str or _TOOL.fullmatch(name) is None
             for name in registered_tool_names
         )
         or type(now_epoch) is not int
         or now_epoch < 0
-        or (policy is not None and not isinstance(policy, QualifiedHostToolPolicy))
+        or (policy is not None and type(policy) is not QualifiedHostToolPolicy)
     ):
         raise HostToolPolicyError("invalid host tool admission evidence")
 
@@ -111,12 +114,18 @@ def evaluate_host_tool_admission(
         return deny("tool_not_in_qualified_catalogue")
     if policy is None:
         return deny("host_policy_unavailable")
+    if (
+        type(verified_service_asset_id) is not str
+        or _ASSET.fullmatch(verified_service_asset_id) is None
+        or verified_service_asset_id != policy.service_asset_id
+    ):
+        return deny("host_identity_mismatch")
     if now_epoch >= policy.expires_at_epoch:
         return deny("host_policy_expired")
     if (
-        not isinstance(runtime_source_revision, str)
+        type(runtime_source_revision) is not str
         or _COMMIT.fullmatch(runtime_source_revision) is None
-        or not isinstance(runtime_interface_schema_sha256, str)
+        or type(runtime_interface_schema_sha256) is not str
         or _DIGEST.fullmatch(runtime_interface_schema_sha256) is None
         or runtime_source_revision != policy.release_source_revision
         or runtime_interface_schema_sha256

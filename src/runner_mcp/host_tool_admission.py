@@ -77,6 +77,7 @@ def evaluate_host_tool_admission(
     tool_name: str,
     *,
     registered_tool_names: frozenset[str],
+    verified_service_asset_id: str | None,
     runtime_source_revision: str | None,
     runtime_interface_schema_sha256: str | None,
     policy: QualifiedHostToolPolicy | None,
@@ -84,6 +85,8 @@ def evaluate_host_tool_admission(
 ) -> HostToolAdmission:
     """Return fixed denial unless every independent local fact agrees.
 
+    The independently verified service identity must come from trusted local
+    provenance, NEVER user tool arguments or an unauthenticated environment.
     The trusted host identity, policy signature, active process generation,
     exact registered MCP `tools/list`, lifecycle lease and audit write are
     external prerequisites. A positive result does NOT bypass existing
@@ -111,6 +114,12 @@ def evaluate_host_tool_admission(
         return deny("tool_not_in_qualified_catalogue")
     if policy is None:
         return deny("host_policy_unavailable")
+    if (
+        not isinstance(verified_service_asset_id, str)
+        or _ASSET.fullmatch(verified_service_asset_id) is None
+        or verified_service_asset_id != policy.service_asset_id
+    ):
+        return deny("host_identity_mismatch")
     if now_epoch >= policy.expires_at_epoch:
         return deny("host_policy_expired")
     if (

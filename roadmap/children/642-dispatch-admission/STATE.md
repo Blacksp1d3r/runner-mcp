@@ -26,4 +26,3 @@ Merged #641 source-only oracle is NOT wired into MCPServer.call_tool. No real ho
 - #654 current head `ed58704223d424b5d8155f690f2cb538fa929a56`: validation `38128315342` SUCCESS; attribution `38128315344` SUCCESS.
 - #655 current head `c8dc9b7340eb92e467cbd749c885f3b605eef411`: validation `38127697809` SUCCESS; attribution `38127697888` SUCCESS.
 - All three remain unmerged and lack independent approving reviews. These results qualify synthetic/source changes only; they do not authorize the unqualified dispatcher or fleet update.
-

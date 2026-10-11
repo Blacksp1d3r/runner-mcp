@@ -1,3 +1,9 @@
+## 2026-10-11 verified live update handover — read first
+
+Operator local console confirmed the ACTUAL serving MCP process stores old revision a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a, with **no pending install transaction and ZERO temporary staged wheel files**. There is ONE local MCP listener; the other two MCP-named processes are legitimate completion and GitHub watchers; the separately active tunnel must not be restarted by guess. No independently verified previous-release recovery wheel or same-client ACK. Main at check 2d025ce72443853795aa87b4ec96b83a25064634; live in-place update remains WAIT for independently restorable baseline and scoped attended owner approval; source/CI, connector diagnostics and Claude Q7 NON-RUN continue regardless of unfinished A7 unattended rollback.
+
+Continue from [immutable public-safe checkpoint](../handover/checkpoints/2026-10-11-341-live-runtime.md), [bounded #341 child](../roadmap/children/341-live-runtime-recovery/TASK.md) and Failure Museum RMCP-F-0031..0033; reconcile current GitHub SHA, owner/leases and CI before taking any action. **No live self_update, process restart, tunnel change, protected disk/backup writes or code dispatch has been performed in this lane.**
+
 ## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN
 
 Na volledige broncode-merge van #651 en handover heeft een afzonderlijke actor/werklijn issue [#540](https://github.com/Blacksp1d3r/runner-mcp/issues/540) om 2026-10-10 21:10:33 UTC met `state_reason=completed` gesloten; issue-evenementen bevestigen de sluiting, maar de hier beschikbare first-party connected probes bewijzen nog **niet** dat de live geïnstalleerde MCP-server, clientcatalogus en antwoordaflevering overeenkomen. De Runner-MCP-communicatiechat **heropent of overschrijft #540 niet**. Eerder genoteerde #540 OPEN is nu historisch/verouderd; behandel #540 als CLOSED (source/other-owner decision), niet als operationeel bewijs voor #590.

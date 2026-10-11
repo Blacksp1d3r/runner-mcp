@@ -1,0 +1,7 @@
+# Runner-MCP #341 — live first-node recovery evidence (STATE)
+Observed 2026-10-11 by operator + read-only GitHub and MCP. Status LIVE_DIAGNOSED / WAIT_INDEPENDENT_RECOVERY_ESCROW. No runtime authority or PR merge requested.
+Stored MCP config revision: a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a. Current main at inspection: 2d025ce72443853795aa87b4ec96b83a25064634.
+One MCP-server listener, other process roles completion-watcher and github-watcher, separate tunnel active; no duplicate server proven. No install transaction; temporary wheel count ZERO. An independently restorable previous package was NOT confirmed. Connected build_identity intermittently succeeds with artifact_digest=null; original-client return/ACK is NOT attested.
+Cross-repo A7 isolated synthetic boot and signed-data recovery in progress but NOT full production A7, and NOT an impediment to source/CI/Claude Q7 non-RUN. Real Claude code dispatch has its own separate admission conditions.
+Failure records docs/diagnostics/FAILURE_INDEX.md RMCP-F-0031 through 0033. Full checkpoint handover/checkpoints/2026-10-11-341-live-runtime.md. Existing #341/#590 owner remains; no duplicate claim. Git branch docs/341-runtime-recovery-handoff-20261011.
+No source, host, service, network, secret, disk, database, protected backup or Claude changes. Independent physical backup NOT made. Next: independently escrow baseline and verify first-party active process/route, then attended one-node approved plan.

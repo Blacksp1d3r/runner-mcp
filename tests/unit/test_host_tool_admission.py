@@ -265,3 +265,18 @@ def test_ci_installed_mcpserver_dispatch_contract():
     assert inspect.iscoroutinefunction(handler)
     assert {"name", "arguments", "context"} <= set(signature.parameters)
     assert signature.parameters["context"].default is None
+
+
+def test_ci_installed_sdk_handler_calls_public_tool_seam():
+    """Qualify that inbound tools/call reaches call_tool on CI's SDK wheel."""
+    from mcp.server import MCPServer
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(MCPServer._handle_call_tool)))
+    assert any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "call_tool"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "self"
+        for node in ast.walk(tree)
+    )

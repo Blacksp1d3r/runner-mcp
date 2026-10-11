@@ -103,7 +103,7 @@ def evaluate_host_tool_admission(
         )
         or type(now_epoch) is not int
         or now_epoch < 0
-        or (policy is not None and not isinstance(policy, QualifiedHostToolPolicy))
+        or (policy is not None and type(policy) is not QualifiedHostToolPolicy)
     ):
         raise HostToolPolicyError("invalid host tool admission evidence")
 

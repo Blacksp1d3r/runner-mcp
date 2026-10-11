@@ -63,14 +63,14 @@ def test_same_tool_names_but_different_local_rights():
 
 
 
-def test_five_lab_only_tools_are_denied_by_primary_without_catalogue_removal():
-    """The same registered names must not silently become host permissions."""
+def test_five_real_ocr_tool_names_denied_by_primary_in_synthetic_policy():
+    """Use real server tool names; synthetic host grants are NOT a live policy."""
     lab_only = frozenset({
         "bewind_ocr_qualification_run",
         "bewind_ocr_qualification_stage",
-        "bewind_ocr_qualification_prepare",
-        "bewind_ocr_qualification_status",
-        "bewind_ocr_qualification_cleanup",
+        "bewind_ocr_runtime_image_prepare",
+        "bewind_ocr_qualification_source_provision",
+        "bewind_ocr_qualification_execution_authority_configure",
     })
     shared_names = NAMES | lab_only
     primary = policy()
@@ -102,7 +102,7 @@ def test_five_lab_only_tools_are_denied_by_primary_without_catalogue_removal():
             "code": "HOST_TOOL_NOT_PERMITTED",
         }
         assert lab_result.allowed is True
-    # This is only an oracle test: no live tools/list schema or dispatch is qualified.
+    # Real source names, but synthetic policy: no live tools/list or dispatch proof.
 
 
 

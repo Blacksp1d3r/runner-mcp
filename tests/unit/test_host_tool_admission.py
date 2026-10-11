@@ -298,3 +298,16 @@ def test_verified_host_identity_cannot_override_equality():
     )
     assert result.allowed is False
     assert result.reason_code == "host_identity_mismatch"
+
+def test_policy_host_identity_must_be_builtin_string():
+    """Reject policy asset values with adversarial equality methods."""
+    class ForgedPolicyAsset(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
+

@@ -1,3 +1,43 @@
+## 2026-10-11 14:24 CEST — Runner-MCP verified source-only owner exchange
+
+#655 `bf0cc6c07b16fe4fe07533a008b9f33b19fe3d97`: both CI green, A6 ancestor symlink-loop path resolution sanitized, no config writes in negative test. #654 `3c30d6287161c8427ff966063bea2f17e6bb19df`: new 70-declared-source-tool catalogue/grammar regression, exact full CI still pending at this handoff. #656 `f40b2375950aab927265c1291ecc7e14cd869db0`: both CI green with 2830 pytest. DRAFT integration-only #657 `62c015afa7c35771f5a66532653c5dd15b1ee1ed`: new catalogue test, CI pending. Security approvals absent. Keep signed host-policy issuance, same-client ACK, A6 off-target journal, A7 isolated guest reboot and Claude #381/#972/#370 under their existing owners. No host mutation. Shared index rows RMCP-F-0025..0030 all distinct across four source/docs PRs.
+
+## 2026-10-11 — Green cross-host type-confusion regressions
+
+Runner-MCP #656 exact head `9825fb84b15fdc1240ee946734acbd88cd8e2dc6`: validation `38134140545` SUCCESS, attribution `38134140401` SUCCESS; reject malicious Python `str` subclasses for both authenticated service asset and qualified policy asset IDs. DRAFT integration reference #657 exact head `bed509bc9429065b79cddbcfde55d190d2de44a9`: validation `38134126832` SUCCESS, attribution `38134126801` SUCCESS. No independent APPROVE or merge, and no verified live first-party service identity. #654 must be reviewed/merged first; #656 then rebased and compatibility tests ported; docs #653 reconciled last. No production action.
+
+## 2026-10-11 — #509 live host diagnosis child and repeated docs CI failure
+
+New independent `roadmap/children/509-a6-live-host-diagnosis/{TASK,STATE}.md` is `BLOCKED_EXTERNAL`: first attested asset/process/source/artifact/client lineage under #590; bridge can be READY while A6 prepare and probe remain FALSE. Do not duplicate existing fixed binding repair or Fabric #942/#943. #653 earlier docs-only CI failures from trailing blank EOF lines are recorded as canonical RMCP-F-0028, including 2813 pytest passing but full workflow failing at `git diff --check`; ensure one newline at EOF and exact-head complete validation. #656 source-only host-ID oracle exact `71eb6343c15cc478ae7cf7724149fd5c62d2f85d` both workflows SUCCESS, review-ready; not real dispatcher. No production update/restart/Claude dispatch.
+
+## 2026-10-11 — drie PR's exact-head CI groen, nog niet gemerged
+
+#653 head `a20fb8dbe31968d805936e79e0ae94732366d5a0`: validatie `38128716494` SUCCESS, attributie `38128716500` SUCCESS. #654 head `ed58704223d424b5d8155f690f2cb538fa929a56`: validatie `38128315342` SUCCESS, attributie `38128315344` SUCCESS. #655 head `c8dc9b7340eb92e467cbd749c885f3b605eef411`: validatie `38127697809` SUCCESS, attributie `38127697888` SUCCESS. Open PR's, geen onafhankelijke APPROVE. Het bijbehorende #642 kind-STATE is bijgewerkt; de nieuwe docs-branchhead moet zelf nog exact-head CI krijgen. Bron- en synthetisch testbewijs ≠ actieve host, ondertekend beleid, originele-client ACK, A6 off-target journaal of A7 rollback. Geen productie-update of Claude-dispatch.
+
+## 2026-10-11 — PR #653 exacte CI-root-cause en herstel
+
+Runner MCP validation `38128420738` op oude docs-head `663498d749b5f4033c477a928818a7f3899346e7` FAILED uitsluitend op `git diff --check`: één lege EOF-regel in `handover/FLEET_RELEASE_GATES_2026-10-11.md` en één in `roadmap/children/642-dispatch-admission/STATE.md`. Dezelfde job toonde **2813 pytest PASS**, en registry publisher validatie PASS; artifact/demo SKIPPED door whitespace-stop, dus NIET full-green. Gerichte EOF-correctie op dezelfde PR #653, nieuwste head `79178e04fea957db799075aa31cb39a0ec0000ad`; exacte nieuwe CI is vereist. #654 head `ed58704223d424b5d8155f690f2cb538fa929a56` attribution `38128315344` plus validation `38128315342` SUCCESS; #655 head `c8dc9b7340eb92e467cbd749c885f3b605eef411` attribution `38127697888` en validation `38127697809` SUCCESS. Geen host-, toolrechten-, updater- of Claude-mutatie.
+
+## 2026-10-11 continued Runner-MCP owner handoff — fixture drift and exact-head CI
+
+PR #655 latest `c8dc9b7340eb92e467cbd749c885f3b605eef411` full validation `38127697809` SUCCESS and attribution `38127697888` SUCCESS. Source-only A6 parent+child symlink rejection; no independent approval, active host or A6 journal proof.
+
+PR #654 earlier `dbf1b0bd12185369f365b40d3d953574444f5ebf` full validation `38128064882` SUCCESS, attribution `38128064884` SUCCESS. New current `ed58704223d424b5d8155f690f2cb538fa929a56` adds regression comparing all synthetic tool names to source-declared MCP functions (fixture drift RMCP-F-0025); exact CI must be rechecked. Pure policy oracle, **not** real MCP dispatcher. Trusted first-party signed host-policy source and real process/catalogue still unavailable (#642).
+
+#653 documentation/roadmap branch now includes latest `roadmap/children/642-dispatch-admission/STATE.md`. Latest commit needs exact-head CI; never merge other branch head's CI evidence. #341 existing updater NOT invoked, Fabric #942/#943 and #590 original client result/ACK remain deployment blockers. PR #438 remains stale/nonmergeable. No production changes or Claude dispatch.
+
+## 2026-10-11 — #341/#509/#642 exact-fleet security checkpoint
+
+Owner: Runner-MCP chat on #341 (existing updater only), #509 (A6 diagnostic/repair), #642 (host-local MCP dispatcher). Fabric #943 and #942 remain separate; #590 owns client-to-server response lineage. **No live host update, tunnel change, restart or Claude dispatch**.
+
+- PR #654 exact head `c492e31625e653321f3e918adfe32d10a0cbf81f`: attribution `38126280229` SUCCESS; full Runner MCP validation `38126280267` SUCCESS. Pure host-policy *oracle* test only, not real dispatch. Failure Museum RMCP-F-0025 documents synthetic fixture name correction. Leave merge/review decision independent.
+- MCP SDK verified intercept location: `MCPServer.call_tool(name, arguments, context)` before ToolManager and handler. A qualified signed/expiring host identity/policy from separate first-party source is **not proven**. See `roadmap/children/642-dispatch-admission/{TASK,STATE}.md`; do not fake permit or inject a default all-allow gate. Real integration remains BLOCKED_ON_TRUSTED_POLICY_SOURCE.
+- #509 discovered independent source security bug: `a6_state_requested` could treat a dangling symlink fixed root as nonexistent. Draft PR #655 narrowly rejects child symlinks before checking presence; tests verify fail-closed and no config writes. Canonical Failure Museum RMCP-F-0026 on PR #655. This is SOURCE only and does not prove A6 live bindings. Latest PR #655 head `9307309400f90e81322f0643a860387c113f93cf`; require fresh exact-head CI.
+- Existing connected runtime: stale 12-check doctor missing current source A6/root and active-revision diagnostics, stored a0fd source record, unreliable `build_identity` and bridge preflight. Under #590/#509, do not infer active host identity or original-client reply from partial HTTP results.
+- #341 release gates: privately attest both service IDs and active process SHA/artifact/tool schema; source #642 real host-local denied-tool gate; A6 off-target journal and A7 independent disconnected rollback; attended one-host canary on EXISTING updater only and original-client successful ACK before committed activation; verify second host later. PR #438 stale ingress marker is not ACK proof.
+
+Next: verify exact current PR heads/CI; obtain qualified signed host permit authority from Fabric/AIfordable owner before wiring production dispatcher; seek read-only attested host route for A6 before restart/release.
+
 ## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged
 
 [PR #651](https://github.com/Blacksp1d3r/runner-mcp/pull/651) MERGED squash `68093ab85bee293a8cc7616340d2893d5e4c24a0`, reviewed exact head `d588c72619fc277d8423b680f473c8d62e3c992a`. Commit attribution `38086367280` SUCCESS; full validation `38086367281` SUCCESS (Ruff, **2813 pytest**, built release artifact, clean demo). Fixed `LocalMCPClient._post` standard `urllib.request.urlopen` proxy/HTTP 30x bearer egress risk by using a fixed `ProxyHandler({})` + `_NoLocalMCPRedirects` opener through a single testable `_open_local_mcp_request` seam. Unit negatives cover hostile HTTP(S)/ALL_PROXY environment, redirects 301/302/303/307/308 to off-host and same-host destinations, single-call/no-redirect behavior, sensitive error redaction. Historical bridge tests now inject the bounded seam. Preserves #650 stale-session unknown-effect no-replay and exact build/schema requalification on subsequent separate explicit caller request.

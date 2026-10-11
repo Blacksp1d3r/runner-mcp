@@ -1,4 +1,7 @@
 """Same advertised tools everywhere; host execution remains independently denied."""
+import ast
+import inspect
+import textwrap
 from dataclasses import replace
 
 import pytest
@@ -16,7 +19,7 @@ NAMES = frozenset({
     "queue_status",
     "bewind_ocr_qualification_run",
     "bewind_ocr_qualification_stage",
-    "restart_service",
+    "fabric_disposable_target_qualify",
 })
 
 
@@ -60,6 +63,82 @@ def test_same_tool_names_but_different_local_rights():
     assert allowed.allowed is True
     assert allowed.reason_code == "exact_host_capability_granted"
     assert allowed.response_code == "OK"
+
+
+
+
+def test_five_ocr_policy_names_are_declared_in_real_mcp_server_source():
+    """Require MCP tool decorators rather than mere source function names."""
+    from runner_mcp.server import build_mcp
+
+    declared = {
+        node.name
+        for node in ast.walk(
+            ast.parse(textwrap.dedent(inspect.getsource(build_mcp)))
+        )
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(decorator, ast.Call)
+            and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "tool"
+            and isinstance(decorator.func.value, ast.Name)
+            and decorator.func.value.id == "mcp"
+            for decorator in node.decorator_list
+        )
+    }
+    assert {
+        "bewind_ocr_qualification_run",
+        "bewind_ocr_qualification_stage",
+        "bewind_ocr_runtime_image_prepare",
+        "bewind_ocr_qualification_source_provision",
+        "bewind_ocr_qualification_execution_authority_configure",
+        "fabric_disposable_target_qualify",
+        "runtime_status",
+        "queue_status",
+    } <= declared
+
+
+def test_five_real_ocr_tool_names_denied_by_primary_in_synthetic_policy():
+    """Use real server tool names; synthetic host grants are NOT a live policy."""
+    lab_only = frozenset({
+        "bewind_ocr_qualification_run",
+        "bewind_ocr_qualification_stage",
+        "bewind_ocr_runtime_image_prepare",
+        "bewind_ocr_qualification_source_provision",
+        "bewind_ocr_qualification_execution_authority_configure",
+    })
+    shared_names = NAMES | lab_only
+    primary = policy()
+    lab = replace(
+        primary,
+        service_asset_id="service:lab",
+        permitted_tool_names=primary.permitted_tool_names | lab_only,
+    )
+    for name in sorted(lab_only):
+        primary_result = evaluate_host_tool_admission(
+            name,
+            registered_tool_names=shared_names,
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=primary,
+            now_epoch=1_000,
+        )
+        lab_result = evaluate_host_tool_admission(
+            name,
+            registered_tool_names=shared_names,
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=lab,
+            now_epoch=1_000,
+        )
+        assert primary_result.to_public_payload() == {
+            "allowed": False,
+            "reasonCode": "tool_not_granted_on_host",
+            "code": "HOST_TOOL_NOT_PERMITTED",
+        }
+        assert lab_result.allowed is True
+    # Real source names, but synthetic policy: no live tools/list or dispatch proof.
+
 
 
 def test_missing_host_policy_is_explicit_denial_not_missing_tool():
@@ -107,10 +186,10 @@ def test_undeclared_tool_or_unqualified_catalogue_refused():
 
 
 def test_shared_high_risk_tool_is_not_implicitly_permitted():
-    denied = evaluate("restart_service", permit=policy())
+    denied = evaluate("fabric_disposable_target_qualify", permit=policy())
     assert denied.allowed is False
     assert denied.reason_code == "tool_not_granted_on_host"
-    assert "restart_service" not in denied.to_public_payload().values()
+    assert "fabric_disposable_target_qualify" not in denied.to_public_payload().values()
 
 
 @pytest.mark.parametrize(
@@ -146,3 +225,27 @@ def test_bad_client_inputs_never_create_permission():
         args.update(extra)
         with pytest.raises(HostToolPolicyError, match="invalid"):
             evaluate_host_tool_admission(**args)
+
+def test_entire_declared_mcp_catalogue_is_policy_name_compatible():
+    """Guard all source declarations, not only the eight OCR fixtures."""
+    from runner_mcp.server import build_mcp
+
+    nodes = ast.walk(ast.parse(textwrap.dedent(inspect.getsource(build_mcp))))
+    decorated_names = [
+        node.name
+        for node in nodes
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(decorator, ast.Call)
+            and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "tool"
+            and isinstance(decorator.func.value, ast.Name)
+            and decorator.func.value.id == "mcp"
+            for decorator in node.decorator_list
+        )
+    ]
+    assert decorated_names
+    assert len(decorated_names) == len(set(decorated_names))
+    assert len(decorated_names) <= 256
+    permit = policy(granted=frozenset(decorated_names))
+    assert permit.permitted_tool_names == frozenset(decorated_names)

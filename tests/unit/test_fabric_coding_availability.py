@@ -323,3 +323,30 @@ def test_managed_launcher_symlink_cycle_fails_closed_without_dispatch(
     ):
         runner.run("provider-temporarily-unavailable", "a" * 40)
     assert calls == []
+
+def test_managed_slots_symlink_cycle_fails_closed_without_dispatch(
+    tmp_path: Path,
+) -> None:
+    home = tmp_path / "home"
+    slots = home / ".local/state/runner-fabric/control-plane-update/slots"
+    slots.parent.mkdir(parents=True)
+    slots.symlink_to(slots, target_is_directory=True)
+    launcher = home / ".local/bin/runner-fabric"
+    launcher.parent.mkdir(parents=True)
+    launcher.symlink_to(slots / "release" / "runner-fabric")
+    calls = []
+
+    runner = FabricCodingAvailabilityQualificationRunner(
+        safety=_safety(tmp_path),
+        environment=_Q7_ENV,
+        home=home,
+        runner=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert runner.preflight()["reason_code"] == "fabric_launcher_unqualified"
+    with pytest.raises(
+        FabricCodingAvailabilityQualificationError,
+        match="fabric_coding_availability_qualification_launcher_unmanaged",
+    ):
+        runner.run("subscription-auth-required", "b" * 40)
+    assert calls == []

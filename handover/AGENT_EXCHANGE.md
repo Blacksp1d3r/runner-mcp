@@ -1,3 +1,11 @@
+## 2026-10-11 continued Runner-MCP owner handoff — fixture drift and exact-head CI
+
+PR #655 latest `c8dc9b7340eb92e467cbd749c885f3b605eef411` full validation `38127697809` SUCCESS and attribution `38127697888` SUCCESS. Source-only A6 parent+child symlink rejection; no independent approval, active host or A6 journal proof.
+
+PR #654 earlier `dbf1b0bd12185369f365b40d3d953574444f5ebf` full validation `38128064882` SUCCESS, attribution `38128064884` SUCCESS. New current `ed58704223d424b5d8155f690f2cb538fa929a56` adds regression comparing all synthetic tool names to source-declared MCP functions (fixture drift RMCP-F-0025); exact CI must be rechecked. Pure policy oracle, **not** real MCP dispatcher. Trusted first-party signed host-policy source and real process/catalogue still unavailable (#642).
+
+#653 documentation/roadmap branch now includes latest `roadmap/children/642-dispatch-admission/STATE.md`. Latest commit needs exact-head CI; never merge other branch head's CI evidence. #341 existing updater NOT invoked, Fabric #942/#943 and #590 original client result/ACK remain deployment blockers. PR #438 remains stale/nonmergeable. No production changes or Claude dispatch.
+
 ## 2026-10-11 — #341/#509/#642 exact-fleet security checkpoint
 
 Owner: Runner-MCP chat on #341 (existing updater only), #509 (A6 diagnostic/repair), #642 (host-local MCP dispatcher). Fabric #943 and #942 remain separate; #590 owns client-to-server response lineage. **No live host update, tunnel change, restart or Claude dispatch**.

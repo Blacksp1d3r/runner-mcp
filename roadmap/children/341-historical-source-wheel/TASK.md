@@ -8,7 +8,7 @@ A single branch-local workflow `.github/workflows/341-historical-wheel-evidence.
 
 ## Acceptance
 Workflow job green and artifact present, downloaded into independently preserved private Library; verify SHA256 locally and actual content; compare with independently witnessed active process modules and package bytes before any human-authorized recovery. Source review/security and A6/A7 are separate. Main checkout and no upload artifact means WAIT.
- 
+
 ## Failure Museum
 RMCP-F-0032 and -0034; preserve discrepancy between same v0.1.3 package label and 280-commit old source difference. If unsupported build or artifact unavailable: record WAIT and do not publish a guessed PyPI wheel.
 

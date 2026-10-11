@@ -68,7 +68,7 @@ def test_same_tool_names_but_different_local_rights():
 
 
 def test_five_ocr_policy_names_are_declared_in_real_mcp_server_source():
-    """Detect fixture drift without claiming live host tools/list qualification."""
+    """Require MCP tool decorators rather than mere source function names."""
     from runner_mcp.server import build_mcp
 
     declared = {
@@ -77,6 +77,14 @@ def test_five_ocr_policy_names_are_declared_in_real_mcp_server_source():
             ast.parse(textwrap.dedent(inspect.getsource(build_mcp)))
         )
         if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(decorator, ast.Call)
+            and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "tool"
+            and isinstance(decorator.func.value, ast.Name)
+            and decorator.func.value.id == "mcp"
+            for decorator in node.decorator_list
+        )
     }
     assert {
         "bewind_ocr_qualification_run",

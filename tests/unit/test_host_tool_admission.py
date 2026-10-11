@@ -364,3 +364,17 @@ def test_combined_oracle_rejects_forged_policy_generation(field, value):
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), **{field: ForgedDigest(value)})
+
+def test_combined_oracle_rejects_policy_subclass():
+    class DeceptivePolicy(QualifiedHostToolPolicy):
+        pass
+
+    forged = DeceptivePolicy(
+        service_asset_id="service:primary",
+        release_source_revision=REVISION,
+        interface_schema_sha256=SCHEMA,
+        permitted_tool_names=frozenset({"runtime_status"}),
+        expires_at_epoch=2_000,
+    )
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate("runtime_status", permit=forged)

@@ -254,3 +254,14 @@ def test_combined_missing_or_malformed_verified_host_identity(unverified):
         "reasonCode": "host_identity_mismatch",
         "code": "HOST_TOOL_NOT_PERMITTED",
     }
+
+
+def test_ci_installed_mcpserver_dispatch_contract():
+    """Qualify this CI wheel's SDK entry, not unpinned upstream main."""
+    from mcp.server import MCPServer
+
+    handler = MCPServer.call_tool
+    signature = inspect.signature(handler)
+    assert inspect.iscoroutinefunction(handler)
+    assert {"name", "arguments", "context"} <= set(signature.parameters)
+    assert signature.parameters["context"].default is None

@@ -310,3 +310,27 @@ def test_policy_host_identity_must_be_builtin_string():
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
+
+def test_combined_oracle_rejects_hash_forged_tool_name_and_catalogue():
+    class ForgedTool(str):
+        def __hash__(self):
+            return hash("runtime_status")
+
+        def __eq__(self, other):
+            return True
+
+    forged = ForgedTool("fabric_hidden_command")
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate(forged, permit=policy())
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), permitted_tool_names=frozenset({forged}))
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=frozenset({forged}),
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=policy(),
+            now_epoch=1_000,
+        )

@@ -14,6 +14,7 @@ _SPEC.loader.exec_module(_GATE)
 check_metadata = _GATE.check_metadata
 needs_bump = _GATE.needs_bump
 version_tuple = _GATE.version_tuple
+verify = _GATE.verify
 
 
 @pytest.mark.parametrize("path", [
@@ -50,3 +51,42 @@ def test_package_metadata_must_match():
     good["packages"][0]["version"] = "0.1.3"
     with pytest.raises(ValueError, match="package version differs"):
         check_metadata(pyproject, json.dumps(good).encode())
+
+
+def test_metadata_must_match_runtime_and_discovery(tmp_path, monkeypatch):
+    (tmp_path / "src/runner_mcp").mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text('[project]\nversion="0.1.4"\n')
+    (tmp_path / "server.json").write_text(
+        json.dumps({"version": "0.1.4", "packages": [{"version": "0.1.4"}]})
+    )
+    (tmp_path / "src/runner_mcp/__init__.py").write_text('__version__ = "0.1.4"\n')
+    (tmp_path / "glama.json").write_text(json.dumps({"version": "0.1.4"}))
+    monkeypatch.chdir(tmp_path)
+    assert verify(None) == ((0, 1, 4), False)
+    (tmp_path / "glama.json").write_text(json.dumps({"version": "0.1.3"}))
+    with pytest.raises(ValueError, match="discovery metadata"):
+        verify(None)
+
+
+def test_new_tool_same_version_fails_against_main(tmp_path, monkeypatch):
+    (tmp_path / "src/runner_mcp").mkdir(parents=True)
+    old_py = b'[project]\nversion="0.1.4"\n'
+    old_server = json.dumps(
+        {"version": "0.1.4", "packages": [{"version": "0.1.4"}]}
+    ).encode()
+    (tmp_path / "pyproject.toml").write_bytes(old_py)
+    (tmp_path / "server.json").write_bytes(old_server)
+    (tmp_path / "src/runner_mcp/__init__.py").write_text('__version__ = "0.1.4"\n')
+    (tmp_path / "glama.json").write_text(json.dumps({"version": "0.1.4"}))
+    monkeypatch.chdir(tmp_path)
+
+    def fake_git(*args):
+        if args[0] == "show":
+            return old_py if args[1].endswith(":pyproject.toml") else old_server
+        if args[0] == "diff":
+            return b"src/runner_mcp/new_tool.py\0"
+        raise AssertionError("unexpected git arguments")
+
+    monkeypatch.setattr(_GATE, "git", fake_git)
+    with pytest.raises(ValueError, match="without a new version"):
+        verify("a" * 40)

@@ -34,7 +34,11 @@ def evaluate(tool, *, permit=None, revision=REVISION, digest=SCHEMA, now=1_000):
     return evaluate_host_tool_admission(
         tool,
         registered_tool_names=NAMES,
-        verified_service_asset_id="service:lab" if permit is not None and permit.service_asset_id == "service:lab" else "service:primary",
+        verified_service_asset_id=(
+            "service:lab"
+            if permit is not None and permit.service_asset_id == "service:lab"
+            else "service:primary"
+        ),
         runtime_source_revision=revision,
         runtime_interface_schema_sha256=digest,
         policy=permit,

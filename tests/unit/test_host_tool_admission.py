@@ -208,3 +208,49 @@ def test_forged_policy_id_string_subclass_is_rejected():
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
+
+def test_admission_refuses_forged_tool_name_hash_and_equality():
+    class ForgedTool(str):
+        def __hash__(self):
+            return hash("runtime_status")
+
+        def __eq__(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate(
+            ForgedTool("fabric_hidden_command"),
+            permit=policy(),
+        )
+
+
+def test_policy_rejects_forged_tool_set_member_hash_and_equality():
+    class ForgedTool(str):
+        def __hash__(self):
+            return hash("runtime_status")
+
+        def __eq__(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), permitted_tool_names=frozenset({ForgedTool("fabric_hidden_command")}))
+
+
+def test_registered_catalogue_rejects_forged_tool_set_member():
+    class ForgedTool(str):
+        def __hash__(self):
+            return hash("runtime_status")
+
+        def __eq__(self, other):
+            return True
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=frozenset({ForgedTool("fabric_hidden_command")}),
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=policy(),
+            now_epoch=1_000,
+        )

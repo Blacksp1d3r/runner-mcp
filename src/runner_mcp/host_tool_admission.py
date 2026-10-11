@@ -41,9 +41,9 @@ class QualifiedHostToolPolicy:
         if (
             type(self.service_asset_id) is not str
             or _ASSET.fullmatch(self.service_asset_id) is None
-            or not isinstance(self.release_source_revision, str)
+            or type(self.release_source_revision) is not str
             or _COMMIT.fullmatch(self.release_source_revision) is None
-            or not isinstance(self.interface_schema_sha256, str)
+            or type(self.interface_schema_sha256) is not str
             or _DIGEST.fullmatch(self.interface_schema_sha256) is None
             or type(self.permitted_tool_names) is not frozenset
             or len(self.permitted_tool_names) > _MAX_TOOLS
@@ -123,9 +123,9 @@ def evaluate_host_tool_admission(
     if now_epoch >= policy.expires_at_epoch:
         return deny("host_policy_expired")
     if (
-        not isinstance(runtime_source_revision, str)
+        type(runtime_source_revision) is not str
         or _COMMIT.fullmatch(runtime_source_revision) is None
-        or not isinstance(runtime_interface_schema_sha256, str)
+        or type(runtime_interface_schema_sha256) is not str
         or _DIGEST.fullmatch(runtime_interface_schema_sha256) is None
         or runtime_source_revision != policy.release_source_revision
         or runtime_interface_schema_sha256

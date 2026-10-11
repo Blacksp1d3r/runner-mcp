@@ -182,3 +182,28 @@ def test_inspection_distinguishes_absent_roots_from_shared_bindings(
         "binding_total": 11,
         "binding_complete": False,
     }
+
+
+@pytest.mark.parametrize("root_name", ["a6-update-journal", "a6-evidence"])
+def test_repair_rejects_dangling_a6_root_symlink_before_noop(
+    tmp_path: Path, root_name: str,
+) -> None:
+    config = tmp_path / "config"
+    config.mkdir(mode=0o700)
+    env_path = config / "runner-mcp.env"
+    env_path.write_text("UNRELATED_VALUE=keep\\n", encoding="utf-8")
+    env_path.chmod(0o600)
+    state = tmp_path / "state"
+    state.mkdir(mode=0o700)
+    (state / root_name).symlink_to(state / "nonexistent-target", target_is_directory=True)
+    environment = {"RUNNER_MCP_BEARER_TOKEN": "r" * 48}
+
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+        repair_a6_qualification_binding(
+            environment=environment,
+            config_dir=config,
+            state_root=state,
+            fabric_revision="f" * 40,
+        )
+    assert load_env_file(env_path) == {"UNRELATED_VALUE": "keep"}
+    assert "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT" not in environment

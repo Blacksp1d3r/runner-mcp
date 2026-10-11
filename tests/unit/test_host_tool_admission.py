@@ -236,3 +236,13 @@ def test_foreign_policy_does_not_grant_permission_on_primary():
         "reasonCode": "host_identity_mismatch",
         "code": "HOST_TOOL_NOT_PERMITTED",
     }
+
+
+@pytest.mark.parametrize("unverified", [None, "", "FORGED/HOST", True])
+def test_combined_missing_or_malformed_verified_host_identity(unverified):
+    result = evaluate("runtime_status", permit=policy(), host=unverified)
+    assert result.to_public_payload() == {
+        "allowed": False,
+        "reasonCode": "host_identity_mismatch",
+        "code": "HOST_TOOL_NOT_PERMITTED",
+    }

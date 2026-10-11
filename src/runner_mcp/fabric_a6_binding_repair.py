@@ -45,6 +45,8 @@ class FabricA6BindingRepairError(RuntimeError):
 def a6_state_requested(state_root: Path) -> bool:
     """Return whether the fixed local A6 state roots signal an active A6 campaign."""
 
+    if state_root.expanduser().is_symlink():
+        raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
     root = state_root.expanduser().resolve()
     journal = root / _JOURNAL_DIR
     evidence = root / _EVIDENCE_DIR
@@ -76,6 +78,8 @@ def inspect_a6_binding_state(
     binding_count = sum(
         1 for key in _A6_KEYS if bool(values.get(key, "").strip())
     )
+    if state_root.expanduser().is_symlink():
+        raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
     root = state_root.expanduser().resolve()
     journal = root / _JOURNAL_DIR
     evidence = root / _EVIDENCE_DIR
@@ -123,6 +127,8 @@ def repair_a6_qualification_binding(
     except (OSError, RuntimeError) as exc:
         raise FabricA6BindingRepairError("fabric_a6_runtime_config_unavailable") from exc
 
+    if state_root.expanduser().is_symlink():
+        raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
     root = state_root.expanduser().resolve()
     if not a6_state_requested(root):
         return

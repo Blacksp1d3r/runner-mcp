@@ -41,12 +41,9 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          if [[ "$GITHUB_EVENT_NAME" == "push" ]]; then
-            base="$(git rev-parse HEAD^)"
-          else
-            git fetch --no-tags origin "refs/heads/$GITHUB_BASE_REF"
-            base="$(git merge-base HEAD FETCH_HEAD)"
-          fi
+          # GitHub PR checks use a synthetic merge with target as first parent.
+          # Main pushes also use the first parent of the newly merged commit.
+          base="$(git rev-parse HEAD^1)"
           echo "RUNNER_MCP_BASE_COMMIT=$base" >> "$GITHUB_ENV"
           python scripts/check_release_version.py --base "$base"
 

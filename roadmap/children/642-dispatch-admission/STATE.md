@@ -20,3 +20,10 @@ Merged #641 source-only oracle is NOT wired into MCPServer.call_tool. No real ho
 - #655 latest head c8dc9b7340eb92e467cbd749c885f3b605eef411: Runner MCP validation 38127697809 SUCCESS, attribution 38127697888 SUCCESS; parent+child A6 symlink guard is SOURCE only. Separate approver still absent.
 - #653 head 691606d53da2e715988dce853470a2755cb18f52: validation 38127251289 SUCCESS, attribution 38127251251 SUCCESS.
 - No host-provenance issuer, trusted policy signature, installed exact process/catalogue, real dispatcher deny or original-client delivered response was established. Preserve BLOCKED; never promote green synthetic tests to runtime authorization.
+## Exact-head CI reconciliation — 2026-10-11
+
+- #653 current head `a20fb8dbe31968d805936e79e0ae94732366d5a0`: validation run `38128716494` SUCCESS; attribution run `38128716500` SUCCESS. Previously documented whitespace failure was fixed at the current head.
+- #654 current head `ed58704223d424b5d8155f690f2cb538fa929a56`: validation `38128315342` SUCCESS; attribution `38128315344` SUCCESS.
+- #655 current head `c8dc9b7340eb92e467cbd749c885f3b605eef411`: validation `38127697809` SUCCESS; attribution `38127697888` SUCCESS.
+- All three remain unmerged and lack independent approving reviews. These results qualify synthetic/source changes only; they do not authorize the unqualified dispatcher or fleet update.
+

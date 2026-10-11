@@ -5,3 +5,6 @@ One MCP-server listener, other process roles completion-watcher and github-watch
 Cross-repo A7 isolated synthetic boot and signed-data recovery in progress but NOT full production A7, and NOT an impediment to source/CI/Claude Q7 non-RUN. Real Claude code dispatch has its own separate admission conditions.
 Failure records docs/diagnostics/FAILURE_INDEX.md RMCP-F-0031 through 0033. Full checkpoint handover/checkpoints/2026-10-11-341-live-runtime.md. Existing #341/#590 owner remains; no duplicate claim. Git branch docs/341-runtime-recovery-handoff-20261011.
 No source, host, service, network, secret, disk, database, protected backup or Claude changes. Independent physical backup NOT made. Next: independently escrow baseline and verify first-party active process/route, then attended one-node approved plan.
+
+## 2026-10-11 GitHub release provenance cross-check
+The official public `v0.1.3` wheel is **not** the same source as the active stored `0.1.3` release: the tag is at `0aa013c279128e22fbd53be32c35bced3ae26834` and live revision is **280 commits / 130 files later**. Historical old-commit CI `37668416668` PASS but downloadable wheel artifacts **0**. See `docs/operations/RECOVER_EXACT_INSTALLED_WHEEL_2026-10-11.md` and Failure Museum RMCP-F-0034. Do NOT use public v0.1.3 wheel for recovery. No package built or installed by this checkpoint.

@@ -334,3 +334,33 @@ def test_combined_oracle_rejects_hash_forged_tool_name_and_catalogue():
             policy=policy(),
             now_epoch=1_000,
         )
+
+@pytest.mark.parametrize("field", ["revision", "digest"])
+def test_combined_oracle_rejects_forged_runtime_generation(field):
+    class ForgedDigest(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    fake = ForgedDigest("c" * (40 if field == "revision" else 64))
+    denied = evaluate("runtime_status", permit=policy(), **{field: fake})
+    assert denied.reason_code == "runtime_generation_mismatch"
+    assert denied.allowed is False
+
+
+@pytest.mark.parametrize("field,value", [
+    ("release_source_revision", "c" * 40),
+    ("interface_schema_sha256", "c" * 64),
+])
+def test_combined_oracle_rejects_forged_policy_generation(field, value):
+    class ForgedDigest(str):
+        def __eq__(self, other):
+            return True
+
+        def __ne__(self, other):
+            return False
+
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        replace(policy(), **{field: ForgedDigest(value)})

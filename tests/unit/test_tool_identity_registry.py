@@ -1,7 +1,13 @@
 """Synthetic negative contract tests; does not test live routing or auth."""
 import copy
+
 import pytest
-from runner_mcp.tool_identity_registry import RegistryContractError, canonical_digest, validate_registry
+
+from runner_mcp.tool_identity_registry import (
+    RegistryContractError,
+    canonical_digest,
+    validate_registry,
+)
 
 def registry():
     return {"schemaVersion": "runner-mcp/tool-id-registry/v1",

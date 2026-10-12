@@ -13,3 +13,10 @@
 - Dependencies: merge and reconcile #661, then #663; preserve #664 legacy tool contracts; #590/#642 real routing and host admission separately owned.
 - Next safe action: independently review design, check for active worker leases, create isolated pure-registry-validator/test source PR with a UNIQUE updated release version, and compare proposed registry against actual isolated `tools/list`. No live rollout or magic-prefix changes.
 - Safety/rollback: avoid modifying dispatcher or host; keep #341, Fabric A6 #942 and A7 #943 independent gates; Failure Museum only for observed defects.
+
+## 2026-10-12 implementation checkpoint
+- Separate stacked source PR #667: https://github.com/Blacksp1d3r/runner-mcp/pull/667 ; branch `feature/665-registry-validator-20261012` based on PR #663; candidate version 0.1.6 only.
+- Pure `tool_identity_registry.py` and synthetic unit tests created. No production registry assignments, dispatcher changes or live alerts.
+- First exact-head CI at `24c7fdd849c211877594bf9e26af25f5fbc0aea2`: attribution SUCCESS, clean installer SUCCESS, validation FAILED on Ruff I001 import grouping in test file (no pytest result).
+- Ruff grouping fixed at `745619bb4075b0df9ae1130bf1afe0f10b0a7061`; fresh exact-head CI still required. Do not declare tests passing before results.
+- Next: qualify complete CI and independent review, revisit immutable-retirement semantics before relying on validator, then rebase only after #661 and #663 integration, preserving unique release number.

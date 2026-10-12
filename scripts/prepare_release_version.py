@@ -60,6 +60,7 @@ def plan(
     kind: str,
     expected_version: str,
     expected_head: str,
+    expected_main: str | None = None,
 ) -> tuple[str, dict[Path, bytes]]:
     """Validate complete local state *before* returning any planned mutations."""
 
@@ -99,6 +100,22 @@ def plan(
     ):
         raise VersionAllocationError("release metadata is inconsistent")
     proposed = next_version(current, kind)
+    if expected_main is not None:
+        if not _SHA.fullmatch(expected_main):
+            raise VersionAllocationError("expected main SHA is not immutable")
+        actual_main = _git("-C", str(root), "rev-parse", "refs/remotes/origin/main")
+        if actual_main != expected_main:
+            raise VersionAllocationError(
+                "tracked main ref changed: refresh/rebase before version allocation"
+            )
+        base_metadata = _git(
+            "-C", str(root), "show", f"{expected_main}:pyproject.toml"
+        )
+        main_version = tomllib.loads(base_metadata)["project"]["version"]
+        if version_parts(proposed) <= version_parts(main_version):
+            raise VersionAllocationError(
+                "proposed version does not exceed the tracked main version"
+            )
     pkg = (root / _VERSION_FILES[0]).read_text()
     before = f'version = "{current}"'
     after = f'version = "{proposed}"'
@@ -125,6 +142,7 @@ def main() -> int:
     parser.add_argument("--kind", choices=["patch", "minor", "major"], required=True)
     parser.add_argument("--expected-version", required=True)
     parser.add_argument("--expected-head", required=True)
+    parser.add_argument("--expected-main", help="pinned known GitHub main SHA")
     parser.add_argument("--apply", action="store_true")
     args = parser.parse_args()
     try:
@@ -133,8 +151,13 @@ def main() -> int:
             kind=args.kind,
             expected_version=args.expected_version,
             expected_head=args.expected_head,
+            expected_main=args.expected_main,
         )
         if args.apply:
+            if args.expected_main is None:
+                raise VersionAllocationError(
+                    "apply requires exact expected main SHA; dry-run without it only"
+                )
             # All files are validated and rendered before the first write.
             # A crash during the four replace operations must be rejected
             # by the separate CI sync gate; never report it as a release.

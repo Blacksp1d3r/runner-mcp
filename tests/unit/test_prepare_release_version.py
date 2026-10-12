@@ -90,6 +90,8 @@ def test_cli_apply_updates_all_four_files(tmp_path, monkeypatch):
     def git_valid(*args):
         if "rev-parse" in args:
             return "a" * 40 if "HEAD" in args else "b" * 40
+        if "merge-base" in args:
+            return "b" * 40
         if "show" in args:
             return '[project]\nversion = "0.1.3"'
         return ""
@@ -131,6 +133,8 @@ def test_main_higher_than_next_version_refuses(tmp_path, monkeypatch):
     def git_future(*args):
         if "rev-parse" in args:
             return "a" * 40 if "HEAD" in args else "b" * 40
+        if "merge-base" in args:
+            return "b" * 40
         if "show" in args:
             return '[project]\nversion = "0.1.5"'
         return ""
@@ -149,6 +153,8 @@ def test_main_lower_than_next_version_is_allowed(tmp_path, monkeypatch):
     def git_expected(*args):
         if "rev-parse" in args:
             return "a" * 40 if "HEAD" in args else "b" * 40
+        if "merge-base" in args:
+            return "b" * 40
         if "show" in args:
             return '[project]\nversion = "0.1.4"'
         return ""
@@ -175,3 +181,60 @@ def test_apply_without_expected_main_does_not_write(tmp_path, monkeypatch):
     ])
     assert _MOD.main() == 1
     assert 'version = "0.1.4"' in (tmp_path / "pyproject.toml").read_text()
+
+
+def test_unrelated_main_ref_is_refused(tmp_path, monkeypatch):
+    _fixture(tmp_path)
+
+    def git_unrelated(*args):
+        if "rev-parse" in args:
+            return "a" * 40 if "HEAD" in args else "b" * 40
+        if "merge-base" in args:
+            return "c" * 40
+        return ""
+
+    monkeypatch.setattr(_MOD, "_git", git_unrelated)
+    with pytest.raises(_MOD.VersionAllocationError, match="not an ancestor"):
+        _MOD.plan(
+            root=tmp_path, kind="patch", expected_version="0.1.4",
+            expected_head="a" * 40, expected_main="b" * 40,
+        )
+
+
+def test_write_failure_rolls_back_earlier_metadata(tmp_path, monkeypatch):
+    import sys
+
+    _fixture(tmp_path)
+    before = {
+        name: (tmp_path / name).read_bytes()
+        for name in ("pyproject.toml", "server.json", "glama.json", "src/runner_mcp/__init__.py")
+    }
+    monkeypatch.chdir(tmp_path)
+
+    def git_valid(*args):
+        if "rev-parse" in args:
+            return "a" * 40 if "HEAD" in args else "b" * 40
+        if "merge-base" in args:
+            return "b" * 40
+        if "show" in args:
+            return '[project]\nversion = "0.1.3"'
+        return ""
+
+    monkeypatch.setattr(_MOD, "_git", git_valid)
+    real_write = Path.write_bytes
+    fail_once = {"pending": True}
+
+    def write_injected(self, data):
+        if self.name == "server.json" and fail_once["pending"]:
+            fail_once["pending"] = False
+            raise OSError("synthetic write failure")
+        return real_write(self, data)
+
+    monkeypatch.setattr(Path, "write_bytes", write_injected)
+    monkeypatch.setattr(sys, "argv", [
+        "prepare_release_version.py", "--kind", "patch", "--expected-version",
+        "0.1.4", "--expected-head", "a" * 40,
+        "--expected-main", "b" * 40, "--apply",
+    ])
+    assert _MOD.main() == 1
+    assert all((tmp_path / name).read_bytes() == original for name, original in before.items())

@@ -5,8 +5,8 @@ import json
 import stat
 import urllib.error
 import urllib.request
-from email.message import Message
 from datetime import UTC, datetime
+from email.message import Message
 from pathlib import Path
 
 import pytest

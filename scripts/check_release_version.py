@@ -71,7 +71,7 @@ def verify(base: str | None) -> tuple[tuple[int, int, int], bool]:
         git("show", f"{base}:server.json"),
     )
     changed = [
-        x.decode("utf-8") for x in git("diff", "--name-only", "-z", base, "HEAD").split(b"\0")
+        x.decode("utf-8") for x in git("diff", "--no-renames", "--name-only", "-z", base, "HEAD").split(b"\0")
         if x
     ]
     release = needs_bump(changed)

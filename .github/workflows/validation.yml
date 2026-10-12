@@ -47,6 +47,9 @@ jobs:
           echo "RUNNER_MCP_BASE_COMMIT=$base" >> "$GITHUB_ENV"
           python scripts/check_release_version.py --base "$base"
 
+      - name: Verify declared MCP tool catalogue baseline
+        run: python scripts/attest_tool_catalogue.py
+
       - name: Compile Python
         run: python -m compileall -q src tests
 
@@ -118,6 +121,10 @@ jobs:
         shell: bash
         run: bash scripts/release-artifact-smoke.sh
 
+      - name: Attest 70-tool catalogue inside built wheel
+        shell: bash
+        run: python scripts/attest_tool_catalogue.py --wheel dist/*.whl --output dist/TOOL_CATALOGUE.json
+
       - name: Classify merged code release candidate
         id: candidate
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
@@ -147,6 +154,7 @@ jobs:
             dist/*.tar.gz
             dist/SOURCE_COMMIT
             dist/SHA256SUMS
+            dist/TOOL_CATALOGUE.json
           if-no-files-found: error
           retention-days: 30
 
@@ -173,6 +181,7 @@ jobs:
             dist/*.whl
             dist/*.tar.gz
             dist/SHA256SUMS
+            dist/TOOL_CATALOGUE.json
             dist/PR_HEAD_COMMIT
             dist/CI_MERGE_COMMIT
             dist/NOT_FOR_DEPLOYMENT

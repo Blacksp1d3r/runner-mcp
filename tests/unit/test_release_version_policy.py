@@ -35,7 +35,7 @@ def test_handover_and_test_only_do_not_require_new_binary_version():
     ])
 
 
-@pytest.mark.parametrize("v", ["0.1.3+abc", "v0.1.4", "0.1", "0.1.3.dev2", ""])
+@pytest.mark.parametrize("v", ["0.1.3+abc", "v0.1.4", "0.1", "0.1.3.dev2", "", "0.1.04", "00.1.4", "0.01.4"])
 def test_non_numeric_version_rejected(v):
     with pytest.raises(ValueError):
         version_tuple(v)

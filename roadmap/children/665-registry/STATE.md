@@ -5,7 +5,7 @@
 - Proposed source contract: `docs/architecture/665-TOOL-ID-REGISTRY-CONTRACT.md` (commit c28b6cc0b0ce3573f9b87ba959744cee48a393e3)
 - Branch: `docs/665-tool-identity-alert-contract-20261012`; no production code claim
 - Implemented tool registry: NO
-- Synthetic acceptance tests executed: NO
+- Synthetic acceptance tests executed: NO; machine-readable 12-case test vectors recorded in `docs/architecture/665-REGISTRY-TEST-VECTORS.json` (declarative, not a passing validator test).
 - Production changed: NO
 - Reviewed active catalogue/schema evidence: NOT YET QUALIFIED
 - Prior head of main at reconciliation: `2d025ce72443853795aa87b4ec96b83a25064634`

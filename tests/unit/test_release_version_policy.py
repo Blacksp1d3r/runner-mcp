@@ -14,6 +14,7 @@ _SPEC.loader.exec_module(_GATE)
 check_metadata = _GATE.check_metadata
 needs_bump = _GATE.needs_bump
 version_tuple = _GATE.version_tuple
+append_github_output = _GATE.append_github_output
 verify = _GATE.verify
 
 
@@ -90,3 +91,25 @@ def test_new_tool_same_version_fails_against_main(tmp_path, monkeypatch):
     monkeypatch.setattr(_GATE, "git", fake_git)
     with pytest.raises(ValueError, match="without a new version"):
         verify("a" * 40)
+
+
+def test_candidate_output_uses_single_source_classification(tmp_path, monkeypatch):
+    result = tmp_path / "github-output"
+    result.write_text("")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(result))
+    append_github_output((0, 1, 4), True)
+    assert result.read_text().splitlines() == ["release=true", "version=0.1.4"]
+
+
+def test_documentation_only_candidate_output(tmp_path, monkeypatch):
+    result = tmp_path / "github-output"
+    result.write_text("")
+    monkeypatch.setenv("GITHUB_OUTPUT", str(result))
+    append_github_output((0, 1, 4), False)
+    assert result.read_text().splitlines() == ["release=false", "version=0.1.4"]
+
+
+def test_candidate_output_without_gha_context_fails_closed(monkeypatch):
+    monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
+    with pytest.raises(ValueError, match="GITHUB_OUTPUT"):
+        append_github_output((0, 1, 4), True)

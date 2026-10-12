@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import subprocess
 import sys
@@ -85,15 +86,33 @@ def verify(base: str | None) -> tuple[tuple[int, int, int], bool]:
     return current, release
 
 
+def append_github_output(version: tuple[int, int, int], shipping: bool) -> None:
+    """Emit release candidate classification using the same verified path rules."""
+
+    destination = os.environ.get("GITHUB_OUTPUT")
+    if not destination:
+        raise ValueError("GITHUB_OUTPUT is not available")
+    with open(destination, "a", encoding="utf-8") as stream:
+        stream.write(f"release={str(shipping).lower()}\n")
+        stream.write(f"version={'.'.join(map(str, version))}\n")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--base", help="git merge-base of this PR against main")
+    parser.add_argument("--github-output", action="store_true")
     args = parser.parse_args()
     try:
         version, shipping = verify(args.base)
     except (OSError, UnicodeError, ValueError, KeyError, TypeError) as exc:
         print(f"RELEASE_VERSION_GATE: FAIL ({exc})", file=sys.stderr)
         return 1
+    if args.github_output:
+        try:
+            append_github_output(version, shipping)
+        except (OSError, ValueError) as exc:
+            print(f"RELEASE_VERSION_GATE: FAIL ({exc})", file=sys.stderr)
+            return 1
     print(f"RELEASE_VERSION_GATE: PASS {'.'.join(map(str, version))} shipping={shipping}")
     return 0
 

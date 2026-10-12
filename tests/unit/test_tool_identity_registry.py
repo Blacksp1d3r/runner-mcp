@@ -9,6 +9,7 @@ from runner_mcp.tool_identity_registry import (
     validate_registry,
 )
 
+
 def registry():
     return {"schemaVersion": "runner-mcp/tool-id-registry/v1",
             "namespace": "com.aifordable.runner-mcp", "tools": [

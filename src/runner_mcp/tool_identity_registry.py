@@ -42,6 +42,7 @@ def validate_registry(document: object, *, previous: object | None = None) -> tu
         raise RegistryContractError("tools must be a list")
     seen_keys: set[tuple[str, int]] = set()
     seen_names: dict[str, str] = {}
+    seen_ids: dict[str, str] = {}
     known: dict[tuple[str, int], dict] = {}
     for entry in entries:
         fields = {"tool_id", "tool_name", "contract_revision", "input_schema_sha256",
@@ -59,12 +60,17 @@ def validate_registry(document: object, *, previous: object | None = None) -> tu
             val = entry[field]
             if not isinstance(val, str) or not HEX_RE.fullmatch(val):
                 raise RegistryContractError("invalid schema digest")
-        if entry["permission_class"] not in PERMISSIONS or entry["status"] not in STATUSES:
+        if (not isinstance(entry["permission_class"], str) or
+                not isinstance(entry["status"], str) or
+                entry["permission_class"] not in PERMISSIONS or entry["status"] not in STATUSES):
             raise RegistryContractError("invalid policy descriptor")
         key = (tid, revision)
         if key in seen_keys:
             raise RegistryContractError("duplicate ID and revision")
         seen_keys.add(key)
+        if tid in seen_ids and seen_ids[tid] != name:
+            raise RegistryContractError("ID assigned to multiple tool names")
+        seen_ids[tid] = name
         if name in seen_names and seen_names[name] != tid:
             raise RegistryContractError("name assigned to multiple IDs")
         seen_names[name] = tid

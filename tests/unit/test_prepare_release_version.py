@@ -87,10 +87,17 @@ def test_cli_apply_updates_all_four_files(tmp_path, monkeypatch):
 
     _fixture(tmp_path)
     monkeypatch.chdir(tmp_path)
-    monkeypatch.setattr(_MOD, "_git", lambda *args: "a" * 40 if "rev-parse" in args else "")
+    def git_valid(*args):
+        if "rev-parse" in args:
+            return "a" * 40 if "HEAD" in args else "b" * 40
+        if "show" in args:
+            return '[project]\nversion = "0.1.3"'
+        return ""
+    monkeypatch.setattr(_MOD, "_git", git_valid)
     monkeypatch.setattr(sys, "argv", [
         "prepare_release_version.py", "--kind", "patch", "--expected-version",
-        "0.1.4", "--expected-head", "a" * 40, "--apply",
+        "0.1.4", "--expected-head", "a" * 40,
+        "--expected-main", "b" * 40, "--apply",
     ])
     assert _MOD.main() == 0
     assert 'version = "0.1.5"' in (tmp_path / "pyproject.toml").read_text()
@@ -99,3 +106,72 @@ def test_cli_apply_updates_all_four_files(tmp_path, monkeypatch):
     assert '__version__ = "0.1.5"' in (
         tmp_path / "src/runner_mcp/__init__.py"
     ).read_text()
+
+
+def test_stale_main_ref_refuses_version_allocation(tmp_path, monkeypatch):
+    _fixture(tmp_path)
+
+    def git_stale(*args):
+        if "rev-parse" in args:
+            return "a" * 40 if "HEAD" in args else "c" * 40
+        return ""
+
+    monkeypatch.setattr(_MOD, "_git", git_stale)
+    with pytest.raises(_MOD.VersionAllocationError, match="tracked main ref changed"):
+        _MOD.plan(
+            root=tmp_path, kind="patch", expected_version="0.1.4",
+            expected_head="a" * 40, expected_main="b" * 40
+        )
+    assert 'version = "0.1.4"' in (tmp_path / "pyproject.toml").read_text()
+
+
+def test_main_higher_than_next_version_refuses(tmp_path, monkeypatch):
+    _fixture(tmp_path)
+
+    def git_future(*args):
+        if "rev-parse" in args:
+            return "a" * 40 if "HEAD" in args else "b" * 40
+        if "show" in args:
+            return '[project]\nversion = "0.1.5"'
+        return ""
+
+    monkeypatch.setattr(_MOD, "_git", git_future)
+    with pytest.raises(_MOD.VersionAllocationError, match="does not exceed"):
+        _MOD.plan(
+            root=tmp_path, kind="patch", expected_version="0.1.4",
+            expected_head="a" * 40, expected_main="b" * 40
+        )
+
+
+def test_main_lower_than_next_version_is_allowed(tmp_path, monkeypatch):
+    _fixture(tmp_path)
+
+    def git_expected(*args):
+        if "rev-parse" in args:
+            return "a" * 40 if "HEAD" in args else "b" * 40
+        if "show" in args:
+            return '[project]\nversion = "0.1.4"'
+        return ""
+
+    monkeypatch.setattr(_MOD, "_git", git_expected)
+    assert _MOD.plan(
+        root=tmp_path, kind="patch", expected_version="0.1.4",
+        expected_head="a" * 40, expected_main="b" * 40
+    )[0] == "0.1.5"
+
+
+def test_apply_without_expected_main_does_not_write(tmp_path, monkeypatch):
+    import sys
+
+    _fixture(tmp_path)
+    monkeypatch.chdir(tmp_path)
+    monkeypatch.setattr(
+        _MOD, "_git", lambda *args: "a" * 40 if "rev-parse" in args else ""
+    )
+    monkeypatch.setattr(sys, "argv", [
+        "prepare_release_version.py", "--kind", "patch",
+        "--expected-version", "0.1.4", "--expected-head", "a" * 40,
+        "--apply",
+    ])
+    assert _MOD.main() == 1
+    assert 'version = "0.1.4"' in (tmp_path / "pyproject.toml").read_text()

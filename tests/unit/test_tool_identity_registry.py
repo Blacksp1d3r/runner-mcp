@@ -53,3 +53,24 @@ def test_immutable_retirement_and_revision():
 def test_bad_json_rejected():
     with pytest.raises(RegistryContractError):
         canonical_digest({"invalid": float("nan")})
+
+
+def test_same_id_cannot_alias_second_name_in_new_revision():
+    current = registry()
+    alias = copy.deepcopy(current["tools"][0])
+    alias["contract_revision"] = 2
+    alias["tool_name"] = "different_operation"
+    current["tools"].append(alias)
+    with pytest.raises(RegistryContractError, match="multiple tool names"):
+        validate_registry(current)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("permission_class", []),
+    ("status", {"unexpected": True}),
+])
+def test_malformed_policy_descriptor_fails_closed(field, value):
+    current = registry()
+    current["tools"][0][field] = value
+    with pytest.raises(RegistryContractError, match="invalid policy descriptor"):
+        validate_registry(current)

@@ -80,8 +80,18 @@ def validate_registry(document: object, *, previous: object | None = None) -> tu
         old_entries = {(e["tool_id"], e["contract_revision"]): e for e in previous["tools"]}
         old_ids = {e["tool_id"]: e["tool_name"] for e in previous["tools"]}
         for key, old in old_entries.items():
-            if key not in known or known[key] != old:
-                raise RegistryContractError("historical contract changed or disappeared")
+            if key not in known:
+                raise RegistryContractError("historical contract disappeared")
+            new = known[key]
+            if any(new[field] != value for field, value in old.items() if field != "status"):
+                raise RegistryContractError("immutable historical contract changed")
+            transitions = {
+                "active": {"active", "deprecated", "retired"},
+                "deprecated": {"deprecated", "retired"},
+                "retired": {"retired"},
+            }
+            if new["status"] not in transitions[old["status"]]:
+                raise RegistryContractError("historical status was reactivated")
         for entry in entries:
             if entry["tool_id"] in old_ids and old_ids[entry["tool_id"]] != entry["tool_name"]:
                 raise RegistryContractError("retired ID was reused")

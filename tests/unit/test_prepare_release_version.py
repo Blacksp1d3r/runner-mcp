@@ -227,7 +227,8 @@ def test_write_failure_rolls_back_earlier_metadata(tmp_path, monkeypatch):
     def write_injected(self, data):
         if self.name == "server.json" and fail_once["pending"]:
             fail_once["pending"] = False
-            raise OSError("synthetic write failure")
+            real_write(self, b"partial")
+            raise OSError("synthetic write failure after partial write")
         return real_write(self, data)
 
     monkeypatch.setattr(Path, "write_bytes", write_injected)

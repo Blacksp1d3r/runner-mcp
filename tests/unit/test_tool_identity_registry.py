@@ -75,3 +75,21 @@ def test_malformed_policy_descriptor_fails_closed(field, value):
     current["tools"][0][field] = value
     with pytest.raises(RegistryContractError, match="invalid policy descriptor"):
         validate_registry(current)
+
+
+@pytest.mark.parametrize("invalid", [
+    {1: "value"},
+    {"nested": [{False: "value"}]},
+    {"bad": {1, 2}},
+    {"non_finite": float("inf")},
+])
+def test_canonical_digest_rejects_ambiguous_or_non_json_values(invalid):
+    with pytest.raises(RegistryContractError):
+        canonical_digest(invalid)
+
+
+def test_string_and_integer_keys_must_not_collide():
+    valid = canonical_digest({"1": "value"})
+    assert len(valid) == 64
+    with pytest.raises(RegistryContractError, match="keys must be strings"):
+        canonical_digest({1: "value"})

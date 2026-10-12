@@ -43,6 +43,12 @@ An Actions **push** run on the exact historical installed commit exists: GitHub 
 
 NO host update/restart, package build/installation or physical-media copy was performed by this documentation step.
 
+## 2026-10-12 latest source-registry and CI correction — supersedes old 70-total count
+
+**CURRENT INTERPRETATION:** The section below is historical artifact evidence for its pinned older PR commit, **not** the latest canonical catalogue or current candidate wheel. Early analysis counted only decorated tools. Source now accounts for both \`@mcp.tool()\` and \`mcp.tool()(function)\`: old serving-source revision \`a0fd964c...\` has **87** declared tool names (63 decorated + 24 manual); PR #661 current candidate code has **95** (70 decorated + 25 manual), **8 added, none removed**. Original ChatGPT client currently advertises **88** names, which is neither source set; exposed, enabled, callable and source-registered are different facts. Correlation/root cause remains with Runner-MCP #590.
+
+PR #661's newer verified code HEAD \`6adf6afe8054025a3b575ebde37b670522069378\` includes fail-closed \`--no-renames\` Git version-policy guard and real-Git negative regression tests, all three exact-head CI workflows succeeded. **This does not authenticate or replace the historical wheel/archive below**: do not reuse a hash or \`TOOL_CATALOGUE.json\` from the pinned \`4ee7038...\` or \`bad5eab...\` artifact as attestation of current HEAD. New artifact source SHA, wheel SHA-256 and full 95-tool receipt must be independently re-fetched/verified prior to owner-attended first-node preparation. #661/#663/#667 are unmerged; installed process remains old until proper A6/A7, rollback escrow and same-original-client ACK. NO_AUTO_UPDATE, NO_CLAUDE_DISPATCH from this document.
+
 ## 2026-10-12 updated wheel custody and 70-tool acceptance
 
 Earlier sections recording that no reconstructed historical wheel was available are now HISTORICAL. Two exact-source Python 3.12 wheel builds exist in the user's private Library, including the old a0fd964c... source wheel. The selected old wheel SHA256 is 2fe8ed42a51ad9ba351b74f8f651da4d0e89ce36b84cfb97bc70ac207142b5bc. Its packaged runner_mcp/server.py SHA256 is c6890864f3ff8d4c17fbab27f3543ba4dff310b34f51fbcfe633ccb5ee859b6e, matching the earlier historic source-file checksum measured by the operator. It is not a current loaded-memory attestation.

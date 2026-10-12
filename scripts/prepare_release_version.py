@@ -108,6 +108,8 @@ def plan(
             raise VersionAllocationError(
                 "tracked main ref changed: refresh/rebase before version allocation"
             )
+        if _git("-C", str(root), "merge-base", expected_main, expected_head) != expected_main:
+            raise VersionAllocationError("tracked main is not an ancestor of HEAD")
         base_metadata = _git(
             "-C", str(root), "show", f"{expected_main}:pyproject.toml"
         )
@@ -161,8 +163,23 @@ def main() -> int:
             # All files are validated and rendered before the first write.
             # A crash during the four replace operations must be rejected
             # by the separate CI sync gate; never report it as a release.
-            for path, content in updates.items():
-                path.write_bytes(content)
+            originals = {path: path.read_bytes() for path in updates}
+            written: list[Path] = []
+            try:
+                for path, content in updates.items():
+                    path.write_bytes(content)
+                    written.append(path)
+            except OSError as exc:
+                rollback_failed = False
+                for path in reversed(written):
+                    try:
+                        path.write_bytes(originals[path])
+                    except OSError:
+                        rollback_failed = True
+                raise VersionAllocationError(
+                    "partial version allocation; restore from git before retry"
+                    if rollback_failed else "write failed; previous metadata restored"
+                ) from exc
         print(
             f"RELEASE_VERSION_ALLOCATION: {'APPLIED' if args.apply else 'DRY_RUN'} "
             f"{args.expected_version} -> {proposed}"

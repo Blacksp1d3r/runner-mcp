@@ -42,3 +42,13 @@ An Actions **push** run on the exact historical installed commit exists: GitHub 
 - #341 owner for attended update, #590 client return path, AIfordable #428 runtime host attestation, Fabric #943 A7 lab, PR #659 docs-only.
 
 NO host update/restart, package build/installation or physical-media copy was performed by this documentation step.
+
+## 2026-10-12 updated wheel custody and 70-tool acceptance
+
+Earlier sections recording that no reconstructed historical wheel was available are now HISTORICAL. Two exact-source Python 3.12 wheel builds exist in the user's private Library, including the old a0fd964c... source wheel. The selected old wheel SHA256 is 2fe8ed42a51ad9ba351b74f8f651da4d0e89ce36b84cfb97bc70ac207142b5bc. Its packaged runner_mcp/server.py SHA256 is c6890864f3ff8d4c17fbab27f3543ba4dff310b34f51fbcfe633ccb5ee859b6e, matching the earlier historic source-file checksum measured by the operator. It is not a current loaded-memory attestation.
+
+Versioned candidate in PR #661 (head 4ee7038141960cab22645c74fcf6108021fec081, UNAPPROVED, UNMERGED) has wheel SHA256 effc8228689f0cb8c5d762fdc20840adfd7dd6e2493441a172ef7f51a6e41b30 and packaged runner_mcp/server.py SHA256 f7009479dd9b73f829e1f5c090928255f7ac6c9d9045a6f0883c866619944840. Exactly 70 declared MCP tools (7 additions, 0 removals), tool-name list SHA256 6aaf803421a71ad2fef95e52d3079ed4c18e48542b0bd08f336015909c23cef4. New source and built-wheel attestation emitted TOOL_CATALOGUE.json, verified by independent download. CI run 38208970609 and the other two exact-head workflows SUCCESS. The archive remains explicitly NOT_FOR_DEPLOYMENT.
+
+Updated private Library: Backups/Runner-MCP/Candidates/runner-mcp-70-tools-0.1.4-tool-manifest-UNAPPROVED.zip; independent listing size 648690 B and archive SHA256 c4e5cb4e0da05e45d9af22434131c843d39721cac7f8f4585ac0d26e11827957. Historic old wheels remain at Backups/Runner-MCP/Recovery-Wheels. The user has NOT approved this PR through independent review, no production/host/tunnel update happened, and old artifact is not yet an independently tested production rollback.
+
+NEXT OPERATOR-OWNED READ-ONLY CHECK: at the already independently verified correct host, re-confirm the current MCP process PID/loopback listener and privately compare the on-disk installed runner_mcp/server.py file SHA256 with the two exact checksums above, while confirming the exact stored source commit. Avoid exporting complete command lines/config paths/env or guessing package paths. A disk-file match is not in-memory provenance, external recovery, original-client ACK, or host update permission. Follow with tested independent fallback and one attended canary before any other node.

@@ -6,6 +6,8 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ## Unreleased
 
+- Source candidate 0.1.5 adds a trusted, branch-local deterministic version allocator; **not yet published or deployed**. Source 0.1.4 is the separate lower-stack release integrity policy candidate.
+
 - Source package and MCP manifest versions advance to 0.1.4; this is a **pending candidate**, not a published release or deployment.
 - Release guard prevents any source, tools, installer, scripts or workflow changes without a strictly higher version and matching metadata.
 

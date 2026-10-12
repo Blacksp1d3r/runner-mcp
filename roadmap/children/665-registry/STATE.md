@@ -20,3 +20,10 @@
 - First exact-head CI at `24c7fdd849c211877594bf9e26af25f5fbc0aea2`: attribution SUCCESS, clean installer SUCCESS, validation FAILED on Ruff I001 import grouping in test file (no pytest result).
 - Ruff grouping fixed at `745619bb4075b0df9ae1130bf1afe0f10b0a7061`; fresh exact-head CI still required. Do not declare tests passing before results.
 - Next: qualify complete CI and independent review, revisit immutable-retirement semantics before relying on validator, then rebase only after #661 and #663 integration, preserving unique release number.
+
+## 2026-10-12 source corrections — latest
+- Source PR #667 head `8e9475e00d9fa9d40c374771ffcb617259891af8` at update; check live GitHub HEAD before executing further.
+- First CI failed on Ruff import order; second failed on Ruff blank line, both corrected. Subsequent branch pushes cancelled earlier CI runs due to concurrency group; cancelled is NOT passing.
+- Strengthened validator against one ID aliased to different names across revisions and non-string policy/status values; new negative tests included.
+- Fixed legitimate tool lifecycle: active → deprecated → retired allowed, **no reactivation**; historical tool ID, name, schemas, revision and permission immutability retained.
+- Latest-head full CI and independent review still required; no runtime invocation, no dispatch enforcement, no customer alarms, no production install.

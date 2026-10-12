@@ -22,25 +22,49 @@ class CatalogueError(ValueError):
     """Catalogue is missing, ambiguous or does not match the approved source."""
 
 
+def _is_mcp_tool_factory(node: ast.AST) -> bool:
+    return (
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "tool"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "mcp"
+    )
+
+
 def registered_tool_names(content: bytes) -> list[str]:
-    """Read literal @mcp.tool() function decorators without executing source."""
+    """Count both @mcp.tool() and mcp.tool()(function) registrations.
+
+    Only static local function names are accepted; no source is executed.
+    """
     tree = ast.parse(content.decode("utf-8"))
+    defined = {
+        node.name
+        for node in ast.walk(tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
     names: list[str] = []
     for node in ast.walk(tree):
-        if not isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
-            continue
-        for decorator in node.decorator_list:
-            if not (
-                isinstance(decorator, ast.Call)
-                and isinstance(decorator.func, ast.Attribute)
-                and decorator.func.attr == "tool"
-                and isinstance(decorator.func.value, ast.Name)
-                and decorator.func.value.id == "mcp"
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)):
+            for decorator in node.decorator_list:
+                if not _is_mcp_tool_factory(decorator):
+                    continue
+                if decorator.args or decorator.keywords:
+                    raise CatalogueError("nonliteral MCP decorator requires review")
+                names.append(node.name)
+        if isinstance(node, ast.Call) and _is_mcp_tool_factory(node.func):
+            if (
+                node.func.args
+                or node.func.keywords
+                or len(node.args) != 1
+                or node.keywords
+                or not isinstance(node.args[0], ast.Name)
             ):
-                continue
-            if decorator.args or decorator.keywords:
-                raise CatalogueError("nonliteral MCP tool registration needs review")
-            names.append(node.name)
+                raise CatalogueError("nonliteral MCP manual registration requires review")
+            target = node.args[0].id
+            if target not in defined:
+                raise CatalogueError("manual registration target is not defined locally")
+            names.append(target)
     if len(names) != len(set(names)):
         raise CatalogueError("duplicate MCP tool name")
     if not names:
@@ -62,7 +86,7 @@ def verify_baseline(names: list[str], baseline: dict) -> None:
         or expected != sorted(expected)
         or not isinstance(minimum, int)
         or isinstance(minimum, bool)
-        or minimum < 70
+        or minimum < 95
     ):
         raise CatalogueError("invalid baseline")
     if len(names) < minimum or names != expected:

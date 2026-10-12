@@ -27,3 +27,12 @@
 - Strengthened validator against one ID aliased to different names across revisions and non-string policy/status values; new negative tests included.
 - Fixed legitimate tool lifecycle: active → deprecated → retired allowed, **no reactivation**; historical tool ID, name, schemas, revision and permission immutability retained.
 - Latest-head full CI and independent review still required; no runtime invocation, no dispatch enforcement, no customer alarms, no production install.
+
+## 2026-10-12 validated exact head
+- PR #667 candidate source head `8e9475e00d9fa9d40c374771ffcb617259891af8` exact-head GitHub workflows SUCCESS:
+  - attribution run 38219997872
+  - validation run 38219997875
+  - clean Ubuntu installer run 38219997913.
+- State: SOURCE_CANDIDATE_CI_GREEN / NOT_MERGED / NOT_DEPLOYED. Independent review still pending; staged release chain #661→#663→#667 unchanged.
+- Registry validator is a pure offline source check; no actual per-tool IDs registered in live serving process; alerts/handshake/dispatcher not yet active.
+- Next: independent review, review explicit registry migration and schema semantics; then rebase onto merged unique-version main and re-run exact-head CI. Do not claim runtime/tool fleet convergence.

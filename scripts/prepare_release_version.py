@@ -167,8 +167,8 @@ def main() -> int:
             written: list[Path] = []
             try:
                 for path, content in updates.items():
-                    path.write_bytes(content)
                     written.append(path)
+                    path.write_bytes(content)
             except OSError as exc:
                 rollback_failed = False
                 for path in reversed(written):

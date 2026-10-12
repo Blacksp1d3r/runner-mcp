@@ -149,3 +149,32 @@ jobs:
             dist/SHA256SUMS
           if-no-files-found: error
           retention-days: 30
+
+      - name: Record unapproved PR candidate provenance
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" = "1"
+          test "$(find dist -maxdepth 1 -name '*.tar.gz' | wc -l)" = "1"
+          printf '%s\n' "${{ github.event.pull_request.head.sha }}" > dist/PR_HEAD_COMMIT
+          printf '%s\n' "$GITHUB_SHA" > dist/CI_MERGE_COMMIT
+          (cd dist && sha256sum *.whl *.tar.gz > SHA256SUMS)
+          python scripts/check_release_version.py
+          echo "UNAPPROVED_SOURCE_CANDIDATE - NOT A RELEASE OR INSTALL PERMISSION" \
+            > dist/NOT_FOR_DEPLOYMENT
+
+      - name: Preserve unapproved PR candidate for independently reviewed staging
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unapproved-mcp-pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/PR_HEAD_COMMIT
+            dist/CI_MERGE_COMMIT
+            dist/NOT_FOR_DEPLOYMENT
+          if-no-files-found: error
+          retention-days: 7

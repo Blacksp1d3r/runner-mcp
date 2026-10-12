@@ -36,3 +36,10 @@
 - State: SOURCE_CANDIDATE_CI_GREEN / NOT_MERGED / NOT_DEPLOYED. Independent review still pending; staged release chain #661→#663→#667 unchanged.
 - Registry validator is a pure offline source check; no actual per-tool IDs registered in live serving process; alerts/handshake/dispatcher not yet active.
 - Next: independent review, review explicit registry migration and schema semantics; then rebase onto merged unique-version main and re-run exact-head CI. Do not claim runtime/tool fleet convergence.
+
+## 2026-10-12 exact-head hardened schema validation
+- PR #667 new source HEAD `a4a8e765c33e0ad89e8e2214fa5b292fb75b0794`: strict JSON-only schema hash inputs (including recursively rejecting non-string object keys and non-JSON values) with negative regression coverage; prevents key-normalization hash ambiguity.
+- Exact-head three workflows PASS: validation `38227136986`; attribution `38227137004`; clean Ubuntu installer `38227137044`.
+- This supersedes earlier head `8e9475e0` evidence. Source status: CI_GREEN / INDEPENDENT_REVIEW_MISSING / STACKED_DRAFT / NOT_MERGED / NOT_DEPLOYED.
+- #661 is still open (HEAD `bad5eab79f5e4453237af5a26094ef03de9b4fa2`), zero independent PR reviews; #663 remains draft against #661, so do not bypass release ordering.
+- Next: independent exact-head review; after #661/#663 merge, recompute candidate version and rerun CI. No live tool IDs, alerts or host qualification claimed.

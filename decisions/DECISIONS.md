@@ -14,3 +14,4 @@ Canonical record of durable project-wide decisions. Keep entries concise and app
 - Package-install recovery is local operator-only and requires the emergency stop.
 - GitHub live state is authoritative when documentation lags.
 - Feature/code changes use branch -> PR -> review/tests; coordination docs may be updated directly on the agreed documentation surface.
+- 2026-10-12 ACCEPTED operator decision: ship one universal Runner-MCP binary/package/version containing the complete tool set on every managed server. Never maintain per-host/per-project source forks or strip disabled tools from the wheel; use host/tenant/role-scoped policy to expose/enable only needed tools while keeping the installed inventory identical. A tool being installed/advertised does not grant mutation rights, leases or Fabric authority. See `docs/architecture/ADR-2026-10-12-UNIVERSAL-TOOLSET.md`.

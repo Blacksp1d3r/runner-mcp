@@ -129,3 +129,55 @@ def test_removed_or_renamed_shipping_paths_still_require_new_version(changed_pat
 
 def test_shipping_path_overrides_documentation_only_path():
     assert needs_bump(["docs/safety.md", "src/runner_mcp/server.py"])
+
+
+@pytest.mark.parametrize("protected_path", [
+    "src/runner_mcp/removed_tool.py",
+    "scripts/removed_helper.py",
+    ".github/workflows/removed_workflow.yml",
+    ".github/actions/removed_action/action.yml",
+])
+def test_real_git_move_out_of_protected_path_requires_version_bump(
+    tmp_path, monkeypatch, protected_path
+):
+    """Git rename detection must not hide removal of protected source paths."""
+    import subprocess
+
+    def run_git(*args):
+        return subprocess.run(
+            ["git", "-C", str(tmp_path), *args],
+            check=True,
+            capture_output=True,
+            text=True,
+        ).stdout.strip()
+
+    run_git("init", "-q")
+    run_git("config", "user.name", "Synthetic Release Gate Test")
+    run_git("config", "user.email", "ci@example.invalid")
+    run_git("config", "diff.renames", "true")
+
+    (tmp_path / "src/runner_mcp").mkdir(parents=True)
+    (tmp_path / "pyproject.toml").write_text('[project]\nversion="0.1.4"\n')
+    (tmp_path / "server.json").write_text(
+        json.dumps({"version": "0.1.4", "packages": [{"version": "0.1.4"}]})
+    )
+    (tmp_path / "src/runner_mcp/__init__.py").write_text('__version__ = "0.1.4"\n')
+    (tmp_path / "glama.json").write_text(json.dumps({"version": "0.1.4"}))
+
+    source = tmp_path / protected_path
+    source.parent.mkdir(parents=True, exist_ok=True)
+    source.write_text("unchanged test payload\n")
+    run_git("add", "-A")
+    run_git("commit", "-qm", "synthetic baseline")
+    base = run_git("rev-parse", "HEAD")
+
+    (tmp_path / "docs").mkdir(exist_ok=True)
+    run_git("mv", protected_path, "docs/archived-source.txt")
+    run_git("commit", "-qm", "move shipping file outside protected prefix")
+    # Explicitly prove the fixture exhibits the Git path-classification trap.
+    default_names = run_git("diff", "--name-only", base, "HEAD").splitlines()
+    assert default_names == ["docs/archived-source.txt"]
+
+    monkeypatch.chdir(tmp_path)
+    with pytest.raises(ValueError, match="without a new version"):
+        verify(base)

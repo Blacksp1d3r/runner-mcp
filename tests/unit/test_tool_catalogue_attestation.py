@@ -52,8 +52,11 @@ def test_missing_wheel_server_member_rejected(tmp_path):
     path = tmp_path / "wheel.whl"
     with zipfile.ZipFile(path, "w") as wheel:
         wheel.writestr("runner_mcp/cli.py", b"# test\n")
+    baseline = json.loads(_MOD.BASELINE.read_text(encoding="utf-8"))
     with pytest.raises(_MOD.CatalogueError, match="missing"):
-        _MOD.tool_receipt(source=_source(), manifest=_manifest("example"), wheel_file=path)
+        _MOD.tool_receipt(
+            source=_MOD.SOURCE.read_bytes(), manifest=baseline, wheel_file=path
+        )
 
 
 def test_source_baseline_matches_approved_70_tools():

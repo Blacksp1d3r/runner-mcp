@@ -19,8 +19,25 @@ class RegistryContractError(ValueError):
     """Invalid or ambiguous static registry: no tool may be dispatched."""
 
 
+def _strict_json(value: object) -> None:
+    """Reject ambiguous object keys and values before canonical serialization."""
+    if isinstance(value, dict):
+        if any(not isinstance(key, str) for key in value):
+            raise RegistryContractError("JSON object keys must be strings")
+        for item in value.values():
+            _strict_json(item)
+    elif isinstance(value, list):
+        for item in value:
+            _strict_json(item)
+    elif value is None or type(value) in (str, int, float, bool):
+        return
+    else:
+        raise RegistryContractError("invalid JSON schema value")
+
+
 def canonical_digest(schema: object) -> str:
     """Hash canonical JSON only, rejecting NaN and non-JSON objects."""
+    _strict_json(schema)
     try:
         data = json.dumps(
             schema, sort_keys=True, separators=(",", ":"), ensure_ascii=False,

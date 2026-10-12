@@ -114,3 +114,18 @@ def test_candidate_output_without_gha_context_fails_closed(monkeypatch):
     monkeypatch.delenv("GITHUB_OUTPUT", raising=False)
     with pytest.raises(ValueError, match="GITHUB_OUTPUT"):
         append_github_output((0, 1, 4), True)
+
+
+@pytest.mark.parametrize("changed_path", [
+    "src/runner_mcp/removed_tool.py",
+    "src/runner_mcp/renamed_tool.py",
+    "scripts/removed_release_script.py",
+    ".github/actions/local/action.yml",
+])
+def test_removed_or_renamed_shipping_paths_still_require_new_version(changed_path):
+    # Git --name-only includes paths of deletes and renames; guard both.
+    assert needs_bump([changed_path])
+
+
+def test_shipping_path_overrides_documentation_only_path():
+    assert needs_bump(["docs/safety.md", "src/runner_mcp/server.py"])

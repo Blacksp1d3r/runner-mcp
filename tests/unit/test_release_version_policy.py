@@ -21,7 +21,8 @@ verify = _GATE.verify
 @pytest.mark.parametrize("path", [
     "src/runner_mcp/cli.py", "src/runner_mcp/new_tool.py",
     "scripts/release-check.sh", "install.sh", "install-operator.sh",
-    ".github/workflows/validation.yml", "pyproject.toml", "server.json",
+    ".github/workflows/validation.yml", ".github/actions/local/action.yml",
+    "pyproject.toml", "server.json",
 ])
 def test_shipping_paths_require_version(path):
     assert needs_bump([path])

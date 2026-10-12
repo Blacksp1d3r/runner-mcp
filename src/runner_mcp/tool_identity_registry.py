@@ -19,16 +19,18 @@ class RegistryContractError(ValueError):
     """Invalid or ambiguous static registry: no tool may be dispatched."""
 
 
-def _strict_json(value: object) -> None:
-    """Reject ambiguous object keys and values before canonical serialization."""
+def _strict_json(value: object, *, depth: int = 0) -> None:
+    """Reject ambiguous JSON and excessive nesting before serialization."""
+    if depth > 64:
+        raise RegistryContractError("JSON schema nesting exceeds limit")
     if isinstance(value, dict):
         if any(not isinstance(key, str) for key in value):
             raise RegistryContractError("JSON object keys must be strings")
         for item in value.values():
-            _strict_json(item)
+            _strict_json(item, depth=depth + 1)
     elif isinstance(value, list):
         for item in value:
-            _strict_json(item)
+            _strict_json(item, depth=depth + 1)
     elif value is None or type(value) in (str, int, float, bool):
         return
     else:

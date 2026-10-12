@@ -40,8 +40,9 @@ def test_bad_registry_fails_closed(mutation):
 def test_immutable_retirement_and_revision():
     previous = registry()
     changed = registry(); changed["tools"][0]["status"] = "retired"
-    with pytest.raises(RegistryContractError):
-        validate_registry(changed, previous=previous)
+    assert validate_registry(changed, previous=previous)
+    with pytest.raises(RegistryContractError, match="reactivated"):
+        validate_registry(previous, previous=changed)
     changed = registry(); changed["tools"][0]["output_schema_sha256"] = "f"*64
     with pytest.raises(RegistryContractError):
         validate_registry(changed, previous=previous)

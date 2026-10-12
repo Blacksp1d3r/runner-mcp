@@ -93,3 +93,11 @@ def test_string_and_integer_keys_must_not_collide():
     assert len(valid) == 64
     with pytest.raises(RegistryContractError, match="keys must be strings"):
         canonical_digest({1: "value"})
+
+
+def test_canonical_digest_rejects_excessive_schema_nesting():
+    schema = {"type": "string"}
+    for _ in range(66):
+        schema = {"items": schema}
+    with pytest.raises(RegistryContractError, match="nesting exceeds limit"):
+        canonical_digest(schema)

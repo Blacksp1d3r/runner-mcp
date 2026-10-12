@@ -10,3 +10,9 @@
 - No production host, service, tunnel, source repo main, protected disk, provider, customer data or Claude dispatch was changed by this roadmap note.
 
 Next: independent review/merge of #661, then trusted version allocator child on its own branch (respect other workers) and actual post-merge main candidate artifact receipt; do not convert staged code into live permission.
+
+## 2026-10-12 release-integrity continuation
+
+- PR #661 originally had two drift-prone lists: Python `needs_bump()` included operator installer and discovery metadata after patches, but post-main candidate-upload regex initially omitted them. New source head `57ef72f6e9654470c843645af790c2bd340022d4` now derives GitHub release outputs using the *same* `check_release_version.py` source rule, with added negative tests; exact-head CI pending as recorded. Failure Museum RMCP-F-0037.
+- PR #663 stacked on #661 implemented `--expected-main` guard required for `--apply`: compare cached origin/main SHA to expected pinned SHA, refuse version <= latest locally observed main, preserve dry-run path, added tests for stale main and version collision. Current head `1c42c894d41aea91bc8ac6098e2729a6f3084bd9`, all three prior exact-head workflows SUCCESS, but PR base #661 has moved and needs current-base qualification before merging. A local cached ref **is not** a global distributed version lease; protected-branch current-head CI and unique published-artifact policy remain necessary.
+- Neither #661 nor #663 is merged or deployed. Main and live installed source still old as last verified; no service/host/Wheel/backup-drive writes. Do not mistake staging for deployment.

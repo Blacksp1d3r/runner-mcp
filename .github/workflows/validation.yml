@@ -125,7 +125,7 @@ jobs:
         run: |
           set -euo pipefail
           changed="$(git diff --name-only HEAD^ HEAD)"
-          if grep -Eq '^(src/runner_mcp/|scripts/|install.sh$|pyproject.toml$|server.json$|\.github/workflows/)' <<<"$changed"; then
+          if grep -Eq '^(src/runner_mcp/|scripts/|install.sh$|install-operator.sh$|pyproject.toml$|server.json$|\.github/workflows/)' <<<"$changed"; then
             echo "release=true" >> "$GITHUB_OUTPUT"
             version="$(python -c 'import tomllib; print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
             echo "version=$version" >> "$GITHUB_OUTPUT"

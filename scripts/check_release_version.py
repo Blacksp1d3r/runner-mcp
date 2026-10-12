@@ -11,7 +11,7 @@ import tomllib
 from pathlib import Path
 
 _VERSION_RE = re.compile(r"^[0-9]+\.[0-9]+\.[0-9]+$")
-_RELEASE_FILES = frozenset({"install.sh", "pyproject.toml", "server.json", "glama.json"})
+_RELEASE_FILES = frozenset({"install.sh", "install-operator.sh", "pyproject.toml", "server.json", "glama.json"})
 _RELEASE_PREFIXES = ("src/runner_mcp/", "scripts/", ".github/workflows/")
 
 

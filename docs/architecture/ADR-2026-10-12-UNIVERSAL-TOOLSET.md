@@ -1,7 +1,7 @@
 # ADR-2026-10-12 — Universal Runner-MCP toolset, configurable activation
 
-**Status:** ACCEPTED by operator, 2026-10-12  
-**Scope:** Runner-MCP installed package and tool registry on every managed host; Runner Fabric capability admission remains separate  
+**Status:** ACCEPTED by operator, 2026-10-12
+**Scope:** Runner-MCP installed package and tool registry on every managed host; Runner Fabric capability admission remains separate
 **Related:** Runner-MCP #662 (versioned release conveyor), #590 (original-client catalogue), #341 (first-node recovery), PR #661 (95-tool source baseline), Fabric A6 #942 / A7 #943
 
 ## Decision

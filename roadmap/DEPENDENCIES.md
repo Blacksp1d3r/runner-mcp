@@ -1,3 +1,9 @@
+## 2026-10-13 — #669 source-safe identity precedes full artifact attestation
+
+#661 (v0.1.4) -> #668 (v0.1.5) -> #670 (v0.1.6) -> DRAFT #671 (v0.1.7; issue #669 first stage). All previous PRs open/unmerged and require independently authenticated reviews, rebases and fresh CI. #671 cannot assert real source_revision or artifact_digest until a separate verified install/build receipt and active runtime loaded generation exist; never derive from self-update history or mutable dist-info. A6 #942/A7 #943, AIfordable #428, physical rollback and original-client #590 ACK still gate any live deployment. No live update/credential/network action.
+
+---
+
 ## 2026-10-13 — release dependency chain and live tunnel hold
 
 `#661 (v0.1.4, OPEN review) -> #668 (v0.1.5, stacked OPEN review) -> #670 (v0.1.6, stacked DRAFT/CI)`, then version-adjusted #669 (active wheel provenance). Do not merge a later stacked child before its reviewed and rebased dependency. GitHub code/CI cannot authorize physical host rollout: A6/A7 off-target/rollback/original-client ACK under #341/#590 and Fabric dependencies remain gates. Live attended PATH override saved the original crontab and revived local MCP health but control-plane auth/routability not yet qualified. Future `autostart reconcile` without #670's source fix can regress PATH; DO NOT call it on the host now. Use categorical local health diagnostics. No Claude dispatch.

@@ -23,6 +23,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
+from . import __version__ as _loaded_package_version
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .artifact_custody import ContentAddressedArtifactCustody
@@ -59,7 +60,6 @@ from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
     BewindWorkerQualificationPolicyError,
 )
-from . import __version__ as _loaded_package_version
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,

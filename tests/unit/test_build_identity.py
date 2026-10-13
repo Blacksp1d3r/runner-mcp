@@ -146,6 +146,34 @@ def test_active_source_ignores_even_broken_historical_transaction(
     assert installed_source_revision(tmp_path) is None
 
 
+def test_manual_wheel_update_must_not_claim_old_commit(
+    tmp_path: Path,
+) -> None:
+    # A prior self-update marker remains after a separately installed wheel.
+    (tmp_path / "self-update-state.json").write_text(
+        json.dumps({"commit": "a" * 40}), encoding="utf-8"
+    )
+    observed = runner_mcp_mcp_build_identity(
+        "0.1.7",
+        source_revision=installed_source_revision(tmp_path),
+    )
+    assert observed.build_version == "0.1.7"
+    assert observed.source_revision is None
+    assert observed.artifact_digest is None
+
+
+def test_loaded_server_version_does_not_follow_later_dist_info_change(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import runner_mcp
+    from runner_mcp import server
+
+    loaded = server._loaded_package_version
+    assert loaded == runner_mcp.__version__
+    monkeypatch.setattr(server, "version", lambda _name: "99.99.99")
+    assert server._loaded_package_version == loaded
+
+
 def test_active_source_rejects_invalid_config_input() -> None:
     with pytest.raises(BuildIdentityError):
         installed_source_revision("untrusted")  # type: ignore[arg-type]

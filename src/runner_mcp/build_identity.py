@@ -102,6 +102,39 @@ def installed_source_revision(config_dir: Path) -> str | None:
     return None
 
 
+def fail_closed_runtime_provenance(
+    status: dict[str, object], *,
+    loaded_version: str,
+    installed_distribution_version: str,
+) -> dict[str, object]:
+    """Separate historical self-update markers from active build identity.
+
+    Manager status dictionaries are merged after runtime_status initialises its
+    own version. Their version and self-update revisions are NOT evidence of
+    the imported server's current source. Make it impossible for a later
+    manager merge to silently turn historical markers into active identity.
+    """
+    _bounded_text(loaded_version, "loaded_version")
+    _bounded_text(installed_distribution_version, "installed_distribution_version")
+    result = dict(status)
+    for field in ("last_installed_commit", "source_commit", "active_runtime_revision"):
+        result[f"self_update_history_{field}"] = result.pop(field, None)
+        result[field] = None
+    for field in ("source_baseline_aligned", "runtime_activation_aligned"):
+        result[f"self_update_history_{field}"] = result.pop(field, None)
+        result[field] = None
+    result.update(
+        {
+            "version": loaded_version,
+            "installed_distribution_version": installed_distribution_version,
+            "active_build_provenance_verified": False,
+            "active_artifact_revision": None,
+            "active_artifact_digest": None,
+        }
+    )
+    return result
+
+
 def runner_mcp_build_identity(
     build_version: str,
     *,

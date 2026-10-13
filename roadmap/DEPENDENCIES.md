@@ -1,3 +1,9 @@
+## 2026-10-13 — release dependency chain and live tunnel hold
+
+`#661 (v0.1.4, OPEN review) -> #668 (v0.1.5, stacked OPEN review) -> #670 (v0.1.6, stacked DRAFT/CI)`, then version-adjusted #669 (active wheel provenance). Do not merge a later stacked child before its reviewed and rebased dependency. GitHub code/CI cannot authorize physical host rollout: A6/A7 off-target/rollback/original-client ACK under #341/#590 and Fabric dependencies remain gates. Live attended PATH override saved the original crontab and revived local MCP health but control-plane auth/routability not yet qualified. Future `autostart reconcile` without #670's source fix can regress PATH; DO NOT call it on the host now. Use categorical local health diagnostics. No Claude dispatch.
+
+---
+
 ## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged
 
 [PR #651](https://github.com/Blacksp1d3r/runner-mcp/pull/651) MERGED squash `68093ab85bee293a8cc7616340d2893d5e4c24a0`, reviewed exact head `d588c72619fc277d8423b680f473c8d62e3c992a`. Commit attribution `38086367280` SUCCESS; full validation `38086367281` SUCCESS (Ruff, **2813 pytest**, built release artifact, clean demo). Fixed `LocalMCPClient._post` standard `urllib.request.urlopen` proxy/HTTP 30x bearer egress risk by using a fixed `ProxyHandler({})` + `_NoLocalMCPRedirects` opener through a single testable `_open_local_mcp_request` seam. Unit negatives cover hostile HTTP(S)/ALL_PROXY environment, redirects 301/302/303/307/308 to off-host and same-host destinations, single-call/no-redirect behavior, sensitive error redaction. Historical bridge tests now inject the bounded seam. Preserves #650 stale-session unknown-effect no-replay and exact build/schema requalification on subsequent separate explicit caller request.

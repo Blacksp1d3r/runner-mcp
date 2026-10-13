@@ -1,3 +1,13 @@
+## 2026-10-13 — #669 active build identity fail-closed candidate PR #671 (v0.1.7)
+
+Issue #669 now has stacked DRAFT source PR [#671](https://github.com/Blacksp1d3r/runner-mcp/pull/671), v0.1.7, above #670 v0.1.6, #668 v0.1.5, #661 v0.1.4. The first source stage removes the false inference from historical `self-update-state.json.commit` to active `build_identity.source_revision`; `last_self_update_revision()` still reads and validates the journal as history, while active SHA/digest remain `null` / unverified without independent artifact proof. `runtime_status.version` and build-identity version now come from the imported, running Python package snapshot; new status separates potentially changed installed distribution metadata. No active runtime, physical host or credential was altered.
+
+This is NOT full #669 artifact attestation: immutable wheel SHA, signed/verified installation receipt, imported module/process generation, A6/A7 rollback and same original client ACK remain WAIT. Full CI and independent review on exact PR head are required. Parent PRs #661/#668/#670 remain OPEN, all lack official independent GitHub approvals, and physical Blacky static read-only reports do not substitute for review. Existing v0.1.4 control-plane authenticated with attended cron PATH workaround, topology attestation absent; AIfordable #402 / Fabric #939 remain independent blockers.
+
+Child ownership/STATE: `roadmap/children/669-build-provenance/{TASK,STATE}.md`. No auto-merge or live rollout.
+
+---
+
 ## 2026-10-13 — #333 live tunnel PATH repaired, source fix #670 DRAFT; #590/#669 still OPEN
 
 **Source of truth:** operator on service-user-owned host changed the one managed tunnel cron entry to include the existing local tunnel binary directory, with pre-change crontab escrow. Afterward `runner-mcp tunnel-status` advanced from `configured / process_not_running` to `local_ready / control_plane_not_authenticated`. Tunnel process and local MCP health are now established; a recent authenticated control-plane poll and end-to-end routing are **not** proven. Do not restart the serving MCP server or run `autostart reconcile` on the operator host: the latter can overwrite the attended interim PATH fix.

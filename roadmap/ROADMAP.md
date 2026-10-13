@@ -1,3 +1,9 @@
+## 2026-10-13 — #333 tunnel PATH child in draft PR #670
+
+Source child `roadmap/children/333-tunnel-cron-path/{TASK,STATE}.md`: fixed service-user binary resolution under restricted cron PATH; 4 synthetic regressions; proposed v0.1.6. PR #670 is stacked on #668 v0.1.5, which depends on #661 v0.1.4. Reconcile final-head CI, independent reviews and protected merges before any fleet update. Operator's targeted cron PATH override advanced live readiness from missing process to `local_ready/control_plane_not_authenticated`; remote auth, end-to-end route and original-client ACK are still WAIT. Never overwrite interim cron until verified source upgrade. #669 active-wheel provenance remains separate OPEN and gets the next unique version; #590 tools catalogue/transport and Claude NO_DISPATCH unchanged.
+
+---
+
 ## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged
 
 [PR #651](https://github.com/Blacksp1d3r/runner-mcp/pull/651) MERGED squash `68093ab85bee293a8cc7616340d2893d5e4c24a0`, reviewed exact head `d588c72619fc277d8423b680f473c8d62e3c992a`. Commit attribution `38086367280` SUCCESS; full validation `38086367281` SUCCESS (Ruff, **2813 pytest**, built release artifact, clean demo). Fixed `LocalMCPClient._post` standard `urllib.request.urlopen` proxy/HTTP 30x bearer egress risk by using a fixed `ProxyHandler({})` + `_NoLocalMCPRedirects` opener through a single testable `_open_local_mcp_request` seam. Unit negatives cover hostile HTTP(S)/ALL_PROXY environment, redirects 301/302/303/307/308 to off-host and same-host destinations, single-call/no-redirect behavior, sensitive error redaction. Historical bridge tests now inject the bounded seam. Preserves #650 stale-session unknown-effect no-replay and exact build/schema requalification on subsequent separate explicit caller request.

@@ -1,3 +1,13 @@
+## 2026-10-13 handoff — #333 tunnel cron source PR #670 (stacked DRAFT)
+
+Live operator receipt: fully configured managed tunnel was inactive because the service-user's tunnel-client exists only in its local binary directory, invisible in restricted cron PATH. Single targeted attended cron PATH repair succeeded; pre-change crontab was saved; `tunnel-status` advanced to `local_ready / control_plane_not_authenticated`, **not** `routable`. Neither live installed `0.1.4` nor other watchers were restarted during this correction.
+
+Exact source: #670 on `fix/333-tunnel-cron-path-v016-20261013`, proposed `0.1.6`, based on #668 head `77b5bdd5141cb19617d64b0592f79711bb434f0a` (`0.1.5`), itself stacked on #661 (`0.1.4`). Permanent fixed home-local executable lookup (fallback to PATH only when absent), fail-closed invalid local binary, 4 synthetic negative/positive tests. Full exact-head CI not terminal at initial handoff, requires fresh check. Source-only; no installation or automatic promotion. Child: `roadmap/children/333-tunnel-cron-path/{TASK,STATE}.md`.
+
+Blockers: #590 tool transport/88-of-95 catalogue mismatch and original client ACK, #669 immutable active wheel build provenance separate from historical self-update marker, upstream protected independent review and A6/A7; Claude/Q7 remains NO_DISPATCH. Next inspect categorical control-plane polling readiness if still not authenticated; do not output secrets, start another tunnel, change keys or run cron reconcile on installed interim override.
+
+---
+
 ## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN
 
 Na volledige broncode-merge van #651 en handover heeft een afzonderlijke actor/werklijn issue [#540](https://github.com/Blacksp1d3r/runner-mcp/issues/540) om 2026-10-10 21:10:33 UTC met `state_reason=completed` gesloten; issue-evenementen bevestigen de sluiting, maar de hier beschikbare first-party connected probes bewijzen nog **niet** dat de live geïnstalleerde MCP-server, clientcatalogus en antwoordaflevering overeenkomen. De Runner-MCP-communicatiechat **heropent of overschrijft #540 niet**. Eerder genoteerde #540 OPEN is nu historisch/verouderd; behandel #540 als CLOSED (source/other-owner decision), niet als operationeel bewijs voor #590.

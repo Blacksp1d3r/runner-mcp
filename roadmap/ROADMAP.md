@@ -1,3 +1,9 @@
+## 2026-10-13 — #669 build identity source child now PR #671
+
+Release chain #661 v0.1.4 -> #668 v0.1.5 -> #670 v0.1.6 -> draft #671 v0.1.7. #671 first phase prevents historical self-update commit masquerading as current source and reports active source/digest unknown. Full #669 wheel/install receipt/serving process attestation remains subsequent bounded work; no release/merge/activation authorized. Exact-head CI, security review and protected merge in dependency order remain gates. Physical v0.1.4 and attended tunnel PATH intervention untouched. Cross-project topo/probe #402/#939 still WAIT.
+
+---
+
 ## 2026-10-13 — #333 tunnel PATH child in draft PR #670
 
 Source child `roadmap/children/333-tunnel-cron-path/{TASK,STATE}.md`: fixed service-user binary resolution under restricted cron PATH; 4 synthetic regressions; proposed v0.1.6. PR #670 is stacked on #668 v0.1.5, which depends on #661 v0.1.4. Reconcile final-head CI, independent reviews and protected merges before any fleet update. Operator's targeted cron PATH override advanced live readiness from missing process to `local_ready/control_plane_not_authenticated`; remote auth, end-to-end route and original-client ACK are still WAIT. Never overwrite interim cron until verified source upgrade. #669 active-wheel provenance remains separate OPEN and gets the next unique version; #590 tools catalogue/transport and Claude NO_DISPATCH unchanged.

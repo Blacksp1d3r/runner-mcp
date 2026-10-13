@@ -10,6 +10,7 @@ from runner_mcp.build_identity import (
     BuildIdentityError,
     bounded_build_identity_payload,
     installed_source_revision,
+    last_self_update_revision,
     runner_mcp_build_identity,
     runner_mcp_mcp_build_identity,
 )
@@ -78,16 +79,18 @@ def test_invalid_build_identity_fails_closed(kwargs: dict[str, object]) -> None:
         BuildIdentity(**kwargs)
 
 
-def test_installed_source_revision_reads_canonical_state(tmp_path: Path) -> None:
+def test_last_self_update_revision_reads_historical_state(tmp_path: Path) -> None:
     commit = "a" * 40
     path = tmp_path / "self-update-state.json"
     path.write_text(json.dumps({"commit": commit, "installed_at": "2026-10-06T19:00:00+00:00"}), encoding="utf-8")
     path.chmod(0o600)
 
-    assert installed_source_revision(tmp_path) == commit
+    assert last_self_update_revision(tmp_path) == commit
+    assert last_self_update_revision(tmp_path) is None
+    assert installed_source_revision(tmp_path) is None
 
 
-def test_installed_source_revision_is_unknown_when_state_is_missing(
+def test_last_self_update_revision_is_unknown_when_state_is_missing(
     tmp_path: Path,
 ) -> None:
     assert installed_source_revision(tmp_path) is None
@@ -101,7 +104,7 @@ def test_installed_source_revision_is_unknown_when_state_is_missing(
         [],
     ],
 )
-def test_installed_source_revision_rejects_malformed_state(
+def test_last_self_update_revision_rejects_malformed_state(
     tmp_path: Path,
     payload: object,
 ) -> None:
@@ -109,10 +112,10 @@ def test_installed_source_revision_rejects_malformed_state(
     path.write_text(json.dumps(payload), encoding="utf-8")
 
     with pytest.raises(BuildIdentityError):
-        installed_source_revision(tmp_path)
+        last_self_update_revision(tmp_path)
 
 
-def test_installed_source_revision_rejects_symlink(tmp_path: Path) -> None:
+def test_last_self_update_revision_rejects_symlink(tmp_path: Path) -> None:
     target = tmp_path / "target.json"
     target.write_text(json.dumps({"commit": "a" * 40}), encoding="utf-8")
     (tmp_path / "self-update-state.json").symlink_to(target)
@@ -120,6 +123,31 @@ def test_installed_source_revision_rejects_symlink(tmp_path: Path) -> None:
     with pytest.raises(BuildIdentityError, match="unsafe"):
         installed_source_revision(tmp_path)
 
+
+
+@pytest.mark.parametrize("historical_commit", ["a" * 40, "b" * 40])
+def test_active_source_never_uses_stale_self_update_marker(
+    tmp_path: Path, historical_commit: str
+) -> None:
+    (tmp_path / "self-update-state.json").write_text(
+        json.dumps({"commit": historical_commit}), encoding="utf-8"
+    )
+    assert last_self_update_revision(tmp_path) == historical_commit
+    assert installed_source_revision(tmp_path) is None
+
+
+def test_active_source_ignores_even_broken_historical_transaction(
+    tmp_path: Path,
+) -> None:
+    (tmp_path / "self-update-state.json").write_text(
+        "malformed historical state", encoding="utf-8"
+    )
+    assert installed_source_revision(tmp_path) is None
+
+
+def test_active_source_rejects_invalid_config_input() -> None:
+    with pytest.raises(BuildIdentityError):
+        installed_source_revision("untrusted")  # type: ignore[arg-type]
 
 def test_runner_mcp_identity_accepts_proven_source_revision() -> None:
     commit = "b" * 40

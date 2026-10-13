@@ -196,7 +196,7 @@ def test_runtime_managers_cannot_override_serving_build_version_or_commit() -> N
     assert payload["source_commit"] == "a" * 40
 
 
-@pytest.mark.parametrize("bad_version", ["", "private\\nvalue", "a" * 129])
+@pytest.mark.parametrize("bad_version", ["", "private" + chr(10) + "value", "a" * 129])
 def test_runtime_identity_sanitizer_rejects_malformed_versions(
     bad_version: str,
 ) -> None:

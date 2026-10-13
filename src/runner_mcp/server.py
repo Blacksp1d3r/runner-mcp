@@ -59,6 +59,7 @@ from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
     BewindWorkerQualificationPolicyError,
 )
+from . import __version__ as _loaded_package_version
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
@@ -761,7 +762,14 @@ def build_mcp(
         except PackageNotFoundError:
             package = "development"
         result = {
-            "version": package,
+            # The module version is frozen in the process when imported. A
+            # later pip install can change dist-info without replacing the
+            # Python modules already executing in this process.
+            "version": _loaded_package_version,
+            "installed_distribution_version": package,
+            "active_build_provenance_verified": False,
+            "active_artifact_revision": None,
+            "active_artifact_digest": None,
             "mode": status.mode,
             "emergency_stop": status.stop_active,
             "retention_confirmed": settings.retention_confirmed,
@@ -3840,11 +3848,11 @@ def create_app(
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
-    try:
-        package_version = version("aifordable-runner-mcp")
-    except PackageNotFoundError:
-        package_version = "development"
+    # Capture the already-imported runtime generation. Distribution metadata
+    # may change under a live process when an operator upgrades in place.
+    package_version = _loaded_package_version
     identity: BuildIdentity | None = None
+    # Historical self-update state is NOT an active wheel/source attestation.
     source_revision = installed_source_revision(settings.projects_config.parent)
 
     def current_build_identity() -> BuildIdentity:

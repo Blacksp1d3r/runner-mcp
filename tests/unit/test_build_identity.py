@@ -9,6 +9,7 @@ from runner_mcp.build_identity import (
     BuildIdentity,
     BuildIdentityError,
     bounded_build_identity_payload,
+    fail_closed_runtime_provenance,
     installed_source_revision,
     last_self_update_revision,
     runner_mcp_build_identity,
@@ -160,6 +161,51 @@ def test_manual_wheel_update_must_not_claim_old_commit(
     assert observed.build_version == "0.1.7"
     assert observed.source_revision is None
     assert observed.artifact_digest is None
+
+
+
+def test_runtime_managers_cannot_override_serving_build_version_or_commit() -> None:
+    payload = {
+        "version": "0.1.3",
+        "source_commit": "a" * 40,
+        "last_installed_commit": "a" * 40,
+        "active_runtime_revision": "a" * 40,
+        "source_baseline_aligned": True,
+        "runtime_activation_aligned": True,
+        "self_update_ready": True,
+    }
+    result = fail_closed_runtime_provenance(
+        payload,
+        loaded_version="0.1.7",
+        installed_distribution_version="0.1.8",
+    )
+    assert result["version"] == "0.1.7"
+    assert result["installed_distribution_version"] == "0.1.8"
+    assert result["active_build_provenance_verified"] is False
+    assert result["active_artifact_revision"] is None
+    assert result["active_artifact_digest"] is None
+    assert result["source_commit"] is None
+    assert result["last_installed_commit"] is None
+    assert result["active_runtime_revision"] is None
+    assert result["self_update_history_source_commit"] == "a" * 40
+    assert result["self_update_history_last_installed_commit"] == "a" * 40
+    assert result["self_update_history_active_runtime_revision"] == "a" * 40
+    assert result["self_update_history_source_baseline_aligned"] is True
+    assert result["self_update_history_runtime_activation_aligned"] is True
+    assert result["self_update_ready"] is True
+    assert payload["source_commit"] == "a" * 40
+
+
+@pytest.mark.parametrize("bad_version", ["", "private\\nvalue", "a" * 129])
+def test_runtime_identity_sanitizer_rejects_malformed_versions(
+    bad_version: str,
+) -> None:
+    with pytest.raises(BuildIdentityError):
+        fail_closed_runtime_provenance(
+            {"version": "0.1.3"},
+            loaded_version=bad_version,
+            installed_distribution_version="0.1.7",
+        )
 
 
 def test_loaded_server_version_does_not_follow_later_dist_info_change(

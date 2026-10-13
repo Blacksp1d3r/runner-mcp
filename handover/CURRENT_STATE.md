@@ -1,3 +1,15 @@
+## 2026-10-13 — #333 live tunnel PATH repaired, source fix #670 DRAFT; #590/#669 still OPEN
+
+**Source of truth:** operator on service-user-owned host changed the one managed tunnel cron entry to include the existing local tunnel binary directory, with pre-change crontab escrow. Afterward `runner-mcp tunnel-status` advanced from `configured / process_not_running` to `local_ready / control_plane_not_authenticated`. Tunnel process and local MCP health are now established; a recent authenticated control-plane poll and end-to-end routing are **not** proven. Do not restart the serving MCP server or run `autostart reconcile` on the operator host: the latter can overwrite the attended interim PATH fix.
+
+**Permanent source:** stacked DRAFT [PR #670](https://github.com/Blacksp1d3r/runner-mcp/pull/670) fixes service-user local tunnel-client resolution when cron PATH is minimal, with four tests and proposed release version **0.1.6**. Source branch `fix/333-tunnel-cron-path-v016-20261013`, base [PR #668](https://github.com/Blacksp1d3r/runner-mcp/pull/668) v0.1.5, above [PR #661](https://github.com/Blacksp1d3r/runner-mcp/pull/661) v0.1.4. Exact-head CI / independent approval / protected merges are still pending; no additional runtime or production change. Child TASK/STATE: `roadmap/children/333-tunnel-cron-path/`.
+
+**Other blockers:** live `0.1.4` source payload matched 100/100 checked wheel Python files, but `build_identity.source_revision` still uses the historic self-update commit and `artifact_digest=null`; durable attestation is separate OPEN [#669](https://github.com/Blacksp1d3r/runner-mcp/issues/669). Connected ChatGPT exposes 88 of 95 proposed source tools; original-client refresh and per-route ACK under [#590](https://github.com/Blacksp1d3r/runner-mcp/issues/590) remain unqualified. Claude/Q7 is NO_DISPATCH. No credential, channel or provider tests authorised through this source child.
+
+**Next safe checkpoint:** operator reruns bounded `runner-mcp tunnel-status` after first poll; if `control_plane_not_authenticated` persists, inspect categorical loopback tunnel health (status/state/failure category/HTTP status, last_success present), never secrets. Reconcile final HEAD CI, review #661/#668 before #670, and preserve the interim cron backup.
+
+---
+
 ## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN
 
 Na volledige broncode-merge van #651 en handover heeft een afzonderlijke actor/werklijn issue [#540](https://github.com/Blacksp1d3r/runner-mcp/issues/540) om 2026-10-10 21:10:33 UTC met `state_reason=completed` gesloten; issue-evenementen bevestigen de sluiting, maar de hier beschikbare first-party connected probes bewijzen nog **niet** dat de live geïnstalleerde MCP-server, clientcatalogus en antwoordaflevering overeenkomen. De Runner-MCP-communicatiechat **heropent of overschrijft #540 niet**. Eerder genoteerde #540 OPEN is nu historisch/verouderd; behandel #540 als CLOSED (source/other-owner decision), niet als operationeel bewijs voor #590.

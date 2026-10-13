@@ -63,6 +63,7 @@ from .bewind_worker_qualification_policy import (
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
+    fail_closed_runtime_provenance,
     installed_source_revision,
     runner_mcp_build_identity,
     runner_mcp_mcp_build_identity,
@@ -826,7 +827,11 @@ def build_mcp(
                 utc_timestamp(),
             )
         )
-        return result
+        return fail_closed_runtime_provenance(
+            result,
+            loaded_version=_loaded_package_version,
+            installed_distribution_version=package,
+        )
 
     @mcp.tool()
     def runtime_doctor() -> dict:

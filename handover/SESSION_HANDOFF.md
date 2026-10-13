@@ -1,3 +1,11 @@
+## 2026-10-13 — handoff PR #671 build identity safety / #669
+
+Source-only DRAFT Runner-MCP PR #671 (stacked on PR #670) uses new candidate v0.1.7. Source old `installed_source_revision(config_dir)` had returned the last `self-update-state.json.commit`, falsely claiming it was the currently executing installed wheel after attended manual v0.1.4 upgrade. The source change preserves history as `last_self_update_revision`, makes active source/digest explicitly unknown until independent evidence, freezes live version at module import, and labels installed distribution metadata separately. Regressions for old/manual marker and dist-info hot upgrade. Child TASK/STATE in `roadmap/children/669-build-provenance`. Exact-head CI and independent security review must be checked; no host mutation.
+
+Separately: Blacky read-only public PR patch triage on #661 (2 advisory hits), #668 and #670 (zero heuristic hits), without authenticated GitHub approval/merge. Those three PRs remain OPEN, unmerged. Current tunnel endpoint authenticated but topo attestation absent; AIfordable topology authority #402 and Fabric continuous synthetic #939 owner handoffs. Do not invoke unpatched installed v0.1.4 topology refresh due redirect/proxy credential egress security #668. No Claude provider dispatch.
+
+---
+
 ## 2026-10-13 handoff — #333 tunnel cron source PR #670 (stacked DRAFT)
 
 Live operator receipt: fully configured managed tunnel was inactive because the service-user's tunnel-client exists only in its local binary directory, invisible in restricted cron PATH. Single targeted attended cron PATH repair succeeded; pre-change crontab was saved; `tunnel-status` advanced to `local_ready / control_plane_not_authenticated`, **not** `routable`. Neither live installed `0.1.4` nor other watchers were restarted during this correction.

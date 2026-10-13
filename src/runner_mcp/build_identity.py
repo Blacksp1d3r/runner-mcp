@@ -68,8 +68,8 @@ class BuildIdentity:
         }
 
 
-def installed_source_revision(config_dir: Path) -> str | None:
-    """Return the exact installed revision from canonical private self-update state."""
+def last_self_update_revision(config_dir: Path) -> str | None:
+    """Return the historical self-update commit, NOT the active package revision."""
 
     path = config_dir / "self-update-state.json"
     if path.is_symlink():
@@ -86,6 +86,20 @@ def installed_source_revision(config_dir: Path) -> str | None:
     if not isinstance(candidate, str) or _REVISION_RE.fullmatch(candidate) is None:
         raise BuildIdentityError("installed source revision state is invalid")
     return candidate
+
+
+def installed_source_revision(config_dir: Path) -> str | None:
+    """Fail closed until the serving artifact has independent provenance.
+
+    The self-update transaction file records the LAST self-update, not the
+    currently executing wheel. A manual install, rollback or in-place upgrade
+    can leave that marker unchanged. Returning it here misidentifies a live
+    process. Verified artifact/loaded-module receipts are separately tracked
+    under issue #669 and must be integrated before a revision can be emitted.
+    """
+    if not isinstance(config_dir, Path):
+        raise BuildIdentityError("installed source revision config is invalid")
+    return None
 
 
 def runner_mcp_build_identity(

@@ -86,13 +86,13 @@ def test_last_self_update_revision_reads_historical_state(tmp_path: Path) -> Non
     path.chmod(0o600)
 
     assert last_self_update_revision(tmp_path) == commit
-    assert last_self_update_revision(tmp_path) is None
     assert installed_source_revision(tmp_path) is None
 
 
 def test_last_self_update_revision_is_unknown_when_state_is_missing(
     tmp_path: Path,
 ) -> None:
+    assert last_self_update_revision(tmp_path) is None
     assert installed_source_revision(tmp_path) is None
 
 
@@ -121,7 +121,8 @@ def test_last_self_update_revision_rejects_symlink(tmp_path: Path) -> None:
     (tmp_path / "self-update-state.json").symlink_to(target)
 
     with pytest.raises(BuildIdentityError, match="unsafe"):
-        installed_source_revision(tmp_path)
+        last_self_update_revision(tmp_path)
+    assert installed_source_revision(tmp_path) is None
 
 
 

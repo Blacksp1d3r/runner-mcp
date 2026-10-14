@@ -469,9 +469,23 @@ def prepare_known_project(
         for configured in registry.projects.values()
     }
     if len(parents) != 1:
-        raise KnownProjectRegistrationError(
-            "Known project clone destination is ambiguous"
-        )
+        # Mixed project roots must not pick an arbitrary parent for a new
+        # clone. An already-present, uniquely verified catalogued clone,
+        # however, needs no preparation and must not be treated as missing.
+        try:
+            discovered, _root = discover_known_project_root(
+                registry, project_id=project_id, runner=runner
+            )
+        except KnownProjectRegistrationError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project clone destination is ambiguous"
+            ) from exc
+        return {
+            "code": discovered.code,
+            "name": discovered.display_name,
+            "repository": discovered.repository,
+            "state": "already-prepared",
+        }
     parent = next(iter(parents))
     if not os.access(parent, os.W_OK | os.X_OK):
         raise KnownProjectRegistrationError(
@@ -654,10 +668,21 @@ def preflight_known_project(
         for configured in registry.projects.values()
     }
     if len(parents) != 1:
+        # Read-only discovery already supports several trusted parents.
+        # Accept only ONE existing clone with the exact catalogued GitHub
+        # origin; never choose a location for a missing clone here.
+        try:
+            discover_known_project_root(registry, project_id=project_id, runner=runner)
+        except KnownProjectRegistrationError:
+            return {
+                "code": project.code,
+                "repository": project.repository,
+                "state": "ambiguous-parent",
+            }
         return {
             "code": project.code,
             "repository": project.repository,
-            "state": "ambiguous-parent",
+            "state": "already-prepared",
         }
 
     parent = next(iter(parents))

@@ -1,5 +1,29 @@
 # AGENTS.md
 
+## Owner decision — test-first development; review later (2026-10-14)
+
+This is the current operator-approved pre-customer workflow. It supersedes older project
+instructions imposing review waits (12h/24h), mandatory external review, GitHub
+APPROVED events or reviewer-App availability as prerequisites for source-code merges.
+For work on the functional product: implement -> automated lint/build/tests/CI on
+the exact change -> fix actual defects -> use the normal GitHub merge path under
+its real enforced rules -> qualify and test isolated staging -> validate behaviour.
+Do not wait for Blacky, RTX5080, Claude or any external reviewer. These agents
+MAY examine code and report bugs concurrently or asynchronously; their checks
+are advisory, and actionable defects should be fixed. Formal review programs
+are deferred until the application is operational and customer phase begins.
+
+This is **not** permission to bypass GitHub-enforced branch rules, green CI,
+source/revision validation, host isolation, real security defects, production
+approval/backup/rollback, safe credential and billing custody, tenant privacy or
+runtime lease/fencing. A source merge does not authorize a production release,
+remote command, paid model/API call, protected-data operation or live AI dispatch.
+The employer-managed workstation must never be used for private Runner-Fabric
+downloads, scripts, tunnels, SSH or development execution. Restrict any host
+tests/deploys to authorized privately owned environments. Full context and
+status: Blacksp1d3r/Runner-Fabric issue #972 (2026-10-14 owner override).
+
+
 ## Mission
 
 Build Runner MCP as a small, auditable, deny-by-default operations interface. Prefer narrow capabilities over generic remote execution.

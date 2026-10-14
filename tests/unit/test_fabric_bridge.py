@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from runner_mcp import fabric_bridge as fabric_bridge_module
+from runner_mcp.bridge_mcp_executor import _validate_peer_tool_surface
 from runner_mcp.bridge_processor import BridgeExecutionAdapterError
 from runner_mcp.fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 
@@ -145,6 +146,55 @@ def bridge_with_responses(*responses: object) -> tuple[FabricBridgeClient, FakeM
     fake = FakeMCPClient(list(responses))
     bridge._local = SimpleNamespace(client=fake)
     return bridge, fake
+
+
+def test_bridge_reconnect_binds_exact_fabric_peer_and_mandatory_tools() -> None:
+    """An absent optional A6/probe capability must not block safe reconnection."""
+
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:9010/mcp",
+            bearer_token="x" * 32,
+        )
+    )
+    client = bridge._client()
+
+    assert client._expected_component_id == "runner-fabric-agent-mcp"
+    assert client._required_tools == frozenset(
+        {"host_inspect", "operational_snapshot"}
+    )
+    assert client._required_tools.issubset(client._allowed_tools)
+    assert "a6_update_qualification_prepare" in client._allowed_tools
+    assert "a6_update_qualification_prepare" not in client._required_tools
+    assert "synthetic_probe_status" not in client._required_tools
+
+    observed = {
+        "result": {
+            "tools": [
+                {
+                    "name": name,
+                    "inputSchema": {"type": "object", "properties": {}},
+                }
+                for name in (
+                    "build_identity", "host_inspect", "operational_snapshot"
+                )
+            ]
+        }
+    }
+    digest, names = _validate_peer_tool_surface(
+        observed, required_tools=client._required_tools
+    )
+    assert len(digest) == 64
+    assert names == frozenset(
+        {"build_identity", "host_inspect", "operational_snapshot"}
+    )
+
+    # Missing mandatory peer functions fail closed, even if identity exists.
+    observed["result"]["tools"] = observed["result"]["tools"][:2]
+    with pytest.raises(BridgeExecutionAdapterError, match="interface schema"):
+        _validate_peer_tool_surface(
+            observed, required_tools=client._required_tools
+        )
 
 
 def test_bridge_uses_independent_local_mcp_clients_per_thread() -> None:

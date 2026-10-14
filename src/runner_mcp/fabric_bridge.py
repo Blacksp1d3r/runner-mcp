@@ -38,6 +38,12 @@ _FABRIC_TOOLS = frozenset(
         "ci_runner_guest_stop",
     }
 )
+
+# Host inspection and operational snapshot are provided by the fixed agent
+# server. A6, probe, CI guest and work-unit tools are capability-gated and
+# MUST NOT become required merely because this bridge allows their names.
+_FABRIC_REQUIRED_TOOLS = frozenset({"host_inspect", "operational_snapshot"})
+
 _ID_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -487,7 +493,9 @@ class FabricBridgeClient:
             client = LocalMCPClient(
                 self._mcp_config,
                 allowed_tools=_FABRIC_TOOLS,
+                required_tools=_FABRIC_REQUIRED_TOOLS,
                 client_name="runner-mcp-fabric-bridge",
+                expected_component_id="runner-fabric-agent-mcp",
             )
             self._local.client = client
         return client

@@ -51,3 +51,12 @@ ChatGPT connector -> one independent tunnel -> Runner-MCP MCP server 0.1.8
 - **Open cross-boundary failure:** local Fabric `inspect_host()` and `build_operational_snapshot_provider()` execute successfully, but original-connector `fabric_host_inspect` reports `fabric_inspection_unavailable` and `fabric_operational_snapshot` returns an error. The local snapshot was `degraded=true` because relay evidence is `unknown` rather than a local crash. Distinguish package function, MCP registration, tool call, response schema, bridge session and connected-client delivery before applying a fix.
 - **Provenance gate:** installed package version 0.1.8 is not a verified active Git source/digest (#669); doctor reports `active_revision_unavailable`, never substitute historical self-update revision. Fabric A6/A7 independent release authority remains outside the green checks.
 - **Next safe diagnostic:** read-only compare peer tool names and first failure reason from the fixed client; add a regression; avoid restarting or granting extra permissions until cause is localized.
+
+### 2026-10-14 — Source-confirmed reconnect contract mismatches (#681 / PR #683)
+
+Read-only source inspection found two **independent** violations at `FabricBridgeClient._client()` before 0.1.9:
+
+1. It supplied the full allow-list of optional Fabric capabilities without a reduced `required_tools` set. Generic `LocalMCPClient` then required every optional A6/probe/guest tool after stale-session generation verification, even when the legitimate Fabric peer intentionally omitted them.
+2. It omitted `expected_component_id`, defaulting to `runner-mcp` while the Fabric agent correctly advertises `runner-fabric-agent-mcp`. A build-identity check on reconnect therefore rejects the genuine peer.
+
+The 0.1.9 **source candidate** specifies the unconditional host-inspection/snapshot set as required and the exact Fabric component identity. The allowed capability names, protocol, interface-digest validation and stale unknown-effect non-replay remain unchanged. Synthetic negative tests are tracked in #683. This is not yet physical original-client acceptance, and the active operator host remains on Runner-MCP 0.1.8 until a separately qualified rollout.

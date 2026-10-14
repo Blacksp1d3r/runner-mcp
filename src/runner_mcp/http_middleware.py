@@ -178,15 +178,17 @@ class RequestIdMiddleware:
         # network requests on the communication hot path.
         self.instance_id = uuid4().hex
         self.started_at_epoch_seconds = int(time.time())
-        self.provenance_headers: tuple[tuple[str, str], ...] = (
+        headers = [
             ("X-Runner-MCP-Instance-ID", self.instance_id),
             ("X-Runner-MCP-Started-At", str(self.started_at_epoch_seconds)),
-            *( (("X-Runner-MCP-Node-ID", node_id),) if node_id is not None else () ),
-            *( (("X-Runner-MCP-Loaded-Version", build_version),)
-                if build_version is not None else () ),
-            *( (("X-Runner-MCP-Source-Revision", source_revision),)
-                if source_revision is not None else () ),
-        )
+        ]
+        if node_id is not None:
+            headers.append(("X-Runner-MCP-Node-ID", node_id))
+        if build_version is not None:
+            headers.append(("X-Runner-MCP-Loaded-Version", build_version))
+        if source_revision is not None:
+            headers.append(("X-Runner-MCP-Source-Revision", source_revision))
+        self.provenance_headers: tuple[tuple[str, str], ...] = tuple(headers)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":

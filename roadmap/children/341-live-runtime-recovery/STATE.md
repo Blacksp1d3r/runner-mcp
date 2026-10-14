@@ -1,0 +1,15 @@
+# Runner-MCP #341 — live first-node recovery evidence (STATE)
+Observed 2026-10-11 by operator + read-only GitHub and MCP. Status LIVE_DIAGNOSED / WAIT_INDEPENDENT_RECOVERY_ESCROW. No runtime authority or PR merge requested.
+Stored MCP config revision: a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a. Current main at inspection: 2d025ce72443853795aa87b4ec96b83a25064634.
+One MCP-server listener, other process roles completion-watcher and github-watcher, separate tunnel active; no duplicate server proven. No install transaction; temporary wheel count ZERO. An independently restorable previous package was NOT confirmed. Connected build_identity intermittently succeeds with artifact_digest=null; original-client return/ACK is NOT attested.
+Cross-repo A7 isolated synthetic boot and signed-data recovery in progress but NOT full production A7, and NOT an impediment to source/CI/Claude Q7 non-RUN. Real Claude code dispatch has its own separate admission conditions.
+Failure records docs/diagnostics/FAILURE_INDEX.md RMCP-F-0031 through 0033. Full checkpoint handover/checkpoints/2026-10-11-341-live-runtime.md. Existing #341/#590 owner remains; no duplicate claim. Git branch docs/341-runtime-recovery-handoff-20261011.
+No source, host, service, network, secret, disk, database, protected backup or Claude changes. Independent physical backup NOT made. Next: independently escrow baseline and verify first-party active process/route, then attended one-node approved plan.
+
+## 2026-10-11 GitHub release provenance cross-check
+The official public `v0.1.3` wheel is **not** the same source as the active stored `0.1.3` release: the tag is at `0aa013c279128e22fbd53be32c35bced3ae26834` and live revision is **280 commits / 130 files later**. Historical old-commit CI `37668416668` PASS but downloadable wheel artifacts **0**. See `docs/operations/RECOVER_EXACT_INSTALLED_WHEEL_2026-10-11.md` and Failure Museum RMCP-F-0034. Do NOT use public v0.1.3 wheel for recovery. No package built or installed by this checkpoint.
+
+## 2026-10-12 latest: historical wheel EXISTS, 70-tool wheel/source matched
+- Exact old candidate wheel 2fe8ed42a51ad9ba351b74f8f651da4d0e89ce36b84cfb97bc70ac207142b5bc privately retained, old server.py historic checksum c6890864... consistent with prior operator source measurement. Current live loaded modules not yet attested.
+- PR #661 head 4ee7038141960cab22645c74fcf6108021fec081 0.1.4 unapproved wheel effc8228689f0cb8c5d762fdc20840adfd7dd6e2493441a172ef7f51a6e41b30 has verified 70 unique tool declarations and SHA256 list 6aaf803421a71ad2fef95e52d3079ed4c18e48542b0bd08f336015909c23cef4; exact-head CI all PASS. Archived privately, 648690 B ZIP.
+- Fail closed: source code is not merged/deployed, no independent physical rollback, true live original-client catalogue, authorized standalone host proof or A6/A7 integration. Next: operator-private on-disk SHA compare and independent recovery rehearsal, then bounded first-node cutover. Never restart all runner-mcp named processes. Host is online without optional Desktop Commander agent.

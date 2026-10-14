@@ -495,6 +495,7 @@ class FabricBridgeClient:
                 allowed_tools=_FABRIC_TOOLS,
                 required_tools=_FABRIC_REQUIRED_TOOLS,
                 client_name="runner-mcp-fabric-bridge",
+                expected_component_id="runner-fabric-agent-mcp",
             )
             self._local.client = client
         return client

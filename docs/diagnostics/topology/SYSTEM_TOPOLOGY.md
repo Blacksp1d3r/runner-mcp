@@ -34,3 +34,20 @@ MCP client
 ## Failure-domain rule
 
 A healthy local component does not imply the end-to-end path is healthy. A healthy server capability also does not imply an already-open client has refreshed its catalogue. Every crossed boundary remains separately observable as local, client-interface, peer, source-control, transport or external-provider state.
+
+## 2026-10-14 — Original-client and Fabric-peer live generation
+
+Logical operational shape, excluding private coordinates:
+
+```text
+ChatGPT connector -> one independent tunnel -> Runner-MCP MCP server 0.1.8
+ -> bounded FabricBridgeClient -> Fabric Agent MCP 51c37f1e...
+ -> cron-managed Agent Bus worker and qualification agent, both 51c37f1e...
+ -> private exact-artifact custody + managed slot update transaction
+ -> audit/observability (not an execution-authority substitute)
+```
+
+- **Proven by original-client and operator receipts:** serving Runner-MCP 0.1.8; six cron role owners from the isolated 0.1.8 installation; one separate systemd tunnel remains while duplicate cron tunnel was removed; both Fabric child processes from the new managed slot; Fabric peer reports `ready` and full revision `51c37f1eac65951e15a5122b89f368aa6e18c1f5`. Local health checks passed; two test workers and idle queue in sampled status. The timed Runner-MCP rollback was disarmed after verification.
+- **Open cross-boundary failure:** local Fabric `inspect_host()` and `build_operational_snapshot_provider()` execute successfully, but original-connector `fabric_host_inspect` reports `fabric_inspection_unavailable` and `fabric_operational_snapshot` returns an error. The local snapshot was `degraded=true` because relay evidence is `unknown` rather than a local crash. Distinguish package function, MCP registration, tool call, response schema, bridge session and connected-client delivery before applying a fix.
+- **Provenance gate:** installed package version 0.1.8 is not a verified active Git source/digest (#669); doctor reports `active_revision_unavailable`, never substitute historical self-update revision. Fabric A6/A7 independent release authority remains outside the green checks.
+- **Next safe diagnostic:** read-only compare peer tool names and first failure reason from the fixed client; add a regression; avoid restarting or granting extra permissions until cause is localized.

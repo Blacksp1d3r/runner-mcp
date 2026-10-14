@@ -127,7 +127,7 @@ def test_symlink_candidate_is_never_treated_as_clone(tmp_path: Path) -> None:
 
 
 def test_single_parent_old_prepare_readiness_unchanged(tmp_path: Path) -> None:
-    registry, left, _right = _registry(tmp_path)
+    registry, _left, _right = _registry(tmp_path)
     registry.projects.pop("safety")
     assert preflight_known_project(
         registry, project_id="aifordable", runner=_exact_repo_runner

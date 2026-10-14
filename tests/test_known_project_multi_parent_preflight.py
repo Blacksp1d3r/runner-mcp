@@ -44,7 +44,7 @@ def _exact_repo_runner(argv, **kwargs):
     assert argv[3:] == ["config", "--get", "remote.origin.url"]
     assert kwargs["shell"] is False
     return subprocess.CompletedProcess(
-        argv, 0, stdout="https://github.com/Blacksp1d3r/AIfordable.git\\n", stderr=""
+        argv, 0, stdout="https://github.com/Blacksp1d3r/AIfordable.git\n", stderr=""
     )
 
 
@@ -104,7 +104,7 @@ def test_wrong_origin_does_not_create_readiness(tmp_path: Path) -> None:
 
     def wrong_origin(argv, **kwargs):
         return subprocess.CompletedProcess(
-            argv, 0, stdout="https://github.com/Blacksp1d3r/not-aifordable.git\\n",
+            argv, 0, stdout="https://github.com/Blacksp1d3r/not-aifordable.git\n",
             stderr="",
         )
 

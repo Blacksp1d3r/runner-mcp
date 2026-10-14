@@ -3,6 +3,7 @@ from __future__ import annotations
 import asyncio
 import re
 import secrets
+import time
 from collections import deque
 from contextvars import ContextVar
 from dataclasses import dataclass
@@ -17,6 +18,9 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 _TRACEPARENT_RE = re.compile(
     r"^00-([0-9a-fA-F]{32})-([0-9a-fA-F]{16})-([0-9a-fA-F]{2})$"
 )
+_NODE_ID_RE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
+_REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
+_VERSION_RE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9.+_-]{0,63}$")
 
 
 @dataclass(frozen=True, slots=True)
@@ -139,8 +143,52 @@ def _incoming_traceparent(scope: Scope) -> str | None:
 
 
 class RequestIdMiddleware:
-    def __init__(self, app: ASGIApp) -> None:
+    """Zero-extra-round-trip provenance headers on every HTTP response.
+
+    This is a *source-side identity claim*, NOT authentication. The consumer
+    must bind it to the authenticated TLS/relay peer and compare with a
+    privately configured expected logical host and session instance.
+    """
+
+    def __init__(
+        self,
+        app: ASGIApp,
+        *,
+        node_id: str | None = None,
+        build_version: str | None = None,
+        source_revision: str | None = None,
+    ) -> None:
         self.app = app
+        if node_id is not None and (
+            type(node_id) is not str or _NODE_ID_RE.fullmatch(node_id) is None
+        ):
+            raise ValueError("runner node identity is not a bounded label")
+        if build_version is not None and (
+            type(build_version) is not str
+            or _VERSION_RE.fullmatch(build_version) is None
+        ):
+            raise ValueError("loaded build version is invalid")
+        if source_revision is not None and (
+            type(source_revision) is not str
+            or _REVISION_RE.fullmatch(source_revision) is None
+        ):
+            raise ValueError("serving source revision must be verified")
+        # One identifier per serving ASGI instance; never generated per call.
+        # Caching these ASCII byte strings prevents hashing, I/O and extra
+        # network requests on the communication hot path.
+        self.instance_id = uuid4().hex
+        self.started_at_epoch_seconds = int(time.time())
+        headers = [
+            ("X-Runner-MCP-Instance-ID", self.instance_id),
+            ("X-Runner-MCP-Started-At", str(self.started_at_epoch_seconds)),
+        ]
+        if node_id is not None:
+            headers.append(("X-Runner-MCP-Node-ID", node_id))
+        if build_version is not None:
+            headers.append(("X-Runner-MCP-Loaded-Version", build_version))
+        if source_revision is not None:
+            headers.append(("X-Runner-MCP-Source-Revision", source_revision))
+        self.provenance_headers: tuple[tuple[str, str], ...] = tuple(headers)
 
     async def __call__(self, scope: Scope, receive: Receive, send: Send) -> None:
         if scope["type"] != "http":
@@ -158,6 +206,8 @@ class RequestIdMiddleware:
                 headers = MutableHeaders(scope=message)
                 headers["X-Request-ID"] = request_id
                 headers["traceparent"] = trace_context.traceparent
+                for key, value in self.provenance_headers:
+                    headers[key] = value
             await send(message)
 
         try:

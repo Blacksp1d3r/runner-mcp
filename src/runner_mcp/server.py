@@ -3924,7 +3924,12 @@ def create_app(
             ),
         ],
         middleware=[
-            Middleware(RequestIdMiddleware),
+            Middleware(
+                RequestIdMiddleware,
+                node_id=os.environ.get("RUNNER_MCP_NODE_ID"),
+                build_version=package_version,
+                source_revision=source_revision,
+            ),
             Middleware(
                 RateLimitMiddleware,
                 max_requests=settings.rate_limit_per_minute,

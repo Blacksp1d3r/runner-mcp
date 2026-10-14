@@ -35,6 +35,30 @@ class TunnelTopologyRefreshError(RuntimeError):
     """Safe refresh failure without endpoint, credential or binding detail."""
 
 
+class _NoTopologyRefreshRedirects(urllib.request.HTTPRedirectHandler):
+    """Never forward the private relay credential to redirected destinations."""
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
+def _topology_refresh_opener() -> urllib.request.OpenerDirector:
+    """Use no environment proxies or redirects for credential-bearing requests."""
+
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoTopologyRefreshRedirects(),
+    )
+
+
+def _open_topology_refresh_request(
+    request: urllib.request.Request, *, timeout: float
+):
+    return _topology_refresh_opener().open(request, timeout=timeout)
+
+
+
+
 def bounded_tunnel_topology_refresh_reason(
     error: TunnelTopologyRefreshError,
 ) -> str | None:
@@ -44,7 +68,7 @@ def bounded_tunnel_topology_refresh_reason(
 def refresh_tunnel_topology_attestation(
     config_dir: Path,
     *,
-    opener=urllib.request.urlopen,
+    opener=_open_topology_refresh_request,
     runtime_instance_collector=collect_tunnel_runtime_instance_id,
     now: datetime | None = None,
 ) -> dict[str, str | bool]:

@@ -418,3 +418,43 @@ def test_default_refresh_redirect_refusal_is_bounded_and_does_not_replace_eviden
     assert existing.read_bytes() == baseline
     assert "other.example.invalid" not in str(caught.value)
     assert "r" * 48 not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("reason", "message", "bounded"),
+    [
+        ("health_url_missing", "tunnel health URL is missing", "health_url_missing"),
+        ("health_endpoint_unreachable", "tunnel health endpoint is unreachable", "health_endpoint_unreachable"),
+        ("health_schema_incompatible", "tunnel health schema is incompatible", "health_schema_incompatible"),
+        ("runtime_identity_invalid", "tunnel runtime identity is invalid", "runtime_identity_invalid"),
+    ],
+)
+def test_default_topology_refresh_preserves_first_failed_local_edge(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+    message: str,
+    bounded: str,
+) -> None:
+    import runner_mcp.tunnel_topology_refresh as module
+
+    root = private_config(tmp_path)
+    monkeypatch.setattr(
+        module, "_read_private_runtime",
+        lambda _path: (
+            type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
+            object(), object(),
+        ),
+    )
+    monkeypatch.setattr(
+        module, "inspect_tunnel_runtime_instance_id",
+        lambda _root: (None, reason),
+    )
+    with pytest.raises(TunnelTopologyRefreshError, match=message) as error:
+        refresh_tunnel_topology_attestation(
+            root,
+            opener=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("missing local identity must not send credential")
+            ),
+        )
+    assert bounded_tunnel_topology_refresh_reason(error.value) == bounded

@@ -1,3 +1,12 @@
+## 2026-10-15 — live 0.1.9 confirmed; tunnel runtime identity remains unqualified
+
+- Original connected client now reports loaded Runner-MCP **0.1.9** and its installed distribution 0.1.9. `fabric_bridge_preflight` returns `ready` with Fabric source `51c37f1eac65951e15a5122b89f368aa6e18c1f5`; `fabric_host_inspect` and `fabric_operational_snapshot` now return bounded results. Fabric relay status remains honestly `degraded=true` with `agent-bus.relay` unknown. This supplies live follow-up evidence for regression #681, but does not prove original-client ACK after a controlled version rollout.
+- `runtime_doctor` returns 1 FAIL (`self_update_runtime_activation:active_revision_unavailable`) + 3 warnings. This is **intentional fail-closed #669 behavior**: `build_identity.source_revision` and `artifact_digest` are null because installed/loaded wheel provenance is not independently attested. Do not substitute historical `self-update-state.json` commit for the active process.
+- `tunnel_topology_refresh` returned `blocked/runtime_identity_unavailable` on the same connected client. Source fix in progress on this child branch for v0.1.10: classify missing `tunnel-health.url`, unreadable local health endpoint, invalid JSON/schema, absent/invalid process instance ID **using exactly the existing loopback GET**, before any credential-bearing topology heartbeat. Do not assume missing local health means another host owns the tunnel. No tunnel, server or key mutation here.
+- Fabric A6 binding remains `not_configured_0_of_11`, self-update is not qualified, and Q7 Claude host/listener is not admitted. Live host routes, independent rollback and installed artifact digest must be verified before new update. No mandatory external code reviews; exact HEAD CI and protected operational gates continue.
+
+---
+
 ## 2026-10-15 — 0.1.9 code merged, active 0.1.8 unchanged; manual stage BLOCKED_EXTERNAL
 
 - Original ChatGPT connector verified active Runner-MCP 0.1.8, healthy `fabric_bridge_preflight` with fixed Fabric revision `51c37f1eac65951e15a5122b89f368aa6e18c1f5`, two available test workers and an idle test queue. `fabric_host_inspect` still responds `fabric_inspection_unavailable`; `fabric_operational_snapshot` still fails via the original connector. The Fabric agent's direct local read-only functions succeeded in the earlier physical test, with the honest snapshot `degraded=true` (relay unknown). **The live regression #681 remains OPEN.**

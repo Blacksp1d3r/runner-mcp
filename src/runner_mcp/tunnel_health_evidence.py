@@ -169,41 +169,24 @@ def _collect_health_component(
     return payload
 
 
-def collect_tunnel_runtime_instance_id(
+def inspect_tunnel_runtime_instance_id(
     config_dir: Path,
     *,
     opener=_open_loopback,
-) -> str | None:
-    """Read only the tunnel-client's bounded process-scoped runtime identity."""
+) -> tuple[str | None, str]:
+    """Classify the first failed LOCAL tunnel identity edge without secrets.
 
+    One bounded loopback GET. No provider request, remote ACK, new network
+    round trip during normal MCP traffic, or authority to restart a daemon.
+    An invalid/unsafe local URL still raises TunnelHealthEvidenceError.
+    """
     base_url = _read_private_health_url(config_dir)
     if base_url is None:
-        return None
-    parsed = urllib.parse.urlsplit(base_url)
-    if (
-        parsed.scheme != "http"
-        or (parsed.hostname or "").lower() != "127.0.0.1"
-        or parsed.username
-        or parsed.password
-        or parsed.query
-        or parsed.fragment
-    ):
-        raise TunnelHealthEvidenceError(
-            "tunnel health evidence is not fixed loopback HTTP"
-        )
-    try:
-        port = parsed.port
-    except ValueError as exc:
-        raise TunnelHealthEvidenceError(
-            "tunnel health evidence URL is invalid"
-        ) from exc
-    if port is None or not 1 <= port <= 65_535 or parsed.path not in {"", "/"}:
-        raise TunnelHealthEvidenceError(
-            "tunnel health evidence URL is invalid"
-        )
-
+        return None, "health_url_missing"
+    # Reuse the SAME strict HTTP loopback authority validation as /health/mcp.
+    base = _local_health_component_url(base_url, "mcp").removesuffix("/health/mcp")
     request = urllib.request.Request(
-        f"http://127.0.0.1:{port}/health?details=true",
+        base + "/health?details=true",
         method="GET",
         headers={"Accept": "application/json"},
     )
@@ -211,17 +194,33 @@ def collect_tunnel_runtime_instance_id(
         with opener(request, timeout=_HEALTH_TIMEOUT_SECONDS) as response:
             raw = response.read(MAX_HEALTH_RESPONSE_BYTES + 1)
     except (urllib.error.HTTPError, urllib.error.URLError, TimeoutError, OSError):
-        return None
+        return None, "health_endpoint_unreachable"
 
-    payload = _decode_component_payload(raw)
+    try:
+        payload = _decode_component_payload(raw)
+    except TunnelHealthEvidenceError:
+        return None, "health_payload_invalid"
     if type(payload.get("schema_version")) is not int or payload["schema_version"] != 1:
-        return None
+        return None, "health_schema_incompatible"
     runtime = payload.get("runtime")
     if not isinstance(runtime, dict):
-        return None
+        return None, "runtime_identity_missing"
     instance_id = runtime.get("instance_id")
     if not isinstance(instance_id, str) or _INSTANCE_ID_RE.fullmatch(instance_id) is None:
-        return None
+        return None, "runtime_identity_invalid"
+    return instance_id, "ready"
+
+
+def collect_tunnel_runtime_instance_id(
+    config_dir: Path,
+    *,
+    opener=_open_loopback,
+) -> str | None:
+    """Read only the tunnel-client's bounded process-scoped runtime identity."""
+
+    instance_id, _reason = inspect_tunnel_runtime_instance_id(
+        config_dir, opener=opener
+    )
     return instance_id
 
 

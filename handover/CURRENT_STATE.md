@@ -1,3 +1,9 @@
+## 2026-10-15 — Runner-MCP 0.1.9 stage-only receipt; guarded upgrade next
+
+Operator confirmed precise pinned source `e7cb9162d686b5992b3862a4b61f85980cbdfbd4`, built candidate wheel SHA-256 `92c9ab6cc2731cbf40a361f1133cc79908750ebd44553497b9afbc41977b0fbd`, 100/100 source/wheel/install modules matched, `LIVE 0.1.8 UNCHANGED; TUNNEL UNCHANGED; NO ROLLBACK TIMER ARMED`. Independently sampled connector: 0.1.8 live, self_update_ready=false, active_update=false, no pending restart, Fabric peer ready at `51c37f1e...`, queue idle (2 worker limit). Never infer activation from staging.
+
+Next: operator installs and observes independent root-owned persistent UTC rollback timer and idempotent fixed 0.1.8 restore script; prep itself must NOT change services. Then separate exact-wheel, six-lock, future-deadline check; approved cutover only while live rollback armed; original client host/snapshot and all role processes verified; timer disarmed after explicit confirmation. If timer has fired unconfirmed, do NOT rerun activation. #681 root cause fix merged source-only; #669 live build provenance open; Fabric A6/A7 separate gates not qualified.
+
 ## 2026-10-15 — 0.1.9 code merged, active 0.1.8 unchanged; manual stage BLOCKED_EXTERNAL
 
 - Original ChatGPT connector verified active Runner-MCP 0.1.8, healthy `fabric_bridge_preflight` with fixed Fabric revision `51c37f1eac65951e15a5122b89f368aa6e18c1f5`, two available test workers and an idle test queue. `fabric_host_inspect` still responds `fabric_inspection_unavailable`; `fabric_operational_snapshot` still fails via the original connector. The Fabric agent's direct local read-only functions succeeded in the earlier physical test, with the honest snapshot `degraded=true` (relay unknown). **The live regression #681 remains OPEN.**

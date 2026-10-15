@@ -60,3 +60,9 @@ Read-only source inspection found two **independent** violations at `FabricBridg
 2. It omitted `expected_component_id`, defaulting to `runner-mcp` while the Fabric agent correctly advertises `runner-fabric-agent-mcp`. A build-identity check on reconnect therefore rejects the genuine peer.
 
 The 0.1.9 **source candidate** specifies the unconditional host-inspection/snapshot set as required and the exact Fabric component identity. The allowed capability names, protocol, interface-digest validation and stale unknown-effect non-replay remain unchanged. Synthetic negative tests are tracked in #683. This is not yet physical original-client acceptance, and the active operator host remains on Runner-MCP 0.1.8 until a separately qualified rollout.
+
+### 2026-10-15 — Version-specific stage versus verified active route
+
+- **Installed/serving now:** original-client `runner-mcp=0.1.8`; fixed peer `runner-fabric-agent-mcp` source revision `51c37f1e...`, handshake `ready`. Host-inspect and operational-snapshot original-route return paths are NOT qualified. Agent Bus relay remains unknown/degraded; normal test queue has two available workers in one snapshot.
+- **Source available but not serving:** `0.1.9` fix for both Fabric reconnect contract mismatches merged as PR #683 / source `e7cb9162d686b5992b3862a4b61f85980cbdfbd4`. Green source CI/installer/attribution does not validate post-update connected-client return path. Do not write `0.1.9` as live topology before root activation, physical six-role evidence and client acceptance.
+- **Release boundary:** standard self-update currently unready (`self_update_ready=false`), active artifact provenance #669 absent. A proposed operator-only fixed-commit stage plus separately armed independent systemd rollback is NOT physically executed. Public topology records this boundary only, no private machine coordinates or privileged scripts.

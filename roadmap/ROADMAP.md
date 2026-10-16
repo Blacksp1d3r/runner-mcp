@@ -1,3 +1,11 @@
+
+## 2026-10-16 — #669 versioned generation layout guard, source-only PR #691
+
+- Offline preflight PR #689 merged 0.1.11; externally pinned builder-manifest PR #690 merged 0.1.12, neither proves installed/serving provenance.
+- New source-only PR #691 candidate 0.1.13 checks versioned release generation lexical name, absolute path, linked ancestors, mode/owner with negative synthetic tests. No claim of immutability or loaded server proof.
+- Child roadmap/children/669-generation-layout/TASK.md + STATE.md. CI gates required. Follow-up independent builder authority + actual immutable installer and serving-generation witness remain blocked on custody/rollback.
+
+---
 ## 2026-10-16 — #669 pinned builder-manifest source child 0.1.12
 
 - Offline receipt stage #689 merged as source-only 0.1.11; actual serving runtime remains 0.1.9 with unknown source/digest.

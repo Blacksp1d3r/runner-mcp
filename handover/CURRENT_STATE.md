@@ -1,3 +1,12 @@
+## 2026-10-16 — #664 legacy callable signature CI regression guard, source-only
+
+- Following merged #665 source-only 0.1.23 classifiers/inventory and alert digest, started independent #664 tests-only branch `chatgpt/664-legacy-signature-regression-v0124`, base `53a002df136d010ebe460643a37ddcf86af58c6e`.
+- Pinned sampled v0.1.23 server tool registration/callable AST signatures in `tests/fixtures/legacy_tool_callable_signatures_v0123.json`; guard checks current source names, required/default arguments and return annotations. No product code/version bump, no runtime activation.
+- Scope caveat: not an actual historical 0.1.9 wheel schema/semantic compatibility test; parent #664 remains open for released train source/JSON schema and customer support/upgrade decisions. Tests/CI and PR pending.
+- Rollback timer still deferred to customers, active MCP 0.1.9 unchanged.
+
+---
+
 ## 2026-10-16 — #665 three source-only children through v0.1.23 merged; operational fleet proof still open
 
 - [#699](https://github.com/Blacksp1d3r/runner-mcp/pull/699) 0.1.21 bounded tool-contract identity classification merged squash `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08`. Exact head validation `38897275967`, Ubuntu `38897275912`, attribution `38897275777` all SUCCESS. Failure Museum RMCP-F-0038/RMCP-F-0039 fixed and complete (strict actual bool trust flags).

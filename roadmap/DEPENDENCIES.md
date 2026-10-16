@@ -1,3 +1,11 @@
+## 2026-10-16 — Real-update order, dependency-contract mismatch confirmed
+
+`already-known physical host + original route` -> `READ-ONLY active process/launcher + previous intact generation/protected rollback custody` -> `independent exact package source/wheel and changed dependency contract` -> `normal dependency-resolving isolated-prefix bootstrap (NOT --no-deps self_update)` -> `safe independently reversible provisional activation` -> `original-client loaded-build, tool-list, response+ACK` -> `accept one qualified node` -> `later Fleet rollout`.
+
+Proof: v0.1.9 source `e7cb9162d686b5992b3862a4b61f85980cbdfbd4` runtime requirements omit cryptography; exact merged v0.1.27 source requires `cryptography>=44,<51`. Canonical self-update contract explicitly classifies new runtime dependencies as bootstrap/manual; latest source artifact is not live/deploy-authorized. This is an expected safety refusal, not justification to bypass identity/recovery safeguards. Operator off-site: dependency chain BLOCKED_HOST_OPERATOR_DEPENDENCY_BOOTSTRAP_AND_RECOVERY. No version-development tasks claimed.
+
+---
+
 ## 2026-10-16 — F30 source gate recovered; live first-node authority still not met
 
 Runner-MCP #590 bounded read-only guest/update preflight results #706/#707 MERGED + actual MCP tools/call transport integration tests #708 MERGED (no version bump for tests). Runner-MCP #509 A6 dangling intent-root symlink fail-closed #709 v0.1.27 SOURCE MERGED, old #655 superseded, RMCP-F-0026 indexed. All tested exact heads had successful validation/attribution; source code install/demo tests green. These remove observable client error and unsafe no-op source gaps, NOT live admission.

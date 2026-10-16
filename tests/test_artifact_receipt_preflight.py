@@ -1,0 +1,82 @@
+from __future__ import annotations
+
+import hashlib
+import json
+from pathlib import Path
+
+import pytest
+
+from runner_mcp.artifact_receipt_preflight import offline_artifact_receipt_preflight
+
+
+def _sha(data: bytes) -> str:
+    return hashlib.sha256(data).hexdigest()
+
+
+def _fixture(tmp_path: Path):
+    package = tmp_path / "package"
+    package.mkdir()
+    (package / "module.py").write_bytes(b"safe module")
+    wheel = tmp_path / "release.whl"
+    wheel.write_bytes(b"fixed wheel bytes")
+    receipt = tmp_path / "receipt.json"
+    record = {
+        "schema_version": "runner-mcp/offline-artifact-receipt/v1",
+        "source_revision": "a" * 40,
+        "wheel_sha256": _sha(wheel.read_bytes()),
+        "modules": {"module.py": _sha(b"safe module")},
+    }
+    receipt.write_text(json.dumps(record), encoding="utf-8")
+    return receipt, wheel, package, record
+
+
+def test_matching_bytes_are_not_serving_attestation(tmp_path: Path):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    result = offline_artifact_receipt_preflight(receipt, wheel, package)
+    assert result["state"] == "offline_bytes_match"
+    assert result["active_build_provenance_verified"] is False
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None
+
+
+@pytest.mark.parametrize("mutation", ["wheel", "module", "revision", "digest", "schema", "missing"])
+def test_fail_closed_receipt_mutations(tmp_path: Path, mutation: str):
+    receipt, wheel, package, record = _fixture(tmp_path)
+    if mutation == "wheel":
+        wheel.write_bytes(b"replaced")
+    elif mutation == "module":
+        (package / "module.py").write_bytes(b"modified")
+    elif mutation == "revision":
+        record["source_revision"] = "not-a-commit"
+    elif mutation == "digest":
+        record["wheel_sha256"] = "b" * 64
+    elif mutation == "schema":
+        record["schema_version"] = "v999"
+    else:
+        receipt.unlink()
+    if mutation in ("revision", "digest", "schema"):
+        receipt.write_text(json.dumps(record), encoding="utf-8")
+    result = offline_artifact_receipt_preflight(receipt, wheel, package)
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False
+
+
+def test_rejects_module_symlink_and_parent_escape(tmp_path: Path):
+    receipt, wheel, package, record = _fixture(tmp_path)
+    outside = tmp_path / "outside.py"
+    outside.write_bytes(b"safe module")
+    (package / "module.py").unlink()
+    (package / "module.py").symlink_to(outside)
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+    record["modules"] = {"../outside.py": _sha(b"safe module")}
+    receipt.write_text(json.dumps(record), encoding="utf-8")
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+
+def test_rejects_large_receipt_and_extra_fields(tmp_path: Path):
+    receipt, wheel, package, record = _fixture(tmp_path)
+    record["untrusted"] = "unexpected"
+    receipt.write_text(json.dumps(record), encoding="utf-8")
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+    receipt.write_bytes(b"x" * 65537)
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"

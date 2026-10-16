@@ -70,6 +70,30 @@ class FabricBridgeError(RuntimeError):
     """Safe Fabric bridge failure without endpoint/token/provider detail."""
 
 
+def bounded_snapshot_unavailable(reason: object) -> dict[str, object]:
+    """Report one failed read without retry or any mutation authority.
+
+    Only predeclared categories are emitted; raw exceptions, endpoints and
+    credentials never enter this read-only response.
+    """
+    category = (
+        "fabric_snapshot_unavailable"
+        if reason == "Runner Fabric operational snapshot failed"
+        else "fabric_snapshot_invalid_payload"
+        if reason == "Runner Fabric returned invalid operational snapshot"
+        else "fabric_snapshot_unavailable"
+    )
+    return {
+        "schema_version": "runner-mcp/fabric-operational-snapshot-error/v1",
+        "state": "unavailable",
+        "reason_code": category,
+        "degraded": True,
+        "unknown_layers": ["fabric-bridge"],
+        "mutation_enabled": False,
+        "execution_enabled": False,
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class FabricBridgeConfig:
     endpoint: str

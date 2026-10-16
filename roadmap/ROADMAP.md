@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 pinned builder-manifest source child 0.1.12
+
+- Offline receipt stage #689 merged as source-only 0.1.11; actual serving runtime remains 0.1.9 with unknown source/digest.
+- New child [PR #690](https://github.com/Blacksp1d3r/runner-mcp/pull/690) validates independently pinned manifest SHA-256 and wheel SHA-256, source revision, distribution version and interface digest. Manifest and digest supplied by the same untrusted source **do not establish authenticity**.
+- Negative regression vectors include same-version replaced wheel, forged manifest, extra/duplicate keys, symlink artifacts, malformed schema/version/source, and excessive JSON nesting. Failure Museum RMCP-F-0031 tracks hash/parse TOCTOU and duplicate keys.
+- Source-only (0.1.12 candidate), no production activation; exact-head CI gates before merge. Next dependent work: approved builder authority and trustworthy pin distribution, immutable release venv, installer custody receipt, active serving process witness and A6/A7 rollback/ACK.
+
+---
+
 ## 2026-10-16 — #669 phase-2 offline receipt verification child
 
 - Source implementation [PR #689](https://github.com/Blacksp1d3r/runner-mcp/pull/689) for 0.1.11 candidate: offline wheel+installed-module digest comparator, owner-only atomic create-once candidate receipt writer, negative tests for path/permission/symlink/native module/manifest/fsync/crash/race, and integrated offline demonstration.

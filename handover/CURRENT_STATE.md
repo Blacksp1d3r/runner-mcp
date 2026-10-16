@@ -1,3 +1,13 @@
+## 2026-10-16 — functional source #681 and FASTER-13 #383 phase 1a landed
+
+- PR #697 on #681 host read failure no hidden extra Fabric preflight merged source-only 0.1.19 `1bbb46ce9061e7f453532e5000fb2a0995ee7140`, exact source head `fb37db2084946f618904318f7fcbf7dcea0d497d`; validation `38886451977`, clean Ubuntu `38886451953`, attribution `38886452030` all SUCCESS. Failure Museum RMCP-F-0036 COMPLETE_SOURCE_ONLY. PRs #695 and #696 preceding likewise merged. Parent #681 still OPEN for live client evidence.
+- Independent FASTER-13 parent #383 phase 1a PR #698 synthetic local JSON framing/polling baseline merged source 0.1.20 at `844062bec7602df5131f7157f1a8ff074a41653f`, exact checked source `79633aabd751a761d9b4b27ab45b7cde03f668a4`; validation `38891328157` Ruff+pytest/release/demo SUCCESS, independent Ubuntu `38891327629` SUCCESS, attribution `38891327767` SUCCESS. Benchmark emits p50/p95/p99 JSON encode/decode and deterministic 500ms polling-delay model with explicit synthetic-only label. CI real Ruff B023 loop closure fixed as RMCP-F-0037, now COMPLETE_SOURCE_ONLY. Child TASK/STATE completed.
+- NO real TCP/MCP latency measurement, event push benchmark, end-to-end speedup claim, host changes or privileged worker dispatch. Next FASTER-13 Phase 1b needs isolated authorized local loopback fixture with session/auth and trace ID; the current protected 24/7 host is not an approved benchmark target.
+- Original-client MCP remains version 0.1.9, no proven serving source SHA or artifact digest. The 0.1.20 SOURCE merge is not a live installation. Operator deferred independent rollback timer to customer phase. No tunnels/keys/cron/processes touched.
+- Public GitHub handover and separate parent issues #681 and #383 are canonical. Other roadmap items may proceed without waiting for a source-only review queue or rollback timer. Production update still separately gated.
+
+---
+
 ## 2026-10-16 — functional #681 source complete; FASTER-13 #383 benchmark child underway
 
 - PR #697 (no hidden Fabric preflight after failed host read) merged at `1bbb46ce9061e7f453532e5000fb2a0995ee7140` from exact tested head `fb37db2084946f618904318f7fcbf7dcea0d497d`. CI Runner validation `38886451977`, independent Ubuntu `38886451953`, commit attribution `38886452030` all SUCCESS. Failure Museum RMCP-F-0036 now COMPLETE_SOURCE_ONLY.

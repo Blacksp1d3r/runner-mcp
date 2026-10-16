@@ -1,3 +1,13 @@
+## 2026-10-16 — #665 tool identity three source children integrated through v0.1.23
+
+- #699 v0.1.21 pure stable tool contract classifier (including RMCP-F-0038/0039 fixed); #700 v0.1.22 bounded duplicate tool ID/name and mismatch preflight; #701 v0.1.23 pure sanitized typed mismatch alert digest/cooldown all SOURCE MERGED with exact PR HEAD full validation, clean Ubuntu and attribution SUCCESS.
+- Latest #701 squash `10501c1d28ef050ecfc61f7b341487e7ead47d2b`; tested HEAD `88b8c81d15a664998b988ef02201f74875593090` CI validation `38898938032`, Ubuntu `38898937966`, attribution `38898937757` SUCCESS. Source child STATE COMPLETE_SOURCE_ONLY.
+- Still MISSING and NOT claimed: authenticated actually-serving source/build/tool schemas, independently protected fleet customer scope and host/tenant policy, actual tool dispatch enforcement, durable alert dedupe and real delivery/ACK. Synthetic trust flags, hashes, namespaces and IDs do not themselves confer authority. Parent #665 remains OPEN.
+- Older customer versions #664 need explicit release contract compatibility fixtures and operator commercial support window before rollout; avoid making new tool availability break legacy clients. Actual connected MCP still 0.1.9, source 0.1.23 not installed. Rollback timer deferred until customers.
+- No private host changes, tunnels, credentials, services, workers, model billing or deploy in this source session.
+
+---
+
 ## 2026-10-16 — #665 bounded mismatch alert digest source child 0.1.23
 
 - #699 v0.1.21 contract classifier and #700 v0.1.22 duplicate tool inventory rejection source merged with exact-head CI SUCCESS.

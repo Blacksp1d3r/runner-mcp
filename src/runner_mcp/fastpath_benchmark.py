@@ -92,13 +92,13 @@ def benchmark_synthetic_framing(*, repetitions: int = 200) -> dict[str, Any]:
             envelope, ensure_ascii=False, separators=(",", ":"), allow_nan=False
         ).encode("utf-8")
         encode_ns, encode_elapsed = _time_operation(
-            lambda: json.dumps(
+            lambda envelope=envelope: json.dumps(
                 envelope, ensure_ascii=False, separators=(",", ":"), allow_nan=False
             ).encode("utf-8"),
             repetitions,
         )
         decode_ns, decode_elapsed = _time_operation(
-            lambda: json.loads(encoded.decode("utf-8")), repetitions
+            lambda encoded=encoded: json.loads(encoded.decode("utf-8")), repetitions
         )
         results[name] = {
             "json_encode": summarize(encode_ns, encode_elapsed, bytes_per_call=len(encoded)),

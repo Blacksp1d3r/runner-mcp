@@ -1,3 +1,13 @@
+## 2026-10-16 — #665 source children through 0.1.22 merged; actual live identity remains unqualified
+
+- PR #699 source-only bounded tool metadata classifier merged squash `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08` from exact tested head `7d14aa23dddfd8557c20e12471a0e8041ff171a2`. Full CI validation `38897275967`, clean Ubuntu `38897275912`, attribution `38897275777` all SUCCESS. Failure Museum RMCP-F-0038 Ruff test fixture and RMCP-F-0039 nonboolean truthy trust flag fixed / source-complete.
+- PR #700 source-only bounded inventory collision guard merged squash `26c135952b2786e498871c68b37dcdb1900a26ea` from exact tested head `b7457faaf6e38307af2c749954764a2991278a3c`. Full CI validation `38898006036` Ruff/pytest/build/demo, clean Ubuntu `38898006091`, attribution `38898006047` all SUCCESS. New source v0.1.22, child state marked COMPLETE_SOURCE_ONLY.
+- **Important:** typed comparison READY, unique tool metadata and consistent tool inventories are not authorization or real trust. Registry/operator custody and authenticated actually loaded serving process, caller+tenant/host policies, enabled tool admission and persistent alert deduplication/delivery are still absent. #665 OPEN; legacy #664 contracts separate. Never use these source helpers alone to promote a deployment or dispatch a tool.
+- Original client still last observed 0.1.9, source_revision=null, artifact_digest=null. Source 0.1.22 not installed. No host, tunnel, secret, cron, model/worker activation or rollback-timer mutation. Rollback timer intentionally postponed until customer phase.
+- Follow-up source lane candidates are pure schema contract compatibility tests / bounded duplicate alert classification while the external authenticated inventory/custody and A6/A7 remain separately gated. Avoid duplicating merged source children #699/#700.
+
+---
+
 ## 2026-10-16 — #665 stable identity first child source merged, inventory collision child underway
 
 - [PR #699](https://github.com/Blacksp1d3r/runner-mcp/pull/699) v0.1.21 source MERGED `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08` from exact head `7d14aa23dddfd8557c20e12471a0e8041ff171a2`. CI validation `38897275967` Ruff/pytest/release/demo, clean Ubuntu `38897275912`, attribution `38897275777` all SUCCESS. RMCP-F-0038/0039 Failure Museum source-qualified.

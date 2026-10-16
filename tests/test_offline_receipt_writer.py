@@ -62,7 +62,8 @@ def test_written_candidate_can_pass_offline_only_preflight(tmp_path: Path):
     module.write_bytes(b"installed bytes")
     wheel = tmp_path / "candidate.whl"
     wheel.write_bytes(b"wheel bytes")
-    sha = lambda data: hashlib.sha256(data).hexdigest()
+    def sha(data: bytes) -> str:
+        return hashlib.sha256(data).hexdigest()
     receipt = folder / "receipt.json"
     record = {
         "schema_version": "runner-mcp/offline-artifact-receipt/v1",

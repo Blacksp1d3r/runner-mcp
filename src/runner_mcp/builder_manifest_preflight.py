@@ -27,6 +27,15 @@ def _hash_file(path: Path) -> str:
     return digest.hexdigest()
 
 
+
+def _reject_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    result: dict[str, object] = {}
+    for key, value in pairs:
+        if key in result:
+            raise ValueError("duplicate manifest key")
+        result[key] = value
+    return result
+
 def pinned_builder_manifest_preflight(
     manifest: Path, wheel: Path, expected_manifest_sha256: str
 ) -> dict[str, object]:
@@ -57,9 +66,15 @@ def pinned_builder_manifest_preflight(
             return result
         # The pinned SHA must come from outside this manifest and from a
         # separate protected trust channel. Never read it from the manifest.
-        if _hash_file(manifest) != expected_manifest_sha256:
+        # Hash and parse the SAME bounded bytes to avoid an in-place swap
+        # between separately opening the manifest for hash and JSON parsing.
+        manifest_bytes = manifest.read_bytes()
+        if hashlib.sha256(manifest_bytes).hexdigest() != expected_manifest_sha256:
             return result
-        document = json.loads(manifest.read_text(encoding="utf-8"))
+        document = json.loads(
+            manifest_bytes.decode("utf-8"),
+            object_pairs_hook=_reject_duplicate_keys,
+        )
         if not isinstance(document, dict) or set(document) != {
             "schema_version",
             "source_revision",
@@ -83,6 +98,6 @@ def pinned_builder_manifest_preflight(
             return result
         if _hash_file(wheel) != digest:
             return result
-    except (OSError, UnicodeError, ValueError, TypeError, KeyError, json.JSONDecodeError):
+    except (OSError, UnicodeError, ValueError, TypeError, KeyError, RecursionError):
         return result
     return {**result, "state": "offline_manifest_and_wheel_match"}

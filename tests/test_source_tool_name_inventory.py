@@ -56,7 +56,7 @@ def test_complete_existing_source_tool_names_remain_registered():
 def test_removing_a_decorated_legacy_registration_is_detected():
     source = SOURCE.read_text(encoding="utf-8")
     candidate = source.replace(
-        "@mcp.tool()\n    def runtime_status(",
+        "    @mcp.tool()\n    def runtime_status(",
         "    def runtime_status(",
         1,
     )

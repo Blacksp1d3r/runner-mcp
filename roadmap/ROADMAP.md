@@ -1,3 +1,12 @@
+## 2026-10-16 — #665 tool identity comparator and collision preflight source MERGED
+
+- [#699](https://github.com/Blacksp1d3r/runner-mcp/pull/699) pure tool contract metadata classification (v0.1.21) source merged after exact HEAD validation/Ubuntu/attribution pass. RMCP-F-0038 Ruff fixture and RMCP-F-0039 strict bool trust flags source-fixed and green.
+- [#700](https://github.com/Blacksp1d3r/runner-mcp/pull/700) pure bounded inventory collision/name/schema consistency (v0.1.22) merged squash `26c135952b2786e498871c68b37dcdb1900a26ea` after exact head `b7457faaf6e38307af2c749954764a2991278a3c` validation `38898006036`, Ubuntu `38898006091`, attribution `38898006047` all SUCCESS.
+- No active server handshake, dispatch policy or alert emission authority comes from these helpers. Main 0.1.22 is SOURCE ONLY; client 0.1.9 still has null verified active SHA/digest. Remaining #665: independently witnessed live registry + signed version/schema identity, real caller/host/tenant dispatch checks and bounded alert dedupe; legacy #664 remains distinct.
+- No host, tunnels, keys, cron, paid worker dispatch or customer-phase rollback timer mutation.
+
+---
+
 ## 2026-10-16 — #665 inventory collisions, source candidate 0.1.22
 
 - PR #699 v0.1.21 pure tool identity contract comparator MERGED `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08` after full exact-head CI GREEN. RMCP-F-0038 test lint and RMCP-F-0039 nonbool trust flags fixed and marked COMPLETE_SOURCE_ONLY.

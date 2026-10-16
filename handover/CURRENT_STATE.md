@@ -1,3 +1,11 @@
+## 2026-10-16 — functional #681 no-followup host-inspection child
+
+- #695 (source 0.1.17) and #696 (source 0.1.18) both merged with full exact-head green CI; #696 source squash `2ac39378f69262a5e3e75934d186629ed223d271` from `f5ee909c119c1ce77966b941e9c63efac760841e`, validation 38885682444, independent Ubuntu 38885682419, attribution 38885682491.
+- New source-only branch `chatgpt/681-host-inspect-no-followup-preflight-v0119`: after a failed host read, no hidden additional preflight network traffic. Failure is explicitly bounded/unavailable; success unchanged. Candidate 0.1.19. Tests, child TASK/STATE, exact CI pending.
+- Running original client last verified 0.1.9; remaining Fabric peer intermittent/relay unknown. No production, paid worker, secrets, tunnel, cron or rollback timer changes; operator defers timer work until customer phase.
+
+---
+
 ## 2026-10-16 — functional #681 source progress through snapshot failure classification
 
 - PR #695 v0.1.17 merged to main at `804be37993da563cdd6ed45872e50573a22b2a48` from exact CI green head `785204aea44be7c0f87a59c8641fd31bf1b55f85` (validation 38884916215, clean Ubuntu 38884916569, attribution 38884916186 all SUCCESS). Source-only bounded `fabric_continuity_status` unavailable now returns sanitized deny-by-default state; original client v0.1.9 unchanged.

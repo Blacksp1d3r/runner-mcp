@@ -1,3 +1,13 @@
+## 2026-10-16 — Real upgrade priority; no further updater code/version claims
+
+Operator asked continuous autonomous execution but explicitly paused further source version development. Runner-Fabric #924 remains the single coordination owner; Runner-MCP #341 owns existing local upgrade mechanisms. No parallel updater or overlapping agent development.
+
+Read-only live facts: Runner-MCP 0.1.9, active wheel SHA/revision unverified, self_update_ready=false; target v0.1.27 adds required cryptography runtime dependency, so old --no-deps self-update is ineligible independently of activation identity. Next actual step is an attended normal dependency-resolving isolated-prefix bootstrap with intact old release, not more updater source code. A6/probe not exposed, mutation disabled, independent restore and original-client ACK unproven. Operator away from known host; no remote generic shell, broad host-access workaround or GitHub Actions self-hosted runner used to bypass that.
+
+Canonical checkpoint: Runner-MCP #341, Runner-Fabric #924, roadmaps/dependencies, CURRENT_STATE, SESSION_HANDOFF, DECISIONS. No new PR, release number, host mutation, tool dispatch or paid worker in this lane. Resume only with owner-controlled read-only private host process/launcher/escrow evidence.
+
+---
+
 ## 2026-10-16 — Fleet updater protocol regressions and A6 security source landed; live rollout still gated
 
 - Runner-MCP PR #706 v0.1.25 safe optional Fabric CI guest unavailable and #707 v0.1.26 safe GitHub/local-custody preflight errors MERGED, exact full validation + Ubuntu installer + attribution successful.

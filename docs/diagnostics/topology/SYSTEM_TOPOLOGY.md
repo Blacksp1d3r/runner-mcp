@@ -108,3 +108,9 @@ unavailable Fabric A6/A7 authority. Every incomplete case remains unverified.
 
 PR #689 implements only the offline byte-comparison preflight; it deliberately
 does not write a trusted receipt or promote runtime identity.
+
+### 2026-10-16 — #669 next source child: pinned builder-manifest comparison (0.1.12 candidate)
+
+The manifest comparator requires an **externally pinned SHA-256** of the complete manifest and checks the wheel bytes. Its caller must obtain the digest through independent protected builder/approval custody. A manifest and its digest provided by the same untrusted caller do NOT establish authenticity.
+
+This child is deliberately a *read-only offline preflight* with no signing key, server mutation or claim of installed/serving provenance. It never sets active_build_provenance_verified=true, source_revision or artifact_digest. Actual trusted builder provisioning, immutable release environment, loaded-generation attestation, A6/A7 rollback and original-client ACK remain unmet #669 dependencies.

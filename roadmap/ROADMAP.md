@@ -1,3 +1,13 @@
+## 2026-10-16 — #664 legacy source tool-name retention test guard completed
+
+- Tests-only #702 freezes sampled 14 legacy callable signatures; #705 freezes all 95 existing v0.1.24 source-registered MCP tool names via AST, including optional registrations; both MERGED after exact-head CI green. #705 squash `67770dd641c342c561e7631fe20f39057d2a019a`, validation `38905411566`, attribution `38905411379` success.
+- Conflicted #704 closed unmerged after separate main handover update overlapped its markdown changes; regression unchanged in clean branch #705, Failure Museum RMCP-F-0042. Do not duplicate or retry #704.
+- These are current SOURCE baselines, not released 0.1.9 JSON schema/authorization/response semantic compatibility evidence. Parent #664 still open for exact released legacy package snapshots, N/N-1 and named-v2 client contract tests plus operator commercial support schedule.
+- Functional #333 source-only v0.1.24 opt-in expected tunnel doctor merge #703 CI green; not wired to a trusted private host sensor, no tunnel autostart or actual remote ACK. Rollback timer deferred until customer rollout.
+- No production/credential/tunnel/host mutation. Source-only completion does not authorize a release.
+
+---
+
 ## 2026-10-16 — #333 opt-in expected connector tunnel diagnosis, source candidate v0.1.24
 
 - Following source-only #664 sampled legacy signature regression guard PR #702 MERGED tests-only (no version bump, current main source 0.1.23), new independent #333 child makes existing typed tunnel readiness evidence visible in actual `runtime_doctor` when operator explicitly marks tunnel expected.

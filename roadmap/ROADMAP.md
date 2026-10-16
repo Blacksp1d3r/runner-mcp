@@ -1,4 +1,12 @@
 
+## 2026-10-16 — #669 signed offline candidate chain (source-only 0.1.16)
+
+- #693 Ed25519 detached signature source-only 0.1.15 merged at `e85b15924790d22a90b9a54cef1b55d10379d785` after exact-head validation/Ubuntu/attribution PASS. No independent signer enrollment or live attestation.
+- New child `roadmap/children/669-signed-evidence/` composes offline signer and manifest pin/wheel/module receipt/generation consistency, with synthetic tamper negative tests. It NEVER publishes active source/digest or sets active_build_provenance_verified=true.
+- After this bounded source child, operator-protected signing identity authority, revocation/expiry, generation/installer sealing, process-executable identity and A6/A7 + original-client ACK remain actual gates. Source merge does not permit production update.
+
+---
+
 ## 2026-10-16 — #669 independent builder-key source verification child
 
 - Existing offline receipt, builder digest pin, generation layout and evidence chain (#689–#692) source-merged; connected host 0.1.9 remains intentionally unverified.

@@ -1,3 +1,11 @@
+
+## 2026-10-16 — signed evidence chain source child 0.1.16 in progress
+
+- #693 offline Ed25519 manifest-signature verifier source merged `e85b15924790d22a90b9a54cef1b55d10379d785`, CI exact head `eedc369f695cabbc4ef837a822d22cc33de3d44b` attribution 38871536337, validation 38871536393, clean Ubuntu 38871536397 all SUCCESS. No trusted signer enrolled.
+- New bounded child branch `chatgpt/669-signed-evidence-chain-v0116` composes signature with offline candidate receipt/manifest/generation checks. Candidate 0.1.16; CI and merge not yet qualified. Live original MCP remains 0.1.9 with source and artifact digest null.
+- Actual #669 acceptance still BLOCKED_EXTERNAL on protected key issuer/rotation/revocation, immutable installed generation, actual process import/executable witness and independent A6/A7 rollback + same-route client ACK. No privileged host or tunnel mutation.
+
+---
 ## 2026-10-16 — #669 detached signer preflight source qualification, PR #693
 
 - Source-only 0.1.15 Ed25519 detached verifier on branch `chatgpt/669-detached-signature-source-v0115` requires a public key whose SHA256 is independently pinned. It also validates exact builder-manifest v1 schema and duplicate-key rejection; signature over arbitrary JSON is not an accepted builder proof (RMCP-F-0035).

@@ -1,4 +1,8 @@
 
+### 2026-10-16 — signed offline candidate evidence chain (source candidate v0.1.16)
+
+The new source-only preflight requires BOTH an offline detached Ed25519 signature match under an externally pinned public key fingerprint and the existing independently pinned builder-manifest/wheel/receipt/module/generation consistency checks. This provides comparison of synthetic candidate bytes, **not** root-of-trust enrollment or rollback/liveness evidence. The signer key and manifest digest supplied by a malicious party do not authenticate themselves. No process/loaded-module attestation; active source/digest remain null. Protected key custody, signer revocation/freshness, immutable sealed installation and original-client ACK still externally gated.
+
 ### 2026-10-16 — #669 offline detached-signature child, v0.1.15 candidate
 
 `detached_builder_signature_preflight` checks a detached Ed25519 signature over exact raw manifest bytes with a 32-byte public key whose SHA-256 fingerprint must arrive via an independently protected operator channel. It does NOT enroll or trust a key from the manifest, and does not inspect any running process. Key-authority custody, revocation/freshness, immutable release/installed module evidence, A6/A7 rollback and original-client ACK are independent future gates. A caller supplying both their own key and fingerprint creates no meaningful authentication. The source return remains offline_signature_match/unverified and always active_build_provenance_verified=false, with null active revision/digest.

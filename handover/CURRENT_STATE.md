@@ -1,3 +1,11 @@
+## 2026-10-16 — functional #681 source progress through snapshot failure classification
+
+- PR #695 v0.1.17 merged to main at `804be37993da563cdd6ed45872e50573a22b2a48` from exact CI green head `785204aea44be7c0f87a59c8641fd31bf1b55f85` (validation 38884916215, clean Ubuntu 38884916569, attribution 38884916186 all SUCCESS). Source-only bounded `fabric_continuity_status` unavailable now returns sanitized deny-by-default state; original client v0.1.9 unchanged.
+- Distinct child branch `chatgpt/681-snapshot-bounded-unavailable-v0118` candidate v0.1.18 addresses other observed generic failure: Fabric operational snapshot bridge exceptions map to explicit bounded degraded/unavailable result without retry, secrets or extra preflight.
+- Tests, TASK/STATE, source version manifests updated, newest exact-head CI still to be qualified. Parent #681 intermittent host-inspection/relay behavior and #590 runtime bridge evidence remain separate. Rollbacktimer intentionally deferred to customer phase; no host/credential/tunnel work.
+
+---
+
 ## 2026-10-16 — functional roadmap resumed: #681 continuity failure observability
 
 - Operator reprioritized away from rollback-timer implementation (customer phase). Read-only original client 0.1.9 showed Fabric host-inspect fresh and snapshot v1 degraded with unknown agent-bus.relay; `fabric_continuity_status` still generic internal error, while `runtime_doctor` explicitly indicated missing private continuity configuration. No server repair required today.

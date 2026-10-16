@@ -37,6 +37,10 @@ def _safe_regular(path: Path) -> bool:
     )
 
 
+def _raise_walk_error(exc: OSError) -> None:
+    raise exc
+
+
 def offline_artifact_receipt_preflight(
     receipt: Path, wheel: Path, installed_package: Path
 ) -> dict[str, object]:
@@ -82,7 +86,7 @@ def offline_artifact_receipt_preflight(
         # Scan without following links. Linked directories must never hide extra modules.
         observed_names: set[str] = set()
         count = 0
-        for current, directories, files in os.walk(root, followlinks=False):
+        for current, directories, files in os.walk(root, followlinks=False, onerror=_raise_walk_error):
             for name in (*directories, *files):
                 count += 1
                 if count > 8192:

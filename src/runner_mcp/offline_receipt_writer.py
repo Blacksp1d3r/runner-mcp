@@ -14,6 +14,10 @@ from uuid import uuid4
 _MAX_RECEIPT_BYTES = 64 * 1024
 
 
+class ReceiptPublicationUncertain(RuntimeError):
+    """Destination may already exist; operator reconciliation is required."""
+
+
 def write_offline_receipt_candidate(destination: Path, receipt: dict[str, object]) -> bool:
     """Create an owner-only receipt without replacing an existing receipt.
 
@@ -24,6 +28,7 @@ def write_offline_receipt_candidate(destination: Path, receipt: dict[str, object
         return False
     parent = destination.parent
     temporary: Path | None = None
+    published = False
     try:
         # Never follow a redirected receipt directory or a cross-user writable parent.
         if parent.is_symlink() or not parent.is_dir():
@@ -50,6 +55,7 @@ def write_offline_receipt_candidate(destination: Path, receipt: dict[str, object
                 os.fsync(handle.fileno())
             # A hard link makes publishing atomic and fail-if-existing.
             os.link(temporary, destination, follow_symlinks=False)
+            published = True
             directory_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
             try:
                 os.fsync(directory_fd)
@@ -58,5 +64,7 @@ def write_offline_receipt_candidate(destination: Path, receipt: dict[str, object
             return True
         finally:
             temporary.unlink(missing_ok=True)
-    except (OSError, TypeError, ValueError, UnicodeError):
+    except (OSError, TypeError, ValueError, UnicodeError) as exc:
+        if published:
+            raise ReceiptPublicationUncertain("receipt publication requires reconciliation") from exc
         return False

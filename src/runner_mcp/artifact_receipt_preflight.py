@@ -84,7 +84,7 @@ def offline_artifact_receipt_preflight(
             parts = Path(relative).parts
             if not parts or any(part in ("", ".", "..") for part in parts):
                 return unavailable
-            if Path(relative).is_absolute() or "\\\\" in relative:
+            if Path(relative).is_absolute() or chr(92) in relative:
                 return unavailable
             candidate = root.joinpath(*parts)
             if not _safe_regular(candidate) or not candidate.resolve().is_relative_to(root):

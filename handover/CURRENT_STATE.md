@@ -1,3 +1,14 @@
+## 2026-10-16 — #669 offline signed provenance source children through v0.1.16 merged; LIVE UNQUALIFIED
+
+- PR #693 v0.1.15 source-only detached Ed25519 builder-manifest signature preflight merged `e85b15924790d22a90b9a54cef1b55d10379d785`, exact PR HEAD `eedc369f695cabbc4ef837a822d22cc33de3d44b`. CI attribution `38871536337`, validation `38871536393`, Ubuntu `38871536397` SUCCESS. RMCP-F-0034/RMCP-F-0035 source CI/security fixes resolved and recorded.
+- PR #694 v0.1.16 source-only *signed offline candidate evidence chain* merged `ee019e491c53d1d2b239cc07faa15b9f4fcaed51`, exact tested head `95e2019f62df7ecc6766d78f3cba1ac1c1755959`. Validation `38872162974`, clean Ubuntu `38872162972`, attribution `38872163036` all SUCCESS. Bounded source child STATE marked COMPLETE_SOURCE_ONLY.
+- Offline proof comprises Ed25519 detached signature with independently pinned public-key SHA256, externally pinned manifest digest, wheel/module candidate SHA256 and generation path checks. This is **not** operator enrollment/revocation/expiry or process attestation; a claimant controlling both signer key and pin has NO trusted origin.
+- Original connected Runner-MCP remains **0.1.9**, `source_revision=null`, `artifact_digest=null`; runtime_status active_build_provenance_verified=false, self_update_ready=false. Fabric bridge preflight has `mutation_enabled=false` and `a6_prepare_available=false`; operational snapshot still generic error in this session and separately tracked #681. No host/tunnel/key/cron/deployment mutation.
+- Next technical boundary remains protected root/trusted signer enrolment (source of out-of-band expected public-key pin, expiry/rotation/revocation and release purpose), sealed installer generation and loaded active executable/module witness, independently armed A6/A7 rollback and original-client same-route ACK. These require qualified private/operator authority and MUST NOT be bypassed or simulated by public GitHub source. Umbrella issue #669 stays OPEN/BLOCKED_EXTERNAL.
+- Verified main source squash #694; later documentation commits do not imply post-merge CI status. Live evidence and protected custody win over old self-update history.
+
+---
+
 
 ## 2026-10-16 — signed evidence chain source child 0.1.16 in progress
 

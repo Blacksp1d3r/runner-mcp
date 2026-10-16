@@ -80,7 +80,8 @@ def offline_artifact_receipt_preflight(
         root = installed_package.resolve(strict=True)
         # An omitted installed Python module must not count as a matching package.
         observed = list(root.rglob("*.py"))
-        if len(observed) > 4096 or {p.relative_to(root).as_posix() for p in observed} != set(modules):
+        observed_names = {p.relative_to(root).as_posix() for p in observed}
+        if len(observed) > 4096 or observed_names != set(modules):
             return unavailable
         for relative, expected in modules.items():
             if not isinstance(relative, str) or not isinstance(expected, str):

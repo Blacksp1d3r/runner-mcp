@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "aifordable-runner-mcp"
-version = "0.1.14"
+version = "0.1.15"
 description = "Security-first self-hosted MCP for controlled AI development and staging operations."
 readme = "README.md"
 license = { file = "LICENSE" }
@@ -22,6 +22,7 @@ classifiers = [
 ]
 dependencies = [
   "setuptools>=75",
+  "cryptography>=44,<51",
   "mcp>=2.0,<3",
   "pydantic>=2.10,<3",
   "PyYAML>=6,<7",

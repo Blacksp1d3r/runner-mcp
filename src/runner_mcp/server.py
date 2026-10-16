@@ -106,6 +106,7 @@ from .fabric_bridge import (
     FabricBridgeClient,
     FabricBridgeConfig,
     FabricBridgeError,
+    bounded_host_inspection_unavailable,
     bounded_snapshot_unavailable,
 )
 from .fabric_coding_availability import (
@@ -1943,46 +1944,8 @@ def build_mcp(
         )
 
     def _fabric_host_inspect_failure(exc: FabricBridgeError) -> dict:
-        """Project one Fabric host-inspection failure into bounded public evidence."""
-
-        category = (
-            "fabric_inspection_unavailable"
-            if str(exc) == "Runner Fabric host inspection failed"
-            else "invalid_inspection_payload"
-        )
-        bridge = _require_fabric_bridge()
-        preflight_method = getattr(bridge, "preflight", None)
-        if callable(preflight_method):
-            try:
-                preflight = preflight_method()
-            except FabricBridgeError:
-                preflight = {}
-        else:
-            preflight = {}
-        reason = preflight.get("reason_code") if isinstance(preflight, dict) else None
-        if (
-            preflight.get("state") == "blocked"
-            and isinstance(reason, str)
-            and reason in {
-                "transport_or_auth_unavailable",
-                "initialization_failed",
-                "protocol_incompatible",
-                "interface_incompatible",
-                "build_identity_incompatible",
-                "server_identity_invalid",
-                "session_invalid",
-                "response_invalid",
-                "peer_unavailable",
-                "bridge_unavailable",
-            }
-        ):
-            category = reason
-        return {
-            "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
-            "state": "unavailable",
-            "error_category": category,
-            "mutation_enabled": False,
-        }
+        """Bound one failed read with no implied follow-up Fabric request."""
+        return bounded_host_inspection_unavailable(str(exc))
 
     def fabric_bridge_preflight() -> dict:
         """Return bounded read-only Fabric MCP handshake readiness."""

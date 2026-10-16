@@ -70,6 +70,32 @@ class FabricBridgeError(RuntimeError):
     """Safe Fabric bridge failure without endpoint/token/provider detail."""
 
 
+def bounded_host_inspection_unavailable(reason: object) -> dict[str, object]:
+    """Classify the original failed host read without a follow-up network call.
+
+    A failed read cannot justify automatic preflight/retries. The caller can
+    explicitly request fabric_bridge_preflight in a separate invocation.
+    """
+    invalid = {
+        "Runner Fabric returned invalid host inspection",
+        "Runner Fabric host inspection must be read-only",
+        "Runner Fabric host inspection is too large",
+        "Runner Fabric host inspection is invalid",
+        "Runner Fabric host inspection contains private detail",
+    }
+    category = (
+        "invalid_inspection_payload"
+        if isinstance(reason, str) and reason in invalid
+        else "fabric_inspection_unavailable"
+    )
+    return {
+        "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
+        "state": "unavailable",
+        "error_category": category,
+        "mutation_enabled": False,
+    }
+
+
 def bounded_snapshot_unavailable(reason: object) -> dict[str, object]:
     """Report one failed read without retry or any mutation authority.
 

@@ -1,3 +1,11 @@
+
+## 2026-10-16 — #669 source progress through generation layout PR #691
+
+- Source-only PR #690 offline pinned builder-manifest preflight merged into main at `215218cd06786838ca3e7ea86ae770b07eec4a84` after exact-head CI success (validation 38861301736, Ubuntu 38861301729, attribution 38861301743). No trusted signer or active runtime claim.
+- New independent PR #691, branch `chatgpt/669-immutable-generation-preflight-v0113`, candidate 0.1.13: structural generation directory name/source/wheel identity and path/permission checks; does not attest immutable bytes or serving process. CI requires exact head green before merge.
+- Original connected MCP still 0.1.9 with source/digest null. Production/tunnels/keys untouched. #669 remains open for trusted builder source, installed byte proof, live serving process generation and A6/A7 rollback/original client.
+
+---
 ## 2026-10-16 — #669 builder-manifest source child in progress (PR #690)
 
 - PR #689 source-only candidate receipt stage was merged to main at `4a7a03fb9f0785a5d8fe20e4a3ba2176b2ff508a`. Current main before next child was `f563cb49e2f3fa8db81f3239c1f118e0922ddc44`.

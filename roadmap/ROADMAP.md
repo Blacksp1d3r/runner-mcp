@@ -1,3 +1,11 @@
+
+## 2026-10-16 — #669 independent builder-key source verification child
+
+- Existing offline receipt, builder digest pin, generation layout and evidence chain (#689–#692) source-merged; connected host 0.1.9 remains intentionally unverified.
+- New bounded child `roadmap/children/669-detached-signature/` (candidate source v0.1.15) adds read-only Ed25519 manifest-signature checks conditioned on an OUT-OF-BAND trusted key fingerprint. Strict negatives test changed manifest/key/signature, linked and writable evidence and invalid lengths. No operator trust root is provisioned by this source code.
+- Next after exact source CI: operator/privileged independent builder-key enrollment, revocation and signed manifest issuance, then sealed installation with loaded-process generation + A6/A7 rollback/original client ACK. No live service changes by source-only work.
+
+---
 ## 2026-10-16 — #669 source-only chain complete, trusted serving attestation BLOCKED
 
 - Source children #689 (0.1.11 offline receipt), #690 (0.1.12 externally pinned builder manifest), #691 (0.1.13 generation layout), and #692 (0.1.14 offline evidence consistency) ALL MERGED with exact PR HEAD CI success.

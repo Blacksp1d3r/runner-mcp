@@ -66,3 +66,45 @@ The 0.1.9 **source candidate** specifies the unconditional host-inspection/snaps
 - **Installed/serving now:** original-client `runner-mcp=0.1.8`; fixed peer `runner-fabric-agent-mcp` source revision `51c37f1e...`, handshake `ready`. Host-inspect and operational-snapshot original-route return paths are NOT qualified. Agent Bus relay remains unknown/degraded; normal test queue has two available workers in one snapshot.
 - **Source available but not serving:** `0.1.9` fix for both Fabric reconnect contract mismatches merged as PR #683 / source `e7cb9162d686b5992b3862a4b61f85980cbdfbd4`. Green source CI/installer/attribution does not validate post-update connected-client return path. Do not write `0.1.9` as live topology before root activation, physical six-role evidence and client acceptance.
 - **Release boundary:** standard self-update currently unready (`self_update_ready=false`), active artifact provenance #669 absent. A proposed operator-only fixed-commit stage plus separately armed independent systemd rollback is NOT physically executed. Public topology records this boundary only, no private machine coordinates or privileged scripts.
+
+### 2026-10-16 — #669 offline artifact preflight, source-only PR #689
+
+Candidate 0.1.11 compares an untrusted receipt, pinned wheel SHA-256, and complete Python-module inventory/digests. It returns offline_bytes_match or unverified; it MUST NEVER set active_build_provenance_verified=true.
+
+- A receipt is not signed or a trusted serving-process witness. Matching self-declared bytes is an offline preflight only.
+- Unlisted native extensions (.so/.pyd/.dll/.dylib), linked directories, incomplete manifests, malformed receipts and unsafe permissions fail closed.
+- self-update-state.json is historical transaction data, never proof of the currently loaded wheel.
+- A trusted builder manifest, immutable versioned environment, atomic private installer receipt, loaded-module generation binding, A6/A7 rollback and original-client ACK remain separate requirements.
+- This draft source change neither mutates the serving 0.1.9 installation nor authorizes 0.1.11 release.
+
+### #669 — Trusted installer and serving-generation acceptance contract
+
+Source-only design gate; **not implemented, not signed, and not an activation permit**:
+
+1. Builder records exact canonical source commit, distribution version, wheel SHA-256,
+   interface catalogue digest and installed Python/native module inventory. This
+   builder evidence must have an independent trust anchor, not a host-writable JSON claim.
+2. Authorized installer pins wheel bytes to trusted builder evidence and installs into
+   a newly created immutable versioned environment. Never mutate files below an
+   environment from which an existing server process might still be running.
+3. After installing, recompute package RECORD, Python/native module hashes and
+   package version. Atomic owner-restricted receipt creation must bind the artifact,
+   environment generation and activation transaction; protect against symlinks and
+   replacement races. Keep self-update history separate.
+4. At process startup, require current executable/import roots, loaded package
+   modules, environment generation, receipt, trusted manifest and catalogue identity
+   all to agree before advertising active provenance. An untrusted or missing
+   witness must return false/null, not the last self-update commit.
+5. Independently verify the six expected service roles, trusted activation/rollback
+   custody and the original authenticated MCP client generation/catalogue after
+   restart. Only that same-route acknowledgement can close the serving proof.
+
+Required negative tests: missing/malformed/forged receipts; historical marker
+mismatch; same version with different wheel; linked/traversed install roots;
+non-atomic interrupted receipt writes; mutable in-place upgrade without restart;
+module/RECORD/native-file mismatch; wrong or reused PID; two concurrent server
+generations; stale original client catalogue; rollback returning to older code;
+unavailable Fabric A6/A7 authority. Every incomplete case remains unverified.
+
+PR #689 implements only the offline byte-comparison preflight; it deliberately
+does not write a trusted receipt or promote runtime identity.

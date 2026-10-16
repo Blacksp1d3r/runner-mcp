@@ -1,3 +1,13 @@
+## 2026-10-16 — #669 offline receipts, 0.1.11 source-only DRAFT PR #689
+
+- Operator-approved source lane is `chatgpt/669-offline-artifact-receipt-preflight`, PR #689; `main` remains 0.1.10 (`ff165118...`); connected serving runtime last verified 0.1.9. No host/keys/tunnel mutation.
+- Offline verifier compares wheel SHA-256 and complete Python-module manifest, rejects symlinks/unlisted native modules/malformed and nonprivate receipt, and ALWAYS returns `active_build_provenance_verified=false`, null active source/digest. Candidate receipt writer creates 0600 owner-only, create-once atomic file and distinguishes uncertain effects after publish. Neither component is wired into trusted installer/serving runtime.
+- Previous validated source head `93b91686d9ed0f862a6021f02e41e2e1a3b88117` had CI validation, Ubuntu install and attribution SUCCESS. Subsequent source fixes add explicit absolute-path enforcement, `..` rejection, linked-ancestor rejection, real concurrent create-once race test, and associated regressions, recorded RMCP-F-0029. Latest code/test head `1a53ddc81f53e1755bfe845441ebb02df605a7af`; its CI still requires exact-HEAD qualification.
+- Blockers: trusted independent build manifest/verification, immutable release environment, installer-generated evidence bound to wheel/modules and executable generation, actual serving-process verification and original ChatGPT same-route ACK. A6/A7 rollback authority separately qualified. Keep #669 open / PR #689 DRAFT, no production deployment.
+- Next bounded action: reconcile exact PR head and its CI; fix genuine failing test if present. Then prototype verified builder receipt issuance under independent trust root; do NOT promote a self-declared receipt into runtime build identity.
+
+---
+
 ## 2026-10-15 — live 0.1.9 confirmed; tunnel runtime identity remains unqualified
 
 - Original connected client now reports loaded Runner-MCP **0.1.9** and its installed distribution 0.1.9. `fabric_bridge_preflight` returns `ready` with Fabric source `51c37f1eac65951e15a5122b89f368aa6e18c1f5`; `fabric_host_inspect` and `fabric_operational_snapshot` now return bounded results. Fabric relay status remains honestly `degraded=true` with `agent-bus.relay` unknown. This supplies live follow-up evidence for regression #681, but does not prove original-client ACK after a controlled version rollout.

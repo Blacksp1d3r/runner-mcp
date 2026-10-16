@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 claim: ChatGPT source child PR #689
+
+- Current claim: only offline receipt preflight and candidate writer, branch `chatgpt/669-offline-artifact-receipt-preflight`; coordinate with source owners before modifying runtime/build identity.
+- Last verified fully green source SHA `93b91686d9ed0f862a6021f02e41e2e1a3b88117`; subsequent code/test and RMCP-F-0029 require their own exact-head CI.
+- No second PR/branch for this child; do not merge obsolete `fleet-a2-runtime-provenance-identity` code that treats self-update transaction marker as proof of live build.
+- No local production authority, no A6/A7 deployment approval or serving runtime attestation granted; review optional under current AGENTS policy, but actual CI/security gates mandatory.
+
+---
+
 ## 2026-10-15 — #681 owner-live gate; source fix done / rollout unclaimed
 
 - Owner: ongoing Runner-MCP original-client recovery lane. Source PR #683 and topology/handover PR #684 MERGED and CI GREEN. Serving build still 0.1.8; fixed Fabric source 51c37f1e. `fabric_host_inspect` and snapshot original-client calls remain unqualified.

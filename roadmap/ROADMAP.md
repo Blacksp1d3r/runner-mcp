@@ -1,3 +1,11 @@
+## 2026-10-16 — #669 phase-2 offline receipt verification child
+
+- Source implementation [PR #689](https://github.com/Blacksp1d3r/runner-mcp/pull/689) for 0.1.11 candidate: offline wheel+installed-module digest comparator, owner-only atomic create-once candidate receipt writer, negative tests for path/permission/symlink/native module/manifest/fsync/crash/race, and integrated offline demonstration.
+- Previous exact-head `93b91686...` validated in CI. Later traversal/race defense requires fresh CI; Failure Museum RMCP-F-0029 records the cause and regression. No merge while newest head unverified.
+- NEXT (depends on #669 acceptance): authenticate builder manifest using a trusted independent root, write an actual installer-owned receipt tied to immutable venv generation, then attest loaded serving process with original-client ACK. Source-only receipt bytes do not authorize active identity or production rollout. Fabric A6/A7 ownership separate. No duplicate child/new PR.
+
+---
+
 ## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged
 
 [PR #651](https://github.com/Blacksp1d3r/runner-mcp/pull/651) MERGED squash `68093ab85bee293a8cc7616340d2893d5e4c24a0`, reviewed exact head `d588c72619fc277d8423b680f473c8d62e3c992a`. Commit attribution `38086367280` SUCCESS; full validation `38086367281` SUCCESS (Ruff, **2813 pytest**, built release artifact, clean demo). Fixed `LocalMCPClient._post` standard `urllib.request.urlopen` proxy/HTTP 30x bearer egress risk by using a fixed `ProxyHandler({})` + `_NoLocalMCPRedirects` opener through a single testable `_open_local_mcp_request` seam. Unit negatives cover hostile HTTP(S)/ALL_PROXY environment, redirects 301/302/303/307/308 to off-host and same-host destinations, single-call/no-redirect behavior, sensitive error redaction. Historical bridge tests now inject the bounded seam. Preserves #650 stale-session unknown-effect no-replay and exact build/schema requalification on subsequent separate explicit caller request.

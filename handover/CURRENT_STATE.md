@@ -1,3 +1,11 @@
+
+## 2026-10-16 — #669 detached Ed25519 builder proof source child
+
+- Main at start: `ce1a4846ce28a13569baf45a3f7fe4abd77a0c0f`, source-only 0.1.14. All previous source children #689–#692 merged, tested and marked source-only complete.
+- New source-only candidate v0.1.15 on `chatgpt/669-detached-signature-source-v0115` checks Ed25519 detached raw manifest signature against a public key fingerprint supplied independently. No operator key is enrolled, no trusted signer exists, no runtime process is attested by this code.
+- `cryptography` declared explicitly. Exact-head CI and PR merge pending, no production activation. Original client still 0.1.9, null source/digest. Next real #669 operational gate is trusted key custody, key revocation/freshness, immutable installation, serving process proof, rollback and original client ACK.
+
+---
 ## 2026-10-16 — #669 offline source children #689/#690/#691/#692 merged; live 0.1.9 remains UNATTESTED
 
 - Offline source versions 0.1.11 through **0.1.14** integrated as bounded sequential children; latest source squash is PR #692 `a7e3bb30d008d655ae5b8c5fdc15813303f84935`, accepted from exact tested head `8e77d9796744a19c7ebcd6a2dfa759ed7248a3f5`. GitHub validation `38864199810`, clean Ubuntu `38864199752`, attribution `38864199758` all SUCCESS before merge.

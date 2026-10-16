@@ -7,7 +7,9 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
+import stat
 from pathlib import Path
 
 from runner_mcp.artifact_receipt_preflight import offline_artifact_receipt_preflight
@@ -81,6 +83,11 @@ def offline_evidence_chain_preflight(
         current = installed_package
         while current != generation:
             if current.is_symlink():
+                return unverified
+            info = current.lstat()
+            if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid():
+                return unverified
+            if info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
                 return unverified
             current = current.parent
         # Revalidate the exact pin at the end; a filesystem can still mutate

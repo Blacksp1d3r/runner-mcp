@@ -1,3 +1,13 @@
+## 2026-10-16 — F30 Runner-MCP update-chain continuation; exact source and original-client boundaries
+
+Completed source merges: #706 v0.1.25 sanitized optional Fabric guest read status `262fd4e25a9a0ad63a02c5ad825f288998775656` (full validation/Ubuntu/attribution GREEN); #707 v0.1.26 sanitized read-only GitHub/local update preflight `000903bde5d6f81d9507fca95c0302f7364294e6` (all GREEN); #708 authenticated in-process MCP wire regression `6e3e8e9dcffb9a6fe7b6fb4b7436612f1ad2fa1a` (validation #38933713969 and attribution #38933714024 SUCCESS; TESTS ONLY, source still 0.1.26). These ensure a missing optional guest or nonready artifact does not become a generic opaque error / implied authorization; neither deploy nor attest runtime.
+
+PR #709 v0.1.27 source SECURITY restack of older unmerged #655 at exact head `6f75e21b78badea7d0345c1125070809a5a17f83`, three required runs #38934210559 validation, #38934210595 Ubuntu installer, #38934210533 attribution. At checkpoint attribution passed, others running; inspect terminal exact-head results and GitHub mergeability, merge if green, then close old #655 superseded. Child TASK/STATE under `roadmap/children/509-a6-symlink-guard-restack/`; failure lineage RMCP-F-0026. Do not merge stale #655 as well.
+
+Active connector still Runner-MCP 0.1.9, source/digest unknown, `self_update_ready=false`. Fabric handshake READY but A6 unavailable and mutation disabled. Desktop/host access not currently available through authorized controller. No server install, service restart, private storage mutation, credentials, automatic rollback timer or actual canary performed. True blocker for live rollout is independent correct-host/process wheel provenance (#669 / AIfordable #428), same-original-client ACK and separately recoverable canary (Fabric #924/#942/#943). GitHub source merge is not host acceptance. Preserve user preference to keep source development moving while rollback timer is deferred until customer rollout.
+
+---
+
 ## 2026-10-15 — Live Runner-MCP 0.1.8 preserved; 0.1.9 stage gate BLOCKED_EXTERNAL
 
 - Current source `main` includes Runner-MCP 0.1.9 PR #683, merged `e7cb9162d686b5992b3862a4b61f85980cbdfbd4`. Exact-head PR run `38630452366` and independent clean Ubuntu installer `38630452355` + attribution `38630452496` all SUCCESS. Source fix binds the Fabric peer to exact component identity and only mandatory core tools on reconnect. The *live original ChatGPT connector* is still 0.1.8, not the merged 0.1.9.

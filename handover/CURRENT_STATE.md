@@ -1,3 +1,12 @@
+## 2026-10-16 — functional #681 source complete; FASTER-13 #383 benchmark child underway
+
+- PR #697 (no hidden Fabric preflight after failed host read) merged at `1bbb46ce9061e7f453532e5000fb2a0995ee7140` from exact tested head `fb37db2084946f618904318f7fcbf7dcea0d497d`. CI Runner validation `38886451977`, independent Ubuntu `38886451953`, commit attribution `38886452030` all SUCCESS. Failure Museum RMCP-F-0036 now COMPLETE_SOURCE_ONLY.
+- Three narrow #681 source remedies are merged: continuity unavailable 0.1.17, snapshot unavailable 0.1.18, host error first-edge/no hidden preflight 0.1.19. Original connected MCP remains 0.1.9 until separately authorized versioned rollout. #681 stays open for live peer/relay proof.
+- New bounded FASTER-13 / #383 source-only candidate 0.1.20 `chatgpt/383-mcp-local-fastpath-synthetic-baseline`: synthetic local JSON serialization baseline and deterministic polling calculation. No claims of live MCP RTT, no actual host traffic or API execution. Child TASK/STATE and CLI+tests present. Exact-head CI pending.
+- Operator defers independent rollback timer until customers and has private host access later if needed; no privileged host/secret/tunnel/cron changes now.
+
+---
+
 ## 2026-10-16 — functional #681 no-followup host-inspection child
 
 - #695 (source 0.1.17) and #696 (source 0.1.18) both merged with full exact-head green CI; #696 source squash `2ac39378f69262a5e3e75934d186629ed223d271` from `f5ee909c119c1ce77966b941e9c63efac760841e`, validation 38885682444, independent Ubuntu 38885682419, attribution 38885682491.

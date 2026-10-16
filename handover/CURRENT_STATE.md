@@ -1,3 +1,11 @@
+## 2026-10-16 — #665 typed alert digest source candidate 0.1.23
+
+- #699 / #700 bounded identity classifier/inventory collision source children have both merged and CI-green, main source 0.1.22. Latest squash #700 `26c135952b2786e498871c68b37dcdb1900a26ea`. No actual tool permission granted.
+- New independent source child `chatgpt/665-typed-alert-dedupe-v0123` groups sanitized typed mismatch events by caller-provided opaque SHA256 scope, tool ID and reason with cooldown, no free-text/private details, no notification, persistence or network. The source timestamps/scope/claimed reason are **untrusted unless separately attested**.
+- Tests/TASK/STATE created, CI/PR merge pending. Parent #665 still requires Fabric trusted inventory and customer alert delivery/ACK. Running original connected MCP remains 0.1.9 with null active revision/digest. Rollback timer postponed until customers. No host mutations.
+
+---
+
 ## 2026-10-16 — #665 source children through 0.1.22 merged; actual live identity remains unqualified
 
 - PR #699 source-only bounded tool metadata classifier merged squash `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08` from exact tested head `7d14aa23dddfd8557c20e12471a0e8041ff171a2`. Full CI validation `38897275967`, clean Ubuntu `38897275912`, attribution `38897275777` all SUCCESS. Failure Museum RMCP-F-0038 Ruff test fixture and RMCP-F-0039 nonboolean truthy trust flag fixed / source-complete.

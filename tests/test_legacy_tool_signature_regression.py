@@ -90,12 +90,10 @@ def test_baseline_identifiers_and_signatures_are_unique():
 
 
 def test_guard_rejects_default_and_required_argument_drift():
-    source = SOURCE.read_text(encoding="utf-8")
-    assert "limit: int = 100" in source
-    modified = source.replace("limit: int = 100", "limit: int = 200", 1)
-    assert modified != source
-    tree = ast.parse(modified)
+    tree = ast.parse(SOURCE.read_text(encoding="utf-8"))
     fn = _tool_function(tree, "list_backups")
+    assert len(fn.args.defaults) == 1
+    fn.args.defaults[0] = ast.Constant(value=200)
     assert _params(fn) != next(
         item["params"]
         for item in json.loads(BASELINE.read_text(encoding="utf-8"))["tools"]

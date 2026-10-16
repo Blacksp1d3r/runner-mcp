@@ -1,3 +1,11 @@
+## 2026-10-16 — functional roadmap resumed: #681 continuity failure observability
+
+- Operator reprioritized away from rollback-timer implementation (customer phase). Read-only original client 0.1.9 showed Fabric host-inspect fresh and snapshot v1 degraded with unknown agent-bus.relay; `fabric_continuity_status` still generic internal error, while `runtime_doctor` explicitly indicated missing private continuity configuration. No server repair required today.
+- New source-only bounded child on `chatgpt/681-continuity-bounded-unavailable-v0117` candidate 0.1.17 returns explicit sanitized deny-by-default unavailable state for controlled continuity errors in existing MCP tool, keeping successful payload and audit semantics. No retry/fallback/process change.
+- Parent #681/#590 remain open for live verification after eventual authorized update. Child TASK/STATE + tests and exact HEAD CI needed. No private host/tunnel/cron/key changes.
+
+---
+
 ## 2026-10-16 — OPERATOR CORRECTION: rollback timer deferred until customers
 
 - Operator explicitly decides that independent rollback-timer work is NOT an immediate pre-customer priority; schedule it for customer rollout. Earlier handover references that suggest a mandatory timer gate before continued development are superseded **for priority and scope**, not an authorization to perform risky production changes.

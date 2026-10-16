@@ -1,3 +1,11 @@
+## 2026-10-16 — #664 sampled legacy MCP contract signature CI guard (tests-only)
+
+- A new independent test-only child `roadmap/children/664-legacy-callable-signature/` pins a grounded subset of present 0.1.23 MCP tool names, registrations, parameter/default and return annotations. On drift the actual source AST test fails CI. No shipping tool code/version change.
+- This is deliberately **not** a historic v0.1.9 customer wheel/runtime input/output schema snapshot. Source-only baseline must not be used to assert full N/N-1 support or actual client compatibility. Parent #664 stays open for authenticated released wheel catalogue capture, generated JSON schema/semantic regression, commercial supported release trains and original-client proof.
+- No host or customer action, rollback timer deferred. Full exact-head CI necessary.
+
+---
+
 ## 2026-10-16 — #665 tool identity three source children integrated through v0.1.23
 
 - #699 v0.1.21 pure stable tool contract classifier (including RMCP-F-0038/0039 fixed); #700 v0.1.22 bounded duplicate tool ID/name and mismatch preflight; #701 v0.1.23 pure sanitized typed mismatch alert digest/cooldown all SOURCE MERGED with exact PR HEAD full validation, clean Ubuntu and attribution SUCCESS.

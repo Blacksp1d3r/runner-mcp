@@ -1,3 +1,12 @@
+## 2026-10-16 — #665 source lane integrated; independent fleet custody owner next
+
+- Three source PRs #699/#700/#701 have been merged (source 0.1.21 / 0.1.22 / 0.1.23 respectively) with exact-head CI success. Latest #701 squash `10501c1d28ef050ecfc61f7b341487e7ead47d2b`. Child TASK/STATE marked COMPLETE_SOURCE_ONLY, MRCP-F-0038/0039 corrected (the canonical labels are RMCP-F-0038/0039).
+- Source comparison, bounded list collision detection and local alert-digest generation do NOT authorize a tool call or notify any customer. No authenticated runtime inventory/tenant host policy, notification transport, or ACK. Parent issue #665 stays OPEN.
+- Next owner should reconcile Fabric actual fleet inventory and route capability + customer legacy contract #664. Need signed/authenticated actual-serving source/catalog generation and approved host+customer policy BEFORE linking helpers to dispatcher or delivery. Avoid duplicating source-complete children or treating provided trust booleans as evidence.
+- User deferred rollback timer to customers and did not authorize host updates. Connected live v0.1.9 remains unverified source SHA/digest; source v0.1.23 not installed.
+
+---
+
 ## 2026-10-16 — #669 source lane released; next owner trusted operator custody
 
 - PR #693 + PR #694 now SOURCE MERGED; all six sequential source-only children #689–#694 have CI-green code and no live release. No active ChatGPT source claim for these merged children. New agent must not duplicate their functionality or treat filenames/hash JSON/signature as serving proof.

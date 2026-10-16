@@ -8,3 +8,5 @@
 - Serving MCP remains 0.1.9 with null source/digest; source merge must never trigger a host update.
 
 - PR #693 created, candidate 0.1.15. Initial CI validation 38870971649 FAILED (Ruff RUF059 unused digest variable); fix 6bcf7c04..., Failure Museum RMCP-F-0034. Current exact-head CI must succeed before merge. Active runtime unchanged.
+
+- Source hardening: Ed25519 valid signature alone does not authorize arbitrary JSON; exact builder-manifest/v1 schema and duplicate-key rejection added, with negatives and Failure Museum RMCP-F-0035. Latest head after handover to be reconciled; do not confuse previous green CI with this changed code.

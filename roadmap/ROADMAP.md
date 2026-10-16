@@ -1,3 +1,11 @@
+## 2026-10-16 — Fleet diagnostic source tests land; next actual update admission
+
+- Runner-MCP #590 source read-only errors #706 (0.1.25) and #707 (0.1.26) MERGED, full exact-head CI+installer+attribution GREEN. Their actual MCP tool-response shapes are covered by merged tests-only #708, exact CI validation #38933713969 + attribution #38933714024 GREEN. These are diagnostic/original-client **synthetic MCP** tests, not independent active-server identity or release permission.
+- A6 #509 old unmerged #655 dangling-symlink bypass is restacked on current main as #709 v0.1.27; exact-head CI in progress. Once green and merged, close #655 superseded. Security failure RMCP-F-0026; do not duplicate A6 repairer.
+- Operational F30/Runner-Fabric #924 STILL BLOCKED: serving Runner-MCP 0.1.9, active build revision/wheel digest unavailable, self_update_ready=false; live Fabric read-only handshake succeeds but A6/probe absent and mutation_enabled=false. Cross-host attestation #669/AIfordable #428 plus A6 journal #942 / A7 physical ACK+revert #943 are true release gates. Preserve source/CI progress without remote unqualified update or independent rollback timer deployment; operator has deferred timer work until customer phase. Windows offline 1 TB target is not yet a qualified independent recovery copy.
+
+---
+
 ## 2026-10-16 — #664 legacy source tool-name retention test guard completed
 
 - Tests-only #702 freezes sampled 14 legacy callable signatures; #705 freezes all 95 existing v0.1.24 source-registered MCP tool names via AST, including optional registrations; both MERGED after exact-head CI green. #705 squash `67770dd641c342c561e7631fe20f39057d2a019a`, validation `38905411566`, attribution `38905411379` success.

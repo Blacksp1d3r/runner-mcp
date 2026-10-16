@@ -137,3 +137,28 @@ def test_rejects_manifest_claiming_non_python_module(tmp_path: Path):
     (package / "module.py").rename(package / "module.txt")
     receipt.write_text(json.dumps(record), encoding="utf-8")
     assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+
+@pytest.mark.parametrize("target", ["receipt", "wheel"])
+def test_rejects_symlinked_evidence_files(tmp_path: Path, target: str):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    selected = receipt if target == "receipt" else wheel
+    original = tmp_path / f"{target}-original"
+    selected.rename(original)
+    selected.symlink_to(original)
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+
+def test_rejects_hardlinked_receipt(tmp_path: Path):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    alias = tmp_path / "receipt-hardlink"
+    alias.hardlink_to(receipt)
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+
+def test_missing_manifest_module_fails_closed(tmp_path: Path):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    (package / "module.py").unlink()
+    result = offline_artifact_receipt_preflight(receipt, wheel, package)
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False

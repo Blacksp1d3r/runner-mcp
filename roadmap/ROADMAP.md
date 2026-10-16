@@ -1,3 +1,11 @@
+## 2026-10-16 — #681 functional Fabric snapshot error observability
+
+- #695 continuity-status bounded source change v0.1.17 merged (commit `804be37993da563cdd6ed45872e50573a22b2a48`) after exact CI success. Live original-client 0.1.9 has no new response until a separately authorized rollout.
+- New independent source-only child `roadmap/children/681-snapshot-unavailable/` candidate 0.1.18 returns a finite, safe unavailable response for Fabric operational snapshot failures instead of throwing generic internal MCP error; preserving successful snapshot schema and denied audit.
+- No additional preflight/network request, no retry on uncertain-effect transport, no secrets/host data, no process/tunnel/rollback changes. Parent #681 remains open for actual intermittent client stability; rollback timer deferred until customer phase.
+
+---
+
 ## 2026-10-16 — #681 continuity status expected failure returns bounded unavailability
 
 - Existing live first-party `fabric_continuity_status` errors on unavailable private continuity configuration, while runtime_doctor reports `fabric_continuity_status_configuration_unavailable`. Generic MCP tool error hides the *real first failed condition*.

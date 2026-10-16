@@ -102,7 +102,12 @@ from .fabric_agent_runtime import (
     restart_fabric_qualification_agent,
 )
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
-from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
+from .fabric_bridge import (
+    FabricBridgeClient,
+    FabricBridgeConfig,
+    FabricBridgeError,
+    bounded_snapshot_unavailable,
+)
 from .fabric_coding_availability import (
     FabricCodingAvailabilityQualificationError,
     FabricCodingAvailabilityQualificationRunner,
@@ -2379,12 +2384,12 @@ def build_mcp(
         return result
 
     def fabric_operational_snapshot() -> dict:
-        """Return bounded end-to-end operational state from Runner Fabric."""
+        """Return read-only Fabric state or explicit safe unavailable evidence."""
         try:
             result = _require_fabric_bridge().operational_snapshot()
         except FabricBridgeError as exc:
             _audit_fabric("fabric_operational_snapshot", "fabric:operational", "denied")
-            raise ValueError(str(exc)) from None
+            return bounded_snapshot_unavailable(str(exc))
         _audit_fabric("fabric_operational_snapshot", "fabric:operational", "ok")
         return result
 

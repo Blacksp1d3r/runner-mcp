@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 source-only chain complete, trusted serving attestation BLOCKED
+
+- Source children #689 (0.1.11 offline receipt), #690 (0.1.12 externally pinned builder manifest), #691 (0.1.13 generation layout), and #692 (0.1.14 offline evidence consistency) ALL MERGED with exact PR HEAD CI success.
+- Last source merge #692 `a7e3bb30d008d655ae5b8c5fdc15813303f84935`; current live MCP remains 0.1.9 with null installed/serving source/digest. Offline source completion does NOT close umbrella #669.
+- Operational dependencies next: (1) independently authorized builder SHA pin custody, (2) immutable/sealed installation receipt bound to exact wheel and loaded package, (3) actual process/import generation evidence, (4) independent A6/A7 rollback evidence and authenticated original-client ACK. These cannot be skipped, faked via self-update history, or inferred from module filenames/modes.
+- No privileged host mutation, secrets, tunnels or expensive worker dispatch from this source session. STOP at external trust-custody gate rather than creating a false positive active identity.
+
+---
+
 
 ## 2026-10-16 — #669 offline evidence chain, source candidate 0.1.14
 

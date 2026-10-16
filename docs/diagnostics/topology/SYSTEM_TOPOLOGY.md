@@ -1,4 +1,8 @@
 
+### 2026-10-16 — #669 offline evidence consistency chain source child (candidate 0.1.14)
+
+The source-only chain composes externally SHA-pinned builder manifest/wheel check, candidate receipt+installed Python module hashes, and generation directory structural identity. This catches inconsistent declared source/wheel identities and changed offline candidate bytes. It does NOT authenticate custody of the expected digest, seal files, prevent filesystem TOCTOU, prove the installed distribution is loaded, or issue active runtime attestation. Serving provenance remains false/null, and A6/A7 remain prerequisites for a live release.
+
 ### 2026-10-16 — #669 generation directory layout preflight, source candidate 0.1.13
 
 A versioned leaf name `generation-<source SHA40>-<wheel SHA256>` with an absolute, non-linked directory and owner-restricted permissions can be **structurally checked**. This does not make the contents immutable, authenticate builder origin, prove any wheel was installed, or bind a currently loaded process. Only `offline_layout_match` or `unverified` is returned; active source/artifact identity must remain null. No production switch or private host inspection. The next dependent child must validate module bytes, immutable storage/installer custody and process import/executable generation against trusted builder authority.

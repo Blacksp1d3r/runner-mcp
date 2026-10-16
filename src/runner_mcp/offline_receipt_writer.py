@@ -37,7 +37,11 @@ def write_offline_receipt_candidate(destination: Path, receipt: dict[str, object
     published = False
     try:
         # Never follow a redirected receipt directory or a cross-user writable parent.
-        if parent.is_symlink() or not parent.is_dir():
+        # Reject linked ancestors as well as a linked immediate parent: lstat()
+        # of the final directory alone cannot detect a redirected grandparent.
+        if any(ancestor.is_symlink() for ancestor in (parent, *parent.parents)):
+            return False
+        if not parent.is_dir():
             return False
         info = parent.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid():

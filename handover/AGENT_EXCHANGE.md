@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 source lane released; next owner trusted operator custody
+
+- PR #693 + PR #694 now SOURCE MERGED; all six sequential source-only children #689–#694 have CI-green code and no live release. No active ChatGPT source claim for these merged children. New agent must not duplicate their functionality or treat filenames/hash JSON/signature as serving proof.
+- Actual protected acceptance owner requires authorized external private signer/public pin enrolment, revocation policy, immutable install/attestation and original-client ACK with qualified A6/A7 independent rollback. No such positive evidence exists in this repo/connected runtime.
+- Main source version 0.1.16, connected server v0.1.9 with null active revision/digest; Fabric snapshot generic error noted under existing #681. No paid worker invocation or broad remote machine access was used.
+- Future source work needs a distinct independently scoped child with a real unmet acceptance criterion, not another untrusted-JSON proof stage. Umbrella #669 remains open.
+
+---
+
 ## 2026-10-16 — #669 signature child owner, source-only PR #693
 
 - ChatGPT owns `chatgpt/669-detached-signature-source-v0115`, [PR #693](https://github.com/Blacksp1d3r/runner-mcp/pull/693) only. Do not duplicate or conflate with merged #689–#692.

@@ -1,3 +1,12 @@
+## 2026-10-16 — #665 stable identity first child source merged, inventory collision child underway
+
+- [PR #699](https://github.com/Blacksp1d3r/runner-mcp/pull/699) v0.1.21 source MERGED `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08` from exact head `7d14aa23dddfd8557c20e12471a0e8041ff171a2`. CI validation `38897275967` Ruff/pytest/release/demo, clean Ubuntu `38897275912`, attribution `38897275777` all SUCCESS. RMCP-F-0038/0039 Failure Museum source-qualified.
+- Independent new child `chatgpt/665-tool-registry-collision-preflight-v0122` source 0.1.22: compare bounded expected/observed tool inventories for duplicate stable IDs/names, invalid schema/revision, mismatched inventory. No authenticated process inventory/registry enrollment, and READY is never dispatch authority.
+- Tests + TASK/STATE present. Exact HEAD PR/CI still needed; #665 remains OPEN for actual attestation, policy-bound dispatch and alerting; #664 customer legacy compatibility separately scoped.
+- Original connected MCP remains 0.1.9, with null source/artifact digest, no installation change. Rollback timer postponed until customer deployment. No host/tunnel/key/paid worker actions.
+
+---
+
 ## 2026-10-16 — #665 tool identity comparator source child started
 
 - Confirmed source main at `7e3fba64a28b4ecd10786c253a5111affa45fda4` (0.1.20, after merged FASTER-13 #698). No duplicate #383 baseline work.

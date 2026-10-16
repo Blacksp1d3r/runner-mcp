@@ -1,3 +1,11 @@
+## 2026-10-16 — #669 detached signer preflight source qualification, PR #693
+
+- Source-only 0.1.15 Ed25519 detached verifier on branch `chatgpt/669-detached-signature-source-v0115` requires a public key whose SHA256 is independently pinned. It also validates exact builder-manifest v1 schema and duplicate-key rejection; signature over arbitrary JSON is not an accepted builder proof (RMCP-F-0035).
+- Initial CI 38870971649 had a real Ruff RUF059 unused test variable; repaired and logged RMCP-F-0034. New exact-head CI must be fully green before source merge.
+- There is NO actual operator-trusted signer enrolment/revocation, root/issuer policy, immutable installer or serving-generation witness. Running connected MCP still 0.1.9 with null source/digest. No host/tunnel/credential actions.
+
+---
+
 
 ## 2026-10-16 — #669 detached Ed25519 builder proof source child
 

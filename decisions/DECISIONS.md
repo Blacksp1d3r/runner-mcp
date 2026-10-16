@@ -14,3 +14,12 @@ Canonical record of durable project-wide decisions. Keep entries concise and app
 - Package-install recovery is local operator-only and requires the emergency stop.
 - GitHub live state is authoritative when documentation lags.
 - Feature/code changes use branch -> PR -> review/tests; coordination docs may be updated directly on the agreed documentation surface.
+
+
+## 2026-10-16 — Operator prioritizes actual controlled fleet upgrade; freeze new version-development work
+
+Until the existing live Runner-MCP is actually upgraded with independently witnessed recovery, pause further source version increments, code PRs for updater enhancements, and alternative updater implementations. Read-only verification, exact evidence checks and canonical handover may continue. Topology is already known.
+
+Confirmed v0.1.9 -> v0.1.27 adds a required cryptography runtime dependency. Canonical no-deps self-update cannot satisfy a changed dependency contract: do not bypass policy or edit historical state. Use the normal attended dependency-resolving isolated-prefix installation path, preserve prior generation and demand actual original-client ACK plus independent rollback proof before switching the live control plane. Source CI/unapproved archive is not release authority. Operator is away: live install WAIT.
+
+This is an execution priority, not a permanent product version policy.

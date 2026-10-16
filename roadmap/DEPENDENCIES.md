@@ -1,3 +1,11 @@
+## 2026-10-16 — F30 source gate recovered; live first-node authority still not met
+
+Runner-MCP #590 bounded read-only guest/update preflight results #706/#707 MERGED + actual MCP tools/call transport integration tests #708 MERGED (no version bump for tests). Runner-MCP #509 A6 dangling intent-root symlink fail-closed #709 v0.1.27 SOURCE MERGED, old #655 superseded, RMCP-F-0026 indexed. All tested exact heads had successful validation/attribution; source code install/demo tests green. These remove observable client error and unsafe no-op source gaps, NOT live admission.
+
+`active host/process/wheel attestation #669 + AIfordable #428` -> `qualified A6 off-target real journal and original result #942` -> `independently recoverable A7 original-client ACK and offline restore #943` -> `one isolated first-node test canary` -> `reversible Fabric Fleet rollout #924 / Runner-MCP #341`. Operator deferred standalone rollback timers until customer phase; do not block independent pre-customer code tasks, but do not mutate the shared live control path while self_update_ready=false. Windows offline 1TB recovery disk remains unqualified as an actual backup.
+
+---
+
 ## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged
 
 [PR #651](https://github.com/Blacksp1d3r/runner-mcp/pull/651) MERGED squash `68093ab85bee293a8cc7616340d2893d5e4c24a0`, reviewed exact head `d588c72619fc277d8423b680f473c8d62e3c992a`. Commit attribution `38086367280` SUCCESS; full validation `38086367281` SUCCESS (Ruff, **2813 pytest**, built release artifact, clean demo). Fixed `LocalMCPClient._post` standard `urllib.request.urlopen` proxy/HTTP 30x bearer egress risk by using a fixed `ProxyHandler({})` + `_NoLocalMCPRedirects` opener through a single testable `_open_local_mcp_request` seam. Unit negatives cover hostile HTTP(S)/ALL_PROXY environment, redirects 301/302/303/307/308 to off-host and same-host destinations, single-call/no-redirect behavior, sensitive error redaction. Historical bridge tests now inject the bounded seam. Preserves #650 stale-session unknown-effect no-replay and exact build/schema requalification on subsequent separate explicit caller request.

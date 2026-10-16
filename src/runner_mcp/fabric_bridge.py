@@ -79,6 +79,9 @@ def bounded_host_inspection_unavailable(reason: object) -> dict[str, object]:
     invalid = {
         "Runner Fabric returned invalid host inspection",
         "Runner Fabric host inspection must be read-only",
+        "Runner Fabric host inspection is too large",
+        "Runner Fabric host inspection is invalid",
+        "Runner Fabric host inspection contains private detail",
     }
     category = (
         "invalid_inspection_payload"

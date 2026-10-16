@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 builder-manifest source child in progress (PR #690)
+
+- PR #689 source-only candidate receipt stage was merged to main at `4a7a03fb9f0785a5d8fe20e4a3ba2176b2ff508a`. Current main before next child was `f563cb49e2f3fa8db81f3239c1f118e0922ddc44`.
+- New dedicated #669 source child PR #690 on `chatgpt/669-pinned-builder-manifest-v0112` (candidate 0.1.12). Performs offline validation of a SHA-256 manifest pin obtained **externally under independent trust** and wheel bytes. It never marks an active process verified and is NOT an installer or signing authority.
+- The manifest comparator now hashes and parses exactly the same read bytes, fails closed on duplicate keys/deep nesting. RMCP-F-0031; tests and exact-head GitHub CI still need terminal reconciliation.
+- Connected server still 0.1.9, no trusted source SHA/digest. No approved immutable venv activation, A6/A7 journal/rollback or authenticated same-route ACK. Source changes do not qualify production rollout.
+
+---
+
 ## 2026-10-16 — #669 offline receipt source child merged; serving runtime NOT attested
 
 - Bounded child PR #689 merged via GitHub squash at `4a7a03fb9f0785a5d8fe20e4a3ba2176b2ff508a` from exact checked source head `b2f0b0138849195cc5eba94df4c8dcef80547148`. Validation 38860034267, independent clean Ubuntu 38860034274, attribution 38860034268 and 38860276351 all SUCCESS before merge. This is **0.1.11 SOURCE ONLY**, no published release/host activation.

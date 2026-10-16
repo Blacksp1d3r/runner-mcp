@@ -95,3 +95,19 @@ def test_rejects_symlink_package_root(tmp_path: Path):
     alias = tmp_path / "alias"
     alias.symlink_to(package, target_is_directory=True)
     assert offline_artifact_receipt_preflight(receipt, wheel, alias)["state"] == "unverified"
+
+
+def test_rejects_linked_subdirectory_even_when_manifest_matches(tmp_path: Path):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (outside / "hidden.py").write_bytes(b"unsafe")
+    (package / "linked").symlink_to(outside, target_is_directory=True)
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+
+def test_rejects_excessive_package_entries(tmp_path: Path):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    for index in range(8193):
+        (package / f"entry{index}").touch()
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"

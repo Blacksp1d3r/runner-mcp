@@ -1,3 +1,12 @@
+## 2026-10-16 — #665 tool identity comparator source child started
+
+- Confirmed source main at `7e3fba64a28b4ecd10786c253a5111affa45fda4` (0.1.20, after merged FASTER-13 #698). No duplicate #383 baseline work.
+- New source-only child `chatgpt/665-tool-identity-classifier-v0121`: pure tool contract comparison against supplied independently trusted registry/authenticated inventory flags. Typed mismatch reasons and synthetic negative tests, no dispatch/side effects. Version candidate 0.1.21. Exact-head CI and PR merge pending.
+- Critical trust caveat: boolean flags and namespace/ID/hash from a caller are NEVER a cryptographic trust anchor. Production identity still v0.1.9/null source/digest; no live alert or authenticated handshake.
+- Follow-on issue #665 requires independently authenticated serving inventory/host policy, alerts and distinct customer legacy contracts #664. Rollback timer deferred to customer phase; no host actions.
+
+---
+
 ## 2026-10-16 — functional source #681 and FASTER-13 #383 phase 1a landed
 
 - PR #697 on #681 host read failure no hidden extra Fabric preflight merged source-only 0.1.19 `1bbb46ce9061e7f453532e5000fb2a0995ee7140`, exact source head `fb37db2084946f618904318f7fcbf7dcea0d497d`; validation `38886451977`, clean Ubuntu `38886451953`, attribution `38886452030` all SUCCESS. Failure Museum RMCP-F-0036 COMPLETE_SOURCE_ONLY. PRs #695 and #696 preceding likewise merged. Parent #681 still OPEN for live client evidence.

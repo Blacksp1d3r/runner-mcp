@@ -101,3 +101,27 @@ def test_rejects_publicly_writable_manifest(tmp_path: Path):
 def test_no_trust_anchor_means_no_valid_identity(tmp_path: Path):
     manifest, wheel, _ = _inputs(tmp_path)
     assert pinned_builder_manifest_preflight(manifest, wheel, "")["state"] == "unverified"
+
+
+def test_duplicate_manifest_json_key_rejected(tmp_path: Path):
+    manifest, wheel, _ = _inputs(tmp_path)
+    raw = manifest.read_text(encoding="utf-8")
+    duplicate = '"source_revision": "' + ("c" * 40) + '", "source_revision":'
+    manifest.write_text(raw.replace('"source_revision":', duplicate), encoding="utf-8")
+    assert (
+        pinned_builder_manifest_preflight(manifest, wheel, _sha(manifest.read_bytes()))[
+            "state"
+        ]
+        == "unverified"
+    )
+
+
+def test_excessive_manifest_nesting_rejected(tmp_path: Path):
+    manifest, wheel, _ = _inputs(tmp_path)
+    manifest.write_text("[" * 1500 + "0" + "]" * 1500, encoding="utf-8")
+    assert (
+        pinned_builder_manifest_preflight(manifest, wheel, _sha(manifest.read_bytes()))[
+            "state"
+        ]
+        == "unverified"
+    )

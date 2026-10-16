@@ -1,14 +1,18 @@
-# A6 state-root symlink safety — handoff
+# A6 state-root symlink safety — final source-only handoff
 
-status: SOURCE_CANDIDATE_WAITING_CI
+status: COMPLETE_SOURCE_ONLY
 owner_issue: Runner-MCP #509
-related: Runner-Fabric #942 / Fleet #924
-historic_source_pr: #655 (to close as superseded only after new merge)
-branch: `chatgpt/509-a6-dangling-symlink-guard-restack-20261016`
-source_version: 0.1.27 CANDIDATE (not installed)
-base: current main v0.1.26; distinct from tests-only PR #708
-scope: inherited original #655 exact bounded A6 directory symlink guard and tests; four distribution metadata files
-runtime_mutation: none
-expected_ci: validation + clean Ubuntu installer + commit attribution for exact head
-remaining_live_gates: active v0.1.9 unverified, A6/probe absent, original-client ACK and independent host recovery unqualified
-next: inspect PR and CI, correct actual errors, merge if green; close old #655 with explicit supersession and update issue/handover.
+merged_pr: https://github.com/Blacksp1d3r/runner-mcp/pull/709
+merged_commit: 265dc1fc0866e35df07b05f6bcf3addee4f8dafa
+exact_tested_head: 6f75e21b78badea7d0345c1125070809a5a17f83
+source_version: 0.1.27 (not installed)
+validation_ci: 38934210559 SUCCESS (Ruff, pytest, built release artifact, demo)
+ubuntu_installer_ci: 38934210595 SUCCESS
+attribution_ci: 38934210533 SUCCESS
+historical_pr_655: CLOSED_UNMERGED_SUPERSEDED
+failure_museum: RMCP-F-0026 SOURCE_FIXED_LIVE_UNQUALIFIED
+production_changes_applied: false
+
+Accepted source patch: reject dangling journal/evidence symlink before Path.exists; refuse symlinked input A6 state-root and cyclic resolution failures with sanitized errors. Tests demonstrate no private configuration or process-environment writes on refusal. No new remote capability, no host update, no A6 binding provisioning executed here.
+
+True Fleet admission still blocked by live original-client Runner-MCP v0.1.9, source revision unavailable and self-update not ready; A6/probe unavailable; independent correct-host wheel attestation #669/AIfordable #428, and physical original-client ACK/rollback (Fabric #942/#943). Operator defers independent timer work until customer phase, but that does not authorize an unqualified live update.

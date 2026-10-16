@@ -1,3 +1,12 @@
+## 2026-10-16 — F30 priority override: ACTUAL installed upgrade, source version lane paused
+
+- No further release-version increases, update code PRs or new updater implementation until an actual qualified update of the existing live control path is achieved. Reuse already merged source v0.1.27 and existing installer; don't duplicate completed #706–#709.
+- FIRST proven source gate: original connected v0.1.9 lacks active build SHA/digest; self-update historical marker exists while active revision deliberately unavailable, so self_update_ready=false. Second independent gate: v0.1.9 -> v0.1.27 adds required cryptography runtime package; exact dependency contract differs, so docs/SELF_UPDATE_COMPATIBILITY.md mandates attended dependency-resolving bootstrap instead of no-deps self_update. Neither a forced marker edit nor a new release version solves this.
+- Host operator currently unavailable. Execute bounded read-only actual serving process/launcher evidence and baseline escrow when present, then one separate isolated exact-source package/bootstrap check, then independent recovery and real-client ACK before the single-node cutover. Fabric A6/probe is absent on active peer, mutation disabled; live control update remains WAIT, no false green. Target pin may be source merge `265dc1fc0866e35df07b05f6bcf3addee4f8dafa`, not an unapproved CI artifact.
+- Completion means same original authenticated client sees the new loaded build/tool catalogue, real result + ACK and independently recoverable prior service, not just a successful wheel build/CI merge or cron running. Keep Runner-MCP #341/#669 and Fabric #924/#942/#943 open; GitHub issue receipts authoritative.
+
+---
+
 ## 2026-10-16 — Fleet diagnostic source tests land; next actual update admission
 
 - Runner-MCP #590 source read-only errors #706 (0.1.25) and #707 (0.1.26) MERGED, full exact-head CI+installer+attribution GREEN. Their actual MCP tool-response shapes are covered by merged tests-only #708, exact CI validation #38933713969 + attribution #38933714024 GREEN. These are diagnostic/original-client **synthetic MCP** tests, not independent active-server identity or release permission.

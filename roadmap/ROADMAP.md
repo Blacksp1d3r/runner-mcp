@@ -1,3 +1,12 @@
+## 2026-10-16 — #333 opt-in expected connector tunnel diagnosis, source candidate v0.1.24
+
+- Following source-only #664 sampled legacy signature regression guard PR #702 MERGED tests-only (no version bump, current main source 0.1.23), new independent #333 child makes existing typed tunnel readiness evidence visible in actual `runtime_doctor` when operator explicitly marks tunnel expected.
+- `tunnel_expected=False` default changes no old tool response; opt-in read-only evidence provider returns only stable reason codes with warn when process missing, authentication/routability unknown or collector absent. No probe, secret read, process scan or start/restart.
+- Private host authorized evidence collector/reboot-safe launcher and same-original-client live proof remain separate. Rollbacktimer still deferred until customer phase.
+- Source candidate 0.1.24, exact-head CI required. Parent #333 stays OPEN.
+
+---
+
 ## 2026-10-16 — #664 sampled legacy MCP contract signature CI guard (tests-only)
 
 - A new independent test-only child `roadmap/children/664-legacy-callable-signature/` pins a grounded subset of present 0.1.23 MCP tool names, registrations, parameter/default and return annotations. On drift the actual source AST test fails CI. No shipping tool code/version change.

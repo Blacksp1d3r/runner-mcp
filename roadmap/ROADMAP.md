@@ -1,3 +1,11 @@
+## 2026-10-16 — #664 complete source-only MCP tool name retention guard
+
+- Follow-on to source merged #702 sampled existing callable signature guard: tests-only branch `chatgpt/664-complete-legacy-tool-name-inventory` freezes ALL 95 current server.py MCP source registration names in `tests/fixtures/source_tool_name_inventory_v0124.json` and guards loss/removal using AST scanner. New universal tools remain allowed; no runtime/API change or release bump.
+- This is **not** an attested enabled tools/list or historic released customer wheel schema snapshot; existing optional tools may still be disabled by configuration. Parent #664 remains open for actual v0.1.9 and N/N-1 client contract semantic validation and commercial support policy.
+- Exact HEAD CI and tests-only source merge required; no host, tunnel, customer key, cron, service or deferred rollback timer mutation.
+
+---
+
 ## 2026-10-16 — #333 opt-in expected connector tunnel diagnosis, source candidate v0.1.24
 
 - Following source-only #664 sampled legacy signature regression guard PR #702 MERGED tests-only (no version bump, current main source 0.1.23), new independent #333 child makes existing typed tunnel readiness evidence visible in actual `runtime_doctor` when operator explicitly marks tunnel expected.

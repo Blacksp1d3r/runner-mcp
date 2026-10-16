@@ -1,3 +1,19 @@
+## 2026-10-16 — #669 detached signer preflight source qualification, PR #693
+
+- Source-only 0.1.15 Ed25519 detached verifier on branch `chatgpt/669-detached-signature-source-v0115` requires a public key whose SHA256 is independently pinned. It also validates exact builder-manifest v1 schema and duplicate-key rejection; signature over arbitrary JSON is not an accepted builder proof (RMCP-F-0035).
+- Initial CI 38870971649 had a real Ruff RUF059 unused test variable; repaired and logged RMCP-F-0034. New exact-head CI must be fully green before source merge.
+- There is NO actual operator-trusted signer enrolment/revocation, root/issuer policy, immutable installer or serving-generation witness. Running connected MCP still 0.1.9 with null source/digest. No host/tunnel/credential actions.
+
+---
+
+
+## 2026-10-16 — #669 detached Ed25519 builder proof source child
+
+- Main at start: `ce1a4846ce28a13569baf45a3f7fe4abd77a0c0f`, source-only 0.1.14. All previous source children #689–#692 merged, tested and marked source-only complete.
+- New source-only candidate v0.1.15 on `chatgpt/669-detached-signature-source-v0115` checks Ed25519 detached raw manifest signature against a public key fingerprint supplied independently. No operator key is enrolled, no trusted signer exists, no runtime process is attested by this code.
+- `cryptography` declared explicitly. Exact-head CI and PR merge pending, no production activation. Original client still 0.1.9, null source/digest. Next real #669 operational gate is trusted key custody, key revocation/freshness, immutable installation, serving process proof, rollback and original client ACK.
+
+---
 ## 2026-10-16 — #669 offline source children #689/#690/#691/#692 merged; live 0.1.9 remains UNATTESTED
 
 - Offline source versions 0.1.11 through **0.1.14** integrated as bounded sequential children; latest source squash is PR #692 `a7e3bb30d008d655ae5b8c5fdc15813303f84935`, accepted from exact tested head `8e77d9796744a19c7ebcd6a2dfa759ed7248a3f5`. GitHub validation `38864199810`, clean Ubuntu `38864199752`, attribution `38864199758` all SUCCESS before merge.

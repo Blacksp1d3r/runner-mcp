@@ -1,4 +1,8 @@
 
+### 2026-10-16 — #669 offline detached-signature child, v0.1.15 candidate
+
+`detached_builder_signature_preflight` checks a detached Ed25519 signature over exact raw manifest bytes with a 32-byte public key whose SHA-256 fingerprint must arrive via an independently protected operator channel. It does NOT enroll or trust a key from the manifest, and does not inspect any running process. Key-authority custody, revocation/freshness, immutable release/installed module evidence, A6/A7 rollback and original-client ACK are independent future gates. A caller supplying both their own key and fingerprint creates no meaningful authentication. The source return remains offline_signature_match/unverified and always active_build_provenance_verified=false, with null active revision/digest.
+
 ### 2026-10-16 — #669 offline evidence consistency chain source child (candidate 0.1.14)
 
 The source-only chain composes externally SHA-pinned builder manifest/wheel check, candidate receipt+installed Python module hashes, and generation directory structural identity. This catches inconsistent declared source/wheel identities and changed offline candidate bytes. It does NOT authenticate custody of the expected digest, seal files, prevent filesystem TOCTOU, prove the installed distribution is loaded, or issue active runtime attestation. Serving provenance remains false/null, and A6/A7 remain prerequisites for a live release.

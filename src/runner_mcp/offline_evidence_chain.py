@@ -72,6 +72,17 @@ def offline_evidence_chain_preflight(
         layout = offline_generation_layout_preflight(generation, revision, wheel_sha)
         if layout["state"] != "offline_layout_match":
             return unverified
+        # An independently valid package tree outside this release generation
+        # is not evidence of the generation's installed bytes.
+        if installed_package == generation:
+            return unverified
+        if not installed_package.is_relative_to(generation):
+            return unverified
+        current = installed_package
+        while current != generation:
+            if current.is_symlink():
+                return unverified
+            current = current.parent
         # Revalidate the exact pin at the end; a filesystem can still mutate
         # after this read and therefore active identity must remain unknown.
         if hashlib.sha256(manifest.read_bytes()).hexdigest() != independently_pinned_manifest_sha256:

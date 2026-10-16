@@ -1,3 +1,12 @@
+## 2026-10-16 — #681 continuity status expected failure returns bounded unavailability
+
+- Existing live first-party `fabric_continuity_status` errors on unavailable private continuity configuration, while runtime_doctor reports `fabric_continuity_status_configuration_unavailable`. Generic MCP tool error hides the *real first failed condition*.
+- New bounded source-only child `roadmap/children/681-continuity-unavailable`, 0.1.17 candidate, leaves the existing read-only launcher/status validation and audit unchanged on success. Expected `FabricContinuityStatusError` returns nonsecret deny-by-default `runner-mcp/fabric-continuity-unavailable/v1`, no external submission/work/mutation.
+- Strict reason allowlist, no exception text/endpoint/secret disclosure, no fallback/retry and no host change. Exact-head CI required; live 0.1.9 will not gain this behavior before a separate qualified update. Operator postpones rollback timer until customer phase.
+- Parent #681 intermittent host/snapshot instability remains independently open; this addresses specifically continuity-status observability, not the whole bridge.
+
+---
+
 ## 2026-10-16 — #669 signature+candidate source chain complete, operational trust authority next
 
 - Source-only PR #693 (0.1.15, Ed25519 detached signed canonical builder schema) and #694 (0.1.16, compose signed proof with manifest/wheel/installed-module/receipt/generation consistency) MERGED after exact-head attribution, full validation and independent Ubuntu CI PASS. Latest source squash #694 `ee019e491c53d1d2b239cc07faa15b9f4fcaed51`. Subchildren STATE marked COMPLETE_SOURCE_ONLY.

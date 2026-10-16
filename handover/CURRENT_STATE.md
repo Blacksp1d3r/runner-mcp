@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 offline receipt source child merged; serving runtime NOT attested
+
+- Bounded child PR #689 merged via GitHub squash at `4a7a03fb9f0785a5d8fe20e4a3ba2176b2ff508a` from exact checked source head `b2f0b0138849195cc5eba94df4c8dcef80547148`. Validation 38860034267, independent clean Ubuntu 38860034274, attribution 38860034268 and 38860276351 all SUCCESS before merge. This is **0.1.11 SOURCE ONLY**, no published release/host activation.
+- Child `roadmap/children/669-artifact-receipt/STATE.md` is now COMPLETE_SOURCE_ONLY. New file candidates compare offline wheel/module hashes and atomically create PRIVATE candidate receipt; they are NOT a trusted independent build-witness and never expose active provenance as verified.
+- Original connected MCP still reports version 0.1.9 with null live source/digest; Fabric A6/A7 and independent serving-generation receipt remain unqualified. Do not equate main merge or 0.1.11 version declaration to an active upgrade.
+- RMCP-F-0029 and RMCP-F-0030 record the path/competition defense and actual Ruff import-sort failure/fix. #669 remains open. Next qualified lane: independent trust-root/builder manifest, immutable environment and actual serving process witness, then safe release/rollback/ACK. Post-merge `main` CI must be separately reconciled.
+
+---
+
 ## 2026-10-16 — #669 offline receipts, 0.1.11 source-only DRAFT PR #689
 
 - Operator-approved source lane is `chatgpt/669-offline-artifact-receipt-preflight`, PR #689; `main` remains 0.1.10 (`ff165118...`); connected serving runtime last verified 0.1.9. No host/keys/tunnel mutation.

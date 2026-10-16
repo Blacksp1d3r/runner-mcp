@@ -178,3 +178,11 @@ def test_rejects_symlink_in_grandparent_of_receipt_directory(tmp_path: Path):
     target = alias / "child" / "receipt.json"
     assert write_offline_receipt_candidate(target, {"candidate": True}) is False
     assert not (child / "receipt.json").exists()
+
+
+def test_rejects_relative_receipt_path(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
+    folder = tmp_path / "receipts"
+    folder.mkdir(mode=0o700)
+    monkeypatch.chdir(folder)
+    assert write_offline_receipt_candidate(Path("receipt.json"), {"ok": True}) is False
+    assert not (folder / "receipt.json").exists()

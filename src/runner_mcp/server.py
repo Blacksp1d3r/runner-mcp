@@ -2042,7 +2042,7 @@ def build_mcp(
                 "ci-runner:aifordable-lab-ci",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_ci_guest_status_unavailable(str(exc))
         _audit_fabric(
             "fabric_ci_runner_guest_status",
             "ci-runner:aifordable-lab-ci",

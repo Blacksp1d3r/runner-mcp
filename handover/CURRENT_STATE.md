@@ -1,3 +1,11 @@
+## 2026-10-16 — #333 opt-in tunnel doctor source merged; #664 full tool-name guard CI
+
+- [PR #703](https://github.com/Blacksp1d3r/runner-mcp/pull/703) source 0.1.24 merged `d3929bbcdcf0d7fd547740ed80a2e4195b89dd36` from exact CI-green head `dbb1143f7f9eff82bf676b9eaa94929f1ff2766c`; validation `38903795857`, independent Ubuntu `38903796065`, attribution `38903795921` SUCCESS. `runtime_doctor` can now receive an EXPLICIT opt-in expected-tunnel flag and separately authorized read-only typed evidence provider, reporting only fixed sanitized reason codes; legacy default unchanged. No private sensor/wrapper/health probe/tunnel secret or actual live installation. Child STATE COMPLETE_SOURCE_ONLY, #333 OPEN.
+- #664 historical compatibility guard PR #702 source tests-only merged `aa1a80656a04c3b1d278228e20ea129988e622d0` and followed by separate draft tests-only PR #704 [full 95-name current source inventory](https://github.com/Blacksp1d3r/runner-mcp/pull/704), source 0.1.24 without bump. Latest source head `3dcfd21c907abd2e58b272f6987267fd000b199b`, validation `38904723679` Ruff/pytest and release artifact passed but five-minute demo still running, attribution `38904723800` successful; DO NOT MERGE until exact-head full validation green. These are current SOURCE AST contract/name baselines, not released historic wheel v0.1.9 or actual per-host tools/list output.
+- Parent #664 still OPEN for full historical released wheel schemas, output/permission semantics, legacy client compatibility and operator LTS support decision. Rollback timer deferred to customers; live source 0.1.9 with null active SHA/digest unchanged. No host/credentials/tunnel changes.
+
+---
+
 ## 2026-10-16 — #333 actual runtime_doctor tunnel evidence opt-in source child
 
 - #664 tests-only PR #702 v0.1.23 sampled callable signature guard source merged `aa1a80656a04c3b1d278228e20ea129988e622d0`, final exact head `92d0e9ce8a423f87b61fb579d4545429c1288f59`, CI validation rerun 38902202349 SUCCESS including Ruff/pytest/demo/artifact and attribution 38902202402 SUCCESS. RMCP-F-0040 AST mutation fixed; unrelated fair-scheduler flaky assertion occurred once then passed rerun (RMCP-F-0041). Historic released wheel v0.1.9 is not proven compatible by source AST fixture.

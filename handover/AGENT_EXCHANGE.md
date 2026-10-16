@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 pinned builder-manifest child claim
+
+- ChatGPT owns source-only PR #690, branch `chatgpt/669-pinned-builder-manifest-v0112`; no overlap with merged #689.
+- External trusted digest is a required INPUT, not something the comparator can create or authenticate. No private signing key or runtime update requested.
+- RMCP-F-0031 records hash/read TOCTOU and duplicate-key hazard addressed by reading one bounded byte snapshot and rejecting duplicate keys. Exact-head CI is pending for latest source.
+- Follow-up trusted builder authority/immutable installer/active generation remains BLOCKED until independent custody is established. Existing live version 0.1.9, null active revision/digest; A6/A7 still separate.
+
+---
+
 ## 2026-10-16 — #669 claim: ChatGPT source child PR #689
 
 - Current claim: only offline receipt preflight and candidate writer, branch `chatgpt/669-offline-artifact-receipt-preflight`; coordinate with source owners before modifying runtime/build identity.

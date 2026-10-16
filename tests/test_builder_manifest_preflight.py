@@ -42,13 +42,19 @@ def test_rejects_modified_manifest_even_when_declared_wheel_is_correct(tmp_path:
     payload = json.loads(manifest.read_text(encoding="utf-8"))
     payload["source_revision"] = "c" * 40
     manifest.write_text(json.dumps(payload), encoding="utf-8")
-    assert pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"] == "unverified"
+    assert (
+        pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"]
+        == "unverified"
+    )
 
 
 def test_rejects_modified_wheel_even_when_manifest_pin_is_valid(tmp_path: Path):
     manifest, wheel, trusted_digest = _inputs(tmp_path)
     wheel.write_bytes(b"new wheel same version")
-    assert pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"] == "unverified"
+    assert (
+        pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"]
+        == "unverified"
+    )
 
 
 @pytest.mark.parametrize(
@@ -77,13 +83,19 @@ def test_symlink_artifacts_are_fail_closed(tmp_path: Path, name: str):
     renamed = tmp_path / "original"
     victim.rename(renamed)
     victim.symlink_to(renamed)
-    assert pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"] == "unverified"
+    assert (
+        pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"]
+        == "unverified"
+    )
 
 
 def test_rejects_publicly_writable_manifest(tmp_path: Path):
     manifest, wheel, trusted_digest = _inputs(tmp_path)
     manifest.chmod(0o666)
-    assert pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"] == "unverified"
+    assert (
+        pinned_builder_manifest_preflight(manifest, wheel, trusted_digest)["state"]
+        == "unverified"
+    )
 
 
 def test_no_trust_anchor_means_no_valid_identity(tmp_path: Path):

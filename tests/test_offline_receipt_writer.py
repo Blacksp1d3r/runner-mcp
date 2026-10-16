@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+from concurrent.futures import ThreadPoolExecutor
 import json
 import os
 from pathlib import Path
@@ -141,3 +142,27 @@ def test_competing_publication_does_not_overwrite_existing_receipt(
     assert write_offline_receipt_candidate(destination, {"ours": True}) is False
     assert json.loads(destination.read_text(encoding="utf-8")) == {"competitor": True}
     assert sorted(path.name for path in folder.iterdir()) == ["receipt.json"]
+
+
+def test_two_concurrent_writers_cannot_both_publish(tmp_path: Path):
+    folder = tmp_path / "receipts"
+    folder.mkdir(mode=0o700)
+    destination = folder / "receipt.json"
+
+    def attempt(index: int) -> bool:
+        return write_offline_receipt_candidate(destination, {"writer": index})
+
+    with ThreadPoolExecutor(max_workers=2) as executor:
+        results = list(executor.map(attempt, (1, 2)))
+
+    assert sorted(results) == [False, True]
+    assert json.loads(destination.read_text(encoding="utf-8"))["writer"] in (1, 2)
+    assert sorted(p.name for p in folder.iterdir()) == ["receipt.json"]
+
+
+def test_file_name_cannot_escape_parent(tmp_path: Path):
+    folder = tmp_path / "receipts"
+    folder.mkdir(mode=0o700)
+    destination = folder / "../escaped.json"
+    assert not write_offline_receipt_candidate(destination, {"untrusted": True})
+    assert not (tmp_path / "escaped.json").exists()

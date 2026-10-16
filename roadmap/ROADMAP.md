@@ -1,3 +1,11 @@
+## 2026-10-16 — #681 host inspection failure without implicit network preflight
+
+- Two functional source fixes merged: #695 continuity unavailable (0.1.17) and #696 operational snapshot unavailable (0.1.18) with exact-head CI success. Live original MCP still 0.1.9 until separate update.
+- New bounded child `roadmap/children/681-host-inspect-no-followup/`, source candidate 0.1.19, avoids automatic extra Fabric preflight RPC after a failed read-only host inspection. The independently invocable explicit preflight remains unchanged.
+- Host inspection failure returns limited `runner-mcp/fabric-host-inspection-error/v1` state unavailable, with only fixed reason category and mutation_enabled false. No retry, new probe, remote host mutation, sensitive exception text or client authorization bypass. Parent #681 intermittent peer issue stays open. Rollback timer intentionally postponed until customer rollout.
+
+---
+
 ## 2026-10-16 — #681 functional Fabric snapshot error observability
 
 - #695 continuity-status bounded source change v0.1.17 merged (commit `804be37993da563cdd6ed45872e50573a22b2a48`) after exact CI success. Live original-client 0.1.9 has no new response until a separately authorized rollout.

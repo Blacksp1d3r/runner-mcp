@@ -1,3 +1,11 @@
+## 2026-10-16 — full source-registered MCP tool names under CI regression, #664 child
+
+- After #702 sampled current 0.1.23 signatures source merged and #703 bounded runtime_doctor tunnel diagnostics v0.1.24 source merged, a distinct #664 tests-only child branch `chatgpt/664-complete-legacy-tool-name-inventory` freezes 95 currently source-registered tool names (decorated and explicitly conditional) and guards their removal via AST, allowing additions.
+- Baseline anchored at source main `53455720232ddf4de4e7d934bccb112fcb16e6df`, no version bump from v0.1.24. This is source list only and not live enabled tools/list, production policy, authenticated client, or actual historic wheel compatibility proof. PR/CI pending.
+- Rollback timer deferred until customers, private host inactive operations untouched.
+
+---
+
 ## 2026-10-16 — #333 actual runtime_doctor tunnel evidence opt-in source child
 
 - #664 tests-only PR #702 v0.1.23 sampled callable signature guard source merged `aa1a80656a04c3b1d278228e20ea129988e622d0`, final exact head `92d0e9ce8a423f87b61fb579d4545429c1288f59`, CI validation rerun 38902202349 SUCCESS including Ruff/pytest/demo/artifact and attribution 38902202402 SUCCESS. RMCP-F-0040 AST mutation fixed; unrelated fair-scheduler flaky assertion occurred once then passed rerun (RMCP-F-0041). Historic released wheel v0.1.9 is not proven compatible by source AST fixture.

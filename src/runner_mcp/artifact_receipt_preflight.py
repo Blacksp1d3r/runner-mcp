@@ -33,7 +33,7 @@ def _safe_regular(path: Path) -> bool:
     except OSError:
         return False
     return stat.S_ISREG(info.st_mode) and info.st_nlink == 1 and not (
-        info.st_mode & stat.S_IWOTH
+        info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
     )
 
 

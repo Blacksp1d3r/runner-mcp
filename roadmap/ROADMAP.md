@@ -1,4 +1,12 @@
 
+## 2026-10-16 — #669 offline evidence chain, source candidate 0.1.14
+
+- #689, #690, #691 all source merged. The prior versioned generation layout is structural only and does not attest immutable installed bytes.
+- New bounded child on `chatgpt/669-offline-evidence-chain-v0114` composes offline evidence and ensures the declared builder source revision and wheel digest match the receipt and generation leaf. Self-controlled pins never establish independent trust; active runtime always unverified.
+- Dependencies after this source child: independently trusted pin custody, immutable installer evidence, actual loaded process generation and original-client acknowledgement, authorized A6/A7 rollback. No host changes.
+
+---
+
 ## 2026-10-16 — #669 versioned generation layout guard, source-only PR #691
 
 - Offline preflight PR #689 merged 0.1.11; externally pinned builder-manifest PR #690 merged 0.1.12, neither proves installed/serving provenance.

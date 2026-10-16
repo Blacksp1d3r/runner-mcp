@@ -1,4 +1,12 @@
 
+## 2026-10-16 — #669 offline evidence consistency chain, source-only
+
+- PR #691 offline versioned generation layout source merged at `c1407cc59be940451d4024b680ffa2c257ed1518` from exact-head `06437f5b91e2ce00108630a91bdb821e408963ad`, GitHub validation/Ubuntu/attribution all SUCCESS. The original connected server remains 0.1.9 with null active digest/revision.
+- New distinct child branch `chatgpt/669-offline-evidence-chain-v0114` candidate 0.1.14 composes manifest, wheel, receipt/modules and generation layout as **offline checks only**. No independent trust root, signed receipt or active serving process proof; no production mutation.
+- Source child needs exact-head CI, PR and handover. Umbrella #669 OPEN for trusted pin custody, installer/immutable generation and original-client ACK/A6/A7.
+
+---
+
 ## 2026-10-16 — #669 source progress through generation layout PR #691
 
 - Source-only PR #690 offline pinned builder-manifest preflight merged into main at `215218cd06786838ca3e7ea86ae770b07eec4a84` after exact-head CI success (validation 38861301736, Ubuntu 38861301729, attribution 38861301743). No trusted signer or active runtime claim.

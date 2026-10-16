@@ -162,3 +162,13 @@ def test_missing_manifest_module_fails_closed(tmp_path: Path):
     result = offline_artifact_receipt_preflight(receipt, wheel, package)
     assert result["state"] == "unverified"
     assert result["active_build_provenance_verified"] is False
+
+
+@pytest.mark.parametrize("target", ["wheel", "module"])
+def test_group_writable_artifact_is_unverified(tmp_path: Path, target: str):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    selected = wheel if target == "wheel" else package / "module.py"
+    selected.chmod(0o664)
+    result = offline_artifact_receipt_preflight(receipt, wheel, package)
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False

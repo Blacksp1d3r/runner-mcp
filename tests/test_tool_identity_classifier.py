@@ -8,13 +8,13 @@ from runner_mcp.tool_identity_classifier import (
     classify_tool_contract,
 )
 
-KEY = dict(
-    namespace="com.aifordable.runner-mcp",
-    registry_trusted=True,
-    observed_authenticated=True,
-    runtime_reachable=True,
-    inventory_fresh=True,
-)
+KEY = {
+    "namespace": "com.aifordable.runner-mcp",
+    "registry_trusted": True,
+    "observed_authenticated": True,
+    "runtime_reachable": True,
+    "inventory_fresh": True,
+}
 
 
 def _contract(**changes: object) -> ToolContract:

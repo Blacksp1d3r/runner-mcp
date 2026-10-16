@@ -107,3 +107,37 @@ def test_directory_fsync_failure_after_publish_requires_reconciliation(
         "source": "untrusted"
     }
     assert not list(folder.glob("*.tmp"))
+
+
+def test_file_fsync_failure_before_publish_has_no_destination(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    folder = tmp_path / "receipts"
+    folder.mkdir(mode=0o700)
+    destination = folder / "receipt.json"
+
+    def fail_fsync(fd: int) -> None:
+        raise OSError("synthetic file sync failure")
+
+    monkeypatch.setattr(os, "fsync", fail_fsync)
+    assert write_offline_receipt_candidate(destination, {"candidate": True}) is False
+    assert not destination.exists()
+    assert list(folder.iterdir()) == []
+
+
+def test_competing_publication_does_not_overwrite_existing_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    folder = tmp_path / "receipts"
+    folder.mkdir(mode=0o700)
+    destination = folder / "receipt.json"
+    real_link = os.link
+
+    def competing_link(src: Path, dst: Path, *, follow_symlinks: bool = True) -> None:
+        dst.write_text('{"competitor":true}', encoding="utf-8")
+        real_link(src, dst, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(os, "link", competing_link)
+    assert write_offline_receipt_candidate(destination, {"ours": True}) is False
+    assert json.loads(destination.read_text(encoding="utf-8")) == {"competitor": True}
+    assert sorted(path.name for path in folder.iterdir()) == ["receipt.json"]

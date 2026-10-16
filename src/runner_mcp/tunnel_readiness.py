@@ -135,7 +135,7 @@ def bounded_doctor_tunnel_check(
         if not isinstance(evidence, TunnelReadinessEvidence):
             return ("warn", "evidence_unavailable")
         result = classify_tunnel_readiness(evidence)
-    except (TypeError, ValueError, OSError):
+    except (TypeError, ValueError, OSError, RuntimeError, KeyError, AttributeError):
         return ("warn", "evidence_unavailable")
     if result.state is TunnelReadinessState.ROUTABLE:
         return ("pass", "routable")

@@ -106,6 +106,7 @@ from .fabric_bridge import (
     FabricBridgeClient,
     FabricBridgeConfig,
     FabricBridgeError,
+    bounded_ci_guest_status_unavailable,
     bounded_host_inspection_unavailable,
     bounded_snapshot_unavailable,
 )
@@ -2041,7 +2042,7 @@ def build_mcp(
                 "ci-runner:aifordable-lab-ci",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_ci_guest_status_unavailable(str(exc))
         _audit_fabric(
             "fabric_ci_runner_guest_status",
             "ci-runner:aifordable-lab-ci",

@@ -122,6 +122,33 @@ def bounded_snapshot_unavailable(reason: object) -> dict[str, object]:
     }
 
 
+def bounded_ci_guest_status_unavailable(reason: object) -> dict[str, object]:
+    """Represent a failed optional CI guest READ without guessing guest state.
+
+    Never expose transport errors, private configuration or actual host names.
+    A failed read cannot justify enrollment, activation or an automatic retry.
+    """
+    invalid = {
+        "Runner Fabric returned invalid CI guest result",
+        "Runner Fabric CI guest result contains private detail",
+        "Runner Fabric CI guest result is too large",
+    }
+    code = (
+        "ci_guest_status_invalid_payload"
+        if type(reason) is str and reason in invalid
+        else "ci_guest_status_unavailable"
+    )
+    return {
+        "schema_version": "runner-mcp/fabric-ci-guest-status-error/v1",
+        "state": "unavailable",
+        "reason_code": code,
+        "guest_registered": None,
+        "guest_running": None,
+        "mutation_enabled": False,
+        "execution_enabled": False,
+    }
+
+
 @dataclass(frozen=True, slots=True)
 class FabricBridgeConfig:
     endpoint: str

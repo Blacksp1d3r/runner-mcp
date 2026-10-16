@@ -1,3 +1,12 @@
+## 2026-10-16 — #665 stable tool identity source-only comparator, v0.1.21
+
+- FASTER-13 #383 phase 1a source 0.1.20 merged, real loopback RTT remains separate authorized measurement.
+- New bounded child `roadmap/children/665-tool-identity-classifier/` classifies trusted expected-vs-authenticated observed tool contract records before any dispatch; typed reasons for unknown/disabled/version/schema/stale/transport/untrusted identity. Stable namespace `com.aifordable.runner-mcp` and stable ID are metadata only, NOT authentication.
+- No MCP catalogue/dispatcher, tool permissions, source lineage, host, network or alert delivery modified. READY is comparison-only and never authorizes a call. Future parent #665 work still requires independently witnessed active serving build/registry/freshness/caller+tenant policy and rate-limited alerts. Legacy #664 remains separate.
+- Source candidate 0.1.21, exact-head CI required. No production update, rollback timer remains deferred.
+
+---
+
 ## 2026-10-16 — FASTER-13 #383 reproducible local JSON baseline, source-only
 
 - #681 functional source PRs #695/#696/#697 all merged, exact-head CI green; #697 squash `1bbb46ce9061e7f453532e5000fb2a0995ee7140`, Failure Museum RMCP-F-0036 complete. Connected live MCP 0.1.9 remains unchanged, and peer intermittent #681 remains open.

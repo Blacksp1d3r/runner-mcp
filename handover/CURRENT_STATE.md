@@ -1,3 +1,13 @@
+## 2026-10-16 — #669 offline source children #689/#690/#691/#692 merged; live 0.1.9 remains UNATTESTED
+
+- Offline source versions 0.1.11 through **0.1.14** integrated as bounded sequential children; latest source squash is PR #692 `a7e3bb30d008d655ae5b8c5fdc15813303f84935`, accepted from exact tested head `8e77d9796744a19c7ebcd6a2dfa759ed7248a3f5`. GitHub validation `38864199810`, clean Ubuntu `38864199752`, attribution `38864199758` all SUCCESS before merge.
+- Candidate-only chain verifies external digest-pinned builder manifest, wheel, private receipt/Python module bytes, source/wheel identity consistency and generation directory structural containment. Fixed disconnected or symlinked/group-writable package evidence (RMCP-F-0032) and group-writable wheel/module candidate evidence (RMCP-F-0033). Child TASK/STATE files updated to `COMPLETE_SOURCE_ONLY`.
+- **The installed/serving runner is still 0.1.9**, confirmed by original connector build_identity with `source_revision=null` and `artifact_digest=null`. This is correct fail-closed behavior, not evidence of a production upgrade. No private host/role/tunnel/key/deploy action performed.
+- Next #669 phase is genuinely gated: independently protected builder manifest hash trust custody, installed generation sealing or equivalent protected install evidence, actually loaded executable/module lineage, A6/A7 independent rollback custody, and authenticated original-client ACK. A mutable local JSON receipt or a caller-selected hash must NEVER be promoted to active provenance. Operator/qualified private host authority is a prerequisite before any live mutation.
+- Post-merge `main` CI beyond exact tested PR head remains separately unverified; check in next session without mistaking absent PR workflow on main for source test failure. Umbrella #669 stays OPEN.
+
+---
+
 
 ## 2026-10-16 — #669 offline evidence consistency chain, source-only
 

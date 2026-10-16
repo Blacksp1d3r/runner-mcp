@@ -111,6 +111,7 @@ from .fabric_coding_availability import (
 from .fabric_continuity_status import (
     FabricContinuityStatusError,
     FabricContinuityStatusRunner,
+    bounded_continuity_unavailable,
 )
 from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
@@ -1475,10 +1476,11 @@ def build_mcp(
 
     @mcp.tool()
     def fabric_continuity_status() -> dict:
-        """Return fixed read-only Runner Fabric continuity evidence."""
+        """Return bounded continuity evidence or sanitized fail-closed unavailability."""
         try:
             result = fabric_continuity_status_runner.status()
-        except FabricContinuityStatusError:
+        except FabricContinuityStatusError as exc:
+            unavailable = bounded_continuity_unavailable(str(exc))
             audit.append(
                 AuditEvent(
                     current_request_id(),
@@ -1489,9 +1491,7 @@ def build_mcp(
                     utc_timestamp(),
                 )
             )
-            raise ValueError(
-                "Fabric continuity status is unavailable"
-            ) from None
+            return unavailable
         audit.append(
             AuditEvent(
                 current_request_id(),

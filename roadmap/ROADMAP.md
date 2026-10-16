@@ -1,3 +1,12 @@
+## 2026-10-16 — #665 inventory collisions, source candidate 0.1.22
+
+- PR #699 v0.1.21 pure tool identity contract comparator MERGED `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08` after full exact-head CI GREEN. RMCP-F-0038 test lint and RMCP-F-0039 nonbool trust flags fixed and marked COMPLETE_SOURCE_ONLY.
+- New bounded child `roadmap/children/665-tool-inventory-collisions/`: source-only structural per-inventory stable ID/name collision detection and bounded expected-vs-witness contract list matching, with synthetic negative tests.
+- This is NOT authenticated actual-serving inventory or tool dispatch/permission enforcement. Separate root registry/provenance policy and caller+host fencing remain gates. Legacy compatibility #664 and operational source v0.1.9 unaffected.
+- Candidate 0.1.22. Exact-head CI required. No privileged host, credentials, tunnels or delayed rollback timer work.
+
+---
+
 ## 2026-10-16 — #665 stable tool identity source-only comparator, v0.1.21
 
 - FASTER-13 #383 phase 1a source 0.1.20 merged, real loopback RTT remains separate authorized measurement.

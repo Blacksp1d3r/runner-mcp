@@ -62,7 +62,11 @@ def offline_artifact_receipt_preflight(
     if not _safe_regular(receipt) or not _safe_regular(wheel):
         return unavailable
     try:
-        if receipt.stat().st_size > _LIMIT or not installed_package.is_dir():
+        # A private receipt is necessary, but never sufficient, as an attestation.
+        receipt_info = receipt.lstat()
+        if receipt_info.st_uid != os.geteuid() or receipt_info.st_mode & 0o077:
+            return unavailable
+        if receipt_info.st_size > _LIMIT or not installed_package.is_dir():
             return unavailable
         raw = json.loads(receipt.read_text(encoding="utf-8"))
         if not isinstance(raw, dict) or set(raw) != {

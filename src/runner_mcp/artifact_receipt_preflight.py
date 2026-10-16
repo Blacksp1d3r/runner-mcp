@@ -75,7 +75,13 @@ def offline_artifact_receipt_preflight(
             return unavailable
         if _sha256(wheel) != expected_wheel:
             return unavailable
+        if installed_package.is_symlink():
+            return unavailable
         root = installed_package.resolve(strict=True)
+        # An omitted installed Python module must not count as a matching package.
+        observed = list(root.rglob("*.py"))
+        if len(observed) > 4096 or {p.relative_to(root).as_posix() for p in observed} != set(modules):
+            return unavailable
         for relative, expected in modules.items():
             if not isinstance(relative, str) or not isinstance(expected, str):
                 return unavailable

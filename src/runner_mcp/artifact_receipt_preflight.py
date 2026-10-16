@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import re
 import stat
 from pathlib import Path
@@ -78,10 +79,21 @@ def offline_artifact_receipt_preflight(
         if installed_package.is_symlink():
             return unavailable
         root = installed_package.resolve(strict=True)
-        # An omitted installed Python module must not count as a matching package.
-        observed = list(root.rglob("*.py"))
-        observed_names = {p.relative_to(root).as_posix() for p in observed}
-        if len(observed) > 4096 or observed_names != set(modules):
+        # Scan without following links. Linked directories must never hide extra modules.
+        observed_names: set[str] = set()
+        count = 0
+        for current, directories, files in os.walk(root, followlinks=False):
+            for name in (*directories, *files):
+                count += 1
+                if count > 8192:
+                    return unavailable
+                entry = Path(current) / name
+                if entry.is_symlink():
+                    return unavailable
+            for name in files:
+                if name.endswith(".py"):
+                    observed_names.add((Path(current) / name).relative_to(root).as_posix())
+        if observed_names != set(modules):
             return unavailable
         for relative, expected in modules.items():
             if not isinstance(relative, str) or not isinstance(expected, str):

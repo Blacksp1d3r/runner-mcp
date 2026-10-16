@@ -79,3 +79,15 @@ def test_no_dispatch_callback_or_remote_request_exists_in_classifier():
     result = classify_tool_contract(_contract(), _contract(), **KEY)
     assert isinstance(result, ToolIdentityReason)
     assert result.value == "READY"
+
+
+@pytest.mark.parametrize(
+    "flag",
+    ["registry_trusted", "observed_authenticated", "runtime_reachable", "inventory_fresh"],
+)
+@pytest.mark.parametrize("value", ["false", 1, None, [], {"faked": True}])
+def test_trust_and_runtime_flags_must_be_real_booleans(flag: str, value: object):
+    result = classify_tool_contract(
+        _contract(), _contract(), **(KEY | {flag: value})
+    )
+    assert result is ToolIdentityReason.UNTRUSTED_TOOL_IDENTITY

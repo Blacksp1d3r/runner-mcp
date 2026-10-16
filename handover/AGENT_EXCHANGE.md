@@ -1,3 +1,13 @@
+## 2026-10-16 — Fleet updater protocol regressions and A6 security source landed; live rollout still gated
+
+- Runner-MCP PR #706 v0.1.25 safe optional Fabric CI guest unavailable and #707 v0.1.26 safe GitHub/local-custody preflight errors MERGED, exact full validation + Ubuntu installer + attribution successful.
+- PR #708 tests-only actual isolated authenticated MCP tools/call read-only failure and positive-path regression MERGED `6e3e8e9dcffb9a6fe7b6fb4b7436612f1ad2fa1a` with validation #38933713969 + attribution #38933714024 SUCCESS.
+- PR #709 A6 symlink fail-closed security source v0.1.27 MERGED `265dc1fc0866e35df07b05f6bcf3addee4f8dafa`, exact head `6f75e21b78badea7d0345c1125070809a5a17f83`, validation #38934210559, installer #38934210595 and attribution #38934210533 all SUCCESS. Original PR #655 closed unmerged superseded; Failure Museum RMCP-F-0026 indexed and child STATE complete.
+- **Not live**: original connector still Runner-MCP v0.1.9, active revision/artifact hash null, self-update not ready; Fabric bridge handshake ready but A6/probe unavailable, mutation disabled. Current source/main v0.1.27 is not independently installed or attested. Physical hosts via Desktop Commander offline. Do not claim a first-node canary, actual original-client ACK/rollback or independent backup. Runner-MCP #669, Fabric #924/#942/#943, AIfordable #428 remain true live blockers; timer requirement deferred until customer phase by operator but production mutation safety not waived.
+- Continue only from latest GitHub source/child states; avoid duplicate PR #655 or another updater. Next executable when authority available: independent host/serving wheel/process proof, exact signed candidate and baseline retention, isolated real MCP canary with A6 journal and A7 observed response/ACK/revert. No privileged host command or software install was executed in this source session.
+
+---
+
 ## 2026-10-16 — #665 source lane integrated; independent fleet custody owner next
 
 - Three source PRs #699/#700/#701 have been merged (source 0.1.21 / 0.1.22 / 0.1.23 respectively) with exact-head CI success. Latest #701 squash `10501c1d28ef050ecfc61f7b341487e7ead47d2b`. Child TASK/STATE marked COMPLETE_SOURCE_ONLY, MRCP-F-0038/0039 corrected (the canonical labels are RMCP-F-0038/0039).

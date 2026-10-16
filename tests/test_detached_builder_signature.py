@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import hashlib
+import json
 from pathlib import Path
 
 import pytest
@@ -17,7 +18,13 @@ def _fixture(tmp_path: Path):
         format=serialization.PublicFormat.Raw,
     )
     manifest = tmp_path / "manifest.json"
-    manifest.write_bytes(b'{"source_revision":"a synthetic test value"}')
+    manifest.write_bytes(json.dumps({
+        "schema_version": "runner-mcp/builder-manifest/v1",
+        "source_revision": "a" * 40,
+        "distribution_version": "0.1.15",
+        "wheel_sha256": "b" * 64,
+        "interface_schema_digest": "c" * 64,
+    }, sort_keys=True).encode("utf-8"))
     public_key = tmp_path / "public-key.raw"
     public_key.write_bytes(public_bytes)
     signature = tmp_path / "signature.raw"
@@ -89,3 +96,34 @@ def test_manifest_over_maximum_fails(tmp_path: Path):
     manifest, public_key, signature, digest = _fixture(tmp_path)
     manifest.write_bytes(b"x" * 65537)
     assert _state((manifest, public_key, signature, digest))["state"] == "unverified"
+
+
+def test_signed_arbitrary_json_is_not_a_builder_manifest(tmp_path: Path):
+    manifest, public_key, signature, _digest = _fixture(tmp_path)
+    private = Ed25519PrivateKey.generate()
+    public_bytes = private.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    public_key.write_bytes(public_bytes)
+    digest = hashlib.sha256(public_bytes).hexdigest()
+    manifest.write_bytes(b'{"not_a_builder_manifest":true}')
+    signature.write_bytes(private.sign(manifest.read_bytes()))
+    assert _state((manifest, public_key, signature, digest))["state"] == "unverified"
+
+
+def test_signed_duplicate_json_field_rejected(tmp_path: Path):
+    manifest, public_key, signature, _digest = _fixture(tmp_path)
+    private = Ed25519PrivateKey.generate()
+    public_bytes = private.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    public_key.write_bytes(public_bytes)
+    duplicate = '"source_revision": "' + "d" * 40 + '", "source_revision":'
+    manifest.write_bytes(manifest.read_bytes().replace(
+        b'"source_revision":', duplicate.encode("utf-8")
+    ))
+    signature.write_bytes(private.sign(manifest.read_bytes()))
+    pin = hashlib.sha256(public_bytes).hexdigest()
+    assert _state((manifest, public_key, signature, pin))["state"] == "unverified"

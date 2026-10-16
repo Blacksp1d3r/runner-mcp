@@ -66,3 +66,13 @@ The 0.1.9 **source candidate** specifies the unconditional host-inspection/snaps
 - **Installed/serving now:** original-client `runner-mcp=0.1.8`; fixed peer `runner-fabric-agent-mcp` source revision `51c37f1e...`, handshake `ready`. Host-inspect and operational-snapshot original-route return paths are NOT qualified. Agent Bus relay remains unknown/degraded; normal test queue has two available workers in one snapshot.
 - **Source available but not serving:** `0.1.9` fix for both Fabric reconnect contract mismatches merged as PR #683 / source `e7cb9162d686b5992b3862a4b61f85980cbdfbd4`. Green source CI/installer/attribution does not validate post-update connected-client return path. Do not write `0.1.9` as live topology before root activation, physical six-role evidence and client acceptance.
 - **Release boundary:** standard self-update currently unready (`self_update_ready=false`), active artifact provenance #669 absent. A proposed operator-only fixed-commit stage plus separately armed independent systemd rollback is NOT physically executed. Public topology records this boundary only, no private machine coordinates or privileged scripts.
+
+### 2026-10-16 — #669 offline artifact preflight, source-only PR #689
+
+Candidate 0.1.11 compares an untrusted receipt, pinned wheel SHA-256, and complete Python-module inventory/digests. It returns offline_bytes_match or unverified; it MUST NEVER set active_build_provenance_verified=true.
+
+- A receipt is not signed or a trusted serving-process witness. Matching self-declared bytes is an offline preflight only.
+- Unlisted native extensions (.so/.pyd/.dll/.dylib), linked directories, incomplete manifests, malformed receipts and unsafe permissions fail closed.
+- self-update-state.json is historical transaction data, never proof of the currently loaded wheel.
+- A trusted builder manifest, immutable versioned environment, atomic private installer receipt, loaded-module generation binding, A6/A7 rollback and original-client ACK remain separate requirements.
+- This draft source change neither mutates the serving 0.1.9 installation nor authorizes 0.1.11 release.

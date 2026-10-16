@@ -110,3 +110,12 @@ def test_symlinked_parent_of_package_inside_generation_rejected(tmp_path: Path):
         manifest, receipt, wheel, linked_package, generation, pinned
     )
     assert result["state"] == "unverified"
+
+
+def test_group_writable_installed_package_directory_is_unverified(tmp_path: Path):
+    manifest, receipt, wheel, package, generation, pinned = _fixture(tmp_path)
+    package.chmod(0o775)
+    result = offline_evidence_chain_preflight(
+        manifest, receipt, wheel, package, generation, pinned
+    )
+    assert result["state"] == "unverified"

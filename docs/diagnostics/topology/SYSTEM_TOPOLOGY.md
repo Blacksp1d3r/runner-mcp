@@ -76,3 +76,35 @@ Candidate 0.1.11 compares an untrusted receipt, pinned wheel SHA-256, and comple
 - self-update-state.json is historical transaction data, never proof of the currently loaded wheel.
 - A trusted builder manifest, immutable versioned environment, atomic private installer receipt, loaded-module generation binding, A6/A7 rollback and original-client ACK remain separate requirements.
 - This draft source change neither mutates the serving 0.1.9 installation nor authorizes 0.1.11 release.
+
+### #669 — Trusted installer and serving-generation acceptance contract
+
+Source-only design gate; **not implemented, not signed, and not an activation permit**:
+
+1. Builder records exact canonical source commit, distribution version, wheel SHA-256,
+   interface catalogue digest and installed Python/native module inventory. This
+   builder evidence must have an independent trust anchor, not a host-writable JSON claim.
+2. Authorized installer pins wheel bytes to trusted builder evidence and installs into
+   a newly created immutable versioned environment. Never mutate files below an
+   environment from which an existing server process might still be running.
+3. After installing, recompute package RECORD, Python/native module hashes and
+   package version. Atomic owner-restricted receipt creation must bind the artifact,
+   environment generation and activation transaction; protect against symlinks and
+   replacement races. Keep self-update history separate.
+4. At process startup, require current executable/import roots, loaded package
+   modules, environment generation, receipt, trusted manifest and catalogue identity
+   all to agree before advertising active provenance. An untrusted or missing
+   witness must return false/null, not the last self-update commit.
+5. Independently verify the six expected service roles, trusted activation/rollback
+   custody and the original authenticated MCP client generation/catalogue after
+   restart. Only that same-route acknowledgement can close the serving proof.
+
+Required negative tests: missing/malformed/forged receipts; historical marker
+mismatch; same version with different wheel; linked/traversed install roots;
+non-atomic interrupted receipt writes; mutable in-place upgrade without restart;
+module/RECORD/native-file mismatch; wrong or reused PID; two concurrent server
+generations; stale original client catalogue; rollback returning to older code;
+unavailable Fabric A6/A7 authority. Every incomplete case remains unverified.
+
+PR #689 implements only the offline byte-comparison preflight; it deliberately
+does not write a trusted receipt or promote runtime identity.

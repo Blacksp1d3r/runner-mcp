@@ -26,6 +26,8 @@ def write_offline_receipt_candidate(destination: Path, receipt: dict[str, object
     """
     if not isinstance(destination, Path) or not isinstance(receipt, dict):
         return False
+    if not destination.is_absolute():
+        return False
     # Only simple leaf names: never allow a caller-controlled path component to
     # escape its already-selected receipt directory.
     if not destination.name or destination.name in {".", ".."}:

@@ -8,3 +8,5 @@
 - Last observed original client Runner-MCP 0.1.9 with null active source/digest; A6/A7 authority unavailable.
 
 - 2026-10-16: actual disconnected package vulnerability corrected (RMCP-F-0032); module directory must be a nonsymlink path under the matching generation. CI for latest source head after this fix remains pending, so source not yet merge-qualified.
+
+- 2026-10-16 hardening: RMCP-F-0032 disconnected installed-package/generation relation fixed with symlink ancestry denial; RMCP-F-0033 group-writable artifact/module rejection added with tests. Earlier CI runs on prior commit do NOT validate this HEAD. Recheck terminal exact-head CI before merge.

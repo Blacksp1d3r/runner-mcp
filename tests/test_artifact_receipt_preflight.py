@@ -27,6 +27,7 @@ def _fixture(tmp_path: Path):
         "modules": {"module.py": _sha(b"safe module")},
     }
     receipt.write_text(json.dumps(record), encoding="utf-8")
+    receipt.chmod(0o600)
     return receipt, wheel, package, record
 
 
@@ -111,3 +112,12 @@ def test_rejects_excessive_package_entries(tmp_path: Path):
     for index in range(8193):
         (package / f"entry{index}").touch()
     assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+
+@pytest.mark.parametrize("mode", [0o640, 0o644, 0o660, 0o666])
+def test_rejects_nonprivate_receipt_permissions(tmp_path: Path, mode: int):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    receipt.chmod(mode)
+    result = offline_artifact_receipt_preflight(receipt, wheel, package)
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False

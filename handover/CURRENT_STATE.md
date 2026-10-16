@@ -1,3 +1,11 @@
+## 2026-10-16 — #333 actual runtime_doctor tunnel evidence opt-in source child
+
+- #664 tests-only PR #702 v0.1.23 sampled callable signature guard source merged `aa1a80656a04c3b1d278228e20ea129988e622d0`, final exact head `92d0e9ce8a423f87b61fb579d4545429c1288f59`, CI validation rerun 38902202349 SUCCESS including Ruff/pytest/demo/artifact and attribution 38902202402 SUCCESS. RMCP-F-0040 AST mutation fixed; unrelated fair-scheduler flaky assertion occurred once then passed rerun (RMCP-F-0041). Historic released wheel v0.1.9 is not proven compatible by source AST fixture.
+- Independent #333 source-only candidate v0.1.24 on `chatgpt/333-explicit-tunnel-doctor-evidence-v0124`: actual runtime_doctor conditionally adds `connector_tunnel_readiness` via explicitly expected boolean and separately trusted read-only collector; defaults unchanged, fail-closed sanitized reason only. No tunnel state actually queried on existing live 0.1.9, no restart/credential access.
+- Tests, TASK/STATE ready; exact-head CI and PR merge pending. Next parent #333 real private collector and managed restart operator action, not automatically authorized. Rollback timer deferred to customers.
+
+---
+
 ## 2026-10-16 — #664 sampled existing MCP signatures safeguarded by CI, tests-only
 
 - [PR #702](https://github.com/Blacksp1d3r/runner-mcp/pull/702) source test-only MERGED squash `aa1a80656a04c3b1d278228e20ea129988e622d0` from exact head `92d0e9ce8a423f87b61fb579d4545429c1288f59`. Validation `38902202349` FINAL attempt: Ruff/pytest 3160 passed, built release and clean five-minute demo SUCCESS; attribution `38902202402` SUCCESS. No Ubuntu installer PR workflow was observed for this tests-only change. Source distribution remains v0.1.23 (correct: no shipping runtime tool changes).

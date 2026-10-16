@@ -179,6 +179,10 @@ from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
+from .tunnel_readiness import (
+    TunnelReadinessEvidence,
+    bounded_doctor_tunnel_check,
+)
 from .tunnel_topology_refresh import (
     TunnelTopologyRefreshError,
     bounded_tunnel_topology_refresh_reason,
@@ -454,6 +458,8 @@ def build_mcp(
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
+    tunnel_expected: bool = False,
+    tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
     mcp = MCPServer(
@@ -875,6 +881,13 @@ def build_mcp(
             "pass" if github_token else "warn",
             "configured" if github_token else "not_configured",
         )
+
+        tunnel_status = bounded_doctor_tunnel_check(
+            expected=tunnel_expected,
+            evidence_provider=tunnel_readiness_provider,
+        )
+        if tunnel_status is not None:
+            add("connector_tunnel_readiness", *tunnel_status)
 
         try:
             self_update_status = self_update_manager.runtime_status()
@@ -3818,6 +3831,8 @@ def create_app(
     self_update_restart_components: frozenset[str] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
+    tunnel_expected: bool = False,
+    tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
@@ -3868,6 +3883,8 @@ def create_app(
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
         build_identity_provider=current_build_identity,
+        tunnel_expected=tunnel_expected,
+        tunnel_readiness_provider=tunnel_readiness_provider,
     )
     transport_security = transport_security_for(settings.resource_url)
 

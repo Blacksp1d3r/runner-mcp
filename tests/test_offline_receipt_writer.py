@@ -166,3 +166,15 @@ def test_file_name_cannot_escape_parent(tmp_path: Path):
     destination = folder / "../escaped.json"
     assert not write_offline_receipt_candidate(destination, {"untrusted": True})
     assert not (tmp_path / "escaped.json").exists()
+
+
+def test_rejects_symlink_in_grandparent_of_receipt_directory(tmp_path: Path):
+    real = tmp_path / "real"
+    real.mkdir(mode=0o700)
+    child = real / "child"
+    child.mkdir(mode=0o700)
+    alias = tmp_path / "indirect"
+    alias.symlink_to(real, target_is_directory=True)
+    target = alias / "child" / "receipt.json"
+    assert write_offline_receipt_candidate(target, {"candidate": True}) is False
+    assert not (child / "receipt.json").exists()

@@ -1,3 +1,12 @@
+## 2026-10-16 — FASTER-13 #383 reproducible local JSON baseline, source-only
+
+- #681 functional source PRs #695/#696/#697 all merged, exact-head CI green; #697 squash `1bbb46ce9061e7f453532e5000fb2a0995ee7140`, Failure Museum RMCP-F-0036 complete. Connected live MCP 0.1.9 remains unchanged, and peer intermittent #681 remains open.
+- Independent performance child `roadmap/children/383-local-fastpath-benchmark/` candidate source 0.1.20: pure local synthetic JSON-RPC JSON encode/decode times for 128B/4KiB/64KiB payload, p50/p95/p99, message bytes, throughput; deterministic 500ms polling detection model, no network/work/probe.
+- This is NOT measured actual MCP latency/CPU, push delivery or faster code execution. Next phase needs separately authorized isolated same-host loopback MCP RTT with trace/correlation matching before optimizing HTTP pooling vs UDS/event notifications. Keep original security/session/replay/fencing.
+- Rollback timer deferred to customer rollout per operator. No production/tunnel/host actions.
+
+---
+
 ## 2026-10-16 — #681 host inspection failure without implicit network preflight
 
 - Two functional source fixes merged: #695 continuity unavailable (0.1.17) and #696 operational snapshot unavailable (0.1.18) with exact-head CI success. Live original MCP still 0.1.9 until separate update.

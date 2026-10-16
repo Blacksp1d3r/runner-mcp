@@ -121,3 +121,19 @@ def test_rejects_nonprivate_receipt_permissions(tmp_path: Path, mode: int):
     result = offline_artifact_receipt_preflight(receipt, wheel, package)
     assert result["state"] == "unverified"
     assert result["active_build_provenance_verified"] is False
+
+
+@pytest.mark.parametrize("extension", [".so", ".pyd", ".dll", ".dylib"])
+def test_rejects_unaccounted_native_code(tmp_path: Path, extension: str):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    (package / f"extension{extension}").write_bytes(b"untracked native module")
+    result = offline_artifact_receipt_preflight(receipt, wheel, package)
+    assert result["state"] == "unverified"
+
+
+def test_rejects_manifest_claiming_non_python_module(tmp_path: Path):
+    receipt, wheel, package, record = _fixture(tmp_path)
+    record["modules"] = {"module.txt": _sha(b"safe module")}
+    (package / "module.py").rename(package / "module.txt")
+    receipt.write_text(json.dumps(record), encoding="utf-8")
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"

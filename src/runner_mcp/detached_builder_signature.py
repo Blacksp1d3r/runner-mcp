@@ -8,6 +8,7 @@ channel. Never accept its value from an untrusted manifest or receipt.
 from __future__ import annotations
 
 import hashlib
+import json
 import re
 import stat
 from pathlib import Path
@@ -16,6 +17,8 @@ from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 _SHA = re.compile(r"^[0-9a-f]{64}$")
+_REV = re.compile(r"^[0-9a-f]{40}$")
+_VERSION = re.compile(r"^(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)\\.(0|[1-9][0-9]*)$")
 _MAX_MANIFEST = 65536
 
 
@@ -32,6 +35,38 @@ def _safe_regular_file(path: Path, *, limit: int) -> bool:
         )
     except OSError:
         return False
+
+
+def _no_duplicate_keys(pairs: list[tuple[str, object]]) -> dict[str, object]:
+    out: dict[str, object] = {}
+    for key, value in pairs:
+        if key in out:
+            raise ValueError("duplicate manifest key")
+        out[key] = value
+    return out
+
+
+def _builder_schema_valid(raw: bytes) -> bool:
+    obj = json.loads(raw.decode("utf-8"), object_pairs_hook=_no_duplicate_keys)
+    return (
+        isinstance(obj, dict)
+        and set(obj) == {
+            "schema_version",
+            "source_revision",
+            "distribution_version",
+            "wheel_sha256",
+            "interface_schema_digest",
+        }
+        and obj["schema_version"] == "runner-mcp/builder-manifest/v1"
+        and isinstance(obj["source_revision"], str)
+        and bool(_REV.fullmatch(obj["source_revision"]))
+        and isinstance(obj["distribution_version"], str)
+        and bool(_VERSION.fullmatch(obj["distribution_version"]))
+        and isinstance(obj["wheel_sha256"], str)
+        and bool(_SHA.fullmatch(obj["wheel_sha256"]))
+        and isinstance(obj["interface_schema_digest"], str)
+        and bool(_SHA.fullmatch(obj["interface_schema_digest"]))
+    )
 
 
 def detached_builder_signature_preflight(
@@ -74,6 +109,8 @@ def detached_builder_signature_preflight(
         Ed25519PublicKey.from_public_bytes(raw_public_key).verify(
             raw_signature, raw_manifest
         )
-    except (OSError, ValueError, TypeError, InvalidSignature):
+        if not _builder_schema_valid(raw_manifest):
+            return unverified
+    except (OSError, ValueError, TypeError, RecursionError, InvalidSignature):
         return unverified
     return {**unverified, "state": "offline_signature_match"}

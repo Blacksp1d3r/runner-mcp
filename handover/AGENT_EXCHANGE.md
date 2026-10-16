@@ -1,3 +1,10 @@
+
+## 2026-10-16 — #669 source child PR #691, versioned layout
+
+- PR #690 merged as source-only 0.1.12; new ChatGPT owner claim PR #691 on `chatgpt/669-immutable-generation-preflight-v0113`. Do not duplicate versioned-layout implementation.
+- This is purely offline structural validation; trust root, immutable venv and serving process are **not** qualified. Review optional under AGENTS; exact-head CI mandatory. No worker or production rollout permission.
+
+---
 ## 2026-10-16 — #669 pinned builder-manifest child claim
 
 - ChatGPT owns source-only PR #690, branch `chatgpt/669-pinned-builder-manifest-v0112`; no overlap with merged #689.

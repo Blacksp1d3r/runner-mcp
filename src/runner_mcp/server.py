@@ -138,6 +138,7 @@ from .fabric_repository_mirrors import (
 from .fabric_update import (
     FabricUpdateError,
     FabricUpdateManager,
+    bounded_fabric_readiness_failure,
     bounded_local_custody_failure_reason,
 )
 from .fabric_worker_qualification_provisioning import (
@@ -1663,17 +1664,18 @@ def build_mcp(
         try:
             result = fabric_update_manager.readiness(commit)
         except FabricUpdateError as exc:
+            blocked = bounded_fabric_readiness_failure(exc, source="github-actions")
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_update_readiness",
                     "runner-fabric",
                     "authenticated-client",
-                    "denied",
+                    "blocked",
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            return blocked
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1749,7 +1751,7 @@ def build_mcp(
                     "artifact_ready": False,
                     "source": "local-custody",
                 }
-            raise ValueError("Fabric local update readiness is unavailable") from None
+            return bounded_fabric_readiness_failure(exc, source="local-custody")
         audit.append(
             AuditEvent(
                 current_request_id(),

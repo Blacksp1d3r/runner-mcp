@@ -74,6 +74,43 @@ def bounded_local_custody_failure_reason(
     return detail if detail in _LOCAL_CUSTODY_FAILURE_REASONS else None
 
 
+_READINESS_FAILURE_REASONS = _LOCAL_CUSTODY_FAILURE_REASONS | frozenset(
+    {
+        "artifact_metadata_unavailable",
+        "artifact_download_unavailable",
+        "fabric_recovery_required",
+        "fabric_transaction_invalid",
+        "fabric_update_target_mismatch",
+        "fabric_bundle_integrity_failed",
+    }
+)
+
+
+def bounded_fabric_readiness_failure(
+    error: FabricUpdateError,
+    *,
+    source: str,
+) -> dict[str, object]:
+    """Expose only fixed safe reasons for an exact read-only update preflight.
+
+    An error is NOT an artifact receipt, install permission or readiness proof.
+    Do not include the requested commit, a private path or arbitrary error text.
+    """
+    if source not in {"github-actions", "local-custody"}:
+        raise ValueError("unsupported Fabric update source")
+    reason = str(error) if type(error) is FabricUpdateError else ""
+    code = (
+        reason if reason in _READINESS_FAILURE_REASONS
+        else "fabric_update_readiness_unavailable"
+    )
+    return {
+        "state": "blocked",
+        "reasonCode": code,
+        "artifact_ready": False,
+        "source": source,
+    }
+
+
 class FabricUpdateState(StrEnum):
     QUEUED = "queued"
     FETCHING = "fetching"

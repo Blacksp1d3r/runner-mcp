@@ -1,3 +1,12 @@
+## 2026-10-16 — #665 bounded mismatch alert digest source child 0.1.23
+
+- #699 v0.1.21 contract classifier and #700 v0.1.22 duplicate tool inventory rejection source merged with exact-head CI SUCCESS.
+- New distinct child `roadmap/children/665-tool-alert-dedupe/`: pure grouped, deterministic per-opaque-scope/tool/reason alert summaries, cooldown and bounded event limits, no network/notifications or persistent state. Synthetic timestamps and scope digests require independently trusted upstream evidence.
+- This is not alert delivery, real issue confirmation or runtime authority. Fabric fleet inventory, customer grouping, authenticated serving process and rate-limited notification/ACK remain parent #665 dependencies. No host, keys, tunnels or customer-phase rollback timer actions.
+- Candidate v0.1.23. Exact-head CI mandatory.
+
+---
+
 ## 2026-10-16 — #665 tool identity comparator and collision preflight source MERGED
 
 - [#699](https://github.com/Blacksp1d3r/runner-mcp/pull/699) pure tool contract metadata classification (v0.1.21) source merged after exact HEAD validation/Ubuntu/attribution pass. RMCP-F-0038 Ruff fixture and RMCP-F-0039 strict bool trust flags source-fixed and green.

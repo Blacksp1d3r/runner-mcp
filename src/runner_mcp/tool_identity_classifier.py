@@ -51,6 +51,16 @@ def classify_tool_contract(
     READY means ONLY that contract metadata compares equal. Dispatch must still
     enforce actual serving process, caller, tenant, host and operation policy.
     """
+    if any(
+        not isinstance(flag, bool)
+        for flag in (
+            registry_trusted,
+            observed_authenticated,
+            runtime_reachable,
+            inventory_fresh,
+        )
+    ):
+        return ToolIdentityReason.UNTRUSTED_TOOL_IDENTITY
     if not runtime_reachable:
         return ToolIdentityReason.RUNTIME_UNREACHABLE
     if not registry_trusted or not observed_authenticated or namespace != _NAMESPACE:

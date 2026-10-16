@@ -76,11 +76,13 @@ def bounded_snapshot_unavailable(reason: object) -> dict[str, object]:
     Only predeclared categories are emitted; raw exceptions, endpoints and
     credentials never enter this read-only response.
     """
+    invalid_payload = {
+        "Runner Fabric returned invalid operational snapshot",
+        "Runner Fabric operational snapshot must be read-only",
+    }
     category = (
-        "fabric_snapshot_unavailable"
-        if reason == "Runner Fabric operational snapshot failed"
-        else "fabric_snapshot_invalid_payload"
-        if reason == "Runner Fabric returned invalid operational snapshot"
+        "fabric_snapshot_invalid_payload"
+        if isinstance(reason, str) and reason in invalid_payload
         else "fabric_snapshot_unavailable"
     )
     return {

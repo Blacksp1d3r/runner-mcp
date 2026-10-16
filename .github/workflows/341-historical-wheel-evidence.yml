@@ -1,0 +1,141 @@
+# Evidence-only, pinned to a historical deployed source revision.
+# This workflow must NOT be promoted into a release publisher or deployed.
+name: Isolated exact-source historical recovery wheel
+
+on:
+  push:
+    branches:
+      - artifacts/341-recovery-wheel-a0fd964c-20261011
+    paths:
+      - .github/workflows/341-historical-wheel-evidence.yml
+
+permissions:
+  contents: read
+
+jobs:
+  historical-wheel:
+    name: Build pinned baseline wheel (evidence only)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 12
+    steps:
+      - name: Checkout exact historical source commit without retained credentials
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: Set up isolated Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Pin source, build wheel and check package metadata
+        shell: bash
+        env:
+          SOURCE_SHA: "a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a"
+          PIP_DISABLE_PIP_VERSION_CHECK: "1"
+          PIP_NO_INPUT: "1"
+        run: |
+          set -euo pipefail
+          test "$(git rev-parse HEAD)" = "$SOURCE_SHA"
+          test -z "$(git status --porcelain)"
+          mkdir -p dist
+          python -m pip wheel --disable-pip-version-check --no-deps --wheel-dir dist .
+          python - <<'PY'
+          import hashlib
+          import json
+          import os
+          import pathlib
+          import platform
+          import sys
+          import zipfile
+
+          source = os.environ["SOURCE_SHA"]
+          wheels = list(pathlib.Path("dist").glob("*.whl"))
+          if len(wheels) != 1:
+              raise SystemExit("Expected exactly one wheel")
+          wheel = wheels[0]
+          with zipfile.ZipFile(wheel, "r") as archive:
+              names = archive.namelist()
+              metadata_names = [name for name in names if name.endswith(".dist-info/METADATA")]
+              if len(metadata_names) != 1 or "runner_mcp/cli.py" not in names:
+                  raise SystemExit("Historical source wheel metadata/package not found")
+              metadata = archive.read(metadata_names[0]).decode("utf-8")
+              if "Name: aifordable-runner-mcp\n" not in metadata:
+                  raise SystemExit("Package name mismatch")
+              if "Version: 0.1.3\n" not in metadata:
+                  raise SystemExit("Package version mismatch")
+          digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+          (pathlib.Path("dist") / "SOURCE_COMMIT").write_text(source + "\n")
+          (pathlib.Path("dist") / "SHA256SUMS").write_text(
+              f"{digest}  {wheel.name}\n"
+          )
+          (pathlib.Path("dist") / "BUILD_INFO.json").write_text(
+              json.dumps({
+                  "source_commit": source,
+                  "package_version": "0.1.3",
+                  "python_version": platform.python_version(),
+                  "python_implementation": platform.python_implementation(),
+                  "wheel_file": wheel.name,
+                  "wheel_sha256": digest,
+                  "runner_os": platform.system(),
+                  "build_evidence_only": True,
+                  "installed_artifact_identical": False,
+                  "restore_authorized": False
+              }, sort_keys=True, indent=2) + "\n"
+          )
+          print("SOURCE_COMMIT=" + source)
+          print("WHEEL_SHA256=" + digest)
+          print("WHEEL_BYTES=" + str(wheel.stat().st_size))
+          PY
+
+      - name: Proof wheel install/uninstall in isolated Python 3.12 venv
+        shell: bash
+        run: |
+          set -euo pipefail
+          python -m venv "$RUNNER_TEMP/runner-mcp-old-wheel-venv"
+          py="$RUNNER_TEMP/runner-mcp-old-wheel-venv/bin/python"
+          "$py" -m pip install --no-index --no-deps --no-cache-dir dist/*.whl
+          "$py" - <<'PY'
+          import hashlib
+          import json
+          import pathlib
+          import platform
+          from importlib.metadata import distribution
+
+          d = distribution("aifordable-runner-mcp")
+          if d.version != "0.1.3":
+              raise SystemExit("Unexpected installed wheel version")
+          cli = pathlib.Path(d.locate_file("runner_mcp/cli.py"))
+          if not cli.is_file():
+              raise SystemExit("Installed CLI module is missing")
+          digest = hashlib.sha256(cli.read_bytes()).hexdigest()
+          print("ISOLATED_INSTALLED_CLI_SHA256=" + digest)
+          pathlib.Path("dist/SMOKE_RESULT.json").write_text(
+              json.dumps({
+                  "python_version": platform.python_version(),
+                  "package_version": d.version,
+                  "cli_sha256": digest,
+                  "install_no_deps_no_index": True,
+                  "module_import_or_runtime_validated": False,
+                  "restore_authorized": False
+              }, sort_keys=True, indent=2) + "\n"
+          )
+          PY
+          "$py" -m compileall -q "$RUNNER_TEMP/runner-mcp-old-wheel-venv/lib/python3.12/site-packages/runner_mcp"
+          "$py" -m pip uninstall --yes aifordable-runner-mcp
+          test ! -e "$RUNNER_TEMP/runner-mcp-old-wheel-venv/lib/python3.12/site-packages/runner_mcp/cli.py"
+
+      - name: Upload short-lived untrusted artifact for independent inspection
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unverified-recovery-wheel-a0fd964c
+          path: |
+            dist/*.whl
+            dist/SOURCE_COMMIT
+            dist/SHA256SUMS
+            dist/BUILD_INFO.json
+            dist/SMOKE_RESULT.json
+          if-no-files-found: error
+          retention-days: 30

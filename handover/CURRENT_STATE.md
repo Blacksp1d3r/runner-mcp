@@ -1,3 +1,13 @@
+## 2026-10-16 — #664 sampled existing MCP signatures safeguarded by CI, tests-only
+
+- [PR #702](https://github.com/Blacksp1d3r/runner-mcp/pull/702) source test-only MERGED squash `aa1a80656a04c3b1d278228e20ea129988e622d0` from exact head `92d0e9ce8a423f87b61fb579d4545429c1288f59`. Validation `38902202349` FINAL attempt: Ruff/pytest 3160 passed, built release and clean five-minute demo SUCCESS; attribution `38902202402` SUCCESS. No Ubuntu installer PR workflow was observed for this tests-only change. Source distribution remains v0.1.23 (correct: no shipping runtime tool changes).
+- A selected 14-tool AST baseline pinned existing registered MCP tool names, parameters/defaults and return annotations from source 0.1.23. CI detects drift. **This is not a v0.1.9 customer released wheel contract snapshot or generated runtime JSON schemas**, and does not establish full historical compatibility. Parent #664 remains open for real released artifacts, legacy N/N-1 client tests, output/error/permission semantics and commercial support policy.
+- Failure Museum: RMCP-F-0040 bad broad textual mutation test corrected by targeted named-tool AST mutation; RMCP-F-0041 one unconfirmed pre-existing concurrent scheduler fairness timing failure in CI first attempt, same exact commit rerun passed without changing the scheduler. Do not claim a proven scheduler root cause or suppress security checks.
+- No production, tunnel, user-host, keys, cron, rollback timer or service mutation. Active original-client Runner-MCP last observed 0.1.9 with null verified source/digest. Operator defers independent rollbacktimer to customer phase.
+- Follow-up independent roadmap may proceed (e.g. operational tunnel readiness #333) without waiting for actual customer version rollout.
+
+---
+
 ## 2026-10-16 — #664 legacy callable signature CI regression guard, source-only
 
 - Following merged #665 source-only 0.1.23 classifiers/inventory and alert digest, started independent #664 tests-only branch `chatgpt/664-legacy-signature-regression-v0124`, base `53a002df136d010ebe460643a37ddcf86af58c6e`.

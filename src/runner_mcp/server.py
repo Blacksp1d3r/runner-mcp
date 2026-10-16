@@ -106,6 +106,7 @@ from .fabric_bridge import (
     FabricBridgeClient,
     FabricBridgeConfig,
     FabricBridgeError,
+    bounded_ci_guest_status_unavailable,
     bounded_host_inspection_unavailable,
     bounded_snapshot_unavailable,
 )

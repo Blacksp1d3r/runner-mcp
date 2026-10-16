@@ -1,3 +1,14 @@
+## 2026-10-16 — #665 three source-only children through v0.1.23 merged; operational fleet proof still open
+
+- [#699](https://github.com/Blacksp1d3r/runner-mcp/pull/699) 0.1.21 bounded tool-contract identity classification merged squash `70201f6ac138ce1fd1dfd3e91ed4f1f7c4b6fd08`. Exact head validation `38897275967`, Ubuntu `38897275912`, attribution `38897275777` all SUCCESS. Failure Museum RMCP-F-0038/RMCP-F-0039 fixed and complete (strict actual bool trust flags).
+- [#700](https://github.com/Blacksp1d3r/runner-mcp/pull/700) 0.1.22 bounded tool inventory duplicate-ID/name/schema/revision preflight merged squash `26c135952b2786e498871c68b37dcdb1900a26ea`; exact HEAD CI validation `38898006036`, Ubuntu `38898006091`, attribution `38898006047` all SUCCESS.
+- [#701](https://github.com/Blacksp1d3r/runner-mcp/pull/701) 0.1.23 typed alert digest/cooldown source merged squash `10501c1d28ef050ecfc61f7b341487e7ead47d2b`, exact head `88b8c81d15a664998b988ef02201f74875593090`, validation `38898938032` (Ruff/pytest, build, demo), Ubuntu `38898937966`, attribution `38898937757` all SUCCESS. Child TASK/STATE COMPLETE_SOURCE_ONLY. Pure local per-scope/tool/reason synthetic event aggregation, no clocks, external alerting, durable state or side effects.
+- Operational gate: neither registry flag input nor SHA token / namespace / tool id is authenticating by itself. No dispatcher authorization, signed live process inventory, trusted customer host/tenant policy, Fabric customer inventory/notification delivery or ACK exists. READY classification or sanitized summary is not an operation permission. Parent #665 remains OPEN; legacy customer contract #664 remains separate.
+- Actual original connected Runner-MCP still last verified **0.1.9** with null active source/digest; GitHub **0.1.23 is source only**. Fabric/A6 live rollout still unqualified. No host, tunnel, keys, cron, service update, paid worker or rollback timer changed. Operator explicitly deferred timer work to customer rollout.
+- Next independent work: customer-compatible old tool contract fixtures #664 or authenticated inventory/alert transport with Fabric (requires qualified authority); do not add standalone synthetic validation layers without a real use path. Keep CI exact-head and public topology redacted.
+
+---
+
 ## 2026-10-16 — #665 typed alert digest source candidate 0.1.23
 
 - #699 / #700 bounded identity classifier/inventory collision source children have both merged and CI-green, main source 0.1.22. Latest squash #700 `26c135952b2786e498871c68b37dcdb1900a26ea`. No actual tool permission granted.

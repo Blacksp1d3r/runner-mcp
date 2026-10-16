@@ -99,6 +99,10 @@ def offline_artifact_receipt_preflight(
                 if entry.is_symlink():
                     return unavailable
             for name in files:
+                # This v1 receipt only specifies .py module digests. Fail closed
+                # rather than treating unaccounted native extension code as safe.
+                if name.endswith((".so", ".pyd", ".dll", ".dylib")):
+                    return unavailable
                 if name.endswith(".py"):
                     observed_names.add((Path(current) / name).relative_to(root).as_posix())
         if observed_names != set(modules):
@@ -106,7 +110,7 @@ def offline_artifact_receipt_preflight(
         for relative, expected in modules.items():
             if not isinstance(relative, str) or not isinstance(expected, str):
                 return unavailable
-            if not _SHA.fullmatch(expected) or len(relative) > 240:
+            if not _SHA.fullmatch(expected) or len(relative) > 240 or not relative.endswith(".py"):
                 return unavailable
             parts = Path(relative).parts
             if not parts or any(part in ("", ".", "..") for part in parts):

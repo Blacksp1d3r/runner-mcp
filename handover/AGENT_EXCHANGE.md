@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 signature child owner, source-only PR #693
+
+- ChatGPT owns `chatgpt/669-detached-signature-source-v0115`, [PR #693](https://github.com/Blacksp1d3r/runner-mcp/pull/693) only. Do not duplicate or conflate with merged #689–#692.
+- Ed25519 detached manifest signature checker uses independent public-key SHA-256 pin INPUT. No public-key enrollment, revocation, allowed signer registry or trust custody exists yet. No private signing key or host changes.
+- CI run 38870971649 failed Ruff RUF059 unused test fixture digest (RMCP-F-0034), source/test fix 6bcf7c04...; latest branch exact head pending CI. Distinguish code test-style failure from infrastructure failure. No merge before terminal green.
+- Caller-provided matching key + hash is NOT independent authority. Active serving identity remains unknown; connected 0.1.9 unaffected.
+
+---
+
 ## 2026-10-16 — #669 source chain landed, next owner PRIVATE TRUST CUSTODY
 
 - #689/#690/#691/#692 merged into main; last source squash `a7e3bb30d008d655ae5b8c5fdc15813303f84935` (v0.1.14 source). Child STATE files marked COMPLETE_SOURCE_ONLY; RMCP-F-0032/F-0033 qualified by exact HEAD tests.

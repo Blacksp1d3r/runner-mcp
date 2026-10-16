@@ -1,3 +1,12 @@
+## 2026-10-16 — OPERATOR CORRECTION: rollback timer deferred until customers
+
+- Operator explicitly decides that independent rollback-timer work is NOT an immediate pre-customer priority; schedule it for customer rollout. Earlier handover references that suggest a mandatory timer gate before continued development are superseded **for priority and scope**, not an authorization to perform risky production changes.
+- Operator can access privately owned servers when home and assist later with narrowly scoped local repair if a real operational blocker remains. Do not demand host access now, nor halt unrelated source/functional roadmap tasks for timer proof.
+- Current live read-only MCP is 0.1.9 with unverified installed source/digest; source code is 0.1.16. Keep truthful version boundary; production promotion/activation still separately requires fit-for-purpose checks and explicit authority.
+- Relevant issue updates: #669 (operator priority correction), #681 (deferral). No secrets, physical paths or host configuration copied to public repo.
+
+---
+
 ## 2026-10-16 — #669 offline signed provenance source children through v0.1.16 merged; LIVE UNQUALIFIED
 
 - PR #693 v0.1.15 source-only detached Ed25519 builder-manifest signature preflight merged `e85b15924790d22a90b9a54cef1b55d10379d785`, exact PR HEAD `eedc369f695cabbc4ef837a822d22cc33de3d44b`. CI attribution `38871536337`, validation `38871536393`, Ubuntu `38871536397` SUCCESS. RMCP-F-0034/RMCP-F-0035 source CI/security fixes resolved and recorded.

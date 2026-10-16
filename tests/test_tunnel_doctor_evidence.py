@@ -85,3 +85,12 @@ def test_malformed_collector_result_fails_closed():
     assert bounded_doctor_tunnel_check(
         expected=True, evidence_provider=lambda: {"configured": True}
     ) == ("warn", "evidence_unavailable")
+
+
+def test_private_runtime_error_from_collector_is_sanitized():
+    def failing_provider() -> TunnelReadinessEvidence:
+        raise RuntimeError("internal private tunnel identifier and key")
+
+    assert bounded_doctor_tunnel_check(
+        expected=True, evidence_provider=failing_provider
+    ) == ("warn", "evidence_unavailable")

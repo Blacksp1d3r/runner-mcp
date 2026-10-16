@@ -80,3 +80,18 @@ def test_rejects_large_receipt_and_extra_fields(tmp_path: Path):
     assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
     receipt.write_bytes(b"x" * 65537)
     assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+def test_rejects_partial_module_manifest(tmp_path: Path):
+    receipt, wheel, package, record = _fixture(tmp_path)
+    (package / "extra.py").write_bytes(b"unlisted file")
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+    record["modules"] = {}
+    receipt.write_text(json.dumps(record), encoding="utf-8")
+    assert offline_artifact_receipt_preflight(receipt, wheel, package)["state"] == "unverified"
+
+
+def test_rejects_symlink_package_root(tmp_path: Path):
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    alias = tmp_path / "alias"
+    alias.symlink_to(package, target_is_directory=True)
+    assert offline_artifact_receipt_preflight(receipt, wheel, alias)["state"] == "unverified"

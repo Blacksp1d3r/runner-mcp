@@ -1,7 +1,7 @@
 ## 2026-10-16 — Fleet diagnostic source tests land; next actual update admission
 
 - Runner-MCP #590 source read-only errors #706 (0.1.25) and #707 (0.1.26) MERGED, full exact-head CI+installer+attribution GREEN. Their actual MCP tool-response shapes are covered by merged tests-only #708, exact CI validation #38933713969 + attribution #38933714024 GREEN. These are diagnostic/original-client **synthetic MCP** tests, not independent active-server identity or release permission.
-- A6 #509 old unmerged #655 dangling-symlink bypass is restacked on current main as #709 v0.1.27; exact-head CI in progress. Once green and merged, close #655 superseded. Security failure RMCP-F-0026; do not duplicate A6 repairer.
+- A6 #509 dangling-symlink state-root security patch #709 v0.1.27 MERGED `265dc1fc0866e35df07b05f6bcf3addee4f8dafa`, exact HEAD validation #38934210559, Ubuntu #38934210595, attribution #38934210533 all SUCCESS; original historical #655 closed unmerged superseded. Failure Museum RMCP-F-0026 SOURCE_FIXED_LIVE_UNQUALIFIED, no duplicate A6 repairer.
 - Operational F30/Runner-Fabric #924 STILL BLOCKED: serving Runner-MCP 0.1.9, active build revision/wheel digest unavailable, self_update_ready=false; live Fabric read-only handshake succeeds but A6/probe absent and mutation_enabled=false. Cross-host attestation #669/AIfordable #428 plus A6 journal #942 / A7 physical ACK+revert #943 are true release gates. Preserve source/CI progress without remote unqualified update or independent rollback timer deployment; operator has deferred timer work until customer phase. Windows offline 1 TB target is not yet a qualified independent recovery copy.
 
 ---

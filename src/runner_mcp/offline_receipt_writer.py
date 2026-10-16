@@ -56,6 +56,10 @@ def write_offline_receipt_candidate(destination: Path, receipt: dict[str, object
             # A hard link makes publishing atomic and fail-if-existing.
             os.link(temporary, destination, follow_symlinks=False)
             published = True
+            # Flush the published name AND temporary-name removal together.
+            # Synchronizing the directory before unlinking leaves a crash
+            # window in which the temporary hardlink can reappear.
+            temporary.unlink()
             directory_fd = os.open(parent, os.O_RDONLY | getattr(os, "O_DIRECTORY", 0))
             try:
                 os.fsync(directory_fd)

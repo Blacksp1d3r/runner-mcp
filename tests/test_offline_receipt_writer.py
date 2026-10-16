@@ -2,12 +2,16 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 from pathlib import Path
 
 import pytest
 
 from runner_mcp.artifact_receipt_preflight import offline_artifact_receipt_preflight
-from runner_mcp.offline_receipt_writer import write_offline_receipt_candidate
+from runner_mcp.offline_receipt_writer import (
+    ReceiptPublicationUncertain,
+    write_offline_receipt_candidate,
+)
 
 
 def test_atomic_candidate_create_once_and_owner_only(tmp_path: Path):
@@ -77,3 +81,29 @@ def test_written_candidate_can_pass_offline_only_preflight(tmp_path: Path):
     assert result["active_build_provenance_verified"] is False
     assert result["source_revision"] is None
     assert result["artifact_digest"] is None
+
+
+def test_directory_fsync_failure_after_publish_requires_reconciliation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+):
+    folder = tmp_path / "receipts"
+    folder.mkdir(mode=0o700)
+    destination = folder / "receipt.json"
+    real_fsync = os.fsync
+    calls = 0
+
+    def fail_second_fsync(fd: int) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("synthetic directory sync failure")
+        real_fsync(fd)
+
+    monkeypatch.setattr(os, "fsync", fail_second_fsync)
+    with pytest.raises(ReceiptPublicationUncertain):
+        write_offline_receipt_candidate(destination, {"source": "untrusted"})
+    assert destination.exists()
+    assert json.loads(destination.read_text(encoding="utf-8")) == {
+        "source": "untrusted"
+    }
+    assert not list(folder.glob("*.tmp"))

@@ -1,3 +1,12 @@
+## 2026-10-16 — #669 signature+candidate source chain complete, operational trust authority next
+
+- Source-only PR #693 (0.1.15, Ed25519 detached signed canonical builder schema) and #694 (0.1.16, compose signed proof with manifest/wheel/installed-module/receipt/generation consistency) MERGED after exact-head attribution, full validation and independent Ubuntu CI PASS. Latest source squash #694 `ee019e491c53d1d2b239cc07faa15b9f4fcaed51`. Subchildren STATE marked COMPLETE_SOURCE_ONLY.
+- Live v0.1.9 has NULL independently verified active source and digest, intentionally fail closed; offline signatures are not a trusted release, sealing or active build attestation.
+- Next dependency chain: independent privileged signer public-key pin custody+rotation/revocation/expiry, manifest issued by approved trusted builder, protected atomic installed generation witness, active process executable/import lineage, six-role independent rollback and A6/A7 original-client ACK. These are not software-only steps and require private custody authorization. #669 remains OPEN/BLOCKED_EXTERNAL.
+- Existing #681 original connector snapshot regression is separately owned; latest read-only generic error does not authorize production tunnel or service intervention. No source reimplementation of merged #689–#694.
+
+---
+
 
 ## 2026-10-16 — #669 signed offline candidate chain (source-only 0.1.16)
 

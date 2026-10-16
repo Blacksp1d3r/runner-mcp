@@ -45,7 +45,7 @@ def test_mutated_manifest_fails(tmp_path: Path):
 
 
 def test_wrong_public_key_pin_fails(tmp_path: Path):
-    manifest, public_key, signature, digest = _fixture(tmp_path)
+    manifest, public_key, signature, _digest = _fixture(tmp_path)
     assert _state((manifest, public_key, signature, "f" * 64))["state"] == "unverified"
 
 

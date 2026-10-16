@@ -121,7 +121,7 @@ jobs:
         shell: bash
         run: bash scripts/release-artifact-smoke.sh
 
-      - name: Attest full 95-tool catalogue inside built wheel
+      - name: Attest full 96-tool catalogue inside built wheel
         shell: bash
         run: python scripts/attest_tool_catalogue.py --wheel dist/*.whl --output dist/TOOL_CATALOGUE.json
 

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.36 (source candidate; not published)
+
+- Make direct owner-local recovery CLI inspect/finalize avoid import bytecode inside its own pinned source checkout. Prevent silent Git-clean failure after a successful read-only inspect (#732).
+
 ## 0.1.35 (source candidate; not published)
 
 - Add a read-only, fixed-repository GitHub Releases asset attestation for Fabric offline bundles. Require exact tag/SHA and tag ref, 5-160 distinct bounded asset IDs/names/sha256 digests and mandatory source manifests. All queries are metadata-only; no URL follows, binary download, local archive writes, runner privileges, service upgrades or Claude dispatch. Existing Actions-artifact update route remains unchanged; an separately authorized custody importer must follow before any release install.

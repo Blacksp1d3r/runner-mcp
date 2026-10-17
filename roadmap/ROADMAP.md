@@ -1,3 +1,11 @@
+## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled
+
+- F30 PHYSICAL FIRST-NODE upgrade step now **DONE on attended host**: normal isolated installer with dependency resolution, six managed cron pins switched, and current original-client MCP responses after temporary fallback timer cancellation confirm 0.1.27. Retained old executable and crontab. Do NOT repeat installation or claim fleet complete; previous 0.1.9 runtime observations are historical.
+- Still **OPEN/BLOCKED FOR FUTURE AUTOMATIC UPDATES**: independently verified current wheel/source signature and serving generation #669, correct-host attestation, self-update baseline/activation drift, physical independent A6 off-target journal #942 and A7 rollback + original-client ACK #943, scoped fleet rollout #924. `self_update_ready=false`, two doctor failures, Fabric bridge read-only/mutation disabled. Temporary one-off rollback timer canceled by operator, NOT a persistent A7 supervisor.
+- Next highest-value work is preserving active 0.1.27 and old 0.1.9 escrow, read-only independent provenance/custody and safe supported baseline repair; defer any further deployment until separately qualified. Do not delete/move active staged venv merely due to staging directory name, as cron pins reference that path.
+
+---
+
 ## 2026-10-17 — Fresh original-client A6/F30 read-only verification (NO host mutation)
 
 Connected Runner-MCP still reports installed distribution `0.1.9`, `source_revision=null`, `artifact_digest=null`, `active_build_provenance_verified=false`, `self_update_ready=false`; no active update, pending restart or install recovery. `runtime_doctor` now reports two failures: `source_baseline_drift` and `active_revision_unavailable`. Its `fabric_a6_binding_state=pass/not_configured_0_of_11` is an optional diagnostic classification, **not** evidence that A6 is configured. Fabric bridge preflight is read-only READY, but `a6_prepare_available=false`, `synthetic_probe_status_available=false`, `mutation_enabled=false`; Fabric operational snapshot is degraded, relay evidence unknown and execution/mutation disabled. Both canonical Fabric remote/local update-readiness calls returned unstructured connector errors: classify as UNKNOWN, never APPROVED or a safe update path.

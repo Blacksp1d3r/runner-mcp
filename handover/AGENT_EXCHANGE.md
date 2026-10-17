@@ -1,3 +1,9 @@
+## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled
+
+Operator-attended isolated full-dependency stage and cron cutover succeeded. Original active connected client independently reports loaded Runner-MCP v0.1.27 after timer cancellation; six cron-managed roles active; new loopback server PID; Fabric bridge handshake and worker status respond. Physical single-node update DONE; no version bump or new PR. Keep previous release and old crontab escrow, and do not move/delete the active staging prefix. No independent A7 timer remains; A6 and live artifact attestation still incomplete. Remaining `source_baseline_drift`/`active_revision_unavailable` show self-update is NOT ready; #669 and #924/#942/#943 open. Do not redo the already-successful upgrade.
+
+---
+
 ## 2026-10-16 — Real upgrade priority; no further updater code/version claims
 
 Operator asked continuous autonomous execution but explicitly paused further source version development. Runner-Fabric #924 remains the single coordination owner; Runner-MCP #341 owns existing local upgrade mechanisms. No parallel updater or overlapping agent development.

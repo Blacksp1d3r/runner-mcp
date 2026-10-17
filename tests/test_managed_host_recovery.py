@@ -7,8 +7,8 @@ import hashlib
 import importlib.util
 import io
 import json
-import py_compile
 import os
+import py_compile
 import subprocess
 import sys
 from pathlib import Path

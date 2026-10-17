@@ -685,6 +685,10 @@ def _agent_bus_base_not_initialized(config_dir: Path) -> bool:
         raise ConfigManagerError("Private configuration path must be absolute")
 
     current = Path(config_dir.anchor)
+    try:
+        current_stat = current.lstat()
+    except OSError as exc:
+        raise ConfigManagerError("Private configuration path is unavailable") from exc
     for part in config_dir.parts[1:]:
         current /= part
         try:

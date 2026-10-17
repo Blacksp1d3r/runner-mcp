@@ -221,6 +221,7 @@ def stage_local_runner_mcp(
     plan = plan_local_stage(
         manifest_path, source_root, home=home, machine_digest=machine_digest,
     )
+    initial_manifest = HostManifest.load(manifest_path)
     if plan.digest != accept_digest:
         raise LocalBootstrapError("plan_confirmation_mismatch")
 
@@ -275,9 +276,12 @@ def stage_local_runner_mcp(
                 raise LocalBootstrapError("stage_runtime_check_failed")
         # This is a second TOCTOU fence. The source can never be promoted
         # after any observed checkout mutation during staging.
-        _verify_source(source_root, HostManifest.load(manifest_path))
+        current_manifest = HostManifest.load(manifest_path)
+        if current_manifest != initial_manifest:
+            raise LocalBootstrapError("manifest_changed_during_stage")
+        _verify_source(source_root, current_manifest)
         if (machine_digest if machine_digest is not None else host_identity_digest()) != (
-            HostManifest.load(manifest_path).machine_id_sha256
+            current_manifest.machine_id_sha256
         ):
             raise LocalBootstrapError("host_identity_changed")
         state = {

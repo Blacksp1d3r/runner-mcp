@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.36 (source candidate; not published)
+
+- Mask complete variable-length GitHub App installation/access token families in bounded logs, including opaque URL-safe separators that the previous alphanumeric-only regex left partially visible. Regression tests cover `ghs_`, other GitHub token prefixes, truncated input and benign short strings. No real provider secrets or log data used; installed runtime unchanged (#730).
+
 ## 0.1.35 (source candidate; not published)
 
 - Add a read-only, fixed-repository GitHub Releases asset attestation for Fabric offline bundles. Require exact tag/SHA and tag ref, 5-160 distinct bounded asset IDs/names/sha256 digests and mandatory source manifests. All queries are metadata-only; no URL follows, binary download, local archive writes, runner privileges, service upgrades or Claude dispatch. Existing Actions-artifact update route remains unchanged; an separately authorized custody importer must follow before any release install.

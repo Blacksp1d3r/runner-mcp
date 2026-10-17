@@ -1,3 +1,9 @@
+## 2026-10-17 — Black bootstrap exact-source completion and physical admission WAIT
+
+Source `runner-mcp#714` **DONE** (merge `a2d34dc80550ef744acf0ff927344b000a832dcc`, 3 exact-head CI gates PASS) → **WAIT physical source/host-custody and explicit local `plan`/stage** → independent per-Black existing Agent Bus subject/credential binding → original-client target request/result/ACK + replay/expiry checks → governed host activation/rollback → isolated website release. Until host evidence: main central 0.1.27, physical Black installed version UNKNOWN, Fabric mutation/execution disabled. No destructive storage operations.
+
+---
+
 ## 2026-10-17 — First-party Black bootstrap and website chain
 
 Source-only #713/#714 local non-serving stage (no host-side changes) -> locally reviewed asset/immutable source pin + physical operator acceptance -> first-party Runner-MCP setup/private token custody and Agent Bus executor/proven actual host/subject binding -> original-client command/result/ACK -> governed reversible host/service/site activation -> AIfordable existing web artifact stage and verified HTTPS edge. Before original-client ACK, `mutation_enabled=false` and `execution_enabled=false` remain hard blockers. Black already ext4-mounted by earlier outside-route observation; adoption only, NO disk format. This does not affect existing central v0.1.27 serving release or source v0.1.29 candidate status.

@@ -15,6 +15,7 @@ import stat
 import subprocess
 import sys
 import tarfile
+import tempfile
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -285,6 +286,50 @@ def plan_local_stage(
     )
 
 
+
+def _preflight_real_venv_pip() -> None:
+    """Prove that actual isolated venv creation and pip >=23.2 work.
+
+    venv --help alone is insufficient on Ubuntu without python3.12-venv.
+    Temporary probe is entirely separate from the immutable stage prefix.
+    """
+    env = {
+        "PATH": "/usr/bin:/bin", "HOME": str(Path.home()),
+        "LANG": "C.UTF-8", "PYTHONDONTWRITEBYTECODE": "1",
+        "PIP_DISABLE_PIP_VERSION_CHECK": "1", "PIP_NO_INPUT": "1",
+        "PIP_NO_CACHE_DIR": "1",
+    }
+    try:
+        with tempfile.TemporaryDirectory(prefix="runner-mcp-venv-preflight-") as temp:
+            venv = Path(temp) / "venv"
+            created = subprocess.run(
+                ["/usr/bin/python3", "-m", "venv", str(venv)],
+                cwd="/", env=env, stdin=subprocess.DEVNULL,
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                timeout=90, check=False,
+            )
+            if created.returncode != 0:
+                raise LocalBootstrapError("venv_creation_unavailable")
+            checked = subprocess.run(
+                [str(venv / "bin/python"), "-B", "-m", "pip", "--version"],
+                cwd="/", env=env, stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+                timeout=25, check=False,
+            )
+            if checked.returncode != 0 or len(checked.stdout) > 512:
+                raise LocalBootstrapError("venv_pip_unavailable")
+            match = re.match(rb"pip ([0-9]+)\.([0-9]+)(?:\.[0-9]+)? ", checked.stdout)
+            if match is None:
+                raise LocalBootstrapError("venv_pip_unverified")
+            major, minor = int(match[1]), int(match[2])
+            if (major, minor) < (23, 2):
+                raise LocalBootstrapError("venv_pip_too_old")
+    except LocalBootstrapError:
+        raise
+    except (OSError, subprocess.SubprocessError, ValueError) as exc:
+        raise LocalBootstrapError("venv_prerequisite_probe_unavailable") from exc
+
+
 def stage_local_runner_mcp(
     manifest_path: Path, source_root: Path, *, accept_digest: str,
     home: Path | None = None, machine_digest: str | None = None,
@@ -300,6 +345,8 @@ def stage_local_runner_mcp(
     if plan.digest != accept_digest:
         raise LocalBootstrapError("plan_confirmation_mismatch")
 
+    # No stage directories or launcher mutations before a REAL venv/pip probe.
+    _preflight_real_venv_pip()
     stage_root = plan.stage_root
     parent = stage_root.parent
     parent.mkdir(parents=True, exist_ok=True, mode=0o700)

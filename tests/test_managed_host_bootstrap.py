@@ -18,6 +18,13 @@ assert _spec is not None and _spec.loader is not None
 bootstrap = importlib.util.module_from_spec(_spec)
 sys.modules[_spec.name] = bootstrap
 _spec.loader.exec_module(bootstrap)
+_REAL_PREFLIGHT = bootstrap._preflight_real_venv_pip
+
+
+@pytest.fixture(autouse=True)
+def _synthetic_stage_never_probes_host_python(monkeypatch: pytest.MonkeyPatch) -> None:
+    # Unit tests never depend on machine-specific Python distro packaging.
+    monkeypatch.setattr(bootstrap, "_preflight_real_venv_pip", lambda: None)
 
 
 def _git(source: Path, *args: str) -> str:
@@ -458,3 +465,68 @@ def test_diagnosis_denies_insecure_stage_custody(
         bootstrap.diagnose_failed_stage(
             manifest, home=tmp_path / "home", machine_digest="a" * 64,
         )
+
+
+
+def test_real_venv_preflight_accepts_only_installed_pip(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    invoked: list[list[str]] = []
+
+    def fake_run(args, **_kwargs):
+        invoked.append(args)
+        if args[:3] == ["/usr/bin/python3", "-m", "venv"]:
+            return subprocess.CompletedProcess(args, 0)
+        return subprocess.CompletedProcess(args, 0, stdout=b"pip 24.0 from sandbox (python 3.12)")
+
+    monkeypatch.setattr(bootstrap.subprocess, "run", fake_run)
+    _REAL_PREFLIGHT()
+    assert len(invoked) == 2
+    assert invoked[0][:3] == ["/usr/bin/python3", "-m", "venv"]
+    assert invoked[1][-4:] == ["-m", "pip", "--version"] or (
+        invoked[1][-4:] == ["-B", "-m", "pip", "--version"]
+    )
+
+
+@pytest.mark.parametrize(("venv_rc", "pip_rc", "pip_text", "expected"), [
+    (1, 0, b"pip 24.0 from path", "venv_creation_unavailable"),
+    (0, 1, b"", "venv_pip_unavailable"),
+    (0, 0, b"", "venv_pip_unverified"),
+    (0, 0, b"pip 23.1.0 from path", "venv_pip_too_old"),
+])
+def test_real_venv_preflight_fails_closed_before_any_stage(
+    monkeypatch: pytest.MonkeyPatch,
+    venv_rc: int, pip_rc: int, pip_text: bytes, expected: str,
+) -> None:
+    calls = 0
+
+    def fake_run(args, **_kwargs):
+        nonlocal calls
+        calls += 1
+        if args[:3] == ["/usr/bin/python3", "-m", "venv"]:
+            return subprocess.CompletedProcess(args, venv_rc)
+        return subprocess.CompletedProcess(args, pip_rc, stdout=pip_text)
+
+    monkeypatch.setattr(bootstrap.subprocess, "run", fake_run)
+    with pytest.raises(bootstrap.LocalBootstrapError, match=expected):
+        _REAL_PREFLIGHT()
+    assert calls == (1 if venv_rc else 2)
+
+
+def test_vanished_venv_prerequisite_does_not_create_stage(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    home = tmp_path / "home"
+    expected = _plan(manifest, source, tmp_path)
+
+    def missing_venv() -> None:
+        raise bootstrap.LocalBootstrapError("venv_creation_unavailable")
+
+    monkeypatch.setattr(bootstrap, "_preflight_real_venv_pip", missing_venv)
+    with pytest.raises(bootstrap.LocalBootstrapError, match="venv_creation_unavailable"):
+        bootstrap.stage_local_runner_mcp(
+            manifest, source[0], accept_digest=expected.digest,
+            home=home, machine_digest="a" * 64,
+        )
+    assert not expected.stage_root.exists()

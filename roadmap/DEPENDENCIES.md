@@ -1,3 +1,9 @@
+## 2026-10-17 — RMCP-F-0030 physical venv dependency: diagnostic source != recovery
+
+Runner-MCP #716 documented stage failure → Runner-MCP #718 **source-only non-mutating diagnosis** → private operator read-only distro package/venv check and independent cause confirmation → separately approved local prerequisite correction / fresh host-bound stage generation → Fabric #1562 genuine stage complete receipt → Fabric #1563 privately enrolled Agent Bus and original-client ACK → protected website/Claude release. No run/redo/delete/auto pip or disk changes inferred from source CI.
+
+---
+
 ## 2026-10-17 — Black bootstrap exact-source completion and physical admission WAIT
 
 Source `runner-mcp#714` **DONE** (merge `a2d34dc80550ef744acf0ff927344b000a832dcc`, 3 exact-head CI gates PASS) → **WAIT physical source/host-custody and explicit local `plan`/stage** → independent per-Black existing Agent Bus subject/credential binding → original-client target request/result/ACK + replay/expiry checks → governed host activation/rollback → isolated website release. Until host evidence: main central 0.1.27, physical Black installed version UNKNOWN, Fabric mutation/execution disabled. No destructive storage operations.

@@ -216,7 +216,7 @@ def _verify_pip_compiled_bytecode(path: Path, raw: bytes, pkg: Path,
     if (int.from_bytes(raw[4:8], "little") == 0
             and int.from_bytes(raw[12:16], "little") != len(source_bytes)):
         raise bootstrap.LocalBootstrapError("recovery_bytecode_invalid")
-    expected = marshal.dumps(compile(source_bytes, str(source), "exec"))
+    expected = marshal.dumps(compile(source_bytes, str(source), "exec", dont_inherit=True))
     if raw[16:] != expected:
         raise bootstrap.LocalBootstrapError("recovery_bytecode_content_mismatch")
 

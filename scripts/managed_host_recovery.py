@@ -207,6 +207,14 @@ def _verify_installed_package(
         stage / "recovery-evidence.json"
     ).is_symlink():
         raise bootstrap.LocalBootstrapError("recovery_previously_attempted")
+    python = venv / "bin/python"
+    bootstrap._reject_symlink_ancestors(python.parent)
+    try:
+        if (not python.is_symlink() or
+                python.resolve(strict=True) != Path("/usr/bin/python3").resolve(strict=True)):
+            raise bootstrap.LocalBootstrapError("recovery_python_interpreter_untrusted")
+    except OSError as exc:
+        raise bootstrap.LocalBootstrapError("recovery_python_interpreter_unavailable") from exc
     cli = venv / "bin/runner-mcp"
     _regular(cli, max_bytes=1024 * 1024)
     if not os.access(cli, os.X_OK):
@@ -252,7 +260,9 @@ def _verify_installed_package(
             raise bootstrap.LocalBootstrapError("recovery_record_invalid")
         seen.add(row[0])
         # pip RECORD entries may refer to venv/bin via ../ paths.
-        target = (site / row[0]).resolve(strict=True)
+        declared = site / row[0]
+        bootstrap._reject_symlink_ancestors(declared)
+        target = declared.resolve(strict=True)
         if not target.is_relative_to(venv):
             raise bootstrap.LocalBootstrapError("recovery_record_escapes_venv")
         raw = _regular(target, max_bytes=32 * 1024 * 1024)

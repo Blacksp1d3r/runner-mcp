@@ -52,8 +52,8 @@ def manifest(tmp_path: Path, source: tuple[Path, str, str]) -> Path:
     target.write_text(
         json.dumps({
             "schema_version": "runner-mcp/local-host-bootstrap/v1",
-            "asset_id": "AF-HOST-0003",
-            "runner_subject": "runner:black",
+            "asset_id": "AF-HOST-0000",
+            "runner_subject": "runner:example-host",
             "machine_id_sha256": "a" * 64,
             "source_commit": commit,
             "installer_sha256": installer_digest,
@@ -81,7 +81,7 @@ def test_local_plan_does_not_create_any_file(
     result = _plan(manifest, source, tmp_path)
     assert len(result.digest) == 64
     assert result.source_commit == source[1]
-    assert result.asset_id == "AF-HOST-0003"
+    assert result.asset_id == "AF-HOST-0000"
     assert not home.exists()
     assert result.public_dict()["service_activation"] is False
     assert result.public_dict()["original_client_ack"] is False

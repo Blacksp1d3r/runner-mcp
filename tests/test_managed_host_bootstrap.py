@@ -264,3 +264,127 @@ def test_manifest_changed_during_install_never_marks_stage_ready(
             home=tmp_path / "home", machine_digest="a" * 64, runner=changing_runner,
         )
     assert not (plan.stage_root / "stage-result.json").exists()
+
+
+def _failed_stage_root(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> Path:
+    root = _plan(manifest, source, tmp_path).stage_root
+    root.mkdir(parents=True, mode=0o700)
+    root.chmod(0o700)
+    return root
+
+
+def test_failed_stage_diagnosis_is_readonly_and_never_executes_venv(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+    monkeypatch,
+) -> None:
+    root = _failed_stage_root(manifest, source, tmp_path)
+    bin_dir = root / "runtime" / "venv" / "bin"
+    bin_dir.mkdir(parents=True)
+    (bin_dir / "python").symlink_to("/usr/bin/python3")
+    before = sorted(str(path.relative_to(root)) for path in root.rglob("*"))
+
+    def deny_subprocess(*args, **kwargs):
+        raise AssertionError("diagnosis must never run untrusted staged code")
+
+    monkeypatch.setattr(bootstrap.subprocess, "run", deny_subprocess)
+    result = bootstrap.diagnose_failed_stage(
+        manifest, home=tmp_path / "home", machine_digest="a" * 64,
+    )
+    assert result == {
+        "schema_version": "runner-mcp/local-stage-diagnosis/v1",
+        "state": "failed_or_incomplete",
+        "source_commit": source[1],
+        "venv_python_kind": "symlink",
+        "venv_pip_file_kind": "absent",
+        "runner_cli_kind": "absent",
+        "launcher_kind": "absent",
+        "stage_marker_kind": "absent",
+        "installer_error_cause": "undetermined",
+        "diagnostic_method": "filesystem_metadata_only",
+        "mutation_authorized": False,
+        "service_activation_verified": False,
+        "relay_enrollment_verified": False,
+        "original_client_ack_verified": False,
+    }
+    assert sorted(str(path.relative_to(root)) for path in root.rglob("*")) == before
+    assert "machine_id_sha256" not in result
+    assert "installer_sha256" not in result
+    assert "stage_root" not in result
+
+
+def test_marker_or_pip_file_alone_does_not_authorize_stage(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> None:
+    root = _failed_stage_root(manifest, source, tmp_path)
+    pip_dir = (
+        root / "runtime" / "venv" / "lib"
+        / f"python{sys.version_info.major}.{sys.version_info.minor}"
+        / "site-packages" / "pip"
+    )
+    pip_dir.mkdir(parents=True)
+    (pip_dir / "__init__.py").write_text("contents are not executed")
+    (root / "stage-result.json").write_text('{"stage_complete":true}')
+    actual = bootstrap.diagnose_failed_stage(
+        manifest, home=tmp_path / "home", machine_digest="a" * 64,
+    )
+    assert actual["venv_pip_file_kind"] == "regular"
+    assert actual["state"] == "marker_present_unverified"
+    assert actual["service_activation_verified"] is False
+    assert actual["original_client_ack_verified"] is False
+    with pytest.raises(bootstrap.LocalBootstrapError, match="stage_already_present"):
+        _plan(manifest, source, tmp_path)
+
+
+def test_diagnosis_wrong_host_root_and_absent_stage_denied(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+    monkeypatch,
+) -> None:
+    home = tmp_path / "home"
+    with pytest.raises(bootstrap.LocalBootstrapError, match="wrong_physical_host"):
+        bootstrap.diagnose_failed_stage(
+            manifest, home=home, machine_digest="b" * 64,
+        )
+    with pytest.raises(bootstrap.LocalBootstrapError, match="failed_stage_not_found"):
+        bootstrap.diagnose_failed_stage(
+            manifest, home=home, machine_digest="a" * 64,
+        )
+    monkeypatch.setattr(bootstrap.os, "geteuid", lambda: 0)
+    with pytest.raises(bootstrap.LocalBootstrapError, match="root_operator_denied"):
+        bootstrap.diagnose_failed_stage(
+            manifest, home=home, machine_digest="a" * 64,
+        )
+
+
+def test_diagnosis_refuses_symlinked_or_unsafe_partial_stage(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> None:
+    root = _plan(manifest, source, tmp_path).stage_root
+    victim = tmp_path / "victim"
+    victim.mkdir()
+    root.parent.mkdir(parents=True)
+    root.symlink_to(victim, target_is_directory=True)
+    with pytest.raises(bootstrap.LocalBootstrapError, match="symlink_path_denied"):
+        bootstrap.diagnose_failed_stage(
+            manifest, home=tmp_path / "home", machine_digest="a" * 64,
+        )
+    root.unlink()
+    root.mkdir(mode=0o700)
+    (root / "runtime").symlink_to(victim, target_is_directory=True)
+    with pytest.raises(bootstrap.LocalBootstrapError, match="stage_layout_unsafe"):
+        bootstrap.diagnose_failed_stage(
+            manifest, home=tmp_path / "home", machine_digest="a" * 64,
+        )
+    assert not list(victim.iterdir())
+
+
+def test_diagnosis_denies_insecure_stage_custody(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> None:
+    root = _failed_stage_root(manifest, source, tmp_path)
+    root.chmod(0o755)
+    with pytest.raises(bootstrap.LocalBootstrapError, match="stage_custody_invalid"):
+        bootstrap.diagnose_failed_stage(
+            manifest, home=tmp_path / "home", machine_digest="a" * 64,
+        )

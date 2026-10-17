@@ -128,6 +128,40 @@ stage generation requires separate owner-approved bounded recovery; the
 source merge and diagnosis command never grant that approval. See Runner-MCP
 #716/#718 and Runner-Fabric #1562/#1563.
 
+## Recovery checkout guard: fail visibly before local finalize (#732)
+
+The *recovery-tool checkout* is distinct from the original, deliberately
+preserved incomplete stage and its original source checkout. Before any
+operator-attended recovery invocation, inspect the recovery-tool checkout
+itself. An ignored Python import cache means it is no longer clean, even if
+the tracked files still match. Never silently skip `finalize` because a shell
+runs with `set -e`; classify a rejected preflight visibly and preserve the
+forensic checkout. This example is for a **fresh, independently pinned,
+operator-controlled tool checkout only**, after verifying its exact commit
+against the separately approved source and recovery plan:
+
+~~~bash
+# Run inside the fresh approved recovery-tool Git checkout, not the old stage.
+if ! status="$(git status --porcelain=v1 --untracked-files=all --ignored=matching)"; then
+  printf '%s\n' 'BLOCKED_RECOVERY_SOURCE_STATUS_UNAVAILABLE' >&2
+  exit 2
+fi
+if [ -n "$status" ]; then
+  printf '%s\n' 'BLOCKED_RECOVERY_SOURCE_NOT_CLEAN: preserve checkout; investigate and use a different fresh pinned checkout' >&2
+  exit 2
+fi
+# For subsequent inspect/finalize use the already approved private manifest,
+# original-plan SHA and recovery SHA only in this local operator session:
+# PYTHONDONTWRITEBYTECODE=1 python3 -B scripts/managed_host_recovery.py ...
+~~~
+
+Do not echo full Git status, manifests, paths, plan SHA or recovery digest to
+public logs. `sys.dont_write_bytecode` on the direct recovery CLI prevents the
+known import-cache self-dirty regression, but it never authorizes removal of
+pre-existing files or bypass of the checkout gate. A successful non-serving
+stage receipt still has no relay enrollment, service activation or
+original-client ACK.
+
 ---
 
 ## Separate admission before turning on a service

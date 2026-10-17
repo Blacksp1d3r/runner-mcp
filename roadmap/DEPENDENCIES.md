@@ -1,3 +1,9 @@
+## 2026-10-17 — First-party Black bootstrap and website chain
+
+Source-only #713/#714 local non-serving stage (no host-side changes) -> locally reviewed asset/immutable source pin + physical operator acceptance -> first-party Runner-MCP setup/private token custody and Agent Bus executor/proven actual host/subject binding -> original-client command/result/ACK -> governed reversible host/service/site activation -> AIfordable existing web artifact stage and verified HTTPS edge. Before original-client ACK, `mutation_enabled=false` and `execution_enabled=false` remain hard blockers. Black already ext4-mounted by earlier outside-route observation; adoption only, NO disk format. This does not affect existing central v0.1.27 serving release or source v0.1.29 candidate status.
+
+---
+
 ## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled
 
 First physical node: `isolated-source exact 0.1.27 dependency-resolving installer` DONE -> `managed six-role cron cutover` DONE -> `local new loopback listener` DONE -> `original connected MCP runtime_status/build_identity + worker/Fabric read-only responses` DONE -> `temporary rollback timer deactivated by operator` DONE. This is a working attended one-node activation, NOT independently signed deployed wheel, durable A6 campaign or A7 revert acceptance.

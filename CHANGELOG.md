@@ -6,6 +6,8 @@ Runner MCP is under active development. New changes remain under **Unreleased** 
 
 ## Unreleased
 
+- Source candidate 0.1.29 (not tagged, published or installed): local, unprivileged, operator-confirmed, SHA-pinned first-host staging bootstrap in scripts/managed_host_bootstrap.py. Uses existing install.sh; does not enroll a runner, start services, change disks or grant Fabric remote management. See docs/LOCAL_HOST_BOOTSTRAP.md and #713.
+
 - Source package and MCP manifest versions advance to 0.1.4; this is a **pending candidate**, not a published release or deployment.
 - Release guard prevents any source, tools, installer, scripts or workflow changes without a strictly higher version and matching metadata.
 

@@ -1,3 +1,11 @@
+## 2026-10-17 — #713 new Black physically attended first-party bootstrap source
+
+Child #713 / PR #714: implement operator-local NON-SERVING, existing `install.sh` based exact-source first stage, guarded machine-id digest and canonical `AF-HOST`/runner-subject manifest, explicit plan SHA acceptance, no privileged/root operations or automatic credential/relay enrollment. Tests and local instructions source-only. Repo shipping-version policy requires synchronized source-only candidate 0.1.29 (not published/deployed). First CI blocked as expected on version gate; updated branch must independently pass all exact-head CI before merge.
+
+Post-source dependencies (separate children and physical approval): valid fixed Black asset owner/host receipt in AIfordable #428 -> operator-local source-stage from reviewed exact commit -> private configured Runner-MCP + existing Agent Bus worker/Fabric slots -> authenticated receiver and actual per-request original-client ACK via AIfordable #585/Fabric #1556 -> independent rollback and host update #924/#942/#943 -> immutable AIfordable public-web release #584 and existing Cockpit #936. No other route; Black HDD already mounted, do not reformat. Claude dispatch remains separate WAIT.
+
+---
+
 ## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled
 
 - F30 PHYSICAL FIRST-NODE upgrade step now **DONE on attended host**: normal isolated installer with dependency resolution, six managed cron pins switched, and current original-client MCP responses after temporary fallback timer cancellation confirm 0.1.27. Retained old executable and crontab. Do NOT repeat installation or claim fleet complete; previous 0.1.9 runtime observations are historical.

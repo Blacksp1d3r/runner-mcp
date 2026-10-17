@@ -19,6 +19,8 @@ Runner MCP is currently **alpha and in maintenance mode**. The canonical public 
 
 **Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
 
+**One-time new-host staging (local operator only):** [Source-pinned host bootstrap](docs/LOCAL_HOST_BOOTSTRAP.md). This does not activate a service or confer remote authority.
+
 ### The difference in one table
 
 | Approach | AI can inspect/run configured work | Arbitrary shell is the normal interface | Explicit audit/safety boundary |

@@ -1594,7 +1594,11 @@ def cmd_agent_bus(args: argparse.Namespace) -> int:
 
     if args.agent_bus_action == "status":
         result = agent_bus_config_status(config_dir)
-        print("configured" if result["configured"] else "not configured")
+        if result.get("base_config_not_initialized"):
+            print("base_config_not_initialized")
+            print("Next: run runner-mcp setup locally with an approved real project.")
+        else:
+            print("configured" if result["configured"] else "not configured")
         return 0
 
     if args.agent_bus_action == "convergence":

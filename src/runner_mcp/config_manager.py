@@ -5,6 +5,7 @@ import hashlib
 import os
 import secrets
 import shlex
+import stat
 from collections.abc import Iterator
 from contextlib import contextmanager
 from pathlib import Path
@@ -678,7 +679,49 @@ def remove_github_mailbox(config_dir: Path) -> None:
         _write_private_environment(paths, values)
 
 
+def _agent_bus_base_not_initialized(config_dir: Path) -> bool:
+    """Only classify a genuinely absent base as NOT_INITIALIZED; never mask unsafe custody."""
+    if not config_dir.is_absolute():
+        raise ConfigManagerError("Private configuration path must be absolute")
+
+    current = Path(config_dir.anchor)
+    for part in config_dir.parts[1:]:
+        current /= part
+        try:
+            current_stat = current.lstat()
+        except FileNotFoundError:
+            return True
+        except OSError as exc:
+            raise ConfigManagerError("Private configuration path is unavailable") from exc
+        if stat.S_ISLNK(current_stat.st_mode):
+            raise ConfigManagerError("Private configuration path must not be a symlink")
+        if not stat.S_ISDIR(current_stat.st_mode):
+            raise ConfigManagerError("Private configuration path is not a directory")
+
+    if (
+        current_stat.st_uid != os.geteuid()
+        or stat.S_IMODE(current_stat.st_mode) != 0o700
+    ):
+        raise ConfigManagerError("Private configuration directory custody is invalid")
+
+    seen = []
+    for name in ("runner-mcp.env", "projects.yml"):
+        try:
+            entry = (config_dir / name).lstat()
+        except FileNotFoundError:
+            seen.append(False)
+            continue
+        except OSError as exc:
+            raise ConfigManagerError("Private base configuration is unreadable") from exc
+        if not stat.S_ISREG(entry.st_mode):
+            raise ConfigManagerError("Private base configuration is unsafe")
+        seen.append(True)
+    return not any(seen)
+
+
 def agent_bus_config_status(config_dir: Path) -> dict[str, bool]:
+    if _agent_bus_base_not_initialized(config_dir):
+        return {"configured": False, "base_config_not_initialized": True}
     paths, _project_file, _registry = _load_for_edit(config_dir)
     values = load_env_file(paths.env_file)
     present = {

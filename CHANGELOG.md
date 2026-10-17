@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.33 (source candidate; not published)
+
+- Automatically verify the actual fresh isolated Python 3.12 venv and pip >=23.2 before first-host stage prefix creation; missing Ubuntu Python venv packages produce a bounded denial without an unusable partial installation (#726).
+
 ## 0.1.32 (source candidate; not published)
 
 - Add operator-local, fail-closed, manifest/host/source-bound recovery for intact previously blocked stages. Verify installed Python against immutable Git archive, wheel RECORD and CLI integrity, require explicit recovery-digest confirmation; no installer retry, activation, relay enrollment or ACK (#723).

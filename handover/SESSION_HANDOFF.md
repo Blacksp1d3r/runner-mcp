@@ -1,3 +1,11 @@
+## 2026-10-17 — #713/#714 source merge receipt; physical target still WAIT
+
+Merge: PR #714 head `68e569d7964fe92abd8516a9cd5a6144f5f8fb97` → main squash `a2d34dc80550ef744acf0ff927344b000a832dcc`. Exact-head validation #39036840912, Clean Ubuntu #39036840935, attribution #39036840862 all SUCCESS; no unresolved review threads. Local first-host stage source, regression tests and operator docs complete. This updated record supersedes all earlier mentions of PR #714 pending CI; do not redo changes or version bumps.
+
+Stage has NOT run physically on Black. All live first-party site operations still WAIT: connected original Runner-MCP 0.1.27 has read-only Fabric bridge and Q7 not configured, relay unknown; wrong-host status must not masquerade as `host:black` delivery. Next one-time owner/local terminal step is source review and private 0600 manifest → `identity` → `plan` → explicit `stage` (no root). Then separate owner-private Runner-MCP/Agent Bus enrollment, independently verified original-client request/result/ACK, reversible managed activation and websites. No SSH/DC fallback; no HDD formatting; no public DNS change. Failure Museum RMCP-F-0029 explains CI script import surprise.
+
+---
+
 ## 2026-10-17 — First-host bootstrap source #713/#714, never remote-activate
 
 User decision: build the ONE-TIME operator-local first-host bootstrap because connected central Runner-MCP/Fabric lacks qualified Black target capability; NO broad remote shell/SSH/Desktop Commander fallback. Branch `feat/713-managed-host-first-stage-20261017`, PR #714 OPEN. New `scripts/managed_host_bootstrap.py` is physically operator-run, strict private asset/host pin → read-only plan SHA → explicit stage via original `install.sh` in entirely separate non-serving private root → pip/CLI smoke → private marker `service_activation=false, relay_enrollment=false, original_client_ack=false`. No actual Black machine touched. Failed or reattempt stage never auto-deletes or restarts. Test file `tests/test_managed_host_bootstrap.py`; runbook `docs/LOCAL_HOST_BOOTSTRAP.md`.

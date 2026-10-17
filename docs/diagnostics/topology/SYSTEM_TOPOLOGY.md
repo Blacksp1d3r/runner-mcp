@@ -1,3 +1,11 @@
+## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
+
+Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.
+
+Physical Black stage `stage_complete=true` was already done by operator (Runner-MCP #723/Fabric #1562 CLOSED), but `service_activation=false`, `relay_enrollment=false`, `original_client_ack=false`. Owner-private real project selection/base setup, AIfordable #585 unique CAS-fenced issuer credential and Fabric #1563 target-specific durable result→original-client ACK remain WAIT; A6/A7 and all external services stay blocked. Runner-MCP #735 remains OPEN for approved stage-closeout UX/receipt compatibility plus physical setup proof; do NOT silently add a field to signed stage v1 marker, repeat original stage, copy another host's token, or confuse central heartbeat with Black.
+
+---
+
 ### 2026-10-17 — NEW Black host non-serving admission and missing base configuration
 
 Logical only, no customer coordinates, addresses, port or credential values:

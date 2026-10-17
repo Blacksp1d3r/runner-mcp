@@ -311,10 +311,32 @@ def _runtime_smoke(stage: Path) -> None:
             raise bootstrap.LocalBootstrapError("recovery_runtime_smoke_failed")
 
 
-def inspect_recovery(manifest_path: Path, source: Path) -> RecoveryEvidence:
+
+def _original_plan_sha256(manifest: bootstrap.HostManifest) -> str:
+    canonical = {
+        "schema_version": bootstrap._SCHEMA,
+        "asset_id": manifest.asset_id,
+        "runner_subject": manifest.runner_subject,
+        "machine_id_sha256": manifest.machine_id_sha256,
+        "source_commit": manifest.source_commit,
+        "installer_sha256": manifest.installer_sha256,
+        "stage_only": True,
+    }
+    return hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
+def inspect_recovery(
+    manifest_path: Path, source: Path, *, original_plan: str,
+) -> RecoveryEvidence:
     if os.geteuid() == 0 or sys.platform != "linux" or sys.version_info < (3, 12):
         raise bootstrap.LocalBootstrapError("recovery_operator_unsupported")
     manifest = bootstrap.HostManifest.load(manifest_path)
+    if type(original_plan) is not str or _SHA.fullmatch(original_plan) is None:
+        raise bootstrap.LocalBootstrapError("recovery_original_plan_required")
+    if _original_plan_sha256(manifest) != original_plan:
+        raise bootstrap.LocalBootstrapError("recovery_original_plan_mismatch")
     if bootstrap.host_identity_digest() != manifest.machine_id_sha256:
         raise bootstrap.LocalBootstrapError("wrong_physical_host")
     version = _verify_source(source, manifest)
@@ -346,6 +368,8 @@ def inspect_recovery(manifest_path: Path, source: Path) -> RecoveryEvidence:
         "source_archive_sha256": source_digest,
         "record_sha256": record_digest,
         "verified_python_files": file_count,
+        "stage_dev": stage.lstat().st_dev,
+        "stage_inode": stage.lstat().st_ino,
         "stage_only": True,
     }
     digest = hashlib.sha256(
@@ -357,15 +381,15 @@ def inspect_recovery(manifest_path: Path, source: Path) -> RecoveryEvidence:
 
 
 def finalize_recovery(
-    manifest_path: Path, source: Path, *, accept_digest: str,
+    manifest_path: Path, source: Path, *, original_plan: str, accept_digest: str,
 ) -> dict[str, object]:
     if type(accept_digest) is not str or _SHA.fullmatch(accept_digest) is None:
         raise bootstrap.LocalBootstrapError("recovery_explicit_confirmation_required")
-    first = inspect_recovery(manifest_path, source)
+    first = inspect_recovery(manifest_path, source, original_plan=original_plan)
     if first.digest != accept_digest:
         raise bootstrap.LocalBootstrapError("recovery_confirmation_mismatch")
     # Revalidate the entire trust chain immediately before opening receipts.
-    latest = inspect_recovery(manifest_path, source)
+    latest = inspect_recovery(manifest_path, source, original_plan=original_plan)
     if latest.digest != first.digest:
         raise bootstrap.LocalBootstrapError("recovery_attestation_changed")
     receipt = {
@@ -384,15 +408,7 @@ def finalize_recovery(
     }
     state = {
         "schema_version": "runner-mcp/local-host-stage-result/v1",
-        "plan_sha256": bootstrap._sha256(json.dumps({
-            "schema_version": bootstrap._SCHEMA,
-            "asset_id": latest.manifest.asset_id,
-            "runner_subject": latest.manifest.runner_subject,
-            "machine_id_sha256": latest.manifest.machine_id_sha256,
-            "source_commit": latest.manifest.source_commit,
-            "installer_sha256": latest.manifest.installer_sha256,
-            "stage_only": True,
-        }, sort_keys=True, separators=(",", ":")).encode()),
+        "plan_sha256": original_plan,
         "source_commit": latest.manifest.source_commit,
         "asset_id": latest.manifest.asset_id,
         "runner_subject": latest.manifest.runner_subject,
@@ -427,15 +443,19 @@ def main(argv: list[str] | None = None) -> int:
         command = subs.add_parser(action)
         command.add_argument("--manifest", type=Path, required=True)
         command.add_argument("--source", type=Path, required=True)
+        command.add_argument("--original-plan", required=True)
         if action == "finalize":
             command.add_argument("--accept-recovery", required=True)
     args = parser.parse_args(argv)
     try:
         if args.action == "inspect":
-            result = inspect_recovery(args.manifest, args.source).public()
+            result = inspect_recovery(
+                args.manifest, args.source, original_plan=args.original_plan,
+            ).public()
         else:
             result = finalize_recovery(
-                args.manifest, args.source, accept_digest=args.accept_recovery,
+                args.manifest, args.source, original_plan=args.original_plan,
+                accept_digest=args.accept_recovery,
             )
         print(json.dumps(result, sort_keys=True))
         return 0

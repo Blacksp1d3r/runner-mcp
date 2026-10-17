@@ -17,7 +17,9 @@ _An AIfordable project — secure software. Built with AI. Fairly priced._
 
 Runner MCP is currently **alpha and in maintenance mode**. The canonical public release is **v0.1.3**, available on [PyPI](https://pypi.org/project/aifordable-runner-mcp/), the [official MCP Registry](https://registry.modelcontextprotocol.io/?q=io.github.Blacksp1d3r%2Frunner-mcp) and [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases). The core alpha scope is complete; new work is limited to security fixes, bugs, compatibility, and concrete operational needs rather than speculative feature growth.
 
-**Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
+**Start here:****One-time new-host staging (local operator only):** [Source-pinned host bootstrap](docs/LOCAL_HOST_BOOTSTRAP.md). This does not activate a service or confer remote authority.
+
+ [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
 
 ### The difference in one table
 

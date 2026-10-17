@@ -7,6 +7,7 @@ import hashlib
 import importlib.util
 import io
 import json
+import py_compile
 import os
 import subprocess
 import sys
@@ -278,4 +279,63 @@ def test_original_approved_plan_sha_cannot_be_replaced(stage_fixture) -> None:
     source, root, manifest, _record = stage_fixture
     with pytest.raises(bootstrap.LocalBootstrapError, match="recovery_original_plan_mismatch"):
         recovery.inspect_recovery(manifest, source, original_plan="f" * 64)
+    assert not (root / "stage-result.json").exists()
+
+
+
+def _record_compiled_bytecode(root: Path, *, modify: bool = False) -> None:
+    pkg = root / "runtime/venv/lib/python3.12/site-packages/runner_mcp"
+    script = pkg / "cli.py"
+    pyc = Path(py_compile.compile(str(script), doraise=True))
+    if modify:
+        data = bytearray(pyc.read_bytes())
+        data[-1] ^= 1
+        pyc.write_bytes(data)
+    record = root / (
+        "runtime/venv/lib/python3.12/site-packages/"
+        "aifordable_runner_mcp-0.1.30.dist-info/RECORD"
+    )
+    rows = list(csv.reader(io.StringIO(record.read_text())))
+    rows.insert(
+        -1,
+        [f"runner_mcp/__pycache__/{pyc.name}", "", ""],
+    )
+    with record.open("w", newline="", encoding="utf-8") as output:
+        csv.writer(output).writerows(rows)
+
+
+def test_pip_generated_unhashed_bytecode_requires_exact_source_equivalence(
+    stage_fixture,
+) -> None:
+    source, root, manifest, _record = stage_fixture
+    _record_compiled_bytecode(root)
+    result = recovery.inspect_recovery(
+        manifest, source, original_plan=_accepted_plan(manifest),
+    )
+    assert result.file_count == 2
+    assert not (root / "stage-result.json").exists()
+
+
+def test_forged_pip_bytecode_never_authorizes_stage(stage_fixture) -> None:
+    source, root, manifest, _record = stage_fixture
+    _record_compiled_bytecode(root, modify=True)
+    with pytest.raises(
+        bootstrap.LocalBootstrapError, match="recovery_bytecode_content_mismatch",
+    ):
+        recovery.inspect_recovery(
+            manifest, source, original_plan=_accepted_plan(manifest),
+        )
+    assert not (root / "stage-result.json").exists()
+
+
+def test_unrecorded_bytecode_denied(stage_fixture) -> None:
+    source, root, manifest, _record = stage_fixture
+    pkg = root / "runtime/venv/lib/python3.12/site-packages/runner_mcp"
+    py_compile.compile(str(pkg / "cli.py"), doraise=True)
+    with pytest.raises(
+        bootstrap.LocalBootstrapError, match="recovery_record_incomplete",
+    ):
+        recovery.inspect_recovery(
+            manifest, source, original_plan=_accepted_plan(manifest),
+        )
     assert not (root / "stage-result.json").exists()

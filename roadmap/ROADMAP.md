@@ -1,3 +1,11 @@
+## 2026-10-17 — F30 Black one-time local bootstrap SOURCE COMPLETE
+
+Bounded issue #713/PR #714 local first-host non-serving installer source MERGED `a2d34dc80550ef744acf0ff927344b000a832dcc`; tested head `68e569d7964fe92abd8516a9cd5a6144f5f8fb97` with exact CI validation #39036840912, clean Ubuntu #39036840935, attribution #39036840862 all SUCCESS. The new script reuses original `install.sh`, no fresh generic remote agent and no deployment authority. Physical stage not yet executed; 0.1.29 is unpublished source only.
+
+Next dependency: operator-local Black machine/source/installer pin and rootless stage → existing first-party Runner-MCP/Agent Bus owner-private config and exact local process/host attestation → relay request/result/original-client ACK and recovery evidence → managed protected site release (AIfordable #584, Runner-Fabric #1554/#924). No package transfer via unmanaged host-control route, no format of previously ext4-mounted HDD, no claimed Claude dispatch.
+
+---
+
 ## 2026-10-17 — #713 new Black physically attended first-party bootstrap source
 
 Child #713 / PR #714: implement operator-local NON-SERVING, existing `install.sh` based exact-source first stage, guarded machine-id digest and canonical `AF-HOST`/runner-subject manifest, explicit plan SHA acceptance, no privileged/root operations or automatic credential/relay enrollment. Tests and local instructions source-only. Repo shipping-version policy requires synchronized source-only candidate 0.1.29 (not published/deployed). First CI blocked as expected on version gate; updated branch must independently pass all exact-head CI before merge.

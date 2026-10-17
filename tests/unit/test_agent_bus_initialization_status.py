@@ -82,6 +82,20 @@ def test_symlinked_ancestor_is_denied(tmp_path: Path) -> None:
         agent_bus_config_status(alias / "nested" / "missing")
 
 
+def test_cli_symlink_alias_fails_closed_without_creating_files(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+) -> None:
+    root = tmp_path / "private"
+    root.mkdir(mode=0o700)
+    alias = tmp_path / "alias"
+    alias.symlink_to(root, target_is_directory=True)
+    assert main(["--config-dir", str(alias), "agent-bus", "status"]) == 2
+    output = capsys.readouterr()
+    assert output.out == ""
+    assert "symlink" in output.err
+    assert list(root.iterdir()) == []
+
+
 def test_symlinked_base_file_is_denied(tmp_path: Path) -> None:
     root = tmp_path / "private"
     root.mkdir(mode=0o700)

@@ -7,15 +7,17 @@ from __future__ import annotations
 
 import argparse
 import hashlib
+import io
 import json
 import os
 import re
 import stat
 import subprocess
 import sys
+import tarfile
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 _SCHEMA = "runner-mcp/local-host-bootstrap/v1"
 _MANIFEST_FIELDS = frozenset({
@@ -170,6 +172,80 @@ def _verify_source(source_root: Path, manifest: HostManifest) -> None:
         raise LocalBootstrapError("source_dirty")
 
 
+
+def _pinned_build_copy(source: Path, destination: Path, commit: str) -> Path:
+    """Extract only the pinned Git tree into an isolated, private build location.
+
+    pip/setuptools can create build/ and *.egg-info. They MUST NOT mutate the
+    original checkout because the final immutable-source gate checks it again.
+    No floating branch, shell, symlink extraction or arbitrary destination.
+    """
+    build = destination / "build-source"
+    _reject_symlink_ancestors(build)
+    build.mkdir(mode=0o700)
+    env = {
+        "PATH": "/usr/bin:/bin", "HOME": "/", "LC_ALL": "C",
+        "GIT_CONFIG_NOSYSTEM": "1", "GIT_CONFIG_GLOBAL": "/dev/null",
+        "GIT_TERMINAL_PROMPT": "0", "GIT_OPTIONAL_LOCKS": "0",
+    }
+    try:
+        proc = subprocess.run(
+            ["/usr/bin/git", "-C", str(source), "archive", "--format=tar", commit],
+            env=env, cwd="/", stdin=subprocess.DEVNULL,
+            stdout=subprocess.PIPE, stderr=subprocess.DEVNULL,
+            timeout=35, check=False,
+        )
+        if proc.returncode != 0 or not 0 < len(proc.stdout) <= 96 * 1024 * 1024:
+            raise LocalBootstrapError("stage_source_archive_unavailable")
+        with tarfile.open(fileobj=io.BytesIO(proc.stdout), mode="r:") as archive:
+            count = 0
+            total_bytes = 0
+            for member in archive:
+                count += 1
+                if count > 4000:
+                    raise LocalBootstrapError("stage_source_archive_unsafe")
+                parts = PurePosixPath(member.name).parts
+                if (not parts or member.name.startswith("/") or
+                        any(part in ("", ".", "..") for part in parts)):
+                    raise LocalBootstrapError("stage_source_archive_unsafe")
+                target = build.joinpath(*parts)
+                _reject_symlink_ancestors(target.parent)
+                if member.isdir():
+                    target.mkdir(parents=True, exist_ok=True, mode=0o700)
+                elif member.isfile():
+                    if member.size < 0 or member.size > 48 * 1024 * 1024:
+                        raise LocalBootstrapError("stage_source_archive_unsafe")
+                    total_bytes += member.size
+                    if total_bytes > 96 * 1024 * 1024:
+                        raise LocalBootstrapError("stage_source_archive_unsafe")
+                    target.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+                    flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL
+                    if hasattr(os, "O_NOFOLLOW"):
+                        flags |= os.O_NOFOLLOW
+                    data = archive.extractfile(member)
+                    if data is None:
+                        raise LocalBootstrapError("stage_source_archive_unsafe")
+                    fd = os.open(target, flags, 0o600)
+                    with os.fdopen(fd, "wb") as stream, data:
+                        remaining = member.size
+                        while remaining:
+                            piece = data.read(min(65536, remaining))
+                            if not piece:
+                                raise LocalBootstrapError("stage_source_archive_unsafe")
+                            stream.write(piece)
+                            remaining -= len(piece)
+                else:
+                    # No symlink, device, FIFO or hard-link inside the stage.
+                    raise LocalBootstrapError("stage_source_archive_unsafe")
+            if not count:
+                raise LocalBootstrapError("stage_source_archive_unsafe")
+    except LocalBootstrapError:
+        raise
+    except (OSError, subprocess.SubprocessError, tarfile.TarError, ValueError) as exc:
+        raise LocalBootstrapError("stage_source_archive_unavailable") from exc
+    return build
+
+
 def plan_local_stage(
     manifest_path: Path, source_root: Path, *,
     home: Path | None = None, machine_digest: str | None = None,
@@ -251,9 +327,10 @@ def stage_local_runner_mcp(
         "PIP_NO_CACHE_DIR": "1",
     }
     try:
+        build_source = _pinned_build_copy(source_root, stage_root, plan.source_commit)
         result = runner(
-            ["/usr/bin/bash", str(source_root / "install.sh")],
-            cwd=str(source_root), env=environment,
+            ["/usr/bin/bash", str(build_source / "install.sh")],
+            cwd=str(build_source), env=environment,
             stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
             stderr=subprocess.DEVNULL, timeout=1300, check=False,
         )

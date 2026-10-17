@@ -199,7 +199,9 @@ def test_stage_reuses_existing_installer_and_remains_unactivated(
     )
 
     assert len(observed_commands) == 3
-    assert observed_commands[0] == ["/usr/bin/bash", str(source[0] / "install.sh")]
+    assert observed_commands[0] == ["/usr/bin/bash", str(expected.stage_root / "build-source" / "install.sh")]
+    assert observed_commands[0][-1] != str(source[0] / "install.sh")
+    assert not _git(source[0], "status", "--porcelain", "--untracked-files=all", "--ignored=matching")
     assert result["stage_complete"] is True
     assert result["service_activation"] is False
     assert result["relay_enrollment"] is False
@@ -210,6 +212,74 @@ def test_stage_reuses_existing_installer_and_remains_unactivated(
     with pytest.raises(bootstrap.LocalBootstrapError, match="stage_already_present"):
         _plan(manifest, source, tmp_path)
 
+
+
+
+def test_pinned_build_copy_contains_setuptools_output_without_dirtying_source(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> None:
+    plan = _plan(manifest, source, tmp_path)
+    build_source = plan.stage_root / "build-source"
+
+    def build_runner(args, **kw):
+        if args[0] == "/usr/bin/bash":
+            assert Path(args[1]) == build_source / "install.sh"
+            assert Path(kw["cwd"]) == build_source
+            (build_source / "build").mkdir()
+            egg = build_source / "src" / "aifordable_runner_mcp.egg-info"
+            egg.mkdir(parents=True)
+            (egg / "PKG-INFO").write_text("generated during setuptools build")
+            venv = plan.stage_root / "runtime" / "venv" / "bin"
+            venv.mkdir(parents=True)
+            (venv / "runner-mcp").write_text("mock CLI")
+            (venv / "runner-mcp").chmod(0o700)
+            (venv / "python").write_text("mock Python")
+            (plan.stage_root / "bin" / "runner-mcp").symlink_to(
+                venv / "runner-mcp"
+            )
+        return subprocess.CompletedProcess(args, 0)
+
+    result = bootstrap.stage_local_runner_mcp(
+        manifest, source[0], accept_digest=plan.digest,
+        home=tmp_path / "home", machine_digest="a" * 64,
+        runner=build_runner,
+    )
+    assert result["stage_complete"] is True
+    assert (build_source / "build").is_dir()
+    assert (build_source / "src/aifordable_runner_mcp.egg-info").is_dir()
+    assert not (source[0] / "build").exists()
+    assert not (source[0] / "src/aifordable_runner_mcp.egg-info").exists()
+    assert not _git(
+        source[0], "status", "--porcelain", "--untracked-files=all", "--ignored=matching",
+    )
+
+
+def test_pinned_build_source_rejects_tracked_symlink_before_installer(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> None:
+    link = source[0] / "link-to-installer"
+    link.symlink_to("install.sh")
+    _git(source[0], "add", "link-to-installer")
+    _git(
+        source[0], "-c", "user.email=test@example.invalid",
+        "-c", "user.name=Test", "commit", "-qm", "symlink fixture",
+    )
+    payload = json.loads(manifest.read_text())
+    payload["source_commit"] = _git(source[0], "rev-parse", "HEAD")
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    plan = _plan(manifest, (source[0], payload["source_commit"], source[2]), tmp_path)
+
+    def never_run_installer(*_args, **_kwargs):
+        raise AssertionError("installer must not execute from a symlink source")
+
+    with pytest.raises(bootstrap.LocalBootstrapError, match="stage_source_archive_unsafe"):
+        bootstrap.stage_local_runner_mcp(
+            manifest, source[0], accept_digest=plan.digest,
+            home=tmp_path / "home", machine_digest="a" * 64,
+            runner=never_run_installer,
+        )
+    assert plan.stage_root.is_dir()
+    assert not (plan.stage_root / "stage-result.json").exists()
 
 def test_failed_installer_keeps_stage_without_faking_success(
     manifest: Path, source: tuple[Path, str, str], tmp_path: Path,

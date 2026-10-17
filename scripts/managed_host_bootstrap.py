@@ -312,14 +312,112 @@ def stage_local_runner_mcp(
         raise LocalBootstrapError("stage_execution_unavailable") from exc
 
 
+
+def _stage_entry_kind(path: Path) -> str:
+    """Inspect only lstat metadata; never follow a partial install's links."""
+    try:
+        mode = path.lstat().st_mode
+    except FileNotFoundError:
+        return "absent"
+    except OSError as exc:
+        raise LocalBootstrapError("stage_diagnosis_unavailable") from exc
+    if stat.S_ISLNK(mode):
+        return "symlink"
+    if stat.S_ISDIR(mode):
+        return "directory"
+    if stat.S_ISREG(mode):
+        return "regular"
+    return "other"
+
+
+def diagnose_failed_stage(
+    manifest_path: Path, *,
+    home: Path | None = None, machine_digest: str | None = None,
+) -> dict[str, object]:
+    """Read metadata only. Existing stage is NEVER run, modified or retried.
+
+    Can be invoked from a *new* clean source checkout because it diagnoses
+    the original manifest-pinned revision rather than staging this revision.
+    It does not prove that an optional venv pip package is importable.
+    """
+    if sys.platform != "linux" or sys.version_info < (3, 12):
+        raise LocalBootstrapError("runtime_unsupported")
+    if os.geteuid() == 0:
+        raise LocalBootstrapError("root_operator_denied")
+    manifest = HostManifest.load(manifest_path)
+    actual = machine_digest if machine_digest is not None else host_identity_digest()
+    if manifest.machine_id_sha256 != actual:
+        raise LocalBootstrapError("wrong_physical_host")
+    local_home = Path.home() if home is None else home
+    if not local_home.is_absolute():
+        raise LocalBootstrapError("home_invalid")
+    root = (
+        local_home / ".local" / "share" / "runner-mcp-bootstrap" /
+        manifest.source_commit
+    )
+    _reject_symlink_ancestors(root)
+    if _stage_entry_kind(root) != "directory":
+        raise LocalBootstrapError("failed_stage_not_found")
+    try:
+        metadata = root.lstat()
+    except OSError as exc:
+        raise LocalBootstrapError("stage_diagnosis_unavailable") from exc
+    if metadata.st_uid != os.geteuid() or metadata.st_mode & 0o077:
+        raise LocalBootstrapError("stage_custody_invalid")
+
+    # Verify all directory components before inspecting a nested child.
+    # No symlinks are followed, including symlinked site-packages.
+    for relative in (
+        "runtime", "runtime/venv", "runtime/venv/bin",
+        "runtime/venv/lib",
+        f"runtime/venv/lib/python{sys.version_info.major}.{sys.version_info.minor}",
+        f"runtime/venv/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages",
+        f"runtime/venv/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages/pip",
+        "bin",
+    ):
+        part = root / relative
+        kind = _stage_entry_kind(part)
+        if kind not in ("directory", "absent"):
+            raise LocalBootstrapError("stage_layout_unsafe")
+        if kind == "directory":
+            try:
+                owner = part.lstat().st_uid
+            except OSError as exc:
+                raise LocalBootstrapError("stage_diagnosis_unavailable") from exc
+            if owner != os.geteuid():
+                raise LocalBootstrapError("stage_custody_invalid")
+    site = f"runtime/venv/lib/python{sys.version_info.major}.{sys.version_info.minor}/site-packages"
+    marker_kind = _stage_entry_kind(root / "stage-result.json")
+    return {
+        "schema_version": "runner-mcp/local-stage-diagnosis/v1",
+        "state": (
+            "marker_present_unverified" if marker_kind == "regular"
+            else "failed_or_incomplete"
+        ),
+        "source_commit": manifest.source_commit,
+        "venv_python_kind": _stage_entry_kind(root / "runtime/venv/bin/python"),
+        "venv_pip_file_kind": _stage_entry_kind(root / site / "pip/__init__.py"),
+        "runner_cli_kind": _stage_entry_kind(root / "runtime/venv/bin/runner-mcp"),
+        "launcher_kind": _stage_entry_kind(root / "bin/runner-mcp"),
+        "stage_marker_kind": marker_kind,
+        "installer_error_cause": "undetermined",
+        "diagnostic_method": "filesystem_metadata_only",
+        "mutation_authorized": False,
+        "service_activation_verified": False,
+        "relay_enrollment_verified": False,
+        "original_client_ack_verified": False,
+    }
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Operator-local, non-serving Runner-MCP stage")
     sub = parser.add_subparsers(dest="action", required=True)
     sub.add_parser("identity", help="Display LOCAL machine identity SHA-256 only")
-    for name in ("plan", "stage"):
+    for name in ("plan", "stage", "diagnose"):
         command = sub.add_parser(name)
         command.add_argument("--manifest", type=Path, required=True)
-        command.add_argument("--source", type=Path, required=True)
+        if name != "diagnose":
+            command.add_argument("--source", type=Path, required=True)
         if name == "stage":
             command.add_argument("--accept-plan", required=True)
     args = parser.parse_args(argv)
@@ -329,6 +427,8 @@ def main(argv: list[str] | None = None) -> int:
         elif args.action == "plan":
             plan = plan_local_stage(args.manifest, args.source)
             print(json.dumps(plan.public_dict(), sort_keys=True))
+        elif args.action == "diagnose":
+            print(json.dumps(diagnose_failed_stage(args.manifest), sort_keys=True))
         else:
             state = stage_local_runner_mcp(
                 args.manifest, args.source, accept_digest=args.accept_plan

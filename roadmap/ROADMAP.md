@@ -1,3 +1,9 @@
+## 2026-10-17 — #718 local failed-stage diagnostics, no Black retry
+
+Operator's first new Black physical stage returned `existing_installer_failed`: venv exists but observed venv pip exited 1 and Runner-MCP executable/completion marker absent. Canonical Failure Museum RMCP-F-0030 = #716; physical owner Fabric #1562 BLOCKED; downstream Agent Bus #1563 BLOCKED. Fix source-only #718 adds **read-only, same-host, manifest-bound `diagnose`** with no attempt to execute the partial venv or infer pip root cause. Candidate source metadata `0.1.30` pending exact-head CI/merge, NOT installed/published. Physical recovery still requires read-only Ubuntu distro/venv diagnosis and separately approved new-stage custody; never silently retry or erase partial stage.
+
+---
+
 ## 2026-10-17 — F30 Black one-time local bootstrap SOURCE COMPLETE
 
 Bounded issue #713/PR #714 local first-host non-serving installer source MERGED `a2d34dc80550ef744acf0ff927344b000a832dcc`; tested head `68e569d7964fe92abd8516a9cd5a6144f5f8fb97` with exact CI validation #39036840912, clean Ubuntu #39036840935, attribution #39036840862 all SUCCESS. The new script reuses original `install.sh`, no fresh generic remote agent and no deployment authority. Physical stage not yet executed; 0.1.29 is unpublished source only.

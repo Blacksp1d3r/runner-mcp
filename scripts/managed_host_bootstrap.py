@@ -13,9 +13,9 @@ import re
 import stat
 import subprocess
 import sys
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from collections.abc import Callable
 
 _SCHEMA = "runner-mcp/local-host-bootstrap/v1"
 _MANIFEST_FIELDS = frozenset({

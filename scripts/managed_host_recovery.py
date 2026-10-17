@@ -9,8 +9,10 @@ import argparse
 import base64
 import csv
 import hashlib
+import importlib.util
 import io
 import json
+import marshal
 import os
 import re
 import stat
@@ -190,6 +192,35 @@ def _git_python_archive(source: Path, commit: str) -> tuple[dict[str, bytes], st
         raise bootstrap.LocalBootstrapError("recovery_source_archive_invalid") from exc
 
 
+
+def _verify_pip_compiled_bytecode(path: Path, raw: bytes, pkg: Path,
+                                installed: dict[str, Path]) -> None:
+    """Accept only actual pip-created unhashed pyc equal to verified source.
+
+    Pip legitimately appends blank-hash RECORD rows for generated pycache.
+    Never accept arbitrary unhashed files or executable bytecode.
+    """
+    if (path.suffix != ".pyc" or path.parent.name != "__pycache__"
+            or not path.is_relative_to(pkg)):
+        raise bootstrap.LocalBootstrapError("recovery_record_unhashed")
+    stem, dot, tag = path.name.partition(".cpython-")
+    if not dot or tag != f"{sys.version_info.major}{sys.version_info.minor}.pyc":
+        raise bootstrap.LocalBootstrapError("recovery_record_unhashed")
+    source = path.parent.parent / f"{stem}.py"
+    if source not in installed.values():
+        raise bootstrap.LocalBootstrapError("recovery_record_unhashed")
+    if (len(raw) < 16 or raw[:4] != importlib.util.MAGIC_NUMBER
+            or int.from_bytes(raw[4:8], "little") not in (0, 1, 3)):
+        raise bootstrap.LocalBootstrapError("recovery_bytecode_invalid")
+    source_bytes = _regular(source, max_bytes=8 * 1024 * 1024)
+    if (int.from_bytes(raw[4:8], "little") == 0
+            and int.from_bytes(raw[12:16], "little") != len(source_bytes)):
+        raise bootstrap.LocalBootstrapError("recovery_bytecode_invalid")
+    expected = marshal.dumps(compile(source_bytes, str(source), "exec"))
+    if raw[16:] != expected:
+        raise bootstrap.LocalBootstrapError("recovery_bytecode_content_mismatch")
+
+
 def _verify_installed_package(
     stage: Path, source: Path, manifest: bootstrap.HostManifest, version: str,
 ) -> tuple[str, str, int]:
@@ -268,9 +299,12 @@ def _verify_installed_package(
         raw = _regular(target, max_bytes=32 * 1024 * 1024)
         attested_paths.add(target)
         if row[1] == "":
-            if target != dist / "RECORD" or row[2]:
+            if row[2]:
                 raise bootstrap.LocalBootstrapError("recovery_record_unhashed")
-            unhashed += 1
+            if target == dist / "RECORD":
+                unhashed += 1
+            else:
+                _verify_pip_compiled_bytecode(target, raw, pkg, installed)
             continue
         scheme, sep, encoded = row[1].partition("=")
         if scheme != "sha256" or not sep or not _B64.fullmatch(encoded):
@@ -282,7 +316,8 @@ def _verify_installed_package(
             raise bootstrap.LocalBootstrapError("recovery_record_content_mismatch")
     if (unhashed != 1 or len(rows) < len(tracked) + 2
             or not set(installed.values()).issubset(attested_paths)
-            or cli not in attested_paths):
+            or cli not in attested_paths or
+            any(p not in attested_paths for p in pkg.rglob("*.pyc"))):
         raise bootstrap.LocalBootstrapError("recovery_record_incomplete")
     return source_digest, hashlib.sha256(record).hexdigest(), len(tracked)
 

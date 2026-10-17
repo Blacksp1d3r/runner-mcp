@@ -1,3 +1,11 @@
+## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled
+
+First physical node: `isolated-source exact 0.1.27 dependency-resolving installer` DONE -> `managed six-role cron cutover` DONE -> `local new loopback listener` DONE -> `original connected MCP runtime_status/build_identity + worker/Fabric read-only responses` DONE -> `temporary rollback timer deactivated by operator` DONE. This is a working attended one-node activation, NOT independently signed deployed wheel, durable A6 campaign or A7 revert acceptance.
+
+Remaining future-update dependency path: `protect current live staged venv and original 0.1.9 escrow` -> `verify live wheel/source/build provenance #669` -> `operator-supported historical self-update baseline reconciliation without editing old state JSON` -> `A6 off-target journal and unique activation job #942` -> `A7 independent offline physical rollback and original-client ACK #943` -> `qualified single-node canary + later fleet #924`. Current `self_update_ready=false`; Fabric mutation and A6 preparation remain unavailable. No second update is authorized merely by v0.1.27 being live.
+
+---
+
 ## 2026-10-16 — Real-update order, dependency-contract mismatch confirmed
 
 `already-known physical host + original route` -> `READ-ONLY active process/launcher + previous intact generation/protected rollback custody` -> `independent exact package source/wheel and changed dependency contract` -> `normal dependency-resolving isolated-prefix bootstrap (NOT --no-deps self_update)` -> `safe independently reversible provisional activation` -> `original-client loaded-build, tool-list, response+ACK` -> `accept one qualified node` -> `later Fleet rollout`.

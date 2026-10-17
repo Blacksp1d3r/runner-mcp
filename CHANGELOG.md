@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.35 (source candidate; not published)
+
+- Ensure operator-local recovery inspect and finalize cannot create Python bytecode inside their own trusted, exact-revision source checkout; regressions cover direct non-`-B` subprocess invocation (#732).
+
 ## 0.1.34 (source candidate; not published)
 
 - Recover owner-held nested 0775/0664 pip/setuptools files only when protected by an independently checked owner-only 0700 private ancestor. Refuse shared parent/stage boundary, foreign ownership, symlinks and generated hardlinks; never chmod or reinstall an existing failed stage (#723).

@@ -1,3 +1,13 @@
+## 2026-10-17 — RMCP-F-0030 safe failed-stage diagnosis SOURCE MERGED; Black PHYSICAL STILL BLOCKED
+
+Physical first new-Black operator-local bootstrap pinned to `a2d34dc80550ef744acf0ff927344b000a832dcc` failed `existing_installer_failed`; original stage prefix left intact. Python 3.12.3; venv help 0, system ensurepip 1 and staged pip 1, runner CLI/complete marker absent. Root cause remains **UNKNOWN** until operator-owned read-only Ubuntu package inventory; do not infer absent python3.12-venv solely from system ensurepip RC1. Canonical Failure Museum RMCP-F-0030 detailed issue [#716](https://github.com/Blacksp1d3r/runner-mcp/issues/716) remains OPEN.
+
+Source #718/#719 **COMPLETED_SOURCE_ONLY**: new rootless `diagnose --manifest` is private-manifest/local-machine-bound pure `lstat` status of the originally pinned partial stage; no stage execution, auto retry/delete, credentials, SSH/tunnel, disk or service mutation. Tested exact source head `1b49e3052919efda1c61c857a52de2b94261ebdd`, PR #719 squash merged `e336735f1f249971a93e3666ee46387953cc377e`, Runner MCP validation #39045168201, Clean Ubuntu installer #39045168205 and attribution #39045168175 all SUCCESS. Candidate 0.1.30 is UNRELEASED/NOT INSTALLED. Central connected runtime 0.1.27 unaffected; Fabric mutation disabled, Agent Bus exact-Black receiver/ACK UNKNOWN, Claude Q7 not qualified. Physical stage [Fabric #1562](https://github.com/Blacksp1d3r/Runner-Fabric/issues/1562) BLOCKED and dependent [#1563](https://github.com/Blacksp1d3r/Runner-Fabric/issues/1563) BLOCKED. HDD reportedly ext4-mounted already, never reformat.
+
+Next: operator on Black only checks installed distro venv packages read-only, then independent approval for bounded repair, newly pinned source and fresh stage identity; no repeat on original prefix and no false website/Claude readiness.
+
+---
+
 ## 2026-10-17 — Real Black first-stage failure / RMCP-F-0030 / source diagnosis #718
 
 New Black operator-reported single approved physical stage at prior source merge `a2d34dc80550ef744acf0ff927344b000a832dcc` returned **BLOCKED `existing_installer_failed`**. Local read-only report: Python 3.12.3; system venv help RC0 but ensurepip RC1; partial venv/bin Python symlink, venv pip RC1, runner CLI and stage completion marker ABSENT. This proves no completed stage; package root cause remains UNKNOWN (missing python3.12-venv is hypothesis, not confirmation). The original failed private stage MUST remain intact, never re-run automatically. No Agent Bus, site, disk or production action done. Root Failure Museum [#716](https://github.com/Blacksp1d3r/runner-mcp/issues/716) RMCP-F-0030. Fabric #1562 physical stage and #1563 original-client ACK remain blocked.

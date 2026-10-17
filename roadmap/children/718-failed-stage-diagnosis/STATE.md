@@ -1,10 +1,11 @@
-# RMCP #718 failed-stage diagnostic — 2026-10-17
+# RMCP #718 — read-only failed-stage diagnosis: source COMPLETE 2026-10-17
 
-- Status: CHATGPT_IN_PROGRESS / WAITING_EXACT_HEAD_CI; not installed on Black; no actual live diag execution.
-- Source branch: `feat/718-failed-stage-readonly-diagnosis-20261017`; PR and latest HEAD must be resolved from GitHub.
-- Edition: source-only unpublished 0.1.30, never a deployed release; central runtime remains 0.1.27.
-- Code: `scripts/managed_host_bootstrap.py` read-only `diagnose --manifest`, no `--source`; pure filesystem metadata, no staged or OS shell process execution, always denies inferred activation/ACK; old `plan` and `stage` behavior unchanged.
-- Evidence: synthetic tests in `tests/test_managed_host_bootstrap.py` for no subprocess, missing pip/CLI, marker spoof, wrong host, root, stage symlink, unsafe root. CI not yet accepted; status is not COMPLETE.
-- Failure Museum: `RMCP-F-0030` index, detailed issue #716; physical stage failure remains root-cause UNKNOWN pending operator-local distro package inventory; Fabric #1562 physical BLOCKED and #1563 relay/ACK BLOCKED.
-- Safety: don't retry/rewrite/delete original source-pinned failed prefix, edit private manifest, format HDD, start services or provision Agent Bus before separately qualified physical correction and verified original-client ACK.
-- Next: exact-head CI/tests -> guarded source-only merge -> reconcile handover / Failure Museum -> awaited *read-only* local package diagnosis, explicitly approved new-generation recovery.
+- Task state: **COMPLETE_SOURCE_ONLY**; live Black repair, successful stage, registration and original-client ACK remain **NOT VERIFIED**.
+- Issue [#718](https://github.com/Blacksp1d3r/runner-mcp/issues/718) CLOSED source-only. Source PR [#719](https://github.com/Blacksp1d3r/runner-mcp/pull/719) MERGED as `e336735f1f249971a93e3666ee46387953cc377e`, tested head `1b49e3052919efda1c61c857a52de2b94261ebdd`, 0 unresolved review threads.
+- Exact-head CI: Runner MCP validation `39045168201` SUCCESS (Ruff, pytest, release artifact, clean demo); clean Ubuntu installer `39045168205` SUCCESS; commit attribution `39045168175` SUCCESS.
+- Source candidate metadata 0.1.30 UNPUBLISHED and not deployed on Black; original connected central Runner-MCP remains 0.1.27. There is NO source→physical installed link; CI passed in a separate clean Ubuntu environment, not the failed host.
+- `scripts/managed_host_bootstrap.py diagnose --manifest PRIVATE`: local old-generation fixed path, machine-bound private 0600 manifest and owner-only stage; `lstat` classification only, no untrusted venv/installer/shell/pip/CLI code executed, no filesystem writes, network or secrets. Stage marker and pip import-file presence always UNVERIFIED for real functionality; all management/activation authority flags false. No cleanup or retry capability added.
+- Regression: five synthetic tests cover incomplete venv, marker spoof, no subprocess/writes, wrong host/root, stage symlink, unsafe custody. Read-only runbook `docs/LOCAL_HOST_BOOTSTRAP.md` and RMCP-F-0030 index updated.
+- Canonical incident [#716](https://github.com/Blacksp1d3r/runner-mcp/issues/716) remains **OPEN_PHYSICAL_DIAGNOSIS**: original new-Black stage yielded `existing_installer_failed`; system ensurepip and staged venv pip checks RC1, CLI and marker absent; actual distro/package cause UNKNOWN, no second stage or services active.
+- Operational dependency [Fabric #1562](https://github.com/Blacksp1d3r/Runner-Fabric/issues/1562) physical stage BLOCKED, [#1563](https://github.com/Blacksp1d3r/Runner-Fabric/issues/1563) target identity/ACK BLOCKED. No HDD formatting, website/DNS/TLS/Claude change.
+- Next safe action: operator-local read-only distro `python3.12-venv`/wheel package inventory; identify proven fault; separately approve minimum prerequisite repair and fresh pinned-stage generation rather than reusing old partial state. Guarded per-host original-client ACK and recovery only after physical stage acceptance.

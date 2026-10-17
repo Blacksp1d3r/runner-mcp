@@ -217,3 +217,42 @@ def test_configured_redaction_literals_do_not_appear_in_output() -> None:
     assert secret not in result.text
     assert path not in result.text
     assert "another-private-value" not in result.text
+
+
+@pytest.mark.parametrize(
+    "opaque",
+    [
+        "ghs_" + "a" * 32 + "_" + "b" * 48,
+        "ghs_" + "a" * 32 + "-" + "b" * 48,
+        "ghs_" + "a" * 24 + "/" + "b" * 48 + "=",
+        "ghs_" + "a" * 32 + "." + "b" * 48,
+        "ghr_" + "a" * 32 + "_" + "b" * 48,
+        "ghu_" + "a" * 32 + "-" + "b" * 48,
+        "github_pat_" + "a" * 32 + "_" + "b" * 48,
+    ],
+)
+def test_github_app_stateless_tokens_are_not_partially_exposed(opaque: str) -> None:
+    """No real provider tokens, only synthetic log-like strings."""
+    result = redact("before " + opaque + ", after")
+    assert result.text == "before [REDACTED], after"
+    assert opaque not in result.text
+    assert "b" * 20 not in result.text
+
+
+def test_long_stateless_token_redacted_before_input_byte_truncation() -> None:
+    opaque = "ghs_" + "a" * 45 + "_" + "b" * 45
+    result = redact(
+        ("x" * 60) + " " + opaque,
+        max_input_bytes=68,
+        max_output_bytes=256,
+    )
+    assert result.input_truncated is True
+    assert "ghs_" not in result.text
+    assert "a" * 16 not in result.text
+    assert "b" * 16 not in result.text
+    assert "[INPUT TRUNCATED BY RUNNER MCP]" in result.text
+
+
+def test_non_secret_short_github_like_text_preserved() -> None:
+    result = redact("note ghs_example benign")
+    assert result.text == "note ghs_example benign"

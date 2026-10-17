@@ -38,11 +38,14 @@ _GENERIC_SECRET_RULES = (
         r"\1[REDACTED]",
     ),
     (
-        re.compile(r"\bgh[pousr]_[A-Za-z0-9]{20,}\b"),
+        # GitHub App tokens may be long and include URL-safe separators.
+        # The old alphanumeric-only rule could expose a suffix after "_"/"-".
+        # Avoid the final word boundary: a token may end in a separator.
+        re.compile(r"(?<![A-Za-z0-9_])gh[pousr]_[A-Za-z0-9_.~+/%=-]{12,}"),
         "[REDACTED]",
     ),
     (
-        re.compile(r"\bgithub_pat_[A-Za-z0-9_]{20,}\b"),
+        re.compile(r"(?<![A-Za-z0-9_])github_pat_[A-Za-z0-9_.~+/%=-]{12,}"),
         "[REDACTED]",
     ),
 )

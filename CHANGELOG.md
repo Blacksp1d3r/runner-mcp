@@ -1,8 +1,12 @@
 # Changelog
 
+## 0.1.37 (source candidate; not published)
+
+- Prevent direct operator-local recovery CLI inspect/finalize from creating Python import bytecode in a pinned source checkout; add ordinary-Python subprocess regressions without automatic stage recovery or service activation (#732).
+
 ## 0.1.36 (source candidate; not published)
 
-- Make direct owner-local recovery CLI inspect/finalize avoid import bytecode inside its own pinned source checkout. Prevent silent Git-clean failure after a successful read-only inspect (#732).
+- Mask complete variable-length GitHub App installation/access token families in bounded logs, including opaque URL-safe separators that the previous alphanumeric-only regex left partially visible. Regression tests cover `ghs_`, other GitHub token prefixes, truncated input and benign short strings. No real provider secrets or log data used; installed runtime unchanged (#730).
 
 ## 0.1.35 (source candidate; not published)
 

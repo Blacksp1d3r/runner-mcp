@@ -1,3 +1,7 @@
+## Operator control route — 2026-10-17
+
+All normal cross-server operational data (topology, health, installed/loaded version, heartbeat), rollout and installation operations are REQUIRED to pass through first-party bounded Runner-MCP tools and its authenticated Runner Fabric bridge, rather than Desktop Commander, direct unmanaged remote shell or GitHub Actions-as-host-control. Desktop Commander is emergency break-glass ONLY after the ordinary path is verified unavailable, never an automatic substitute for a missing feature. A connected Runner-MCP process verifies its OWN hosting runtime, not another host listed in a topology file. Per-host fleet health and managed update require a separately authenticated, identity-bound agent/Agent Bus route and fresh original-client evidence; unknown/stale remains UNKNOWN and mutation unavailable if not admitted. Preserve the canonical topology: do not create duplicate primary tunnels or conflate lab and runner hosts. The lab's historical native Python SIGSEGV activation gate is #198 and primary-tunnel route confusion is Runner-Fabric #1202. Missing private tunnel-health URL on the connected central instance is not by itself evidence of lab failure.
+
 # AGENTS.md
 
 ## Owner decision — test-first development; review later (2026-10-14)

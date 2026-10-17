@@ -19,8 +19,8 @@ import stat
 import subprocess
 import sys
 import tarfile
-import types
 import tomllib
+import types
 from dataclasses import dataclass
 from email.parser import Parser
 from pathlib import Path, PurePosixPath

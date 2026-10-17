@@ -1,7 +1,6 @@
 """Read-only first-host Agent Bus base status; never auto-provision credentials."""
 from __future__ import annotations
 
-import os
 from pathlib import Path
 
 import pytest

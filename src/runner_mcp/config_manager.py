@@ -717,7 +717,11 @@ def _agent_bus_base_not_initialized(config_dir: Path) -> bool:
             continue
         except OSError as exc:
             raise ConfigManagerError("Private base configuration is unreadable") from exc
-        if not stat.S_ISREG(entry.st_mode):
+        if (
+            not stat.S_ISREG(entry.st_mode)
+            or entry.st_uid != os.geteuid()
+            or stat.S_IMODE(entry.st_mode) != 0o600
+        ):
             raise ConfigManagerError("Private base configuration is unsafe")
         seen.append(True)
     return not any(seen)

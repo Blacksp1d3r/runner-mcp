@@ -245,6 +245,7 @@ def _verify_installed_package(
     except (UnicodeError, csv.Error) as exc:
         raise bootstrap.LocalBootstrapError("recovery_record_invalid") from exc
     seen = set()
+    attested_paths: set[Path] = set()
     unhashed = 0
     for row in rows:
         if len(row) != 3 or not row[0] or row[0] in seen:
@@ -255,6 +256,7 @@ def _verify_installed_package(
         if not target.is_relative_to(venv):
             raise bootstrap.LocalBootstrapError("recovery_record_escapes_venv")
         raw = _regular(target, max_bytes=32 * 1024 * 1024)
+        attested_paths.add(target)
         if row[1] == "":
             if target != dist / "RECORD" or row[2]:
                 raise bootstrap.LocalBootstrapError("recovery_record_unhashed")
@@ -268,7 +270,9 @@ def _verify_installed_package(
             row[2] != str(len(raw))
         ):
             raise bootstrap.LocalBootstrapError("recovery_record_content_mismatch")
-    if unhashed != 1 or len(rows) < len(tracked) + 2:
+    if (unhashed != 1 or len(rows) < len(tracked) + 2
+            or not set(installed.values()).issubset(attested_paths)
+            or cli not in attested_paths):
         raise bootstrap.LocalBootstrapError("recovery_record_incomplete")
     return source_digest, hashlib.sha256(record).hexdigest(), len(tracked)
 
@@ -427,6 +431,10 @@ def main(argv: list[str] | None = None) -> int:
         return 0
     except bootstrap.LocalBootstrapError as exc:
         print(json.dumps({"state": "BLOCKED", "reason_code": str(exc)}), file=sys.stderr)
+        return 2
+    except (OSError, ValueError, KeyError, TypeError, UnicodeError, RuntimeError):
+        print(json.dumps({"state": "BLOCKED", "reason_code": "recovery_inspection_unavailable"}),
+              file=sys.stderr)
         return 2
 
 

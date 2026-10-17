@@ -9,6 +9,7 @@ import io
 import json
 import os
 import py_compile
+import shutil
 import subprocess
 import sys
 from pathlib import Path
@@ -441,3 +442,39 @@ def test_group_writable_installed_file_outside_private_enclosure_denied(
             manifest, source, original_plan=_accepted_plan(manifest),
         )
     assert not (root / "stage-result.json").exists()
+
+
+
+def test_direct_recovery_cli_does_not_dirty_its_own_checkout(
+    tmp_path: Path,
+) -> None:
+    """Real subprocess without -B or PYTHONDONTWRITEBYTECODE."""
+    isolated = tmp_path / "pinned-recovery-source"
+    isolated.mkdir(mode=0o700)
+    for basename in ("managed_host_recovery.py", "managed_host_bootstrap.py"):
+        shutil.copyfile(scripts / basename, isolated / basename)
+    env = os.environ.copy()
+    env.pop("PYTHONDONTWRITEBYTECODE", None)
+    env.pop("PYTHONPYCACHEPREFIX", None)
+
+    help_run = subprocess.run(
+        [sys.executable, str(isolated / "managed_host_recovery.py"), "--help"],
+        env=env, cwd=tmp_path, stdin=subprocess.DEVNULL,
+        capture_output=True, check=False, timeout=15,
+    )
+    assert help_run.returncode == 0
+    denied = subprocess.run(
+        [
+            sys.executable, str(isolated / "managed_host_recovery.py"),
+            "inspect", "--manifest", str(tmp_path / "absent.json"),
+            "--source", str(tmp_path / "absent-source"),
+            "--original-plan", "f" * 64,
+        ],
+        env=env, cwd=tmp_path, stdin=subprocess.DEVNULL,
+        capture_output=True, check=False, timeout=15,
+    )
+    assert denied.returncode == 2
+    assert b'"state": "BLOCKED"' in denied.stderr
+    assert sorted(p.name for p in isolated.iterdir()) == [
+        "managed_host_bootstrap.py", "managed_host_recovery.py",
+    ]

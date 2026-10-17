@@ -25,6 +25,12 @@ from dataclasses import dataclass
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
 
+# A direct operator CLI invocation must not create import bytecode inside
+# its immutable source checkout, otherwise the next fail-closed git-status
+# preflight refuses a valid previously inspected recovery.
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True
+
 import managed_host_bootstrap as bootstrap
 
 _SHA = re.compile(r"[0-9a-f]{64}\Z")

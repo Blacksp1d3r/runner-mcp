@@ -1,3 +1,42 @@
+## Diagnose a blocked physical stage without rerunning it (RMCP-F-0030)
+
+A real operator-local stage returned `existing_installer_failed` on the new
+Black in October 2026. Its partially created venv lacked a usable pip command;
+the root cause and exact Ubuntu packaging state remain **unconfirmed**. Preserve
+the failed stage; **never** re-run `stage`, `install.sh`, `pip install`,
+`sudo`, or remove/overwrite the old prefix as a shortcut. Do not enroll
+Agent Bus or claim original-client ACK.
+
+An independently verified **new source checkout** with the added diagnosis
+command may examine the already-failed, original manifest-pinned stage on the
+**same** physically controlled host. It does **not** need to match the old
+manifest source commit because it cannot stage, run, repair or activate it.
+Do not edit the original private 0600 manifest or old source checkout:
+
+~~~bash
+python3 scripts/managed_host_bootstrap.py diagnose \\
+  --manifest /PRIVATE/original-host-bootstrap.json
+~~~
+
+This checks owner custody of the private manifest and stage, exact local
+machine identity match, and `lstat`-only file/dir types in the fixed original
+stage location. It executes **no staged Python, pip, installer or shell**, makes
+no filesystem writes, and prints **no machine fingerprint, stage path,
+credential, command stdout, or installed package list**. A pip `__init__.py`
+presence is *only* a file observation, not evidence `pip` can run. Likewise,
+a `stage-result.json` presence is **not** trusted release/activation proof.
+All admission flags remain false and installer root cause remains undetermined.
+
+Separately, a physically attended operator may run limited **read-only** OS
+package inventory for `python3.12-venv`, `python3-venv` and Python wheel
+packages. System `python3 -m ensurepip --version` failing on Ubuntu does not
+on its own prove that `python3.12-venv` is missing. A package fix or fresh
+stage generation requires separate owner-approved bounded recovery; the
+source merge and diagnosis command never grant that approval. See Runner-MCP
+#716/#718 and Runner-Fabric #1562/#1563.
+
+---
+
 # Local host bootstrap — first staged Runner-MCP instance
 
 Tracking: Runner-MCP #713; AIfordable #428/#584/#585; Runner-Fabric #1554/#1556/#924.

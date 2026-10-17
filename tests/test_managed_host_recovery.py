@@ -39,6 +39,22 @@ def _row(path: str, raw: bytes) -> list[str]:
     return [path, "sha256=" + encoded, str(len(raw))]
 
 
+def _accepted_plan(manifest: Path) -> str:
+    raw = json.loads(manifest.read_text())
+    canonical = {
+        "schema_version": raw["schema_version"],
+        "asset_id": raw["asset_id"],
+        "runner_subject": raw["runner_subject"],
+        "machine_id_sha256": raw["machine_id_sha256"],
+        "source_commit": raw["source_commit"],
+        "installer_sha256": raw["installer_sha256"],
+        "stage_only": True,
+    }
+    return hashlib.sha256(
+        json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode()
+    ).hexdigest()
+
+
 @pytest.fixture
 def stage_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     if os.geteuid() == 0:
@@ -120,7 +136,7 @@ def stage_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
 
 def test_recovery_inspects_without_forging_stage_marker(stage_fixture) -> None:
     source, root, manifest, _record = stage_fixture
-    result = recovery.inspect_recovery(manifest, source)
+    result = recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert result.package_version == "0.1.30"
     assert result.file_count == 2
     assert result.public()["stage_complete"] is False
@@ -131,8 +147,10 @@ def test_recovery_inspects_without_forging_stage_marker(stage_fixture) -> None:
 
 def test_explicit_recovery_persists_canonical_marker_but_never_activates(stage_fixture) -> None:
     source, root, manifest, _record = stage_fixture
-    digest = recovery.inspect_recovery(manifest, source).digest
-    state = recovery.finalize_recovery(manifest, source, accept_digest=digest)
+    digest = recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest)).digest
+    state = recovery.finalize_recovery(
+        manifest, source, original_plan=_accepted_plan(manifest), accept_digest=digest,
+    )
     assert state["stage_complete"] is True
     assert state["service_activation"] is False
     assert state["relay_enrollment"] is False
@@ -142,14 +160,16 @@ def test_explicit_recovery_persists_canonical_marker_but_never_activates(stage_f
     assert evidence["recovery_sha256"] == digest
     assert evidence["service_activation"] is False
     with pytest.raises(bootstrap.LocalBootstrapError, match="marker_already_present"):
-        recovery.finalize_recovery(manifest, source, accept_digest=digest)
+        recovery.finalize_recovery(
+        manifest, source, original_plan=_accepted_plan(manifest), accept_digest=digest,
+    )
 
 
 def test_wrong_host_cannot_attest_or_write(stage_fixture, monkeypatch) -> None:
     source, root, manifest, _record = stage_fixture
     monkeypatch.setattr(bootstrap, "host_identity_digest", lambda: "b" * 64)
     with pytest.raises(bootstrap.LocalBootstrapError, match="wrong_physical_host"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
@@ -158,7 +178,7 @@ def test_record_hash_mismatch_fails_closed(stage_fixture) -> None:
     cli = root / "runtime/venv/bin/runner-mcp"
     cli.write_text("tampered executable")
     with pytest.raises(bootstrap.LocalBootstrapError, match="recovery_record_content_mismatch"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
@@ -173,7 +193,7 @@ def test_package_source_mismatch_even_with_valid_new_record(stage_fixture) -> No
     with record.open("w", newline="") as out:
         csv.writer(out).writerows(rows)
     with pytest.raises(bootstrap.LocalBootstrapError, match="recovery_installed_source_mismatch"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
@@ -181,7 +201,7 @@ def test_unexpected_ignored_source_content_denied(stage_fixture) -> None:
     source, root, manifest, _record = stage_fixture
     (source / "unknown.generated").write_text("unexpected ignored content")
     with pytest.raises(bootstrap.LocalBootstrapError, match="recovery_source_changes_unexpected"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
@@ -189,7 +209,7 @@ def test_tracked_installer_tamper_denied(stage_fixture) -> None:
     source, root, manifest, _record = stage_fixture
     (source / "install.sh").write_text("changed\n")
     with pytest.raises(bootstrap.LocalBootstrapError, match="installer_digest_mismatch"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
@@ -202,14 +222,16 @@ def test_recovery_rejects_symlinked_installed_package(stage_fixture, tmp_path) -
     pkg.rename(target)
     pkg.symlink_to(target, target_is_directory=True)
     with pytest.raises(bootstrap.LocalBootstrapError, match="symlink_path_denied"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
 def test_invalid_approval_never_creates_receipts(stage_fixture) -> None:
     source, root, manifest, _record = stage_fixture
     with pytest.raises(bootstrap.LocalBootstrapError, match="confirmation_mismatch"):
-        recovery.finalize_recovery(manifest, source, accept_digest="f" * 64)
+        recovery.finalize_recovery(
+            manifest, source, original_plan=_accepted_plan(manifest), accept_digest="f" * 64,
+        )
     assert not (root / "recovery-evidence.json").exists()
     assert not (root / "stage-result.json").exists()
 
@@ -222,7 +244,7 @@ def test_recovery_smoke_failure_keeps_stage_blocked(stage_fixture, monkeypatch) 
 
     monkeypatch.setattr(recovery, "_runtime_smoke", fail_smoke)
     with pytest.raises(bootstrap.LocalBootstrapError, match="recovery_runtime_smoke_failed"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
@@ -234,7 +256,7 @@ def test_wrong_venv_interpreter_denied_before_any_smoke(stage_fixture) -> None:
     with pytest.raises(
         bootstrap.LocalBootstrapError, match="recovery_python_interpreter_untrusted",
     ):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
     assert not (root / "stage-result.json").exists()
 
 
@@ -248,5 +270,12 @@ def test_symlinked_record_target_denied(stage_fixture) -> None:
     with record.open("w", newline="") as out:
         csv.writer(out).writerows(rows)
     with pytest.raises(bootstrap.LocalBootstrapError, match="symlink_path_denied"):
-        recovery.inspect_recovery(manifest, source)
+        recovery.inspect_recovery(manifest, source, original_plan=_accepted_plan(manifest))
+    assert not (root / "stage-result.json").exists()
+
+
+def test_original_approved_plan_sha_cannot_be_replaced(stage_fixture) -> None:
+    source, root, manifest, _record = stage_fixture
+    with pytest.raises(bootstrap.LocalBootstrapError, match="recovery_original_plan_mismatch"):
+        recovery.inspect_recovery(manifest, source, original_plan="f" * 64)
     assert not (root / "stage-result.json").exists()

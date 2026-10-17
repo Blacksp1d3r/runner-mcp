@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.32 (source candidate; not published)
+
+- Add operator-local, fail-closed, manifest/host/source-bound recovery for intact previously blocked stages. Verify installed Python against immutable Git archive, wheel RECORD and CLI integrity, require explicit recovery-digest confirmation; no installer retry, activation, relay enrollment or ACK (#723).
+
 ## 0.1.31 (source candidate; not published)
 
 - Isolate first-host staged installer builds in a pinned private Git-archive copy so setuptools-generated `build/` and `*.egg-info` never dirty the trusted source checkout. Preserve strict second source/host/manifest gate, no activation, and no retry of failed physical stages (Runner-MCP #721).

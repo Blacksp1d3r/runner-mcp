@@ -1,13 +1,23 @@
 from __future__ import annotations
 
 import hashlib
+import importlib.util
 import json
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
 
-from scripts import managed_host_bootstrap as bootstrap
+# scripts/ is not an installed Python package in wheel-based CI.
+_spec = importlib.util.spec_from_file_location(
+    "managed_host_bootstrap_test_module",
+    Path(__file__).resolve().parents[1] / "scripts" / "managed_host_bootstrap.py",
+)
+assert _spec is not None and _spec.loader is not None
+bootstrap = importlib.util.module_from_spec(_spec)
+sys.modules[_spec.name] = bootstrap
+_spec.loader.exec_module(bootstrap)
 
 
 def _git(source: Path, *args: str) -> str:

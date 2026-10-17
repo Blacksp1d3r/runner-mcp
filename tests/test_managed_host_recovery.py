@@ -89,6 +89,7 @@ def stage_fixture(tmp_path: Path, monkeypatch: pytest.MonkeyPatch):
     venv = root / "runtime/venv"
     bindir = venv / "bin"
     bindir.mkdir(parents=True)
+    (bindir / "python").symlink_to("/usr/bin/python3")
     cli = bindir / "runner-mcp"
     cli.write_text("#!/usr/bin/env python3\nprint('demo')\n")
     cli.chmod(0o700)
@@ -221,5 +222,31 @@ def test_recovery_smoke_failure_keeps_stage_blocked(stage_fixture, monkeypatch) 
 
     monkeypatch.setattr(recovery, "_runtime_smoke", fail_smoke)
     with pytest.raises(bootstrap.LocalBootstrapError, match="recovery_runtime_smoke_failed"):
+        recovery.inspect_recovery(manifest, source)
+    assert not (root / "stage-result.json").exists()
+
+
+def test_wrong_venv_interpreter_denied_before_any_smoke(stage_fixture) -> None:
+    source, root, manifest, _record = stage_fixture
+    interpreter = root / "runtime/venv/bin/python"
+    interpreter.unlink()
+    interpreter.symlink_to(root / "runtime/venv/bin/runner-mcp")
+    with pytest.raises(
+        bootstrap.LocalBootstrapError, match="recovery_python_interpreter_untrusted",
+    ):
+        recovery.inspect_recovery(manifest, source)
+    assert not (root / "stage-result.json").exists()
+
+
+def test_symlinked_record_target_denied(stage_fixture) -> None:
+    source, root, manifest, record = stage_fixture
+    cli = root / "runtime/venv/bin/runner-mcp"
+    linked = root / "runtime/venv/bin/linked-runner-mcp"
+    linked.symlink_to(cli)
+    rows = list(csv.reader(io.StringIO(record.read_text())))
+    rows.insert(-1, _row("../../../bin/linked-runner-mcp", cli.read_bytes()))
+    with record.open("w", newline="") as out:
+        csv.writer(out).writerows(rows)
+    with pytest.raises(bootstrap.LocalBootstrapError, match="symlink_path_denied"):
         recovery.inspect_recovery(manifest, source)
     assert not (root / "stage-result.json").exists()

@@ -1,3 +1,24 @@
+### 2026-10-17 — NEW Black host non-serving admission and missing base configuration
+
+Logical only, no customer coordinates, addresses, port or credential values:
+
+```text
+Existing ChatGPT connector -> existing primary Runner-MCP 0.1.27
+   -> Fabric read-only bridge (ready) -> Agent Bus relay: UNKNOWN
+   -> target-specific Black authenticated command/result/ACK: NOT QUALIFIED
+
+Owner-attended NEW Black local pinned stage -> verified non-serving stage receipt
+   -> local base Runner-MCP configuration: NOT INITIALIZED (missing)
+   -> private issuer CAS identity and Agent Bus enrollment: NOT DONE
+   -> service/website/Cockpit/Claude: NOT ACTIVATED
+```
+
+- Physical owner-local `stage_complete=true` is proven via terminal receipt, but not a separately authenticated control-plane target. Related #723 and Fabric #1562 CLOSED; downstream #1563 remains OPEN.
+- Missing new Black private config/env/projects explains local `agent-bus status` precondition error. It is neither disk failure nor proof of relay downtime. Issue #735 owns safe NOT_INITIALIZED UX. First-party identity, exact lease/fence/generation and original-client ACK remain separate gates, no generic remote bypass.
+- Existing central bridge mutation/execution disabled, active wheel identity unknown. All earlier 0.1.8/0.1.9 observations below are historical; current original-client central is 0.1.27.
+
+---
+
 
 ### 2026-10-16 — signed offline candidate evidence chain (source candidate v0.1.16)
 

@@ -1,3 +1,9 @@
+## 2026-10-17 — Black qualified non-serving stage done, separate setup and A2 gates
+
+`Runner-MCP #723 / Fabric #1562 (owner-attended stage receipt: COMPLETE)` -> `owner-local base Runner-MCP config NOT_INITIALIZED (observed, issue #735)` -> `operator-selected real project/source and unprivileged local setup (NOT YET)` -> `AIfordable #428/#585 private CAS-fenced unique Black subject and relay credential (NOT YET)` -> `Fabric #1563 target-bound worker/outbox + one safe request/result/original-client ACK (NOT YET)` -> `qualified A6/A7 reversible activation (#942/#943) and website (#584) (NOT YET)`. Source CLI fix #732/PR #734 is a separate preventive lane, never grants a stage redo. Central 0.1.27 cannot act as Black evidence. Preserve original forensic stage; no auth/credential, website or disk mutation.
+
+---
+
 ## 2026-10-17 — RMCP-F-0030 physical venv dependency: diagnostic source != recovery
 
 Runner-MCP #716 documented stage failure → Runner-MCP #718 **source-only non-mutating diagnosis** → private operator read-only distro package/venv check and independent cause confirmation → separately approved local prerequisite correction / fresh host-bound stage generation → Fabric #1562 genuine stage complete receipt → Fabric #1563 privately enrolled Agent Bus and original-client ACK → protected website/Claude release. No run/redo/delete/auto pip or disk changes inferred from source CI.

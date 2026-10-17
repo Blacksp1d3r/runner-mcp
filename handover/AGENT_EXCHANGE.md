@@ -1,3 +1,9 @@
+## 2026-10-17 — A2 owner / integrator handoff: Black stage source complete, no remote authority
+
+Owner-attended physical Black finalization is DONE non-serving: stage_complete=true; activation, enrollment and original-client ACK false; #723, #716 and Fabric #1562 CLOSED. Opposite older notes are historical. New Black has NO default base Runner-MCP config/env/projects according to owner read-only check; staged `agent-bus status` generic error is explained. No need to re-run stage or rotate credentials. Separate source UX issue #735; **do not parallel-overlap** it with current #732 PR #734 until its versioned source merges. #734 repaired from current main (source merged after exact-head green), root failure indexed RMCP-F-0043. AIfordable #585 issuer/identity and Fabric #1563 need independent owner-controlled private CAS credentials, target-specific command, durable result, original-client ACK, replay/expiry and rollback. Central connected 0.1.27 is not Black.
+
+---
+
 ## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled
 
 Operator-attended isolated full-dependency stage and cron cutover succeeded. Original active connected client independently reports loaded Runner-MCP v0.1.27 after timer cancellation; six cron-managed roles active; new loopback server PID; Fabric bridge handshake and worker status respond. Physical single-node update DONE; no version bump or new PR. Keep previous release and old crontab escrow, and do not move/delete the active staging prefix. No independent A7 timer remains; A6 and live artifact attestation still incomplete. Remaining `source_baseline_drift`/`active_revision_unavailable` show self-update is NOT ready; #669 and #924/#942/#943 open. Do not redo the already-successful upgrade.

@@ -65,12 +65,43 @@ class RecoveryEvidence:
         }
 
 
-def _regular(path: Path, *, max_bytes: int | None = None) -> bytes:
+def _private_enclosure(path: Path, enclosure: Path) -> None:
+    """Allow conventional 0775/0664 only behind an owner-only 0700 boundary.
+
+    An isolated ancestor is the access control, not the umask on inner
+    setuptools/pip artifacts. Refuse exposed boundaries and ownership swaps;
+    never change ownership or mode to manufacture an approval.
+    """
+    if (not path.is_absolute() or not enclosure.is_absolute()
+            or not path.is_relative_to(enclosure)):
+        raise bootstrap.LocalBootstrapError("recovery_private_boundary_invalid")
     bootstrap._reject_symlink_ancestors(path)
+    try:
+        base = enclosure.lstat()
+        if (not stat.S_ISDIR(base.st_mode) or base.st_uid != os.geteuid()
+                or base.st_mode & 0o077):
+            raise bootstrap.LocalBootstrapError("recovery_private_boundary_invalid")
+        current = enclosure
+        # Verify every intermediate directory is owner-held and non-symlink.
+        for name in path.relative_to(enclosure).parts[:-1]:
+            current = current / name
+            info = current.lstat()
+            if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid():
+                raise bootstrap.LocalBootstrapError("recovery_private_boundary_invalid")
+    except OSError as exc:
+        raise bootstrap.LocalBootstrapError("recovery_private_boundary_unavailable") from exc
+
+
+def _regular(path: Path, *, max_bytes: int | None = None,
+             private_root: Path | None = None) -> bytes:
+    bootstrap._reject_symlink_ancestors(path)
+    if private_root is not None:
+        _private_enclosure(path, private_root)
     try:
         info = path.lstat()
         if (not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
-                or info.st_mode & 0o022 or info.st_nlink != 1):
+                or (private_root is None and info.st_mode & 0o022)
+                or info.st_nlink != 1):
             raise bootstrap.LocalBootstrapError("recovery_file_custody_invalid")
         if max_bytes is not None and info.st_size > max_bytes:
             raise bootstrap.LocalBootstrapError("recovery_file_oversized")
@@ -79,13 +110,16 @@ def _regular(path: Path, *, max_bytes: int | None = None) -> bytes:
         raise bootstrap.LocalBootstrapError("recovery_file_unavailable") from exc
 
 
-def _private_directory(path: Path, *, root: bool = False) -> None:
+def _private_directory(path: Path, *, root: bool = False,
+                       private_root: Path | None = None) -> None:
     bootstrap._reject_symlink_ancestors(path)
+    if private_root is not None:
+        _private_enclosure(path, private_root)
     try:
         info = path.lstat()
         if not stat.S_ISDIR(info.st_mode) or info.st_uid != os.geteuid():
             raise bootstrap.LocalBootstrapError("recovery_directory_custody_invalid")
-        if info.st_mode & (0o077 if root else 0o022):
+        if info.st_mode & (0o077 if root else 0o022 if private_root is None else 0):
             raise bootstrap.LocalBootstrapError("recovery_directory_custody_invalid")
     except OSError as exc:
         raise bootstrap.LocalBootstrapError("recovery_directory_missing") from exc
@@ -101,22 +135,27 @@ def _verify_generated_artifacts(source: Path) -> None:
         raise bootstrap.LocalBootstrapError("recovery_source_changes_unexpected")
     if bootstrap._git(source, "status", "--porcelain", "--untracked-files=all"):
         raise bootstrap.LocalBootstrapError("recovery_tracked_source_changed")
+    # The original bootstrap explicitly created this enclosing source-owner
+    # directory 0700. Never treat a public/shared checkout as equivalent.
+    _private_directory(source.parent, root=True)
     count = 0
     for relative in ("build", "src/aifordable_runner_mcp.egg-info"):
         base = source / relative
-        _private_directory(base)
+        _private_directory(base, private_root=source.parent)
         for current, dirs, files in os.walk(base, followlinks=False):
-            _private_directory(Path(current))
+            _private_directory(Path(current), private_root=source.parent)
             for name in dirs + files:
                 count += 1
                 if count > 20000:
                     raise bootstrap.LocalBootstrapError("recovery_generated_tree_oversized")
                 part = Path(current) / name
                 bootstrap._reject_symlink_ancestors(part)
+                _private_enclosure(part, source.parent)
                 info = part.lstat()
-                if (info.st_uid != os.geteuid() or info.st_mode & 0o022
+                if (info.st_uid != os.geteuid()
                         or not (stat.S_ISREG(info.st_mode)
-                                or stat.S_ISDIR(info.st_mode))):
+                                or stat.S_ISDIR(info.st_mode))
+                        or (stat.S_ISREG(info.st_mode) and info.st_nlink != 1)):
                     raise bootstrap.LocalBootstrapError("recovery_generated_tree_unsafe")
 
 
@@ -132,7 +171,8 @@ def _verify_source(source: Path, manifest: bootstrap.HostManifest) -> str:
         # The actual affected stage necessarily left known ignored directories.
         raise bootstrap.LocalBootstrapError("recovery_failure_signature_unmatched")
     project = tomllib.loads(
-        _regular(source / "pyproject.toml", max_bytes=128 * 1024).decode("utf-8")
+        _regular(source / "pyproject.toml", max_bytes=128 * 1024,
+                 private_root=source.parent).decode("utf-8")
     )
     version = project["project"]["version"]
     if (project["project"]["name"] != "aifordable-runner-mcp"
@@ -195,7 +235,7 @@ def _git_python_archive(source: Path, commit: str) -> tuple[dict[str, bytes], st
 
 
 def _verify_pip_compiled_bytecode(path: Path, raw: bytes, pkg: Path,
-                                installed: dict[str, Path]) -> None:
+                                installed: dict[str, Path], stage: Path) -> None:
     """Accept only actual pip-created unhashed pyc equal to verified source.
 
     Pip legitimately appends blank-hash RECORD rows for generated pycache.
@@ -213,7 +253,7 @@ def _verify_pip_compiled_bytecode(path: Path, raw: bytes, pkg: Path,
     if (len(raw) < 16 or raw[:4] != importlib.util.MAGIC_NUMBER
             or int.from_bytes(raw[4:8], "little") not in (0, 1, 3)):
         raise bootstrap.LocalBootstrapError("recovery_bytecode_invalid")
-    source_bytes = _regular(source, max_bytes=8 * 1024 * 1024)
+    source_bytes = _regular(source, max_bytes=8 * 1024 * 1024, private_root=stage)
     if (int.from_bytes(raw[4:8], "little") == 0
             and int.from_bytes(raw[12:16], "little") != len(source_bytes)):
         raise bootstrap.LocalBootstrapError("recovery_bytecode_invalid")
@@ -236,7 +276,7 @@ def _verify_installed_package(
     pkg = site / "runner_mcp"
     dist = site / f"aifordable_runner_mcp-{version}.dist-info"
     for directory in (stage / "runtime", venv, site, pkg, dist, stage / "bin"):
-        _private_directory(directory)
+        _private_directory(directory, private_root=stage)
     if stage.joinpath("stage-result.json").exists() or (
         stage / "stage-result.json"
     ).is_symlink():
@@ -254,7 +294,7 @@ def _verify_installed_package(
     except OSError as exc:
         raise bootstrap.LocalBootstrapError("recovery_python_interpreter_unavailable") from exc
     cli = venv / "bin/runner-mcp"
-    _regular(cli, max_bytes=1024 * 1024)
+    _regular(cli, max_bytes=1024 * 1024, private_root=stage)
     if not os.access(cli, os.X_OK):
         raise bootstrap.LocalBootstrapError("recovery_cli_not_executable")
     launcher = stage / "bin/runner-mcp"
@@ -265,7 +305,8 @@ def _verify_installed_package(
     if len(dist_list) != 1 or dist_list[0] != dist:
         raise bootstrap.LocalBootstrapError("recovery_distribution_ambiguous")
     metadata = Parser().parsestr(
-        _regular(dist / "METADATA", max_bytes=1024 * 1024).decode("utf-8")
+        _regular(dist / "METADATA", max_bytes=1024 * 1024,
+                 private_root=stage).decode("utf-8")
     )
     if metadata.get("Name", "").lower() != "aifordable-runner-mcp" or (
         metadata.get("Version") != version
@@ -274,7 +315,7 @@ def _verify_installed_package(
     tracked, source_digest = _git_python_archive(source, manifest.source_commit)
     installed = {}
     for path in pkg.rglob("*.py"):
-        _regular(path, max_bytes=8 * 1024 * 1024)
+        _regular(path, max_bytes=8 * 1024 * 1024, private_root=stage)
         relative = path.relative_to(pkg).as_posix()
         if relative in installed:
             raise bootstrap.LocalBootstrapError("recovery_package_duplicate")
@@ -282,10 +323,11 @@ def _verify_installed_package(
     if frozenset(installed) != frozenset(tracked):
         raise bootstrap.LocalBootstrapError("recovery_package_file_set_mismatch")
     for relative, expected in tracked.items():
-        if _regular(installed[relative], max_bytes=8 * 1024 * 1024) != expected:
+        if _regular(installed[relative], max_bytes=8 * 1024 * 1024,
+                    private_root=stage) != expected:
             raise bootstrap.LocalBootstrapError("recovery_installed_source_mismatch")
 
-    record = _regular(dist / "RECORD", max_bytes=_MAX_RECORD)
+    record = _regular(dist / "RECORD", max_bytes=_MAX_RECORD, private_root=stage)
     try:
         rows = list(csv.reader(io.StringIO(record.decode("utf-8"))))
     except (UnicodeError, csv.Error) as exc:
@@ -303,7 +345,7 @@ def _verify_installed_package(
         target = declared.resolve(strict=True)
         if not target.is_relative_to(venv):
             raise bootstrap.LocalBootstrapError("recovery_record_escapes_venv")
-        raw = _regular(target, max_bytes=32 * 1024 * 1024)
+        raw = _regular(target, max_bytes=32 * 1024 * 1024, private_root=stage)
         attested_paths.add(target)
         if row[1] == "":
             if row[2]:
@@ -311,7 +353,7 @@ def _verify_installed_package(
             if target == dist / "RECORD":
                 unhashed += 1
             else:
-                _verify_pip_compiled_bytecode(target, raw, pkg, installed)
+                _verify_pip_compiled_bytecode(target, raw, pkg, installed, stage)
             continue
         scheme, sep, encoded = row[1].partition("=")
         if scheme != "sha256" or not sep or not _B64.fullmatch(encoded):

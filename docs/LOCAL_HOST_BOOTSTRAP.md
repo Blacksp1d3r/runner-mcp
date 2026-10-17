@@ -164,6 +164,25 @@ original-client ACK.
 
 ---
 
+## After a successful *non-serving* stage: read-only base setup status (#735)
+
+The local physical stage NEVER creates the general `runner-mcp` configuration,
+projects file, bearer, relay subject or service. On a first unconfigured machine,
+the staged CLI `runner-mcp agent-bus status` reports
+`base_config_not_initialized` and an operator-local `runner-mcp setup`
+next step; this is not a relay failure. The setup needs a **real owner-approved
+project repository, existing checkout and correct unprivileged UID**. Do not
+use a placeholder or source build/stage directory as a mutable project, or
+copy credentials from any other server. Setup must be independently approved
+by the operator. It is not automatic in `stage`.
+
+An unsafe/symlinked, wrong-owner, wrong-mode or partially missing private
+configuration stays BLOCKED, never reclassified as `not initialized`.
+A fully initialized base without Agent Bus credentials still reports
+`not configured`, not permission to enroll a subject. Even a successful
+local setup remains separate from Fabric #1563 private issuer/CAS identity
+and original-client result/ACK admission.
+
 ## Separate admission before turning on a service
 
 **Not implemented or authorized by this child.** Next, via the existing

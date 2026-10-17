@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.38 (source candidate; not published)
+
+- First-host Agent Bus read-only status identifies genuinely absent private base setup as `base_config_not_initialized` without making credentials, opening ports or weakening partial/unsafe config refusals (#735).
+
 ## 0.1.37 (source candidate; not published)
 
 - Prevent direct operator-local recovery CLI inspect/finalize from creating Python import bytecode in a pinned source checkout; add ordinary-Python subprocess regressions without automatic stage recovery or service activation (#732).

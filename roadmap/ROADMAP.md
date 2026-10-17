@@ -1,3 +1,9 @@
+## 2026-10-17 — RMCP-F-0030 source diagnostic complete, physical Black recovery WAIT
+
+First new Black non-serving physical bootstrap FAILED (`existing_installer_failed`, original staged venv pip RC1). Canonical failure #716 remains OPEN/UNKNOWN_ROOT_CAUSE. RMCP source #718 `diagnose` read-only synthetic-verified and merged PR #719 `e336735f1f249971a93e3666ee46387953cc377e`, tested head `1b49e3052919efda1c61c857a52de2b94261ebdd`, CI validation #39045168201, Ubuntu #39045168205 and attribution #39045168175 SUCCESS. Candidate 0.1.30 source UNRELEASED/NOT DEPLOYED; no source merge repairs OS. Next physical safe evidence: on Black inspect Ubuntu Python-venv/pip-wheel package installation (read-only), independently verify exact root cause, approve a new isolated pinned stage generation (never original failed prefix), then Fabric #1562 and #1563 genuine authenticated ACK/recovery. No HDD format, site release or Claude activation.
+
+---
+
 ## 2026-10-17 — #718 local failed-stage diagnostics, no Black retry
 
 Operator's first new Black physical stage returned `existing_installer_failed`: venv exists but observed venv pip exited 1 and Runner-MCP executable/completion marker absent. Canonical Failure Museum RMCP-F-0030 = #716; physical owner Fabric #1562 BLOCKED; downstream Agent Bus #1563 BLOCKED. Fix source-only #718 adds **read-only, same-host, manifest-bound `diagnose`** with no attempt to execute the partial venv or infer pip root cause. Candidate source metadata `0.1.30` pending exact-head CI/merge, NOT installed/published. Physical recovery still requires read-only Ubuntu distro/venv diagnosis and separately approved new-stage custody; never silently retry or erase partial stage.

@@ -63,6 +63,25 @@ def test_partial_base_files_are_denied_not_initialized(tmp_path: Path) -> None:
     assert not (root / "projects.yml").exists()
 
 
+def test_foreign_mode_private_base_file_is_denied(tmp_path: Path) -> None:
+    root = tmp_path / "private"
+    root.mkdir(mode=0o700)
+    env = root / "runner-mcp.env"
+    env.write_text("EMPTY=1\n", encoding="utf-8")
+    env.chmod(0o644)
+    with pytest.raises(ConfigManagerError, match="unsafe"):
+        agent_bus_config_status(root)
+
+
+def test_symlinked_ancestor_is_denied(tmp_path: Path) -> None:
+    root = tmp_path / "real"
+    root.mkdir(mode=0o700)
+    alias = tmp_path / "alias"
+    alias.symlink_to(root, target_is_directory=True)
+    with pytest.raises(ConfigManagerError, match="symlink"):
+        agent_bus_config_status(alias / "nested" / "missing")
+
+
 def test_symlinked_base_file_is_denied(tmp_path: Path) -> None:
     root = tmp_path / "private"
     root.mkdir(mode=0o700)

@@ -536,7 +536,7 @@ def test_systemd_user_status_does_not_misreport_down_when_session_bus_unreachabl
 
     class DisconnectedSystemd(FakeSystemctl):
         def __call__(self, argv, **kwargs):
-            completed = super().__call__(argv, **kwargs)
+            super().__call__(argv, **kwargs)
             if argv[2:] == ["show-environment"]:
                 return subprocess.CompletedProcess(argv, 1, "", "private session error")
             raise AssertionError("Must fail closed before reading per-unit states")

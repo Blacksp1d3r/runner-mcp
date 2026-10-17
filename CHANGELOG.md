@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.31 (source candidate; not published)
+
+- Isolate first-host staged installer builds in a pinned private Git-archive copy so setuptools-generated `build/` and `*.egg-info` never dirty the trusted source checkout. Preserve strict second source/host/manifest gate, no activation, and no retry of failed physical stages (Runner-MCP #721).
+
+
 All notable user-visible changes to Runner MCP will be documented here.
 
 Runner MCP is under active development. New changes remain under **Unreleased** until an exact validated commit is explicitly tagged and released.

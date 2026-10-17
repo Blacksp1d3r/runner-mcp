@@ -1,3 +1,9 @@
+## 2026-10-17 — #718 failed Black stage readonly diagnosis, physical recovery BLOCKED
+
+Physical operator's FIRST Black `stage` attempt, pinned to Runner-MCP source merge `a2d34dc80550ef744acf0ff927344b000a832dcc`, failed: `existing_installer_failed`, initial failed prefix/venv remains; read-only pip RC1, ensurepip RC1, missing runner executable and stage marker. No automatic replay, re-run, cleanup or Python/OS install authorized. Root cause UNKNOWN until separate owner-local read-only package checks. Failure Museum #716 / RMCP-F-0030, source child #718. This branch adds read-only `diagnose --manifest` for fixed old-stage metadata from a new checkout. Existing `plan`/`stage` behavior preserved; output always marks release/ACK unverified and no source-runtime privilege. Candidate source version 0.1.30 (unpublished), exact HEAD/CI not yet qualified. Fabric #1562 and #1563 BLOCKED. After CI: guarded source PR merge, evidence/handover update; next physical operator check remains mandatory; NO Black site/Claude/relay work.
+
+---
+
 ## 2026-10-17 — #713/#714 source merge receipt; physical target still WAIT
 
 Merge: PR #714 head `68e569d7964fe92abd8516a9cd5a6144f5f8fb97` → main squash `a2d34dc80550ef744acf0ff927344b000a832dcc`. Exact-head validation #39036840912, Clean Ubuntu #39036840935, attribution #39036840862 all SUCCESS; no unresolved review threads. Local first-host stage source, regression tests and operator docs complete. This updated record supersedes all earlier mentions of PR #714 pending CI; do not redo changes or version bumps.

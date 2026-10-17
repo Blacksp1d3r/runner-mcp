@@ -229,3 +229,29 @@ def test_root_operator_is_denied_before_host_or_git(
     monkeypatch.setattr(bootstrap.os, "geteuid", lambda: 0)
     with pytest.raises(bootstrap.LocalBootstrapError, match="root_operator_denied"):
         _plan(manifest, source, tmp_path)
+
+
+def test_manifest_changed_during_install_never_marks_stage_ready(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> None:
+    plan = _plan(manifest, source, tmp_path)
+
+    def changing_runner(args, **kw):
+        if args[0] == "/usr/bin/bash":
+            root = plan.stage_root / "runtime" / "venv" / "bin"
+            root.mkdir(parents=True)
+            (root / "runner-mcp").write_text("dummy")
+            (root / "runner-mcp").chmod(0o700)
+            (root / "python").write_text("dummy")
+            (plan.stage_root / "bin" / "runner-mcp").symlink_to(root / "runner-mcp")
+            data = json.loads(manifest.read_text())
+            data["runner_subject"] = "runner:unexpected"
+            manifest.write_text(json.dumps(data))
+        return subprocess.CompletedProcess(args, 0)
+
+    with pytest.raises(bootstrap.LocalBootstrapError, match="manifest_changed_during_stage"):
+        bootstrap.stage_local_runner_mcp(
+            manifest, source[0], accept_digest=plan.digest,
+            home=tmp_path / "home", machine_digest="a" * 64, runner=changing_runner,
+        )
+    assert not (plan.stage_root / "stage-result.json").exists()

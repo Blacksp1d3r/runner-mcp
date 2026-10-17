@@ -86,7 +86,7 @@ def test_live_release_preflight_proves_only_metadata(
     result = manager.release_assets_readiness(COMMIT)
     assert result["state"] == "ready"
     assert result["source"] == "github-release"
-    assert result["artifact_count"] if False else result["asset_count"] == 5
+    assert result["asset_count"] == 5
     assert result["mutation_authorized"] is False
     assert result["download_performed"] is False
     assert calls == [

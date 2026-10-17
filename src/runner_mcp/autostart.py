@@ -427,6 +427,22 @@ def user_service_status(
         ("fabric-agent-qualification", FABRIC_AGENT_QUALIFICATION_UNIT),
         ("fabric-live-overview", FABRIC_LIVE_OVERVIEW_UNIT),
     )
+    # Installed unit files do not prove that the caller can reach the user's
+    # systemd manager. In particular, `sudo -iu <service-user>` can omit
+    # XDG_RUNTIME_DIR / the user session bus. Without this guard, a failed
+    # `systemctl --user is-active` silently becomes `active=no` for every
+    # service, even while the real systemd units are healthy.
+    if any((target / unit_name).exists() for _, unit_name in names):
+        manager = _run_systemctl(
+            ["show-environment"],
+            runner=runner,
+            check=False,
+        )
+        if manager.returncode != 0:
+            raise AutostartError(
+                "systemd user manager is unreachable from this session; "
+                "check XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS"
+            )
     for component, unit_name in names:
         path = target / unit_name
         installed = path.exists() and path.is_file() and not path.is_symlink()

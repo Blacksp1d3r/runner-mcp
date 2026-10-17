@@ -161,8 +161,8 @@ def test_explicit_recovery_persists_canonical_marker_but_never_activates(stage_f
     assert evidence["service_activation"] is False
     with pytest.raises(bootstrap.LocalBootstrapError, match="marker_already_present"):
         recovery.finalize_recovery(
-        manifest, source, original_plan=_accepted_plan(manifest), accept_digest=digest,
-    )
+            manifest, source, original_plan=_accepted_plan(manifest), accept_digest=digest,
+        )
 
 
 def test_wrong_host_cannot_attest_or_write(stage_fixture, monkeypatch) -> None:

@@ -25,6 +25,7 @@ from typing import Any
 from uuid import uuid4
 
 from .fabric_bootstrap import FabricBootstrapError, _private_env_value
+from .fabric_release_assets import FabricReleaseAdmissionError, inspect_exact_release
 from .operational_safety import OperatorSafetyGuard
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
@@ -82,6 +83,8 @@ _READINESS_FAILURE_REASONS = _LOCAL_CUSTODY_FAILURE_REASONS | frozenset(
         "fabric_transaction_invalid",
         "fabric_update_target_mismatch",
         "fabric_bundle_integrity_failed",
+        "fabric_release_metadata_unavailable",
+        "fabric_release_assets_unqualified",
     }
 )
 
@@ -96,7 +99,7 @@ def bounded_fabric_readiness_failure(
     An error is NOT an artifact receipt, install permission or readiness proof.
     Do not include the requested commit, a private path or arbitrary error text.
     """
-    if source not in {"github-actions", "local-custody"}:
+    if source not in {"github-actions", "local-custody", "github-release"}:
         raise ValueError("unsupported Fabric update source")
     reason = str(error) if type(error) is FabricUpdateError else ""
     code = (
@@ -227,6 +230,40 @@ class FabricUpdateManager:
         token = self._github_token()
         self._resolve_exact_artifact(token, commit)
         return {"commit": commit, "artifact_ready": True}
+
+    def release_assets_readiness(self, commit: str) -> dict[str, Any]:
+        """Read-only fixed-repository GitHub prerelease metadata proof.
+
+        This does not download assets, write owner-local custody, stage the
+        existing updater, switch slots or grant Fabric mutation authority.
+        """
+        _require_commit(commit)
+        self._require_safe_runtime()
+        self._assert_managed_launcher()
+        token = self._github_token()
+        prefix = (
+            "fabric-q7-bundle-"
+            if commit == "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
+            else "fabric-update-bundle-"
+        )
+        tag = prefix + commit
+        owner, repo = _REPOSITORY.split("/", 1)
+        path = f"/repos/{owner}/{repo}"
+        release = self._api_json(
+            token,
+            f"{path}/releases/tags/{tag}",
+            category="fabric_release_metadata_unavailable",
+        )
+        tag_ref = self._api_json(
+            token,
+            f"{path}/git/ref/tags/{tag}",
+            category="fabric_release_metadata_unavailable",
+        )
+        try:
+            admission = inspect_exact_release(commit, release, tag_ref)
+        except FabricReleaseAdmissionError as exc:
+            raise FabricUpdateError("fabric_release_assets_unqualified") from exc
+        return admission.public_dict()
 
     def local_readiness(self, commit: str) -> dict[str, Any]:
         """Verify one exact locally-custodied Fabric bundle without mutation."""

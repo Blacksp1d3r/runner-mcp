@@ -4,7 +4,7 @@ Previous #732 PR #734 was conflicted with independently merged v0.1.36 GitHub to
 
 **Reconciled physical operator facts (not newly performed by this agent):** on *new Black*, one-time recovery finalize against pre-approved private digest produced verified **non-serving** stage `stage_complete=true` and all activation/enrollment/ACK false. Runner-MCP #723/#716 and Fabric #1562 closed. Owner-local read-only status on Black proved default base config/env/projects all absent; `agent-bus status` generic error was setup prerequisite, not reason to redo stage. UX issue #735 open. Actual owner-private base setup, dedicated relay subject/credential, Fabric #1563 original-client command/result/ACK, A6/A7 rollback and public site are all NOT DONE. Existing central MCP serving 0.1.27 remains unqualified for foreign-host status/mutation; no credential/DNS/disk/Claude action.
 
-**Next safe action:** finish PR #734 only after exact latest-head validation/installer/attribution SUCCESS, verify actual merge; then tackle separately scoped #735 source-only safely and coordinate Fabric #1563 owner-local prerequisites. If CI pending, use WAITING_CI, never call pending green. Avoid old failed-stage operator steps and stale upstream handover below.
+**Next safe action:** #734 already CI GREEN and SOURCE MERGED `4ac5d0c85674f91ed882588cb1b323deefc73e11`; move to separately scoped #735 source-only safe NOT_INITIALIZED status and coordinate Fabric #1563 private owner-local prerequisites. No CI or source merge grants live host authority. Avoid old failed-stage operator steps and stale upstream handover below.
 
 ---
 

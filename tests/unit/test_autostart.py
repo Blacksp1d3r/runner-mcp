@@ -522,3 +522,45 @@ def test_fabric_agent_qualification_unit_is_optional_and_contains_no_credentials
     assert " run" in content
     assert "credential" not in content.casefold()
     assert "token" not in content.casefold()
+
+
+def test_systemd_user_status_does_not_misreport_down_when_session_bus_unreachable(
+    tmp_path: Path,
+) -> None:
+    """`sudo -iu` may have unit files but no XDG_RUNTIME_DIR/user bus."""
+
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    (unit_dir / SERVER_UNIT).write_text(MANAGED_MARKER + "\n")
+    (unit_dir / SERVER_UNIT).chmod(0o600)
+
+    class DisconnectedSystemd(FakeSystemctl):
+        def __call__(self, argv, **kwargs):
+            completed = super().__call__(argv, **kwargs)
+            if argv[2:] == ["show-environment"]:
+                return subprocess.CompletedProcess(argv, 1, "", "private session error")
+            raise AssertionError("Must fail closed before reading per-unit states")
+
+    systemctl = DisconnectedSystemd()
+    with pytest.raises(AutostartError, match="user manager is unreachable"):
+        user_service_status(unit_dir=unit_dir, runner=systemctl)
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
+
+
+def test_systemd_user_status_can_report_genuinely_disabled_services(
+    tmp_path: Path,
+) -> None:
+    """An accessible user manager may correctly report an inactive unit."""
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    (unit_dir / SERVER_UNIT).write_text(MANAGED_MARKER + "\n")
+    (unit_dir / SERVER_UNIT).chmod(0o600)
+
+    systemctl = FakeSystemctl()
+    rows = user_service_status(unit_dir=unit_dir, runner=systemctl)
+    server = next(row for row in rows if row.component == "server")
+
+    assert server.installed
+    assert not server.enabled
+    assert not server.active
+    assert systemctl.calls[0] == ["systemctl", "--user", "show-environment"]

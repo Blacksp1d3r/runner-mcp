@@ -730,7 +730,12 @@ def _agent_bus_base_not_initialized(config_dir: Path) -> bool:
 def agent_bus_config_status(config_dir: Path) -> dict[str, bool]:
     if _agent_bus_base_not_initialized(config_dir):
         return {"configured": False, "base_config_not_initialized": True}
-    paths, _project_file, _registry = _load_for_edit(config_dir)
+    try:
+        paths, _project_file, _registry = _load_for_edit(config_dir)
+    except (RuntimeError, ValueError) as exc:
+        raise ConfigManagerError(
+            "Private base configuration is incomplete or invalid"
+        ) from exc
     values = load_env_file(paths.env_file)
     present = {
         key: bool(values.get(key, "").strip())

@@ -167,7 +167,7 @@ def _verify_source(source_root: Path, manifest: HostManifest) -> None:
         raise LocalBootstrapError("source_revision_mismatch")
     if _git(source, "remote", "get-url", "origin") not in _ORIGINS:
         raise LocalBootstrapError("source_origin_unapproved")
-    if _git(source, "status", "--porcelain", "--untracked-files=all"):
+    if _git(source, "status", "--porcelain", "--untracked-files=all", "--ignored=matching"):
         raise LocalBootstrapError("source_dirty")
 
 
@@ -249,6 +249,7 @@ def stage_local_runner_mcp(
         "RUNNER_MCP_PYTHON": "/usr/bin/python3",
         "PIP_DISABLE_PIP_VERSION_CHECK": "1",
         "PIP_NO_INPUT": "1",
+        "PIP_NO_CACHE_DIR": "1",
     }
     try:
         result = runner(

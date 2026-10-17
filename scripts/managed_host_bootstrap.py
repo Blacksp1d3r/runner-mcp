@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Operator-attended, non-serving Runner-MCP first-host stage.
 
 This local-only script is NOT an MCP tool, a host enrollment credential or
@@ -16,7 +15,7 @@ import subprocess
 import sys
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
+from collections.abc import Callable
 
 _SCHEMA = "runner-mcp/local-host-bootstrap/v1"
 _MANIFEST_FIELDS = frozenset({

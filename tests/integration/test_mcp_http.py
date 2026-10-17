@@ -101,6 +101,7 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         assert listed.status_code == 200
         for tool_name in (
             "list_projects",
+            "known_project_candidate_inventory",
             "known_project_preflight",
             "prepare_known_project",
             "register_known_project",

@@ -97,6 +97,83 @@ KNOWN_PROJECTS: dict[str, KnownProject] = {
 }
 
 
+def inspect_known_project_candidates(
+    registry: ProjectRegistry,
+    *,
+    project_id: str,
+    runner=subprocess.run,
+) -> dict[str, int | str]:
+    """Return bounded read-only candidate counts without exposing host paths."""
+
+    project = KNOWN_PROJECTS.get(project_id)
+    if project is None:
+        raise KnownProjectRegistrationError("Unknown managed project")
+    if not callable(runner):
+        raise TypeError("runner must be callable")
+
+    parents: list[Path] = []
+    for configured in registry.projects.values():
+        parent = _trusted_existing_root(configured.root).parent
+        if parent not in parents:
+            parents.append(parent)
+
+    counts = {
+        "missing": 0,
+        "symlink": 0,
+        "not_directory": 0,
+        "unavailable": 0,
+        "repository_unreadable": 0,
+        "wrong_repository": 0,
+        "exact_repository": 0,
+    }
+    for parent in parents:
+        candidate = parent / project.directory_name
+        if candidate.is_symlink():
+            counts["symlink"] += 1
+            continue
+        if not candidate.exists():
+            counts["missing"] += 1
+            continue
+        try:
+            resolved = candidate.resolve(strict=True)
+        except OSError:
+            counts["unavailable"] += 1
+            continue
+        if not resolved.is_dir():
+            counts["not_directory"] += 1
+            continue
+        observed = _repository_for(resolved, runner=runner)
+        if observed is None:
+            counts["repository_unreadable"] += 1
+        elif observed == project.repository:
+            counts["exact_repository"] += 1
+        else:
+            counts["wrong_repository"] += 1
+
+    exact = counts["exact_repository"]
+    if exact == 1:
+        state = "unique-exact-clone"
+    elif exact > 1:
+        state = "multiple-exact-clones"
+    else:
+        state = "no-exact-clone"
+
+    return {
+        "code": project.code,
+        "repository": project.repository,
+        "configured_parent_count": len(parents),
+        "candidate_count": len(parents) - counts["missing"],
+        "exact_repository_count": exact,
+        "missing_count": counts["missing"],
+        "symlink_count": counts["symlink"],
+        "not_directory_count": counts["not_directory"],
+        "unavailable_count": counts["unavailable"],
+        "repository_unreadable_count": counts["repository_unreadable"],
+        "wrong_repository_count": counts["wrong_repository"],
+        "state": state,
+    }
+
+
 def discover_known_project_root(
     registry: ProjectRegistry,
     *,

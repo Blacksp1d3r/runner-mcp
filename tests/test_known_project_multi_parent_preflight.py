@@ -10,6 +10,7 @@ import pytest
 from runner_mcp.config import ProjectConfig, ProjectRegistry
 from runner_mcp.known_project_catalog import (
     KnownProjectRegistrationError,
+    inspect_known_project_candidates,
     preflight_known_project,
     prepare_known_project,
 )
@@ -124,6 +125,68 @@ def test_symlink_candidate_is_never_treated_as_clone(tmp_path: Path) -> None:
     assert preflight_known_project(
         registry, project_id="aifordable", runner=no_git
     )["state"] == "ambiguous-parent"
+
+
+def test_candidate_inventory_reports_counts_without_paths(tmp_path: Path) -> None:
+    registry, left, right = _registry(tmp_path)
+    (left / "AIfordable").mkdir()
+    (right / "AIfordable").mkdir()
+
+    calls = 0
+
+    def mixed_origin(argv, **kwargs):
+        nonlocal calls
+        calls += 1
+        repository = (
+            "https://github.com/Blacksp1d3r/AIfordable.git\n"
+            if calls == 1
+            else "https://github.com/example/not-aifordable.git\n"
+        )
+        return subprocess.CompletedProcess(argv, 0, stdout=repository, stderr="")
+
+    result = inspect_known_project_candidates(
+        registry,
+        project_id="aifordable",
+        runner=mixed_origin,
+    )
+
+    assert result == {
+        "code": "aifordable",
+        "repository": "Blacksp1d3r/AIfordable",
+        "configured_parent_count": 2,
+        "candidate_count": 2,
+        "exact_repository_count": 1,
+        "missing_count": 0,
+        "symlink_count": 0,
+        "not_directory_count": 0,
+        "unavailable_count": 0,
+        "repository_unreadable_count": 0,
+        "wrong_repository_count": 1,
+        "state": "unique-exact-clone",
+    }
+    rendered = repr(result)
+    assert str(left) not in rendered
+    assert str(right) not in rendered
+
+
+def test_candidate_inventory_distinguishes_missing_and_symlink(tmp_path: Path) -> None:
+    registry, left, right = _registry(tmp_path)
+    (left / "AIfordable").symlink_to(right / "safety", target_is_directory=True)
+
+    result = inspect_known_project_candidates(
+        registry,
+        project_id="aifordable",
+        runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("symlink and missing candidates must not invoke git")
+        ),
+    )
+
+    assert result["configured_parent_count"] == 2
+    assert result["candidate_count"] == 1
+    assert result["exact_repository_count"] == 0
+    assert result["symlink_count"] == 1
+    assert result["missing_count"] == 1
+    assert result["state"] == "no-exact-clone"
 
 
 def test_single_parent_old_prepare_readiness_unchanged(tmp_path: Path) -> None:

@@ -1,7 +1,7 @@
 {
   "schemaVersion": "runner-mcp/tool-catalogue-baseline/v1",
   "sourceFile": "src/runner_mcp/server.py",
-  "minimumToolCount": 95,
+  "minimumToolCount": 96,
   "tools": [
     "apply_migrations",
     "approval_status",
@@ -60,6 +60,7 @@
     "file_metadata",
     "get_test_log",
     "job_status",
+    "known_project_candidate_inventory",
     "known_project_preflight",
     "known_project_source_preflight",
     "list_backups",

@@ -1,6 +1,6 @@
 ## 2026-10-17 — CURRENT next actions (supersedes 2026-10-11 history below)
 
-1. Reconcile exact PR #734 head `3f09078d6b0f5299b861d903e714aa242fafdcd3`, verify terminal full validation, clean Ubuntu and attribution; only guarded source merge. Preventive #732 fix 0.1.37 is UNPUBLISHED and does not call Black host.
+1. Runner-MCP #732 PR #734 SOURCE MERGED `4ac5d0c85674f91ed882588cb1b323deefc73e11`, three exact-head CI workflows SUCCESS. Source v0.1.37 UNPUBLISHED/NOT DEPLOYED. Next independent executable source task: #735 fail-closed base NOT_INITIALIZED status and local setup guidance; no host commands.
 2. Black physical non-serving stage already COMPLETED by operator; #723, #716, Fabric #1562 CLOSED. Never re-run/recover it. Its private base setup is NOT INITIALIZED: local config root/env/projects absent, #735 safe status/UX source change needed, then operator-only local setup with real repo/root selection. No auto bearer nor overwrite.
 3. Fabric #1563: independent Black-specific CAS-bound issuer credential, enrolled existing Agent Bus only after qualification, request/result/original-client ACK. A6 #942, A7 #943 and fleet #924 remain blocked, websites/Claude WAIT. Central 0.1.27 is a different host, no remote authority. Preserve old escrow and storage; no HDD format or generic shell.
 

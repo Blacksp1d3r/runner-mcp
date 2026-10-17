@@ -1,3 +1,12 @@
+## 2026-10-17 — Black non-serving stage PHYSICALLY DONE; source #732 fix active CI; A2 Agent Bus WAIT
+
+- Operator-attended FIRST-HOST Black recovery `runner-mcp/local-host-stage-result/v1` at staged pinned 0.1.30 returned `stage_complete=true`, `service_activation=false`, `relay_enrollment=false`, `original_client_ack=false`. Owner/physical stage #723, failure #716 and Fabric #1562 CLOSED (supersedes outdated blocked snapshots below). This receipt is NOT an authenticated first-party host enrollment nor proof of remote service.
+- Black local `runner-mcp agent-bus status` reported private config unavailable. Owner read-only inventory proved local base config directory/env/projects absent: missing FIRST-HOST setup, NOT failed stage or down relay. Source UX issue #735 open; never auto-generate bearer or falsely reuse other host configuration.
+- Independent preventive recovery checkout fix #732 is under PR #734, resumed on current main: 0.1.37 unpublished candidate; bytecode-free direct CLI + real subprocess tests, visible dirty guard and Failure Museum RMCP-F-0043. Exact HEAD CI pending; do not call candidate installed or merge before GREEN checks. Superseded conflicting #733 CLOSED unmerged.
+- Next executable after guarded #734 merge: #735 source-only NOT_INITIALIZED status, safe staged next-step/runbook, synthetic denials; then owner-attended local setup ONLY after real project path/UID approval, separate AIfordable issuer CAS identity, target-bound command→result→original-client ACK under Fabric #1563. Central serving 0.1.27 unrelated and Fabric mutation/execution disabled. No Black site, HDD, DNS, tunnel or Claude activation.
+
+---
+
 ## 2026-10-17 — Fabric Releases exact metadata gate source complete; local importer remains WAIT
 
 - `COMPLETE / SOURCE_ONLY`: Runner-MCP PR #729 merged `de7a0d7b5d51a27949cb6868125a4636411178e5` from head `75004ae076e3d3c77779a7c0a0bef3e16c5d4c02`, all attribution #39059117322 / clean Ubuntu #39059117379 / validation #39059117347 terminal SUCCESS. Candidate version `0.1.35` is **NOT an installed runtime or published public package**. New `release_assets_readiness` validates exact fixed Fabric GitHub Release tag+commit ref, prerelease source and bounded unique 33-style asset name/digest metadata. Returns `mutation_authorized=false, download_performed=false`. Existing Actions/local update consumer preserved.

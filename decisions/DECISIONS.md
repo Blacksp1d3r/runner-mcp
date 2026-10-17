@@ -1,3 +1,9 @@
+## 2026-10-17 — Local first-host staging does not bootstrap host authentication
+
+On new Black, a successful operator-attended immutable, non-serving stage does NOT create `~/.config/runner-mcp`, generate a bearer, select actual project checkout, enroll Agent Bus, start a listener, or prove original-client ACK. The independent physical receipt is stage-only; these steps demand explicitly selected real project/UID and owner-held private issuer authority. If uninitialized, read-only status may safely say NOT_INITIALIZED; malformed/partial/wrong-owner private config must still fail closed. Source issue #735; downstream Fabric #1563 owns target-bound ACK. Existing central 0.1.27 can never attest to Black by itself. No duplicate tunnel or generic shell.
+
+---
+
 # Runner MCP — Decisions
 
 Canonical record of durable project-wide decisions. Keep entries concise and append new decisions; do not put secrets or private infrastructure values here.

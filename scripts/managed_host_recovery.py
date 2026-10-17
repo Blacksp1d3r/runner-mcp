@@ -25,6 +25,12 @@ from dataclasses import dataclass
 from email.parser import Parser
 from pathlib import Path, PurePosixPath
 
+# Keep direct operator-local inspect/finalize from polluting their own pinned
+# Git checkout. The recovery script must not manufacture ignored pycache files
+# which the subsequent exact-source preflight correctly refuses.
+if __name__ == "__main__":
+    sys.dont_write_bytecode = True
+
 import managed_host_bootstrap as bootstrap
 
 _SHA = re.compile(r"[0-9a-f]{64}\Z")

@@ -1,3 +1,9 @@
+## 2026-10-19 — Unique Runner-MCP versions and one-owner execution DAG
+
+[Local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md). Source release R (one Runner-MCP steward; version-lock/CAS and exact-head CI) runs parallel to AIfordable H (canonical correct host/UID/relay freshness) and source-only P validators. Only **actual independent right-host loaded wheel/process proof** P → Fabric A6/A7 rollback+target lease A → one safeguarded attended activation U → deployed requester-authenticated result ACK K → worker-local `coding_workspace_preflight/prepare` W → controlled dispatch D. No global development STOP from a WAIT physical gate. Source main 0.1.41 (#751) collides with old open #743 0.1.41; stacked #745 0.1.42, draft #750 0.1.43; require sequential unique version reconciliation, new future automatic CI collision check and exact-head retest before each merge. Current central serving 0.1.38 source/wheel unknown. No remote-shell bypass, historical self-update metadata rewrite or second release updater.
+
+---
+
 ## 2026-10-19 — #669 Doctor source vs live acceptance gates
 
 `existing #669 offline receipt + manifest + detached signature + generation layout (SOURCE ONLY)` → `independent authorized signer/manifest custody and sealed installed wheel+RECORD` → `correct-host / serving-process generation and all-role identity proof` → `separately authorized versioned atomic manual-install baseline receipt (historical self-update state immutable)` → `qualified revision provider, Doctor reconciliation and original-client identity/result ACK` → `off-target A6 #942 + autonomous A7 #943 recovery` → `guarded single-node update / fleet #341/#924`. Missing any edge means UNKNOWN, not green. PR #742 provider exception containment is a distinct source-only child; exact-head CI is pending. No host action authorized.

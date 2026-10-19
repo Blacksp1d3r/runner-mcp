@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 release collision and host/ACK authority split
+
+Docs-only branch updates roadmap and [Runner-MCP local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md) linked to canonical Fabric #924. Runtime/MCP control source release owner Runner-MCP; sole target mutation/campaign owner Fabric #924/A6/A7; host/relay/credential+original requester ACK owner AIfordable #428/#585; one-worker acceptance AIfordable #609. Source main 0.1.41 merged #751, collides with open #743 0.1.41 and stacked #745 0.1.42 plus draft #750 0.1.43. Coordinate branch owners rather than edit foreign PRs. A new deterministic release reservation CI child is still REQUIRED/NOT IMPLEMENTED. First-party central runtime still 0.1.38, serving provenance unverified, self_update_ready=false; no live host mutation authorized. Reuse earlier physical controlled update rollback evidence. Distinguish SOURCE_MERGED from installed/serving/ACK; after actual read-only host inventory follow only guarded Fabric single-target activation.
+
+---
+
 ## 2026-10-19 — Runner-MCP #669 source lane continues, Fabric A6/A7 receipts reused
 
 Same existing PR #742 holds source candidate 0.1.40, new offline wheel/RECORD comparison composed with existing signed manifest/receipt/generation checks, negative regressions, and stricter server revision pairing. It cannot attest serving process. Earlier source exact-head job ran 3386 pytest success, Ruff and registry success, failed ONLY whitespace (now corrected). Final exact-head CI required before guarded source-only merge. Fabric #942/#943 contain the already exercised 2026-10-18 physical guarded activation/recovery trials; these are not to be repeated, and remaining full A6 journal/A7 exact MCP supervisor acceptance belongs to Fabric. Correct-host signer/install/process attestation remains blocked separate from source work.

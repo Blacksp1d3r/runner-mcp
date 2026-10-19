@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 release collision and host/ACK authority split
+
+Docs-only branch updates roadmap and [Runner-MCP local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md) linked to canonical Fabric #924. Runtime/MCP control source release owner Runner-MCP; sole target mutation/campaign owner Fabric #924/A6/A7; host/relay/credential+original requester ACK owner AIfordable #428/#585; one-worker acceptance AIfordable #609. Source main 0.1.41 merged #751, collides with open #743 0.1.41 and stacked #745 0.1.42 plus draft #750 0.1.43. Coordinate branch owners rather than edit foreign PRs. A new deterministic release reservation CI child is still REQUIRED/NOT IMPLEMENTED. First-party central runtime still 0.1.38, serving provenance unverified, self_update_ready=false; no live host mutation authorized. Reuse earlier physical controlled update rollback evidence. Distinguish SOURCE_MERGED from installed/serving/ACK; after actual read-only host inventory follow only guarded Fabric single-target activation.
+
+---
+
 ## 2026-10-19 — PR #742 current source reconciliation
 
 Added offline installed-wheel/RECORD comparison, composed the existing detached signature / offline evidence chain with it, tested tampering and no live-verification claims. Tightened `server.py` revision provider to require both source revision and artifact digest matching the loaded build version (still source-only, no trust issuance). Correct-host live witness/provider remains absent. CI exact prior head: version gate, 95 tools, Ruff, 3386 pytest, MCP metadata all PASS; whitespace failure at five documentation lines (this commit removes them). Rerun on current source head before merge. Fabric A6/A7 existing operator receipts are real partial acceptance, not to be repeated; their final remaining gaps are Fabric-owned. Keep historic self-update state intact, no tunnel/cron/install/deploy operation.

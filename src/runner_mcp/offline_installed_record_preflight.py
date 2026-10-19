@@ -61,9 +61,12 @@ def _safe_tree(path: Path) -> bool:
         return False
     for ancestor in (path, *path.parents):
         info = ancestor.lstat()
-        if not stat.S_ISDIR(info.st_mode) or info.st_mode & (stat.S_IWGRP | stat.S_IWOTH):
+        if not stat.S_ISDIR(info.st_mode):
             return False
-        if ancestor == path and info.st_uid != os.geteuid():
+        if ancestor == path and (
+            info.st_uid != os.geteuid()
+            or info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+        ):
             return False
     return True
 
@@ -95,7 +98,7 @@ def _read_record(data: bytes, *, record_name: str) -> dict[str, tuple[str, int]]
             size = int(size_text)
             if size > _MAX_FILE_BYTES:
                 return None
-            result[name] = (hashlib.sha256(raw).hexdigest(), size)
+            result[name] = (digest[7:], size)
         if record_name not in result:
             return None
         return result
@@ -131,7 +134,11 @@ def offline_installed_record_preflight(
     ):
         return result
     try:
-        if not _safe_file(wheel) or not _safe_tree(installed_package.parent):
+        if (
+            not _safe_file(wheel)
+            or wheel.lstat().st_size > _MAX_TOTAL_BYTES
+            or not _safe_tree(installed_package.parent)
+        ):
             return result
         if not _safe_tree(installed_package):
             return result
@@ -165,7 +172,7 @@ def offline_installed_record_preflight(
                 return result
             root = installed_package.parent
             installed_record = root / record_name
-            if not _safe_file(installed_record, owner_only=True):
+            if not _safe_file(installed_record) or installed_record.lstat().st_uid != os.geteuid():
                 return result
             pip_record = _read_record(installed_record.read_bytes(), record_name=record_name)
             if pip_record is None:

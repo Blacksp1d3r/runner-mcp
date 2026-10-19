@@ -46,13 +46,12 @@ def _safe_name(value: str) -> bool:
     )
 
 
-def _safe_file(path: Path, *, owner_only: bool = False) -> bool:
+def _safe_file(path: Path) -> bool:
     info = path.lstat()
     return (
         stat.S_ISREG(info.st_mode)
         and info.st_nlink == 1
         and not info.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
-        and (not owner_only or (info.st_uid == os.geteuid() and not info.st_mode & 0o077))
     )
 
 
@@ -71,7 +70,12 @@ def _safe_tree(path: Path) -> bool:
     return True
 
 
-def _read_record(data: bytes, *, record_name: str) -> dict[str, tuple[str, int]] | None:
+def _read_record(
+    data: bytes,
+    *,
+    record_name: str,
+    wheel_files: set[str] | None = None,
+) -> dict[str, tuple[str, int]] | None:
     if not data or len(data) > _MAX_RECORD_BYTES:
         return None
     try:
@@ -81,6 +85,12 @@ def _read_record(data: bytes, *, record_name: str) -> dict[str, tuple[str, int]]
             if len(row) != 3:
                 return None
             name, digest, size_text = row
+            # pip may add executable-script entries outside site-packages to its
+            # installed RECORD. They are not candidates for file reads here.
+            if wheel_files is not None and name not in wheel_files:
+                if not isinstance(name, str) or not 1 <= len(name) <= 240 or "\x00" in name:
+                    return None
+                continue
             if not _safe_name(name) or name in result or len(result) >= _MAX_ENTRIES:
                 return None
             if name == record_name:
@@ -174,7 +184,9 @@ def offline_installed_record_preflight(
             installed_record = root / record_name
             if not _safe_file(installed_record) or installed_record.lstat().st_uid != os.geteuid():
                 return result
-            pip_record = _read_record(installed_record.read_bytes(), record_name=record_name)
+            pip_record = _read_record(
+                installed_record.read_bytes(), record_name=record_name, wheel_files=set(names)
+            )
             if pip_record is None:
                 return result
             for name in names:

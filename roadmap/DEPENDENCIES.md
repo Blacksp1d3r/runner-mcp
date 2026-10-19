@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 Doctor source vs live acceptance gates
+
+`existing #669 offline receipt + manifest + detached signature + generation layout (SOURCE ONLY)` → `independent authorized signer/manifest custody and sealed installed wheel+RECORD` → `correct-host / serving-process generation and all-role identity proof` → `separately authorized versioned atomic manual-install baseline receipt (historical self-update state immutable)` → `qualified revision provider, Doctor reconciliation and original-client identity/result ACK` → `off-target A6 #942 + autonomous A7 #943 recovery` → `guarded single-node update / fleet #341/#924`. Missing any edge means UNKNOWN, not green. PR #742 provider exception containment is a distinct source-only child; exact-head CI is pending. No host action authorized.
+
+---
+
 ## 2026-10-17 — Black qualified non-serving stage done, separate setup and A2 gates
 
 `Runner-MCP #723 / Fabric #1562 (owner-attended stage receipt: COMPLETE)` -> `owner-local base Runner-MCP config NOT_INITIALIZED (observed, issue #735)` -> `operator-selected real project/source and unprivileged local setup (NOT YET)` -> `AIfordable #428/#585 private CAS-fenced unique Black subject and relay credential (NOT YET)` -> `Fabric #1563 target-bound worker/outbox + one safe request/result/original-client ACK (NOT YET)` -> `qualified A6/A7 reversible activation (#942/#943) and website (#584) (NOT YET)`. Source CLI fix #732/PR #734 is a separate preventive lane, never grants a stage redo. Central 0.1.27 cannot act as Black evidence. Preserve original forensic stage; no auth/credential, website or disk mutation.

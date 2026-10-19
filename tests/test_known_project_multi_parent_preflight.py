@@ -132,3 +132,129 @@ def test_single_parent_old_prepare_readiness_unchanged(tmp_path: Path) -> None:
     assert preflight_known_project(
         registry, project_id="aifordable", runner=_exact_repo_runner
     )["state"] == "ready-to-prepare"
+
+
+def test_explicit_configured_project_anchor_disambiguates_without_host_path(
+    tmp_path: Path,
+) -> None:
+    registry, left, right = _registry(tmp_path)
+
+    def no_git(*_args, **_kwargs):
+        raise AssertionError("preflight must not contact Git for absent target")
+
+    assert preflight_known_project(
+        registry, project_id="enercue", anchor_project_id="runner-mcp", runner=no_git,
+    ) == {
+        "code": "enercue",
+        "repository": "Blacksp1d3r/EnerCue",
+        "state": "ready-to-prepare",
+    }
+    assert preflight_known_project(
+        registry, project_id="enercue", anchor_project_id="safety", runner=no_git,
+    )["state"] == "ready-to-prepare"
+    assert not (left / "EnerCue").exists()
+    assert not (right / "EnerCue").exists()
+    assert preflight_known_project(
+        registry, project_id="enercue", runner=no_git,
+    )["state"] == "ambiguous-parent"
+
+
+@pytest.mark.parametrize("invalid", ["not-configured", "runner-mcp/../safety", "", None])
+def test_invalid_anchor_denied_without_cloning(tmp_path: Path, invalid) -> None:
+    registry, _left, _right = _registry(tmp_path)
+    if invalid is None:
+        # None deliberately retains the old ambiguous-parent behaviour.
+        assert preflight_known_project(
+            registry, project_id="enercue",
+            anchor_project_id=None,
+        )["state"] == "ambiguous-parent"
+        return
+
+    def no_git(*_args, **_kwargs):
+        raise AssertionError("unverified anchor cannot contact Git")
+
+    with pytest.raises(KnownProjectRegistrationError, match="already configured"):
+        preflight_known_project(
+            registry, project_id="enercue",
+            anchor_project_id=invalid, runner=no_git,
+        )
+    with pytest.raises(KnownProjectRegistrationError, match="already configured"):
+        prepare_known_project(
+            registry, project_id="enercue",
+            anchor_project_id=invalid, runner=no_git,
+        )
+
+
+def test_explicit_anchor_rejects_existing_exact_clone_on_other_parent(
+    tmp_path: Path,
+) -> None:
+    registry, left, right = _registry(tmp_path)
+    (left / "EnerCue").mkdir()
+    def exact(argv, **_kwargs):
+        return subprocess.CompletedProcess(
+            argv, 0, stdout="https://github.com/Blacksp1d3r/EnerCue.git\n",
+            stderr="",
+        )
+
+    assert preflight_known_project(
+        registry, project_id="enercue", anchor_project_id="safety", runner=exact,
+    )["state"] == "exact-clone-elsewhere"
+    with pytest.raises(KnownProjectRegistrationError, match="another parent"):
+        prepare_known_project(
+            registry, project_id="enercue", anchor_project_id="safety",
+            runner=exact,
+        )
+    assert not (right / "EnerCue").exists()
+    assert prepare_known_project(
+        registry, project_id="enercue",
+        anchor_project_id="runner-mcp", runner=exact,
+    )["state"] == "already-prepared"
+
+
+def test_explicit_anchor_blocks_symlink_target(tmp_path: Path) -> None:
+    registry, left, right = _registry(tmp_path)
+    (right / "EnerCue").symlink_to(left / "runner-mcp", target_is_directory=True)
+    assert preflight_known_project(
+        registry, project_id="enercue", anchor_project_id="safety",
+    )["state"] == "unsafe-destination"
+    with pytest.raises(KnownProjectRegistrationError, match="occupied"):
+        prepare_known_project(
+            registry, project_id="enercue", anchor_project_id="safety",
+        )
+
+
+def test_prepare_clones_only_below_the_selected_existing_project_parent(
+    tmp_path: Path,
+) -> None:
+    registry, left, right = _registry(tmp_path)
+    calls: list[list[str]] = []
+
+    def fake_git(argv, **kwargs):
+        calls.append(argv)
+        assert kwargs.get("shell", False) is False
+        if "clone" in argv:
+            assert kwargs["cwd"] == str(right)
+            Path(argv[-1]).mkdir()
+            return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+        if "config" in argv:
+            return subprocess.CompletedProcess(
+                argv, 0,
+                stdout="https://github.com/Blacksp1d3r/EnerCue.git\n",
+                stderr="",
+            )
+        if "checkout" in argv:
+            return subprocess.CompletedProcess(argv, 0, stdout="", stderr="")
+        raise AssertionError("unapproved Git action")
+
+    result = prepare_known_project(
+        registry, project_id="enercue", anchor_project_id="safety",
+        runner=fake_git, github_token=None,
+    )
+    assert result["state"] == "prepared"
+    assert (right / "EnerCue").is_dir()
+    assert not (left / "EnerCue").exists()
+    assert len([cmd for cmd in calls if "clone" in cmd]) == 1
+    assert prepare_known_project(
+        registry, project_id="enercue", anchor_project_id="safety",
+        runner=fake_git,
+    )["state"] == "already-prepared"

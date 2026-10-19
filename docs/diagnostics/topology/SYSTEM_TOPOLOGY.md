@@ -1,3 +1,9 @@
+## 2026-10-19 — Current source/historical/update versus serving-process edges
+
+`GitHub source commit` and `local checkout HEAD` are source observations. `self-update-state.json.commit` is last self-update/recovery history, not the serving wheel. `installed metadata + offline receipt/signature + generation layout` are candidate observations, not independent host/process proof. `actual serving imported module generation` must be attested with a protected correct-host witness and fresh original-client correlation before public build identity fields can be verified. At 0.1.38 the two Doctor FAILs and null active artifact revision/digest are correct. PR #742 fixes a narrow internal provider exception escape (RMCP-F-0045, synthetic only) without promoting any evidence. Preserve Fabric off-target A6/A7 trust boundaries and the separate new-Black non-serving host identity; see component 01 attestation design.
+
+---
+
 ## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
 
 Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.

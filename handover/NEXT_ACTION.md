@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 signed serving witness reconciled on main 0.1.41 (DRAFT v0.1.44)
+
+The independent read-only serving-statement comparator source from #750 is now based on merged main including #751 owner-local workspace tools and #752 cross-project release coordination. Preserve exact source and do not infer a true server-attested wheel/process from signed offline input: `active_build_provenance_verified=false`, `source_revision=null`, `artifact_digest=null` remain even on consistent signed statement. Prior release owner #743 must first ship unique 0.1.42; stacked #745 follows as 0.1.43. This draft 0.1.44 stays WAIT until both actually merge. Do not edit #743/#745 branches, skip version order, regenerate credentials, or update live central 0.1.38; Fabric A6/A7 and authenticated original-client ACK remain separate. See #669, #662 and `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+
+---
+
 ## 2026-10-19 — Complete exact-head source qualification before merge
 
 New 0.1.40 source comparator and version/digest structural gate have passed 3386 pytest and Ruff at an earlier exact head; correct five trailing-whitespace errors and then require all tests, demo, artifact, clean Ubuntu, attribution on the NEW HEAD. If all green, mark PR #742 ready and merge under enforced GitHub rules without waiting for optional human/AI review. Source merge never authorizes production install. Manual correct-host process evidence, independent builder custody and a separately approved baseline remain for full live Doctor green, while Fabric #942/#943 maintain A6/A7 final acceptance. No rerun of already-proven 2026-10-18 physical guarded cutovers.

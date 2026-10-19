@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.44 (DRAFT source candidate; after #743/#745)
+
+- Add read-only, independently pinned Ed25519 signed serving-statement preflight with explicit nonce, host, process-role/generation, wheel, source and timestamp checks (#669). It does NOT attest live active process provenance or grant deployment authority.
+
 ## 0.1.40 (source candidate; not published)
 
 - Contain missing/invalid active-revision provider metadata errors as unknown rather than a runtime diagnostic tool error; preserve failed self-update activation and historical baseline guards (#669 / PR #742).

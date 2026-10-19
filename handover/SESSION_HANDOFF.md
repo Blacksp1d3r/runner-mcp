@@ -1,4 +1,10 @@
-## 2026-10-19 — parallel #739 independent-release-roster candidate
+## 2026-10-19 — source-only Q7 33-file consistency candidate
+
+Continue from stacked #742 -> #743 -> #745 -> #746 -> current v0.1.44. Current code only compares independently pinned in-memory bytes and checks Q7 `BUNDLE.json`, `COMMIT_SHA`, `SHA256SUMS`, BOOTSTRAP and wheel digest relationships; no real bytes/token/host interaction. Synthetic regression and CI required. Do not promote if wheel metadata/signer/issuer/local custody and original-client ACK unqualified. Reconcile GitHub head/status before next work, avoid conflicting other owner's #742 self-update changes.
+
+---
+
+### 2026-10-19 — parallel #739 independent-release-roster candidate
 
 New v0.1.43 pure metadata comparator branch `feat/739-independent-release-roster-20261019` stacked on fully-green #745 v0.1.42. Parent #739 importer remains incomplete; this is NOT independent signer custody, 33/33 downloaded bytes or host install/ACK. Source and 36 negative/positive synthetic tests committed; exact-head GitHub validation still pending. Other actor owns active PR #742, not modified here. Reconcile stack before merges; safe independent tasks can proceed without invoking physical host operations.
 

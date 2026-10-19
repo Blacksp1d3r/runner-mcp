@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.44 (source candidate; not published)
+
+- Add inert in-memory Q7 complete 33-asset checksum and manifest-consistency verification against independent exact roster pins. Enforce exact manifests, COMMIT_SHA, SHA256SUMS, bootstrap and 29 wheel-hash relations with bounded sizes, duplicate-key denials, no filesystem/network/token/install effects. Result explicitly marks signer, wheel metadata, local custody, mutation, and original-client ACK unverified (#739).
+
+
 ## 0.1.43 (source candidate; not published)
 
 - Source-only strict comparison of one Q7 33-asset Release inventory with independently held exact (repository-context, tag, commit, Release ID, per-asset numeric ID/name/size/SHA256) pins. Denies wrong/duplicate/malformed roster data and only returns an explicit MATCH_ONLY result with signer trust, download, mutation and original-client ACK all false (#739). Does not verify signer custody, store bytes or install anything.

@@ -1,3 +1,7 @@
+## Full Q7 manifest consistency (source-only)
+
+`independently trusted source/asset roster still external -> compare exact Q7 33 metadata -> map[str, bytes] (caller's in-memory synthetics) -> all 33 length/hash -> bounded JSON and canonical COMMIT_SHA -> 29 wheel + bootstrap SUMS consistency -> result bundle_consistency_only`. No signature verification, wheel ZIP inspection, network fetch, filesystem persistence, host authority or original-client delivery ACK. A parsed bundle is NOT independently issued or executable.
+
 ## Independent Q7 roster structural comparison (source-only)
 
 `externally trusted issuer/pin custody REQUIRED BUT NOT PROVIDED -> PinnedReleaseRoster as caller data -> strict 40hex source/ref and positive release ID -> exactly 33 safe unique id/name/length/sha256 tuples -> compare with ReleaseAdmission observed fields -> category-only MATCH_ONLY or constant denial`. No network, HTTP token, download, file, signature or original-client receipt. A caller MUST NOT populate trusted pins from same observed source and treat it as independent authority.

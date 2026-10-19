@@ -1,4 +1,10 @@
-## 2026-10-19 — #739 third inert security child v0.1.43
+## 2026-10-19 — full offline Q7 bundle consistency source candidate v0.1.44
+
+New independent #739 preparation branch `feat/739-complete-bundle-manifest-check-20261019` stacked after #746, pure exact 33 asset body/pin/manifest checks, no I/O. Synthetic tests committed, exact-head CI pending, no production authority or release/wheel installation. #745 v0.1.42 exact CI GREEN; #742 active external owner, #743/745/746 stacked integration unchanged. Private signer, true 33/33 original assets, approved atomic local custody and Fabric #1563 ACK remain WAIT.
+
+---
+
+### 2026-10-19 — #739 third inert security child v0.1.43
 
 While active #742 runtime Doctor remains owned by a different lane, PR #745 v0.1.42 exact validation, Ubuntu and attribution became green. New stacked independent branch `feat/739-independent-release-roster-20261019` adds pure 33/33 external roster comparison tests; no network/download/files/service/relay activity or live signer verification. Source candidate v0.1.43, GitHub CI PENDING. A MATCH_ONLY cannot grant physical authority. #742→#743→#745→v0.1.43 sequential merge after green and correct base is required.
 

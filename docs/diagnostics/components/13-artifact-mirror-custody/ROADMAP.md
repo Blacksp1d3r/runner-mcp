@@ -1,3 +1,7 @@
+## 2026-10-19 — Q7 complete in-memory bundle verifier
+
+Candidate v0.1.44 enforces all 33 independently pinned bytes and Q7 manifest, BOOTSTRAP, COMMIT and SHA256SUMS consistency before any future local import. Inert and source-only; no signer, wheel metadata proof, process, host, storage, rollback or ACK granted. CI pending.
+
 ## 2026-10-19 — independent fixed Q7 Release metadata roster comparator
 
 Candidate v0.1.43 matches 33/33 independent asset IDs/names/byte counts/SHA-256 pins to observed fixed Release metadata. Pure zero-I/O; no signer or physical approval, binary download, atomic custody, host install, credentials or ACK. Parent #739 still requires trusted signatures, bytes and physical custody receipts. Exact-head CI pending.

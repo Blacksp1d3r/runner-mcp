@@ -1,4 +1,10 @@
-## 2026-10-19 — #739 independent Q7 33/33 metadata roster comparator SOURCE CANDIDATE
+## 2026-10-19 — #739 complete 33/33 Q7 bundle manifest source guard
+
+Source candidate v0.1.44 (branch `feat/739-complete-bundle-manifest-check-20261019`) adds pure, no-I/O 33-file content/manifest relationship checking on top of independent roster candidate v0.1.43. Tests cover missing/extra, spoofed/syntactically invalid JSON, duplicate manifest keys, wrong source/BOOTSTRAP/WHEEL checksums and sizes. Signed authority, actual wheel metadata, durable 0700 storage, rollback and original-client ACK explicitly FALSE. CI PENDING; parent #739 OPEN.
+
+---
+
+### 2026-10-19 — #739 independent Q7 33/33 metadata roster comparator SOURCE CANDIDATE
 
 Prepared distinct pure source child `feat/739-independent-release-roster-20261019` candidate v0.1.43, stacked on prior #745. Compares externally held exact source/tag/release ID and every 33 asset name/ID/size/SHA256 to observed Release metadata, with negative regressions and no I/O. Returns only `match_only`; signer trust, binary downloads, installation and original-client ACK remain explicitly false. Exact-head GitHub validation pending; no live host or private credential touched. Parent #739 remains open.
 

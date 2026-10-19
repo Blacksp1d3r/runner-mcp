@@ -1,4 +1,10 @@
-## 2026-10-19 — #739 independent roster does not authenticate its issuer
+## 2026-10-19 — #739 complete bundle source consistency != admitted host package
+
+#743 metadata access -> #745 fixed asset-bytes hash -> #746 independent 33-asset roster pin equality -> source v0.1.44 in-memory full Q7 manifest/COMMIT/SUMS consistency -> STILL WAIT separately authenticated signer/key custody and real pinned 33/33 downloaded original bytes with wheel/archive qualification -> NEW separately authorized rootless atomic local custody/fsync/replay-denial -> protected independent A6/A7 rollback and target original-client ACK. Source parser success is never a trusted installer receipt.
+
+---
+
+### 2026-10-19 — #739 independent roster does not authenticate its issuer
 
 Release metadata access (#743) -> fixed numeric asset-byte verifier (#745) -> independent EXACT 33/33 release roster comparator (source v0.1.43; pure input, no side effects) -> independently authenticated signer/public key, signed immutable approval of THAT roster (NOT PROVIDED) -> verified 33/33 bytes and BUNDLE/SUMS/wheel metadata (NOT IMPLEMENTED) -> sealed owner-only atomic custody (NOT IMPLEMENTED) -> host lease/rollout and original-client ACK (WAIT). Source structural equality NEVER authorizes update/install/dispatch.
 

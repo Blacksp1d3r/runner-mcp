@@ -1,4 +1,12 @@
-## 2026-10-19 — verified sequence for #739 source stack
+## 2026-10-19 — #739 immutable source stack and remaining private gates
+
+1. Reconcile #742 external branch and green CI, then sequentially qualify/retarget/merge #743, #745, #746, v0.1.44. Do not force-conflict or reuse stale CI. #745 exact a064f85 fully green, not yet merged.
+2. Next software-only child: protected local 33-asset importer with deny-by-default fsync/atomic no-overwrite+replay guard, separately testable under a temp private directory; source-only until true independently trusted signer, published pinned metadata and operator authorization.
+3. Production/private signer/host/wheel qualification, AIfordable #585 CAS credential, Fabric #1563 target-specific original-client ACK and A6/A7 remain WAIT; no site/tunnel/workload mutation.
+
+---
+
+### 2026-10-19 — verified sequence for #739 source stack
 
 1. Allow separate owner to complete #742 exact CI, then reconcile/rebase #743 and #745 and new v0.1.43 roster child in order. All must pass own exact-head GitHub validation, Ubuntu proof and attribution. #745 was fully green at head a064f8526c1d53c2c466b025fc0cdeb4acc17c0c; no main merge yet.
 2. Verify actual independent signer-issued source/release/33-asset pins before any real asset download; a self-described roster is untrusted. Next actual code child: safe full 33/33 bytes manifest verification + rootless sealed local custody (separate host permission and rollback).

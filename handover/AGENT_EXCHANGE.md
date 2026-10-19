@@ -1,4 +1,10 @@
-## 2026-10-19 — scope: #739 independent 33-asset roster, no Doctor overlap
+## 2026-10-19 — #739 complete Q7 manifest source lane reserved
+
+Source candidate v0.1.44 branch `feat/739-complete-bundle-manifest-check-20261019` owns only pure offline 33-asset manifest/sums consistency and synthetic tests. Does not overlap runtime Doctor #742 or first-host Agent Bus private setup. Exact-head CI pending, source not released, no trusted publisher, wheel metadata, protected custody, operator installation or original-client ACK. Parent #739 OPEN; control-plane upgrade still blocked by private authority.
+
+---
+
+### 2026-10-19 — scope: #739 independent 33-asset roster, no Doctor overlap
 
 Branch `feat/739-independent-release-roster-20261019` owns only pure Q7 metadata/pin comparison, offline tests and source candidate 0.1.43 after PR #745. No files from #742 runtime Doctor self-update altered. Output `match_only` cannot imply signed trust, download, sealed storage, host upgrade or original-client ACK. Exact-head CI pending; physical 33/33 importer/independent key custody/AIfordable #585/Fabric #1563 WAIT.
 

@@ -111,7 +111,7 @@ def _api(path: str, token: str) -> object:
     )
     try:
         with urllib.request.build_opener(
-            urllib.request.ProxyHandler({}), NoRedirect
+            urllib.request.ProxyHandler({}), NoRedirect()
         ).open(request, timeout=12) as response:
             if response.status != 200:
                 raise AdmissionError("read-only release evidence unavailable")

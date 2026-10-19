@@ -88,6 +88,7 @@ from .ci_runner_lifecycle import (
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .config import ProjectRegistry, load_project_registry
+from .coding_workspace import CodingWorkspaceProvisioner
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
@@ -493,6 +494,7 @@ def build_mcp(
         else None
     )
     private_values = secret_values or os.environ
+    coding_workspaces = CodingWorkspaceProvisioner(private_values)
     github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
     known_project_local_sources = private_values.get(
         "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON",
@@ -2638,6 +2640,37 @@ def build_mcp(
         audit.append(
             AuditEvent(request_id, "list_projects", None, "authenticated-client", "ok", utc_timestamp())
         )
+        return result
+
+    @mcp.tool()
+    def coding_workspace_preflight(worker_id: str) -> dict:
+        """Read-only readiness of the caller's fixed local owner-bound workspace."""
+        result = coding_workspaces.preflight(worker_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_preflight", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
+    def coding_workspace_prepare(worker_id: str, work_unit_id: str) -> dict:
+        """Create only fixed jobs/patches directories inside this worker's private root."""
+        if safety.status().stop_active:
+            result = {
+                "schema_version": "runner-mcp/coding-workspace/v1",
+                "state": "blocked",
+                "reason_code": "operator_stop_active",
+                "worker_id": None,
+                "work_unit_id": None,
+                "filesystem_path_exposed": False,
+                "cross_host_execution_authorized": False,
+            }
+        else:
+            result = coding_workspaces.prepare(worker_id, work_unit_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_prepare", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
         return result
 
     @mcp.tool()

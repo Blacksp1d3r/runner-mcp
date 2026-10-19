@@ -1,3 +1,7 @@
+## 2026-10-19 — #739 pinned read-only Release metadata access
+
+`owner-private interactive TTY -> hidden scoped one-time token -> pinned api.github.com repo/tag GET, no proxy/redirect, 8s and bounded bytes -> exact prerelease/tag/source/33-count metadata -> categorical PASS/WAIT`. Source-only 0.1.42; no source trust, binary digest, actual private host permission, service activation or original-client ACK claimed.
+
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — data lineage
 
 ## Core chain

@@ -1,3 +1,7 @@
+## 2026-10-19 — #739 independent read-only Release access prerequisite
+
+User-authorized owner takeover of #743 from prior external account; source candidate 0.1.42 reconciled on main with prior #751/#752/#754 code preserved. Full exact-head CI before guarded merge. A metadata API PASS is not a full 33-asset importer or host/install/Agent Bus authorization; that remains a separate owner-approved project child.
+
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — roadmap
 
 ## Subcomponents

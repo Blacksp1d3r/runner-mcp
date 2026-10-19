@@ -1,3 +1,9 @@
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
 ## 2026-10-19 — Last release sequencing source checkpoint
 
 Shared Fabric #924/AIfordable #609/Runner-MCP #662/#669 flow is the canonical owner split. Source main 0.1.41; earlier #743 0.1.41 duplicate needs owner reconcile; stacked #745 0.1.42; independent #750 source branch now reconciled to main and candidate 0.1.44 DRAFT; #753 ready-gate source 0.1.45 DRAFT, prior head 6a2c880... CI 3/3 SUCCESS. Branch protection read 403; new admission not required/atomic, no merge queue support. Need #743/#745 unique version merges then exact-head rechecks on #750/#753. Central server 0.1.38 unverified. No installed runtime or private host mutation has occurred in this doc-only checkpoint.

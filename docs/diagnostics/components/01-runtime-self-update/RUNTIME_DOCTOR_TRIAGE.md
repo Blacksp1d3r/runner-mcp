@@ -24,3 +24,14 @@ Manual cutover records established active package version, first-party response 
 
 ## Provenance and follow-up
 See #669, #341 and #590, `roadmap/children/669-runtime-doctor-reconciliation/TASK.md`, `docs/diagnostics/topology/TRACEABILITY_RULES.md` and `docs/diagnostics/FAILURE_INDEX.md`. This is an existing, documented safety-gap family, not a newly proven defect requiring an invented Failure Museum ID.
+
+## Independently attested generation design — 2026-10-19
+
+See [SERVING_GENERATION_ATTESTATION.md](SERVING_GENERATION_ATTESTATION.md).
+No source SHA, wheel SHA-256, provider callback, package version or offline signature
+alone may turn these historical Doctor checks green. The eventual guarded path
+requires trusted signer custody, installed bytes, actual loaded serving process
+and original-client generation ACK on the correct physical host, with a separate
+authorized manual-install baseline. PR #742 separately contains RMCP-F-0045
+exception containment in the provider boundary; that small source fix makes
+unknown remain unknown and does not claim active provenance.

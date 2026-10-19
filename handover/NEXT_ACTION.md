@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 source-only serving witness consumer (release order 0.1.43)
+
+This independent Runner-MCP child introduces a typed signed serving-witness input preflight and synthetic negative checks, explicitly **NOT** a correct-host process attester. It returns source/digest null and verified=false even on valid signed statements. Source branch starts on merged main 0.1.40. Other owner has already reserved 0.1.41 (#743) and 0.1.42 (#745), so **do not merge this candidate until those versions have passed full CI and been merged or the unique version sequence has been independently reconciled**. Keep source development parallel; do not block Fabric A6/A7. Physical correct-host process witness, independently authorized protected signer, nonce ledger, manual baseline and original-client ACK are external follow-ups; historical self-update state unchanged. See `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+
+---
+
 ## 2026-10-19 — Complete exact-head source qualification before merge
 
 New 0.1.40 source comparator and version/digest structural gate have passed 3386 pytest and Ruff at an earlier exact head; correct five trailing-whitespace errors and then require all tests, demo, artifact, clean Ubuntu, attribution on the NEW HEAD. If all green, mark PR #742 ready and merge under enforced GitHub rules without waiting for optional human/AI review. Source merge never authorizes production install. Manual correct-host process evidence, independent builder custody and a separately approved baseline remain for full live Doctor green, while Fabric #942/#943 maintain A6/A7 final acceptance. No rerun of already-proven 2026-10-18 physical guarded cutovers.

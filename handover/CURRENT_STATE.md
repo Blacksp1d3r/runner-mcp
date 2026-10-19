@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 source-only serving witness consumer (release order 0.1.43)
+
+This independent Runner-MCP child introduces a typed signed serving-witness input preflight and synthetic negative checks, explicitly **NOT** a correct-host process attester. It returns source/digest null and verified=false even on valid signed statements. Source branch starts on merged main 0.1.40. Other owner has already reserved 0.1.41 (#743) and 0.1.42 (#745), so **do not merge this candidate until those versions have passed full CI and been merged or the unique version sequence has been independently reconciled**. Keep source development parallel; do not block Fabric A6/A7. Physical correct-host process witness, independently authorized protected signer, nonce ledger, manual baseline and original-client ACK are external follow-ups; historical self-update state unchanged. See `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+
+---
+
 ## 2026-10-19 — Runner-MCP PR #742 CI evidence and isolated wheel-record source path
 
 Source candidate 0.1.40 is not deployed. On pre-cleanup exact-head run 39288993782, release version gate 0.1.40 PASS, tool catalogue 95 PASS, Ruff PASS, 3386 pytest PASS (8 warnings), registry PASS; CI ended FAIL only because five existing handover/roadmap lines had trailing spaces. This cleanup commit addresses whitespace, but requires NEW exact-head green checks before merge. New #669 source path checks offline signed manifest + existing receipt and generation layout + strict wheel/installed RECORD; negative tampering cases keep active identity NULL/unverified. Server adapter now additionally refuses a revision without paired wheel digest and loaded matching version; this structural check does not authenticate signer/process. Live central 0.1.38 still unverified, no host action. A6/A7 prior physical subset proofs are acknowledged from Fabric #942/#943, their final acceptance remains with Fabric.

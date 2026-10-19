@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 source-only serving witness consumer (release order 0.1.43)
+
+This independent Runner-MCP child introduces a typed signed serving-witness input preflight and synthetic negative checks, explicitly **NOT** a correct-host process attester. It returns source/digest null and verified=false even on valid signed statements. Source branch starts on merged main 0.1.40. Other owner has already reserved 0.1.41 (#743) and 0.1.42 (#745), so **do not merge this candidate until those versions have passed full CI and been merged or the unique version sequence has been independently reconciled**. Keep source development parallel; do not block Fabric A6/A7. Physical correct-host process witness, independently authorized protected signer, nonce ledger, manual baseline and original-client ACK are external follow-ups; historical self-update state unchanged. See `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+
+---
+
 ## 2026-10-19 — Runner-MCP #669 source lane continues, Fabric A6/A7 receipts reused
 
 Same existing PR #742 holds source candidate 0.1.40, new offline wheel/RECORD comparison composed with existing signed manifest/receipt/generation checks, negative regressions, and stricter server revision pairing. It cannot attest serving process. Earlier source exact-head job ran 3386 pytest success, Ruff and registry success, failed ONLY whitespace (now corrected). Final exact-head CI required before guarded source-only merge. Fabric #942/#943 contain the already exercised 2026-10-18 physical guarded activation/recovery trials; these are not to be repeated, and remaining full A6 journal/A7 exact MCP supervisor acceptance belongs to Fabric. Correct-host signer/install/process attestation remains blocked separate from source work.

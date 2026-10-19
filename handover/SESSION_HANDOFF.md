@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 source-only serving witness consumer (release order 0.1.43)
+
+This independent Runner-MCP child introduces a typed signed serving-witness input preflight and synthetic negative checks, explicitly **NOT** a correct-host process attester. It returns source/digest null and verified=false even on valid signed statements. Source branch starts on merged main 0.1.40. Other owner has already reserved 0.1.41 (#743) and 0.1.42 (#745), so **do not merge this candidate until those versions have passed full CI and been merged or the unique version sequence has been independently reconciled**. Keep source development parallel; do not block Fabric A6/A7. Physical correct-host process witness, independently authorized protected signer, nonce ledger, manual baseline and original-client ACK are external follow-ups; historical self-update state unchanged. See `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+
+---
+
 ## 2026-10-19 — PR #742 current source reconciliation
 
 Added offline installed-wheel/RECORD comparison, composed the existing detached signature / offline evidence chain with it, tested tampering and no live-verification claims. Tightened `server.py` revision provider to require both source revision and artifact digest matching the loaded build version (still source-only, no trust issuance). Correct-host live witness/provider remains absent. CI exact prior head: version gate, 95 tools, Ruff, 3386 pytest, MCP metadata all PASS; whitespace failure at five documentation lines (this commit removes them). Rerun on current source head before merge. Fabric A6/A7 existing operator receipts are real partial acceptance, not to be repeated; their final remaining gaps are Fabric-owned. Keep historic self-update state intact, no tunnel/cron/install/deploy operation.

@@ -1,3 +1,9 @@
+## 2026-10-19 — #669 source-only serving witness consumer (release order 0.1.43)
+
+This independent Runner-MCP child introduces a typed signed serving-witness input preflight and synthetic negative checks, explicitly **NOT** a correct-host process attester. It returns source/digest null and verified=false even on valid signed statements. Source branch starts on merged main 0.1.40. Other owner has already reserved 0.1.41 (#743) and 0.1.42 (#745), so **do not merge this candidate until those versions have passed full CI and been merged or the unique version sequence has been independently reconciled**. Keep source development parallel; do not block Fabric A6/A7. Physical correct-host process witness, independently authorized protected signer, nonce ledger, manual baseline and original-client ACK are external follow-ups; historical self-update state unchanged. See `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+
+---
+
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
 2026-10-19 #669/#341 update: PR #742 source candidate 0.1.40 corrects required release-version gate (all four shipping version fields synchronized, changelog), adds fail-closed missing revision-provider metadata containment and six synthetic negative tests. Exact-head automated GitHub-hosted CI pending; no physical server update or attested active source. First-party serving 0.1.38 remains two Doctor FAILs, self_update_ready=false; independent correct-host provenance/manual-baseline/ACK plus Fabric A6/A7 remain external admission blockers.

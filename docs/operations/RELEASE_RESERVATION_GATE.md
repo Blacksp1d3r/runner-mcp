@@ -1,6 +1,6 @@
 # Runner-MCP #662 — concurrent source release admission
 
-Status: source-only candidate 0.1.45 READY for review; first actual admission PASS on PR #753, workflow #39315811193, job #118276865364. Required branch protection and live host deployment remain UNVERIFIED.
+Status: **SOURCE MERGED** into main v0.1.45 by PR #753 squash `8dbbd1263f32c868df259ad2c77b7306faf683c1`. Final ready-head release admission + all CI PASS in workflow #39316596943, Ubuntu #39316597003 and attribution #39316597250. Required branch protection, automatic promotion and live host deployment remain UNVERIFIED.
 
 The new CI job uses existing read-only GitHub API permissions and an exact PR synthetic merge. It checks current main SHA/version, expected PR base and head, open merge-eligible PR version metadata, duplicate reservations, strictly the next patch release, and postchecks main freshness. Documentation-only PRs skip reservation. Unknown API/metadata/page overflow or stale source evidence cause WAIT/FAIL. It never updates another PR branch, generates credentials, publishes artifacts or activates a host.
 

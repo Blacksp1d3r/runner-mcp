@@ -8,7 +8,7 @@ Coordination authority: [Runner-Fabric #924](https://github.com/Blacksp1d3r/Runn
 - #742 **SOURCE MERGED** 0.1.40: wheel/installed RECORD, signed offline candidate and fail-closed active provider checks; these do **not** attest loaded process. #669 draft PR #750 adds signed witness statement consistency only; it is not a trusted correct-host observer or deployed release.
 - Central connected Runner-MCP 0.1.38, active source/wheel null, `self_update_ready=false`, Doctor `source_baseline_drift` and `active_revision_unavailable` (correct). Do not edit historical `self-update-state.json` to mask the two flags.
 - AIfordable #585 PR #608 durable original-requester result fingerprint ACK **SOURCE MERGED**; Fabric #1602 strict future heartbeat **SOURCE MERGED**; Fabric A6 #942/A7 #943 physical subset trials already exercised. Live remote peer/ACK, A6 journal and A7 complete local Runner-MCP recovery acceptance remain separate.
-- Most important: the existing `scripts/check_release_version.py` enforces **greater than base** for shipping changes but does NOT check concurrent open PR version reservations or require the *next* patch for a normal patch release. It cannot itself prevent two independent agents from authoring the same next version. This is the precise source gap; do not misdiagnose GitHub CI scheduling as the cause.
+- Source collision guard `scripts/check_release_reservation.py` is now **SOURCE MERGED** in 0.1.45 PR #753. The `Release reservation admission` job checked current main+1, competing READY PRs, exact synthetic HEAD and freshness before+after and PASSED on the actual ready PR. The older monotone `check_release_version.py` remains in use. This new check is not an atomic merge lock and is NOT independently proven REQUIRED by GitHub protection; CI success and branch-rule admission are separate.
 
 ## Source release manager — single accountable owner and atomic steps
 
@@ -18,9 +18,11 @@ Coordination authority: [Runner-Fabric #924](https://github.com/Blacksp1d3r/Runn
 4. On merge conflicts or main advancing, the **feature PR owner** rebases/reconciles on latest main while preserving ALL already merged changes; rerun exact-head release gate, all lint/pytest/artifact/demo/Ubuntu and attribution. Do not force-push others' PR heads or replace another owner's source. A green check from an older head/base does not qualify a new candidate.
 5. Normal merges may proceed after exact-head enforced GitHub rules/CI. There is no artificial 12/24h wait, but **release collision**, security or protected main conflicts block that individual merge. Source merge != wheel-published != installed != live-verified.
 
-### Currently known version collision (2026-10-19)
+### Current source sequence and remaining release enforcement (2026-10-19)
 
-Main is now 0.1.41 via #751; existing **#743 also still 0.1.41** and cannot merge at that version, stacked **#745 is 0.1.42**, independently tested draft **#750 is 0.1.43**. Provisional order **only if no other main merge intervenes**: #743→0.1.42, #745→0.1.43, #750→0.1.44. The respective owners must reconcile; this documentation PR changes NONE of those heads. If other releases merge first, recompute the sequence from live main. A future deterministic CI/release reservation gate is REQUIRED but **not yet implemented**; track it as a separate bounded source child, because changing the current script itself is a shipping change requiring a unique version slot.
+Merged `main` source v0.1.45: #743 → 0.1.42, #745 → 0.1.43, #750 → 0.1.44, #753 → 0.1.45 with final-head CI and real READY admission PASS. Former collision is no longer a blocker for this sequence. PRs #746/#748 remain OPEN against obsolete proposed v0.1.43/0.1.44 and must be handled by their respective owners on fresh actual main; do not silently retarget them. The 0.1.45 source has **NOT** been deployed on central live 0.1.38.
+
+GitHub integration branch protection GET=403 and visible rulesets []; never infer the release-admission job is REQUIRED. An administrator must enforce latest-head/current-main release admission, serialize merges under the designated steward, and separately add qualified `merge_group` paths before a merge queue. Automatic candidate staging / guarded deployment and original-client Agent Bus ACK remain separate future work. Refer to #662 and `docs/operations/RELEASE_RESERVATION_GATE.md`.
 
 ## Worker/runtime acceptance: correct account, one target
 
@@ -32,7 +34,7 @@ Main is now 0.1.41 via #751; existing **#743 also still 0.1.41** and cannot merg
 
 ## Bounded automation follow-up: deterministic release reservation gate
 
-Create a single-purpose CI child on an **independent** issue/branch after a unique version is allocated; no changes to #743/#745/#750 feature code. Acceptance:
+**SOURCE IMPLEMENTED AND MERGED as #753 v0.1.45; remaining operational GitHub-policy/merge-group enforcement is NOT COMPLETE.** The implemented source is bounded, non-mutating and regression-tested. The original acceptance contract was:
 1. PR synthetic merge compares current main version/HEAD to PR metadata; denies same version, downgrade, and unapproved non-consecutive patch for normal releases.
 2. Fetches/validates all open release PRs and intentional stacked dependency graph with a scoped read-only GitHub credential; prevents TWO PRs with same reserved version from becoming merge-admissible without a clear deterministic winner/lease. Fail **closed or WAIT** when authority/API evidence unavailable; never infer uniqueness from empty/unavailable results.
 3. Uses one collision/admission status on current head, guarded by actual GitHub branch protections; a check not made required cannot guarantee race prevention. Design the exact GitHub merge gate so an upstream merge invalidates/rechecks stale PR code.

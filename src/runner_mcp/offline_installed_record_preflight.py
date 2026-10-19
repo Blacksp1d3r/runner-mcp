@@ -182,12 +182,19 @@ def offline_installed_record_preflight(
             record_name = records[0]
             if record_name.count("/") != 1 or record_name not in names:
                 return result
+            record_info = archive.getinfo(record_name)
+            if record_info.file_size > _MAX_RECORD_BYTES:
+                return result
             wheel_record = _read_record(archive.read(record_name), record_name=record_name)
             if wheel_record is None or set(wheel_record) != set(names):
                 return result
             root = installed_package.parent
             installed_record = root / record_name
-            if not _safe_file(installed_record) or installed_record.lstat().st_uid != os.geteuid():
+            if (
+                not _safe_file(installed_record)
+                or installed_record.lstat().st_uid != os.geteuid()
+                or installed_record.lstat().st_size > _MAX_RECORD_BYTES
+            ):
                 return result
             pip_record = _read_record(
                 installed_record.read_bytes(), record_name=record_name, wheel_files=set(names)

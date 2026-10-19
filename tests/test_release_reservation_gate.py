@@ -119,3 +119,68 @@ def test_readonly_preflight_has_no_host_mutation_or_public_promotion() -> None:
     _run()
     assert not hasattr(admission, "install")
     assert not hasattr(admission, "deploy")
+
+
+
+def test_draft_and_stacked_prs_do_not_claim_active_merge_slot(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    rows = [
+        {"number": 743, "draft": False, "base": {"ref": "main"}, "head": {"sha": "c" * 40}},
+        {"number": 745, "draft": False, "base": {"ref": "other-branch"}, "head": {"sha": "d" * 40}},
+        {"number": 750, "draft": True, "base": {"ref": "main"}, "head": {"sha": "e" * 40}},
+        {"number": 760, "draft": False, "base": {"ref": "main"}, "head": {"sha": "b" * 40}},
+    ]
+    monkeypatch.setattr(admission, "_api", lambda *_: rows)
+    seen: list[str] = []
+
+    def version(_token: str, sha: str) -> str:
+        seen.append(sha)
+        return "0.1.42"
+
+    monkeypatch.setattr(admission, "_version_at", version)
+    assert admission._contenders("synthetic", 760) == {743: "0.1.42"}
+    assert seen == ["c" * 40]
+
+
+def test_documentation_only_pr_skips_without_api_authority(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    import json
+
+    event = {
+        "pull_request": {
+            "number": 760,
+            "base": {"ref": "main", "sha": MAIN},
+            "head": {"sha": HEAD},
+        }
+    }
+    marker = tmp_path / "event.json"
+    marker.write_text(json.dumps(event), encoding="utf-8")
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("GITHUB_REPOSITORY", admission.REPO)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(marker))
+    monkeypatch.setenv("GITHUB_TOKEN", "synthetic")
+    monkeypatch.setattr(admission, "_git", lambda *_: "handover/CURRENT_STATE.md")
+
+    def should_not_call(_token: str) -> str:
+        raise AssertionError("docs-only PR must not consume source-release authority")
+
+    monkeypatch.setattr(admission, "_main_head", should_not_call)
+    assert admission.run() == "SKIP docs-only"
+
+
+@pytest.mark.parametrize(
+    "payload",
+    [
+        {"encoding": "none", "content": "aW52YWxpZA=="},
+        {"encoding": "base64", "content": "!" * 100_000},
+        {"encoding": "base64", "content": "%%%"},
+    ],
+)
+def test_bad_project_metadata_cannot_supply_release_identity(
+    monkeypatch: pytest.MonkeyPatch, payload: dict
+) -> None:
+    monkeypatch.setattr(admission, "_api", lambda *_: payload)
+    with pytest.raises(admission.AdmissionError):
+        admission._version_at("synthetic", MAIN)

@@ -1,9 +1,5 @@
 # Changelog
 
-## 0.1.43 (source candidate; not published; merge after #743 / #745)
-
-- Add source-only signed serving-witness statement validator for #669, checking independently provided host, role set, challenge, generation, wheel, source, Ed25519 key pin and freshness. It **never** attests the running process or grants self-update authority. No physical observer/issuer or key creation.
-
 ## 0.1.40 (source candidate; not published)
 
 - Contain missing/invalid active-revision provider metadata errors as unknown rather than a runtime diagnostic tool error; preserve failed self-update activation and historical baseline guards (#669 / PR #742).

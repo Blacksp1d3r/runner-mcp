@@ -336,3 +336,82 @@ def test_github_api_cannot_inherit_proxy_configuration(
     assert isinstance(seen[0][0], urllib.request.ProxyHandler)
     assert seen[0][0].proxies == {}
     assert isinstance(seen[0][1], admission.NoRedirect)
+
+
+
+@pytest.mark.parametrize(
+    "race",
+    [
+        "none",
+        "competitor-ready",
+        "main-advance",
+        "candidate-head-change",
+    ],
+)
+def test_exact_pr_end_to_end_admission_rechecks_live_evidence_twice(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+    race: str,
+) -> None:
+    """Synthetic event and read-only GitHub API, no token/network/host work."""
+    import json
+
+    event_file = tmp_path / "pr.json"
+    event_file.write_text(
+        json.dumps(
+            {"pull_request": {
+                "number": 760,
+                "base": {"ref": "main", "sha": MAIN},
+                "head": {"sha": HEAD},
+            }}
+        ),
+        encoding="utf-8",
+    )
+    monkeypatch.setenv("GITHUB_EVENT_NAME", "pull_request")
+    monkeypatch.setenv("GITHUB_REPOSITORY", admission.REPO)
+    monkeypatch.setenv("GITHUB_EVENT_PATH", str(event_file))
+    monkeypatch.setenv("GITHUB_TOKEN", "synthetic")
+    monkeypatch.setattr(
+        admission,
+        "_git",
+        lambda *args: HEAD if args[0] == "rev-parse" else "src/runner_mcp/core.py",
+    )
+    monkeypatch.setattr(admission, "_project_version", lambda _: "0.1.45")
+    monkeypatch.setattr(admission, "_version_at", lambda *args: "0.1.44")
+    calls = {"main": 0, "competitors": 0, "candidate": 0}
+
+    def synthetic_api(path: str, token: str) -> object:
+        assert token == "synthetic"
+        if path.endswith("/branches/main"):
+            calls["main"] += 1
+            if race == "main-advance" and calls["main"] == 2:
+                return {"commit": {"sha": "c" * 40}}
+            return {"commit": {"sha": MAIN}}
+        if path.endswith("/pulls/760"):
+            calls["candidate"] += 1
+            return {
+                "number": 760, "state": "open", "draft": False,
+                "base": {"ref": "main", "sha": MAIN},
+                "head": {
+                    "sha": "c" * 40
+                    if race == "candidate-head-change" and calls["candidate"] == 2
+                    else HEAD
+                },
+            }
+        if "/pulls?state=open" in path:
+            calls["competitors"] += 1
+            if race == "competitor-ready" and calls["competitors"] == 2:
+                return [{
+                    "number": 743, "state": "open", "draft": False,
+                    "base": {"ref": "main"}, "head": {"sha": "d" * 40},
+                }]
+            return []
+        raise AssertionError("unexpected source authority path")
+
+    monkeypatch.setattr(admission, "_api", synthetic_api)
+    if race == "none":
+        assert admission.run() == "PASS unique next patch on current main"
+        assert calls == {"main": 2, "competitors": 2, "candidate": 2}
+    else:
+        with pytest.raises(admission.AdmissionError):
+            admission.run()

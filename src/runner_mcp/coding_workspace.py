@@ -91,12 +91,12 @@ class CodingWorkspaceProvisioner:
         if private:
             if info.st_uid != uid or info.st_mode & 0o077:
                 raise WorkspaceDenied("workspace_directory_unsafe")
-        elif info.st_mode & 0o022:
-            # Existing public sticky parents such as /tmp are safe to traverse
-            # through no-follow directory descriptors; ordinary writable
-            # ancestors could be swapped by another account.
-            if not (info.st_uid == 0 and info.st_mode & stat.S_ISVTX):
-                raise WorkspaceDenied("workspace_directory_unsafe")
+        # Root-owned sticky parents such as /tmp may contain privately owned
+        # descendants; ordinary writable ancestors are unsafe.
+        elif info.st_mode & 0o022 and not (
+            info.st_uid == 0 and info.st_mode & stat.S_ISVTX
+        ):
+            raise WorkspaceDenied("workspace_directory_unsafe")
         return fd
 
     def _root(self, stack: ExitStack, uid: int, root: Path) -> int:

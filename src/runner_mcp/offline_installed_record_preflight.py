@@ -88,7 +88,12 @@ def _read_record(
             # pip may add executable-script entries outside site-packages to its
             # installed RECORD. They are not candidates for file reads here.
             if wheel_files is not None and name not in wheel_files:
-                if not isinstance(name, str) or not 1 <= len(name) <= 240 or "\x00" in name:
+                if (
+                    not isinstance(name, str)
+                    or not 1 <= len(name) <= 240
+                    or "\x00" in name
+                    or name.startswith("runner_mcp/")
+                ):
                     return None
                 continue
             if not _safe_name(name) or name in result or len(result) >= _MAX_ENTRIES:
@@ -198,7 +203,7 @@ def offline_installed_record_preflight(
                 candidate = root.joinpath(*name.split("/"))
                 if any(part.is_symlink() for part in (candidate, *candidate.parents)):
                     return result
-                if not _safe_file(candidate):
+                if not _safe_file(candidate) or candidate.lstat().st_size != wanted[1]:
                     return result
                 content = candidate.read_bytes()
                 if not _content_matches(content, wanted[0], wanted[1]):

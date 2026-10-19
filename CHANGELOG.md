@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.45 (source-only candidate; release guard not yet branch-required)
+
+- Implement fail-closed read-only GitHub current-main / PR-head / version admission for the unique next patch, with deterministic READY PR priority and twice-sampled contender inventory against races (#662). Reject wrong source/version, invalid API data and inherited proxy/redirect. Source CI alone cannot enforce merge atomicity: administrator-required check and fresh branch/serialized merges are separate gates. No live host release.
+
 ## 0.1.44 (source-only candidate; not deployed)
 
 - Add independently pinned Ed25519 signed serving-witness input validator (#669), with exact host, source, wheel, generation, nonce, role instances, expiry and signature checks. Even a valid signed statement is OFFLINE and cannot establish current loaded host/process provenance or trigger update. No signing issuer, credential, live host observation or rollback authority.

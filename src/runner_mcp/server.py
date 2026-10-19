@@ -2641,13 +2641,14 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def known_project_preflight(project_id: str) -> dict:
+    def known_project_preflight(project_id: str, anchor_project_id: str | None = None) -> dict:
         """Return bounded preparation state for one built-in managed project."""
         request_id = current_request_id()
         try:
             result = preflight_known_project_binding(
                 registry,
                 project_id=project_id,
+                anchor_project_id=anchor_project_id,
             )
             if result.get("state") == "ready-to-prepare":
                 source = preflight_known_project_source_binding(
@@ -2720,7 +2721,7 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def prepare_known_project(project_id: str) -> dict:
+    def prepare_known_project(project_id: str, anchor_project_id: str | None = None) -> dict:
         """Prepare one built-in managed project clone without caller-selected repo or path."""
         request_id = current_request_id()
         if safety.status().stop_active:
@@ -2739,6 +2740,7 @@ def build_mcp(
             result = prepare_known_project_binding(
                 registry,
                 project_id=project_id,
+                anchor_project_id=anchor_project_id,
                 github_token=known_project_github_token(project_id),
                 local_source_bindings_raw=known_project_local_sources or None,
             )

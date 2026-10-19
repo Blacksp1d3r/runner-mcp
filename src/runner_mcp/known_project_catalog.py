@@ -448,10 +448,59 @@ def preflight_known_project_source(
         "reason_code": "ready" if main_ref_available else "main-ref-unavailable",
     }
 
+def _selected_known_project_parents(
+    registry: ProjectRegistry,
+    *,
+    anchor_project_id: str | None,
+) -> set[Path]:
+    """Resolve host-owned parent(s), never caller supplied filesystem paths."""
+
+    if anchor_project_id is None:
+        return {
+            _trusted_existing_root(configured.root).parent
+            for configured in registry.projects.values()
+        }
+    if (
+        type(anchor_project_id) is not str
+        or anchor_project_id not in registry.projects
+    ):
+        raise KnownProjectRegistrationError(
+            "Known project anchor must be an already configured project"
+        )
+    root = _trusted_existing_root(registry.projects[anchor_project_id].root)
+    return {root.parent}
+
+
+def _exact_clone_outside_parent(
+    registry: ProjectRegistry,
+    *,
+    project: KnownProject,
+    selected_parent: Path,
+    runner,
+) -> bool:
+    """Do not silently create a second matching clone under another parent."""
+
+    for configured in registry.projects.values():
+        parent = _trusted_existing_root(configured.root).parent
+        if parent == selected_parent:
+            continue
+        candidate = parent / project.directory_name
+        if candidate.is_symlink() or not candidate.is_dir():
+            continue
+        try:
+            resolved = candidate.resolve(strict=True)
+        except OSError:
+            continue
+        if _repository_for(resolved, runner=runner) == project.repository:
+            return True
+    return False
+
+
 def prepare_known_project(
     registry: ProjectRegistry,
     *,
     project_id: str,
+    anchor_project_id: str | None = None,
     runner=subprocess.run,
     github_token: str | None = None,
     local_source_bindings_raw: str | None = None,
@@ -464,10 +513,9 @@ def prepare_known_project(
         raise TypeError("runner must be callable")
 
     project = KNOWN_PROJECTS[project_id]
-    parents = {
-        _trusted_existing_root(configured.root).parent
-        for configured in registry.projects.values()
-    }
+    parents = _selected_known_project_parents(
+        registry, anchor_project_id=anchor_project_id,
+    )
     if len(parents) != 1:
         # Mixed project roots must not pick an arbitrary parent for a new
         # clone. An already-present, uniquely verified catalogued clone,
@@ -487,6 +535,12 @@ def prepare_known_project(
             "state": "already-prepared",
         }
     parent = next(iter(parents))
+    if anchor_project_id is not None and _exact_clone_outside_parent(
+        registry, project=project, selected_parent=parent, runner=runner,
+    ):
+        raise KnownProjectRegistrationError(
+            "Known project exact clone already exists under another parent"
+        )
     if not os.access(parent, os.W_OK | os.X_OK):
         raise KnownProjectRegistrationError(
             "Known project destination is not writable"
@@ -653,6 +707,7 @@ def preflight_known_project(
     registry: ProjectRegistry,
     *,
     project_id: str,
+    anchor_project_id: str | None = None,
     runner=subprocess.run,
 ) -> dict[str, str]:
     """Return bounded destination state for one catalogued project."""
@@ -663,10 +718,9 @@ def preflight_known_project(
     if not callable(runner):
         raise TypeError("runner must be callable")
 
-    parents = {
-        _trusted_existing_root(configured.root).parent
-        for configured in registry.projects.values()
-    }
+    parents = _selected_known_project_parents(
+        registry, anchor_project_id=anchor_project_id,
+    )
     if len(parents) != 1:
         # Read-only discovery already supports several trusted parents.
         # Accept only ONE existing clone with the exact catalogued GitHub
@@ -686,6 +740,14 @@ def preflight_known_project(
         }
 
     parent = next(iter(parents))
+    if anchor_project_id is not None and _exact_clone_outside_parent(
+        registry, project=project, selected_parent=parent, runner=runner,
+    ):
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "exact-clone-elsewhere",
+        }
     if not os.access(parent, os.W_OK | os.X_OK):
         return {
             "code": project.code,

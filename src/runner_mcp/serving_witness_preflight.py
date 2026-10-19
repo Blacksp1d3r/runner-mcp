@@ -17,6 +17,7 @@ from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _REV = re.compile(r"^[0-9a-f]{40}$")
+_VERSION = re.compile(r"^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)$")
 _NONCE = re.compile(r"^[0-9a-f]{32}$")
 _ROLE = re.compile(r"^[a-z][a-z0-9_-]{0,63}$")
 _SCHEMA = "runner-mcp/signed-serving-witness/v1"
@@ -54,6 +55,7 @@ def signed_serving_witness_preflight(
     independently_expected_roles: tuple[str, ...],
     independently_expected_challenge: str,
     independently_expected_source_revision: str,
+    independently_expected_loaded_version: str,
     independently_expected_wheel_sha256: str,
     independently_expected_generation_digest: str,
     trusted_now_epoch: int,
@@ -80,6 +82,8 @@ def signed_serving_witness_preflight(
             or _SHA.fullmatch(independently_expected_host_digest) is None
             or not isinstance(independently_expected_source_revision, str)
             or _REV.fullmatch(independently_expected_source_revision) is None
+            or not isinstance(independently_expected_loaded_version, str)
+            or _VERSION.fullmatch(independently_expected_loaded_version) is None
             or not isinstance(independently_expected_wheel_sha256, str)
             or _SHA.fullmatch(independently_expected_wheel_sha256) is None
             or not isinstance(independently_expected_generation_digest, str)
@@ -107,6 +111,7 @@ def signed_serving_witness_preflight(
             "host_digest",
             "challenge",
             "source_revision",
+            "loaded_version",
             "wheel_sha256",
             "generation_digest",
             "observed_at",
@@ -127,6 +132,7 @@ def signed_serving_witness_preflight(
             or parsed["host_digest"] != independently_expected_host_digest
             or parsed["challenge"] != independently_expected_challenge
             or parsed["source_revision"] != independently_expected_source_revision
+            or parsed["loaded_version"] != independently_expected_loaded_version
             or parsed["wheel_sha256"] != independently_expected_wheel_sha256
             or parsed["generation_digest"] != independently_expected_generation_digest
         ):
@@ -148,6 +154,7 @@ def signed_serving_witness_preflight(
             item = roles[role]
             if not isinstance(item, dict) or set(item) != {
                 "source_revision",
+                "loaded_version",
                 "wheel_sha256",
                 "generation_digest",
                 "process_instance",
@@ -156,6 +163,7 @@ def signed_serving_witness_preflight(
             process = item["process_instance"]
             if (
                 item["source_revision"] != independently_expected_source_revision
+                or item["loaded_version"] != independently_expected_loaded_version
                 or item["wheel_sha256"] != independently_expected_wheel_sha256
                 or item["generation_digest"] != independently_expected_generation_digest
                 or not isinstance(process, str)

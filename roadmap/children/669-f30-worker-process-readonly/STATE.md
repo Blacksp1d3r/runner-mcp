@@ -1,7 +1,5 @@
-# Runner-MCP worker process read-only counterpart
+# Runner-MCP worker process source bridge — SOURCE COMPLETE / HOST WAIT
 
-Status: SOURCE_PR_IN_CI / LIVE_WORKER_WAIT.
-PR: [#756](https://github.com/Blacksp1d3r/runner-mcp/pull/756), candidate 0.1.46 from source main 0.1.45.
-Fabric source counterpart: [#1614](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1614) MERGED `20c8cc44`, Foundation and attribution PASS. New local agent tool/source only, no installed agent upgrade.
-Original connected central Runner-MCP still 0.1.38, no verifiable active source/wheel digest. Relay H-transport operator-observed PASS, Agent Bus full roundtrip UNKNOWN, Claude/Qwen process/UID/issuer current evidence unqualified.
-Next: check this PR's exact-head CI, correct failures, merge only if GitHub/sequence authorizes. Then Fabric #924 protected per-host activation with independent A6/A7 source/revert proof; only then run original-client Claude result+ACK and Qwen independently.
+Source PR: [#756](https://github.com/Blacksp1d3r/runner-mcp/pull/756) merged v0.1.46 `d15d5007a5e880fd4ad55f46cd0a0f1913479792`, exact tested head `d4b31adfd991bec47ee6552f21909066931a730e`. Validation #39319130336 SUCCESS, Clean Ubuntu #39319130367 SUCCESS, attribution #39319130494 SUCCESS. Version metadata parity and 98-tool catalogue attested in source/wheel; release reservation succeeded on current main. Fabric source PR #1614 merged `20c8cc44cda8a1bfe7916b85a0dde65201606e4e` (CI PASS).
+Current state: existing authenticated Runner-MCP bridge has fixed two-worker read-only tool at SOURCE ONLY. It returns WAIT from older Fabric peers, missing qualified private local process pins or invalid/wrong host; never promotes observation to real serving wheel/current imported module or original client ACK. Mutation/dispatch authority always false.
+Physical WAIT: original central 0.1.38 still unverified active source/wheel; Claude/Qwen actual process and installed release require right-host authenticated observer and guarded one-host activation under Fabric #924 with A6/A7 protections. AIfordable #585 relay transport observed PASS, but per-subject identity/result/ACK remains unproven. Do not roll out or rebuild infrastructure just because source merged.

@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.39 (source candidate; not published)
+
+- Add an optional **already configured project ID** to existing known-project preflight/prepare so mixed staging roots can select a safe destination without exposing filesystem paths. Keep no-anchor refusal and refuse second exact clone on another parent (#740). This does not register/deploy EnerCue, start Claude/Qwen, or relax Agent Bus admission.
+
 ## 0.1.38 (source candidate; not published)
 
 - First-host Agent Bus read-only status identifies genuinely absent private base setup as `base_config_not_initialized` without making credentials, opening ports or weakening partial/unsafe config refusals (#735).

@@ -103,10 +103,13 @@ class CodingWorkspaceProvisioner:
         fd = os.open("/", _DIR_FLAGS)
         stack.callback(os.close, fd)
         parts = root.parts[1:]
-        for index, part in enumerate(parts):
-            fd = self._open_directory(
-                stack, part, fd, uid, private=index == len(parts) - 1,
-            )
+        for part in parts:
+            fd = self._open_directory(stack, part, fd, uid, private=False)
+        info = os.fstat(fd)
+        # A pre-existing guest work root can be 0755; the actual jobs/patches
+        # parents are still required to be owner-private 0700.
+        if info.st_uid != uid or info.st_mode & 0o022:
+            raise WorkspaceDenied("workspace_directory_unsafe")
         return fd
 
     @staticmethod

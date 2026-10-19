@@ -1,3 +1,9 @@
+## 2026-10-19 — PR #742 current source reconciliation
+
+Added offline installed-wheel/RECORD comparison, composed the existing detached signature / offline evidence chain with it, tested tampering and no live-verification claims. Tightened `server.py` revision provider to require both source revision and artifact digest matching the loaded build version (still source-only, no trust issuance). Correct-host live witness/provider remains absent. CI exact prior head: version gate, 95 tools, Ruff, 3386 pytest, MCP metadata all PASS; whitespace failure at five documentation lines (this commit removes them). Rerun on current source head before merge. Fabric A6/A7 existing operator receipts are real partial acceptance, not to be repeated; their final remaining gaps are Fabric-owned. Keep historic self-update state intact, no tunnel/cron/install/deploy operation.
+
+---
+
 ## 2026-10-19 — Complete source safety scope for PR #742, do not infer live reconciliation
 
 Source code changes include (1) defensive active revision metadata provider `LookupError`/`AttributeError` handling (RMCP-F-0045), and (2) exact `clean_head` shape/clean/40-character lowercase commit validation and bounded ValueError (RMCP-F-0046). Their tests reject self-update readiness/job queue on missing proof; no branch code claims a trusted serving generation. Source version now 0.1.40 aligned in four registries. GitHub Actions exact-head validation is not yet terminal; keep PR draft. Remaining correct-host independently protected signer/wheel/RECORD/imported-generation and original-client proof is operator-only; historical transaction untouched and A6/A7 external.
@@ -6,7 +12,7 @@ Source code changes include (1) defensive active revision metadata provider `Loo
 
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
-2026-10-19 checkpoint: resumed PR #742 at existing branch; found independent deterministic source release-gate failure: changed src/runner_mcp/self_update.py while source candidate stayed 0.1.39. Bumped version to 0.1.40 across four metadata files and CHANGELOG (commit 4f40dd2115cd14c02ab42f08bdb58e09a8979ea2). Static parity checked in repo contents; exact-head automated CI pending, do not claim full validation or merge. GitHub-hosted jobs queued with no runner assigned, billable time zero at inspected run; outage/quota conclusion UNKNOWN. Self-update active process provenance remains unavailable from first-party version 0.1.38. Existing offline signed evidence and receipt primitives do not prove loaded serving process. Never rewrite old self-update state; do not add another updater or use shell/SSH. Source PR remains draft, separately blocked live admission #669/#341/#590 and Fabric A6/A7. 
+2026-10-19 checkpoint: resumed PR #742 at existing branch; found independent deterministic source release-gate failure: changed src/runner_mcp/self_update.py while source candidate stayed 0.1.39. Bumped version to 0.1.40 across four metadata files and CHANGELOG (commit 4f40dd2115cd14c02ab42f08bdb58e09a8979ea2). Static parity checked in repo contents; exact-head automated CI pending, do not claim full validation or merge. GitHub-hosted jobs queued with no runner assigned, billable time zero at inspected run; outage/quota conclusion UNKNOWN. Self-update active process provenance remains unavailable from first-party version 0.1.38. Existing offline signed evidence and receipt primitives do not prove loaded serving process. Never rewrite old self-update state; do not add another updater or use shell/SSH. Source PR remains draft, separately blocked live admission #669/#341/#590 and Fabric A6/A7.
 
 ---
 

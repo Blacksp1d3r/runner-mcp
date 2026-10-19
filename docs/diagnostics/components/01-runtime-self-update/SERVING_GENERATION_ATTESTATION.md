@@ -77,3 +77,7 @@ live installation is authorized by this document or the source PR.
 Current live read-only status: 0.1.38; source and active wheel identity unverified;
 the two doctor FAILs and `self_update_ready=false` are expected. Ownership of
 live acceptance stays with #669/#341/#590 and Runner-Fabric #924/#942/#943.
+
+## 2026-10-19 source implementation update
+
+The existing offline artifact receipt/manifest/signature/layout validators now have a supplemental `offline_installed_record_preflight` consistency comparator. `offline_signed_installed_record_preflight` composes these tools and still returns `active_build_provenance_verified=False`, `source_revision=None` and `artifact_digest=None`, even when all offline source/wheel/RECORD bytes agree. `candidate_revision_with_wheel_identity` and the server active-revision adapter reject source-only identities, wrong loaded version, wrong component and missing wheel digest. They cannot manufacture a qualified host witness, signer custody, live imported module proof, protected manual baseline or original-client ACK. Do not connect offline result directly to the self-update manager as live authority.

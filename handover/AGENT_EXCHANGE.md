@@ -1,3 +1,9 @@
+## 2026-10-19 — Runner-MCP #669 source lane continues, Fabric A6/A7 receipts reused
+
+Same existing PR #742 holds source candidate 0.1.40, new offline wheel/RECORD comparison composed with existing signed manifest/receipt/generation checks, negative regressions, and stricter server revision pairing. It cannot attest serving process. Earlier source exact-head job ran 3386 pytest success, Ruff and registry success, failed ONLY whitespace (now corrected). Final exact-head CI required before guarded source-only merge. Fabric #942/#943 contain the already exercised 2026-10-18 physical guarded activation/recovery trials; these are not to be repeated, and remaining full A6 journal/A7 exact MCP supervisor acceptance belongs to Fabric. Correct-host signer/install/process attestation remains blocked separate from source work.
+
+---
+
 ## 2026-10-19 — ChatGPT claimed existing #669/#341 Doctor child PR #742 (source only)
 
 Owner: Runner-MCP source lane. PR: https://github.com/Blacksp1d3r/runner-mcp/pull/742; same branch `fix/runtime-doctor-provenance-20261019`. Older head `068e96ac` had pending GitHub validation/attribution. Source hardening commits `e46da3e` and `e9d17f8` contain prior provider `LookupError`/`AttributeError`, add synthetic negative regressions; Failure Museum RMCP-F-0045 recorded as source-only, not a live repro. Existing #669 offline artifact/signature/layout implementations are reused and not duplicated. Separately designed independent correct-host live serving-generation receipt; current active 0.1.38 remains source/digest unverified and `self_update_ready=false`. CI on final head must complete; source review optional per current AGENTS, technical branch/safety gates mandatory. Do not take a competing self_update branch, overwrite historical state, or attempt runtime/fleet mutations. Fabric A6/A7 and original-client ACK remain owned outside this source PR.

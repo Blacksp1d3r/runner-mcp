@@ -6,7 +6,7 @@ Malformed source-baseline checkout evidence now returns `source_commit=None` and
 
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
-2026-10-19 gate adjustment: source-code fix from PR #742 requires a unique shipping version relative to main 0.1.39. Candidate 0.1.40 is now synchronized in pyproject.toml, server.json (top + packages), glama.json and src/runner_mcp/__init__.py; CHANGELOG updated. Static metadata cross-check PASS, exact-head full Actions pending. Earlier head 0864b6d and prior queued jobs cannot qualify the newer code. Host operator and independent loaded-generation witness remain unsatisfied. 
+2026-10-19 gate adjustment: source-code fix from PR #742 requires a unique shipping version relative to main 0.1.39. Candidate 0.1.40 is now synchronized in pyproject.toml, server.json (top + packages), glama.json and src/runner_mcp/__init__.py; CHANGELOG updated. Static metadata cross-check PASS, exact-head full Actions pending. Earlier head 0864b6d and prior queued jobs cannot qualify the newer code. Host operator and independent loaded-generation witness remain unsatisfied.
 
 ---
 

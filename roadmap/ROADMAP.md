@@ -1,6 +1,6 @@
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
-2026-10-19 #669/#341 update: PR #742 source candidate 0.1.40 corrects required release-version gate (all four shipping version fields synchronized, changelog), adds fail-closed missing revision-provider metadata containment and six synthetic negative tests. Exact-head automated GitHub-hosted CI pending; no physical server update or attested active source. First-party serving 0.1.38 remains two Doctor FAILs, self_update_ready=false; independent correct-host provenance/manual-baseline/ACK plus Fabric A6/A7 remain external admission blockers. 
+2026-10-19 #669/#341 update: PR #742 source candidate 0.1.40 corrects required release-version gate (all four shipping version fields synchronized, changelog), adds fail-closed missing revision-provider metadata containment and six synthetic negative tests. Exact-head automated GitHub-hosted CI pending; no physical server update or attested active source. First-party serving 0.1.38 remains two Doctor FAILs, self_update_ready=false; independent correct-host provenance/manual-baseline/ACK plus Fabric A6/A7 remain external admission blockers.
 
 ---
 

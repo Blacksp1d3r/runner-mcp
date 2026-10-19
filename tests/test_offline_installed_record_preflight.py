@@ -5,12 +5,19 @@ import csv
 import hashlib
 import io
 import os
+import json
+import shutil
 import zipfile
 from pathlib import Path
 
 import pytest
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
 from runner_mcp.offline_installed_record_preflight import offline_installed_record_preflight
+from runner_mcp.offline_receipt_writer import write_offline_receipt_candidate
+from runner_mcp.offline_signed_evidence import offline_signed_installed_record_preflight
 
 _DIST = "aifordable_runner_mcp-0.1.40.dist-info"
 _RECORD = f"{_DIST}/RECORD"
@@ -150,3 +157,77 @@ def test_offline_record_refuses_caller_supplied_unbounded_input(tmp_path: Path) 
     assert offline_installed_record_preflight(Path("/not-existing.whl"), package, digest)[
         "state"
     ] == "unverified"
+
+
+
+def _signed_fixture(tmp_path: Path) -> tuple[object, ...]:
+    wheel, package, digest, files = _fixture(tmp_path)
+    revision = "a" * 40
+    generation = tmp_path / f"generation-{revision}-{digest}"
+    generation.mkdir(mode=0o700)
+    shutil.move(str(package.parent), str(generation / "site-packages"))
+    package = generation / "site-packages" / "runner_mcp"
+    receipt = tmp_path / "receipt.json"
+    assert write_offline_receipt_candidate(
+        receipt,
+        {
+            "schema_version": "runner-mcp/offline-artifact-receipt/v1",
+            "source_revision": revision,
+            "wheel_sha256": digest,
+            "modules": {
+                key.removeprefix("runner_mcp/"): hashlib.sha256(data).hexdigest()
+                for key, data in files.items() if key.startswith("runner_mcp/")
+            },
+        },
+    )
+    manifest = tmp_path / "manifest.json"
+    manifest.write_text(
+        json.dumps(
+            {
+                "schema_version": "runner-mcp/builder-manifest/v1",
+                "source_revision": revision,
+                "distribution_version": "0.1.40",
+                "wheel_sha256": digest,
+                "interface_schema_digest": "b" * 64,
+            },
+            sort_keys=True,
+        ),
+        encoding="utf-8",
+    )
+    signer = Ed25519PrivateKey.generate()
+    public_bytes = signer.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    pub = tmp_path / "signer.pub"
+    pub.write_bytes(public_bytes)
+    signature = tmp_path / "manifest.sig"
+    signature.write_bytes(signer.sign(manifest.read_bytes()))
+    return (
+        manifest, receipt, wheel, package, generation,
+        hashlib.sha256(manifest.read_bytes()).hexdigest(),
+        pub, signature, hashlib.sha256(public_bytes).hexdigest(),
+    )
+
+
+def test_signed_manifest_and_record_still_do_not_attest_live_process(tmp_path: Path):
+    evidence = _signed_fixture(tmp_path)
+    response = offline_signed_installed_record_preflight(*evidence)
+    assert response["state"] == "offline_signed_installed_record_match"
+    assert response["active_build_provenance_verified"] is False
+    assert response["source_revision"] is None
+    assert response["artifact_digest"] is None
+
+
+@pytest.mark.parametrize("broken", ["installed-record", "module", "signer"])
+def test_signed_record_chain_rejects_tampering(tmp_path: Path, broken: str):
+    evidence = _signed_fixture(tmp_path)
+    if broken == "installed-record":
+        (evidence[3].parent / _RECORD).write_bytes(b"malformed")
+    elif broken == "module":
+        (evidence[3] / "module.py").write_bytes(b"VALUE = forged\n")
+    else:
+        evidence[7].write_bytes(b"forged")
+    response = offline_signed_installed_record_preflight(*evidence)
+    assert response["state"] == "unverified"
+    assert response["active_build_provenance_verified"] is False

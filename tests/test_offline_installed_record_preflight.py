@@ -4,16 +4,14 @@ import base64
 import csv
 import hashlib
 import io
-import os
 import json
 import shutil
 import zipfile
 from pathlib import Path
 
-import pytest
-
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+import pytest
 
 from runner_mcp.offline_installed_record_preflight import offline_installed_record_preflight
 from runner_mcp.offline_receipt_writer import write_offline_receipt_candidate

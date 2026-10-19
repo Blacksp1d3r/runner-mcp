@@ -63,6 +63,7 @@ from .bewind_worker_qualification_policy import (
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
+    candidate_revision_with_wheel_identity,
     fail_closed_runtime_provenance,
     installed_source_revision,
     runner_mcp_build_identity,
@@ -583,11 +584,15 @@ def build_mcp(
             return None
         try:
             identity = build_identity_provider()
-        except (RuntimeError, TypeError, ValueError):
+        except (OSError, RuntimeError, TypeError, ValueError, LookupError, AttributeError):
             return None
-        if not isinstance(identity, BuildIdentity):
-            return None
-        return identity.source_revision
+        # A source revision alone is not sufficient. A qualified provider must
+        # also furnish the matching loaded version and active wheel digest.
+        # The provider's independent process/signature authority is a separate
+        # host admission gate, never inferred from this structural check.
+        return candidate_revision_with_wheel_identity(
+            identity, loaded_version=_loaded_package_version
+        )
 
     self_update_manager = SelfUpdateManager(
         config_dir=settings.projects_config.parent,

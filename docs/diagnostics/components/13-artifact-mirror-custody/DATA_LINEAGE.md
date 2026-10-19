@@ -1,3 +1,7 @@
+## 2026-10-19 — #739 inert fixed-ID GitHub asset bytes helper
+
+`separately trusted digest and size -> fixed Release asset ID REST GET with bearer -> direct 200 or single allowlisted 302 -> separate HTTPS blob GET WITHOUT bearer -> bounded in-memory stream <=64MiB -> size and SHA256 equality`. No local write, release identity trust, 33/33 custody, signature, bootstrap, worker ACK or host capability. Source-only v0.1.43, physical probe WAIT.
+
 ## 2026-10-19 — #739 pinned read-only Release metadata access
 
 `owner-private interactive TTY -> hidden scoped one-time token -> pinned api.github.com repo/tag GET, no proxy/redirect, 8s and bounded bytes -> exact prerelease/tag/source/33-count metadata -> categorical PASS/WAIT`. Source-only 0.1.42; no source trust, binary digest, actual private host permission, service activation or original-client ACK claimed.

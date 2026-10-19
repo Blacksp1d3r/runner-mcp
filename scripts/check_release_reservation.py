@@ -110,7 +110,9 @@ def _api(path: str, token: str) -> object:
         },
     )
     try:
-        with urllib.request.build_opener(NoRedirect).open(request, timeout=12) as response:
+        with urllib.request.build_opener(
+            urllib.request.ProxyHandler({}), NoRedirect
+        ).open(request, timeout=12) as response:
             if response.status != 200:
                 raise AdmissionError("read-only release evidence unavailable")
             raw = response.read(MAX_RESPONSE + 1)
@@ -205,6 +207,14 @@ def _contenders(token: str, own_number: int) -> dict[int, str]:
     raise AdmissionError("PR inventory too large for supported audit")
 
 
+def _check_stable_contenders(
+    previous: dict[int, str], current: dict[int, str]
+) -> None:
+    """A PR becoming READY (or changing versions) during admission is WAIT."""
+    if previous != current:
+        raise AdmissionError("competing release inventory changed during admission")
+
+
 def _git(*parts: str) -> str:
     try:
         return subprocess.check_output(
@@ -248,6 +258,7 @@ def run() -> str:
     candidate_sha = _git("rev-parse", "HEAD^2")
     main_sha = _main_head(token)
     _check_current_pr(token, number, main_sha, head["sha"])
+    competing_versions = _contenders(token, number)
     validate(
         main_sha=main_sha,
         event_base_sha=base["sha"],
@@ -255,12 +266,15 @@ def run() -> str:
         checkout_pr_sha=candidate_sha,
         main_version=_version_at(token, main_sha),
         proposed_version=_project_version(Path("pyproject.toml").read_bytes()),
-        competing_versions=_contenders(token, number),
+        competing_versions=competing_versions,
         own_number=number,
     )
     # Candidate head, draft/ready state and base may change even if main
     # itself stays fixed; check both sides again before returning admission.
     _check_current_pr(token, number, main_sha, head["sha"])
+    _check_stable_contenders(
+        competing_versions, _contenders(token, number)
+    )
     if _main_head(token) != main_sha:
         raise AdmissionError("main advanced during release preflight")
     return "PASS unique next patch on current main"

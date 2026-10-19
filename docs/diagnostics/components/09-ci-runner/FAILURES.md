@@ -1,3 +1,9 @@
+## RMCP-F-0047 — Release admission TOCTOU and forwarded API bearer prevention (2026-10-19)
+
+A source candidate with two READY PRs using the next patch requires deterministic arbitration; a single fetched PR inventory could become stale if a competing PR was edited or made ready while the check was in progress. Separately, Python's default URL opener respects proxy environment variables, which is too broad for a token-bearing read-only admission request. The #662 draft fix refuses changed competitor inventories when sampled twice and explicitly prevents inherited proxy use and redirects on pinned GitHub API GET. Negative tests cover READY/version races and no-proxy composition; none are an atomic GitHub merge lock. GitHub branch protection still needs a real required check, up-to-date rule and serialized steward, and the candidate must not overtake reserved earlier versions. No credential or host operations performed.
+
+---
+
 # 09-ci-runner — CI-runner lifecycle en guest isolation — failure register
 
 | Failure ID | Status | Earliest layer | Symptom | Root cause/evidence | Prevention/regression | Tracking |

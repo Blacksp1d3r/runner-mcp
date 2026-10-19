@@ -276,3 +276,63 @@ def test_release_admission_reruns_when_pr_base_is_edited() -> None:
         "github.event.pull_request.draft == false"
         in workflow
     )
+
+
+
+@pytest.mark.parametrize(
+    ("before", "after"),
+    [
+        ({743: "0.1.43"}, {743: "0.1.43", 745: "0.1.42"}),
+        ({743: "0.1.43"}, {743: "0.1.42"}),
+        ({743: "0.1.43", 745: "0.1.42"}, {743: "0.1.43"}),
+    ],
+)
+def test_competitor_ready_or_version_change_mid_check_forces_retry(
+    before: dict[int, str], after: dict[int, str]
+) -> None:
+    with pytest.raises(admission.AdmissionError, match="inventory changed"):
+        admission._check_stable_contenders(before, after)
+
+
+def test_stable_competing_inventory_remains_admissible() -> None:
+    admission._check_stable_contenders(
+        {743: "0.1.43"}, {743: "0.1.43"}
+    )
+
+
+def test_github_api_cannot_inherit_proxy_configuration(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    import json
+    import urllib.request
+
+    seen: list[tuple[object, ...]] = []
+
+    class FakeResponse:
+        status = 200
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+        def read(self, _amount: int):
+            return json.dumps({"commit": {"sha": MAIN}}).encode("utf-8")
+
+    class FakeOpener:
+        def open(self, request, timeout):
+            assert timeout == 12
+            assert request.full_url.startswith("https://api.github.com/")
+            return FakeResponse()
+
+    def intercepted_opener(*handlers):
+        seen.append(handlers)
+        return FakeOpener()
+
+    monkeypatch.setattr(urllib.request, "build_opener", intercepted_opener)
+    assert admission._main_head("synthetic-token") == MAIN
+    assert len(seen) == 1
+    assert isinstance(seen[0][0], urllib.request.ProxyHandler)
+    assert seen[0][0].proxies == {}
+    assert isinstance(seen[0][1], admission.NoRedirect)

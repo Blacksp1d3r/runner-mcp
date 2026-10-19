@@ -1632,3 +1632,57 @@ def test_unavailable_active_runtime_identity_fails_closed_when_proof_is_required
 
     assert "private runtime detail" not in str(captured.value)
     assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+@pytest.mark.parametrize(
+    ("candidate", "expected"),
+    [
+        (None, None),
+        ("not-a-commit", None),
+        ("A" * 40, None),
+        (0, None),
+        ("b" * 40, "b" * 40),
+    ],
+)
+def test_active_runtime_revision_provider_fails_closed_for_unproven_values(
+    tmp_path: Path, candidate: object, expected: str | None
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: candidate
+    )
+    assert manager._active_runtime_revision() == expected
+
+
+@pytest.mark.parametrize(
+    "failure", [OSError, RuntimeError, TypeError, ValueError]
+)
+def test_active_runtime_revision_provider_failure_is_bounded(
+    tmp_path: Path, failure: type[Exception]
+) -> None:
+    def broken_provider() -> str:
+        raise failure("private runtime information must not escape")
+
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=broken_provider
+    )
+    assert manager._active_runtime_revision() is None
+
+
+def test_runtime_status_stale_historical_commit_must_not_be_update_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: None
+    )
+    manager._record_installed_commit("a" * 40)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": "b" * 40, "clean": True},
+    )
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == "a" * 40
+    assert status["source_commit"] == "b" * 40
+    assert status["source_baseline_aligned"] is False
+    assert status["active_runtime_revision"] is None
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False

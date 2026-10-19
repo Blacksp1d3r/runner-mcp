@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.44 (source-only candidate; not deployed)
+
+- Add independently pinned Ed25519 signed serving-witness input validator (#669), with exact host, source, wheel, generation, nonce, role instances, expiry and signature checks. Even a valid signed statement is OFFLINE and cannot establish current loaded host/process provenance or trigger update. No signing issuer, credential, live host observation or rollback authority.
+
 ## 0.1.43 (source candidate; not installed)
 
 - Add bounded inert fixed GitHub Release asset-ID byte verifier (#739/#745), with no inherited proxy, exact size and independently supplied SHA256; allow strict direct 200 or narrowly authorized 302 with credentials stripped. Source-only security tests; never a full 33/33 signed importer, immutable storage, service activation, private host permission or Agent Bus ACK.

@@ -257,3 +257,22 @@ def test_partial_or_repeated_inventory_cannot_make_fake_unique_version(
     monkeypatch.setattr(admission, "_version_at", lambda *_: "0.1.42")
     with pytest.raises(admission.AdmissionError):
         admission._contenders("synthetic", 760)
+
+
+
+def test_release_admission_reruns_when_pr_base_is_edited() -> None:
+    workflow = (
+        Path(__file__).parents[1] / ".github" / "workflows" / "validation.yml"
+    ).read_text(encoding="utf-8")
+    assert (
+        "types: [opened, synchronize, reopened, edited, ready_for_review]"
+        in workflow
+    )
+    assert (
+        "name: Release reservation admission"
+        in workflow
+    )
+    assert (
+        "github.event.pull_request.draft == false"
+        in workflow
+    )

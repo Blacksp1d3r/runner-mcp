@@ -11,3 +11,9 @@ Dependencies: release conveyor #662, canonical cross-project coordination Runner
 ## Same-version coordination and freshness
 
 Two READY PRs that propose the same next patch do not have to deadlock each other. The lower numbered PR has deterministic first priority; the other stays WAIT/rebases. An explicit release steward can change priority by moving the earlier PR back to draft, closing it or changing its candidate source and rerunning checks. Before and after inventory the checker independently re-reads the current candidate PR open/draft/base/head from GitHub, so an event from an obsolete head does not grant even provisional admission. Incomplete inventory and duplicate PR IDs fail closed. This priority rule is not an atomic queue and does not replace required checks + merge serialization.
+
+## Required GitHub configuration and queue compatibility (still unverified)
+
+As of 2026-10-19, GitHub's main branch-protection API returns HTTP 403 to this integration; the branch rules cannot be inspected or changed here. This check is therefore **not yet enforced** on merges, even though the source exists and test jobs pass. Ask a repository administrator to verify and require the exact job name `Release reservation admission` on main, together with current-main/up-to-date branch checks and one release steward who serializes source merges. The installed central Runner-MCP version is not affected.
+
+**Do not enable GitHub merge queue for this new job yet.** The current Runner-MCP validation workflow listens to `pull_request` and `push` but does not implement `merge_group` admission. Before activating merge queue, implement a separate source child that reruns the complete source-version admission and mandatory CI on each merge-group synthetic SHA, including stacked/multi-PR ordering, then qualify it under protected branch rules. A skipped check on merge_group is not admission.

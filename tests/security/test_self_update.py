@@ -1654,7 +1654,8 @@ def test_active_runtime_revision_provider_fails_closed_for_unproven_values(
 
 
 @pytest.mark.parametrize(
-    "failure", [OSError, RuntimeError, TypeError, ValueError]
+    "failure",
+    [OSError, RuntimeError, TypeError, ValueError, KeyError, IndexError, AttributeError],
 )
 def test_active_runtime_revision_provider_failure_is_bounded(
     tmp_path: Path, failure: type[Exception]
@@ -1686,3 +1687,36 @@ def test_runtime_status_stale_historical_commit_must_not_be_update_ready(
     assert status["active_runtime_revision"] is None
     assert status["runtime_activation_aligned"] is False
     assert status["self_update_ready"] is False
+
+
+@pytest.mark.parametrize("failure", [KeyError, IndexError, AttributeError])
+def test_revision_provider_metadata_error_does_not_enable_a_stale_update(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: type[Exception],
+) -> None:
+    historical_commit = "a" * 40
+
+    def missing_metadata() -> str:
+        raise failure("private attestation metadata must not escape")
+
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=missing_metadata
+    )
+    manager._record_installed_commit(historical_commit)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": historical_commit, "clean": True},
+    )
+
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == historical_commit
+    assert status["source_baseline_aligned"] is True
+    assert status["active_runtime_revision"] is None
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="activation is not proven") as captured:
+        manager.start("b" * 40)
+    assert "private attestation metadata" not in str(captured.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None

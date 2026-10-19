@@ -722,7 +722,8 @@ class SelfUpdateManager:
             return None
         try:
             revision = self._active_revision_provider()
-        except (OSError, RuntimeError, TypeError, ValueError):
+        except (OSError, RuntimeError, TypeError, ValueError, LookupError, AttributeError):
+            # Unavailable provider metadata is an unknown revision, not a tool error.
             return None
         if revision is None:
             return None

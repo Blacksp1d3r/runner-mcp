@@ -1720,3 +1720,69 @@ def test_revision_provider_metadata_error_does_not_enable_a_stale_update(
         manager.start("b" * 40)
     assert "private attestation metadata" not in str(captured.value)
     assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+@pytest.mark.parametrize(
+    "source_state",
+    [
+        None,
+        {},
+        {"commit": "a" * 40},
+        {"commit": "a" * 40, "clean": False},
+        {"commit": "a" * 40, "clean": 1},
+        {"commit": None, "clean": True},
+        {"commit": "A" * 40, "clean": True},
+        {"commit": "not-a-revision", "clean": True},
+        {"commit": 1234, "clean": True},
+        ["a" * 40],
+    ],
+)
+def test_malformed_source_baseline_evidence_is_never_update_ready(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source_state: object,
+) -> None:
+    historical_commit = "a" * 40
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: historical_commit
+    )
+    manager._record_installed_commit(historical_commit)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: source_state,
+    )
+
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == historical_commit
+    assert status["source_commit"] is None
+    assert status["source_baseline_aligned"] is False
+    assert status["active_runtime_revision"] == historical_commit
+    assert status["runtime_activation_aligned"] is True
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="source baseline is unavailable"):
+        manager.start("b" * 40)
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_source_baseline_provider_exception_is_denied_without_leaking_details(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: "a" * 40
+    )
+    manager._record_installed_commit("a" * 40)
+
+    def bad_source(_root: Path) -> object:
+        raise ValueError("private checkout details must remain private")
+
+    monkeypatch.setattr("runner_mcp.self_update.clean_head", bad_source)
+    status = manager.runtime_status()
+    assert status["source_commit"] is None
+    assert status["source_baseline_aligned"] is False
+    assert status["self_update_ready"] is False
+    with pytest.raises(SelfUpdateError, match="source baseline is unavailable") as caught:
+        manager.start("b" * 40)
+    assert "private checkout details" not in str(caught.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None

@@ -87,8 +87,8 @@ from .ci_runner_lifecycle import (
     plan_ci_runner,
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
-from .config import ProjectRegistry, load_project_registry
 from .coding_workspace import CodingWorkspaceProvisioner
+from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager

@@ -221,9 +221,16 @@ def offline_installed_record_preflight(
                     candidate = Path(current) / name
                     if not _safe_file(candidate):
                         return result
-                    if name.endswith((".py", ".so", ".pyd", ".dll", ".dylib", ".pyc")):
+                    # pip may compile .pyc files after installation. They
+                    # cannot be treated as serving-code proof, but do not
+                    # invalidate an offline SOURCE/wheel comparison either.
+                    if name.endswith((".py", ".so", ".pyd", ".dll", ".dylib")):
                         observed.add(candidate.relative_to(root).as_posix())
-            declared = {name for name in names if name.startswith("runner_mcp/")}
+            declared = {
+                name for name in names
+                if name.startswith("runner_mcp/")
+                and name.endswith((".py", ".so", ".pyd", ".dll", ".dylib"))
+            }
             if observed != declared:
                 return result
     except (

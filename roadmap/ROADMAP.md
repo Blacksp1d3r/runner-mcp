@@ -1,3 +1,9 @@
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
 ## 2026-10-19 — #662/#669 actual source release-lane reconciliation (not installed)
 
 - Version collision still active: merged main 0.1.41 (#751), owner #743 still open 0.1.41 and not mergeable, stacked #745 open 0.1.42. The single release steward must reconcile #743→0.1.42, then #745→0.1.43 (only if main remains otherwise unchanged); no other worker may skip them. Draft #750 signed serving-statement input preflight has NOW been merged forward **in its own branch** to source main 0.1.41, retaining #751/#752, with proposed v0.1.44; exact-current-head CI still pending. Draft #753 next-patch release admission source candidate v0.1.45 has all 3 workflows SUCCESS (exact head `6a2c880de56947f1247d6ecd27e8ade492d55e19`); source check SKIPPED correctly while draft. Neither is merged to main or running on a host.

@@ -1,3 +1,7 @@
+## 2026-10-19 — #739 defensive Release-metadata checks
+
+PREVENTIVE_SOURCE_ONLY: fixed URL, 301/302/307/308, unsafe Location, network proxy, 401/403/404/429, excess/missing/inconsistent declared Content-Length, malformed JSON and unexpected tag/source fail closed with category output. No confirmed physical incident, token leak or actual host permission yet. Regression #739 / PR #743; corresponding Failure Museum RMCP-F-0050/0051.
+
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — failure register
 
 | Failure ID | Status | Earliest layer | Symptom | Root cause/evidence | Prevention/regression | Tracking |

@@ -138,7 +138,7 @@ def _version_at(token: str, sha: str) -> str:
     if not isinstance(text, str) or len(text) > MAX_META * 2:
         raise AdmissionError("oversized source metadata")
     try:
-        raw = base64.b64decode(text, validate=False)
+        raw = base64.b64decode(text.replace("\n", ""), validate=True)
     except (ValueError, TypeError) as exc:
         raise AdmissionError("unreadable source metadata") from exc
     if len(raw) > MAX_META:

@@ -9,12 +9,37 @@ on:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: runner-mcp-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+
+  release-reservation:
+    name: Release reservation admission
+    if: github.event_name == 'pull_request'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out synthetic PR merge
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Validate unique next-patch source reservation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/check_release_reservation.py
+
   validate:
     name: Ruff and pytest
     runs-on: ubuntu-24.04

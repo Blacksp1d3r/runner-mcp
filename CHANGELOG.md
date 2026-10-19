@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.45 (DRAFT candidate; only after sequential 0.1.42–0.1.44 merges)
+
+- Add fail-closed read-only next-patch release reservation gate (Runner-MCP #662). GitHub required checks and serialized merge are separately necessary for actual race prevention; source CI is not host activation.
+
 ## 0.1.40 (source candidate; not published)
 
 - Contain missing/invalid active-revision provider metadata errors as unknown rather than a runtime diagnostic tool error; preserve failed self-update activation and historical baseline guards (#669 / PR #742).

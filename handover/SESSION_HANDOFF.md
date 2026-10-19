@@ -1,3 +1,9 @@
+## 2026-10-19 — Last release sequencing source checkpoint
+
+Shared Fabric #924/AIfordable #609/Runner-MCP #662/#669 flow is the canonical owner split. Source main 0.1.41; earlier #743 0.1.41 duplicate needs owner reconcile; stacked #745 0.1.42; independent #750 source branch now reconciled to main and candidate 0.1.44 DRAFT; #753 ready-gate source 0.1.45 DRAFT, prior head 6a2c880... CI 3/3 SUCCESS. Branch protection read 403; new admission not required/atomic, no merge queue support. Need #743/#745 unique version merges then exact-head rechecks on #750/#753. Central server 0.1.38 unverified. No installed runtime or private host mutation has occurred in this doc-only checkpoint.
+
+---
+
 ## 2026-10-19 — #669 release collision and host/ACK authority split
 
 Docs-only branch updates roadmap and [Runner-MCP local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md) linked to canonical Fabric #924. Runtime/MCP control source release owner Runner-MCP; sole target mutation/campaign owner Fabric #924/A6/A7; host/relay/credential+original requester ACK owner AIfordable #428/#585; one-worker acceptance AIfordable #609. Source main 0.1.41 merged #751, collides with open #743 0.1.41 and stacked #745 0.1.42 plus draft #750 0.1.43. Coordinate branch owners rather than edit foreign PRs. A new deterministic release reservation CI child is still REQUIRED/NOT IMPLEMENTED. First-party central runtime still 0.1.38, serving provenance unverified, self_update_ready=false; no live host mutation authorized. Reuse earlier physical controlled update rollback evidence. Distinguish SOURCE_MERGED from installed/serving/ACK; after actual read-only host inventory follow only guarded Fabric single-target activation.

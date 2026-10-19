@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.43 (source candidate; not published)
+
+- Source-only strict comparison of one Q7 33-asset Release inventory with independently held exact (repository-context, tag, commit, Release ID, per-asset numeric ID/name/size/SHA256) pins. Denies wrong/duplicate/malformed roster data and only returns an explicit MATCH_ONLY result with signer trust, download, mutation and original-client ACK all false (#739). Does not verify signer custody, store bytes or install anything.
+
+
 ## 0.1.42 (source candidate; not published)
 
 - Add an INERT fixed-ID GitHub Release asset-byte verifier (#739): direct 200 or one allowlisted HTTPS 302 with bearer stripped, no proxy or auto redirect, at most 64 MiB streamed, exact size and independently supplied SHA256. No real bytes imported, disk custody, deployment, source attestation, credential enrollment or run authority. Source-only negative regression coverage; upstream trusted digest and all 33/33 actual asset/rollback/ACK gates remain separate.

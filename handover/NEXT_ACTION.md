@@ -1,4 +1,12 @@
-## 2026-10-19 — #739 source sequencing
+## 2026-10-19 — verified sequence for #739 source stack
+
+1. Allow separate owner to complete #742 exact CI, then reconcile/rebase #743 and #745 and new v0.1.43 roster child in order. All must pass own exact-head GitHub validation, Ubuntu proof and attribution. #745 was fully green at head a064f8526c1d53c2c466b025fc0cdeb4acc17c0c; no main merge yet.
+2. Verify actual independent signer-issued source/release/33-asset pins before any real asset download; a self-described roster is untrusted. Next actual code child: safe full 33/33 bytes manifest verification + rootless sealed local custody (separate host permission and rollback).
+3. Leave AIfordable issuer, Fabric #1563 original-client ACK, Agent Bus admission and websites disabled until physical host-bound proof.
+
+---
+
+### 2026-10-19 — #739 source sequencing
 
 1. Exact-PR-head CI for #742 then #743, followed by current 0.1.42 asset-byte candidate; preserve per-head attribution and Ubuntu tests. Retarget/reconcile stacked PRs to `main` sequentially only after green and protected GitHub rules.
 2. Confirm independent publisher signature, pinned source/release ID + exactly 33 trusted asset digests and safe redirect behavior before ANY real download. Byte-helper 0.1.42 is not a command or custody operation.

@@ -1,4 +1,10 @@
-## 2026-10-19 — #739 byte integrity helper is NOT a custody receipt
+## 2026-10-19 — #739 independent roster does not authenticate its issuer
+
+Release metadata access (#743) -> fixed numeric asset-byte verifier (#745) -> independent EXACT 33/33 release roster comparator (source v0.1.43; pure input, no side effects) -> independently authenticated signer/public key, signed immutable approval of THAT roster (NOT PROVIDED) -> verified 33/33 bytes and BUNDLE/SUMS/wheel metadata (NOT IMPLEMENTED) -> sealed owner-only atomic custody (NOT IMPLEMENTED) -> host lease/rollout and original-client ACK (WAIT). Source structural equality NEVER authorizes update/install/dispatch.
+
+---
+
+### 2026-10-19 — #739 byte integrity helper is NOT a custody receipt
 
 Unprivileged source candidate #743 metadata access -> candidate 0.1.42 bounded bytes helper (inert API; no host call; 33 synthetic local cases) -> independent signer/publisher + release ID and 33-asset SHA256 trust root (WAIT) -> exact full 33/33 bytes BUNDLE/COMMIT_SHA/SHA256SUMS/wheel validation (NOT DONE) -> rootless atomic fsync+replay-denial local custody (NOT DONE) -> qualified offline bootstrap, A6/A7 rollback and original-client ACK (WAIT). A source-only SHA check cannot replace independently trusted digest custody.
 

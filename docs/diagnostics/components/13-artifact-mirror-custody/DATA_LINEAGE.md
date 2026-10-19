@@ -1,3 +1,7 @@
+## Independent Q7 roster structural comparison (source-only)
+
+`externally trusted issuer/pin custody REQUIRED BUT NOT PROVIDED -> PinnedReleaseRoster as caller data -> strict 40hex source/ref and positive release ID -> exactly 33 safe unique id/name/length/sha256 tuples -> compare with ReleaseAdmission observed fields -> category-only MATCH_ONLY or constant denial`. No network, HTTP token, download, file, signature or original-client receipt. A caller MUST NOT populate trusted pins from same observed source and treat it as independent authority.
+
 ## #739 source byte helper (not active/private)
 
 `separate independently trusted digest/size + exact numeric asset ID -> fixed GitHub REST API GET with bearer/no proxy/no redirect -> 200 OR one 302 to allowlisted HTTPS blob host -> NEW GET without Authorization/Cookie -> streamed <=64MiB and exact length/SHA256 -> IN-MEMORY bytes`. No local store, signature/key authority, release identity acceptance, asset materialization, bootstrap or ACK is part of this pure source function. A caller must never derive an allegedly independent pin from the same untrusted metadata.

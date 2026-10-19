@@ -1,4 +1,10 @@
-## 2026-10-19 — #739 second source child prepared, v0.1.42 not installed
+## 2026-10-19 — parallel #739 independent-release-roster candidate
+
+New v0.1.43 pure metadata comparator branch `feat/739-independent-release-roster-20261019` stacked on fully-green #745 v0.1.42. Parent #739 importer remains incomplete; this is NOT independent signer custody, 33/33 downloaded bytes or host install/ACK. Source and 36 negative/positive synthetic tests committed; exact-head GitHub validation still pending. Other actor owns active PR #742, not modified here. Reconcile stack before merges; safe independent tasks can proceed without invoking physical host operations.
+
+---
+
+### 2026-10-19 — #739 second source child prepared, v0.1.42 not installed
 
 Distinct PR branch `feat/739-fixed-release-asset-bytes-20261019` contains inert fixed REST asset ID + one allowlisted HTTPS redirect downloader/verifier, independent SHA and bounded bytes, synthetic 33 pytest locally PASS, compileall PASS. Pending PR/exact GitHub CI/attribution/clean Ubuntu; no production/token/site/tunnel/relay work. Stacked only for numeric source versions behind #743 v0.1.41 and #742 v0.1.40. Next importer step must qualify independent signed 33-asset digest+release ID and rootless atomic replay-safe custody before any real byte download, install or host ACK claim.
 

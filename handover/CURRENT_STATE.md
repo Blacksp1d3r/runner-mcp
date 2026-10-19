@@ -1,4 +1,10 @@
-## 2026-10-19 — #739 separate asset-byte integrity source candidate 0.1.42
+## 2026-10-19 — #739 third inert security child v0.1.43
+
+While active #742 runtime Doctor remains owned by a different lane, PR #745 v0.1.42 exact validation, Ubuntu and attribution became green. New stacked independent branch `feat/739-independent-release-roster-20261019` adds pure 33/33 external roster comparison tests; no network/download/files/service/relay activity or live signer verification. Source candidate v0.1.43, GitHub CI PENDING. A MATCH_ONLY cannot grant physical authority. #742→#743→#745→v0.1.43 sequential merge after green and correct base is required.
+
+---
+
+### 2026-10-19 — #739 separate asset-byte integrity source candidate 0.1.42
 
 Next unclaimed bounded child after #743: standalone byte verifier module `src/runner_mcp/fabric_release_asset_bytes.py` plus synthetic 33-case suite, no real auth, network, download or file/host changes. New stacked branch `feat/739-fixed-release-asset-bytes-20261019`; candidate v0.1.42 after #743 v0.1.41 and PR #742 v0.1.40. Full repo exact-head CI and source merge not confirmed. This remains INERT code, not an owner-private 33/33 bundle importer nor installer. Preserve live first-host WAIT, independently trusted signer pin and Fabric #1563 original-client ACK gate.
 

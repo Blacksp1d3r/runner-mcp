@@ -1,4 +1,10 @@
-## 2026-10-19 — scope reservation: #739 protected asset byte-helper, no runtime Doctor overlap
+## 2026-10-19 — scope: #739 independent 33-asset roster, no Doctor overlap
+
+Branch `feat/739-independent-release-roster-20261019` owns only pure Q7 metadata/pin comparison, offline tests and source candidate 0.1.43 after PR #745. No files from #742 runtime Doctor self-update altered. Output `match_only` cannot imply signed trust, download, sealed storage, host upgrade or original-client ACK. Exact-head CI pending; physical 33/33 importer/independent key custody/AIfordable #585/Fabric #1563 WAIT.
+
+---
+
+### 2026-10-19 — scope reservation: #739 protected asset byte-helper, no runtime Doctor overlap
 
 Source candidate v0.1.42 branch `feat/739-fixed-release-asset-bytes-20261019` stacks after v0.1.41 PR #743; no modifications to PR #742 provenance/self-update files. Inert GitHub REST asset bytes verifier with synthetic 33 tests only; no admitted published signer, 33-asset custody, private token or host mutation. Full exact-head CI pending, release not deployed. Remaining private #739 and Fabric #1563 receipt chain belongs to owner/first-party control after authority proof.
 

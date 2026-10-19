@@ -1,4 +1,10 @@
-## 2026-10-19 — #739 second independent source child: pinned asset byte verifier
+## 2026-10-19 — #739 independent Q7 33/33 metadata roster comparator SOURCE CANDIDATE
+
+Prepared distinct pure source child `feat/739-independent-release-roster-20261019` candidate v0.1.43, stacked on prior #745. Compares externally held exact source/tag/release ID and every 33 asset name/ID/size/SHA256 to observed Release metadata, with negative regressions and no I/O. Returns only `match_only`; signer trust, binary downloads, installation and original-client ACK remain explicitly false. Exact-head GitHub validation pending; no live host or private credential touched. Parent #739 remains open.
+
+---
+
+### 2026-10-19 — #739 second independent source child: pinned asset byte verifier
 
 Stacked after source candidate #743 (0.1.41, metadata-access only) on `feat/739-fixed-release-asset-bytes-20261019`, candidate 0.1.42. Inert fixed-repository numeric release asset API helper, bounded direct 200 or ONE HTTPS GitHub blob-host 302 with Authorization stripped; SHA256/length checked against separately supplied independent pins, no path/URL override or disk write. Synthetic 33-case local pytest PASS, exact-head GitHub CI PENDING. Parent #739 still needs actual trusted 33/33 signed release, rootless atomic custody, operator import/install and target-bound original-client ACK. No live asset, token, host, tunnel or website touched.
 

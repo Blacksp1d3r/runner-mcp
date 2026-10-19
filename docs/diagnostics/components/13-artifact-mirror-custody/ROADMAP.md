@@ -1,3 +1,7 @@
+## 2026-10-19 — independent fixed Q7 Release metadata roster comparator
+
+Candidate v0.1.43 matches 33/33 independent asset IDs/names/byte counts/SHA-256 pins to observed fixed Release metadata. Pure zero-I/O; no signer or physical approval, binary download, atomic custody, host install, credentials or ACK. Parent #739 still requires trusted signatures, bytes and physical custody receipts. Exact-head CI pending.
+
 ## 2026-10-19 — source-only asset byte integrity child #739
 
 Inert fixed release asset REST numeric-ID verifier, direct HTTP 200 or narrowly admitted official HTTPS 302, no bearer onward, bounded 64 MiB/asset and independently supplied SHA256; 33 isolated synthetic tests PASS, production unavailable/CI pending. This is separate from #743 metadata visibility. Physical protected custody and 33/33 pinned signatures/rollback remain external gates.

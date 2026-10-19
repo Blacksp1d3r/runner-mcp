@@ -1,6 +1,20 @@
-## 2026-10-19 — #669 signed serving witness reconciled on main 0.1.41 (DRAFT v0.1.44)
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
 
-The independent read-only serving-statement comparator source from #750 is now based on merged main including #751 owner-local workspace tools and #752 cross-project release coordination. Preserve exact source and do not infer a true server-attested wheel/process from signed offline input: `active_build_provenance_verified=false`, `source_revision=null`, `artifact_digest=null` remain even on consistent signed statement. Prior release owner #743 must first ship unique 0.1.42; stacked #745 follows as 0.1.43. This draft 0.1.44 stays WAIT until both actually merge. Do not edit #743/#745 branches, skip version order, regenerate credentials, or update live central 0.1.38; Fabric A6/A7 and authenticated original-client ACK remain separate. See #669, #662 and `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
+
+---
+
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
+## 2026-10-19 — #662/#669 actual source release-lane reconciliation (not installed)
+
+- Version collision still active: merged main 0.1.41 (#751), owner #743 still open 0.1.41 and not mergeable, stacked #745 open 0.1.42. The single release steward must reconcile #743→0.1.42, then #745→0.1.43 (only if main remains otherwise unchanged); no other worker may skip them. Draft #750 signed serving-statement input preflight has NOW been merged forward **in its own branch** to source main 0.1.41, retaining #751/#752, with proposed v0.1.44; exact-current-head CI still pending. Draft #753 next-patch release admission source candidate v0.1.45 has all 3 workflows SUCCESS (exact head `6a2c880de56947f1247d6ecd27e8ade492d55e19`); source check SKIPPED correctly while draft. Neither is merged to main or running on a host.
+- Source #753 implements fail-closed normal next-patch, GitHub API checked own source/competing READY PRs twice, deterministic lowest PR priority, wrong head/base/version/refusal and no-proxy/no-redirect bearer GET. **A real atomic check-to-merge lock is NOT implemented**; GitHub branch-protection GET returned 403 so required-check and up-to-date merge policy must be separately configured and independently verified by an authorized administrator. Do NOT enable merge queue with this workflow until `merge_group` admission is added/qualified. Source Failure Museum `RMCP-F-0047` currently lives on draft #753.
+- Central first-party installed Runner-MCP 0.1.38 still returns active source/wheel null and self_update_ready=false; AIfordable relay/worker original-client ACK and Fabric A6/A7 operator-guarded single-target deployment remain external proof gates. No live deploy, new tunnel, credential or filesystem action performed.
 
 ---
 

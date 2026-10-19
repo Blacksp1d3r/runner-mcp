@@ -1,3 +1,11 @@
+## 2026-10-19 — #739 next source child: bounded asset bytes verifier 0.1.43
+
+Following source-only metadata #743 (main 0.1.42), this independent #745 source helper validates fixed numeric asset REST bytes against an independently supplied SHA256 and size, with bounded redirect. Not an operator-authorized full bundle import or physical release. New exact-head Ruff/pytest/demo/artifact/Ubuntu/attribution required before source merge. Real host/private signer/asset custody + Fabric A6/A7 and original-client ACK remain separate.
+
+## 2026-10-19 — #739 independent read-only Release access prerequisite
+
+User-authorized owner takeover of #743 from prior external account; source candidate 0.1.42 reconciled on main with prior #751/#752/#754 code preserved. Full exact-head CI before guarded merge. A metadata API PASS is not a full 33-asset importer or host/install/Agent Bus authorization; that remains a separate owner-approved project child.
+
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — roadmap
 
 ## Subcomponents

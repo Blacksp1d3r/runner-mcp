@@ -1,6 +1,18 @@
-## 2026-10-19 — #669 signed serving witness reconciled on main 0.1.41 (DRAFT v0.1.44)
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
 
-The independent read-only serving-statement comparator source from #750 is now based on merged main including #751 owner-local workspace tools and #752 cross-project release coordination. Preserve exact source and do not infer a true server-attested wheel/process from signed offline input: `active_build_provenance_verified=false`, `source_revision=null`, `artifact_digest=null` remain even on consistent signed statement. Prior release owner #743 must first ship unique 0.1.42; stacked #745 follows as 0.1.43. This draft 0.1.44 stays WAIT until both actually merge. Do not edit #743/#745 branches, skip version order, regenerate credentials, or update live central 0.1.38; Fabric A6/A7 and authenticated original-client ACK remain separate. See #669, #662 and `docs/diagnostics/components/01-runtime-self-update/SIGNED_SERVING_WITNESS_CONTRACT.md`.
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
+
+---
+
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
+## 2026-10-19 — Source release conflict and new draft source gates (operator handover)
+
+Runner-MCP source `main` is 0.1.41 at `575c565fb319f4b3a40b294765941e4452ceb05c`. #743 still open with duplicate 0.1.41; #745 stacked with 0.1.42. The approved provisional release sequence is unique #743→0.1.42; #745→0.1.43; #750→0.1.44; #753→0.1.45, dynamically recalculated on main changes. PR #750 draft **source branch** now merges main including #751/#752 and uses 0.1.44. PR #753 draft 0.1.45 implements no-proxy/no-redirect, twice sampled current GitHub own/competing PR evidence, deterministic priority and extensive negative CI tests; at its last exact tested head all three workflows were SUCCESS, while admission is deliberately SKIPPED as draft. GitHub branch-protection GET returned 403, so this is *not yet required or atomic* in real merges. A proper required status+up-to-date protected branch remains admin-owned; do not assume `merge_group` covered. Failure Museum entry RMCP-F-0047 is on the #753 source branch only. Live connected central Runner-MCP is independently still 0.1.38 with source/digest null and self_update_ready=false. Do not override historical self-update metadata, replay Fabric A6/A7 already proven subsets or launch any host worker activation from GitHub source alone. This handover records source state, not deployment.
 
 ---
 

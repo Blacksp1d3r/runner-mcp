@@ -1,3 +1,9 @@
+## 2026-10-19 — #739 byte integrity helper is NOT a custody receipt
+
+Unprivileged source candidate #743 metadata access -> candidate 0.1.42 bounded bytes helper (inert API; no host call; 33 synthetic local cases) -> independent signer/publisher + release ID and 33-asset SHA256 trust root (WAIT) -> exact full 33/33 bytes BUNDLE/COMMIT_SHA/SHA256SUMS/wheel validation (NOT DONE) -> rootless atomic fsync+replay-denial local custody (NOT DONE) -> qualified offline bootstrap, A6/A7 rollback and original-client ACK (WAIT). A source-only SHA check cannot replace independently trusted digest custody.
+
+---
+
 ## 2026-10-19 — #739 Release metadata ACCESS != custody/activation
 
 Existing Fabric source 33-asset pinned prerelease -> `#739 readonly fixed-tag interactive metadata access probe` (source candidate; physical read WAIT; no new runtime required) -> independently trusted exact 33 digests/source/asset bodies importer (NOT IMPLEMENTED) -> rootless sealed local custody / replay-deny / independent rollback (NOT IMPLEMENTED) -> separately authorized operator install and Fabric #1563 original-client ACK (NOT VERIFIED). No bypass of private CAS issuer AIfordable #585, no copying central token or treating metadata visibility as authenticated worker.

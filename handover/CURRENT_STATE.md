@@ -1,3 +1,9 @@
+## 2026-10-19 — #739 separate asset-byte integrity source candidate 0.1.42
+
+Next unclaimed bounded child after #743: standalone byte verifier module `src/runner_mcp/fabric_release_asset_bytes.py` plus synthetic 33-case suite, no real auth, network, download or file/host changes. New stacked branch `feat/739-fixed-release-asset-bytes-20261019`; candidate v0.1.42 after #743 v0.1.41 and PR #742 v0.1.40. Full repo exact-head CI and source merge not confirmed. This remains INERT code, not an owner-private 33/33 bundle importer nor installer. Preserve live first-host WAIT, independently trusted signer pin and Fabric #1563 original-client ACK gate.
+
+---
+
 ## 2026-10-19 — independent #739 Release metadata probe source candidate; #742 left untouched
 
 Open PR #742 owns runtime_doctor/source provenance; PR #743 (stacked v0.1.41 branch) `feat/739-release-metadata-access-probe-20261019` implements only the operator-local fixed-release metadata access check, test and runbook. Local 39 synthetic pytest green, code compile green; exact-head CI pending. No asset download, token issued, physical host action or authenticated original-client ACK. The parent #739 remains open for full secure binary custody importer; the central live node and new non-serving Black remain as previously evidenced. If #742 changes, rebase stacked candidate against its exact qualified head before integration. No branch/PR takeover.

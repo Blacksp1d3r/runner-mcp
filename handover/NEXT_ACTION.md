@@ -1,3 +1,11 @@
+## 2026-10-19 — #739 source sequencing
+
+1. Exact-PR-head CI for #742 then #743, followed by current 0.1.42 asset-byte candidate; preserve per-head attribution and Ubuntu tests. Retarget/reconcile stacked PRs to `main` sequentially only after green and protected GitHub rules.
+2. Confirm independent publisher signature, pinned source/release ID + exactly 33 trusted asset digests and safe redirect behavior before ANY real download. Byte-helper 0.1.42 is not a command or custody operation.
+3. Prepare rootless atomic owner-only 33/33 offline importer, rollback/replay-denial and separately operator-authorized installation; Fabric #1563 ACK and AIfordable #585 issuer remain WAIT, no tunnel or physical target change.
+
+---
+
 ## 2026-10-19 — independent #739 next actions
 
 1. CI verify fixed pinned release read-only access probe branch `feat/739-release-metadata-access-probe-20261019` (candidate 0.1.41 stacked after #742 v0.1.40), then GitHub-enforced merge only with exact-head gates. Never infer production deployment from source.

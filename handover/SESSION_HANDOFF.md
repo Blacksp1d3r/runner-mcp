@@ -1,3 +1,9 @@
+## 2026-10-19 — #739 second source child prepared, v0.1.42 not installed
+
+Distinct PR branch `feat/739-fixed-release-asset-bytes-20261019` contains inert fixed REST asset ID + one allowlisted HTTPS redirect downloader/verifier, independent SHA and bounded bytes, synthetic 33 pytest locally PASS, compileall PASS. Pending PR/exact GitHub CI/attribution/clean Ubuntu; no production/token/site/tunnel/relay work. Stacked only for numeric source versions behind #743 v0.1.41 and #742 v0.1.40. Next importer step must qualify independent signed 33-asset digest+release ID and rootless atomic replay-safe custody before any real byte download, install or host ACK claim.
+
+---
+
 ## 2026-10-19 — #739 distinct source lane, candidate 0.1.41
 
 Reconciled AGENTS, dependencies, diagnostics and GitHub open PRs. #742 on active runtime-doctor provenance remains separate; choose unclaimed #739 fixed-release access prerequisite, standalone code and 39 synthetic tests locally PASS, no private token needed. New stacked branch `feat/739-release-metadata-access-probe-20261019`; candidate v0.1.41 not published or installed. Exact PR-head CI/attribution/Ubuntu and protected merge rules are pending. No physical host work. Next after verified source: full protected, 33/33 SHA256 binary importer, operator-held independent signed bundle source, immutable local custody, then distinct host-qualified install and Agent Bus ACK; metadata access alone never authorizes those effects.

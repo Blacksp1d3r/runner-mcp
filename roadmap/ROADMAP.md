@@ -1,3 +1,9 @@
+## 2026-10-19 — #739 second independent source child: pinned asset byte verifier
+
+Stacked after source candidate #743 (0.1.41, metadata-access only) on `feat/739-fixed-release-asset-bytes-20261019`, candidate 0.1.42. Inert fixed-repository numeric release asset API helper, bounded direct 200 or ONE HTTPS GitHub blob-host 302 with Authorization stripped; SHA256/length checked against separately supplied independent pins, no path/URL override or disk write. Synthetic 33-case local pytest PASS, exact-head GitHub CI PENDING. Parent #739 still needs actual trusted 33/33 signed release, rootless atomic custody, operator import/install and target-bound original-client ACK. No live asset, token, host, tunnel or website touched.
+
+---
+
 ## 2026-10-19 — #739 independent pinned Release API metadata access probe (source candidate)
 
 Separate from active runtime Doctor PR #742, owner-private Fabric Release access needs a fixed, interactive read-only prerequisite. Runner-MCP source branch `feat/739-release-metadata-access-probe-20261019` stacks v0.1.41 on #742 v0.1.40 and adds a zero-argument, operator-tty-only `scripts/fabric_release_access_probe.py`. Explicit NO PROXY/REDIRECT/TOKEN ARGUMENT, hardcoded repo/tag, max 256 KiB response and bounded PASS/WAIT categories. Synthetic 39-case local pytest green; exact GitHub CI pending. A PASS confirms metadata visibility only, not trusted bytes/import/install/host mutation or Agent Bus ACK. #739 importer and owner-private physical admission remain OPEN/WAIT.

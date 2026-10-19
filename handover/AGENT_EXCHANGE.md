@@ -1,3 +1,9 @@
+## 2026-10-19 — scope reservation: #739 protected asset byte-helper, no runtime Doctor overlap
+
+Source candidate v0.1.42 branch `feat/739-fixed-release-asset-bytes-20261019` stacks after v0.1.41 PR #743; no modifications to PR #742 provenance/self-update files. Inert GitHub REST asset bytes verifier with synthetic 33 tests only; no admitted published signer, 33-asset custody, private token or host mutation. Full exact-head CI pending, release not deployed. Remaining private #739 and Fabric #1563 receipt chain belongs to owner/first-party control after authority proof.
+
+---
+
 ## 2026-10-19 — parallel lane reservation: Runner-MCP #739, do not overlap #742
 
 This lane edits a standalone pinned Fabric Release read-only metadata access probe, offline security tests, diagnostics and source metadata candidate 0.1.41, branch `feat/739-release-metadata-access-probe-20261019`. It is STACKED on the current #742 runtime-doctor candidate 0.1.40 solely for release version sequencing; #742's self_update/runtime_doctor source is not edited. No customer/host action, bearer, assets or import authority. Synthetic local 39 tests green; exact PR-head gates pending. Remaining #739 importer/physical token test and #1563 original-client ACK are separate external prerequisites.

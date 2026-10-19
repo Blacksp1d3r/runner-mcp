@@ -5,7 +5,6 @@ Never claim host identity/provenance authority from caller/source-controlled dat
 from __future__ import annotations
 
 import re
-from collections.abc import Mapping
 
 _SCHEMA = "runner.fabric/worker-process-readonly/v1"
 _ASSETS = {

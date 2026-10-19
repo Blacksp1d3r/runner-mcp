@@ -1,3 +1,9 @@
+## 2026-10-19 — parallel lane reservation: Runner-MCP #739, do not overlap #742
+
+This lane edits a standalone pinned Fabric Release read-only metadata access probe, offline security tests, diagnostics and source metadata candidate 0.1.41, branch `feat/739-release-metadata-access-probe-20261019`. It is STACKED on the current #742 runtime-doctor candidate 0.1.40 solely for release version sequencing; #742's self_update/runtime_doctor source is not edited. No customer/host action, bearer, assets or import authority. Synthetic local 39 tests green; exact PR-head gates pending. Remaining #739 importer/physical token test and #1563 original-client ACK are separate external prerequisites.
+
+---
+
 ## 2026-10-19 — Runner-MCP #669 source lane continues, Fabric A6/A7 receipts reused
 
 Same existing PR #742 holds source candidate 0.1.40, new offline wheel/RECORD comparison composed with existing signed manifest/receipt/generation checks, negative regressions, and stricter server revision pairing. It cannot attest serving process. Earlier source exact-head job ran 3386 pytest success, Ruff and registry success, failed ONLY whitespace (now corrected). Final exact-head CI required before guarded source-only merge. Fabric #942/#943 contain the already exercised 2026-10-18 physical guarded activation/recovery trials; these are not to be repeated, and remaining full A6 journal/A7 exact MCP supervisor acceptance belongs to Fabric. Correct-host signer/install/process attestation remains blocked separate from source work.

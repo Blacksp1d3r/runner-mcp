@@ -1,3 +1,11 @@
+## 2026-10-19 — independent #739 next actions
+
+1. CI verify fixed pinned release read-only access probe branch `feat/739-release-metadata-access-probe-20261019` (candidate 0.1.41 stacked after #742 v0.1.40), then GitHub-enforced merge only with exact-head gates. Never infer production deployment from source.
+2. Finish #739 protected 33-asset byte importer + independent signature/digest source and replay-safe local custody; current child is metadata-read ACCESS ONLY.
+3. Physical first-host short-lived token permission read, local setup and target-bound Agent Bus ACK remain owner/private actions; no credential requested in chat, no private host mutation or broad shell fallback.
+
+---
+
 ## 2026-10-19 — Complete exact-head source qualification before merge
 
 New 0.1.40 source comparator and version/digest structural gate have passed 3386 pytest and Ruff at an earlier exact head; correct five trailing-whitespace errors and then require all tests, demo, artifact, clean Ubuntu, attribution on the NEW HEAD. If all green, mark PR #742 ready and merge under enforced GitHub rules without waiting for optional human/AI review. Source merge never authorizes production install. Manual correct-host process evidence, independent builder custody and a separately approved baseline remain for full live Doctor green, while Fabric #942/#943 maintain A6/A7 final acceptance. No rerun of already-proven 2026-10-18 physical guarded cutovers.

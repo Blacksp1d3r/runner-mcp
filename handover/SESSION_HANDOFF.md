@@ -1,3 +1,9 @@
+## 2026-10-19 — #739 distinct source lane, candidate 0.1.41
+
+Reconciled AGENTS, dependencies, diagnostics and GitHub open PRs. #742 on active runtime-doctor provenance remains separate; choose unclaimed #739 fixed-release access prerequisite, standalone code and 39 synthetic tests locally PASS, no private token needed. New stacked branch `feat/739-release-metadata-access-probe-20261019`; candidate v0.1.41 not published or installed. Exact PR-head CI/attribution/Ubuntu and protected merge rules are pending. No physical host work. Next after verified source: full protected, 33/33 SHA256 binary importer, operator-held independent signed bundle source, immutable local custody, then distinct host-qualified install and Agent Bus ACK; metadata access alone never authorizes those effects.
+
+---
+
 ## 2026-10-19 — PR #742 current source reconciliation
 
 Added offline installed-wheel/RECORD comparison, composed the existing detached signature / offline evidence chain with it, tested tampering and no live-verification claims. Tightened `server.py` revision provider to require both source revision and artifact digest matching the loaded build version (still source-only, no trust issuance). Correct-host live witness/provider remains absent. CI exact prior head: version gate, 95 tools, Ruff, 3386 pytest, MCP metadata all PASS; whitespace failure at five documentation lines (this commit removes them). Rerun on current source head before merge. Fabric A6/A7 existing operator receipts are real partial acceptance, not to be repeated; their final remaining gaps are Fabric-owned. Keep historic self-update state intact, no tunnel/cron/install/deploy operation.

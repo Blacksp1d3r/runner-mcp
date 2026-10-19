@@ -1,3 +1,9 @@
+## 2026-10-19 — #739 independent pinned Release API metadata access probe (source candidate)
+
+Separate from active runtime Doctor PR #742, owner-private Fabric Release access needs a fixed, interactive read-only prerequisite. Runner-MCP source branch `feat/739-release-metadata-access-probe-20261019` stacks v0.1.41 on #742 v0.1.40 and adds a zero-argument, operator-tty-only `scripts/fabric_release_access_probe.py`. Explicit NO PROXY/REDIRECT/TOKEN ARGUMENT, hardcoded repo/tag, max 256 KiB response and bounded PASS/WAIT categories. Synthetic 39-case local pytest green; exact GitHub CI pending. A PASS confirms metadata visibility only, not trusted bytes/import/install/host mutation or Agent Bus ACK. #739 importer and owner-private physical admission remain OPEN/WAIT.
+
+---
+
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
 2026-10-19 #669/#341 update: PR #742 source candidate 0.1.40 corrects required release-version gate (all four shipping version fields synchronized, changelog), adds fail-closed missing revision-provider metadata containment and six synthetic negative tests. Exact-head automated GitHub-hosted CI pending; no physical server update or attested active source. First-party serving 0.1.38 remains two Doctor FAILs, self_update_ready=false; independent correct-host provenance/manual-baseline/ACK plus Fabric A6/A7 remain external admission blockers.

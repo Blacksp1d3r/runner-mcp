@@ -1,3 +1,9 @@
+## 2026-10-19 — #739 Release metadata ACCESS != custody/activation
+
+Existing Fabric source 33-asset pinned prerelease -> `#739 readonly fixed-tag interactive metadata access probe` (source candidate; physical read WAIT; no new runtime required) -> independently trusted exact 33 digests/source/asset bodies importer (NOT IMPLEMENTED) -> rootless sealed local custody / replay-deny / independent rollback (NOT IMPLEMENTED) -> separately authorized operator install and Fabric #1563 original-client ACK (NOT VERIFIED). No bypass of private CAS issuer AIfordable #585, no copying central token or treating metadata visibility as authenticated worker.
+
+---
+
 ## 2026-10-19 — #669 Doctor source vs live acceptance gates
 
 `existing #669 offline receipt + manifest + detached signature + generation layout (SOURCE ONLY)` → `independent authorized signer/manifest custody and sealed installed wheel+RECORD` → `correct-host / serving-process generation and all-role identity proof` → `separately authorized versioned atomic manual-install baseline receipt (historical self-update state immutable)` → `qualified revision provider, Doctor reconciliation and original-client identity/result ACK` → `off-target A6 #942 + autonomous A7 #943 recovery` → `guarded single-node update / fleet #341/#924`. Missing any edge means UNKNOWN, not green. PR #742 provider exception containment is a distinct source-only child; exact-head CI is pending. No host action authorized.

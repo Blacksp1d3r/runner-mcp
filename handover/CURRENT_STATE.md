@@ -1,3 +1,9 @@
+## 2026-10-19 — independent #739 Release metadata probe source candidate; #742 left untouched
+
+Open PR #742 owns runtime_doctor/source provenance; PR #743 (stacked v0.1.41 branch) `feat/739-release-metadata-access-probe-20261019` implements only the operator-local fixed-release metadata access check, test and runbook. Local 39 synthetic pytest green, code compile green; exact-head CI pending. No asset download, token issued, physical host action or authenticated original-client ACK. The parent #739 remains open for full secure binary custody importer; the central live node and new non-serving Black remain as previously evidenced. If #742 changes, rebase stacked candidate against its exact qualified head before integration. No branch/PR takeover.
+
+---
+
 ## 2026-10-19 — Runner-MCP PR #742 CI evidence and isolated wheel-record source path
 
 Source candidate 0.1.40 is not deployed. On pre-cleanup exact-head run 39288993782, release version gate 0.1.40 PASS, tool catalogue 95 PASS, Ruff PASS, 3386 pytest PASS (8 warnings), registry PASS; CI ended FAIL only because five existing handover/roadmap lines had trailing spaces. This cleanup commit addresses whitespace, but requires NEW exact-head green checks before merge. New #669 source path checks offline signed manifest + existing receipt and generation layout + strict wheel/installed RECORD; negative tampering cases keep active identity NULL/unverified. Server adapter now additionally refuses a revision without paired wheel digest and loaded matching version; this structural check does not authenticate signer/process. Live central 0.1.38 still unverified, no host action. A6/A7 prior physical subset proofs are acknowledged from Fabric #942/#943, their final acceptance remains with Fabric.

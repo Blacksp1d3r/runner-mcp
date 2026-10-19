@@ -1127,3 +1127,44 @@ def test_worker_qualification_proxy_rejects_private_or_mismatched_result(
             "bewind-ocr-qualification-v1",
             1,
         )
+
+
+def test_worker_process_bridge_calls_only_existing_fabric_mcp_fixed_name():
+    from runner_mcp.worker_process_readonly import bounded_worker_wait
+
+    payload = bounded_worker_wait("claude", "host_observer_not_configured")
+    bridge, fake = bridge_with_responses(payload)
+    outcome = bridge.worker_process_inspect("claude")
+    assert outcome == payload
+    assert fake.calls == [("worker_process_inspect", {"worker": "claude"})]
+
+
+def test_missing_or_unsupported_fabric_tool_returns_wait_without_retries():
+    bridge, fake = bridge_with_responses()
+    # Existing clients without a deployed Fabric agent worker tool fail closed.
+    def deny(_name, _args):
+        raise BridgeExecutionAdapterError("optional tool unavailable")
+
+    fake._call_tool = deny
+    result = bridge.worker_process_inspect("qwen")
+    assert result["reasonCode"] == "fabric_read_unavailable"
+    assert result["dispatchAuthorized"] is False
+
+
+def test_wrong_host_or_mutation_claim_denied_in_existing_bridge():
+    from runner_mcp.worker_process_readonly import bounded_worker_wait
+
+    forged = bounded_worker_wait("claude", "host_observer_not_configured")
+    forged["hostAssetId"] = "AF-VM-0003"
+    bridge, fake = bridge_with_responses(forged)
+    result = bridge.worker_process_inspect("claude")
+    assert fake.calls == [("worker_process_inspect", {"worker": "claude"})]
+    assert result["state"] == "wait"
+    assert result["reasonCode"] == "fabric_read_invalid"
+
+
+def test_unknown_worker_cannot_probe_fabric_or_supply_pid():
+    bridge, fake = bridge_with_responses()
+    with pytest.raises(FabricBridgeError, match="allowlisted"):
+        bridge.worker_process_inspect("root")
+    assert fake.calls == []

@@ -1,10 +1,6 @@
-## 2026-10-19 — source-only asset byte integrity child #739
+## 2026-10-19 — #739 independent read-only Release access prerequisite
 
-Inert fixed release asset REST numeric-ID verifier, direct HTTP 200 or narrowly admitted official HTTPS 302, no bearer onward, bounded 64 MiB/asset and independently supplied SHA256; 33 isolated synthetic tests PASS, production unavailable/CI pending. This is separate from #743 metadata visibility. Physical protected custody and 33/33 pinned signatures/rollback remain external gates.
-
-## 2026-10-19 — first-host pinned Release access (#739)
-
-Distinct source-only standalone read-only metadata access prerequisite (candidate 0.1.41, 33 local synthetic regressions) precedes any protected bytes importer. It cannot authorize or perform downloads, changes to custody or host. Exact-head CI and host-private original-client read remain pending; #739 parent OPEN. Do not confuse API visibility with integrity, provider identity or release activation.
+User-authorized owner takeover of #743 from prior external account; source candidate 0.1.42 reconciled on main with prior #751/#752/#754 code preserved. Full exact-head CI before guarded merge. A metadata API PASS is not a full 33-asset importer or host/install/Agent Bus authorization; that remains a separate owner-approved project child.
 
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — roadmap
 

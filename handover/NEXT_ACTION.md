@@ -1,16 +1,6 @@
-## 2026-10-19 — #739 source sequencing
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
 
-1. Exact-PR-head CI for #742 then #743, followed by current 0.1.42 asset-byte candidate; preserve per-head attribution and Ubuntu tests. Retarget/reconcile stacked PRs to `main` sequentially only after green and protected GitHub rules.
-2. Confirm independent publisher signature, pinned source/release ID + exactly 33 trusted asset digests and safe redirect behavior before ANY real download. Byte-helper 0.1.42 is not a command or custody operation.
-3. Prepare rootless atomic owner-only 33/33 offline importer, rollback/replay-denial and separately operator-authorized installation; Fabric #1563 ACK and AIfordable #585 issuer remain WAIT, no tunnel or physical target change.
-
----
-
-## 2026-10-19 — independent #739 next actions
-
-1. CI verify fixed pinned release read-only access probe branch `feat/739-release-metadata-access-probe-20261019` (candidate 0.1.41 stacked after #742 v0.1.40), then GitHub-enforced merge only with exact-head gates. Never infer production deployment from source.
-2. Finish #739 protected 33-asset byte importer + independent signature/digest source and replay-safe local custody; current child is metadata-read ACCESS ONLY.
-3. Physical first-host short-lived token permission read, local setup and target-bound Agent Bus ACK remain owner/private actions; no credential requested in chat, no private host mutation or broad shell fallback.
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
 
 ---
 

@@ -1,10 +1,6 @@
-## #739 source byte helper (not active/private)
+## 2026-10-19 — #739 pinned read-only Release metadata access
 
-`separate independently trusted digest/size + exact numeric asset ID -> fixed GitHub REST API GET with bearer/no proxy/no redirect -> 200 OR one 302 to allowlisted HTTPS blob host -> NEW GET without Authorization/Cookie -> streamed <=64MiB and exact length/SHA256 -> IN-MEMORY bytes`. No local store, signature/key authority, release identity acceptance, asset materialization, bootstrap or ACK is part of this pure source function. A caller must never derive an allegedly independent pin from the same untrusted metadata.
-
-## Pinned operator Release metadata read (#739)
-
-`local interactive tty -> hidden short-lived owner-supplied token -> fixed api.github.com repository/tag GET (proxy off, redirect off, 8s, <=256 KiB) -> bounded 200/HTTP denial -> strict JSON tag/source/prerelease/33-count metadata check -> category-only PASS/WAIT`. This does not cross the actual downloadable asset or local storage boundary; trust in publisher/signature, host/install and ACK remain UNKNOWN.
+`owner-private interactive TTY -> hidden scoped one-time token -> pinned api.github.com repo/tag GET, no proxy/redirect, 8s and bounded bytes -> exact prerelease/tag/source/33-count metadata -> categorical PASS/WAIT`. Source-only 0.1.42; no source trust, binary digest, actual private host permission, service activation or original-client ACK claimed.
 
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — data lineage
 

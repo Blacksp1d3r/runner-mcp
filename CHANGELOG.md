@@ -1,14 +1,12 @@
 # Changelog
 
-## 0.1.42 (source candidate; not published)
+## 0.1.43 (source candidate; not installed)
 
-- Add an INERT fixed-ID GitHub Release asset-byte verifier (#739): direct 200 or one allowlisted HTTPS 302 with bearer stripped, no proxy or auto redirect, at most 64 MiB streamed, exact size and independently supplied SHA256. No real bytes imported, disk custody, deployment, source attestation, credential enrollment or run authority. Source-only negative regression coverage; upstream trusted digest and all 33/33 actual asset/rollback/ACK gates remain separate.
+- Add bounded inert fixed GitHub Release asset-ID byte verifier (#739/#745), with no inherited proxy, exact size and independently supplied SHA256; allow strict direct 200 or narrowly authorized 302 with credentials stripped. Source-only security tests; never a full 33/33 signed importer, immutable storage, service activation, private host permission or Agent Bus ACK.
 
+## 0.1.42 (source candidate; not deployed)
 
-## 0.1.41 (source candidate; not published)
-
-- Add an operator-interactive pinned, standalone read-only GitHub Release metadata access probe for first-host Fabric bootstrap (#739). Proxy-free, redirect-denying, bounded API response with fixed repository/tag, category-only failures and synthetic security tests. A metadata PASS is not binary custody, source attestation, an update/install permit, relay enrollment or an ACK; no host action performed.
-
+- Add operator-interactive pinned, standalone read-only GitHub Release metadata probe for first-host Fabric access (#739). Restricts repo/tag, disables proxies/redirects, bounds response, checks expected metadata and secret-safe category outputs. Offline security regressions. Neither release asset integrity, local custody, host activation nor original requester ACK is proven; no host action.
 
 ## 0.1.40 (source candidate; not published)
 

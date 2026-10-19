@@ -1,12 +1,12 @@
-## 2026-10-19 — scope reservation: #739 protected asset byte-helper, no runtime Doctor overlap
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
 
-Source candidate v0.1.42 branch `feat/739-fixed-release-asset-bytes-20261019` stacks after v0.1.41 PR #743; no modifications to PR #742 provenance/self-update files. Inert GitHub REST asset bytes verifier with synthetic 33 tests only; no admitted published signer, 33-asset custody, private token or host mutation. Full exact-head CI pending, release not deployed. Remaining private #739 and Fabric #1563 receipt chain belongs to owner/first-party control after authority proof.
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
 
 ---
 
-## 2026-10-19 — parallel lane reservation: Runner-MCP #739, do not overlap #742
+## 2026-10-19 — #669 release collision and host/ACK authority split
 
-This lane edits a standalone pinned Fabric Release read-only metadata access probe, offline security tests, diagnostics and source metadata candidate 0.1.41, branch `feat/739-release-metadata-access-probe-20261019`. It is STACKED on the current #742 runtime-doctor candidate 0.1.40 solely for release version sequencing; #742's self_update/runtime_doctor source is not edited. No customer/host action, bearer, assets or import authority. Synthetic local 39 tests green; exact PR-head gates pending. Remaining #739 importer/physical token test and #1563 original-client ACK are separate external prerequisites.
+Docs-only branch updates roadmap and [Runner-MCP local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md) linked to canonical Fabric #924. Runtime/MCP control source release owner Runner-MCP; sole target mutation/campaign owner Fabric #924/A6/A7; host/relay/credential+original requester ACK owner AIfordable #428/#585; one-worker acceptance AIfordable #609. Source main 0.1.41 merged #751, collides with open #743 0.1.41 and stacked #745 0.1.42 plus draft #750 0.1.43. Coordinate branch owners rather than edit foreign PRs. A new deterministic release reservation CI child is still REQUIRED/NOT IMPLEMENTED. First-party central runtime still 0.1.38, serving provenance unverified, self_update_ready=false; no live host mutation authorized. Reuse earlier physical controlled update rollback evidence. Distinguish SOURCE_MERGED from installed/serving/ACK; after actual read-only host inventory follow only guarded Fabric single-target activation.
 
 ---
 

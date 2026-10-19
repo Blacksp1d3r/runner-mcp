@@ -1,7 +1,3 @@
-## 2026-10-19 — first-host pinned Release access (#739)
-
-Distinct source-only standalone read-only metadata access prerequisite (candidate 0.1.41, 33 local synthetic regressions) precedes any protected bytes importer. It cannot authorize or perform downloads, changes to custody or host. Exact-head CI and host-private original-client read remain pending; #739 parent OPEN. Do not confuse API visibility with integrity, provider identity or release activation.
-
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — roadmap
 
 ## Subcomponents

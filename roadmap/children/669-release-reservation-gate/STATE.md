@@ -1,0 +1,3 @@
+# Source release collision gate — state
+
+2026-10-19: **NOT IMPLEMENTED; READY_FOR_OWNED_SOURCE_CHILD_AFTER_VERSION_RECONCILIATION.** The existing `scripts/check_release_version.py` handles monotone metadata, not parallel PR uniqueness. Two independent authors reserved 0.1.41; Runner-MCP main already has #751 0.1.41. Contacted owners on #743/#745/#750. Do not hijack their PRs, do not create a second updater, do not block unrelated source work globally. Version conflict check implementation requires its own unique shipping version and full CI/branch gate qualification. Host activation remains under Fabric #924; original ACK is AIfordable #585/#609.

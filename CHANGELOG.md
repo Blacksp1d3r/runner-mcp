@@ -1,9 +1,8 @@
 # Changelog
 
-## 0.1.41 (source candidate; not published)
+## 0.1.42 (source candidate; not deployed)
 
-- Add an operator-interactive pinned, standalone read-only GitHub Release metadata access probe for first-host Fabric bootstrap (#739). Proxy-free, redirect-denying, bounded API response with fixed repository/tag, category-only failures and synthetic security tests. A metadata PASS is not binary custody, source attestation, an update/install permit, relay enrollment or an ACK; no host action performed.
-
+- Add operator-interactive pinned, standalone read-only GitHub Release metadata probe for first-host Fabric access (#739). Restricts repo/tag, disables proxies/redirects, bounds response, checks expected metadata and secret-safe category outputs. Offline security regressions. Neither release asset integrity, local custody, host activation nor original requester ACK is proven; no host action.
 
 ## 0.1.40 (source candidate; not published)
 

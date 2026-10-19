@@ -126,10 +126,10 @@ def test_draft_and_stacked_prs_do_not_claim_active_merge_slot(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     rows = [
-        {"number": 743, "draft": False, "base": {"ref": "main"}, "head": {"sha": "c" * 40}},
-        {"number": 745, "draft": False, "base": {"ref": "other-branch"}, "head": {"sha": "d" * 40}},
-        {"number": 750, "draft": True, "base": {"ref": "main"}, "head": {"sha": "e" * 40}},
-        {"number": 760, "draft": False, "base": {"ref": "main"}, "head": {"sha": "b" * 40}},
+        {"number": 743, "state": "open", "draft": False, "base": {"ref": "main"}, "head": {"sha": "c" * 40}},
+        {"number": 745, "state": "open", "draft": False, "base": {"ref": "other-branch"}, "head": {"sha": "d" * 40}},
+        {"number": 750, "state": "open", "draft": True, "base": {"ref": "main"}, "head": {"sha": "e" * 40}},
+        {"number": 760, "state": "open", "draft": False, "base": {"ref": "main"}, "head": {"sha": "b" * 40}},
     ]
     monkeypatch.setattr(admission, "_api", lambda *_: rows)
     seen: list[str] = []
@@ -184,3 +184,76 @@ def test_bad_project_metadata_cannot_supply_release_identity(
     monkeypatch.setattr(admission, "_api", lambda *_: payload)
     with pytest.raises(admission.AdmissionError):
         admission._version_at("synthetic", MAIN)
+
+
+
+def test_oldest_ready_pr_wins_duplicate_version_without_mutual_deadlock() -> None:
+    _run(
+        own_number=743,
+        competing_versions={745: "0.1.42", 760: "0.1.42"},
+    )
+    with pytest.raises(admission.AdmissionError, match="prioritized to PR #743"):
+        _run(
+            own_number=745,
+            competing_versions={743: "0.1.42", 760: "0.1.42"},
+        )
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        {"number": 760, "state": "closed", "draft": False},
+        {"number": 760, "state": "open", "draft": True},
+        {"number": 760, "state": "open", "draft": False, "head": {"sha": "c" * 40}},
+        {"number": 760, "state": "open", "draft": False, "base": {"ref": "other"}},
+        {"number": 760, "state": "open", "draft": False, "base": {"sha": "c" * 40}},
+    ],
+)
+def test_current_pr_identity_must_still_be_open_and_match_exact_head(
+    monkeypatch: pytest.MonkeyPatch,
+    bad: dict[str, object],
+) -> None:
+    candidate = {
+        "number": 760,
+        "state": "open",
+        "draft": False,
+        "base": {"ref": "main", "sha": MAIN},
+        "head": {"sha": HEAD},
+    }
+    candidate.update(bad)
+    monkeypatch.setattr(admission, "_api", lambda *_: candidate)
+    with pytest.raises(admission.AdmissionError):
+        admission._check_current_pr("synthetic", 760, MAIN, HEAD)
+
+
+def test_current_pr_identity_accepts_exact_ready_revision(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    current = {
+        "number": 760,
+        "state": "open",
+        "draft": False,
+        "base": {"ref": "main", "sha": MAIN},
+        "head": {"sha": HEAD},
+    }
+    monkeypatch.setattr(admission, "_api", lambda *_: current)
+    admission._check_current_pr("synthetic", 760, MAIN, HEAD)
+
+
+@pytest.mark.parametrize("fault", ["unknown-draft", "unknown-base", "duplicated"])
+def test_partial_or_repeated_inventory_cannot_make_fake_unique_version(
+    monkeypatch: pytest.MonkeyPatch, fault: str
+) -> None:
+    item = {
+        "number": 744, "state": "open", "draft": False,
+        "base": {"ref": "main"}, "head": {"sha": "c" * 40},
+    }
+    if fault == "unknown-draft":
+        item.pop("draft")
+    if fault == "unknown-base":
+        item.pop("base")
+    rows = [item, dict(item)] if fault == "duplicated" else [item]
+    monkeypatch.setattr(admission, "_api", lambda *_: rows)
+    monkeypatch.setattr(admission, "_version_at", lambda *_: "0.1.42")
+    with pytest.raises(admission.AdmissionError):
+        admission._contenders("synthetic", 760)

@@ -59,8 +59,12 @@ def validate(
     for number, version in competing_versions.items():
         if type(number) is not int or number < 1 or number == own_number:
             raise AdmissionError("invalid competing PR")
-        if version_tuple(version) == proposed:
-            raise AdmissionError("same shipping version reserved by PR #" + str(number))
+        # Deterministic arbitration: the oldest numbered READY, main-targeted
+        # PR wins a duplicate candidate. Newer contenders WAIT and must rebase
+        # or be reassigned by the one release steward. This avoids deadlocking
+        # two ready feature PRs. It is not a cross-PR atomic merge lease.
+        if version_tuple(version) == proposed and number < own_number:
+            raise AdmissionError("next patch already prioritized to PR #" + str(number))
 
 
 def _unique(pairs: list[tuple[str, object]]) -> dict[str, object]:
@@ -126,6 +130,26 @@ def _main_head(token: str) -> str:
     return sha
 
 
+def _check_current_pr(token: str, number: int, main_sha: str, head_sha: str) -> None:
+    """Re-read the exact current PR from trusted GitHub, not old event JSON."""
+    if type(number) is not int or number < 1:
+        raise AdmissionError("invalid own PR number")
+    pr = _api("/repos/" + REPO + "/pulls/" + str(number), token)
+    if not isinstance(pr, dict) or pr.get("number") != number:
+        raise AdmissionError("current PR identity unavailable")
+    base, head = pr.get("base"), pr.get("head")
+    if (
+        pr.get("state") != "open"
+        or pr.get("draft") is not False
+        or not isinstance(base, dict)
+        or base.get("ref") != "main"
+        or base.get("sha") != main_sha
+        or not isinstance(head, dict)
+        or head.get("sha") != head_sha
+    ):
+        raise AdmissionError("current PR branch, base or readiness changed")
+
+
 def _version_at(token: str, sha: str) -> str:
     if not isinstance(sha, str) or not SHA.fullmatch(sha):
         raise AdmissionError("unverified competing revision")
@@ -148,6 +172,7 @@ def _version_at(token: str, sha: str) -> str:
 
 def _contenders(token: str, own_number: int) -> dict[int, str]:
     contenders: dict[int, str] = {}
+    seen_numbers: set[int] = set()
     for page in range(1, MAX_PAGES + 1):
         data = _api(
             "/repos/" + REPO + "/pulls?state=open&per_page=100&page=" + str(page),
@@ -159,11 +184,19 @@ def _contenders(token: str, own_number: int) -> dict[int, str]:
             if not isinstance(row, dict):
                 raise AdmissionError("invalid PR inventory")
             number, head, base = row.get("number"), row.get("head"), row.get("base")
-            if type(number) is not int or number < 1:
-                raise AdmissionError("PR inventory identity unavailable")
-            if number == own_number or row.get("draft") is not False:
+            if type(number) is not int or number < 1 or number in seen_numbers:
+                raise AdmissionError("PR inventory identity unavailable or duplicated")
+            seen_numbers.add(number)
+            if (
+                row.get("state") != "open"
+                or type(row.get("draft")) is not bool
+                or not isinstance(base, dict)
+                or not isinstance(base.get("ref"), str)
+            ):
+                raise AdmissionError("PR inventory state is incomplete")
+            if number == own_number or row["draft"]:
                 continue
-            if not isinstance(base, dict) or base.get("ref") != "main":
+            if base["ref"] != "main":
                 continue
             sha = head.get("sha") if isinstance(head, dict) else None
             contenders[number] = _version_at(token, sha)
@@ -214,6 +247,7 @@ def run() -> str:
         return "SKIP docs-only"
     candidate_sha = _git("rev-parse", "HEAD^2")
     main_sha = _main_head(token)
+    _check_current_pr(token, number, main_sha, head["sha"])
     validate(
         main_sha=main_sha,
         event_base_sha=base["sha"],
@@ -224,6 +258,9 @@ def run() -> str:
         competing_versions=_contenders(token, number),
         own_number=number,
     )
+    # Candidate head, draft/ready state and base may change even if main
+    # itself stays fixed; check both sides again before returning admission.
+    _check_current_pr(token, number, main_sha, head["sha"])
     if _main_head(token) != main_sha:
         raise AdmissionError("main advanced during release preflight")
     return "PASS unique next patch on current main"

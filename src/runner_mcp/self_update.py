@@ -741,9 +741,16 @@ class SelfUpdateManager:
         try:
             root = config.root.resolve(strict=True)
             source_state = clean_head(root)
-        except (OSError, SourceControlError):
+            if not isinstance(source_state, dict) or source_state.get("clean") is not True:
+                return None, False
+            source_commit = source_state.get("commit")
+            if (
+                not isinstance(source_commit, str)
+                or _COMMIT_RE.fullmatch(source_commit) is None
+            ):
+                return None, False
+        except (OSError, SourceControlError, TypeError, ValueError):
             return None, False
-        source_commit = str(source_state["commit"])
         return source_commit, source_commit == installed_commit
 
     def runtime_status(self) -> dict[str, Any]:

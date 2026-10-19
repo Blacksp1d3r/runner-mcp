@@ -1,3 +1,9 @@
+## 2026-10-19 — Release version guard corrected / exact-head CI pending
+
+2026-10-19 #669/#341 update: PR #742 source candidate 0.1.40 corrects required release-version gate (all four shipping version fields synchronized, changelog), adds fail-closed missing revision-provider metadata containment and six synthetic negative tests. Exact-head automated GitHub-hosted CI pending; no physical server update or attested active source. First-party serving 0.1.38 remains two Doctor FAILs, self_update_ready=false; independent correct-host provenance/manual-baseline/ACK plus Fabric A6/A7 remain external admission blockers. 
+
+---
+
 ## 2026-10-19 — #669 runtime_doctor provenance child PR #742 IN PROGRESS
 
 First-party read-only MCP 0.1.38 returns `self_update_ready=false`, historical source checkout != historical installed self-update commit, unverified active source and artifact digest, two Doctor FAILs. This is a **correct refusal**. Source-only PR #742 has negative tests and a narrow provider-metadata exception containment fix (RMCP-F-0045, synthetic bug; no live incident claim). Independent trusted serving-generation/host witness and separately accepted manual-install baseline still unavailable. Detailed gate design: `docs/diagnostics/components/01-runtime-self-update/SERVING_GENERATION_ATTESTATION.md`; reuse existing #669 offline validators. Exact PR-head CI pending, no merge or deployment authority. Source merge is separate from physical #669/#341/#590, Fabric A6/A7 #942/#943 and original-client ACK.

@@ -1,3 +1,9 @@
+## 2026-10-19 — Release version guard corrected / exact-head CI pending
+
+2026-10-19 next: exact-head check PR #742 (source candidate 0.1.40) validation, commit attribution AND triggered clean Ubuntu installer proof. Every relevant job must reach terminal SUCCESS on the actual new branch commit, not older main. Jobs with runner_id=null are pending allocation; classify cause UNKNOWN until independently verified, do not blame source test or assume GitHub outage/quota. If CI fails, inspect the failing job and repair source. Only make PR ready/merge under enforced branch rules and technical/security checks. Serving Doctor FAILs cannot safely become green until correct-host independent signer/wheel/RECORD/imported-process evidence, signed operator-owned manual baseline (not rewriting historic self-update transaction), original-client ACK and separately accepted A6/A7 recovery. 
+
+---
+
 ## 2026-10-19 — First actionable source and physical gates for PR #742
 
 1. Check exact current head SHA of open draft PR #742; consult `actions/runs?head_sha=<exact>` plus job state, not older successful `main` runs. When queued, **do not** invent green or call it a test failure. Diagnose Actions capacity/account quota only with evidence. Correct actual failures if a job runs; merge only if required gates terminal green and branch rules satisfied.

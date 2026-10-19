@@ -1,8 +1,20 @@
 # Changelog
 
-## 0.1.45 (DRAFT candidate; only after sequential 0.1.42–0.1.44 merges)
+## 0.1.45 (source-only candidate; release guard not yet branch-required)
 
-- Add fail-closed read-only next-patch release reservation gate (Runner-MCP #662). GitHub required checks and serialized merge are separately necessary for actual race prevention; source CI is not host activation.
+- Implement fail-closed read-only GitHub current-main / PR-head / version admission for the unique next patch, with deterministic READY PR priority and twice-sampled contender inventory against races (#662). Reject wrong source/version, invalid API data and inherited proxy/redirect. Source CI alone cannot enforce merge atomicity: administrator-required check and fresh branch/serialized merges are separate gates. No live host release.
+
+## 0.1.44 (source-only candidate; not deployed)
+
+- Add independently pinned Ed25519 signed serving-witness input validator (#669), with exact host, source, wheel, generation, nonce, role instances, expiry and signature checks. Even a valid signed statement is OFFLINE and cannot establish current loaded host/process provenance or trigger update. No signing issuer, credential, live host observation or rollback authority.
+
+## 0.1.43 (source candidate; not installed)
+
+- Add bounded inert fixed GitHub Release asset-ID byte verifier (#739/#745), with no inherited proxy, exact size and independently supplied SHA256; allow strict direct 200 or narrowly authorized 302 with credentials stripped. Source-only security tests; never a full 33/33 signed importer, immutable storage, service activation, private host permission or Agent Bus ACK.
+
+## 0.1.42 (source candidate; not deployed)
+
+- Add operator-interactive pinned, standalone read-only GitHub Release metadata probe for first-host Fabric access (#739). Restricts repo/tag, disables proxies/redirects, bounds response, checks expected metadata and secret-safe category outputs. Offline security regressions. Neither release asset integrity, local custody, host activation nor original requester ACK is proven; no host action.
 
 ## 0.1.40 (source candidate; not published)
 

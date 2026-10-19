@@ -1,0 +1,11 @@
+# #669 — signed serving witness input preflight (source-only)
+
+This bounded source child consumes a **canonical, separately signed statement** from a future operator-approved correct-host observer. It never scans a real host, supplies a signing key, creates a new updater, publishes a receipt, operates A6/A7 or claims active build provenance. The existing `build_identity` and `runtime_doctor` remain fail-closed until real correct-host authority and original-client evidence are independently established.
+
+Expected inputs must come from distinct authorized policy/custody: allowed Ed25519 signer key SHA-256; independently identified host digest; exact source commit, loaded version and wheel SHA-256; generation digest; full set of service roles; fresh single-use challenge; and trusted clock. Candidate manifest fields, an unverified source checkout or the witness itself cannot provide those independent values.
+
+A candidate signed JSON claim must bind the correct host, challenge, revision, loaded version, wheel, generation, timestamp window (up to 300 seconds), and each expected role's own unique process-instance digest. Missing/extra roles, stale/foreign host, mismatched generation, altered or noncanonical JSON, invalid signer/pin, missing challenge, and duplicate process evidence fail closed.
+
+Even `signed_statement_consistent_offline` is **only a syntactically and cryptographically consistent statement**. It does not prove that the signer actually observed a loaded process, that the trusted key remains authorized/unrevoked, or that the one-time nonce was issued and consumed correctly. Enforcing physical trusted-observer custody, nonce ledger, loaded Python native/import equivalence, all-real-role inventory, protected operator baseline and original-client request/result/ACK remains separate. Never map this result to `active_runtime_revision`, `active_artifact_digest` or `self_update_ready=true`.
+
+This candidate is intentionally version 0.1.43 **stacked in release order after #743 candidate 0.1.41 and #745 candidate 0.1.42**, but its branch starts from the trusted current main 0.1.40 so it contains all merged #742 code. Reconcile actual main before merging, and do not jump over the other version reservations. Exact-head CI plus GitHub rules are mandatory. No server or credential operations authorized.

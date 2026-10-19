@@ -1,3 +1,27 @@
+## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases
+
+User-authorized single release sequence has merged pinned metadata PR #743 (0.1.42) and bounded release bytes PR #745 (0.1.43); draft PR #750 now reconciles this source with actual main as the next unique 0.1.44. Independently pinned offline Ed25519 signed statement comparator checks exact host, challenge, source, loaded version, wheel, generation and process role set, but returns current source/digest NULL and active_build_provenance_verified=false regardless of signed consistency. No trusted correct-host observer, nonce issuance, original requester ACK, host installation or Fabric A6/A7 recovery is gained from this source. Review exact new CI head before merge; keep historical self-update state and existing running central 0.1.38 unchanged.
+
+---
+
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
+
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
+
+---
+
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
+## 2026-10-19 — Concrete source order and draft CI gate, separate from live admission
+
+`main 0.1.41 (#751)` → owner reconciliation/merge `#743 proposed 0.1.42` → `#745 proposed 0.1.43` → `#750 DRAFT 0.1.44` → `#753 DRAFT 0.1.45`. This ordering is conditional: recompute from the actual protected main SHA/version before every release merge; do not trust old CI after rebase or another merge. #753 source candidate's full CI passed on its last tested head but the new merge-eligibility job remains skipped while draft and REQUIRED branch policy is unconfirmed (403). Draft #750 independently merged merged-main source into branch with source-only signed witness input, not a current serving-build attester. Continuous source work allowed; live rollout remains behind correct-host identity, Fabric #924 A6/A7 reversibility and AIfordable original request/result/ACK. This update is documentation only and changes no shipping version.
+
+---
+
 ## 2026-10-19 — Unique Runner-MCP versions and one-owner execution DAG
 
 [Local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md). Source release R (one Runner-MCP steward; version-lock/CAS and exact-head CI) runs parallel to AIfordable H (canonical correct host/UID/relay freshness) and source-only P validators. Only **actual independent right-host loaded wheel/process proof** P → Fabric A6/A7 rollback+target lease A → one safeguarded attended activation U → deployed requester-authenticated result ACK K → worker-local `coding_workspace_preflight/prepare` W → controlled dispatch D. No global development STOP from a WAIT physical gate. Source main 0.1.41 (#751) collides with old open #743 0.1.41; stacked #745 0.1.42, draft #750 0.1.43; require sequential unique version reconciliation, new future automatic CI collision check and exact-head retest before each merge. Current central serving 0.1.38 source/wheel unknown. No remote-shell bypass, historical self-update metadata rewrite or second release updater.

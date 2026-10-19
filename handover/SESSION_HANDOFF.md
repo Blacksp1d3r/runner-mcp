@@ -1,3 +1,27 @@
+## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases
+
+User-authorized single release sequence has merged pinned metadata PR #743 (0.1.42) and bounded release bytes PR #745 (0.1.43); draft PR #750 now reconciles this source with actual main as the next unique 0.1.44. Independently pinned offline Ed25519 signed statement comparator checks exact host, challenge, source, loaded version, wheel, generation and process role set, but returns current source/digest NULL and active_build_provenance_verified=false regardless of signed consistency. No trusted correct-host observer, nonce issuance, original requester ACK, host installation or Fabric A6/A7 recovery is gained from this source. Review exact new CI head before merge; keep historical self-update state and existing running central 0.1.38 unchanged.
+
+---
+
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
+
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
+
+---
+
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
+## 2026-10-19 — Last release sequencing source checkpoint
+
+Shared Fabric #924/AIfordable #609/Runner-MCP #662/#669 flow is the canonical owner split. Source main 0.1.41; earlier #743 0.1.41 duplicate needs owner reconcile; stacked #745 0.1.42; independent #750 source branch now reconciled to main and candidate 0.1.44 DRAFT; #753 ready-gate source 0.1.45 DRAFT, prior head 6a2c880... CI 3/3 SUCCESS. Branch protection read 403; new admission not required/atomic, no merge queue support. Need #743/#745 unique version merges then exact-head rechecks on #750/#753. Central server 0.1.38 unverified. No installed runtime or private host mutation has occurred in this doc-only checkpoint.
+
+---
+
 ## 2026-10-19 — #669 release collision and host/ACK authority split
 
 Docs-only branch updates roadmap and [Runner-MCP local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md) linked to canonical Fabric #924. Runtime/MCP control source release owner Runner-MCP; sole target mutation/campaign owner Fabric #924/A6/A7; host/relay/credential+original requester ACK owner AIfordable #428/#585; one-worker acceptance AIfordable #609. Source main 0.1.41 merged #751, collides with open #743 0.1.41 and stacked #745 0.1.42 plus draft #750 0.1.43. Coordinate branch owners rather than edit foreign PRs. A new deterministic release reservation CI child is still REQUIRED/NOT IMPLEMENTED. First-party central runtime still 0.1.38, serving provenance unverified, self_update_ready=false; no live host mutation authorized. Reuse earlier physical controlled update rollback evidence. Distinguish SOURCE_MERGED from installed/serving/ACK; after actual read-only host inventory follow only guarded Fabric single-target activation.

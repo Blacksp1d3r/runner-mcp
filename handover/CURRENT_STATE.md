@@ -1,3 +1,9 @@
+## 2026-10-19 — RMCP-F-0046 checkout baseline read-only safety fix
+
+PR #742 source-only 0.1.40 now also validates `clean_head` returns a clean mapping with canonical lowercase commit; malformed/corrupted provider results return unknown and do not enable self-update. Added 11 synthetic cases. This is a distinct static code failure family (RMCP-F-0046); no assertion of a live checkout provider defect. Preserve the running 0.1.38 last-self-update history and two Doctor FAIL results until a separate qualified active wheel/process generation and protected operator baseline exist. New exact-head GitHub Actions must be terminal green; currently hosted jobs have remained queued without runner allocation, cause unknown. No server or credential action.
+
+---
+
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
 2026-10-19 release-gate fix: PR #742 now carries unpublished source candidate 0.1.40 in pyproject/server/glama/__init__ (all four identities checked equal), plus CHANGELOG; prior shipping code on 0.1.39 would have failed scripts/check_release_version.py. The narrow RMCP-F-0045 revision-provider containment and negative regressions remain. Exact-head CI uses GitHub-hosted ubuntu-24.04; workflow jobs reported QUEUED with runner_id=null, not green or red. GitHub queue cause unverified; no proven October 19 global outage or quota fact. PR stays draft. First-party original client still serves 0.1.38 with historical checkout drift, unavailable active wheel/source revision, self_update_ready=false. Do not modify self-update history, activate or install any new source without qualified trusted correct-host provenance, operator approval, original-client ACK and Fabric A6/A7. 

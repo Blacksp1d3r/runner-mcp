@@ -1,3 +1,9 @@
+## 2026-10-19 — Second bounded source-hardening checkpoint
+
+Malformed source-baseline checkout evidence now returns `source_commit=None` and `source_baseline_aligned=False`; synthetic malformed and thrown-provider negative tests deny updater start even where a fake active identity matches history. RMCP-F-0046 recorded as source-only, NOT a confirmed live failure. Serving 0.1.38 remains separately unverified and `self_update_ready=false`; physical proof still requires trusted host operator and Fabric A6/A7. The 0.1.40 metadata bump is retained, but exact-head CI is still required before merging.
+
+---
+
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
 2026-10-19 gate adjustment: source-code fix from PR #742 requires a unique shipping version relative to main 0.1.39. Candidate 0.1.40 is now synchronized in pyproject.toml, server.json (top + packages), glama.json and src/runner_mcp/__init__.py; CHANGELOG updated. Static metadata cross-check PASS, exact-head full Actions pending. Earlier head 0864b6d and prior queued jobs cannot qualify the newer code. Host operator and independent loaded-generation witness remain unsatisfied. 

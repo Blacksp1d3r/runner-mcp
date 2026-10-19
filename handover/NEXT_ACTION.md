@@ -1,3 +1,9 @@
+## 2026-10-19 — PR #742 validation steps after RMCP-F-0046
+
+Current source-only version is 0.1.40, with both active-provider and checkout-baseline fail-closed regressions. Reconcile exact latest SHA before CI verification. Required jobs are Runner MCP validation (Ruff/pytest/artifact/demo), commit attribution and clean Ubuntu installer (triggered by pyproject bump). A queued job with runner_id=null is not a code failure. Merge only after actual terminal successes and rules; never substitute older green main. For actual live Doctor repairs, first qualify independently signed correct-host installed-wheel/RECORD and serving process generation, separate operator-owned manual baseline receipt (historical self-update records remain untouched), original-client ACK and Fabric A6/A7. Avoid generic shell/SSH and untrusted source on privileged runners.
+
+---
+
 ## 2026-10-19 — Release version guard corrected / exact-head CI pending
 
 2026-10-19 next: exact-head check PR #742 (source candidate 0.1.40) validation, commit attribution AND triggered clean Ubuntu installer proof. Every relevant job must reach terminal SUCCESS on the actual new branch commit, not older main. Jobs with runner_id=null are pending allocation; classify cause UNKNOWN until independently verified, do not blame source test or assume GitHub outage/quota. If CI fails, inspect the failing job and repair source. Only make PR ready/merge under enforced branch rules and technical/security checks. Serving Doctor FAILs cannot safely become green until correct-host independent signer/wheel/RECORD/imported-process evidence, signed operator-owned manual baseline (not rewriting historic self-update transaction), original-client ACK and separately accepted A6/A7 recovery. 

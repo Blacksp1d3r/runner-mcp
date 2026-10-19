@@ -3,6 +3,7 @@
 ## 0.1.40 (source candidate; not published)
 
 - Contain missing/invalid active-revision provider metadata errors as unknown rather than a runtime diagnostic tool error; preserve failed self-update activation and historical baseline guards (#669 / PR #742).
+- Fail closed on malformed/unclean source checkout baseline evidence instead of accepting a coercible pseudo-commit or leaking a provider error (RMCP-F-0046, #669).
 - Record explicit read-only, independently trusted serving-generation provenance acceptance design. This is not yet live wheel/host attestation or a manual-baseline reconciliation and grants no update/rollback authority.
 
 ## 0.1.39 (source candidate; not published)

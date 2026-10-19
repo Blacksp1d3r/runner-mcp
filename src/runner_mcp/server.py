@@ -2005,6 +2005,20 @@ def build_mcp(
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
         return result
 
+    def fabric_worker_process_inspect(worker: str) -> dict:
+        """Read one fixed worker's process facts through existing Fabric MCP."""
+        try:
+            result = _require_fabric_bridge().worker_process_inspect(worker)
+        except FabricBridgeError:
+            _audit_fabric("fabric_worker_process_inspect", "worker:fixed", "denied")
+            raise ValueError("worker process inspection unavailable") from None
+        _audit_fabric(
+            "fabric_worker_process_inspect",
+            "worker:fixed",
+            str(result.get("state", "wait")),
+        )
+        return result
+
     def fabric_external_target_preflight() -> dict:
         """Return bounded config-only readiness for the trusted external target."""
         try:
@@ -2445,6 +2459,7 @@ def build_mcp(
     if fabric_bridge is not None:
         mcp.tool()(fabric_bridge_preflight)
         mcp.tool()(fabric_host_inspect)
+        mcp.tool()(fabric_worker_process_inspect)
         mcp.tool()(fabric_external_target_preflight)
         mcp.tool()(fabric_external_target_inspect)
         mcp.tool()(fabric_ci_runner_guest_status)

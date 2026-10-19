@@ -13,6 +13,7 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
+from runner_mcp.build_identity import BuildIdentity, candidate_revision_with_wheel_identity
 from runner_mcp.offline_installed_record_preflight import offline_installed_record_preflight
 from runner_mcp.offline_receipt_writer import write_offline_receipt_candidate
 from runner_mcp.offline_signed_evidence import offline_signed_installed_record_preflight
@@ -229,3 +230,45 @@ def test_signed_record_chain_rejects_tampering(tmp_path: Path, broken: str):
     response = offline_signed_installed_record_preflight(*evidence)
     assert response["state"] == "unverified"
     assert response["active_build_provenance_verified"] is False
+
+
+
+@pytest.mark.parametrize(
+    ("component_id", "build_version", "source_revision", "artifact_digest", "expected"),
+    [
+        ("runner-mcp", "0.1.40", None, "b" * 64, None),
+        ("runner-mcp", "0.1.40", "a" * 40, None, None),
+        ("runner-mcp", "0.1.39", "a" * 40, "b" * 64, None),
+        ("runner-fabric", "0.1.40", "a" * 40, "b" * 64, None),
+        ("runner-mcp", "0.1.40", "a" * 40, "b" * 64, "a" * 40),
+    ],
+)
+def test_runtime_provider_revision_requires_paired_wheel_and_exact_loaded_version(
+    component_id: str,
+    build_version: str,
+    source_revision: str | None,
+    artifact_digest: str | None,
+    expected: str | None,
+) -> None:
+    """Structural gating never creates the independently trusted provider."""
+    identity = BuildIdentity(
+        component_id=component_id,
+        build_version=build_version,
+        source_revision=source_revision,
+        artifact_digest=artifact_digest,
+    )
+    assert candidate_revision_with_wheel_identity(
+        identity, loaded_version="0.1.40"
+    ) == expected
+
+
+def test_runtime_provider_rejects_offline_candidate_as_active_identity() -> None:
+    offline_candidate = {
+        "state": "offline_signed_installed_record_match",
+        "active_build_provenance_verified": False,
+        "source_revision": None,
+        "artifact_digest": None,
+    }
+    assert candidate_revision_with_wheel_identity(
+        offline_candidate, loaded_version="0.1.40"
+    ) is None

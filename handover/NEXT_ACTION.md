@@ -1,3 +1,12 @@
+## 2026-10-19 — First actionable source and physical gates for PR #742
+
+1. Check exact current head SHA of open draft PR #742; consult `actions/runs?head_sha=<exact>` plus job state, not older successful `main` runs. When queued, **do not** invent green or call it a test failure. Diagnose Actions capacity/account quota only with evidence. Correct actual failures if a job runs; merge only if required gates terminal green and branch rules satisfied.
+2. Treat RMCP-F-0045 provider metadata exception fix as a source-only contained bug, not a live Doctor resolution. Verify six synthetic negative cases and full Ruff/pytest/build/demo. Complete source PR/issue/handover only on verified evidence.
+3. Correct-host independent signer/manifest pin custody, wheel/RECORD/module and actual loaded serving-generation witness is required before a new owner-local protected manual-install baseline receipt is admitted. Never rewrite the historical last self-update commit. Then separately qualify original-client ACK and Fabric A6/A7. No source CI makes these physical gates green.
+4. Other independent small source tasks can continue while attestation/CI are blocked; reconcile their GitHub owners and current branches first, avoid duplicate PRs.
+
+---
+
 ## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
 
 Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.

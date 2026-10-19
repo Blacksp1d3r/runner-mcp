@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.40 (source candidate; not published)
+
+- Contain missing/invalid active-revision provider metadata errors as unknown rather than a runtime diagnostic tool error; preserve failed self-update activation and historical baseline guards (#669 / PR #742).
+- Fail closed on malformed/unclean source checkout baseline evidence instead of accepting a coercible pseudo-commit or leaking a provider error (RMCP-F-0046, #669).
+- Record explicit read-only, independently trusted serving-generation provenance acceptance design. This is not yet live wheel/host attestation or a manual-baseline reconciliation and grants no update/rollback authority.
+
 ## 0.1.39 (source candidate; not published)
 
 - Add an optional **already configured project ID** to existing known-project preflight/prepare so mixed staging roots can select a safe destination without exposing filesystem paths. Keep no-anchor refusal and refuse second exact clone on another parent (#740). This does not register/deploy EnerCue, start Claude/Qwen, or relax Agent Bus admission.

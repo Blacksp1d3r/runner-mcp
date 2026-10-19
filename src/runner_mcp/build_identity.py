@@ -135,6 +135,28 @@ def fail_closed_runtime_provenance(
     return result
 
 
+def candidate_revision_with_wheel_identity(
+    identity: object, *, loaded_version: str
+) -> str | None:
+    """Read revision from a qualified identity provider, never from history.
+
+    This is a structural gate, NOT a signature or serving-process verifier.
+    The caller must first qualify the provider against independent current
+    process, signer and wheel evidence. Mere offline RECORD matching is not
+    enough to supply such a provider.
+    """
+    if not isinstance(identity, BuildIdentity):
+        return None
+    if (
+        identity.component_id != "runner-mcp"
+        or identity.build_version != loaded_version
+        or identity.source_revision is None
+        or identity.artifact_digest is None
+    ):
+        return None
+    return identity.source_revision
+
+
 def runner_mcp_build_identity(
     build_version: str,
     *,

@@ -1,3 +1,15 @@
+## 2026-10-19 — Release version guard corrected / exact-head CI pending
+
+2026-10-19 #669/#341 update: PR #742 source candidate 0.1.40 corrects required release-version gate (all four shipping version fields synchronized, changelog), adds fail-closed missing revision-provider metadata containment and six synthetic negative tests. Exact-head automated GitHub-hosted CI pending; no physical server update or attested active source. First-party serving 0.1.38 remains two Doctor FAILs, self_update_ready=false; independent correct-host provenance/manual-baseline/ACK plus Fabric A6/A7 remain external admission blockers.
+
+---
+
+## 2026-10-19 — #669 runtime_doctor provenance child PR #742 IN PROGRESS
+
+First-party read-only MCP 0.1.38 returns `self_update_ready=false`, historical source checkout != historical installed self-update commit, unverified active source and artifact digest, two Doctor FAILs. This is a **correct refusal**. Source-only PR #742 has negative tests and a narrow provider-metadata exception containment fix (RMCP-F-0045, synthetic bug; no live incident claim). Independent trusted serving-generation/host witness and separately accepted manual-install baseline still unavailable. Detailed gate design: `docs/diagnostics/components/01-runtime-self-update/SERVING_GENERATION_ATTESTATION.md`; reuse existing #669 offline validators. Exact PR-head CI pending, no merge or deployment authority. Source merge is separate from physical #669/#341/#590, Fabric A6/A7 #942/#943 and original-client ACK.
+
+---
+
 ## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
 
 Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.

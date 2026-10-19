@@ -1,3 +1,9 @@
+## 2026-10-19 — Active generation and update history require separate trust
+
+Decision: treat `self-update-state.json` as historical transaction/recovery evidence, never as the current serving build. Preserve the current fail-closed Doctor failures until an independently trusted manifest/signer, installed wheel and imported-process generation are attested on the same authorized host and returned through the original-client channel. A future manually installed baseline must have its own protected, versioned receipt, without overwriting history or creating a second updater. Provider `KeyError`/`IndexError`/`AttributeError` is bounded as unknown rather than allowed to crash diagnostics (source-only PR #742, RMCP-F-0045; exact-head CI required). This decision grants no installation/rollback/update authority. See `docs/diagnostics/components/01-runtime-self-update/SERVING_GENERATION_ATTESTATION.md`.
+
+---
+
 ## 2026-10-17 — Local first-host staging does not bootstrap host authentication
 
 On new Black, a successful operator-attended immutable, non-serving stage does NOT create `~/.config/runner-mcp`, generate a bearer, select actual project checkout, enroll Agent Bus, start a listener, or prove original-client ACK. The independent physical receipt is stage-only; these steps demand explicitly selected real project/UID and owner-held private issuer authority. If uninitialized, read-only status may safely say NOT_INITIALIZED; malformed/partial/wrong-owner private config must still fail closed. Source issue #735; downstream Fabric #1563 owns target-bound ACK. Existing central 0.1.27 can never attest to Black by itself. No duplicate tunnel or generic shell.

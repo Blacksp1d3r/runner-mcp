@@ -1,3 +1,30 @@
+## 2026-10-19 — Complete exact-head source qualification before merge
+
+New 0.1.40 source comparator and version/digest structural gate have passed 3386 pytest and Ruff at an earlier exact head; correct five trailing-whitespace errors and then require all tests, demo, artifact, clean Ubuntu, attribution on the NEW HEAD. If all green, mark PR #742 ready and merge under enforced GitHub rules without waiting for optional human/AI review. Source merge never authorizes production install. Manual correct-host process evidence, independent builder custody and a separately approved baseline remain for full live Doctor green, while Fabric #942/#943 maintain A6/A7 final acceptance. No rerun of already-proven 2026-10-18 physical guarded cutovers.
+
+---
+
+## 2026-10-19 — PR #742 validation steps after RMCP-F-0046
+
+Current source-only version is 0.1.40, with both active-provider and checkout-baseline fail-closed regressions. Reconcile exact latest SHA before CI verification. Required jobs are Runner MCP validation (Ruff/pytest/artifact/demo), commit attribution and clean Ubuntu installer (triggered by pyproject bump). A queued job with runner_id=null is not a code failure. Merge only after actual terminal successes and rules; never substitute older green main. For actual live Doctor repairs, first qualify independently signed correct-host installed-wheel/RECORD and serving process generation, separate operator-owned manual baseline receipt (historical self-update records remain untouched), original-client ACK and Fabric A6/A7. Avoid generic shell/SSH and untrusted source on privileged runners.
+
+---
+
+## 2026-10-19 — Release version guard corrected / exact-head CI pending
+
+2026-10-19 next: exact-head check PR #742 (source candidate 0.1.40) validation, commit attribution AND triggered clean Ubuntu installer proof. Every relevant job must reach terminal SUCCESS on the actual new branch commit, not older main. Jobs with runner_id=null are pending allocation; classify cause UNKNOWN until independently verified, do not blame source test or assume GitHub outage/quota. If CI fails, inspect the failing job and repair source. Only make PR ready/merge under enforced branch rules and technical/security checks. Serving Doctor FAILs cannot safely become green until correct-host independent signer/wheel/RECORD/imported-process evidence, signed operator-owned manual baseline (not rewriting historic self-update transaction), original-client ACK and separately accepted A6/A7 recovery.
+
+---
+
+## 2026-10-19 — First actionable source and physical gates for PR #742
+
+1. Check exact current head SHA of open draft PR #742; consult `actions/runs?head_sha=<exact>` plus job state, not older successful `main` runs. When queued, **do not** invent green or call it a test failure. Diagnose Actions capacity/account quota only with evidence. Correct actual failures if a job runs; merge only if required gates terminal green and branch rules satisfied.
+2. Treat RMCP-F-0045 provider metadata exception fix as a source-only contained bug, not a live Doctor resolution. Verify six synthetic negative cases and full Ruff/pytest/build/demo. Complete source PR/issue/handover only on verified evidence.
+3. Correct-host independent signer/manifest pin custody, wheel/RECORD/module and actual loaded serving-generation witness is required before a new owner-local protected manual-install baseline receipt is admitted. Never rewrite the historical last self-update commit. Then separately qualify original-client ACK and Fabric A6/A7. No source CI makes these physical gates green.
+4. Other independent small source tasks can continue while attestation/CI are blocked; reconcile their GitHub owners and current branches first, avoid duplicate PRs.
+
+---
+
 ## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
 
 Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.

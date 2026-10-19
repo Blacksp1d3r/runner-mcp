@@ -1,3 +1,27 @@
+## 2026-10-19 — PR #742 current source reconciliation
+
+Added offline installed-wheel/RECORD comparison, composed the existing detached signature / offline evidence chain with it, tested tampering and no live-verification claims. Tightened `server.py` revision provider to require both source revision and artifact digest matching the loaded build version (still source-only, no trust issuance). Correct-host live witness/provider remains absent. CI exact prior head: version gate, 95 tools, Ruff, 3386 pytest, MCP metadata all PASS; whitespace failure at five documentation lines (this commit removes them). Rerun on current source head before merge. Fabric A6/A7 existing operator receipts are real partial acceptance, not to be repeated; their final remaining gaps are Fabric-owned. Keep historic self-update state intact, no tunnel/cron/install/deploy operation.
+
+---
+
+## 2026-10-19 — Complete source safety scope for PR #742, do not infer live reconciliation
+
+Source code changes include (1) defensive active revision metadata provider `LookupError`/`AttributeError` handling (RMCP-F-0045), and (2) exact `clean_head` shape/clean/40-character lowercase commit validation and bounded ValueError (RMCP-F-0046). Their tests reject self-update readiness/job queue on missing proof; no branch code claims a trusted serving generation. Source version now 0.1.40 aligned in four registries. GitHub Actions exact-head validation is not yet terminal; keep PR draft. Remaining correct-host independently protected signer/wheel/RECORD/imported-generation and original-client proof is operator-only; historical transaction untouched and A6/A7 external.
+
+---
+
+## 2026-10-19 — Release version guard corrected / exact-head CI pending
+
+2026-10-19 checkpoint: resumed PR #742 at existing branch; found independent deterministic source release-gate failure: changed src/runner_mcp/self_update.py while source candidate stayed 0.1.39. Bumped version to 0.1.40 across four metadata files and CHANGELOG (commit 4f40dd2115cd14c02ab42f08bdb58e09a8979ea2). Static parity checked in repo contents; exact-head automated CI pending, do not claim full validation or merge. GitHub-hosted jobs queued with no runner assigned, billable time zero at inspected run; outage/quota conclusion UNKNOWN. Self-update active process provenance remains unavailable from first-party version 0.1.38. Existing offline signed evidence and receipt primitives do not prove loaded serving process. Never rewrite old self-update state; do not add another updater or use shell/SSH. Source PR remains draft, separately blocked live admission #669/#341/#590 and Fabric A6/A7.
+
+---
+
+## 2026-10-19 — #669 PR #742 exact-head qualification and physical boundary
+
+Resumed existing PR rather than opening another. Read AGENTS, roadmap/dependencies, current handovers, diagnostics topology, #669/#341/#590, Fabric #924/#942/#943 and existing offline provenance code. Live read-only version 0.1.38; both Doctor FAILs are safety refusals; historical transaction stays untouched. Same branch now includes synthetic provider exception containment (RMCP-F-0045: `LookupError`/`AttributeError` fail to unknown), negative source tests, separated design for independently attested serving generation and reconciled diagnostic roadmap/decision/failure records. Do NOT assume CI green: runs on older exact head `068e96ac` queued; new exact-head required. No live install/restart/tunnel/credential/secret or new updater. Once CI green, inspect branch rules and real review requirements before ready/merge; if still queued keep draft and record CI as blocked, then resume another independent safe source issue. Actual Doctor green depends on a separately authorized correct-host serving-generation witness and separate manual-baseline receipt, plus original-client ACK and Fabric A6/A7.
+
+---
+
 ## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
 
 Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.

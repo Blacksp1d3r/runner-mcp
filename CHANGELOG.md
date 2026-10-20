@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.55 (source-only #669 current-MCP-process observation)
+
+- Add fixed zero-argument read-only `serving_process_observation_preflight` for the authenticated currently connected Runner-MCP process. Categorically observes three already-imported modules and any loaded-vs-installed distribution version mismatch, never reads a remote host, filesystem paths, system PIDs, tokens or private signers. Output never attests a wheel/source generation, recovery authority or the other five managed roles; source/digest remain null and update/dispatch false even for an observed local roster. Synthetic negative tests cover missing/forged modules, loaded-vs-disk mismatch and private-output denial. (#669)
+
+
 ## 0.1.53 (source-only standalone #669 receipt path canonicality)
 
 - Make the standalone `offline_artifact_receipt_preflight` refuse lexical parent traversal, relative input and linked ancestor paths for each of the receipt, wheel and installed-package inputs. Leaf-only `lstat()` previously allowed a linked grandparent before `resolve()`; this remains an offline byte-consistency check, NOT trust in the running process. Nine negative regressions prevent path aliasing and retain unverified active source and digest. No host/service mutation. (#669)

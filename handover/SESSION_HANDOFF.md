@@ -1,3 +1,9 @@
+## 2026-10-20 — #669 bounded current-process observation candidate (SOURCE ONLY)
+
+Source main v0.1.54 incorporates already merged Runner-MCP #770 fixed zero-input A6 Fabric bridge read-only preflight. To avoid duplicate Fabric work, the next separate source child v0.1.55 introduces a fixed no-input `serving_process_observation_preflight` for **only the original connected MCP process**: observes its three already-imported Runner-MCP module names and loaded-versus-current installed distribution version, reports categorical wait or observed_local_only with update/dispatch false. It NEVER claims a trusted wheel, physical host, six process generations, signer custody, preserved escrow, independent A6 journal or A7 rollback; no paths, PIDs, credentials, module bytes or connected peer topology are returned. Failure Museum RMCP-F-0058 with adversarial unit tests. Source-only until exact CI; main/source version is not what currently runs. Original central 0.1.38 remains protected and external Fab #1617/#942/#943 plus exact original-client ACK remain WAIT.
+
+---
+
 ## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT
 
 Runner-MCP [PR #769](https://github.com/Blacksp1d3r/runner-mcp/pull/769) SOURCE MERGED v0.1.52 squash `6a227aa3af380e99878d3083a1ae9eb1fe0bd76d`: manager-supplied stale `self_update_ready=true` can no longer survive fail-closed projection when loaded wheel/source remain unverified. Exact-head validation #39400157473, Ubuntu #39400157458, attribution #39400157524 ALL SUCCESS; RMCP-F-0056. Official pushed artifact #12254268229 rehashed OFF-HOST (wheel SHA256 `0873f5bee3d813fadcbe62259538c96cba98863f4ed684746f973e3568be6ec0`, sdist SHA256 `8eb20b97a00472df1525b1a3086a69fa69e1a71e8481c1d0bdcb237a6f5915a9`, 123/123 RECORD, 117/117 wheel/sdist Python modules). Does NOT attest a loaded process.

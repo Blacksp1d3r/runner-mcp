@@ -1,3 +1,9 @@
+## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)
+
+Following Runner-MCP [#760](https://github.com/Blacksp1d3r/runner-mcp/pull/760) SOURCE MERGED v0.1.47, an independent bounded test-only child now checks a deliberately SYNTHETIC six-role Ed25519 offline serving-statement comparator: all six consistent roles STILL return `active_build_provenance_verified=false` with source/wheel null, and eleven missing/foreign/stale/duplicated role, signer-host/nonce/expiry and expected-list mismatches refuse without promoting a live identity. No real host role names are asserted and no worker/service is contacted; this reuses existing pure comparator, makes NO executable release or version bump, and requires exact-head CI before merge. Correct-host actual loaded process, trusted issuer/revocation, original-client ACK, Fabric #1617/#942 A6 and #943 A7 remain WAIT. Existing connected central v0.1.38 is not changed by this test branch.
+
+---
+
 ## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47
 
 The connected central live v0.1.38 Doctor reports `pass/not_configured_0_of_11` for safely absent private A6 roots and fixed keys. This conflates safe absence with update-readiness in green-status aggregators; no evidence of a real unsafe update. Bounded SOURCE-ONLY candidate v0.1.47 changes this row to `warn/not_configured_0_of_11`, retains structurally `ready_11_of_11` private binding PASS (NOT off-target A6 qualification), and denies malformed/bool/unknown fields as `warn/unavailable`. Fixed private 11-key repair code, host services, credential custody, actual installed 0.1.38 and all six active roles remain UNCHANGED. Full exact-head CI and independent Fabric A6 #1617/#942, A7 #943, host source/wheel witness #669 and same-original-client ACK #609 are still required. Failure Museum RMCP-F-0048. This is not installation permission.

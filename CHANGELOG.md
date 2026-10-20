@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.56 (source-only #739 independent Q7 33-asset release roster)
+
+- Add in-memory `compare_exact_pinned_q7_roster` for exactly 33 Q7 metadata assets: exact source/tag/release ID, filenames, numeric asset IDs, byte sizes and SHA-256 comparison with independently held pins. Malformed/duplicate/bool/unsafe records fail closed, with synthetic tests. A match is not signer proof, download/custody, mutation, installation or original-client result ACK. Parent #739 and Fabric A6/A7 gates remain open. (#746)
+
 ## 0.1.55 (source-only #669 current-MCP-process observation)
 
 - Add fixed zero-argument read-only `serving_process_observation_preflight` for the authenticated currently connected Runner-MCP process. Categorically observes three already-imported modules and any loaded-vs-installed distribution version mismatch, never reads a remote host, filesystem paths, system PIDs, tokens or private signers. Output never attests a wheel/source generation, recovery authority or the other five managed roles; source/digest remain null and update/dispatch false even for an observed local roster. Synthetic negative tests cover missing/forged modules, loaded-vs-disk mismatch and private-output denial. (#669)

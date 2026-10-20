@@ -119,3 +119,68 @@ def test_group_writable_installed_package_directory_is_unverified(tmp_path: Path
         manifest, receipt, wheel, package, generation, pinned
     )
     assert result["state"] == "unverified"
+
+
+@pytest.mark.parametrize(
+    "aliased",
+    ["manifest", "receipt", "wheel", "installed_package", "generation"],
+)
+def test_offline_chain_rejects_symlinked_ancestor_of_any_evidence(
+    tmp_path: Path, aliased: str,
+) -> None:
+    manifest, receipt, wheel, package, generation, pinned = _fixture(tmp_path)
+    linked = tmp_path / "linked-parent"
+    linked.symlink_to(tmp_path, target_is_directory=True)
+    evidence = {
+        "manifest": manifest,
+        "receipt": receipt,
+        "wheel": wheel,
+        "installed_package": package,
+        "generation": generation,
+    }
+    evidence[aliased] = linked / evidence[aliased].relative_to(tmp_path)
+    candidate = offline_evidence_chain_preflight(
+        evidence["manifest"], evidence["receipt"], evidence["wheel"],
+        evidence["installed_package"], evidence["generation"], pinned,
+    )
+    assert candidate["state"] == "unverified"
+    assert candidate["active_build_provenance_verified"] is False
+    assert candidate["source_revision"] is None
+    assert candidate["artifact_digest"] is None
+
+
+def test_offline_chain_refuses_lexical_parent_traversal_inside_generation(
+    tmp_path: Path,
+) -> None:
+    manifest, receipt, wheel, package, generation, pinned = _fixture(tmp_path)
+    transit = generation / "transit"
+    transit.mkdir(mode=0o700)
+    alias = transit / ".." / package.name
+    assert alias.is_dir() and not alias.is_symlink()
+    result = offline_evidence_chain_preflight(
+        manifest, receipt, wheel, alias, generation, pinned,
+    )
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False
+
+
+@pytest.mark.parametrize("field", ["manifest", "receipt", "wheel", "installed_package", "generation"])
+def test_offline_chain_refuses_relative_evidence_inputs(
+    tmp_path: Path, field: str,
+) -> None:
+    manifest, receipt, wheel, package, generation, pinned = _fixture(tmp_path)
+    evidence = {
+        "manifest": manifest,
+        "receipt": receipt,
+        "wheel": wheel,
+        "installed_package": package,
+        "generation": generation,
+    }
+    evidence[field] = Path(evidence[field].name)
+    result = offline_evidence_chain_preflight(
+        evidence["manifest"], evidence["receipt"], evidence["wheel"],
+        evidence["installed_package"], evidence["generation"], pinned,
+    )
+    assert result["state"] == "unverified"
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None

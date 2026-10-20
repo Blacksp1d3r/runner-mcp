@@ -1,3 +1,48 @@
+## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases
+
+User-authorized single release sequence has merged pinned metadata PR #743 (0.1.42) and bounded release bytes PR #745 (0.1.43); draft PR #750 now reconciles this source with actual main as the next unique 0.1.44. Independently pinned offline Ed25519 signed statement comparator checks exact host, challenge, source, loaded version, wheel, generation and process role set, but returns current source/digest NULL and active_build_provenance_verified=false regardless of signed consistency. No trusted correct-host observer, nonce issuance, original requester ACK, host installation or Fabric A6/A7 recovery is gained from this source. Review exact new CI head before merge; keep historical self-update state and existing running central 0.1.38 unchanged.
+
+---
+
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
+
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
+
+---
+
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
+## 2026-10-19 — Complete exact-head source qualification before merge
+
+New 0.1.40 source comparator and version/digest structural gate have passed 3386 pytest and Ruff at an earlier exact head; correct five trailing-whitespace errors and then require all tests, demo, artifact, clean Ubuntu, attribution on the NEW HEAD. If all green, mark PR #742 ready and merge under enforced GitHub rules without waiting for optional human/AI review. Source merge never authorizes production install. Manual correct-host process evidence, independent builder custody and a separately approved baseline remain for full live Doctor green, while Fabric #942/#943 maintain A6/A7 final acceptance. No rerun of already-proven 2026-10-18 physical guarded cutovers.
+
+---
+
+## 2026-10-19 — PR #742 validation steps after RMCP-F-0046
+
+Current source-only version is 0.1.40, with both active-provider and checkout-baseline fail-closed regressions. Reconcile exact latest SHA before CI verification. Required jobs are Runner MCP validation (Ruff/pytest/artifact/demo), commit attribution and clean Ubuntu installer (triggered by pyproject bump). A queued job with runner_id=null is not a code failure. Merge only after actual terminal successes and rules; never substitute older green main. For actual live Doctor repairs, first qualify independently signed correct-host installed-wheel/RECORD and serving process generation, separate operator-owned manual baseline receipt (historical self-update records remain untouched), original-client ACK and Fabric A6/A7. Avoid generic shell/SSH and untrusted source on privileged runners.
+
+---
+
+## 2026-10-19 — Release version guard corrected / exact-head CI pending
+
+2026-10-19 next: exact-head check PR #742 (source candidate 0.1.40) validation, commit attribution AND triggered clean Ubuntu installer proof. Every relevant job must reach terminal SUCCESS on the actual new branch commit, not older main. Jobs with runner_id=null are pending allocation; classify cause UNKNOWN until independently verified, do not blame source test or assume GitHub outage/quota. If CI fails, inspect the failing job and repair source. Only make PR ready/merge under enforced branch rules and technical/security checks. Serving Doctor FAILs cannot safely become green until correct-host independent signer/wheel/RECORD/imported-process evidence, signed operator-owned manual baseline (not rewriting historic self-update transaction), original-client ACK and separately accepted A6/A7 recovery.
+
+---
+
+## 2026-10-19 — First actionable source and physical gates for PR #742
+
+1. Check exact current head SHA of open draft PR #742; consult `actions/runs?head_sha=<exact>` plus job state, not older successful `main` runs. When queued, **do not** invent green or call it a test failure. Diagnose Actions capacity/account quota only with evidence. Correct actual failures if a job runs; merge only if required gates terminal green and branch rules satisfied.
+2. Treat RMCP-F-0045 provider metadata exception fix as a source-only contained bug, not a live Doctor resolution. Verify six synthetic negative cases and full Ruff/pytest/build/demo. Complete source PR/issue/handover only on verified evidence.
+3. Correct-host independent signer/manifest pin custody, wheel/RECORD/module and actual loaded serving-generation witness is required before a new owner-local protected manual-install baseline receipt is admitted. Never rewrite the historical last self-update commit. Then separately qualify original-client ACK and Fabric A6/A7. No source CI makes these physical gates green.
+4. Other independent small source tasks can continue while attestation/CI are blocked; reconcile their GitHub owners and current branches first, avoid duplicate PRs.
+
+---
+
 ## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
 
 Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.

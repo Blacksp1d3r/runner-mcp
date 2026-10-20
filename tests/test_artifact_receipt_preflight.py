@@ -172,3 +172,54 @@ def test_group_writable_artifact_is_unverified(tmp_path: Path, target: str):
     result = offline_artifact_receipt_preflight(receipt, wheel, package)
     assert result["state"] == "unverified"
     assert result["active_build_provenance_verified"] is False
+
+
+@pytest.mark.parametrize("selected", ["receipt", "wheel", "package"])
+def test_standalone_receipt_refuses_symlinked_ancestor(
+    tmp_path: Path, selected: str,
+) -> None:
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    linked = tmp_path / "linked-parent"
+    linked.symlink_to(tmp_path, target_is_directory=True)
+    chosen = {"receipt": receipt, "wheel": wheel, "package": package}
+    chosen[selected] = linked / chosen[selected].relative_to(tmp_path)
+    assert not chosen[selected].is_symlink()
+    observed = offline_artifact_receipt_preflight(
+        chosen["receipt"], chosen["wheel"], chosen["package"]
+    )
+    assert observed["state"] == "unverified"
+    assert observed["active_build_provenance_verified"] is False
+    assert observed["source_revision"] is None
+    assert observed["artifact_digest"] is None
+
+
+@pytest.mark.parametrize("selected", ["receipt", "wheel", "package"])
+def test_standalone_receipt_refuses_relative_evidence(
+    tmp_path: Path, selected: str,
+) -> None:
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    chosen = {"receipt": receipt, "wheel": wheel, "package": package}
+    chosen[selected] = Path(chosen[selected].name)
+    result = offline_artifact_receipt_preflight(
+        chosen["receipt"], chosen["wheel"], chosen["package"]
+    )
+    assert result["state"] == "unverified"
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None
+
+
+@pytest.mark.parametrize("selected", ["receipt", "wheel", "package"])
+def test_standalone_receipt_refuses_lexical_parent_alias(
+    tmp_path: Path, selected: str,
+) -> None:
+    receipt, wheel, package, _ = _fixture(tmp_path)
+    transit = tmp_path / "transit"
+    transit.mkdir()
+    chosen = {"receipt": receipt, "wheel": wheel, "package": package}
+    chosen[selected] = transit / ".." / chosen[selected].name
+    assert chosen[selected].exists()
+    result = offline_artifact_receipt_preflight(
+        chosen["receipt"], chosen["wheel"], chosen["package"]
+    )
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False

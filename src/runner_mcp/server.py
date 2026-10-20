@@ -63,6 +63,7 @@ from .bewind_worker_qualification_policy import (
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
+    candidate_revision_with_wheel_identity,
     fail_closed_runtime_provenance,
     installed_source_revision,
     runner_mcp_build_identity,
@@ -87,6 +88,7 @@ from .ci_runner_lifecycle import (
     plan_ci_runner,
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
+from .coding_workspace import CodingWorkspaceProvisioner
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
@@ -94,6 +96,7 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
     a6_state_requested,
+    classify_a6_bindings_for_doctor,
     inspect_a6_binding_state,
     repair_a6_qualification_binding,
 )
@@ -179,6 +182,7 @@ from .operational_safety import (
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
+from .serving_process_readonly import observe_current_process_modules
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
 from .tunnel_readiness import (
@@ -493,6 +497,7 @@ def build_mcp(
         else None
     )
     private_values = secret_values or os.environ
+    coding_workspaces = CodingWorkspaceProvisioner(private_values)
     github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
     known_project_local_sources = private_values.get(
         "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON",
@@ -583,11 +588,15 @@ def build_mcp(
             return None
         try:
             identity = build_identity_provider()
-        except (RuntimeError, TypeError, ValueError):
+        except (OSError, RuntimeError, TypeError, ValueError, LookupError, AttributeError):
             return None
-        if not isinstance(identity, BuildIdentity):
-            return None
-        return identity.source_revision
+        # A source revision alone is not sufficient. A qualified provider must
+        # also furnish the matching loaded version and active wheel digest.
+        # The provider's independent process/signature authority is a separate
+        # host admission gate, never inferred from this structural check.
+        return candidate_revision_with_wheel_identity(
+            identity, loaded_version=_loaded_package_version
+        )
 
     self_update_manager = SelfUpdateManager(
         config_dir=settings.projects_config.parent,
@@ -849,6 +858,22 @@ def build_mcp(
         )
 
     @mcp.tool()
+    def serving_process_observation_preflight() -> dict[str, object]:
+        """Observe ONLY the current loaded MCP process; no live wheel attestation.
+
+        This cannot inspect other managed roles or independent storage, issue a
+        signer receipt, or grant self-update/dispatch/rollback authority.
+        """
+        try:
+            installed = version("aifordable-runner-mcp")
+        except PackageNotFoundError:
+            installed = "development"
+        return observe_current_process_modules(
+            imported_version=_loaded_package_version,
+            installed_distribution_version=installed,
+        )
+
+    @mcp.tool()
     def runtime_doctor() -> dict:
         """Return bounded safe runtime checks without paths, endpoints or secrets."""
         checks: list[dict[str, str]] = []
@@ -969,31 +994,7 @@ def build_mcp(
                 "unavailable",
             )
         else:
-            roots = str(a6_state.get("state_roots", "unknown"))
-            count = a6_state.get("binding_count")
-            total = a6_state.get("binding_total")
-            complete = a6_state.get("binding_complete") is True
-            if (
-                roots == "ready"
-                and complete
-                and isinstance(count, int)
-                and isinstance(total, int)
-            ):
-                detail = f"ready_{count}_of_{total}"
-                state = "pass"
-            elif (
-                roots == "absent"
-                and count == 0
-                and isinstance(total, int)
-            ):
-                detail = f"not_configured_0_of_{total}"
-                state = "pass"
-            elif isinstance(count, int) and isinstance(total, int):
-                detail = f"{roots}_{count}_of_{total}"
-                state = "warn"
-            else:
-                detail = "unavailable"
-                state = "warn"
+            state, detail = classify_a6_bindings_for_doctor(a6_state)
             add("fabric_a6_binding_state", state, detail)
 
         try:
@@ -1998,6 +1999,33 @@ def build_mcp(
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
         return result
 
+    def fabric_worker_process_inspect(worker: str) -> dict:
+        """Read one fixed worker's process facts through existing Fabric MCP."""
+        try:
+            result = _require_fabric_bridge().worker_process_inspect(worker)
+        except FabricBridgeError:
+            _audit_fabric("fabric_worker_process_inspect", "worker:fixed", "denied")
+            raise ValueError("worker process inspection unavailable") from None
+        _audit_fabric(
+            "fabric_worker_process_inspect",
+            "worker:fixed",
+            str(result.get("state", "wait")),
+        )
+        return result
+
+    def fabric_a6_storage_preflight() -> dict:
+        """Observe EXISTING Fabric A6 local hash chain; never authorize update."""
+        try:
+            result = _require_fabric_bridge().a6_storage_preflight()
+        except FabricBridgeError:
+            _audit_fabric("fabric_a6_storage_preflight", "a6:local", "denied")
+            raise ValueError("A6 read-only inspection unavailable") from None
+        _audit_fabric(
+            "fabric_a6_storage_preflight", "a6:local",
+            str(result.get("reasonCode", "fabric_read_unavailable")),
+        )
+        return result
+
     def fabric_external_target_preflight() -> dict:
         """Return bounded config-only readiness for the trusted external target."""
         try:
@@ -2438,6 +2466,8 @@ def build_mcp(
     if fabric_bridge is not None:
         mcp.tool()(fabric_bridge_preflight)
         mcp.tool()(fabric_host_inspect)
+        mcp.tool()(fabric_worker_process_inspect)
+        mcp.tool()(fabric_a6_storage_preflight)
         mcp.tool()(fabric_external_target_preflight)
         mcp.tool()(fabric_external_target_inspect)
         mcp.tool()(fabric_ci_runner_guest_status)
@@ -2638,6 +2668,37 @@ def build_mcp(
         audit.append(
             AuditEvent(request_id, "list_projects", None, "authenticated-client", "ok", utc_timestamp())
         )
+        return result
+
+    @mcp.tool()
+    def coding_workspace_preflight(worker_id: str) -> dict:
+        """Read-only readiness of the caller's fixed local owner-bound workspace."""
+        result = coding_workspaces.preflight(worker_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_preflight", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
+    def coding_workspace_prepare(worker_id: str, work_unit_id: str) -> dict:
+        """Create only fixed jobs/patches directories inside this worker's private root."""
+        if safety.status().stop_active:
+            result = {
+                "schema_version": "runner-mcp/coding-workspace/v1",
+                "state": "blocked",
+                "reason_code": "operator_stop_active",
+                "worker_id": None,
+                "work_unit_id": None,
+                "filesystem_path_exposed": False,
+                "cross_host_execution_authorized": False,
+            }
+        else:
+            result = coding_workspaces.prepare(worker_id, work_unit_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_prepare", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
         return result
 
     @mcp.tool()

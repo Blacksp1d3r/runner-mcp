@@ -8,8 +8,18 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from .a6_storage_readonly import (
+    A6StorageReadError,
+    a6_storage_wait,
+    validate_a6_storage_readonly,
+)
 from .bridge_mcp_executor import LocalMCPClient, LocalMCPConfig
 from .bridge_processor import BridgeExecutionAdapterError
+from .worker_process_readonly import (
+    WorkerProcessBridgeError,
+    bounded_worker_wait,
+    validate_worker_observation,
+)
 
 _FABRIC_A6_PREFLIGHT_TOOLS = frozenset(
     {
@@ -21,6 +31,8 @@ _FABRIC_A6_PREFLIGHT_TOOLS = frozenset(
 _FABRIC_TOOLS = frozenset(
     {
         "host_inspect",
+        "worker_process_inspect",
+        "a6_storage_preflight",
         "external_target_preflight",
         "external_target_inspect",
         "operational_snapshot",
@@ -260,6 +272,38 @@ class FabricBridgeClient:
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric host inspection failed") from exc
         return _validate_host_inspection(result)
+
+    def worker_process_inspect(self, worker: str) -> dict[str, object]:
+        """Ask only the fixed authenticated Fabric peer for process observation."""
+        try:
+            bounded_worker_wait(worker, "fabric_read_unavailable")
+        except WorkerProcessBridgeError as exc:
+            raise FabricBridgeError("worker identity is not allowlisted") from exc
+        try:
+            result = self._client()._call_tool(
+                "worker_process_inspect", {"worker": worker}
+            )
+        except BridgeExecutionAdapterError:
+            return bounded_worker_wait(worker, "fabric_read_unavailable")
+        try:
+            return validate_worker_observation(worker, result)
+        except WorkerProcessBridgeError:
+            return bounded_worker_wait(worker, "fabric_read_invalid")
+
+    def a6_storage_preflight(self) -> dict[str, object]:
+        """Read fixed local A6 journal from existing protected Fabric peer.
+
+        No new client, endpoint, caller path, mount, credential or host access.
+        An older Fabric peer yields safe WAIT, never automatic retry/update.
+        """
+        try:
+            raw = self._client()._call_tool("a6_storage_preflight", {})
+        except BridgeExecutionAdapterError:
+            return a6_storage_wait("fabric_read_unavailable")
+        try:
+            return validate_a6_storage_readonly(raw)
+        except A6StorageReadError:
+            return a6_storage_wait("fabric_read_invalid")
 
     def external_target_preflight(self) -> dict[str, Any]:
         """Return bounded config-only external-target preflight state."""

@@ -1,6 +1,6 @@
 # F30 first central node: non-mutating admission and A6/A7 evidence
 
-Status: **WAIT / NO UPDATE**. Merged source v0.1.49 (#763/#764) is NOT live on central 0.1.38. Local fixed A6 keys, unlinked paths, and safe directories do NOT establish physically independent off-target journal, A7 rollback, or original-client ACK. Reconciled 2026-10-20 against first-party connected Runner-MCP and GitHub main. This runbook is a public, host-path-free operator handoff; it is not authority to run a command or change a server.
+Status: **WAIT / NO UPDATE**. Runner-MCP source through 0.1.53 (#769/#771) merged and tested, Fabric source #1625–#1628 merged; physical off-target A6 and disconnected A7 rollback still unproven. Merged source v0.1.49 (#763/#764) is NOT live on central 0.1.38. Local fixed A6 keys, unlinked paths, and safe directories do NOT establish physically independent off-target journal, A7 rollback, or original-client ACK. Reconciled 2026-10-20 against first-party connected Runner-MCP and GitHub main. This runbook is a public, host-path-free operator handoff; it is not authority to run a command or change a server.
 
 ## Fixed observed facts and interpretation
 

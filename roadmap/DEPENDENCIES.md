@@ -1,3 +1,9 @@
+## 2026-10-20 — #725 test-only merge does not alter A6/A7 admission
+
+PR #744 merged `67ebbff96dd6708fff927663c01bf0563258550b` after exact-head validation/attribution success. No deployed generation or permission change. Live connected 0.1.38 still lacks verified serving source/wheel, A6 0/11, off-target recovery proof and durable original-client ACK. Dependency chain unchanged: Runner-MCP #669 and #509; Fabric #1617/#942 and #943; Fabric #924 one-target rollout; AIfordable #609 ACK. Agent Bus relay remains UNKNOWN/mutation disabled. For independent Q7 #739, reconcile existing PR #746 before stacked #748 rather than duplicating work, with fresh unique version reservations and all CI gates. No second updater, second relay or OIDC/MFA.
+
+---
+
 ## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT
 
 Runner-MCP [#770](https://github.com/Blacksp1d3r/runner-mcp/pull/770) SOURCE MERGED 0.1.54 (`247c3803ac8050c41c96eea93197fab0f3951129`): existing authenticated Fabric bridge fixed zero-input A6 local storage read. This only reads existing A6 journal and never proves physical independence or update authority.

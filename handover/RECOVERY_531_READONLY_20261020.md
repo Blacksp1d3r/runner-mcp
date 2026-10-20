@@ -1,0 +1,9 @@
+# #531 — safe noncreating quarantine inspection, 2026-10-20
+
+Runner-MCP source v0.1.61 PR #780 https://github.com/Blacksp1d3r/runner-mcp/pull/780 merged `07ff88dfa34586fbfcc515b666b5482e43594fb5`, source tested at `cbbbaf22424de6dfbc561667c310fd988b3594ba`. Exact-head validation #39470630553 (Ruff/pytest, release reservation, built wheel, demo), clean Ubuntu #39470630582 and attribution #39470630605 ALL SUCCESS.
+
+Original `RecoveryQuarantineLedger.inspect` called an open path with O_CREAT, so reading an absent owner-private quarantine ledger created a file. Source fix uses O_RDONLY + existing no-follow/private checks without O_CREAT; returns None for absent ledger, fail closed for unsafe private parent, and retains original writer behavior. Tests simulate repeated absent reads without created file, subsequent record creation, private readback, unsafe directory denial. Failure Museum RMCP-F-0063. No actual source in serving 0.1.38 was replaced.
+
+Do not confuse with #615 crash-atomic custody or #616 watcher cursor activation. Draft PR #618 remains OPEN/UNMERGED at a stale base and requires separate reconciliation of its unchanged ownership, fsynced atomic rename and stable lock inode before a qualified merge. Parent #531 and #615/#616/#617 remain OPEN; no watcher activation, arbitrary remote filesystem operations, operator rearm, or host rollout. Fabric #942/#943 independently qualified recovery and original-client result/ACK are required before any control-path production update.
+
+Source now 0.1.61, original first-party central remains 0.1.38 with unknown active source/digest, self_update_ready=false and A6 0/11. Preserve all six active roles, existing Agent Bus relay, tunnels, private storage and credentials. Next source work should avoid stale draft #618 collision; qualify its tests and exact current main integration rather than recreating a second quarantine ledger.

@@ -1,7 +1,5 @@
-# #739 — independent Q7 release roster comparison
+# #739 — independently held Q7 33-asset roster comparison
 
-Status: SOURCE_CANDIDATE / NEW EXACT_HEAD_CI_PENDING / NOT_DEPLOYED.
+Status: SOURCE_MERGED / LIVE_NOT_DEPLOYED.
 
-Existing PR #746 is reconciled with current `main` on its original branch, v0.1.56 candidate; 36 synthetic cases and one pure 33-asset roster comparer. It refuses malformed/duplicate IDs, names, sizes, hashes, source/tag and wheel metadata, with fixed fail-closed categories. Positive output is match_only; trusted signer, full byte import, private custody, install, mutation and durable original-client ACK remain false.
-
-Next: green exact-head CI, release reservation check, build/demo, attribution, clean Ubuntu if available; then source-only merge. PR #748 is stacked and must receive its own later version reservation after #746 merges. Parent #739 remains open for independently authenticated pins, 33 actual byte proofs and owner-controlled immutable correct-host custody, with independent Fabric A6/A7 and original-client ACK.
+Source PR #746 v0.1.56 merged `6cf550b4f1087a2996d8c810c375a8636412f4ec`; exact head `6e62f492dbb8429dfa3605f41d2e7408e5602cbc` passed validation #39457834031, clean Ubuntu #39457834015 and attribution #39457834003. Pure exactly 33 fixed asset IDs/names/bytes/SHA256 comparison against externally trusted independent pins, 36 synthetic cases, in-memory only. Result `match_only` does NOT verify a signer, current host, actual downloaded bytes, wheel METADATA, rootless immutable custody, install, rollback, mutation or original-client ACK. #748 v0.1.57 now merged as separate manifest child. Parent #739 REMAINS OPEN for genuine 33/33 importer and owner-private qualification. Central first-party runtime 0.1.38 has not been updated; A6/A7 and Agent Bus proof WAIT.

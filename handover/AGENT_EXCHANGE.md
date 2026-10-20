@@ -1,3 +1,9 @@
+## 2026-10-20 — #725 previously drafted regression PR #744 now MERGED
+
+No duplicate security branch: existing draft PR #744 was reconciled on current main and merged as `67ebbff96dd6708fff927663c01bf0563258550b` only after exact-head validation #39455822522 and attribution #39455821986 succeeded. 520+ synthetic stateless GitHub App-token redaction cases added without runtime/code version or real credentials. Original first-party central still 0.1.38, A6 0/11, active source/wheel unverified, Agent Bus relay UNKNOWN and dispatch OFF. #725 external consumer reviews can proceed independently; #669/Fabric A6-A7/original-client ACK still block live promotion.
+
+---
+
 ## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases
 
 User-authorized single release sequence has merged pinned metadata PR #743 (0.1.42) and bounded release bytes PR #745 (0.1.43); draft PR #750 now reconciles this source with actual main as the next unique 0.1.44. Independently pinned offline Ed25519 signed statement comparator checks exact host, challenge, source, loaded version, wheel, generation and process role set, but returns current source/digest NULL and active_build_provenance_verified=false regardless of signed consistency. No trusted correct-host observer, nonce issuance, original requester ACK, host installation or Fabric A6/A7 recovery is gained from this source. Review exact new CI head before merge; keep historical self-update state and existing running central 0.1.38 unchanged.

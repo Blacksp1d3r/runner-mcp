@@ -1,3 +1,10 @@
+## 2026-10-20 — source v0.1.63 #669 six-role process pins accepted, operational #509 still 0/11
+
+Source [PR #781](https://github.com/Blacksp1d3r/runner-mcp/pull/781) is MERGED `8d0405490c73bc324a522e66e5e596649d169371`, full exact-head CI validation #39479195410, clean Ubuntu #39479195458 and attribution #39479195285 SUCCESS. New source-only `signed_six_role_process_pin_preflight` reuses original Ed25519 signed statement and requires exactly SIX owner-independently expected roles with distinct owner-independently expected process-instance SHA-256 pins. Missing, swapped, extra, malformed process roles, substituted source/wheel/version/generation/host/nonce and expiration deny. Source result is **`six_role_process_pins_consistent_offline` only**, with **live identity false/null**. No new MCP tool, bridge, agent, signer or service was installed.
+
+**This source change cannot prove the current six serving process instances.** The original client still observes only installed+loaded `0.1.38` with active wheel SHA/revision NULL, A6 0/11 and update not ready. The six listed projects are not the independently pinned actual six process roles. The owner/Fabric correct-host witness must supply trusted *actual* six-process source and instance expectations, the old wheel bytes/RECORD and signature plus protected prior generation **before** any live software upgrade. No A6 private binding change or `fabric_agent_restart` is allowed while Fabric #1617/#942 off-target root/media has not independently qualified. Closed GitHub #509 is source completion only.
+
+---
 ## 2026-10-20 20:30 Europe/Brussels — original-client check: #509 closed IN SOURCE; A6 operational WAIT
 
 Fresh read-only first-party commands: `runtime_status`, `build_identity`, `runtime_doctor`, `fabric_bridge_preflight`, `fabric_host_inspect`, `fabric_release_archive_mirror_readiness`, `fabric_operational_snapshot`. GitHub #509 is **CLOSED 2026-10-20 17:20:58 UTC** (source acceptance); #669 remains **OPEN**. No call to `fabric_agent_restart`, self-update, installer, shell, create/mount, or private state mutation.
@@ -23,7 +30,7 @@ Status: 2026-10-20 — SOURCE READY IN PART, PHYSICAL LIVE GATES WAIT. This docu
 
 - Server: loaded `0.1.38`; installed distribution `0.1.38`; build revision/digest NULL; active_build_provenance_verified=false, self_update_ready=false, current Doctor provenance two FAIL.
 - A6: local fixed keys 0/11; no qualified pair of owner-private off-target journal/evidence roots; peer source `51c37f1eac65951e15a5122b89f368aa6e18c1f5`, bridge handshake read-only; prepare/probe unavailable.
-- GitHub source: Runner-MCP `0.1.62` on main, including #509 PR #776 from v0.1.58, but NOT installed. #669 offline receipt/RECORD/signature/three-module checks and #739 33/33 manifest remain candidate consistency only.
+- GitHub source: Runner-MCP `0.1.63` on main, including #509 PR #776 from v0.1.58, but NOT installed. #669 offline receipt/RECORD/signature/three-module checks and #739 33/33 manifest remain candidate consistency only.
 - Unconfigured archive mirror is separate from off-target A6; neither local host snapshot nor HTTP health is correct-host six-role/process proof.
 
 ## Required independent receipts — keep identities and secrets private

@@ -1,3 +1,9 @@
+## 2026-10-20 — first-node blocking gate reconciled, no service mutation
+
+GitHub `main` source v0.1.46 (PR #756 merged; docs PR #758 merged); original connected central runtime v0.1.38, loaded source/wheel NULL and `self_update_ready=false`. Doctor 2 FAIL, A6 `pass/not_configured_0_of_11`: PASS means deliberately absent private state/config, NOT A6 readiness. Fabric bridge READY read-only but A6 prepare/probe false, relay layer UNKNOWN and execution/mutation disabled. Existing immutable baseline and independent A6/A7 recovery/original-requester ACK still unqualified. New [F30 first-node evidence gates](../docs/operations/F30_FIRST_NODE_ADMISSION_GATES.md) (linked from repository root) states the non-mutating prerequisites and narrow ownership. No host/relay/service/credential/disk/worker modification. #509 / #669 / Fabric #924/#942/#943 / AIfordable #609 remain the real operational owners. Subsequent source development may continue without pretending a source merge is installed or current host identity is attested.
+
+---
+
 ## 2026-10-19 — F30 fixed Claude/Qwen worker process source read route merged / live WAIT
 
 Runner-MCP [#756](https://github.com/Blacksp1d3r/runner-mcp/pull/756) source **v0.1.46 MERGED** `d15d5007a5e880fd4ad55f46cd0a0f1913479792` (from exact tested head `d4b31adfd991bec47ee6552f21909066931a730e`). Checks: Runner MCP validation #39319130336 SUCCESS (98 tool-name canonical baseline, unique next-release reservation, Ruff/pytest, built exact wheel, full clean demo), Clean Ubuntu #39319130367 SUCCESS, attribution #39319130494 SUCCESS. Fabric existing loopback agent [#1614](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1614) earlier source merged `20c8cc44cda8a1bfe7916b85a0dde65201606e4e` with Foundation #39317011482 + attribution #39317011467 SUCCESS. These source merges must NEVER be read as current worker process or authenticated client result ACK.

@@ -96,8 +96,8 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
     a6_state_requested,
-    inspect_a6_binding_state,
     classify_a6_bindings_for_doctor,
+    inspect_a6_binding_state,
     repair_a6_qualification_binding,
 )
 from .fabric_agent_runtime import (

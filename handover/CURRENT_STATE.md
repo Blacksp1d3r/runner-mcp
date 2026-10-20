@@ -1,3 +1,13 @@
+## 2026-10-20 20:30 Europe/Brussels — #669 live identity WAIT / #509 CLOSED source but live A6 0/11
+
+- Original authenticated serving Runner-MCP `0.1.38` and installed dist `0.1.38`, source revision NULL, **wheel SHA NULL**, independently verified provenance FALSE, self_update_ready FALSE, Doctor source_baseline_drift + active_revision_unavailable FAIL. Historical 2026-10-07 self-update commit != loaded wheel; `projects=6` is NOT six serving roles.
+- #509 issue CLOSED for source 2026-10-20 17:20:58Z, existing fixed 11-key conditional repair remains in GitHub main `0.1.62` (not currently installed or proven loaded). Original client's A6 `pass/not_configured_0_of_11` = safe absence, NOT A6 qualification; bridge read-only READY, prepare/probe FALSE, mutation FALSE, Agent Bus UNKNOWN and archive mirror unconfigured. Do not restart agent on the strength of closed issue.
+- #669 remains OPEN: independent owner-controlled correct-host current old wheel bytes+trusted SHA/RECORD, exact six-role loaded process/launcher map, fresh signed nonce and protected prior-gen escrow are missing; current old v0.1.38 MCP tools cannot attest them. GitHub wheel SHA or `importlib.metadata` alone does not establish active digest.
+- Physical off-target A6 Fabric #1617/#942, #943 real disconnected six-role A7, Fabric #1556/#1563 original result/durable ACK and #924 one-target promotion still WAIT. No service/host/storage/credential/tunnel/relay mutation in this check.
+- **Canonical original-client evidence**: [#669/#509 independent correct-host gates](https://github.com/Blacksp1d3r/runner-mcp/blob/main/handover/ISSUES_669_509_OPERATOR_GATES_20261020.md); issue #669 and closed #509 updated; Fabric #1617 notified.
+
+---
+
 ## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT
 
 - Original draft [PR #618](https://github.com/Blacksp1d3r/runner-mcp/pull/618) was preserved and reconciled with main #531 safe noncreating inspection using a lease-guarded two-parent integration; exact tested head `bcf57059aa7a345f4966f043ff7a5f4c607071e6` merged squash `6cbd6880aaacef020747c5350fcb885d1047c67b`, source version **0.1.62**.

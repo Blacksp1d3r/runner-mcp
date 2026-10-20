@@ -335,3 +335,78 @@ def test_doctor_reports_safe_absent_a6_but_no_false_green(tmp_path: Path) -> Non
         "warn", "not_configured_0_of_11",
     )
     assert load_env_file(env) == {"UNRELATED_VALUE": "keep"}
+
+@pytest.mark.parametrize("operation", ["requested", "inspect", "repair"])
+def test_a6_state_parent_symlink_redirect_fails_without_private_writes(
+    tmp_path: Path, operation: str,
+) -> None:
+    # The *leaf* is not a link: an earlier leaf-only test missed the redirect.
+    from runner_mcp.fabric_a6_binding_repair import a6_state_requested
+
+    config, genuine_state, environment = _private_runtime(tmp_path)
+    linked_parent = tmp_path / "linked-parent"
+    linked_parent.symlink_to(tmp_path, target_is_directory=True)
+    redirected = linked_parent / genuine_state.name
+    assert redirected.is_dir() and not redirected.is_symlink()
+    if operation == "requested":
+        with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+            a6_state_requested(redirected)
+    elif operation == "inspect":
+        with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+            inspect_a6_binding_state(config_dir=config, state_root=redirected)
+    else:
+        with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+            repair_a6_qualification_binding(
+                environment=environment,
+                config_dir=config,
+                state_root=redirected,
+                fabric_revision="f" * 40,
+            )
+    assert load_env_file(config / "runner-mcp.env") == {"UNRELATED_VALUE": "keep"}
+    assert environment == {"RUNNER_MCP_BEARER_TOKEN": "r" * 48}
+
+
+@pytest.mark.parametrize("operation", ["inspect", "repair"])
+def test_a6_config_parent_symlink_redirect_fails_without_private_writes(
+    tmp_path: Path, operation: str,
+) -> None:
+    config, state, environment = _private_runtime(tmp_path)
+    linked_parent = tmp_path / "linked-config-parent"
+    linked_parent.symlink_to(tmp_path, target_is_directory=True)
+    redirected = linked_parent / config.name
+    assert redirected.is_dir() and not redirected.is_symlink()
+    if operation == "inspect":
+        with pytest.raises(
+            FabricA6BindingRepairError, match="fabric_a6_runtime_config_unavailable"
+        ):
+            inspect_a6_binding_state(config_dir=redirected, state_root=state)
+    else:
+        with pytest.raises(
+            FabricA6BindingRepairError, match="fabric_a6_runtime_config_unavailable"
+        ):
+            repair_a6_qualification_binding(
+                environment=environment,
+                config_dir=redirected,
+                state_root=state,
+                fabric_revision="f" * 40,
+            )
+    assert load_env_file(config / "runner-mcp.env") == {"UNRELATED_VALUE": "keep"}
+    assert environment == {"RUNNER_MCP_BEARER_TOKEN": "r" * 48}
+
+
+def test_a6_lexical_parent_traversal_is_not_canonical_private_root(
+    tmp_path: Path,
+) -> None:
+    from runner_mcp.fabric_a6_binding_repair import a6_state_requested
+
+    config, state, environment = _private_runtime(tmp_path)
+    noncanonical = state / ".." / state.name
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+        a6_state_requested(noncanonical)
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_state_unsafe"):
+        repair_a6_qualification_binding(
+            environment=environment, config_dir=config, state_root=noncanonical,
+            fabric_revision="f" * 40,
+        )
+    assert load_env_file(config / "runner-mcp.env") == {"UNRELATED_VALUE": "keep"}
+    assert environment == {"RUNNER_MCP_BEARER_TOKEN": "r" * 48}

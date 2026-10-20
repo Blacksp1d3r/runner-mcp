@@ -1,3 +1,11 @@
+## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)
+
+Source review found a previously uncovered synthetic redirection case: the fixed A6 state root and fixed private config directory were each resolved after verifying only their final lexical path was not a symlink. A symlink in a *parent* could still redirect private reads/updates to another tree. This is a SOURCE-OBSERVED security boundary, not evidence of a live exploit. Candidate source v0.1.48 rejects linked ancestors, relative paths and lexical ".." before resolving both paths and exercising existing fixed A6 key repair; tests verify no private config or environment writes under redirects. Failure Museum RMCP-F-0052, with distinct issue owner #509 and serving-trust dependency #669.
+
+Physical acceptance remains unchanged: original central runtime v0.1.38, wheel/process current trust unverified, A6 0/11, self_update_ready=false, Fabric independent journal (#1617/#942), A7 offline rollback (#943) and exact original-client ACK (#609) are still WAIT. This code must pass exact-head CI and is NOT installed on the central host. No OIDC/MFA, second relay/update system, arbitrary filesystem tool or host action.
+
+---
+
 ## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT
 
 Runner-MCP PR [#760](https://github.com/Blacksp1d3r/runner-mcp/pull/760) SOURCE MERGED squash `0f3fa078e97458c8ae3982ec71251422b2e10151`, v0.1.47, exact tested head `11cf153ad19325113c947e0b3115fa2920172556`; validation #39371276604, clean Ubuntu #39371276607 and attribution #39371276627 ALL SUCCESS. `runtime_doctor.fabric_a6_binding_state` now reports `warn/not_configured_0_of_11` for both private roots and all keys intentionally absent, instead of prior misleading PASS. Structural binding READY is NOT off-target A6 journal readiness. No live install, restart, folder or token mutation.

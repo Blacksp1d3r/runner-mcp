@@ -84,9 +84,11 @@ class RecoveryQuarantineLedger:
 
     def inspect(self, request_id: str) -> RecoveryQuarantineRecord | None:
         self._check_request_id(request_id)
-        fd = self._open()
+        fd = self._open(create=False)
+        if fd is None:
+            return None
         try:
-            with os.fdopen(fd, "r+", encoding="utf-8", closefd=True) as handle:
+            with os.fdopen(fd, "r", encoding="utf-8", closefd=True) as handle:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
                 return self._read(handle).get(request_id)
         except OSError as exc:
@@ -162,7 +164,14 @@ class RecoveryQuarantineLedger:
         except OSError as exc:
             raise RecoveryQuarantineError("quarantine rearm unavailable") from exc
 
-    def _open(self) -> int:
+    def _open(self, *, create: bool = True) -> int | None:
+        """Read-only inspection never creates the private authoritative ledger.
+
+        Writers keep the existing bounded O_CREAT semantics until #615
+        independently qualifies the crash-atomic lock/replace protocol.
+        """
+        if type(create) is not bool:
+            raise RecoveryQuarantineError("quarantine storage operation is invalid")
         parent = self._path.parent
         try:
             info = parent.lstat()
@@ -177,11 +186,18 @@ class RecoveryQuarantineLedger:
                 raise RecoveryQuarantineError("quarantine directory is unsafe")
             if self._path.is_symlink():
                 raise RecoveryQuarantineError("quarantine file is unsafe")
-            flags = os.O_RDWR | os.O_CREAT | getattr(os, "O_CLOEXEC", 0)
+            flags = (
+                (os.O_RDWR | os.O_CREAT) if create else os.O_RDONLY
+            ) | getattr(os, "O_CLOEXEC", 0)
             nofollow = getattr(os, "O_NOFOLLOW", 0)
             if nofollow == 0:
                 raise RecoveryQuarantineError("quarantine symlink protection unavailable")
-            fd = os.open(self._path, flags | nofollow, 0o600)
+            try:
+                fd = os.open(self._path, flags | nofollow, 0o600)
+            except FileNotFoundError:
+                if not create:
+                    return None
+                raise
             opened = os.fstat(fd)
             if (
                 not stat.S_ISREG(opened.st_mode)

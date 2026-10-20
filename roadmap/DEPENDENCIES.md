@@ -1,3 +1,11 @@
+## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT
+
+- [PR #780](https://github.com/Blacksp1d3r/runner-mcp/pull/780) v0.1.61 SOURCE MERGED `07ff88dfa34586fbfcc515b666b5482e43594fb5`; exact-head validation #39470630553, clean Ubuntu #39470630582 and attribution #39470630605 ALL SUCCESS. Missing quarantine inspection now reads noncreating (O_RDONLY, private path checks); writer/actual watcher unchanged, Failure Museum RMCP-F-0063.
+- Parent #531 OPEN: draft crash-atomic #615 / PR #618 exists but remains unmerged/stale and must be reconciled, followed by #616 safe cursor and #617 authorized replay. Source main 0.1.61 != original serving 0.1.38; six roles/A6/A7 and original-client ACK gates unchanged.
+- [Canonical #531 handover](https://github.com/Blacksp1d3r/runner-mcp/blob/main/handover/RECOVERY_531_READONLY_20261020.md).
+
+---
+
 ## 2026-10-20 — #664/#665 autonomous source v0.1.60 MERGED; connected 0.1.38 still WAIT
 
 - #664 PR #778 merged `55c26eaef2d7f08a1f84c1c79df03898fd413842` v0.1.59 (pure legacy tools/list input/output schema compatibility check, failure RMCP-F-0061 fixed, exact-head CI all green).

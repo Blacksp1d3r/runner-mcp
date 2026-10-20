@@ -1,3 +1,12 @@
+## 2026-10-20 — #664/#665 SOURCE MERGED 0.1.60, original central 0.1.38 unchanged
+
+- #664 PR #778 v0.1.59 merged `55c26eaef2d7f08a1f84c1c79df03898fd413842`, strict read-only metadata old tools/list schema check; validation #39468368681, Ubuntu #39468368736, attribution #39468368707 SUCCESS; RMCP-F-0061.
+- #665 PR #779 v0.1.60 merged `2188fd3f89d05ae6c50d0fbe5a3216de0dc5a740`, recovery-aware mismatch alert dedupe; validation #39469163886, Ubuntu #39469163938, attribution #39469163766 SUCCESS; RMCP-F-0062.
+- Parents #664/#665 remain OPEN for historical wheel compatibility and independent authenticated live notifications/dispatch; original Runner-MCP v0.1.38 six serving roles, A6 0/11, #669/#509 and Fabric #1617/#942/#943/#924 physical gates unchanged. No host/relay/credential/worker/storage mutation.
+- Detail: [canonical #664/#665 handover](https://github.com/Blacksp1d3r/runner-mcp/blob/main/handover/COMPATIBILITY_664_665_20261020.md).
+
+---
+
 ## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT
 
 - Runner-MCP [PR #776](https://github.com/Blacksp1d3r/runner-mcp/pull/776) source MERGED as `22b3efc6a35375c9033f5aa71a8f9930fcf64843`, version **0.1.58**. Existing fixed 11-key A6 private repair and diagnostic now reject multiply linked private `runner-mcp.env`; two synthetic no-write hardlink negative cases. Exact PR head `efaa513dc7424eaff74f851ec3be22e6326c3a19`: release reservation, Ruff/pytest, full validation + demo + built artifact [39464803945](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39464803945), clean Ubuntu [39464803996](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39464803996), attribution [39464804237](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39464804237) ALL SUCCESS. Failure Museum RMCP-F-0060 source mitigated; NOT a live rollout.

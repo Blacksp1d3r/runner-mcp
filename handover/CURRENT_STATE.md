@@ -1,3 +1,11 @@
+## 2026-10-20 — #725 520+ stateless-token regressions SOURCE MERGED; live remains WAIT
+
+Runner-MCP PR [#744](https://github.com/Blacksp1d3r/runner-mcp/pull/744) merged as `67ebbff96dd6708fff927663c01bf0563258550b` after exact-head validation #39455822522 (Ruff/pytest, built artifact and clean demo SUCCESS) and attribution #39455821986 SUCCESS. The previous draft was reconciled without force-push against v0.1.55 `main`; this tests-only change includes synthetic 520+ character JWT-shaped GitHub App token wrappers, truncation and benign-text cases, with NO actual tokens, product interface change, source version bump or host operation. #725 remains available for external-consumer coordination.
+
+Independent original-client READ-ONLY recheck: central active 0.1.38, current source/wheel NULL, update readiness false, Doctor two FAIL (`source_baseline_drift`, `active_revision_unavailable`); A6 remains unconfigured 0/11; Fabric bridge read-only, Agent Bus relay UNKNOWN/evidence-unavailable, dispatch disabled, Q7 private preflight WAIT. Mirror readiness: `storage-bindings-unconfigured`. No source merge is installation authorization. Fabric #1617/#942/#943/#924 and original-client ACK #609 still gate correct-host update; #669 needs independently witnessed serving generation and previous-release escrow. Do NOT create another updater/relay or resume deferred OIDC/MFA.
+
+---
+
 ## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT
 
 Runner-MCP [#770](https://github.com/Blacksp1d3r/runner-mcp/pull/770) SOURCE MERGED 0.1.54 (`247c3803ac8050c41c96eea93197fab0f3951129`): existing authenticated Fabric bridge fixed zero-input A6 local storage read. This only reads existing A6 journal and never proves physical independence or update authority.

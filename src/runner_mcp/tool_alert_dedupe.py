@@ -64,6 +64,14 @@ def summarize_tool_mismatch_alerts(
             raise ValueError("invalid tool alert observation")
         last_timestamp = event.observed_at_second
         if event.reason is ToolIdentityReason.READY:
+            # One source-observed recovery transition ends the previous
+            # cooldown episode for exactly this scope and tool. Otherwise
+            # a newly recurring fault immediately after recovery is silently
+            # suppressed as if it never recovered. This is only a pure
+            # summary rule; it does not authenticate any READY observation.
+            for active_key in tuple(recent):
+                if active_key[:2] == (event.scope_digest, event.stable_tool_id):
+                    del recent[active_key]
             continue
         key = (event.scope_digest, event.stable_tool_id, event.reason)
         previous = recent.get(key)

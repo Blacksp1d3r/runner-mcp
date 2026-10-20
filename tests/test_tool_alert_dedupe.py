@@ -27,6 +27,41 @@ def test_repeated_events_within_window_are_suppressed_and_counted():
     assert result[1]["first_seen_second"] == 160
 
 
+def test_fresh_fault_after_recovery_is_not_silenced_by_prior_cooldown():
+    results = summarize_tool_mismatch_alerts([
+        _event(100), _event(110, reason=R.READY), _event(111),
+    ])
+    assert [row["first_seen_second"] for row in results] == [100, 111]
+    assert [row["suppressed_count"] for row in results] == [0, 0]
+
+
+def test_recovery_resets_all_reasons_only_for_that_scope_and_tool():
+    results = summarize_tool_mismatch_alerts([
+        _event(100, reason=R.SCHEMA_MISMATCH),
+        _event(101, reason=R.VERSION_MISMATCH),
+        _event(102, scope=SCOPE_B),
+        _event(103, tool="runtime-doctor"),
+        _event(104, reason=R.READY),
+        _event(105, reason=R.VERSION_MISMATCH),
+        _event(106, reason=R.SCHEMA_MISMATCH),
+        _event(107, scope=SCOPE_B),
+        _event(108, tool="runtime-doctor"),
+    ])
+    assert len(results) == 6
+    assert [row["first_seen_second"] for row in results] == [
+        100, 101, 102, 103, 105, 106,
+    ]
+    # The unrelated scope and tool remain suppressed within their windows.
+    assert results[2]["suppressed_count"] == 1
+    assert results[3]["suppressed_count"] == 1
+
+
+def test_ready_only_episode_does_not_emit_new_alert():
+    assert summarize_tool_mismatch_alerts([
+        _event(100, reason=R.READY), _event(101, reason=R.READY),
+    ]) == []
+
+
 def test_different_host_scope_id_and_reason_cannot_collide():
     events = [
         _event(1, scope=SCOPE_A),

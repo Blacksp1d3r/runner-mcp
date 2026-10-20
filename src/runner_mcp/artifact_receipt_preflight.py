@@ -27,6 +27,20 @@ def _sha256(path: Path) -> str:
     return digest.hexdigest()
 
 
+def _canonical_offline_input(path: Path) -> bool:
+    """Reject redirecting evidence paths before reading a private receipt.
+
+    A leaf-only lstat() does not detect a symlinked grandparent. This
+    bounded offline comparator never creates directories or scans a host.
+    """
+    if not path.is_absolute() or ".." in path.parts:
+        return False
+    try:
+        return not any(ancestor.is_symlink() for ancestor in (path, *path.parents))
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
 def _safe_regular(path: Path) -> bool:
     try:
         info = path.lstat()
@@ -58,6 +72,11 @@ def offline_artifact_receipt_preflight(
         "artifact_digest": None,
     }
     if not all(isinstance(p, Path) for p in (receipt, wheel, installed_package)):
+        return unavailable
+    if not all(
+        _canonical_offline_input(path)
+        for path in (receipt, wheel, installed_package)
+    ):
         return unavailable
     if not _safe_regular(receipt) or not _safe_regular(wheel):
         return unavailable

@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.53 (source-only standalone #669 receipt path canonicality)
+
+- Make the standalone `offline_artifact_receipt_preflight` refuse lexical parent traversal, relative input and linked ancestor paths for each of the receipt, wheel and installed-package inputs. Leaf-only `lstat()` previously allowed a linked grandparent before `resolve()`; this remains an offline byte-consistency check, NOT trust in the running process. Nine negative regressions prevent path aliasing and retain unverified active source and digest. No host/service mutation. (#669)
+
+
 ## 0.1.52 (source-only #669 active-generation update readiness fails closed)
 
 - Prevent `runtime_status` from inheriting `self_update_ready=true` from a self-update transaction manager when the current loaded wheel/source and serving process remain unverified. Historical commit, git checkout, installed package version and manager readiness are not current-generation authority. Explicitly set update readiness to false alongside null active provenance; tests cover stale true/false/malformed manager data and hot-installed dist-info without process restart. Source only: this does not create any updater, trusted signer, A6/A7 journal or operational installation. (#669)

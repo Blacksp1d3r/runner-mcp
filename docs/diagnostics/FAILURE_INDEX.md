@@ -73,3 +73,5 @@ Closed/known failures remain here after fixes. Do not include private host/path/
 | RMCP-F-0055 | offline evidence chain path canonicality | SOURCE_MERGED_LIVE_UNVERIFIED | lexical parent traversal or linked grandparent can masquerade as generation-local path across independent offline subchecks | refuse nonabsolute/`..`/symlink-ancestor evidence paths on all five input roles, fail closed; no live attestation | #669 |
 
 | RMCP-F-0056 | runtime_status build provenance / self-update gate | SOURCE_FIX_CANDIDATE / LIVE_NOT_OBSERVED | historical updater readiness could coexist with unverified active wheel/source (false-green self_update_ready) | mask readiness to false until separately qualified correct-host active generation and recovery/ACK; negative tests | #669 |
+
+| RMCP-F-0057 | standalone offline receipt path validation | SOURCE_FIX_CANDIDATE / LIVE_NOT_OBSERVED | symlinked parent of wheel, receipt or package was resolved by leaf-only metadata check | refuse relative, parent traversal and symlinked ancestors before offline source comparison; nine negative cases, live trust stays UNKNOWN | #669 |

@@ -272,3 +272,71 @@ def test_runtime_provider_rejects_offline_candidate_as_active_identity() -> None
     assert candidate_revision_with_wheel_identity(
         offline_candidate, loaded_version="0.1.40"
     ) is None
+
+
+@pytest.mark.parametrize(
+    "external_entry",
+    [
+        "../../../../etc/shadow",
+        "/etc/passwd",
+        "../foreign-project/module.py",
+        "../../../bin/foreign-command",
+        "../../../bin/runner-mcp/../../foreign",
+        "runner_mcp/foreign_module.py",
+        "untrusted_other.dist-info/INSTALLER",
+        "aifordable_runner_mcp-0.1.40.dist-info/FOREIGN",
+        "../../../bin/runner-mcp\\evil",
+    ],
+)
+def test_installed_record_rejects_unapproved_external_paths(
+    tmp_path: Path, external_entry: str,
+) -> None:
+    wheel, package, digest, _ = _fixture(tmp_path)
+    with (package.parent / _RECORD).open("ab") as stream:
+        stream.write(f"{external_entry},,\n".encode())
+    observed = offline_installed_record_preflight(wheel, package, digest)
+    assert observed["state"] == "unverified"
+    assert observed["active_build_provenance_verified"] is False
+    assert observed["source_revision"] is None
+    assert observed["artifact_digest"] is None
+
+
+@pytest.mark.parametrize(
+    "name,digest,size",
+    [
+        ("../../../bin/runner-mcp", "", ""),
+        ("../../../bin/runner-mcp", "sha256=not-valid", "42"),
+        ("../../../bin/runner-mcp", "sha256=" + "A" * 43, "not-a-size"),
+        ("../../../bin/runner-mcp", "sha256=" + "A" * 43, "00042"),
+        ("../../../bin/runner-mcp", "sha256=" + "A" * 43, "99999999999999"),
+    ],
+)
+def test_installed_record_rejects_duplicate_or_invalid_pip_entry(
+    tmp_path: Path, name: str, digest: str, size: str,
+) -> None:
+    wheel, package, wheel_hash, _ = _fixture(tmp_path)
+    with (package.parent / _RECORD).open("ab") as stream:
+        stream.write(f"{name},{digest},{size}\n".encode())
+    assert offline_installed_record_preflight(
+        wheel, package, wheel_hash
+    )["state"] == "unverified"
+
+
+def test_installed_record_allows_only_standard_pip_metadata_and_console_scripts(
+    tmp_path: Path,
+) -> None:
+    wheel, package, digest, _ = _fixture(tmp_path)
+    record = package.parent / _RECORD
+    with record.open("ab") as stream:
+        for name in (
+            "../../../bin/aifordable-runner-mcp",
+            f"{_DIST}/INSTALLER",
+            f"{_DIST}/REQUESTED",
+            f"{_DIST}/direct_url.json",
+        ):
+            stream.write(f"{name},,\n".encode())
+    result = offline_installed_record_preflight(wheel, package, digest)
+    assert result["state"] == "offline_installed_record_match"
+    assert result["active_build_provenance_verified"] is False
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None

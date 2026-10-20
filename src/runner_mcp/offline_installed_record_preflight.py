@@ -70,6 +70,24 @@ def _safe_tree(path: Path) -> bool:
     return True
 
 
+def _allowed_installer_record_extra(name: str, record_name: str) -> bool:
+    """Bound the pip-owned entries absent from the original wheel RECORD.
+
+    The installed RECORD legitimately adds console entry points and pip's
+    installer metadata. Arbitrary extra relative/absolute paths, even if
+    never read by this preflight, must not be silently treated as equivalent
+    installation evidence.
+    """
+    dist_info = record_name.removesuffix("/RECORD")
+    return name in {
+        "../../../bin/runner-mcp",
+        "../../../bin/aifordable-runner-mcp",
+        f"{dist_info}/INSTALLER",
+        f"{dist_info}/REQUESTED",
+        f"{dist_info}/direct_url.json",
+    }
+
+
 def _read_record(
     data: bytes,
     *,
@@ -81,22 +99,39 @@ def _read_record(
     try:
         rows = csv.reader(io.StringIO(data.decode("utf-8"), newline=""))
         result: dict[str, tuple[str, int]] = {}
+        external_names: set[str] = set()
         for row in rows:
             if len(row) != 3:
                 return None
             name, digest, size_text = row
-            # pip may add executable-script entries outside site-packages to its
-            # installed RECORD. They are not candidates for file reads here.
+            # pip may add bounded entry points and installer metadata to the
+            # installed RECORD; NEVER accept arbitrary extra path entries.
+            # These extras are not compared to the wheel and cannot attest
+            # installed entry-point bytes or any serving process.
             if wheel_files is not None and name not in wheel_files:
                 if (
-                    not isinstance(name, str)
-                    or not 1 <= len(name) <= 240
-                    or "\x00" in name
-                    or name.startswith("runner_mcp/")
+                    not _allowed_installer_record_extra(name, record_name)
+                    or name in external_names
+                    or len(result) + len(external_names) >= _MAX_ENTRIES
                 ):
                     return None
+                if (digest or size_text) and (
+                    not digest.startswith("sha256=")
+                    or _HASH.fullmatch(digest[7:]) is None
+                    or not size_text.isascii()
+                    or not size_text.isdecimal()
+                    or (len(size_text) > 1 and size_text.startswith("0"))
+                    or int(size_text) > _MAX_FILE_BYTES
+                    or len(base64.urlsafe_b64decode(digest[7:] + "=")) != 32
+                ):
+                    return None
+                external_names.add(name)
                 continue
-            if not _safe_name(name) or name in result or len(result) >= _MAX_ENTRIES:
+            if (
+                not _safe_name(name)
+                or name in result
+                or len(result) + len(external_names) >= _MAX_ENTRIES
+            ):
                 return None
             if name == record_name:
                 if digest or size_text:

@@ -1,3 +1,12 @@
+## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT
+
+- Original draft [PR #618](https://github.com/Blacksp1d3r/runner-mcp/pull/618) was preserved and reconciled with main #531 safe noncreating inspection using a lease-guarded two-parent integration; exact tested head `bcf57059aa7a345f4966f043ff7a5f4c607071e6` merged squash `6cbd6880aaacef020747c5350fcb885d1047c67b`, source version **0.1.62**.
+- Existing stable owner-private lock inode, atomic temporary file+fsync+replace+directory fsync, concurrency and restart tests retained; read-only inspection never creates lock or data and refuses orphaned/untrusted hardlinks. First CI negative legacy UTF-8 test fixture repaired without loosening lock invariants; RMCP-F-0064/#0065 SOURCE_MERGED.
+- Exact-head validation [#39473776219](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39473776219), clean Ubuntu [#39473776085](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39473776085) and attribution [#39473776100](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39473776100) all SUCCESS. This is a source-only state guard, not power-loss qualification or authorization to advance watcher cursor.
+- #531/#615 remain OPEN for actual operator evidence; #616 quarantined cursor and #617 separately authorized replay are not active. Central six-role original serving v0.1.38 remains unchanged; #669/#509 correct-host physical A6 and Fabric #1617/#942/#943/#924 still WAIT.
+
+---
+
 ## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT
 
 - [PR #780](https://github.com/Blacksp1d3r/runner-mcp/pull/780) v0.1.61 SOURCE MERGED `07ff88dfa34586fbfcc515b666b5482e43594fb5`; exact-head validation #39470630553, clean Ubuntu #39470630582 and attribution #39470630605 ALL SUCCESS. Missing quarantine inspection now reads noncreating (O_RDONLY, private path checks); writer/actual watcher unchanged, Failure Museum RMCP-F-0063.

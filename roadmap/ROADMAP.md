@@ -1,3 +1,11 @@
+## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY
+
+Fresh source main 0.1.51 and original first-party central runtime 0.1.38 remain separate. Source audit found `fail_closed_runtime_provenance()` suppressed stale active revision and wheel digest but could still inherit `self_update_ready=True` from historical self-update status, even though `active_build_provenance_verified=False`. v0.1.52 candidate explicitly refuses that conflicting release authority, including malformed manager readiness, before exposing `runtime_status`. It preserves transaction history without making it active identity and tests in-memory loaded-version vs newer dist-info; Failure Museum RMCP-F-0056. No host restart, source promotion, disk/credential alteration, paid model call or OIDC/MFA work. Exact-head CI required before source merge.
+
+Missing original-client physical proof still under Runner-MCP #669: operator-trusted correct-host loaded process/wheel and complete six-role escrow; Fabric #1617/#942 independently off-target A6, #943 A7 offline rollback and AIfordable #609 original requester ACK; Fabric #924 owns one-target rollout. A source fix alone does not install onto live 0.1.38.
+
+---
+
 ## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT
 
 - [PR #766](https://github.com/Blacksp1d3r/runner-mcp/pull/766) SOURCE MERGED v0.1.50, squash `b1300b57b114c0970deb35c565b3fb5fe16ef5cd`, exact head `2bd545b8ef88db1f10df95d7b7526bf15ca0c520`, CI validation #39390108398, Ubuntu #39390108426 and attribution #39390108361 ALL PASS. Installed-RECORD offline comparator only permits known pip CLI/metadata extras, refuses unapproved/duplicate/malformed exterior records; RMCP-F-0054.

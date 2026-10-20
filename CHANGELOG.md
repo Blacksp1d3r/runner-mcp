@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.50 (source-only #669 installed RECORD negative admission)
+
+- Limit extra pip-installed RECORD entries to the two declared Runner-MCP CLI scripts and standard pip metadata. Refuse arbitrary out-of-tree paths, duplicate console entries, malformed external digests and unbounded entries that were previously silently ignored by the offline source-vs-install comparison. Preserve legitimate pip extras and deliberately keep the resulting classification OFFLINE ONLY, never live attestation or update authority. (#669)
+
+
 ## 0.1.49 (source-only fixed A6 value integrity; not installed)
 
 - In `runtime_doctor`, require exact fixed A6 configuration values, canonical already-qualified owner-private roots, plausible private bearer format and matching canonical Fabric revisions before returning `ready_11_of_11`. Eleven nonempty keys with a stale revision, wrong storage root/domain, loopback endpoint, probe target or secret format are no longer a green status. Synthetic regressions for each of eleven fixed keys, absent evidence directory, and correctly generated fixed values. This does NOT grant off-target A6 journal, independent A7 rollback, current loaded wheel/process proof or original-client ACK. (#509/#669)

@@ -23,3 +23,7 @@ Design: [SERVING_GENERATION_ATTESTATION.md](SERVING_GENERATION_ATTESTATION.md).
 ## 2026-10-19 — RMCP-F-0046 (synthetic source boundary, no live incident)
 
 Source checkout baseline evaluation previously expected a valid `clean_head` dict and coerced unknown commit values to string. A malformed provider result could escape status/Doctor or produce a noncanonical source revision. The #742 source fix strictly checks dict, `clean is True`, and lowercase 40-character commit, or returns `(None, False)` without exposing private exception detail. Tests cover ten malformed forms plus a provider error and assert no updater job is queued. This does NOT reconcile the real manual installation or alter historical state. Exact-head CI pending.
+
+## 2026-10-20 — RMCP-F-0054 (source-only installed RECORD parser negative admission)
+
+The existing offline installed RECORD comparator accepted *any* pip RECORD entry not present in the source wheel unless its path began `runner_mcp/`. That silently tolerated arbitrary exterior paths and duplicate console entries as if they were normal installer metadata. The source v0.1.50 correction admits only known bounded pip console scripts and common installer metadata, validates optional external digest/size shape and refuses duplicates with synthetic negative tests. No evidence of real host exploit, no installed-process proof, no live updater/host action, and no change to A6/A7/ACK gates. Tracking #669.

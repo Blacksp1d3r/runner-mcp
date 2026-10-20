@@ -1,3 +1,9 @@
+## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)
+
+Main v0.1.49, central original-client serving 0.1.38 with active source/wheel unknown and `self_update_ready=false`. Candidate source v0.1.50 tightens a narrow `offline_installed_record_preflight` consistency gap: previously any outside-package installed RECORD addition was ignored; bounded policy permits only known pip CLI/script and standard metadata extras, refuses foreign/traversal/duplicate entries and malformed optional hashes. A wheel/installed-RECORD match remains OFFLINE ONLY; no current-process/loaded-module attestation, host signer, original client ACK or A6/A7 recovery authority. Regression tests, Failure Museum RMCP-F-0054, exact-head CI and clean Ubuntu installer required. This does not authorize changing the six active services or creating another tunnel/update plane.
+
+---
+
 ## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT
 
 Runner-MCP #763 SOURCE MERGED v0.1.48, squash c5f88102f3d36ad0ffb968215594d9daf19f5328; PR exact-head validation 39380236274, clean Ubuntu 39380236331 and attribution 39380236370 ALL SUCCESS. Private A6 state/config paths reject linked ancestors and lexical traversal; RMCP-F-0052.

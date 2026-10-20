@@ -335,5 +335,3 @@ def test_doctor_reports_safe_absent_a6_but_no_false_green(tmp_path: Path) -> Non
         "warn", "not_configured_0_of_11",
     )
     assert load_env_file(env) == {"UNRELATED_VALUE": "keep"}
-
-

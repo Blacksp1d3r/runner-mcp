@@ -2,8 +2,8 @@
 
 status: SOURCE_OFFLINE_GUARDS_MERGED / CORRECT_HOST_WITNESS_WAIT
 owner: Runner-MCP source lane (#669); Fabric authority/activation separately #924
-source_main_version: 0.1.51
-source_main_merge: 8104f244085adc68b8b705e9f7ec7a38dd69b2be
+source_main_version: 0.1.53
+source_main_merge: 6b352d89c196790e5b6bfdb73f05e786934aa4a5
 live_connected_serving_version: 0.1.38
 active_loaded_wheel_verified: false
 active_source_revision_verified: false
@@ -11,6 +11,10 @@ self_update_ready: false
 production_changes_performed: false
 
 ## Accepted source-only progress (2026-10-20)
+
+- v0.1.52 #769 manager readiness denied when active generation unverified, 12-mode negative tests, CI all green.
+- v0.1.53 #771 standalone receipt refuses linked parent, relative and `..` aliases across all three evidence inputs, nine negative tests, CI all green.
+- Fabric source #1625/#1626/#1627/#1628 merged; source-only A6 root/journal/A7 baseline hardening does not meet physically separate storage or autonomous rollback qualification.
 
 - Source 0.1.47 #760 false-green A6 Doctor classification; #761 six-SYNTHETIC-role witness denial tests.
 - Source 0.1.48/0.1.49 #763/#764 private A6 parent-path and semantic fixed-key checks.

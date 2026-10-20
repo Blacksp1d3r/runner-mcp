@@ -1,3 +1,17 @@
+## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT
+
+Runner-MCP [PR #769](https://github.com/Blacksp1d3r/runner-mcp/pull/769) SOURCE MERGED v0.1.52 squash `6a227aa3af380e99878d3083a1ae9eb1fe0bd76d`: manager-supplied stale `self_update_ready=true` can no longer survive fail-closed projection when loaded wheel/source remain unverified. Exact-head validation #39400157473, Ubuntu #39400157458, attribution #39400157524 ALL SUCCESS; RMCP-F-0056. Official pushed artifact #12254268229 rehashed OFF-HOST (wheel SHA256 `0873f5bee3d813fadcbe62259538c96cba98863f4ed684746f973e3568be6ec0`, sdist SHA256 `8eb20b97a00472df1525b1a3086a69fa69e1a71e8481c1d0bdcb237a6f5915a9`, 123/123 RECORD, 117/117 wheel/sdist Python modules). Does NOT attest a loaded process.
+
+Runner-MCP [PR #771](https://github.com/Blacksp1d3r/runner-mcp/pull/771) SOURCE MERGED v0.1.53 squash `6b352d89c196790e5b6bfdb73f05e786934aa4a5`: standalone receipt preflight refuses symlinked ancestors, relative and lexical `..` aliases for receipt, wheel, installed package. Nine negative tests, exact-head validation #39401119807, clean Ubuntu #39401119744, attribution #39401119762 ALL SUCCESS; RMCP-F-0057. No host mutation.
+
+Fabric source progress independently verified: PRs #1625 (`2575d497` fixed no-follow A6 root chain), #1626 (`54f10654` existing LOCAL journal hash-chain readback), #1627 (`7ceff5ac` existing A7 baseline wheel/receipt opened-inode custody), and #1628 (`77d1054c` canonical handover) MERGED. These are **source progress, NOT physically proven independent storage or exercised disconnected rollback**. Do not duplicate Fabric's code.
+
+Live original-client central last verified 0.1.38, installed version 0.1.38, source/wheel NULL, `self_update_ready=false`, Doctor two FAIL and A6 0/11 (legacy Doctor `pass/not_configured_0_of_11` is absence), Fabric read-only, Agent Bus relay layer UNKNOWN, dispatch/mutation disabled. No six-role replacement, tunnel, credential or disk changes.
+
+Next real #669 deliverable: correct-host loaded interpreter/imported module to independently trusted pinned wheel/source binding for all six roles plus immutable previous-generation escrow and a one-use signed host-specific witness, consumed by the same original authenticated client. Fabric #1617/#942 must prove physically separate A6 journal and #943 independently exercised offline rollback before Fabric #924 one-node cutover, with original result/durable ACK #609. A signed OFFLINE candidate statement is not authority; don't enable self_update or OIDC/MFA from this source checkpoint.
+
+---
+
 ## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)
 
 Following source-merged #769 v0.1.52 (unverified active generation always `self_update_ready=false`), the standalone offline receipt comparator still had a linked-grandparent acceptance gap even after the #767 evidence-chain guard. This new source candidate applies the same safe lexical-path constraints independently to receipt, wheel and installed-package inputs; nine regression cases cover linked ancestors, relative paths and `..` traversal. Failure Museum RMCP-F-0057, exact-head CI required. Unlike a production signer/observer, these are offline byte-check helpers only: original-client central live remains 0.1.38, source/wheel not verified, A6 0/11, self-update not ready. Fabric #1617/#942 off-target A6, #943 A7 and #924 one-target lease plus #609 original-client ACK remain separately WAIT. Six serving roles, storage, credentials and tunnels are untouched.

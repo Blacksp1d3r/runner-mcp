@@ -1,10 +1,12 @@
 from __future__ import annotations
 
 import json
+from concurrent.futures import ThreadPoolExecutor
 from hashlib import sha256
 
 import pytest
 
+from runner_mcp import recovery_quarantine
 from runner_mcp.recovery_quarantine import (
     RecoveryFailureKind,
     RecoveryQuarantineError,
@@ -29,28 +31,70 @@ def _fail(ledger, request_id="req-poison", fingerprint=None):
     )
 
 
-def test_absent_ledger_inspection_does_not_create_private_state(tmp_path):
+def test_absent_inspection_does_not_create_data_or_lock_inode(tmp_path):
     ledger = _ledger(tmp_path)
-    target = tmp_path / "quarantine.json"
-    assert not target.exists()
+    data = tmp_path / "quarantine.json"
+    lock = tmp_path / "quarantine.json.lock"
     assert ledger.inspect("req-poison") is None
-    assert not target.exists()
     assert ledger.inspect("req-healthy") is None
-    assert not target.exists()
+    assert not data.exists()
+    assert not lock.exists()
 
-    # The first valid, guarded WRITE still explicitly creates its state.
     created = _fail(ledger)
     assert created.attempts == 1
-    assert target.is_file()
+    assert data.is_file()
+    assert lock.is_file()
     assert ledger.inspect("req-poison") == created
 
 
-def test_absent_ledger_with_unsafe_parent_fails_closed_without_creation(tmp_path):
+def test_absent_inspection_with_unsafe_parent_never_creates_state(tmp_path):
     tmp_path.chmod(0o755)
-    target = tmp_path / "quarantine.json"
     with pytest.raises(RecoveryQuarantineError, match="directory is unsafe"):
         _ledger(tmp_path).inspect("req-poison")
-    assert not target.exists()
+    assert not (tmp_path / "quarantine.json").exists()
+    assert not (tmp_path / "quarantine.json.lock").exists()
+
+
+def test_legacy_data_without_stable_lock_requires_explicit_migration(tmp_path):
+    ledger = _ledger(tmp_path)
+    original = _fail(ledger)
+    data = tmp_path / "quarantine.json"
+    lock = tmp_path / "quarantine.json.lock"
+    before = data.read_bytes()
+    lock.unlink()
+    with pytest.raises(RecoveryQuarantineError, match="lock is unavailable"):
+        ledger.inspect("req-poison")
+    assert data.read_bytes() == before
+    assert not lock.exists()
+    assert original.state is RecoveryQuarantineState.RETRY
+
+
+def test_alias_of_private_lock_inode_is_refused(tmp_path):
+    ledger = _ledger(tmp_path)
+    _fail(ledger)
+    lock = tmp_path / "quarantine.json.lock"
+    alias = tmp_path / "lock-alias"
+    alias.hardlink_to(lock)
+    with pytest.raises(RecoveryQuarantineError, match="lock permissions are unsafe"):
+        ledger.inspect("req-poison")
+    with pytest.raises(RecoveryQuarantineError, match="lock permissions are unsafe"):
+        _fail(ledger)
+    assert lock.stat().st_nlink == 2
+
+
+def test_alias_of_private_data_inode_is_refused(tmp_path):
+    ledger = _ledger(tmp_path)
+    initial = _fail(ledger)
+    data = tmp_path / "quarantine.json"
+    original = data.read_bytes()
+    alias = tmp_path / "data-alias"
+    alias.hardlink_to(data)
+    with pytest.raises(RecoveryQuarantineError, match="file permissions are unsafe"):
+        ledger.inspect("req-poison")
+    with pytest.raises(RecoveryQuarantineError, match="file permissions are unsafe"):
+        _fail(ledger)
+    assert data.read_bytes() == original
+    assert ledger is not None and initial.attempts == 1
 
 
 def test_poison_quarantined_after_three_failures_and_persists_across_restart(tmp_path):
@@ -142,6 +186,86 @@ def test_invalid_ids_and_fingerprints_rejected_without_unsafe_file_writes(tmp_pa
     assert not (tmp_path / "quarantine.json").exists()
 
 
+def test_quarantine_lock_inode_survives_atomic_data_replacement(tmp_path):
+    ledger = _ledger(tmp_path)
+    first = _fail(ledger)
+    lock_path = tmp_path / "quarantine.json.lock"
+    data_path = tmp_path / "quarantine.json"
+    locked_inode = lock_path.stat().st_ino
+    data_inode = data_path.stat().st_ino
+
+    second = _fail(ledger)
+    assert second.attempts == first.attempts + 1
+    assert lock_path.stat().st_ino == locked_inode
+    assert data_path.stat().st_ino != data_inode
+    assert _ledger(tmp_path).inspect("req-poison") == second
+
+
+def test_failed_atomic_replace_keeps_complete_previous_record(tmp_path, monkeypatch):
+    ledger = _ledger(tmp_path)
+    initial = _fail(ledger)
+    original_bytes = (tmp_path / "quarantine.json").read_bytes()
+
+    def fail_replace(_source, _destination):
+        raise OSError("simulated interrupted atomic replace")
+
+    monkeypatch.setattr(recovery_quarantine.os, "replace", fail_replace)
+    with pytest.raises(RecoveryQuarantineError, match="failure record unavailable"):
+        _fail(ledger)
+
+    assert ledger.inspect("req-poison") == initial
+    assert (tmp_path / "quarantine.json").read_bytes() == original_bytes
+    assert not list(tmp_path.glob(".quarantine-*"))
+
+
+def test_failed_temp_fsync_does_not_truncate_previous_record(tmp_path, monkeypatch):
+    ledger = _ledger(tmp_path)
+    initial = _fail(ledger)
+    original_bytes = (tmp_path / "quarantine.json").read_bytes()
+
+    def fail_fsync(_fd):
+        raise OSError("simulated fsync failure")
+
+    monkeypatch.setattr(recovery_quarantine.os, "fsync", fail_fsync)
+    with pytest.raises(RecoveryQuarantineError, match="failure record unavailable"):
+        _fail(ledger)
+
+    assert ledger.inspect("req-poison") == initial
+    assert (tmp_path / "quarantine.json").read_bytes() == original_bytes
+    assert not list(tmp_path.glob(".quarantine-*"))
+
+
+def test_concurrent_process_style_lock_serializes_distinct_records(tmp_path):
+    ledger = _ledger(tmp_path)
+
+    def attempt(i):
+        return _fail(
+            ledger, request_id=f"req-{i:03d}", fingerprint=_digest(str(i).encode())
+        )
+
+    with ThreadPoolExecutor(max_workers=5) as pool:
+        results = list(pool.map(attempt, range(20)))
+
+    assert len(results) == 20
+    assert all(item.attempts == 1 for item in results)
+    reopened = _ledger(tmp_path)
+    assert all(reopened.inspect(f"req-{i:03d}") == results[i] for i in range(20))
+
+
+def test_empty_existing_ledger_is_not_equivalent_to_missing_file(tmp_path):
+    ledger = _ledger(tmp_path)
+    _fail(ledger)
+    target = tmp_path / "quarantine.json"
+    target.write_bytes(b"")
+    target.chmod(0o600)
+
+    with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
+        ledger.inspect("req-poison")
+    with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
+        _fail(ledger)
+    assert target.read_bytes() == b""
+
+
 def test_corrupted_disk_record_fails_closed_and_remains_on_disk(tmp_path):
     ledger = _ledger(tmp_path)
     _fail(ledger)
@@ -185,10 +309,11 @@ def test_symlinked_parent_directory_does_not_receive_quarantine_records(tmp_path
 
 
 def test_corrupted_utf8_ledger_fails_with_public_safe_error(tmp_path):
+    ledger = _ledger(tmp_path)
+    _fail(ledger)  # Establish the separate legitimate stable lock first.
     target = tmp_path / "quarantine.json"
     target.write_bytes(bytes([255]))
     target.chmod(0o600)
-    ledger = _ledger(tmp_path)
 
     with pytest.raises(RecoveryQuarantineError, match="quarantine data is invalid"):
         ledger.inspect("req-poison")

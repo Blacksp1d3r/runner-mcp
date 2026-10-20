@@ -24,6 +24,12 @@ When `GitHubMailboxWatcher.run_cycle` discovers an ambiguous claim or malformed 
 4. Negative end-to-end tests for poison item + later good request, restart, changed head, duplicate poison identity and disk/full-write failure
 5. Protected local source binding, capacity planning, scheduled retention and recovery from interrupted writes; no live activation without these
 
-The current file rewrite is fsynced under an exclusive lock and a corrupt/interrupted JSON state fails closed. It is **not crash-atomic**, so the future production integration must add independently reviewed crash-safe write/recovery before using it for authoritative cursor advancement.
+The ledger now uses a separate, stable, owner-private `.lock` inode and writes a new, private temp file, fsyncs it, atomically replaces the JSON and fsyncs the parent directory while holding that lock. Failures before replacement leave the prior complete JSON unchanged. Failures between replacement and directory sync may leave the old **or** new complete state and must be treated as unproven until reread; no partial JSON is ever intentionally published. Synthetic interrupted-replace/temp-fsync and concurrent writer tests check the invariants. This is a source-level proof, not a power-loss test on the real filesystem.
+
+Still to qualify before watcher activation: operator rearm audit/provenance must preserve previous terminal evidence; a data-layer boolean is not authorization. Request fingerprints must be constructed from trusted canonical evidence, and cursor advancement must be atomic with terminal quarantine evidence (children #616/#617).
 
 This PR provides a testable state foundation only. Its green CI must not be represented as an end-to-end watcher convergence fix or operational qualification.
+
+## 2026-10-20 — reconcile #615 draft with current #531 safe inspection
+
+The reconciled draft retains the pre-existing stable separate owner-private lock inode and fsync/atomic replace logic, while read-only inspect opens an already existing lock `O_RDONLY` and never creates either lock or ledger when absent. Existing data with a missing lock fails closed until an authorized migration, rather than silently reading unlocked evidence. Hardlinked lock/data inodes are refused in addition to prior symlink/owner/mode checks. Synthetic tests cover absent inspect, unsafe parent, orphaned lock state and hardlink aliases. This does NOT qualify an actual power-loss proof, tamper-evident append history, operator identity, live watcher or original-client ACK; #531/#615 remain open for operational qualification.

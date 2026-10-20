@@ -21,6 +21,8 @@ production_changes_performed: false
 
 ## Accepted source-only progress (2026-10-20)
 
+- PR #781 v0.1.63 MERGED `8d0405490c73bc324a522e66e5e596649d169371`, exact tested head `a9b9df31aa8e79e29cf85183e75e6ba25dca1215`, validation #39479195410, Ubuntu #39479195458, attribution #39479195285 ALL SUCCESS. Strict six independently pinned synthetic role-to-process-instance hashes compared through existing signed witness preflight; always OFFLINE match, no active wheel attestation. RMCP-F-0067/0068; live 0.1.38 unchanged; source-closed #509 not runnable as trusted current installed code.
+
 - #509 v0.1.58 PR #776 merged `22b3efc6a35375c9033f5aa71a8f9930fcf64843` with 11-key private env hardlink guard and exact-head full CI green; this is not a #669 independent live witness, or a host update.
 - #739 v0.1.56 #746 and v0.1.57 #748 source merged with 33/33 offline Q7 asset consistency, not a signed trusted host import.
 

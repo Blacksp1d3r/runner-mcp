@@ -20,6 +20,28 @@ _REV = re.compile(r"^[0-9a-f]{40}$")
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 
 
+def _canonical_offline_evidence_path(candidate: Path) -> bool:
+    """Refuse syntactically redirected offline evidence paths before any reads.
+
+    Path.is_relative_to() is lexical. In particular, foo/../bar can pass that
+    predicate while resolving elsewhere. The offline chain must not accept
+    symlinked ancestors of the manifest, receipt, wheel, package or generation
+    as evidence of one fixed release location.
+    """
+    if (
+        not isinstance(candidate, Path)
+        or not candidate.is_absolute()
+        or ".." in candidate.parts
+    ):
+        return False
+    try:
+        return not any(
+            part.is_symlink() for part in (candidate, *candidate.parents)
+        )
+    except (OSError, RuntimeError, ValueError):
+        return False
+
+
 def offline_evidence_chain_preflight(
     manifest: Path,
     receipt: Path,
@@ -37,6 +59,11 @@ def offline_evidence_chain_preflight(
         "artifact_digest": None,
     }
     try:
+        if not all(
+            _canonical_offline_evidence_path(path)
+            for path in (manifest, receipt, wheel, installed_package, generation)
+        ):
+            return unverified
         builder = pinned_builder_manifest_preflight(
             manifest, wheel, independently_pinned_manifest_sha256
         )

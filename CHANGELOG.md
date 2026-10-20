@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.51 (source-only #669 canonical offline evidence paths)
+
+- Reject relative, `..`-redirected or symlink-ancestor manifest/receipt/wheel/installed-package/generation paths before offline evidence-chain comparisons. Prevent a lexical `is_relative_to()` success from masking a redirected generation candidate; negative tests preserve fail-closed state and never claim active build identity. No host scanner or production install authority. (#669)
+
+
 ## 0.1.50 (source-only #669 installed RECORD negative admission)
 
 - Limit extra pip-installed RECORD entries to the two declared Runner-MCP CLI scripts and standard pip metadata. Refuse arbitrary out-of-tree paths, duplicate console entries, malformed external digests and unbounded entries that were previously silently ignored by the offline source-vs-install comparison. Preserve legitimate pip extras and deliberately keep the resulting classification OFFLINE ONLY, never live attestation or update authority. (#669)

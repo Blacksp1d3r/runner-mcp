@@ -42,16 +42,32 @@ class FabricA6BindingRepairError(RuntimeError):
     """Sanitized fixed A6 private-binding repair failure."""
 
 
-def _resolve_a6_state_root(state_root: Path) -> Path:
-    """Fail closed without returning raw state-root path errors."""
+def _resolve_private_a6_path(path: Path, failure: str) -> Path:
+    """Reject lexical ancestor redirects before resolving an A6 private path.
 
+    A leaf-only symlink check is insufficient: a linked grandparent can send
+    otherwise private journal and runtime configuration writes to another tree.
+    This is a fixed local path, not arbitrary filesystem authority.
+    """
     try:
-        expanded = state_root.expanduser()
-        if expanded.is_symlink():
-            raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
+        expanded = path.expanduser()
+        if not expanded.is_absolute() or ".." in expanded.parts:
+            raise FabricA6BindingRepairError(failure)
+        if any(ancestor.is_symlink() for ancestor in (expanded, *expanded.parents)):
+            raise FabricA6BindingRepairError(failure)
         return expanded.resolve()
-    except (OSError, RuntimeError) as exc:
-        raise FabricA6BindingRepairError("fabric_a6_state_unsafe") from exc
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        raise FabricA6BindingRepairError(failure) from exc
+
+
+def _resolve_a6_state_root(state_root: Path) -> Path:
+    """Fail closed for linked state-root ancestors with sanitized errors."""
+    return _resolve_private_a6_path(state_root, "fabric_a6_state_unsafe")
+
+
+def _resolve_a6_config_dir(config_dir: Path) -> Path:
+    """Reject linked config ancestors before reading or merging private keys."""
+    return _resolve_private_a6_path(config_dir, "fabric_a6_runtime_config_unavailable")
 
 
 def a6_state_requested(state_root: Path) -> bool:
@@ -77,7 +93,7 @@ def inspect_a6_binding_state(
 
     from .onboarding import load_env_file
 
-    config = config_dir.expanduser().resolve()
+    config = _resolve_a6_config_dir(config_dir)
     env_path = config / "runner-mcp.env"
     try:
         _require_private_file(env_path)
@@ -162,7 +178,7 @@ def repair_a6_qualification_binding(
     if not isinstance(fabric_revision, str) or _COMMIT_RE.fullmatch(fabric_revision) is None:
         raise FabricA6BindingRepairError("fabric_a6_revision_invalid")
 
-    config = config_dir.expanduser().resolve()
+    config = _resolve_a6_config_dir(config_dir)
     env_path = config / "runner-mcp.env"
     try:
         _require_private_file(env_path)

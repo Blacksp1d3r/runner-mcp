@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.48 (source-only A6 ancestor symlink hardening; not installed)
+
+- Refuse symlinked *ancestors*, not only the final A6 private state/configuration directory, before canonical resolution. Also reject relative/parent-traversal lexical roots. A redirected grandparent must never cause an A6 journal/configuration read or the fixed 11-key private repair to be accepted. Add negative tests for state-root and config-parent aliases, traversal and no private writes; unchanged fixed binding authority. (#509/#669/Fabric #1617)
+- The original connected central v0.1.38 remains unverified and unchanged. This source-only hardening does not prove off-target A6 storage, independent A7 rollback, a trusted currently loaded wheel or original requester ACK.
+
+
 ## 0.1.47 (source-only A6 diagnostic safety; not installed)
 
 - Prevent `runtime_doctor` from reporting A6 unconfigured (0/11, absent journal/evidence roots) as PASS. Preserve safe non-mutating absence detail with WARN, classify malformed/private-root configurations fail-closed, and retain PASS for structurally complete private bindings only. Separate Fabric #942/#1617 off-target journal, A7 independent rollback and original requester ACK remain required for live update authority. This source correction does not modify private configuration, restart processes or install a wheel. (#509/#669)

@@ -177,3 +177,87 @@ def signed_serving_witness_preflight(
     # This is an independently pinned *signed statement match*, NOT live
     # process observation and not evidence of an unrevoked authorized observer.
     return {**unavailable, "state": "signed_statement_consistent_offline"}
+
+
+def signed_six_role_process_pin_preflight(
+    body: bytes,
+    signature: bytes,
+    public_key: bytes,
+    *,
+    independently_expected_process_instances: dict[str, str],
+    independently_authorized_key_sha256: str,
+    independently_expected_host_digest: str,
+    independently_expected_roles: tuple[str, ...],
+    independently_expected_challenge: str,
+    independently_expected_source_revision: str,
+    independently_expected_loaded_version: str,
+    independently_expected_wheel_sha256: str,
+    independently_expected_generation_digest: str,
+    trusted_now_epoch: int,
+) -> dict[str, object]:
+    """Strict offline six-role statement match against independent process pins.
+
+    Caller-supplied role and process hashes MUST come from an independent
+    correct-host identity authority, not from the same signed statement. This
+    function issues no trust, proves no loaded code and never enables update.
+    The generic statement comparator retains its original test contract.
+    """
+    unavailable = {
+        **_unverified(),
+        "schema_version": "runner-mcp/six-role-process-pin-preflight/v1",
+    }
+    if (
+        not isinstance(independently_expected_roles, tuple)
+        or len(independently_expected_roles) != 6
+        or type(independently_expected_process_instances) is not dict
+        or not all(
+            type(role) is str and _ROLE.fullmatch(role) is not None
+            for role in independently_expected_roles
+        )
+    ):
+        return unavailable
+    expected_names = set(independently_expected_roles)
+    if (
+        len(expected_names) != 6
+        or set(independently_expected_process_instances) != expected_names
+        or not all(
+            type(independently_expected_process_instances[name]) is str
+            and _SHA.fullmatch(independently_expected_process_instances[name]) is not None
+            for name in expected_names
+        )
+        or len(set(independently_expected_process_instances.values())) != 6
+    ):
+        return unavailable
+    compared = signed_serving_witness_preflight(
+        body,
+        signature,
+        public_key,
+        independently_authorized_key_sha256=independently_authorized_key_sha256,
+        independently_expected_host_digest=independently_expected_host_digest,
+        independently_expected_roles=independently_expected_roles,
+        independently_expected_challenge=independently_expected_challenge,
+        independently_expected_source_revision=independently_expected_source_revision,
+        independently_expected_loaded_version=independently_expected_loaded_version,
+        independently_expected_wheel_sha256=independently_expected_wheel_sha256,
+        independently_expected_generation_digest=independently_expected_generation_digest,
+        trusted_now_epoch=trusted_now_epoch,
+    )
+    if compared["state"] != "signed_statement_consistent_offline":
+        return unavailable
+    try:
+        # Only parse a statement after signature, canonical JSON, six exact role
+        # names, independent signer/source/wheel pins, freshness and unique
+        # source-supplied process IDs were already checked above.
+        claims = json.loads(body.decode("ascii"), object_pairs_hook=_unique_keys)
+        roles = claims["roles"]
+        if not isinstance(roles, dict) or any(
+            roles[name]["process_instance"] != independently_expected_process_instances[name]
+            for name in expected_names
+        ):
+            return unavailable
+    except (KeyError, TypeError, ValueError, UnicodeError, RecursionError):
+        return unavailable
+    return {
+        **unavailable,
+        "state": "six_role_process_pins_consistent_offline",
+    }

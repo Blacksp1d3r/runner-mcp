@@ -7,7 +7,10 @@ import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
 
-from runner_mcp.serving_witness_preflight import signed_serving_witness_preflight
+from runner_mcp.serving_witness_preflight import (
+    signed_serving_witness_preflight,
+    signed_six_role_process_pin_preflight,
+)
 
 _NOW = 2_000_000_000
 _SOURCE = "a" * 40
@@ -290,3 +293,117 @@ def test_six_role_witness_negative_families_fail_closed(fault: str) -> None:
     assert result["active_build_provenance_verified"] is False
     assert result["source_revision"] is None
     assert result["artifact_digest"] is None
+
+
+def _six_process_pin_check(
+    *,
+    claims: dict[str, object] | None = None,
+    pins: object = None,
+    expected_roles: object = _SIX_SYNTHETIC_ROLES,
+    expected_override: dict[str, object] | None = None,
+) -> dict[str, object]:
+    """Independent synthetic pins; never derived from the signed payload."""
+    signer = Ed25519PrivateKey.generate()
+    key = signer.public_key().public_bytes(
+        encoding=serialization.Encoding.Raw,
+        format=serialization.PublicFormat.Raw,
+    )
+    data = _six_role_claims() if claims is None else claims
+    body = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True).encode("ascii")
+    expected = dict(_EXPECTED)
+    expected.update({
+        "independently_expected_roles": expected_roles,
+        "independently_authorized_key_sha256": hashlib.sha256(key).hexdigest(),
+    })
+    if expected_override:
+        expected.update(expected_override)
+    process_pins = (
+        {role: f"{i:064x}" for i, role in enumerate(_SIX_SYNTHETIC_ROLES, start=1)}
+        if pins is None else pins
+    )
+    return signed_six_role_process_pin_preflight(
+        body, signer.sign(body), key,
+        independently_expected_process_instances=process_pins,
+        **expected,
+    )
+
+
+def test_six_role_independent_process_pin_match_is_offline_only() -> None:
+    result = _six_process_pin_check()
+    assert result == {
+        "schema_version": "runner-mcp/six-role-process-pin-preflight/v1",
+        "state": "six_role_process_pins_consistent_offline",
+        "active_build_provenance_verified": False,
+        "source_revision": None,
+        "artifact_digest": None,
+    }
+
+
+@pytest.mark.parametrize("removed", range(6))
+def test_six_role_preflight_rejects_missing_independent_role_pin(removed: int) -> None:
+    pins = {role: f"{i:064x}" for i, role in enumerate(_SIX_SYNTHETIC_ROLES, start=1)}
+    pins.pop(_SIX_SYNTHETIC_ROLES[removed])
+    assert _six_process_pin_check(pins=pins)["state"] == "unverified"
+
+
+def test_six_role_preflight_rejects_short_expected_roster_even_if_signed() -> None:
+    claims = _six_role_claims()
+    roles = claims["roles"]
+    assert isinstance(roles, dict)
+    roles.pop(_SIX_SYNTHETIC_ROLES[-1])
+    result = _six_process_pin_check(
+        claims=claims,
+        expected_roles=_SIX_SYNTHETIC_ROLES[:-1],
+    )
+    assert result["state"] == "unverified"
+
+
+@pytest.mark.parametrize("fault", [
+    "foreign_pin", "duplicate_pin", "swapped_pins", "swapped_signed_instances",
+    "malformed_pin", "wrong_loaded_version", "wrong_wheel", "wrong_generation",
+    "wrong_host", "wrong_nonce", "expired",
+])
+def test_six_role_process_pin_mismatch_fails_closed(fault: str) -> None:
+    pins = {role: f"{i:064x}" for i, role in enumerate(_SIX_SYNTHETIC_ROLES, start=1)}
+    claims = _six_role_claims()
+    expected = {}
+    first, second = _SIX_SYNTHETIC_ROLES[:2]
+    if fault == "foreign_pin":
+        pins["foreign"] = pins.pop(first)
+    elif fault == "duplicate_pin":
+        pins[second] = pins[first]
+    elif fault == "swapped_pins":
+        pins[second], pins[first] = pins[first], pins[second]
+    elif fault == "swapped_signed_instances":
+        roles = claims["roles"]
+        assert isinstance(roles, dict)
+        roles[second]["process_instance"], roles[first]["process_instance"] = (
+            roles[first]["process_instance"], roles[second]["process_instance"]
+        )
+    elif fault == "malformed_pin":
+        pins[first] = "not-a-digest"
+    elif fault == "wrong_loaded_version":
+        claims["loaded_version"] = "0.1.38"
+    elif fault == "wrong_wheel":
+        claims["wheel_sha256"] = "f" * 64
+    elif fault == "wrong_generation":
+        claims["generation_digest"] = "f" * 64
+    elif fault == "wrong_host":
+        claims["host_digest"] = "f" * 64
+    elif fault == "wrong_nonce":
+        claims["challenge"] = "f" * 32
+    else:
+        expected["trusted_now_epoch"] = _NOW + 400
+    result = _six_process_pin_check(
+        claims=claims, pins=pins, expected_override=expected,
+    )
+    assert result["state"] == "unverified"
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None
+
+
+@pytest.mark.parametrize("bad", (None, [], {"foreign": "f" * 64}, True))
+def test_six_role_untrusted_pin_collections_do_not_authorize(bad: object) -> None:
+    result = _six_process_pin_check(pins=bad)
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False

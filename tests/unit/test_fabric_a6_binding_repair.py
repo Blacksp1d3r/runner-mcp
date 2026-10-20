@@ -29,6 +29,38 @@ def _private_runtime(tmp_path: Path) -> tuple[Path, Path, dict[str, str]]:
     return config, state, environment
 
 
+@pytest.mark.parametrize("operation", ["inspect", "repair"])
+def test_private_a6_env_hardlink_alias_refused_without_mutation(
+    tmp_path: Path, operation: str,
+) -> None:
+    config, state, environment = _private_runtime(tmp_path)
+    env_path = config / "runner-mcp.env"
+    original = env_path.read_text(encoding="utf-8")
+    alias = tmp_path / "alias-to-private-env"
+    alias.hardlink_to(env_path)
+    assert env_path.stat().st_nlink == 2
+
+    if operation == "inspect":
+        with pytest.raises(
+            FabricA6BindingRepairError, match="fabric_a6_runtime_config_unavailable"
+        ):
+            inspect_a6_binding_state(config_dir=config, state_root=state)
+    else:
+        with pytest.raises(
+            FabricA6BindingRepairError, match="fabric_a6_runtime_config_unavailable"
+        ):
+            repair_a6_qualification_binding(
+                environment=environment,
+                config_dir=config,
+                state_root=state,
+                fabric_revision="f" * 40,
+            )
+
+    assert env_path.read_text(encoding="utf-8") == original
+    assert alias.read_text(encoding="utf-8") == original
+    assert environment == {"RUNNER_MCP_BEARER_TOKEN": "r" * 48}
+
+
 def test_repair_restores_exact_fixed_a6_binding_and_preserves_other_values(
     tmp_path: Path,
 ) -> None:

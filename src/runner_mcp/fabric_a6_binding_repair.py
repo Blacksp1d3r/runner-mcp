@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import os
 import re
+import stat
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
@@ -114,6 +115,30 @@ def _a6_fixed_values_consistent(
     return all(values.get(name) == expected_value for name, expected_value in expected.items())
 
 
+def _require_private_a6_env_file(path: Path) -> None:
+    """Refuse aliased private A6 config in addition to ordinary file checks.
+
+    An additional hard link can let a second pathname retain the same inode
+    and is incompatible with owner-private fixed-binding custody. This
+    check is a local source guard, not a race-free filesystem witness or A6
+    off-target storage qualification.
+    """
+    try:
+        _require_private_file(path)
+        info = path.lstat()
+    except (OSError, RuntimeError) as exc:
+        raise FabricA6BindingRepairError(
+            "fabric_a6_runtime_config_unavailable"
+        ) from exc
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or stat.S_IMODE(info.st_mode) != 0o600
+        or info.st_uid != os.getuid()
+        or info.st_nlink != 1
+    ):
+        raise FabricA6BindingRepairError("fabric_a6_runtime_config_unavailable")
+
+
 def inspect_a6_binding_state(
     *,
     config_dir: Path,
@@ -126,7 +151,7 @@ def inspect_a6_binding_state(
     config = _resolve_a6_config_dir(config_dir)
     env_path = config / "runner-mcp.env"
     try:
-        _require_private_file(env_path)
+        _require_private_a6_env_file(env_path)
         values = load_env_file(env_path)
     except (OSError, RuntimeError, UnicodeError) as exc:
         raise FabricA6BindingRepairError("fabric_a6_runtime_config_unavailable") from exc
@@ -219,7 +244,7 @@ def repair_a6_qualification_binding(
     config = _resolve_a6_config_dir(config_dir)
     env_path = config / "runner-mcp.env"
     try:
-        _require_private_file(env_path)
+        _require_private_a6_env_file(env_path)
     except (OSError, RuntimeError) as exc:
         raise FabricA6BindingRepairError("fabric_a6_runtime_config_unavailable") from exc
 

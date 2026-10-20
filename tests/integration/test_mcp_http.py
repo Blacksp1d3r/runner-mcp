@@ -3,6 +3,7 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
 from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 from starlette.testclient import TestClient
 
@@ -17,6 +18,7 @@ from runner_mcp.config import (
 )
 from runner_mcp.config import TestProfile as RunnerTestProfile
 from runner_mcp.fabric_bridge import FabricBridgeError
+from runner_mcp.fabric_update import FabricUpdateError
 from runner_mcp.server import Settings, create_app
 from runner_mcp.service_manager import ServiceState
 
@@ -514,6 +516,86 @@ def parse_tool_json(response) -> object:
     if isinstance(structured, dict) and "result" in structured:
         return structured["result"]
     return json.loads(result["content"][0]["text"])
+
+
+def test_local_fabric_custody_failures_are_bounded_over_mcp(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeFabricUpdateManager:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def stage_local_bundle(self, _commit: str):
+            raise FabricUpdateError("fabric_bundle_source_unavailable")
+
+        def local_readiness(self, _commit: str):
+            raise FabricUpdateError("fabric_bundle_invalid")
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricUpdateManager",
+        FakeFabricUpdateManager,
+    )
+    app = build_test_app(tmp_path)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        staged = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 90,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_local_bundle_stage",
+                    "arguments": {"commit": "a" * 40},
+                },
+            },
+        )
+        assert parse_tool_json(staged) == {
+            "state": "blocked",
+            "reasonCode": "fabric_bundle_source_unavailable",
+            "staged": False,
+            "bundleReady": False,
+            "source": "canonical-source",
+            "localCustody": True,
+        }
+
+        readiness = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 91,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_local_update_readiness",
+                    "arguments": {"commit": "a" * 40},
+                },
+            },
+        )
+        assert parse_tool_json(readiness) == {
+            "state": "blocked",
+            "reasonCode": "fabric_bundle_invalid",
+            "artifact_ready": False,
+            "source": "local-custody",
+        }
+
+    assert str(tmp_path) not in staged.text
+    assert str(tmp_path) not in readiness.text
 
 
 def test_mcp_controlled_test_job_lifecycle(tmp_path: Path) -> None:
@@ -2417,3 +2499,138 @@ def test_connector_readonly_smoke_matrix_through_authenticated_mcp(tmp_path: Pat
                 assert payload["projects"] == 1
             else:
                 assert isinstance(payload["checks"], list)
+
+
+@pytest.mark.parametrize(
+    ("manager", "reason"),
+    [
+        ("SelfUpdateManager", "self-update-state-unavailable"),
+        ("FabricBootstrapManager", "fabric-bootstrap-state-unavailable"),
+        ("FabricUpdateManager", "fabric-update-state-unavailable"),
+    ],
+)
+def test_runtime_status_returns_bounded_degraded_result(
+    tmp_path: Path, monkeypatch, manager: str, reason: str
+) -> None:
+    """Private manager failures must not become public tool errors or false health."""
+    def private_failure(_self):
+        raise RuntimeError("/owner-private/state.json credential=NEVER_EXPOSE")
+
+    monkeypatch.setattr(
+        f"runner_mcp.server.{manager}.runtime_status", private_failure
+    )
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        assert client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        ).status_code == 202
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 61,
+                "method": "tools/call",
+                "params": {"name": "runtime_status", "arguments": {}},
+            },
+        )
+
+    assert response.status_code == 200
+    payload = parse_tool_json(response)
+    assert payload == {
+        "schemaVersion": "runner-mcp/runtime-status-degraded/v1",
+        "state": "degraded",
+        "reasonCode": reason,
+        "runtimeEvidenceComplete": False,
+    }
+    assert "/owner-private/" not in response.text
+    assert "NEVER_EXPOSE" not in response.text
+    assert str(tmp_path) not in response.text
+    audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert '"tool":"runtime_status"' in audit
+    assert "NEVER_EXPOSE" not in audit
+
+
+def test_runtime_status_rejects_non_object_manager_evidence(tmp_path: Path, monkeypatch):
+    """A manager returning an invalid payload must not result in partial success."""
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricBootstrapManager.runtime_status",
+        lambda _self: ["/private/should-not-leak"],
+    )
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 62,
+                "method": "tools/call",
+                "params": {"name": "runtime_status", "arguments": {}},
+            },
+        )
+
+    assert response.status_code == 200
+    payload = parse_tool_json(response)
+    assert payload["state"] == "degraded"
+    assert payload["reasonCode"] == "fabric-bootstrap-state-unavailable"
+    assert payload["runtimeEvidenceComplete"] is False
+    assert "/private/" not in response.text
+
+def test_build_identity_unavailable_is_structured_over_mcp_http(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Corrupt private identity projection must not produce an opaque tool error."""
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        assert client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        ).status_code == 202
+
+        def invalid_identity(_self):
+            raise OSError("/private/build-identity.json token=NEVER_EXPOSE")
+
+        with monkeypatch.context() as patch:
+            patch.setattr("runner_mcp.server.BuildIdentity.to_payload", invalid_identity)
+            response = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 73,
+                    "method": "tools/call",
+                    "params": {"name": "build_identity", "arguments": {}},
+                },
+            )
+    assert response.status_code == 200
+    assert '"isError":true' not in response.text
+    assert parse_tool_json(response) == {
+        "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": "build-identity-unavailable",
+        "identityEvidenceComplete": False,
+    }
+    assert "NEVER_EXPOSE" not in response.text
+    assert "/private/" not in response.text

@@ -5,16 +5,42 @@ on:
     branches:
       - main
   pull_request:
+    types: [opened, synchronize, reopened, edited, ready_for_review]
   workflow_dispatch:
 
 permissions:
   contents: read
+  pull-requests: read
 
 concurrency:
   group: runner-mcp-ci-${{ github.workflow }}-${{ github.ref }}
   cancel-in-progress: true
 
 jobs:
+
+  release-reservation:
+    name: Release reservation admission
+    if: github.event_name == 'pull_request' && github.event.pull_request.draft == false
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      pull-requests: read
+    steps:
+      - name: Check out synthetic PR merge
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Set up Python
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+      - name: Validate unique next-patch source reservation
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+        run: python scripts/check_release_reservation.py
+
   validate:
     name: Ruff and pytest
     runs-on: ubuntu-24.04
@@ -36,6 +62,19 @@ jobs:
           PIP_DISABLE_PIP_VERSION_CHECK: "1"
         run: |
           python -m pip install -e '.[dev]'
+
+      - name: Verify unique shipping version and registry parity
+        shell: bash
+        run: |
+          set -euo pipefail
+          # GitHub PR checks use a synthetic merge with target as first parent.
+          # Main pushes also use the first parent of the newly merged commit.
+          base="$(git rev-parse HEAD^1)"
+          echo "RUNNER_MCP_BASE_COMMIT=$base" >> "$GITHUB_ENV"
+          python scripts/check_release_version.py --base "$base"
+
+      - name: Verify declared MCP tool catalogue baseline
+        run: python scripts/attest_tool_catalogue.py
 
       - name: Compile Python
         run: python -m compileall -q src tests
@@ -62,8 +101,7 @@ jobs:
       - name: Whitespace check
         shell: bash
         run: |
-          base="$(git merge-base HEAD origin/main)"
-          git diff --check "$base"..HEAD
+          git diff --check "$RUNNER_MCP_BASE_COMMIT"..HEAD
 
 
   demo-smoke:
@@ -98,7 +136,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
@@ -108,3 +146,70 @@ jobs:
       - name: Build and install release artifacts
         shell: bash
         run: bash scripts/release-artifact-smoke.sh
+
+      - name: Attest full 95-tool catalogue inside built wheel
+        shell: bash
+        run: python scripts/attest_tool_catalogue.py --wheel dist/*.whl --output dist/TOOL_CATALOGUE.json
+
+      - name: Classify merged code release candidate
+        id: candidate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/check_release_version.py --base "$(git rev-parse HEAD^1)" --github-output
+
+      - name: Record immutable candidate identity and hashes
+        if: steps.candidate.outputs.release == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" = "1"
+          test "$(find dist -maxdepth 1 -name '*.tar.gz' | wc -l)" = "1"
+          printf '%s\n' "$GITHUB_SHA" > dist/SOURCE_COMMIT
+          (cd dist && sha256sum *.whl *.tar.gz > SHA256SUMS)
+          python scripts/check_release_version.py
+
+      - name: Preserve verified candidate for attended fleet admission
+        if: steps.candidate.outputs.release == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runner-mcp-candidate-${{ steps.candidate.outputs.version }}-${{ github.sha }}
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SOURCE_COMMIT
+            dist/SHA256SUMS
+            dist/TOOL_CATALOGUE.json
+          if-no-files-found: error
+          retention-days: 30
+
+      - name: Record unapproved PR candidate provenance
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: |
+          set -euo pipefail
+          test "$(find dist -maxdepth 1 -name '*.whl' | wc -l)" = "1"
+          test "$(find dist -maxdepth 1 -name '*.tar.gz' | wc -l)" = "1"
+          printf '%s\n' "${{ github.event.pull_request.head.sha }}" > dist/PR_HEAD_COMMIT
+          printf '%s\n' "$GITHUB_SHA" > dist/CI_MERGE_COMMIT
+          (cd dist && sha256sum *.whl *.tar.gz > SHA256SUMS)
+          python scripts/check_release_version.py
+          echo "UNAPPROVED_SOURCE_CANDIDATE - NOT A RELEASE OR INSTALL PERMISSION" \
+            > dist/NOT_FOR_DEPLOYMENT
+
+      - name: Preserve unapproved PR candidate for independently reviewed staging
+        if: github.event_name == 'pull_request'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: unapproved-mcp-pr-${{ github.event.pull_request.number }}-${{ github.event.pull_request.head.sha }}
+          path: |
+            dist/*.whl
+            dist/*.tar.gz
+            dist/SHA256SUMS
+            dist/TOOL_CATALOGUE.json
+            dist/PR_HEAD_COMMIT
+            dist/CI_MERGE_COMMIT
+            dist/NOT_FOR_DEPLOYMENT
+          if-no-files-found: error
+          retention-days: 7

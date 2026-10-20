@@ -1,0 +1,129 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/standards/project_manifest_candidate.schema.json",
+  "title": "Runner-MCP blueprint proposal only — not an operational authority",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema_version",
+    "proposal_state",
+    "project_id",
+    "profile",
+    "owner_domain",
+    "source_of_truth",
+    "mirrors",
+    "master_session_protocol",
+    "roadmap",
+    "child_root",
+    "child_contract",
+    "execution",
+    "policy_profile",
+    "privacy"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": "ai-repository-blueprint/v1"
+    },
+    "proposal_state": {
+      "const": "BLOCKED_AUTHORITY"
+    },
+    "project_id": {
+      "const": "runner-mcp"
+    },
+    "profile": {
+      "const": "expanded"
+    },
+    "owner_domain": {
+      "type": "string",
+      "enum": [
+        "runtime-controls"
+      ]
+    },
+    "source_of_truth": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "code",
+        "evidence",
+        "coordination"
+      ],
+      "properties": {
+        "code": {
+          "const": "UNKNOWN"
+        },
+        "evidence": {
+          "const": "UNKNOWN"
+        },
+        "coordination": {
+          "const": "UNKNOWN"
+        }
+      }
+    },
+    "mirrors": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "github"
+      ],
+      "properties": {
+        "github": {
+          "const": "reference_only"
+        }
+      }
+    },
+    "master_session_protocol": {
+      "const": "MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL"
+    },
+    "roadmap": {
+      "const": "roadmap/ROADMAP.md"
+    },
+    "child_root": {
+      "const": "roadmap/children/"
+    },
+    "child_contract": {
+      "const": [
+        "TASK.md",
+        "STATE.md"
+      ]
+    },
+    "execution": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "auto_claim",
+        "max_write_lanes",
+        "protected_mutations"
+      ],
+      "properties": {
+        "auto_claim": {
+          "const": false
+        },
+        "max_write_lanes": {
+          "const": 1
+        },
+        "protected_mutations": {
+          "const": "human_approved"
+        }
+      }
+    },
+    "policy_profile": {
+      "const": "runner-mcp-deny-by-default-v1"
+    },
+    "privacy": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "personal_data_in_git",
+        "synthetic_tests_only"
+      ],
+      "properties": {
+        "personal_data_in_git": {
+          "const": false
+        },
+        "synthetic_tests_only": {
+          "const": true
+        }
+      }
+    }
+  }
+}

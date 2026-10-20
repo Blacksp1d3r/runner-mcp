@@ -762,6 +762,10 @@ _VALID_REQUEST_BY_ACTION: dict[BridgeAction, dict[str, object]] = {
         "request_id": "matrix-fabric-operational-snapshot",
         "action": "fabric_operational_snapshot",
     },
+    BridgeAction.FABRIC_CONTINUITY_STATUS: {
+        "request_id": "matrix-fabric-continuity-status",
+        "action": "fabric_continuity_status",
+    },
     BridgeAction.SELF_UPDATE: {
         "request_id": "matrix-self-update",
         "action": "self_update",

@@ -141,7 +141,7 @@ def test_naive_event_timestamp_fails_closed() -> None:
         (
             hi.FatalProcessEvidence(
                 hi.FatalProcessClass.PYTHON_RUNTIME,
-                datetime.datetime(2026, 9, 30, 7, 59).replace(tzinfo=None),  # noqa: DTZ001
+                datetime.datetime(2026, 9, 30, 7, 59).replace(tzinfo=None),
             ),
         )
     )

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import os
 import secrets
 import sys
 from collections.abc import Sequence
@@ -1593,8 +1594,21 @@ def cmd_agent_bus(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
 
     if args.agent_bus_action == "status":
-        result = agent_bus_config_status(config_dir)
-        print("configured" if result["configured"] else "not configured")
+        # _config_dir resolves symlinks for established commands. Preserve
+        # caller-supplied path components for this new deny-by-default
+        # diagnostic so a symlink to a missing/private root is not hidden.
+        raw = args.config_dir or os.getenv("RUNNER_MCP_CONFIG_DIR", "").strip()
+        status_dir = (
+            Path(raw).expanduser() if raw else Path.home() / ".config" / "runner-mcp"
+        )
+        if not status_dir.is_absolute():
+            status_dir = Path.cwd() / status_dir
+        result = agent_bus_config_status(status_dir)
+        if result.get("base_config_not_initialized"):
+            print("base_config_not_initialized")
+            print("Next: run runner-mcp setup locally with an approved real project.")
+        else:
+            print("configured" if result["configured"] else "not configured")
         return 0
 
     if args.agent_bus_action == "convergence":

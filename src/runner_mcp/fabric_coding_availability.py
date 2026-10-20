@@ -9,7 +9,12 @@ from collections.abc import Mapping
 from pathlib import Path
 from typing import Any
 
-from .operational_safety import ActionClass, OperatorSafetyGuard
+from .operational_safety import (
+    ActionClass,
+    OperatorSafetyGuard,
+    OperatorStopActive,
+    SafetyConfigurationError,
+)
 
 _SCHEMA = "runner.fabric/coding-agent-availability-qualification/v1"
 _MAX_STDOUT_BYTES = 16_384
@@ -47,6 +52,72 @@ class FabricCodingAvailabilityQualificationError(RuntimeError):
     """Sanitized bounded coding availability qualification failure."""
 
 
+
+_FAILURE_SCHEMA = "runner-mcp/coding-availability-qualification-unavailable/v1"
+_PRE_RUN_FAILURES = {
+    "fabric_coding_availability_qualification_case_invalid": (
+        "blocked", "invalid_fixed_case",
+    ),
+    "fabric_coding_availability_qualification_revision_invalid": (
+        "blocked", "invalid_fixed_revision",
+    ),
+    "fabric_coding_availability_qualification_launcher_unavailable": (
+        "wait", "fabric_launcher_unqualified",
+    ),
+    "fabric_coding_availability_qualification_launcher_unmanaged": (
+        "wait", "fabric_launcher_unqualified",
+    ),
+    "fabric_coding_availability_qualification_config_unavailable": (
+        "wait", "q7_private_configuration_incomplete",
+    ),
+}
+_POST_RUN_FAILURES = {
+    "fabric_coding_availability_qualification_unavailable": "q7_execution_unverified",
+    "fabric_coding_availability_qualification_failed": "q7_execution_unverified",
+    "fabric_coding_availability_qualification_output_invalid": "q7_output_unverified",
+}
+
+
+def bounded_qualification_failure(
+    failure: BaseException,
+) -> dict[str, object]:
+    """Public-safe failure with explicit uncertain side-effect semantics.
+
+    Never copy exception text, private task output, endpoint or credentials.
+    The Q7 runner may already have issued a call before a transport/process
+    failure, so an uncertain result cannot be retried as a harmless preflight.
+    """
+    reason = "q7_execution_unverified"
+    state = "unknown"
+    effect = "unknown"
+    if isinstance(failure, OperatorStopActive):
+        state, reason, effect = "blocked", "operator_stop_active", "not_started"
+    elif isinstance(failure, SafetyConfigurationError):
+        state, reason, effect = "blocked", "operator_safety_unqualified", "not_started"
+    # Only exact first-party constant strings are classified. Arbitrary
+    # exception messages MUST NEVER become a public response.
+    elif (
+        isinstance(failure, FabricCodingAvailabilityQualificationError)
+        and len(failure.args) == 1
+        and type(failure.args[0]) is str
+    ):
+        key = failure.args[0]
+        if key in _PRE_RUN_FAILURES:
+            state, reason = _PRE_RUN_FAILURES[key]
+            effect = "not_started"
+        elif key in _POST_RUN_FAILURES:
+            reason = _POST_RUN_FAILURES[key]
+    return {
+        "schemaVersion": _FAILURE_SCHEMA,
+        "state": state,
+        "reason_code": reason,
+        "result_verified": False,
+        "qualification_effect": effect,
+        "dispatch_authorized": False,
+        "retry_authorized": False,
+    }
+
+
 class FabricCodingAvailabilityQualificationRunner:
     def __init__(
         self,
@@ -60,6 +131,42 @@ class FabricCodingAvailabilityQualificationRunner:
         self.environment = environment
         self.home = (home or Path.home()).expanduser().resolve()
         self._runner = runner
+
+    def preflight(self) -> dict[str, object]:
+        """Safe local *attemptability* signal, never Claude readiness.
+
+        Checks the same fixed launch environment as run() without starting
+        a process, probing a provider, reading token content into output,
+        making a worker request or changing an operator stop.
+        """
+
+        schema = "runner-mcp/coding-availability-preflight/v1"
+
+        def report(state: str, reason: str) -> dict[str, object]:
+            return {
+                "schemaVersion": schema,
+                "state": state,
+                "reason_code": reason,
+                "qualification_executed": False,
+                "provider_session_checked": False,
+                "dispatch_authorized": False,
+            }
+
+        try:
+            self.safety.assert_action_allowed(ActionClass.TEST)
+        except (OperatorStopActive, SafetyConfigurationError) as exc:
+            if isinstance(exc, OperatorStopActive):
+                return report("blocked", "operator_stop_active")
+            return report("blocked", "operator_safety_unqualified")
+        try:
+            self._validated_launcher()
+        except FabricCodingAvailabilityQualificationError:
+            return report("wait", "fabric_launcher_unqualified")
+        try:
+            self._private_environment()
+        except FabricCodingAvailabilityQualificationError:
+            return report("wait", "q7_private_configuration_incomplete")
+        return report("ready-for-qualification", "bounded_q7_preflight_passed")
 
     def run(self, case: str, expected_revision: str) -> dict[str, Any]:
         expected = _expected_case(case)
@@ -232,6 +339,7 @@ def _validate_payload(
         or value["reason_code"] != expected_reason
         or value["work_unit_reason_code"] != expected_work_unit_reason
         or value["expected_revision"] != requested_revision
+        or type(value["assignment_requests"]) is not int
         or value["assignment_requests"] != 1
         or value["workspace_clean"] is not True
     ):

@@ -23,6 +23,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
+from . import __version__ as _loaded_package_version
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .artifact_custody import ContentAddressedArtifactCustody
@@ -61,6 +62,9 @@ from .bewind_worker_qualification_policy import (
 )
 from .build_identity import (
     BuildIdentity,
+    bounded_build_identity_payload,
+    candidate_revision_with_wheel_identity,
+    fail_closed_runtime_provenance,
     installed_source_revision,
     runner_mcp_build_identity,
     runner_mcp_mcp_build_identity,
@@ -84,6 +88,7 @@ from .ci_runner_lifecycle import (
     plan_ci_runner,
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
+from .coding_workspace import CodingWorkspaceProvisioner
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
@@ -91,6 +96,8 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
     a6_state_requested,
+    classify_a6_bindings_for_doctor,
+    inspect_a6_binding_state,
     repair_a6_qualification_binding,
 )
 from .fabric_agent_runtime import (
@@ -98,14 +105,23 @@ from .fabric_agent_runtime import (
     restart_fabric_qualification_agent,
 )
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
-from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
+from .fabric_bridge import (
+    FabricBridgeClient,
+    FabricBridgeConfig,
+    FabricBridgeError,
+    bounded_ci_guest_status_unavailable,
+    bounded_host_inspection_unavailable,
+    bounded_snapshot_unavailable,
+)
 from .fabric_coding_availability import (
     FabricCodingAvailabilityQualificationError,
     FabricCodingAvailabilityQualificationRunner,
+    bounded_qualification_failure,
 )
 from .fabric_continuity_status import (
     FabricContinuityStatusError,
     FabricContinuityStatusRunner,
+    bounded_continuity_unavailable,
 )
 from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
@@ -122,7 +138,12 @@ from .fabric_repository_mirrors import (
     FabricRepositoryMirrorError,
     FabricRepositoryMirrorRunner,
 )
-from .fabric_update import FabricUpdateError, FabricUpdateManager
+from .fabric_update import (
+    FabricUpdateError,
+    FabricUpdateManager,
+    bounded_fabric_readiness_failure,
+    bounded_local_custody_failure_reason,
+)
 from .fabric_worker_qualification_provisioning import (
     FabricWorkerQualificationProvisioner,
     FabricWorkerQualificationProvisioningError,
@@ -161,8 +182,13 @@ from .operational_safety import (
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
+from .serving_process_readonly import observe_current_process_modules
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
+from .tunnel_readiness import (
+    TunnelReadinessEvidence,
+    bounded_doctor_tunnel_check,
+)
 from .tunnel_topology_refresh import (
     TunnelTopologyRefreshError,
     bounded_tunnel_topology_refresh_reason,
@@ -438,6 +464,8 @@ def build_mcp(
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
+    tunnel_expected: bool = False,
+    tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
     mcp = MCPServer(
@@ -469,6 +497,7 @@ def build_mcp(
         else None
     )
     private_values = secret_values or os.environ
+    coding_workspaces = CodingWorkspaceProvisioner(private_values)
     github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
     known_project_local_sources = private_values.get(
         "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON",
@@ -559,11 +588,15 @@ def build_mcp(
             return None
         try:
             identity = build_identity_provider()
-        except (RuntimeError, TypeError, ValueError):
+        except (OSError, RuntimeError, TypeError, ValueError, LookupError, AttributeError):
             return None
-        if not isinstance(identity, BuildIdentity):
-            return None
-        return identity.source_revision
+        # A source revision alone is not sufficient. A qualified provider must
+        # also furnish the matching loaded version and active wheel digest.
+        # The provider's independent process/signature authority is a separate
+        # host admission gate, never inferred from this structural check.
+        return candidate_revision_with_wheel_identity(
+            identity, loaded_version=_loaded_package_version
+        )
 
     self_update_manager = SelfUpdateManager(
         config_dir=settings.projects_config.parent,
@@ -698,6 +731,11 @@ def build_mcp(
         readiness_provider=bewind_qualification_readiness,
     )
 
+    def _a6_state_root() -> Path:
+        config_root = settings.projects_config.parent.expanduser().resolve()
+        service_home = config_root.parent.parent
+        return service_home / ".local" / "state" / "runner-fabric"
+
     ci_guest_specs = {
         "aifordable-lab-ci": CIRunnerGuestSpec(
             alias="aifordable-lab-ci",
@@ -733,17 +771,9 @@ def build_mcp(
         raise TypeError("build_identity_provider must be callable")
 
     def build_identity() -> dict[str, object]:
-        """Return bounded first-party build/protocol/interface identity."""
+        """Return proven identity or a bounded explicit unavailable result."""
 
-        if build_identity_provider is None:
-            raise ValueError("build_identity_unavailable")
-        try:
-            identity = build_identity_provider()
-        except (RuntimeError, TypeError, ValueError):
-            raise ValueError("build_identity_unavailable") from None
-        if not isinstance(identity, BuildIdentity):
-            raise TypeError("build_identity_unavailable")
-        return identity.to_payload()
+        return bounded_build_identity_payload(build_identity_provider)
 
     if build_identity_provider is not None:
         mcp.tool()(build_identity)
@@ -757,7 +787,14 @@ def build_mcp(
         except PackageNotFoundError:
             package = "development"
         result = {
-            "version": package,
+            # The module version is frozen in the process when imported. A
+            # later pip install can change dist-info without replacing the
+            # Python modules already executing in this process.
+            "version": _loaded_package_version,
+            "installed_distribution_version": package,
+            "active_build_provenance_verified": False,
+            "active_artifact_revision": None,
+            "active_artifact_digest": None,
             "mode": status.mode,
             "emergency_stop": status.stop_active,
             "retention_confirmed": settings.retention_confirmed,
@@ -773,22 +810,37 @@ def build_mcp(
             "approvals_configured": approval_manager is not None,
             "fabric_bridge_configured": fabric_bridge is not None,
         }
-        try:
-            result.update(self_update_manager.runtime_status())
-            result.update(fabric_bootstrap_manager.runtime_status())
-            result.update(fabric_update_manager.runtime_status())
-        except (SelfUpdateError, FabricBootstrapError, FabricUpdateError) as exc:
-            audit.append(
-                AuditEvent(
-                    current_request_id(),
-                    "runtime_status",
-                    None,
-                    "authenticated-client",
-                    "denied",
-                    utc_timestamp(),
+        # Each first-party manager is an independent evidence source. Return
+        # only categorical failure facts if any source is unreadable: no
+        # partial status can be mistaken for complete runtime health, and raw
+        # storage/configuration exception text must not cross the MCP boundary.
+        for reason, read_status in (
+            ("self-update-state-unavailable", self_update_manager.runtime_status),
+            ("fabric-bootstrap-state-unavailable", fabric_bootstrap_manager.runtime_status),
+            ("fabric-update-state-unavailable", fabric_update_manager.runtime_status),
+        ):
+            try:
+                state = read_status()
+                if not isinstance(state, dict):
+                    raise TypeError("runtime manager returned non-object status")
+                result.update(state)
+            except (OSError, RuntimeError, ValueError, TypeError):
+                audit.append(
+                    AuditEvent(
+                        current_request_id(),
+                        "runtime_status",
+                        None,
+                        "authenticated-client",
+                        "denied",
+                        utc_timestamp(),
+                    )
                 )
-            )
-            raise ValueError(str(exc)) from None
+                return {
+                    "schemaVersion": "runner-mcp/runtime-status-degraded/v1",
+                    "state": "degraded",
+                    "reasonCode": reason,
+                    "runtimeEvidenceComplete": False,
+                }
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -799,7 +851,27 @@ def build_mcp(
                 utc_timestamp(),
             )
         )
-        return result
+        return fail_closed_runtime_provenance(
+            result,
+            loaded_version=_loaded_package_version,
+            installed_distribution_version=package,
+        )
+
+    @mcp.tool()
+    def serving_process_observation_preflight() -> dict[str, object]:
+        """Observe ONLY the current loaded MCP process; no live wheel attestation.
+
+        This cannot inspect other managed roles or independent storage, issue a
+        signer receipt, or grant self-update/dispatch/rollback authority.
+        """
+        try:
+            installed = version("aifordable-runner-mcp")
+        except PackageNotFoundError:
+            installed = "development"
+        return observe_current_process_modules(
+            imported_version=_loaded_package_version,
+            installed_distribution_version=installed,
+        )
 
     @mcp.tool()
     def runtime_doctor() -> dict:
@@ -836,6 +908,13 @@ def build_mcp(
             "pass" if github_token else "warn",
             "configured" if github_token else "not_configured",
         )
+
+        tunnel_status = bounded_doctor_tunnel_check(
+            expected=tunnel_expected,
+            evidence_provider=tunnel_readiness_provider,
+        )
+        if tunnel_status is not None:
+            add("connector_tunnel_readiness", *tunnel_status)
 
         try:
             self_update_status = self_update_manager.runtime_status()
@@ -902,6 +981,21 @@ def build_mcp(
                     "fail",
                     "runtime_activation_drift",
                 )
+
+        try:
+            a6_state = inspect_a6_binding_state(
+                config_dir=settings.projects_config.parent,
+                state_root=_a6_state_root(),
+            )
+        except FabricA6BindingRepairError:
+            add(
+                "fabric_a6_binding_state",
+                "warn",
+                "unavailable",
+            )
+        else:
+            state, detail = classify_a6_bindings_for_doctor(a6_state)
+            add("fabric_a6_binding_state", state, detail)
 
         try:
             actions_readiness = fabric_update_manager.actions_readiness()
@@ -1344,6 +1438,22 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def fabric_coding_availability_preflight() -> dict:
+        """Read bounded local Q7 configuration readiness; no provider/work."""
+        report = fabric_coding_availability_runner.preflight()
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_coding_availability_preflight",
+                "runner-fabric:coding-availability",
+                "authenticated-client",
+                str(report["reason_code"]),
+                utc_timestamp(),
+            )
+        )
+        return report
+
+    @mcp.tool()
     def fabric_coding_availability_qualify(
         case: str,
         expected_revision: str,
@@ -1358,20 +1468,22 @@ def build_mcp(
             FabricCodingAvailabilityQualificationError,
             OperatorStopActive,
             SafetyConfigurationError,
-        ):
+        ) as exc:
+            # Even a process/transport failure can follow a dispatched Q7
+            # assignment. Return a fixed effect-unknown result instead of
+            # a generic MCP error that could invite blind retries.
+            report = bounded_qualification_failure(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_coding_availability_qualify",
                     "runner-fabric:coding-availability",
                     "authenticated-client",
-                    "denied",
+                    str(report["reason_code"]),
                     utc_timestamp(),
                 )
             )
-            raise ValueError(
-                "Fabric coding availability qualification is unavailable"
-            ) from None
+            return report
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1386,10 +1498,11 @@ def build_mcp(
 
     @mcp.tool()
     def fabric_continuity_status() -> dict:
-        """Return fixed read-only Runner Fabric continuity evidence."""
+        """Return bounded continuity evidence or sanitized fail-closed unavailability."""
         try:
             result = fabric_continuity_status_runner.status()
-        except FabricContinuityStatusError:
+        except FabricContinuityStatusError as exc:
+            unavailable = bounded_continuity_unavailable(str(exc))
             audit.append(
                 AuditEvent(
                     current_request_id(),
@@ -1400,9 +1513,7 @@ def build_mcp(
                     utc_timestamp(),
                 )
             )
-            raise ValueError(
-                "Fabric continuity status is unavailable"
-            ) from None
+            return unavailable
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1554,17 +1665,18 @@ def build_mcp(
         try:
             result = fabric_update_manager.readiness(commit)
         except FabricUpdateError as exc:
+            blocked = bounded_fabric_readiness_failure(exc, source="github-actions")
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_update_readiness",
                     "runner-fabric",
                     "authenticated-client",
-                    "denied",
+                    "blocked",
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            return blocked
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1583,17 +1695,27 @@ def build_mcp(
         try:
             result = fabric_update_manager.stage_local_bundle(commit)
         except FabricUpdateError as exc:
+            reason = bounded_local_custody_failure_reason(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_local_bundle_stage",
                     "runner-fabric",
                     "authenticated-client",
-                    "denied",
+                    "blocked" if reason is not None else "denied",
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            if reason is not None:
+                return {
+                    "state": "blocked",
+                    "reasonCode": reason,
+                    "staged": False,
+                    "bundleReady": False,
+                    "source": "canonical-source",
+                    "localCustody": True,
+                }
+            raise ValueError("Fabric local bundle staging is unavailable") from None
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1612,17 +1734,25 @@ def build_mcp(
         try:
             result = fabric_update_manager.local_readiness(commit)
         except FabricUpdateError as exc:
+            reason = bounded_local_custody_failure_reason(exc)
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_local_update_readiness",
                     "runner-fabric",
                     "authenticated-client",
-                    "denied",
+                    "blocked" if reason is not None else "denied",
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            if reason is not None:
+                return {
+                    "state": "blocked",
+                    "reasonCode": reason,
+                    "artifact_ready": False,
+                    "source": "local-custody",
+                }
+            return bounded_fabric_readiness_failure(exc, source="local-custody")
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1831,46 +1961,8 @@ def build_mcp(
         )
 
     def _fabric_host_inspect_failure(exc: FabricBridgeError) -> dict:
-        """Project one Fabric host-inspection failure into bounded public evidence."""
-
-        category = (
-            "fabric_inspection_unavailable"
-            if str(exc) == "Runner Fabric host inspection failed"
-            else "invalid_inspection_payload"
-        )
-        bridge = _require_fabric_bridge()
-        preflight_method = getattr(bridge, "preflight", None)
-        if callable(preflight_method):
-            try:
-                preflight = preflight_method()
-            except FabricBridgeError:
-                preflight = {}
-        else:
-            preflight = {}
-        reason = preflight.get("reason_code") if isinstance(preflight, dict) else None
-        if (
-            preflight.get("state") == "blocked"
-            and isinstance(reason, str)
-            and reason in {
-                "transport_or_auth_unavailable",
-                "initialization_failed",
-                "protocol_incompatible",
-                "interface_incompatible",
-                "build_identity_incompatible",
-                "server_identity_invalid",
-                "session_invalid",
-                "response_invalid",
-                "peer_unavailable",
-                "bridge_unavailable",
-            }
-        ):
-            category = reason
-        return {
-            "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
-            "state": "unavailable",
-            "error_category": category,
-            "mutation_enabled": False,
-        }
+        """Bound one failed read with no implied follow-up Fabric request."""
+        return bounded_host_inspection_unavailable(str(exc))
 
     def fabric_bridge_preflight() -> dict:
         """Return bounded read-only Fabric MCP handshake readiness."""
@@ -1905,6 +1997,33 @@ def build_mcp(
             _audit_fabric("fabric_host_inspect", "host:local", "denied")
             return _fabric_host_inspect_failure(exc)
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
+        return result
+
+    def fabric_worker_process_inspect(worker: str) -> dict:
+        """Read one fixed worker's process facts through existing Fabric MCP."""
+        try:
+            result = _require_fabric_bridge().worker_process_inspect(worker)
+        except FabricBridgeError:
+            _audit_fabric("fabric_worker_process_inspect", "worker:fixed", "denied")
+            raise ValueError("worker process inspection unavailable") from None
+        _audit_fabric(
+            "fabric_worker_process_inspect",
+            "worker:fixed",
+            str(result.get("state", "wait")),
+        )
+        return result
+
+    def fabric_a6_storage_preflight() -> dict:
+        """Observe EXISTING Fabric A6 local hash chain; never authorize update."""
+        try:
+            result = _require_fabric_bridge().a6_storage_preflight()
+        except FabricBridgeError:
+            _audit_fabric("fabric_a6_storage_preflight", "a6:local", "denied")
+            raise ValueError("A6 read-only inspection unavailable") from None
+        _audit_fabric(
+            "fabric_a6_storage_preflight", "a6:local",
+            str(result.get("reasonCode", "fabric_read_unavailable")),
+        )
         return result
 
     def fabric_external_target_preflight() -> dict:
@@ -1953,7 +2072,7 @@ def build_mcp(
                 "ci-runner:aifordable-lab-ci",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_ci_guest_status_unavailable(str(exc))
         _audit_fabric(
             "fabric_ci_runner_guest_status",
             "ci-runner:aifordable-lab-ci",
@@ -2272,12 +2391,12 @@ def build_mcp(
         return result
 
     def fabric_operational_snapshot() -> dict:
-        """Return bounded end-to-end operational state from Runner Fabric."""
+        """Return read-only Fabric state or explicit safe unavailable evidence."""
         try:
             result = _require_fabric_bridge().operational_snapshot()
         except FabricBridgeError as exc:
             _audit_fabric("fabric_operational_snapshot", "fabric:operational", "denied")
-            raise ValueError(str(exc)) from None
+            return bounded_snapshot_unavailable(str(exc))
         _audit_fabric("fabric_operational_snapshot", "fabric:operational", "ok")
         return result
 
@@ -2347,6 +2466,8 @@ def build_mcp(
     if fabric_bridge is not None:
         mcp.tool()(fabric_bridge_preflight)
         mcp.tool()(fabric_host_inspect)
+        mcp.tool()(fabric_worker_process_inspect)
+        mcp.tool()(fabric_a6_storage_preflight)
         mcp.tool()(fabric_external_target_preflight)
         mcp.tool()(fabric_external_target_inspect)
         mcp.tool()(fabric_ci_runner_guest_status)
@@ -2550,13 +2671,45 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def known_project_preflight(project_id: str) -> dict:
+    def coding_workspace_preflight(worker_id: str) -> dict:
+        """Read-only readiness of the caller's fixed local owner-bound workspace."""
+        result = coding_workspaces.preflight(worker_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_preflight", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
+    def coding_workspace_prepare(worker_id: str, work_unit_id: str) -> dict:
+        """Create only fixed jobs/patches directories inside this worker's private root."""
+        if safety.status().stop_active:
+            result = {
+                "schema_version": "runner-mcp/coding-workspace/v1",
+                "state": "blocked",
+                "reason_code": "operator_stop_active",
+                "worker_id": None,
+                "work_unit_id": None,
+                "filesystem_path_exposed": False,
+                "cross_host_execution_authorized": False,
+            }
+        else:
+            result = coding_workspaces.prepare(worker_id, work_unit_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_prepare", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
+    def known_project_preflight(project_id: str, anchor_project_id: str | None = None) -> dict:
         """Return bounded preparation state for one built-in managed project."""
         request_id = current_request_id()
         try:
             result = preflight_known_project_binding(
                 registry,
                 project_id=project_id,
+                anchor_project_id=anchor_project_id,
             )
             if result.get("state") == "ready-to-prepare":
                 source = preflight_known_project_source_binding(
@@ -2629,7 +2782,7 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def prepare_known_project(project_id: str) -> dict:
+    def prepare_known_project(project_id: str, anchor_project_id: str | None = None) -> dict:
         """Prepare one built-in managed project clone without caller-selected repo or path."""
         request_id = current_request_id()
         if safety.status().stop_active:
@@ -2648,6 +2801,7 @@ def build_mcp(
             result = prepare_known_project_binding(
                 registry,
                 project_id=project_id,
+                anchor_project_id=anchor_project_id,
                 github_token=known_project_github_token(project_id),
                 local_source_bindings_raw=known_project_local_sources or None,
             )
@@ -3743,14 +3897,16 @@ def create_app(
     self_update_restart_components: frozenset[str] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
+    tunnel_expected: bool = False,
+    tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
-    try:
-        package_version = version("aifordable-runner-mcp")
-    except PackageNotFoundError:
-        package_version = "development"
+    # Capture the already-imported runtime generation. Distribution metadata
+    # may change under a live process when an operator upgrades in place.
+    package_version = _loaded_package_version
     identity: BuildIdentity | None = None
+    # Historical self-update state is NOT an active wheel/source attestation.
     source_revision = installed_source_revision(settings.projects_config.parent)
 
     def current_build_identity() -> BuildIdentity:
@@ -3793,6 +3949,8 @@ def create_app(
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
         build_identity_provider=current_build_identity,
+        tunnel_expected=tunnel_expected,
+        tunnel_readiness_provider=tunnel_readiness_provider,
     )
     transport_security = transport_security_for(settings.resource_url)
 
@@ -3817,7 +3975,12 @@ def create_app(
             ),
         ],
         middleware=[
-            Middleware(RequestIdMiddleware),
+            Middleware(
+                RequestIdMiddleware,
+                node_id=os.environ.get("RUNNER_MCP_NODE_ID"),
+                build_version=package_version,
+                source_revision=source_revision,
+            ),
             Middleware(
                 RateLimitMiddleware,
                 max_requests=settings.rate_limit_per_minute,

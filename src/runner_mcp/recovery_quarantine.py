@@ -85,9 +85,11 @@ class RecoveryQuarantineLedger:
 
     def inspect(self, request_id: str) -> RecoveryQuarantineRecord | None:
         self._check_request_id(request_id)
-        fd = self._open()
+        fd = self._open(create=False)
+        if fd is None:
+            return None
         try:
-            with os.fdopen(fd, "r+", encoding="utf-8", closefd=True) as handle:
+            with os.fdopen(fd, "r", encoding="utf-8", closefd=True) as handle:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
                 return self._read(handle).get(request_id)
         except OSError as exc:
@@ -163,8 +165,14 @@ class RecoveryQuarantineLedger:
         except OSError as exc:
             raise RecoveryQuarantineError("quarantine rearm unavailable") from exc
 
-    def _open(self) -> int:
-        """Open the stable lock inode, never the replaceable data-file inode."""
+    def _open(self, *, create: bool = True) -> int | None:
+        """Open the stable lock inode; read-only inspection must not create it.
+
+        Existing data without its lock is an ambiguous pre-migration state:
+        refuse inspection rather than reading unlocked mutable evidence.
+        """
+        if type(create) is not bool:
+            raise RecoveryQuarantineError("quarantine storage operation is invalid")
         parent = self._path.parent
         try:
             info = parent.lstat()
@@ -181,14 +189,22 @@ class RecoveryQuarantineLedger:
             nofollow = getattr(os, "O_NOFOLLOW", 0)
             if nofollow == 0:
                 raise RecoveryQuarantineError("quarantine symlink protection unavailable")
-            fd = os.open(
-                lock_path, os.O_RDWR | os.O_CREAT | nofollow | getattr(os, "O_CLOEXEC", 0),
-                0o600,
-            )
+            flags = (
+                (os.O_RDWR | os.O_CREAT) if create else os.O_RDONLY
+            ) | nofollow | getattr(os, "O_CLOEXEC", 0)
+            try:
+                fd = os.open(lock_path, flags, 0o600)
+            except FileNotFoundError:
+                if create:
+                    raise
+                if self._path.is_symlink() or self._path.exists():
+                    raise RecoveryQuarantineError("quarantine lock is unavailable")
+                return None
             metadata = os.fstat(fd)
             if (
                 not stat.S_ISREG(metadata.st_mode)
                 or metadata.st_uid != os.getuid()
+                or metadata.st_nlink != 1
                 or (metadata.st_mode & 0o077)
             ):
                 os.close(fd)
@@ -213,6 +229,7 @@ class RecoveryQuarantineLedger:
         if (
             not stat.S_ISREG(opened.st_mode)
             or opened.st_uid != os.getuid()
+            or opened.st_nlink != 1
             or (opened.st_mode & 0o077)
         ):
             os.close(fd)
@@ -280,6 +297,17 @@ class RecoveryQuarantineLedger:
         if len(encoded) > MAX_QUARANTINE_FILE_BYTES:
             raise RecoveryQuarantineError("quarantine data exceeds bound")
         if self._path.is_symlink():
+            raise RecoveryQuarantineError("quarantine file is unsafe")
+        try:
+            previous = self._path.lstat()
+        except FileNotFoundError:
+            previous = None
+        if previous is not None and (
+            not stat.S_ISREG(previous.st_mode)
+            or previous.st_uid != os.getuid()
+            or previous.st_nlink != 1
+            or (previous.st_mode & 0o077)
+        ):
             raise RecoveryQuarantineError("quarantine file is unsafe")
         parent = self._path.parent
         fd, temporary = tempfile.mkstemp(prefix=".quarantine-", dir=parent)

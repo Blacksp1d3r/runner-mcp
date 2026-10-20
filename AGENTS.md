@@ -1,8 +1,46 @@
+## Owner-confirmed MCP scope in integrated cockpit (2026-10-20)
+
+AIfordable is the company-wide **business cockpit**, holding customer/product registrations and canonical desired-state/infrastructure identity metadata. Runner-Fabric owns the **technical F10/F17 Cockpit and all technical task/AI orchestration**. Runner-MCP is the **bounded authenticated MCP execution/access boundary** plus the optional narrow Fabric bridge, not another scheduler, provider/gateway authority, relay, updater or generic filesystem manager. Existing AIfordable-owned relay code/service stays a transport with Fabric coordinating work/results/ACK; Agent Bus traffic need not physically pass through Runner-MCP. Reuse approved workspace preflight/prepare on bounded worker/work-unit IDs only; Fabric decides scheduling. No host mutation or release/relay/runtime qualification follows from this documentation. Canonical contract: [https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md](https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md).
+
+## Operator control route — 2026-10-17
+
+All normal cross-server operational data (topology, health, installed/loaded version, heartbeat), rollout and installation operations are REQUIRED to pass through first-party bounded Runner-MCP tools and its authenticated Runner Fabric bridge, rather than Desktop Commander, direct unmanaged remote shell or GitHub Actions-as-host-control. Desktop Commander is emergency break-glass ONLY after the ordinary path is verified unavailable, never an automatic substitute for a missing feature. A connected Runner-MCP process verifies its OWN hosting runtime, not another host listed in a topology file. Per-host fleet health and managed update require a separately authenticated, identity-bound agent/Agent Bus route and fresh original-client evidence; unknown/stale remains UNKNOWN and mutation unavailable if not admitted. Preserve the canonical topology: do not create duplicate primary tunnels or conflate lab and runner hosts. The lab's historical native Python SIGSEGV activation gate is #198 and primary-tunnel route confusion is Runner-Fabric #1202. Missing private tunnel-health URL on the connected central instance is not by itself evidence of lab failure.
+
 # AGENTS.md
+
+## Owner decision — test-first development; review later (2026-10-14)
+
+This is the current operator-approved pre-customer workflow. It supersedes older project
+instructions imposing review waits (12h/24h), mandatory external review, GitHub
+APPROVED events or reviewer-App availability as prerequisites for source-code merges.
+For work on the functional product: implement -> automated lint/build/tests/CI on
+the exact change -> fix actual defects -> use the normal GitHub merge path under
+its real enforced rules -> qualify and test isolated staging -> validate behaviour.
+Do not wait for Blacky, RTX5080, Claude or any external reviewer. These agents
+MAY examine code and report bugs concurrently or asynchronously; their checks
+are advisory, and actionable defects should be fixed. Formal review programs
+are deferred until the application is operational and customer phase begins.
+
+This is **not** permission to bypass GitHub-enforced branch rules, green CI,
+source/revision validation, host isolation, real security defects, production
+approval/backup/rollback, safe credential and billing custody, tenant privacy or
+runtime lease/fencing. A source merge does not authorize a production release,
+remote command, paid model/API call, protected-data operation or live AI dispatch.
+The employer-managed workstation must never be used for private Runner-Fabric
+downloads, scripts, tunnels, SSH or development execution. Restrict any host
+tests/deploys to authorized privately owned environments. Full context and
+status: Blacksp1d3r/Runner-Fabric issue #972 (2026-10-14 owner override).
+
 
 ## Mission
 
 Build Runner MCP as a small, auditable, deny-by-default operations interface. Prefer narrow capabilities over generic remote execution.
+
+## Canonical cross-project standards
+
+For every session follow Library `/Standards/MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` v1.2; for repository/bootstrap design follow Library `/Standards/AI_REPOSITORY_BLUEPRINT_STANDARD.md` v1.0. These standards complement, rather than replace, the stricter Runner-MCP security and ownership rules below. The Library master never grants host, filesystem, Git or production privileges.
+
+Runner-MCP predates the blueprint. Apply its `COMPATIBLE/PARTIAL/NEEDS_REVIEW/BLOCKED` migration mapping in `docs/standards/REPOSITORY_BLUEPRINT_COMPATIBILITY.md`: preserve current `roadmap/children`, handover, diagnostic topology and live agent ownership. **Do not** mass-rename existing children or infer qualified local Git/storage authority. New bounded child tasks should use `TASK.md` + `STATE.md`, with a reference to legacy issue documents when relevant. Any Fabric automatic scaffold plan/apply is a separately authorized future capability, not an available Runner-MCP execution surface.
 
 ## Non-negotiable security rules
 

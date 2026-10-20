@@ -31,6 +31,72 @@ def _fail(ledger, request_id="req-poison", fingerprint=None):
     )
 
 
+def test_absent_inspection_does_not_create_data_or_lock_inode(tmp_path):
+    ledger = _ledger(tmp_path)
+    data = tmp_path / "quarantine.json"
+    lock = tmp_path / "quarantine.json.lock"
+    assert ledger.inspect("req-poison") is None
+    assert ledger.inspect("req-healthy") is None
+    assert not data.exists()
+    assert not lock.exists()
+
+    created = _fail(ledger)
+    assert created.attempts == 1
+    assert data.is_file()
+    assert lock.is_file()
+    assert ledger.inspect("req-poison") == created
+
+
+def test_absent_inspection_with_unsafe_parent_never_creates_state(tmp_path):
+    tmp_path.chmod(0o755)
+    with pytest.raises(RecoveryQuarantineError, match="directory is unsafe"):
+        _ledger(tmp_path).inspect("req-poison")
+    assert not (tmp_path / "quarantine.json").exists()
+    assert not (tmp_path / "quarantine.json.lock").exists()
+
+
+def test_legacy_data_without_stable_lock_requires_explicit_migration(tmp_path):
+    ledger = _ledger(tmp_path)
+    original = _fail(ledger)
+    data = tmp_path / "quarantine.json"
+    lock = tmp_path / "quarantine.json.lock"
+    before = data.read_bytes()
+    lock.unlink()
+    with pytest.raises(RecoveryQuarantineError, match="lock is unavailable"):
+        ledger.inspect("req-poison")
+    assert data.read_bytes() == before
+    assert not lock.exists()
+    assert original.state is RecoveryQuarantineState.RETRY
+
+
+def test_alias_of_private_lock_inode_is_refused(tmp_path):
+    ledger = _ledger(tmp_path)
+    _fail(ledger)
+    lock = tmp_path / "quarantine.json.lock"
+    alias = tmp_path / "lock-alias"
+    alias.hardlink_to(lock)
+    with pytest.raises(RecoveryQuarantineError, match="lock permissions are unsafe"):
+        ledger.inspect("req-poison")
+    with pytest.raises(RecoveryQuarantineError, match="lock permissions are unsafe"):
+        _fail(ledger)
+    assert lock.stat().st_nlink == 2
+
+
+def test_alias_of_private_data_inode_is_refused(tmp_path):
+    ledger = _ledger(tmp_path)
+    initial = _fail(ledger)
+    data = tmp_path / "quarantine.json"
+    original = data.read_bytes()
+    alias = tmp_path / "data-alias"
+    alias.hardlink_to(data)
+    with pytest.raises(RecoveryQuarantineError, match="file permissions are unsafe"):
+        ledger.inspect("req-poison")
+    with pytest.raises(RecoveryQuarantineError, match="file permissions are unsafe"):
+        _fail(ledger)
+    assert data.read_bytes() == original
+    assert ledger is not None and initial.attempts == 1
+
+
 def test_poison_quarantined_after_three_failures_and_persists_across_restart(tmp_path):
     ledger = _ledger(tmp_path)
     assert _fail(ledger).attempts == 1

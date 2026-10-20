@@ -41,7 +41,7 @@ def test_local_mcp_rejects_wrong_response_id(
         del kwargs
         return _FakeResponse(returned_id)
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fake_open)
     client = LocalMCPClient(
         LocalMCPConfig(endpoint="http://127.0.0.1:9001/mcp", bearer_token="test-token"),
         allowed_tools=frozenset({"runtime_status"}),
@@ -55,7 +55,7 @@ def test_local_mcp_accepts_correct_response_id(monkeypatch: pytest.MonkeyPatch) 
         del kwargs
         return _FakeResponse(2)
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fake_open)
     client = LocalMCPClient(
         LocalMCPConfig(endpoint="http://127.0.0.1:9001/mcp", bearer_token="test-token"),
         allowed_tools=frozenset({"runtime_status"}),
@@ -76,7 +76,7 @@ def test_local_mcp_checks_id_in_sse_response(
         response.body = b"event: message\ndata: " + response.body + b"\n\n"
         return response
 
-    monkeypatch.setattr(urllib.request, "urlopen", fake_open)
+    monkeypatch.setattr("runner_mcp.bridge_mcp_executor._open_local_mcp_request", fake_open)
     client = LocalMCPClient(
         LocalMCPConfig(endpoint="http://127.0.0.1:9001/mcp", bearer_token="test-token"),
         allowed_tools=frozenset({"runtime_status"}),

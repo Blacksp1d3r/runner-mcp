@@ -1,4 +1,256 @@
+## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases
+
+User-authorized single release sequence has merged pinned metadata PR #743 (0.1.42) and bounded release bytes PR #745 (0.1.43); draft PR #750 now reconciles this source with actual main as the next unique 0.1.44. Independently pinned offline Ed25519 signed statement comparator checks exact host, challenge, source, loaded version, wheel, generation and process role set, but returns current source/digest NULL and active_build_provenance_verified=false regardless of signed consistency. No trusted correct-host observer, nonce issuance, original requester ACK, host installation or Fabric A6/A7 recovery is gained from this source. Review exact new CI head before merge; keep historical self-update state and existing running central 0.1.38 unchanged.
+
+---
+
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
+
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
+
+---
+
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
+## 2026-10-19 — Complete exact-head source qualification before merge
+
+New 0.1.40 source comparator and version/digest structural gate have passed 3386 pytest and Ruff at an earlier exact head; correct five trailing-whitespace errors and then require all tests, demo, artifact, clean Ubuntu, attribution on the NEW HEAD. If all green, mark PR #742 ready and merge under enforced GitHub rules without waiting for optional human/AI review. Source merge never authorizes production install. Manual correct-host process evidence, independent builder custody and a separately approved baseline remain for full live Doctor green, while Fabric #942/#943 maintain A6/A7 final acceptance. No rerun of already-proven 2026-10-18 physical guarded cutovers.
+
+---
+
+## 2026-10-19 — PR #742 validation steps after RMCP-F-0046
+
+Current source-only version is 0.1.40, with both active-provider and checkout-baseline fail-closed regressions. Reconcile exact latest SHA before CI verification. Required jobs are Runner MCP validation (Ruff/pytest/artifact/demo), commit attribution and clean Ubuntu installer (triggered by pyproject bump). A queued job with runner_id=null is not a code failure. Merge only after actual terminal successes and rules; never substitute older green main. For actual live Doctor repairs, first qualify independently signed correct-host installed-wheel/RECORD and serving process generation, separate operator-owned manual baseline receipt (historical self-update records remain untouched), original-client ACK and Fabric A6/A7. Avoid generic shell/SSH and untrusted source on privileged runners.
+
+---
+
+## 2026-10-19 — Release version guard corrected / exact-head CI pending
+
+2026-10-19 next: exact-head check PR #742 (source candidate 0.1.40) validation, commit attribution AND triggered clean Ubuntu installer proof. Every relevant job must reach terminal SUCCESS on the actual new branch commit, not older main. Jobs with runner_id=null are pending allocation; classify cause UNKNOWN until independently verified, do not blame source test or assume GitHub outage/quota. If CI fails, inspect the failing job and repair source. Only make PR ready/merge under enforced branch rules and technical/security checks. Serving Doctor FAILs cannot safely become green until correct-host independent signer/wheel/RECORD/imported-process evidence, signed operator-owned manual baseline (not rewriting historic self-update transaction), original-client ACK and separately accepted A6/A7 recovery.
+
+---
+
+## 2026-10-19 — First actionable source and physical gates for PR #742
+
+1. Check exact current head SHA of open draft PR #742; consult `actions/runs?head_sha=<exact>` plus job state, not older successful `main` runs. When queued, **do not** invent green or call it a test failure. Diagnose Actions capacity/account quota only with evidence. Correct actual failures if a job runs; merge only if required gates terminal green and branch rules satisfied.
+2. Treat RMCP-F-0045 provider metadata exception fix as a source-only contained bug, not a live Doctor resolution. Verify six synthetic negative cases and full Ruff/pytest/build/demo. Complete source PR/issue/handover only on verified evidence.
+3. Correct-host independent signer/manifest pin custody, wheel/RECORD/module and actual loaded serving-generation witness is required before a new owner-local protected manual-install baseline receipt is admitted. Never rewrite the historical last self-update commit. Then separately qualify original-client ACK and Fabric A6/A7. No source CI makes these physical gates green.
+4. Other independent small source tasks can continue while attestation/CI are blocked; reconcile their GitHub owners and current branches first, avoid duplicate PRs.
+
+---
+
+## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT
+
+Runner-MCP [PR #737](https://github.com/Blacksp1d3r/runner-mcp/pull/737) SOURCE MERGED `d2dce33c436794fb90ce78cb12d1a7f27b4243d3`, exact source head `c620db7c6417ae7a306862c8fd9292f7dc6e0f0b`, validation/Ruff/3326 pytest/artifact/demo #39061856248, clean Ubuntu #39061856254, attribution #39061856279 all SUCCESS. v0.1.38 is UNPUBLISHED/NOT INSTALLED; central active 0.1.27, new Black still non-serving staged 0.1.30. Read-only `agent-bus status` distinguishes missing owner-private base as `base_config_not_initialized` and gives local setup guidance; symlinks, bad owner/mode and partial private files deny safely. Valid base without relay remains `not configured`. No bearer generated, runtime installed, port opened or website deployed. Failure Museum RMCP-F-0044 source fixed after observed CI failure; no confirmed real credential exposure.
+
+Physical Black stage `stage_complete=true` was already done by operator (Runner-MCP #723/Fabric #1562 CLOSED), but `service_activation=false`, `relay_enrollment=false`, `original_client_ack=false`. Owner-private real project selection/base setup, AIfordable #585 unique CAS-fenced issuer credential and Fabric #1563 target-specific durable result→original-client ACK remain WAIT; A6/A7 and all external services stay blocked. Runner-MCP #735 remains OPEN for approved stage-closeout UX/receipt compatibility plus physical setup proof; do NOT silently add a field to signed stage v1 marker, repeat original stage, copy another host's token, or confuse central heartbeat with Black.
+
+---
+
+## 2026-10-17 — CURRENT next actions (supersedes 2026-10-11 history below)
+
+1. Runner-MCP #732 PR #734 SOURCE MERGED `4ac5d0c85674f91ed882588cb1b323deefc73e11`, three exact-head CI workflows SUCCESS. Source v0.1.37 UNPUBLISHED/NOT DEPLOYED. Next independent executable source task: #735 fail-closed base NOT_INITIALIZED status and local setup guidance; no host commands.
+2. Black physical non-serving stage already COMPLETED by operator; #723, #716, Fabric #1562 CLOSED. Never re-run/recover it. Its private base setup is NOT INITIALIZED: local config root/env/projects absent, #735 safe status/UX source change needed, then operator-only local setup with real repo/root selection. No auto bearer nor overwrite.
+3. Fabric #1563: independent Black-specific CAS-bound issuer credential, enrolled existing Agent Bus only after qualification, request/result/original-client ACK. A6 #942, A7 #943 and fleet #924 remain blocked, websites/Claude WAIT. Central 0.1.27 is a different host, no remote authority. Preserve old escrow and storage; no HDD format or generic shell.
+
+---
+
 # NEXT ACTION
+
+## 2026-10-11 — old Runner-MCP fleet update: read-only BLOCKED_A6/A7 (no mutation)
+
+- Asked whether old installed Runner-MCP generations can be updated. Historical wrong-host same-tunnel incidents mean a connected `runtime_status` is not sufficient to identify either enrolled host. Existing fleet is at least two independently managed Runner-MCP installations; do NOT assume which host the current ChatGPT route reached.
+- **Actual bounded current reply:** package `version=0.1.3`, `last_installed_commit=a0fd964c4a6fe7e0a1506a513e9b2b4059c5453a`, completed self-update on 2026-10-07, `self_update_ready=true`, `active_update=false`, `restart_pending=false`, `install_recovery_pending=false`. Public GitHub latest `main=61773578c393702a09fb51ea804d3dea1eb0abea` and GitHub compare indicates **505 source commits ahead** of recorded install. No assertion that this is the running binary's exact commit; `build_identity` did not return a structured reply. `runtime_doctor`/Fabric snapshot generic errors, `safety_status` works.
+- **Hard blocker:** read-only `fabric_bridge_preflight` shows bridge `ready` BUT `a6_prepare_available=false`, `synthetic_probe_status_available=false`, `mutation_enabled=false`. Private `known_project_preflight(runner-fabric)` reported `ambiguous-parent`. This makes a real A6 prepare→update→convergence/A3 ACK→finalize run unavailable. Runner-MCP #509 private A6 binding source fix PR #512 MERGED, not verified installed. Fabric A6 [#942](https://github.com/Blacksp1d3r/Runner-Fabric/issues/942) and A7 [#943](https://github.com/Blacksp1d3r/Runner-Fabric/issues/943) OPEN, Runner-MCP #341 OPEN, activation PR #438 OPEN. `self_update_ready` alone is not a safe promotion gate.
+- Next required FIRST-PARTY action is **read-only** full enrolled host roster + active-process/source/interface/tunnel identity for each host and exact desired release, then owner-qualified bounded restoration of the private A6 binding on the correctly identified node (#509). When A6 can prepare and independently store a tamper-evident off-target journal, prove a one-node update with unique correlation/result ACK and restore; qualify **independent** A7 local revert on deliberate bad release and loss of tunnel before any automatic fleet fan-out. Keep all hosts on one exact promoted security/tool schema while host-specific restrictions are audited denials (#642). Do NOT start self_update, agent restart, tunnel failover, change credentials or use shell/Desktop Commander merely to bypass A6/A7.
+- Historical #540 is **CLOSED** via another owner (source acceptance); live #590 stays OPEN. GitHub comments posted to #341 and #509 with this read-only evidence. No live host/tunnel/services/secret changes this session.
+
+
+## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN
+
+Na volledige broncode-merge van #651 en handover heeft een afzonderlijke actor/werklijn issue [#540](https://github.com/Blacksp1d3r/runner-mcp/issues/540) om 2026-10-10 21:10:33 UTC met `state_reason=completed` gesloten; issue-evenementen bevestigen de sluiting, maar de hier beschikbare first-party connected probes bewijzen nog **niet** dat de live geïnstalleerde MCP-server, clientcatalogus en antwoordaflevering overeenkomen. De Runner-MCP-communicatiechat **heropent of overschrijft #540 niet**. Eerder genoteerde #540 OPEN is nu historisch/verouderd; behandel #540 als CLOSED (source/other-owner decision), niet als operationeel bewijs voor #590.
+
+Runner-MCP [#590](https://github.com/Blacksp1d3r/runner-mcp/issues/590) blijft OPEN: eerst een geautoriseerde private exacte actieve build/catalogus en één bekende geslaagde + één falende verzoek-ID door ingress/dispatcher/serveraudit/response-delivery/oorspronkelijke client; voor vervanging blijven Fabric A6 #942 en A7 #943 aparte live uitrolgates. Geen productie- of tunnelwijziging.
+
+
+## 2026-10-10 evening — #651 exact-green SOURCE fix landed; first remaining #590 LIVE blocker
+
+- PR #651 merged `68093ab85bee293a8cc7616340d2893d5e4c24a0`, exact head `d588c72619fc277d8423b680f473c8d62e3c992a`; attribution 38086367280 and full CI 38086367281 SUCCESS (**2813 pytest** + Ruff + artifact + demo). Risk RMCP-F-0024 proxy/redirect bearer egress SOURCE_FIXED_LIVE_UNQUALIFIED. Child 590-local-mcp-transport-egress COMPLETE_SOURCE_ONLY.
+- Source closes the last known urllib loopback Bearer redirect/proxy gap **in repository**, not currently installed runtime. First remaining live #590/#540 gate is correct active process build identity, currently advertised client tool catalog/schema generation and one safe known-good/failing request correlated through original ingress, execution/audit and response-delivery ACK to the same calling client. Previous connected `list_projects` good, `project_status(runner-mcp)` generic internal error; do not infer root cause.
+- Fabric A6 #942 journal and A7 #943 independent rollback/ACK remain open; do not update or restart Runner-MCP fleet without their proven acceptance. #642 host-local policy separate owner. #381 Claude NO_DISPATCH until real AIfordable #370, Fabric #972 and #1398/#1400 signed durable admission are independently qualified. No live host/tunnel credentials changed.
+
+
+## 2026-10-10 late — #540 no-replay fix MERGED; next connector lane
+
+- Source #540 PR #650 MERGED `8608ddde46f228d045d64189f12e7464a1919fb9`, exact head `154b9444a1ea67023588ce75fdc86628687e60ff`, attribution `38085233372` and `38085481144` SUCCESS, full `38085233326` SUCCESS (Ruff, 2781 pytest, artifact, demo). Before fix, stale-session HTTP 404 caused blind re-initialization and reexecution of any tool, even mutations. Now static `MCP_SESSION_STALE_EFFECT_UNKNOWN_RECONNECT_REQUIRED`, no automatic replay, cached identity cleared, separate new call must prove exact peer `tools/list`/build schema. Mismatch refuses before dispatch; source child `540-stale-session-no-replay/STATE.md` COMPLETE_SOURCE_ONLY, RMCP-F-0023 in Failure Museum.
+- Fresh currently connected bounded reads: `list_projects` succeeded with six configured projects; `project_status(runner-mcp)` generic tool error. No per-call ingress/delivery evidence. #590 and #540 live gate remain OPEN; installed source and client catalog generation unqualified.
+- First safe independent source candidate: `roadmap/children/590-local-mcp-transport-egress/{TASK,STATE}.md` UNCLAIMED; after reconciling #650 merged main and other owners, prevent default urllib `urlopen` from honoring environment proxies or redirects with loopback Bearer credentials. Follow source-only pattern from Fabric #1446; strict hostile proxy + redirect negative tests, no live network change. Verify exact-head full CI then update central failure records. Do not conflate risk with confirmed exfiltration.
+- Still BLOCKED: A6 Fabric #942 journal and A7 #943 independent rollback; physical rollout, authenticated source/interface/route ACK, #590, #540, #381, Fabric #1398/#1400 lease and AIfordable #370/Fabric #972 real Claude. No automatic paid API or worker dispatch, no generic remote shell or guessed server restart.
+
+
+## 2026-10-10 late evening — first live blocker now isolated after #648/#649
+
+- #590 SOURCE: PR #648 MERGED `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e`, exact head `403eedf2429fda7d4b84839aa70790a3a6e71ae5`, exact full CI `38075662792` 2773 pytest/Ruff/artifact/demo SUCCESS + attribution `38075662830` SUCCESS. Local authenticated good/degraded MCP HTTP result↔request ID/trace/audit matches exactly.
+- #540 SOURCE: PR #649 MERGED `2a8ca54272fe6cf1cc12a2f2aa7919caf8481359`, exact head `8c0ad02ac315e28b7f09e69e09fe0846053f26ea`, exact full CI `38076184096` 2774 pytest/Ruff/artifact/demo SUCCESS + attribution `38076184097` SUCCESS. Actual locally advertised `tools/list` name/input/output schema hash equals returned `build_identity.interface_schema_digest`. Both child TASK+STATE COMPLETE_SOURCE_ONLY.
+- FIRST ACTUAL LIVE GAP #590/#540: privately verify exact installed process build SHA/interface schema, client advertised catalog generation and route provenance; correlate precisely one known-good and one failing read-only opaque-ID request from the **same approved client route** through authenticated MCP ingress, application audit, dispatcher, response-delivery HTTP 200 acceptance and client-visible result. If a bounded edge is not available, keep UNKNOWN and request first-party evidence; don't substitute an inferred duplicate tunnel.
+- Enforce release precondition Fabric A6 #942 off-target journal + A7 #943 disconnected rollback and independently verified return ACK before installing/promoting a uniform Runner-MCP security release on all enrolled hosts; do not restart or deploy by guess. #642 host-local permit is a separate policy gate. Fabric #1398/#1400 remains Fabric-chat-owned; AIfordable #370 real rootless worker + Fabric #972 real signed Q7 remain blocked. #381/#590/#540 OPEN, Claude NO_DISPATCH.
+
+
+## 2026-10-10 evening — #590 live request-delivery edge is NOW first blocker
+
+1. Runner-MCP PR #648 source test **MERGED** `16f3dc9f118f7a02747a3050fe7409bc7fe3c32e`, exact reviewed head `403eedf2429fda7d4b84839aa70790a3a6e71ae5`, attribution `38075662830` SUCCESS; full `38075662792` SUCCESS (Ruff, 2773 pytest, built release artifact, clean demo). Child `roadmap/children/590-mcp-response-audit-lineage/{TASK,STATE}.md` COMPLETE_SOURCE_ONLY. HTTP X-Request-ID / W3C trace / one matching bounded audit for local same-session good `list_projects` and synthetic degraded `runtime_status` proven. Initial framing mismatch in test fixed (RMCP-F-0022). No installed runtime repair.
+2. Owner-qualified private first-party installed-source identity + client `tools/list` name/schema exact hash on both managed Runner-MCP hosts; distinguish current on-disk source, loaded running process, client cached schema and which tunnel generation answered. Previously doctor had old 12 checks and Q7 preflight missing even though source merged. Do not infer second tunnel/host fault from client generic exception.
+3. Use **one** authorized read-only known-good and **one** failing client call with opaque IDs to match client admission, dispatcher, installed-process audited execution/denial, response-delivery acceptance and resulting client outcome. Record first missing/mismatched edge, not guessed cause. No raw URL/IP/path/token logging. If no per-call trusted correlation, keep #590 OPEN/UNKNOWN.
+4. Before changing any live control path, Fabric A6 #942 off-target journal and A7 #943 local independent rollback + cross-route ACK and one exact qualified fleet release convergence; no blind restart/sudo/tunnel changes. #540 stale session and #642 host permit remain independent. Fabric #1398/#1400 owned by Fabric chat. AIfordable #370 and Fabric #972 real Q7 proof not yet complete. #381 OPEN, Claude/EnerCue NO_DISPATCH.
+
+
+## 2026-10-10 late — After Q7 communication #646/#647 source merge
+
+- Q7 app response source issues FIXED: PR #646 merged `a8833190b62e1ace6d88617951116cca541cf8ba`, 2768 pytest/all CI green; strict not_started vs unknown-effect reason and no auto retry. PR #647 merged `d078781d28f98398359e4db163dd8c248a77264d`, 2772 pytest/all CI green; exact integer 1 assignment count. Child STATE marked COMPLETE_SOURCE_ONLY; Failure Museum RMCP-F-0020/0021.
+- **Remaining Runner-MCP communications:** issue #590 installed current build identity and advertised MCP schema must be independently verified. Connected client has mixed good and generic failing tools (known-good list_projects, older 12-check doctor, failing runtime_status, missing Q7 preflight). A source PR does NOT fix a stale live installed runtime or prove request↔response correlation. Owner-approved A6/#942 + A7/#943 real rollback-ready fleet canary then qualified single exact desired release; private read-only one-good/one-failing request trace through source/admission/response-delivery and fresh client catalogue. Host-only denial #642 separate owner.
+- Fabric #1398/#1400 trusted shared durable lease/fence/issuer belongs to Fabric chat; AIfordable #370 real dedicated rootless service; Fabric #972 true authenticated Q7 peer and Agent Bus result/ACK. Do not route via generic tool, restart blindly, copy subscription credentials or use paid provider API as fallback. Runner-MCP #381 remains OPEN, Claude/EnerCue #89 NO_DISPATCH.
+
+
+## 2026-10-10 evening — Q7 communication / #381 next safe steps
+
+1. Runner-MCP PR #646 source-only Q7 typed failure delivery MERGED `a8833190b62e1ace6d88617951116cca541cf8ba`, CI 2768 pytest/Ruff/artifact/demo/attribution SUCCESS. Pre-execution `not_started` vs post-launch `unknown` effect, never dispatch/retry implicitly. Child 381-q7-communication-errors SOURCE_COMPLETE.
+2. Runner-MCP PR #647, HEAD `ea6e27bb1b3dcfe256b561ff8955bf31c0cdd768` fixes strict Q7 `assignment_requests` int type (reject bool and float equal to 1). Ruff+2772 pytest PASS, artifact/demo running at checkpoint. Require final exact-head full green before merge; then update child STATE and Failure Museum.
+3. Live #590 and #540 remain: authenticated connected `list_projects` works (six projects), `runtime_doctor` still older 12 checks, `runtime_status` opaque failure and source #643 Q7 preflight not in connected tool catalogue. FIRST missing proof: qualified installed build+tools/list schema across managed hosts and a single known-good/failing opaque request correlated through original inbound and response-delivery route. A6/#942 and A7/#943 physical guarded rollout must precede any live source replacement. No speculative restart/second tunnel.
+4. Fabric #1398/#1400 owned by Fabric chat (NOT Runner-MCP), AIfordable #370 owns real rootless worker, Fabric #972 real Q7 same-route and Q7 ACK. Runner-MCP #381 remains OPEN and Claude/EnerCue #89 NO_DISPATCH until all live gates and durable fencing proof.
+
+
+## 2026-10-10 evening — #381 immediate action after exact-green PR #645 merge
+
+Runner-MCP #381 remains OPEN/NO_DISPATCH (operator priority). Local source-only PR #645 fixed exact user-service MainPID↔socket inode verification; head `446a1edc8129a51421a6ef1b6516f2a84e1ab93f`, attribution `38071120207` + `38071261321` SUCCESS, full validation `38071120259` SUCCESS (2752 pytest, Ruff, artifact, demo), squash `e29105cf6ed5baed42849dcdc8d706df97b182bc`. Dedicated child `roadmap/children/381-fixed-service-listener-owner/STATE.md` SOURCE_COMPLETE; RMCP-F-0019 records foreign port spoofing. Source CI or local PID match does **not** authorize mutation. #381 operational issue must stay OPEN.
+
+**First real dependency: Fabric #1400/#1398/#1172 authorized shared durable lease/fencing/issuer + JIT executor and source-release A6/A7 qualification.** Existing Fabric #1432/#1433/#1435/#1436 only type/consistency checks; #1448 real wire test uses a synthetic peer. After trusted issuer and exact enrolled host authority, AIfordable #370 owner proves real rootless fixed service preflight/start/stop and unit+port PID ownership, unchanged default disable, then Fabric #972 real authenticated Q7 round-trip and ACK. Only then separate Claude project work-unit authorization. The connected current tool catalogue lacks the source-merged #643 read-only preflight, and live build_identity errored; do not bypass with generic remote shell or restart. Other independent #630/#634, #587/#588 work remains separate.
+
+
+## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged
+
+Independent BPA-02-T source-test [PR #638](https://github.com/Blacksp1d3r/runner-mcp/pull/638), exact reviewed head `3c02f04167075e59f6d872359ce1b404b02c90cc`: attribution `38052880661` SUCCESS, validation `38052880714` Ruff/pytest + built artifact + clean five-minute demo all SUCCESS, Clean Ubuntu installer `38052880727` SUCCESS; squash MERGED `5231c6814d8bc80d9ddc7eba7a2e5fb44212e708`. `roadmap/children/bpa-02-schema-validation/{TASK,STATE}.md` and child index now mark COMPLETE_SOURCE_ONLY. Existing `tests/unit/test_repository_manifest_candidate.py` had self-tested with a bespoke miniature interpreter; now uses dev-only OSS `jsonschema>=4.23,<5` and real `Draft202012Validator.check_schema/validate` with synthetic fail-closed negative cases. No changes to proposal YAML/JSON schema or executable runtime configuration; Failure Museum RMCP-F-0018.
+
+**Live authority remains BLOCKED.** #630/#634 still OPEN: no proven Git primary/single writer, physical isolated restore, independent storage receipt, correct Fabric lease/fence or operator approval; root `project.yml` remains absent. #590 installed build/tunnel request↔response lineage still unverified; #587/#588 physical backup/restore still unproven, preserve GitHub artifacts. #381 is exclusively under another active chat (that chat's #637 source changed main before this task; do not duplicate). Fabric #1428 and PR #618 remain separate owner/review lanes. No production host/tunnel/service/mount/credential/deletion/Claude action took place.
+
+Next: #634 owner-approved private read-only Git/storage evidence and isolated restore in its own lane; #590 approved installed build/catalog plus opaque request↔response correlation. A docs/source CI pass never grants deployment or storage authority.
+
+
+## 2026-10-10 — NEXT #381 Claude lifecycle: source guard #637 merged, real Fabric authority still first blocker
+
+- [#381](https://github.com/Blacksp1d3r/runner-mcp/issues/381) is OPEN. New scoped hardening [PR #637](https://github.com/Blacksp1d3r/runner-mcp/pull/637), exact reviewed head `e8e696d880729705c1e88a2055d60828fc66558a`, exact-head CI attribution `38052268180` + full validation `38052268203` ALL SUCCESS, 2701 pytest, Ruff, release artifact, clean demo; squash MERGED `16230a35698abf43d274cae27150ad0eeecce3b9`. Pre-action local service and port coherent snapshot prevents foreign listener or double START/STOP/RESTART. `roadmap/children/381-preaction-snapshot/STATE.md` COMPLETE_SOURCE_ONLY; failure RMCP-F-0017. No right-host deployment or local PID/port attestation.
+- Cross-owner: Fabric #1432 typed shape preflight MERGED (always non-authorizing), Fabric #1433 receipt correlation DRAFT (non-authorizing); AIfordable #555 test checklist MERGED. **BLOCKER:** Fabric #1172/#1400/#1398 durable signed or authenticated intent issuer + JIT current lease/fence/topology authority, #1422 accepted design still draft. Never substitute an unchecked caller flag, repo issue comment or source CI as executor authority.
+- After trusted Fabric source qualification: bind first-party verifier to exact enrolled dedicated host/user and fixed unit with operator/site approval, independently attribute fixed listener to the real service, prove source revision/preflight/start/status/stop/disabled/port-gone under AIfordable #370 owner, then Fabric #972 bounded authentic synthetic availability + exact receipt/fence/return route. Claude/EnerCue #89 NO_DISPATCH until verified and separately reviewed.
+- Other chat owns #630/#634 source-Git blueprint authority; do not overwrite or duplicate it. Backup #587/#588 stay OPEN, no GitHub artifact deletion. Do not change live host/tunnel/service or paid API billing to force progress.
+
+
+## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)
+
+[PR #636](https://github.com/Blacksp1d3r/runner-mcp/pull/636) exact head `e35513459760107e0e555f66313360b5f5884fbc`, attribution `38052251708` SUCCESS and full validation `38052251712` Ruff/pytest, built artifact, clean demo all SUCCESS; reviewed, squash MERGED `74faab4c1a5f1b9111cf0c847e2e931af91d2619`. New `docs/diagnostics/CONNECTOR_PROBE_MATRIX_2026-10-10.md` and canonical triage/Failure Museum updates record one connected session's bounded facts.
+
+Structured responses: `list_projects` includes runner-mcp in six staging projects; `project_capabilities` generic adapter/project root available; `queue_status` zero queued/claimed/running and two available workers; `safety_status` operator stop inactive; `runtime_doctor` WARN with only 12 checks, 0 failures and 3 warnings. Generic tool errors for `build_identity`, `project_status`, `worker_status`, file metadata, project preflight and Fabric mirror/bridge/host readiness; some private Fabric preflights surfaced only generic nested `INVALID_ARGUMENT`. Same source `cfg.public_summary` supports list/status projection, so classification is **mixed-success unlocated ingress/dispatch/serialization/return-lineage**, NOT a proven bad Git project, total tunnel outage, correct installed generation or qualified physical storage.
+
+#590 is **OPEN** for approved operator-private installed build/schema/client catalog fingerprint and single known-good vs failing request with opaque ingress/dispatch/delivery correlation; do not restart/update/rotate keys or invent host identity. #634 / #630 remain **OPEN/BLOCKED_EXTERNAL_AUTHORITY** for actual local Git primary, one-writer fencing and isolated restore. `project_root_available=true` does not qualify primary or independent archive. #587/#588 remain physically unproved; preserve provider artifacts. #381 work exclusively belongs to the separate active chat; no competing branch/runner/Claude tasks touched. No production mutation or private topology exposure.
+
+Next safe external operator step: perform the authorized read-only first-divergent-edge correlation for #590 or approved private source authority admission for #634; independently assigned reviewers handle PR #618 and Fabric #1428. Avoid a new source-only code fix until the installed generation and failing edge are known.
+
+
+## 2026-10-10 — Final #630 issue closure reconciliation
+After docs-only PR #635 merged, GitHub read-only checks unexpectedly found parent #630 `CLOSED` while #634 remained `OPEN`. The closure trigger/actor is not independently proven; it must not be interpreted as acceptance. Explicitly REOPENED #630 via GitHub, with `state_reason=reopened`, and kept operator gate #634 OPEN. Failure Museum `RMCP-F-0016` records this recurrence. #381 still belongs to other active chat, not this lane. All three blueprint PRs #632/#633/#635 are merged with exact full CI green; no approved root project.yml, physical Git authority, independent restore, Fabric lease, service/tunnel/host change or archive deletion. Next owner action is read-only #634 authority qualification, not rerunning completed source changes.
+
+
+## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)
+This chat did **not** touch #381 (separate active Claude owner/chat).
+
+BPA-03 [PR #632](https://github.com/Blacksp1d3r/runner-mcp/pull/632), exact head `a3614c5172a06879ac672c34033a9fb462aa8223`, attribution `38046631374` and validation `38046631455` ALL SUCCESS; merge `a59875b943441b19ba864ae6643ef9458541020c`. Legacy task index and future TASK/STATE convention merged; `bpa-03/STATE.md` COMPLETE. Historical #381 child never modified.
+BPA-02 draft-only symbolic YAML and JSON Schema [PR #633](https://github.com/Blacksp1d3r/runner-mcp/pull/633), exact head `bcf90a3c7525c46956bb2a11a3d7a426d7455817`, attribution `38046821035` and validation `38046821043` ALL SUCCESS, merge `261aed632fd2539af33896ba6574ff4d6b05d536`. Synthetic invalid authority/private-field tests added; early Ruff I001 corrected, Failure Museum RMCP-F-0014. `bpa-02/STATE.md` COMPLETE means *design source only*, no qualified root manifest.
+Remaining host/source authority [issue #634](https://github.com/Blacksp1d3r/runner-mcp/issues/634) has blocked `bpa-02b/{TASK,STATE}.md` from docs [PR #635](https://github.com/Blacksp1d3r/runner-mcp/pull/635), exact head `014445d226b6da6f03b77ab87bad3d02433e43fe`, attribution `38047164866` + full CI `38047164865` ALL SUCCESS, reviewed and MERGED `5e364a0224afce8ce7004bd4fd65ad326e0e9c6b`. `bpa-02b/STATE.md` remains BLOCKED explicitly; #630 and #634 must remain OPEN.
+
+There is **no root `project.yml`**, no verified local Git primary, delegated independent storage/fenced mirror/restore evidence or true Fabric lease/approval. The proposed `project_manifest_candidate.yml` is documentation outside root, `BLOCKED_AUTHORITY` and `UNKNOWN`, not an authorized runtime input. No GitHub artifact deletion, live backup copies, restore, host/tunnel/service/restart/credential/mount/storage changes. #587/#588 still waiting for independent physical custody, #590 installed version/response lineage unqualified, Fabric #1397 owned separately.
+
+Next safe operator-owned step: #634 BPA-02B.1 **approved private read-only** canonical Git/source authority admission; then isolated restore/fencing and separate strict promoted manifest/approval. Do not resume issue #381 from this lane or bypass AIfordable/Fabric authority. No further safe independent code mutation is implied by these docs.
+
+
+## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled
+User explicitly assigned operational Claude #381 to a **different active chat**. Do not claim, branch on, restart, deploy or duplicate that work; issue #381 remains operationally OPEN there.
+
+Independent #630 outcomes:
+- BPA-03 legacy/new-child mapping [PR #632](https://github.com/Blacksp1d3r/runner-mcp/pull/632), exact HEAD `a3614c5172a06879ac672c34033a9fb462aa8223`, attribution `38046631374` + full validation `38046631455` ALL SUCCESS, reviewed, squash MERGED `a59875b943441b19ba864ae6643ef9458541020c`. `roadmap/children/bpa-03/STATE.md` COMPLETE. Historical #381 and diagnostic components indexed **without edits**.
+- BPA-02 symbolic manifest **proposal only** [PR #633](https://github.com/Blacksp1d3r/runner-mcp/pull/633), exact final HEAD `bcf90a3c7525c46956bb2a11a3d7a426d7455817`, attribution `38046821035` + full validation `38046821043` ALL SUCCESS; reviewed, squash MERGED `261aed632fd2539af33896ba6574ff4d6b05d536`. Strict proposal-only `project_manifest_candidate.yml` + JSON Schema and adversarial synthetic unit tests. Earlier CI `38046762677` failed a Ruff I001 blank-import separator only, corrected on final head. No root `project.yml`, no proven local Git primary, storage namespace, independent restore or Fabric lease; `BPA-02/STATE.md` COMPLETE applies **only to source design**.
+- Remaining real authority is [#634](https://github.com/Blacksp1d3r/runner-mcp/issues/634) / BPA-02B. Docs-only [draft PR #635](https://github.com/Blacksp1d3r/runner-mcp/pull/635) proposed the blocked child contract and index; HEAD `014445d226b6da6f03b77ab87bad3d02433e43fe`, attribution `38047164866` and validation `38047164865` **PENDING** at checkpoint. Keep #630/#634 OPEN for verified owner-authorized physical authority, single-writer fenced Git, isolated restore and approved future operational schema/manifest. No source-only PR can grant machine authority.
+- AIfordable #537 / Fabric #1397/#1428 remain separate operators; #587/#588 independent release custody and restoration remain OPEN without physical receipts; #590 current connector/source generation still unqualified. No production services, tunnel, credentials, host storage, GitHub artifacts or #381 workers touched.
+
+Next safe step here: check PR #635 exact-head all CI and review; if source-docs green merge while keeping #634 BLOCKED; then reconcile GitHub/current handover and stop only if remaining tasks need real independent operator authority. Never infer successful restore or runner health from source CI.
+
+
+## 2026-10-10 12:52 CEST — #381 verified priority and precise remaining authority gap
+
+1. [Runner-MCP #381](https://github.com/Blacksp1d3r/runner-mcp/issues/381) OPEN. Original issue description updated to fit one-Fabric-control-plane ADR: no ordinary same-user `aifordable` service alias to another identity/host. Source #628 MERGED, green exact CI; dedicated coding actuator exists only as a library without any exposed live control endpoint/installed dedicated-host helper.
+2. New [Fabric PR #1430](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1430) MERGED, green exact-head CI. **Readiness review only**, `dispatch_authorized=false` even if all synthetic flags true. Does not unblock Claude dispatch.
+3. **First actionable dependency:** Fabric #1172/draft #1422 must supply centrally authenticated/fenced trusted worker lifecycle issuer/verifier and fixed pre-registered host binding. Runner-MCP owner then attaches the helper only under the correct dedicated rootless identity; never treat a local `lambda:True`, user/host input, or mere socket-listening state as authorization.
+4. AIfordable #370 owner separately proves actual packaged rootless STATUS/START/STOP, only fixed localhost listener and its removal after stop with independently verified service ownership, no production enable. Fabric #972 owner then performs real authenticated availability, lease/fence, correlation/return-path and bounded synthetic no-billing work. Until both: Claude/EnerCue #89 **NO_DISPATCH**.
+5. Client read-only snapshot and `list_services(aifordable)` failed internally in this check; no installed-runtime identity proof, and no service/tunnel/host mutation warranted. Other owner's #630 blueprint and #587/#588 physical backup work remain independent. See updated #381 body, handover and child roadmap.
+
+
+## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated
+[Runner-MCP #630](https://github.com/Blacksp1d3r/runner-mcp/issues/630) is OPEN. BPA-01 docs-only [PR #631](https://github.com/Blacksp1d3r/runner-mcp/pull/631), exact HEAD `f23c12079b2a2cdbb15b6ce2a2fa24c9b68c66f9`, attribution `38045941135` SUCCESS, full validation `38045941103` Ruff/pytest + artifact + clean demo all SUCCESS, reviewed and MERGED `20c19970d14b9402ce6a2393477f3056602498bd`. Final `roadmap/children/bpa-01/STATE.md` marked COMPLETE. `AGENTS.md` now references Library master v1.2 and repository blueprint v1.0; `docs/standards/REPOSITORY_BLUEPRINT_COMPATIBILITY.md` explicitly maps legacy structure and gaps. No mass rename, manifest/authority fabrication or runtime change.
+
+Next #630 BPA-02: independently qualify symbolic project manifest schema and canonical local Git/storage authority before asserting local-first or creating `project.yml`; status BLOCKED/REVIEW_REQUIRED where not proven. BPA-03: map old issue/roadmap children while requiring TASK+STATE on new children, without duplicating canonical truth or clobbering active claims. Separate Fabric-owned automatic scaffolding remains unimplemented, not authorized here. Claude #381 source PR #628 landed but operational issue OPEN pending Fabric/AIfordable trusted lifecycle; #590 source #627/#629 merged but installed catalog/return-route unqualified; #587/#588 still no real 2/2 independent mirror or offline recovery, retain provider artifacts. Other AI owners' work untouched.
+
+
+## NEXT CRITICAL: 2026-10-10 — Claude #381 source landed, live qualification is the blocker
+
+- #381 remains USER TOP PRIORITY. Source PR #628 exact head `e88e880c1c8db307d94c558250d12ee119c35e48` full CI `38045484330` SUCCESS (2,659 pytest, Ruff, built artifact, clean demo), attribution `38045484328` SUCCESS; squash merged `4981fa648aa127e5d2e0538b9eefec170f816466`. GitHub erroneously auto-closed #381, which was deliberately **REOPENED**; verify still OPEN before next work.
+- Source module `src/runner_mcp/fixed_coding_worker_actuator.py` is fail-closed and NOT installed/wired; no live Claude dispatch. Exact local account/unit only; no cross-user sudo or generic service selector. Architecture and complete TASK+STATE in `docs/architecture/FIXED_CODING_WORKER_ACTUATOR.md` and `roadmap/children/381-claude-worker-lifecycle.md`.
+- **Next external prerequisite:** Fabric #1172 / draft PR #1422 (single control plane) must expose a genuine trusted, signed/fenced/leased/idempotent intent verifier bound to the correct pre-registered worker and local helper identity. Do NOT invent authority with a caller-supplied boolean, deploy an unverified local endpoint, or create a second scheduler.
+- Then AIfordable #370 correct host under rootless `aifordable-coder`: packaged unit install/preflight, fixed STATUS/START/STOP, listener loopback-only 8030, listener disappears after stop and service remains disabled on boot; operator-private evidence only. Then Fabric #972 authenticated availability and exact lease/fence/correlation proof, read-only/synthetic bounded work, then EnerCue #89 isolated task. Claude work remains NO_DISPATCH until all gates.
+- #587/#588 backup proof remains independent and OPEN; never delete GitHub artifacts merely because #381 source merged.
+
+
+## HIGH PRIORITY 2026-10-10 — #381 Claude fixed host-local lifecycle (user requested)
+
+Owner: Runner-MCP #381. Source draft [PR #628](https://github.com/Blacksp1d3r/runner-mcp/pull/628), branch `feat/381-fixed-rootless-coder-actuator`, expected current head `e7b0c4866fcbf1767e9ea73ad048c8ec89d7ae48`. Check actual current GitHub HEAD first. CI attribution `38045392637` and validation `38045392668` initially QUEUED. Previous head failed Ruff UP022 (fixed), no merge before full exact-head green.
+
+Next implementer: (1) validate #628 Ruff/pytest, release artifact and clean demo; fix exact CI defects in #628 only; (2) review/merge bounded source-only capability only with all checks green; (3) keep #381 OPEN: missing trusted Fabric #1172/#1422 lease/intent binding, fixed dedicated-user first-party execution endpoint on correct host, AIfordable #370 real start/status/stop/disabled proof and Fabric #972 loopback+return qualification. (4) EnerCue #89/other real Claude tasks remain NO_DISPATCH until Fabric single-plane READY. Existing same-user ServiceManager must never be widened to sudo/UID/unit selector or fake alias on github-runner; no API fallback; do not reinstall Claude.
+
+Canonical task tree: `roadmap/children/381-claude-worker-lifecycle.md`; architecture `docs/architecture/FIXED_CODING_WORKER_ACTUATOR.md`. After #381 safe readiness, resume independent #587/#588 backup work in its owning lanes.
+
+
+## Independent Runner-MCP #590 lane — SOURCE COMPLETE, LIVE BLOCKED (10 October 2026)\n\nPR #629 exact head `53614092bafac8e528b4905fc962da72ffde4621`, attribution `38045401691` and full CI `38045401730` all SUCCESS, source MERGED `7deb63cd8d623a74389c9f582d6e2d1ec688b2eb`. `build_identity` returns fixed unavailable status rather than provider exception when no trustworthy identity exists. Issue #590 remains OPEN: 12-check client doctor and failed `runtime_status` are still unexplained at the actual installed generation, with no private request/response correlation. **Do not deploy/restart/reset tunnel** based on this merge. Next legitimate step is approved, safe, private read-only installed-build/schema/catalog and ingress/response lineage verification. \n\n## Latest coordination: 2026-10-10 — Fabric #1428 remains OWNER_IN_PROGRESS, WAITING_CI_FIX
+
+Runner-Fabric #1397 dedicated owner has draft [#1428](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1428), exact head `e3521f49ba996b378fdc132b8a922cc04b2bebcf`, attribution `38042060760` SUCCESS; Foundation `38042060585` FAILED only Ruff `C408` (unnecessary `dict()` in `tests/test_storage_binding_evidence_gate.py:9`), while tests and doctor SUCCESS. Diagnosis sent to Fabric owner in PR comment #6096292386; DO NOT duplicate edit or rerun its lane here. Require owner's new exact HEAD and green CI, then separately prove real private binding + physical namespace. No archives mirrored/restored/retired.
+
+
+## Latest: 2026-10-10 — #627 merged, live connector and real backup evidence remain BLOCKED
+
+- #590 source security [PR #627](https://github.com/Blacksp1d3r/runner-mcp/pull/627) exact head `e70e11702504c3fe161900ced4afceff8c7df084`, attribution `38042225385` and full validation `38042225393` ALL SUCCESS, squash `e06fe5b7f44c92ae22d4fa291a142b6b67803db3` MERGED. Previous pending-CI section below is superseded.
+- The actual connected runtime is NOT proven to run this code. Current main doctor necessarily includes three checks absent from observed 12-check connected doctor, while status/identity tool calls fail. To progress #590, require bounded *operator-private read-only* proof of installed source/protocol/client catalog and request-response lineage; no speculative tunnel or service restart. See docs/diagnostics/CONNECTOR_READONLY_TRIAGE.md.
+- AIfordable #553 MERGED with green CI but storage binding remains unqualified. Fabric #1397 still OPEN for authorized dedicated release archive namespace/bootstrap. Runner-MCP #587/#588 OPEN, 0 real independent mirror and offline restore receipts. Physical proof remains prerequisite to GitHub artifact deletion.
+- Next safe source lane: inspect #590 build identity error-unavailable handling or another independent roadmap child only after checking no agent already owns it. Do not falsely claim a source merge repairs the live connector.
+- Refer to the top of `handover/SESSION_HANDOFF.md` and `roadmap/DEPENDENCIES.md` for exact SHAs, owners, tests and dependency sequence.
+
+
+## Latest: 2026-10-10 — #627 source-only diagnostic CI / storage authority model merged
+
+- Runner-MCP PR [#627](https://github.com/Blacksp1d3r/runner-mcp/pull/627): source-only bounded status failure response, exact HEAD `e70e11702504c3fe161900ced4afceff8c7df084`. Commit attribution `38042225385` SUCCESS, full validation `38042225393` Ruff/pytest and artifact SUCCESS, five-minute clean demo pending at latest snapshot. **Do not merge until exact-head full terminal CI**. #590 remains OPEN for live installed-build/route correlation.
+- AIfordable #553 **MERGED** at `486896fe0feac1ffbda51a8b8c3ca002f1161eb5`, CI `38038298136` SUCCESS, but storage binding still `qualified:false`. Fabric #1397 cannot skip trusted fixed namespace/bootstrap, and physical #587/#588 remain unverified.
+- Connected doctor result structurally differs from current source: three mandatory diagnostic names missing, while `runtime_status` and `build_identity` failed. Classify installed/catalog/route generation as unknown. No tunnel/server restart or provider artifact deletion.
+- See top of `handover/SESSION_HANDOFF.md` for exact dependencies, PR/head, test evidence and next actions. **This 2026-10-10 section supersedes older queued/success examples, including the 2026-10-03 instruction to restart watchers.**
+
+
+## Latest: 2026-10-10 — supersedes the 2026-10-03 live-restart notes below
+
+1. **Do not replay October 3 launcher/restart suggestions without authorized current state.** Installed runtime is not proven by this chat: `runtime_status` and `build_identity` returned generic errors, `runtime_doctor` returned WARN (0 failures, 3 warnings). See #590 and latest `handover/SESSION_HANDOFF.md`.
+2. Protected backup #587 code gates #621–#626 are MERGED with full exact-head green CI; latest #626 squash `5aba8423594290a7837208e53721234dfe0df778`. Both #587 and #588 remain OPEN for **physical proof**, not more synthetic/source-only merge.
+3. Current dependency chain: AIfordable #537/PR #553 fix isolated topology test clocks and qualify live storage authority (binding currently unqualified) -> Fabric #1397 qualified dedicated archive namespace/bootstrap -> Runner-MCP #586 live read-only readiness -> #587 2/2 physical active+rollback archive mirror and receipts -> #588 actual offline independent restore and cleanup -> provider artifact disposition review. No deletion/mount/sudo/tunnel or operator action until prior gates genuinely passed.
+4. AIfordable #553 exact previous head `fea120cb18ab87d8ece7627b539ff27a981bd5a7`, CI `38035068769` FAILED 9 topology tests (1,352 passed), owner notified to fix test date 2026-10-08 versus registry date 2026-10-10 while keeping fail-closed future-dated rejection.
+5. Safe independent source task: review #590 per-tool status/identity error handling. Issue has bounded code-path hypothesis and tests proposal; don't treat it as confirmed tunnel failure. Check upstream current PR/CI before opening duplicate branch.
+6. Master v1.2: verify GitHub state and CI at exact head before all merges; update all canonical handovers and Failure Index at material changes.
+
+---
 
 Updated: 2026-10-03
 

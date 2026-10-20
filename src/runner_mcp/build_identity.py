@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -67,8 +68,8 @@ class BuildIdentity:
         }
 
 
-def installed_source_revision(config_dir: Path) -> str | None:
-    """Return the exact installed revision from canonical private self-update state."""
+def last_self_update_revision(config_dir: Path) -> str | None:
+    """Return the historical self-update commit, NOT the active package revision."""
 
     path = config_dir / "self-update-state.json"
     if path.is_symlink():
@@ -85,6 +86,79 @@ def installed_source_revision(config_dir: Path) -> str | None:
     if not isinstance(candidate, str) or _REVISION_RE.fullmatch(candidate) is None:
         raise BuildIdentityError("installed source revision state is invalid")
     return candidate
+
+
+def installed_source_revision(config_dir: Path) -> str | None:
+    """Fail closed until the serving artifact has independent provenance.
+
+    The self-update transaction file records the LAST self-update, not the
+    currently executing wheel. A manual install, rollback or in-place upgrade
+    can leave that marker unchanged. Returning it here misidentifies a live
+    process. Verified artifact/loaded-module receipts are separately tracked
+    under issue #669 and must be integrated before a revision can be emitted.
+    """
+    if not isinstance(config_dir, Path):
+        raise BuildIdentityError("installed source revision config is invalid")
+    return None
+
+
+def fail_closed_runtime_provenance(
+    status: dict[str, object], *,
+    loaded_version: str,
+    installed_distribution_version: str,
+) -> dict[str, object]:
+    """Separate historical self-update markers from active build identity.
+
+    Manager status dictionaries are merged after runtime_status initialises its
+    own version. Their version and self-update revisions are NOT evidence of
+    the imported server's current source. Make it impossible for a later
+    manager merge to silently turn historical markers into active identity.
+    """
+    _bounded_text(loaded_version, "loaded_version")
+    _bounded_text(installed_distribution_version, "installed_distribution_version")
+    result = dict(status)
+    for field in ("last_installed_commit", "source_commit", "active_runtime_revision"):
+        result[f"self_update_history_{field}"] = result.pop(field, None)
+        result[field] = None
+    for field in ("source_baseline_aligned", "runtime_activation_aligned"):
+        result[f"self_update_history_{field}"] = result.pop(field, None)
+        result[field] = None
+    result.update(
+        {
+            "version": loaded_version,
+            "installed_distribution_version": installed_distribution_version,
+            "active_build_provenance_verified": False,
+            "active_artifact_revision": None,
+            "active_artifact_digest": None,
+            # A manager's self-update transaction readiness is NOT sufficient
+            # while the loaded wheel/source and current process are unknown.
+            # Never forward a stale True into release/fleet admission.
+            "self_update_ready": False,
+        }
+    )
+    return result
+
+
+def candidate_revision_with_wheel_identity(
+    identity: object, *, loaded_version: str
+) -> str | None:
+    """Read revision from a qualified identity provider, never from history.
+
+    This is a structural gate, NOT a signature or serving-process verifier.
+    The caller must first qualify the provider against independent current
+    process, signer and wheel evidence. Mere offline RECORD matching is not
+    enough to supply such a provider.
+    """
+    if not isinstance(identity, BuildIdentity):
+        return None
+    if (
+        identity.component_id != "runner-mcp"
+        or identity.build_version != loaded_version
+        or identity.source_revision is None
+        or identity.artifact_digest is None
+    ):
+        return None
+    return identity.source_revision
 
 
 def runner_mcp_build_identity(
@@ -154,3 +228,39 @@ def _bounded_text(value: object, field: str) -> str:
     ):
         raise BuildIdentityError(f"{field} is invalid")
     return value
+
+def bounded_build_identity_payload(
+    provider: Callable[[], BuildIdentity] | None,
+) -> dict[str, object]:
+    """Return an explicit unverified result when build identity cannot be proved.
+
+    A provider failure must never become a raw MCP tool exception or a guessed
+    build/source revision. The normal proven identity schema is unchanged.
+    """
+
+    unavailable: dict[str, object] = {
+        "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": "build-identity-unavailable",
+        "identityEvidenceComplete": False,
+    }
+    if provider is None:
+        return unavailable
+    try:
+        identity = provider()
+        if not isinstance(identity, BuildIdentity):
+            return unavailable
+        payload = identity.to_payload()
+        if not isinstance(payload, dict) or set(payload) != {
+            "component_id",
+            "build_version",
+            "source_revision",
+            "artifact_digest",
+            "protocol_min",
+            "protocol_max",
+            "interface_schema_digest",
+        }:
+            return unavailable
+        return payload
+    except (OSError, RuntimeError, TypeError, ValueError):
+        return unavailable

@@ -10,7 +10,11 @@ import urllib.request
 from datetime import UTC, datetime
 from pathlib import Path
 
-from .tunnel_health_evidence import collect_tunnel_runtime_instance_id
+from .tunnel_health_evidence import (
+    TunnelHealthEvidenceError,
+    collect_tunnel_runtime_instance_id,
+    inspect_tunnel_runtime_instance_id,
+)
 
 _MAX_RESPONSE_BYTES = 4096
 _INSTANCE_RE = re.compile(r"^[0-9a-f]{32}$")
@@ -20,6 +24,13 @@ _TUNNEL_ID_RE = re.compile(r"^tunnel_[0-9a-f]{32}$")
 _BOUNDED_REFRESH_REASONS = {
     "AIfordable topology authority configuration is unavailable": "authority_configuration_unavailable",
     "tunnel runtime identity is unavailable": "runtime_identity_unavailable",
+    "tunnel health URL is missing": "health_url_missing",
+    "tunnel health URL is invalid": "health_url_invalid",
+    "tunnel health endpoint is unreachable": "health_endpoint_unreachable",
+    "tunnel health payload is invalid": "health_payload_invalid",
+    "tunnel health schema is incompatible": "health_schema_incompatible",
+    "tunnel runtime identity is missing": "runtime_identity_missing",
+    "tunnel runtime identity is invalid": "runtime_identity_invalid",
     "AIfordable topology authority rejected the refresh": "authority_rejected",
     "AIfordable topology authority is unavailable": "authority_unavailable",
     "AIfordable topology authority returned invalid evidence": "authority_invalid_evidence",
@@ -35,6 +46,30 @@ class TunnelTopologyRefreshError(RuntimeError):
     """Safe refresh failure without endpoint, credential or binding detail."""
 
 
+class _NoTopologyRefreshRedirects(urllib.request.HTTPRedirectHandler):
+    """Never forward the private relay credential to redirected destinations."""
+
+    def redirect_request(self, request, fp, code, msg, headers, newurl):
+        return None
+
+
+def _topology_refresh_opener() -> urllib.request.OpenerDirector:
+    """Use no environment proxies or redirects for credential-bearing requests."""
+
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoTopologyRefreshRedirects(),
+    )
+
+
+def _open_topology_refresh_request(
+    request: urllib.request.Request, *, timeout: float
+):
+    return _topology_refresh_opener().open(request, timeout=timeout)
+
+
+
+
 def bounded_tunnel_topology_refresh_reason(
     error: TunnelTopologyRefreshError,
 ) -> str | None:
@@ -44,7 +79,7 @@ def bounded_tunnel_topology_refresh_reason(
 def refresh_tunnel_topology_attestation(
     config_dir: Path,
     *,
-    opener=urllib.request.urlopen,
+    opener=_open_topology_refresh_request,
     runtime_instance_collector=collect_tunnel_runtime_instance_id,
     now: datetime | None = None,
 ) -> dict[str, str | bool]:
@@ -63,10 +98,30 @@ def refresh_tunnel_topology_attestation(
             "AIfordable topology authority configuration is unavailable"
         ) from exc
 
-    instance_id = runtime_instance_collector(paths.config_dir)
-    if not isinstance(instance_id, str) or _INSTANCE_RE.fullmatch(instance_id) is None:
+    try:
+        if runtime_instance_collector is collect_tunnel_runtime_instance_id:
+            instance_id, reason = inspect_tunnel_runtime_instance_id(
+                paths.config_dir
+            )
+        else:
+            # Preserve the injected collector seam used by qualification tests.
+            instance_id = runtime_instance_collector(paths.config_dir)
+            reason = "runtime_identity_unavailable"
+    except TunnelHealthEvidenceError as exc:
         raise TunnelTopologyRefreshError(
-            "tunnel runtime identity is unavailable"
+            "tunnel health URL is invalid"
+        ) from exc
+    if not isinstance(instance_id, str) or _INSTANCE_RE.fullmatch(instance_id) is None:
+        messages = {
+            "health_url_missing": "tunnel health URL is missing",
+            "health_endpoint_unreachable": "tunnel health endpoint is unreachable",
+            "health_payload_invalid": "tunnel health payload is invalid",
+            "health_schema_incompatible": "tunnel health schema is incompatible",
+            "runtime_identity_missing": "tunnel runtime identity is missing",
+            "runtime_identity_invalid": "tunnel runtime identity is invalid",
+        }
+        raise TunnelTopologyRefreshError(
+            messages.get(reason, "tunnel runtime identity is unavailable")
         )
     tunnel_binding = _tunnel_binding(paths.config_dir)
 

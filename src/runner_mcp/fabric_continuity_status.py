@@ -44,6 +44,35 @@ class FabricContinuityStatusError(RuntimeError):
     """Sanitized bounded continuity-status bridge failure."""
 
 
+_PUBLIC_FAILURE_REASONS = frozenset({
+    "fabric_continuity_status_configuration_unavailable",
+    "fabric_continuity_status_launcher_unavailable",
+    "fabric_continuity_status_launcher_unmanaged",
+    "fabric_continuity_status_unavailable",
+    "fabric_continuity_status_output_invalid",
+    "fabric_continuity_status_operation_failed",
+})
+
+
+def bounded_continuity_unavailable(reason: object) -> dict[str, object]:
+    """Return a non-secret, deny-by-default answer instead of an MCP tool error.
+
+    This is not an authority/failover decision, and never starts a subprocess.
+    Unknown or attacker-controlled exception strings are never returned.
+    """
+    if not isinstance(reason, str) or reason not in _PUBLIC_FAILURE_REASONS:
+        reason = "fabric_continuity_status_unavailable"
+    return {
+        "schemaVersion": "runner-mcp/fabric-continuity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": reason,
+        "localWorkAllowed": False,
+        "externalSubmissionAllowed": False,
+        "reconciliationRequired": True,
+        "providerMutationEnabled": False,
+    }
+
+
 class FabricContinuityStatusRunner:
     """Invoke only the fixed managed Runner Fabric read-only continuity status."""
 

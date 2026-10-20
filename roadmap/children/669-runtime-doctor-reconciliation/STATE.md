@@ -1,3 +1,9 @@
+## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)
+
+Following Runner-MCP [#760](https://github.com/Blacksp1d3r/runner-mcp/pull/760) SOURCE MERGED v0.1.47, an independent bounded test-only child now checks a deliberately SYNTHETIC six-role Ed25519 offline serving-statement comparator: all six consistent roles STILL return `active_build_provenance_verified=false` with source/wheel null, and eleven missing/foreign/stale/duplicated role, signer-host/nonce/expiry and expected-list mismatches refuse without promoting a live identity. No real host role names are asserted and no worker/service is contacted; this reuses existing pure comparator, makes NO executable release or version bump, and requires exact-head CI before merge. Correct-host actual loaded process, trusted issuer/revocation, original-client ACK, Fabric #1617/#942 A6 and #943 A7 remain WAIT. Existing connected central v0.1.38 is not changed by this test branch.
+
+---
+
 ## 2026-10-19 — Second bounded source-hardening checkpoint
 
 Malformed source-baseline checkout evidence now returns `source_commit=None` and `source_baseline_aligned=False`; synthetic malformed and thrown-provider negative tests deny updater start even where a fake active identity matches history. RMCP-F-0046 recorded as source-only, NOT a confirmed live failure. Serving 0.1.38 remains separately unverified and `self_update_ready=false`; physical proof still requires trusted host operator and Fabric A6/A7. The 0.1.40 metadata bump is retained, but exact-head CI is still required before merging.

@@ -210,3 +210,83 @@ def test_valid_signature_on_witness_does_not_establish_process_authority() -> No
     assert result["state"] == "signed_statement_consistent_offline"
     assert result["source_revision"] is None
     assert result["artifact_digest"] is None
+
+
+# Six deliberately SYNTHETIC role labels. Do not infer deployed host role names.
+_SIX_SYNTHETIC_ROLES = tuple(f"synthetic{i}" for i in range(1, 7))
+
+
+def _six_role_claims() -> dict[str, object]:
+    claims = _claims()
+    old_roles = claims["roles"]
+    assert isinstance(old_roles, dict)
+    template = old_roles["server"]
+    assert isinstance(template, dict)
+    claims["roles"] = {
+        role: {**template, "process_instance": f"{i:064x}"}
+        for i, role in enumerate(_SIX_SYNTHETIC_ROLES, start=1)
+    }
+    return claims
+
+
+def test_six_consistent_signed_synthetic_roles_still_do_not_attest_live_process() -> None:
+    result = _check(
+        _six_role_claims(),
+        expected_override={"independently_expected_roles": _SIX_SYNTHETIC_ROLES},
+    )
+    assert result["state"] == "signed_statement_consistent_offline"
+    assert result["active_build_provenance_verified"] is False
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None
+
+
+@pytest.mark.parametrize(
+    "fault",
+    [
+        "role_missing",
+        "foreign_role",
+        "duplicate_process",
+        "stale_role_source",
+        "stale_role_wheel",
+        "stale_role_generation",
+        "stale_role_loaded_version",
+        "wrong_host",
+        "replayed_challenge",
+        "expired_receipt",
+        "short_expectations",
+    ],
+)
+def test_six_role_witness_negative_families_fail_closed(fault: str) -> None:
+    claims = _six_role_claims()
+    roles = claims["roles"]
+    assert isinstance(roles, dict)
+    expected = {"independently_expected_roles": _SIX_SYNTHETIC_ROLES}
+    if fault == "role_missing":
+        roles.pop(_SIX_SYNTHETIC_ROLES[-1])
+    elif fault == "foreign_role":
+        roles["foreign"] = roles.pop(_SIX_SYNTHETIC_ROLES[-1])
+    elif fault == "duplicate_process":
+        roles[_SIX_SYNTHETIC_ROLES[1]]["process_instance"] = (
+            roles[_SIX_SYNTHETIC_ROLES[0]]["process_instance"]
+        )
+    elif fault == "stale_role_source":
+        roles[_SIX_SYNTHETIC_ROLES[0]]["source_revision"] = "f" * 40
+    elif fault == "stale_role_wheel":
+        roles[_SIX_SYNTHETIC_ROLES[3]]["wheel_sha256"] = "f" * 64
+    elif fault == "stale_role_generation":
+        roles[_SIX_SYNTHETIC_ROLES[3]]["generation_digest"] = "f" * 64
+    elif fault == "stale_role_loaded_version":
+        roles[_SIX_SYNTHETIC_ROLES[4]]["loaded_version"] = "0.1.43"
+    elif fault == "wrong_host":
+        claims["host_digest"] = "f" * 64
+    elif fault == "replayed_challenge":
+        claims["challenge"] = "f" * 32
+    elif fault == "expired_receipt":
+        claims["expires_at"] = _NOW - 1
+    else:
+        expected["independently_expected_roles"] = _SIX_SYNTHETIC_ROLES[:-1]
+    result = _check(claims, expected_override=expected)
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None

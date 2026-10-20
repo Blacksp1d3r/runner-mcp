@@ -1,7 +1,7 @@
 {
   "schemaVersion": "runner-mcp/tool-catalogue-baseline/v1",
   "sourceFile": "src/runner_mcp/server.py",
-  "minimumToolCount": 99,
+  "minimumToolCount": 100,
   "tools": [
     "apply_migrations",
     "approval_status",
@@ -95,6 +95,7 @@
     "self_update",
     "self_update_status",
     "service_status",
+    "serving_process_observation_preflight",
     "start_migration_job",
     "start_service",
     "stop_service",

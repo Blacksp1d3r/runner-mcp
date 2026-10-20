@@ -91,7 +91,7 @@ def test_mutated_package_version_is_not_accepted() -> None:
     _never_live_authority(result)
 
 
-@pytest.mark.parametrize("bad", (None, "", "private\\nvalue", "x" * 65, 0, True))
+@pytest.mark.parametrize("bad", (None, "", "private\nvalue", "x" * 65, 0, True))
 def test_untrusted_version_field_stays_wait_without_leak(bad: object) -> None:
     result = _check(installed=bad)
     assert result["state"] == "wait"

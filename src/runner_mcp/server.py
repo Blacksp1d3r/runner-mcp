@@ -181,8 +181,8 @@ from .operational_safety import (
     SafetyConfigurationError,
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
-from .serving_process_readonly import observe_current_process_modules
 from .service_manager import ServiceManager, ServiceManagerError
+from .serving_process_readonly import observe_current_process_modules
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
 from .tunnel_readiness import (

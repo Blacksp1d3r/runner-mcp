@@ -115,17 +115,16 @@ def _read_record(
                     or len(result) + len(external_names) >= _MAX_ENTRIES
                 ):
                     return None
-                if digest or size_text:
-                    if (
-                        not digest.startswith("sha256=")
-                        or _HASH.fullmatch(digest[7:]) is None
-                        or not size_text.isascii()
-                        or not size_text.isdecimal()
-                        or (len(size_text) > 1 and size_text.startswith("0"))
-                        or int(size_text) > _MAX_FILE_BYTES
-                        or len(base64.urlsafe_b64decode(digest[7:] + "=")) != 32
-                    ):
-                        return None
+                if (digest or size_text) and (
+                    not digest.startswith("sha256=")
+                    or _HASH.fullmatch(digest[7:]) is None
+                    or not size_text.isascii()
+                    or not size_text.isdecimal()
+                    or (len(size_text) > 1 and size_text.startswith("0"))
+                    or int(size_text) > _MAX_FILE_BYTES
+                    or len(base64.urlsafe_b64decode(digest[7:] + "=")) != 32
+                ):
+                    return None
                 external_names.add(name)
                 continue
             if (

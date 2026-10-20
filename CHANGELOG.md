@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.57 (source-only #739 Q7 in-memory 33-asset bundle consistency)
+
+- Add offline `check_complete_q7_bundle` to verify 33 bounded asset bytes against separately authenticated immutable pins. Fail closed on mismatched content, duplicated/invalid JSON manifest fields, wrong exact commit, malformed SHA256SUMS, bad bootstrap digest and 29 wheel roster mismatch. This function never authorizes signer trust, wheel METADATA, real downloads, sealed host custody, install, mutation or original-client ACK; remaining Fabric A6/A7 and #669 live-generation gates are independent. Synthetic-only tests. (#748)
+
 ## 0.1.56 (source-only #739 independent Q7 33-asset release roster)
 
 - Add in-memory `compare_exact_pinned_q7_roster` for exactly 33 Q7 metadata assets: exact source/tag/release ID, filenames, numeric asset IDs, byte sizes and SHA-256 comparison with independently held pins. Malformed/duplicate/bool/unsafe records fail closed, with synthetic tests. A match is not signer proof, download/custody, mutation, installation or original-client result ACK. Parent #739 and Fabric A6/A7 gates remain open. (#746)

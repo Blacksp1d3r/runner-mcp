@@ -1,8 +1,17 @@
+## 2026-10-20 original-client 20:30 verification — still UNVERIFIED
+
+- GitHub #509 CLOSED source-only 2026-10-20 17:20:58 UTC. Latest source v0.1.62 includes the already-written conditional fixed A6 11-key repair, but current connected v0.1.38 cannot prove it is loaded; A6 config remains 0/11.
+- `build_identity`: version 0.1.38, revision NULL, wheel SHA NULL. `runtime_status` v0.1.38 installed v0.1.38, provenance FALSE, self_update_ready FALSE. Historical old self-update marker not trusted for current process. `runtime_doctor` two provenance FAIL; absent A6 looks PASS only in old Doctor and is NOT A6 readiness.
+- Fabric read-only peer READY but A6 prepare/probe unavailable and mutation false; Agent Bus UNKNOWN, independent archive mirror not configured. `projects:6` is not six roles. Local Fabric `host:local` evidence does not certify correct six serving roles. External target inspections unavailable/UNKNOWN.
+- No first-party read-only tool on the currently serving 0.1.38 surface returns a wheel SHA or an independent multi-role loaded-code witness. A wheel built elsewhere and an installed RECORD cannot establish the exact retained installed original wheel bytes. Require owner-controlled correct-host process/signer/pre-existing wheel escrow and nonce issued BEFORE any first installation. If unavailable classify WAIT, not inferred.
+- Evidence and strict #509 conditional activation chain recorded in [handover/ISSUES_669_509_OPERATOR_GATES_20261020.md](../../handover/ISSUES_669_509_OPERATOR_GATES_20261020.md).
+- No host, process, A6 private file, Fabric agent, relay, six serving roles, or update modified.
+
 # #669 — serving-generation provenance
 
 status: SOURCE_OFFLINE_GUARDS_MERGED / CORRECT_HOST_WITNESS_WAIT
 owner: Runner-MCP source lane (#669); Fabric authority/activation separately #924
-source_main_version: 0.1.58
+source_main_version: 0.1.62
 latest_669_source_merge: 701f507ac00754c6e869448ed3158dcfb4eac539
 live_connected_serving_version: 0.1.38
 active_loaded_wheel_verified: false
@@ -33,7 +42,7 @@ production_changes_performed: false
 
 ## Not done: physical trust and activation
 
-Original-client central v0.1.38 still reports source/digest unavailable, self_update_ready false, two Doctor failures. Historical `self-update-state.json` is rollback/transaction history, not current wheel identity. A6 private state 0/11, Fabric independent off-target journal #1617/#942 and A7 offline rollback #943 still unqualified. Original requester terminal result/ACK #609 not proved. Correct-host observer must bind actual loaded six process generations and launcher targets to owner-trusted pinned wheel/RECORD/source, a fresh bounded challenge and immutable rollback copy, then return public-safe categorical receipt without leaked host paths or secret material. Only Fabric #924 can later authorize one-node guarded activation after all gates; never bypass with generic shell or blind restart.
+Original-client central v0.1.38 still reports source/digest unavailable, self_update_ready false, two Doctor failures. Historical `self-update-state.json` is rollback/transaction history, not current wheel identity. A6 private state 0/11, Fabric independent off-target journal #1617/#942 and A7 offline rollback #943 still unqualified. Original requester terminal result/ACK Fabric #1556/#1563 and AIfordable relay #585 not proved. Correct-host observer must bind actual loaded six process generations and launcher targets to owner-trusted pinned wheel/RECORD/source, a fresh bounded challenge and immutable rollback copy, then return public-safe categorical receipt without leaked host paths or secret material. Only Fabric #924 can later authorize one-node guarded activation after all gates; never bypass with generic shell or blind restart.
 
 ## Historical context
 

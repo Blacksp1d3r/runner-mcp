@@ -1996,6 +1996,19 @@ def build_mcp(
         )
         return result
 
+    def fabric_a6_storage_preflight() -> dict:
+        """Observe EXISTING Fabric A6 local hash chain; never authorize update."""
+        try:
+            result = _require_fabric_bridge().a6_storage_preflight()
+        except FabricBridgeError:
+            _audit_fabric("fabric_a6_storage_preflight", "a6:local", "denied")
+            raise ValueError("A6 read-only inspection unavailable") from None
+        _audit_fabric(
+            "fabric_a6_storage_preflight", "a6:local",
+            str(result.get("reasonCode", "fabric_read_unavailable")),
+        )
+        return result
+
     def fabric_external_target_preflight() -> dict:
         """Return bounded config-only readiness for the trusted external target."""
         try:
@@ -2437,6 +2450,7 @@ def build_mcp(
         mcp.tool()(fabric_bridge_preflight)
         mcp.tool()(fabric_host_inspect)
         mcp.tool()(fabric_worker_process_inspect)
+        mcp.tool()(fabric_a6_storage_preflight)
         mcp.tool()(fabric_external_target_preflight)
         mcp.tool()(fabric_external_target_inspect)
         mcp.tool()(fabric_ci_runner_guest_status)

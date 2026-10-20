@@ -2,8 +2,8 @@
 
 status: SOURCE_OFFLINE_GUARDS_MERGED / CORRECT_HOST_WITNESS_WAIT
 owner: Runner-MCP source lane (#669); Fabric authority/activation separately #924
-source_main_version: 0.1.53
-source_main_merge: 6b352d89c196790e5b6bfdb73f05e786934aa4a5
+source_main_version: 0.1.55
+source_main_merge: 701f507ac00754c6e869448ed3158dcfb4eac539
 live_connected_serving_version: 0.1.38
 active_loaded_wheel_verified: false
 active_source_revision_verified: false
@@ -11,6 +11,11 @@ self_update_ready: false
 production_changes_performed: false
 
 ## Accepted source-only progress (2026-10-20)
+
+- v0.1.54 PR #770 fixed existing Fabric bridge A6 local read-only preflight; SOURCE MERGED, central 0.1.38 cannot yet call.
+- v0.1.55 PR #773 current connected process only three-module roster/version observer, locked 100 tools; SOURCE MERGED exact-head full CI all green, active source/wheel still unverified.
+- **Bootstrap-loop #669/#924:** trusted correct-host witness on original 0.1.38 and protected previous generation must be independently qualified before safe update; do not rely on newly merged but not installed observers, and do not bypass A6/A7/ACK.
+
 
 - v0.1.52 #769 manager readiness denied when active generation unverified, 12-mode negative tests, CI all green.
 - v0.1.53 #771 standalone receipt refuses linked parent, relative and `..` aliases across all three evidence inputs, nine negative tests, CI all green.

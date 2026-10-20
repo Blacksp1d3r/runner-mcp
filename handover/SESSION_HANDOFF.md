@@ -1,8 +1,13 @@
-## 2026-10-20 — #669 bounded current-process observation candidate (SOURCE ONLY)
+## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT
 
-Source main v0.1.54 incorporates already merged Runner-MCP #770 fixed zero-input A6 Fabric bridge read-only preflight. To avoid duplicate Fabric work, the next separate source child v0.1.55 introduces a fixed no-input `serving_process_observation_preflight` for **only the original connected MCP process**: observes its three already-imported Runner-MCP module names and loaded-versus-current installed distribution version, reports categorical wait or observed_local_only with update/dispatch false. It NEVER claims a trusted wheel, physical host, six process generations, signer custody, preserved escrow, independent A6 journal or A7 rollback; no paths, PIDs, credentials, module bytes or connected peer topology are returned. Failure Museum RMCP-F-0058 with adversarial unit tests. Source-only until exact CI; main/source version is not what currently runs. Original central 0.1.38 remains protected and external Fab #1617/#942/#943 plus exact original-client ACK remain WAIT.
+Runner-MCP [#770](https://github.com/Blacksp1d3r/runner-mcp/pull/770) SOURCE MERGED 0.1.54 (`247c3803ac8050c41c96eea93197fab0f3951129`): existing authenticated Fabric bridge fixed zero-input A6 local storage read. This only reads existing A6 journal and never proves physical independence or update authority.
+
+Runner-MCP [#773](https://github.com/Blacksp1d3r/runner-mcp/pull/773) SOURCE MERGED 0.1.55 (`701f507ac00754c6e869448ed3158dcfb4eac539`, tested PR head `fe00e88e771d2d2876b9f1829972438f1e106435`): zero-arg `serving_process_observation_preflight` observes only three already-imported Python modules on the serving MCP process and its loaded-vs-installed-version comparison. 100 registered tools in the exact lock file; release admission, full Ruff/pytest, built wheel, clean Ubuntu proof #39451435006, five-minute demo #39451433529 and attribution #39451434036 ALL SUCCESS. Never emits paths, PIDs, tokens, source SHA or wheel digest; `activeBuildProvenanceVerified=false`, update/dispatch false for all results. Failure Museum RMCP-F-0058 SOURCE_MERGED_LIVE_UNVERIFIED.
+
+**Critical bootstrap dependency:** live first-party central remains 0.1.38 with no actual imported wheel/source attestation, A6 0/11, `self_update_ready=false` and existing six roles. New 0.1.54/0.1.55 tools are SOURCE, not callable from old 0.1.38, and cannot be prerequisites that only self-certify a future upgrade. Correct-host independent owner-controlled pre-admission witness for the old installed/loaded baseline and immutable previous release escrow must be established through existing authorized Fabric/host operator authority under #669/#924; absent that stay WAIT. Fabric #1617/#942 independently off-target physical A6, #943 disconnected actual A7 rollback, original-client result + durable ACK #609 remain separate blockers. No second relay/updater, unsafe backdoor or OIDC/MFA reintroduction.
 
 ---
+
 
 ## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT
 

@@ -76,4 +76,4 @@ Closed/known failures remain here after fixes. Do not include private host/path/
 
 | RMCP-F-0057 | standalone offline receipt path validation | SOURCE_MERGED_LIVE_UNVERIFIED | symlinked parent of wheel, receipt or package was resolved by leaf-only metadata check | refuse relative, parent traversal and symlinked ancestors before offline source comparison; nine negative cases, live trust stays UNKNOWN | #669 |
 
-| RMCP-F-0058 | connected MCP process local module observation | SOURCE_FIX_CANDIDATE / LIVE_NOT_DEPLOYED | installed wheel metadata may advance independently of modules imported by the serving process | same-process three-module roster read-only categorical observation; deny update/dispatch and never project source or wheel hash; no private identifiers | #669 |
+| RMCP-F-0058 | connected MCP process local module observation | SOURCE_MERGED_LIVE_UNVERIFIED | installed wheel metadata may advance independently of modules imported by the serving process | same-process three-module roster read-only categorical observation; deny update/dispatch and never project source or wheel hash; no private identifiers | #669 |

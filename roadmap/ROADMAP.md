@@ -1,3 +1,12 @@
+## 2026-10-20 — checkpoint: #725 source test hardening complete, update gates stay WAIT
+
+- [x] Source PR #744 (520+ synthetic stateless GitHub App tokens, wrappers and truncation) merged `67ebbff96dd6708fff927663c01bf0563258550b`, exact-head validation #39455822522 and attribution #39455821986 SUCCESS. No source version increment and no host mutation.
+- [ ] #725 downstream consumer boundary review; no production incident claimed.
+- [ ] #669 correct-host six-role serving-wheel/source identity and previous-generation escrow; #509 A6 bindings through existing fixed routine; Fabric #1617/#942 independent off-target A6, #943 actual offline rollback, #924 single-node controlled cutover and original-client result/ACK #609. Live 0.1.38 remains not update-ready.
+- [ ] #739 source PRs #746/#748 remain unmerged and version-stale; reconcile serially with next independently available version and full exact-head CI. These pure source checks never authorize a live import or update.
+
+---
+
 ## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT
 
 Runner-MCP [#770](https://github.com/Blacksp1d3r/runner-mcp/pull/770) SOURCE MERGED 0.1.54 (`247c3803ac8050c41c96eea93197fab0f3951129`): existing authenticated Fabric bridge fixed zero-input A6 local storage read. This only reads existing A6 journal and never proves physical independence or update authority.

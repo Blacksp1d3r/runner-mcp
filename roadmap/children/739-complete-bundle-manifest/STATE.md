@@ -1,7 +1,7 @@
-# #739 — full in-memory bundle consistency, source only
+# #739 — Q7 complete in-memory bundle consistency
 
-Status: IMPLEMENTED_SOURCE_CANDIDATE / CI_PENDING / NOT DEPLOYED.
+Status: SOURCE_CANDIDATE / EXACT_HEAD_CI_PENDING / NOT_DEPLOYED.
 
-Branch `feat/739-complete-bundle-manifest-check-20261019`, stacked after PR #746 v0.1.43; candidate v0.1.44, never published. Synthetic focused tests committed; full exact-head GitHub CI/attribution/Ubuntu must pass before PR merge. No trusted signer key or physical host contact; no GitHub private token accepted.
+Existing PR #748 is reconciled on main immediately after #746 source v0.1.56, with a unique v0.1.57 candidate. Pure bounded 33-asset bytes/pins/manifest/SHA256SUMS/bootstrap comparison, synthetic negative tests and strict no-I/O design. `bundle_consistency_only` confirms neither independent publisher signature, genuine wheel METADATA, owner-private disk custody, physical host provenance, protected install/rollback nor original-client ACK. No API token, provider invocation or host operation.
 
-Remaining independently qualified signer and published release ID/pin custody; verified wheel METADATA and installation contract; safe atomic owner-only 33-file importer with replay denial; host-specific rollback A6/A7; target-bound original-client ACK and operator-approved activation.
+Next: exact-head full validation, version reservation, clean Ubuntu install, built artifact/demo and attribution, followed only by guarded source merge. Parent #739 stays OPEN for independent authenticated signer, release import/custody, preflight and separate operator-authorized install plus Fabric #942/#943/#1556.

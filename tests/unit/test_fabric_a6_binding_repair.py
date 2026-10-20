@@ -326,7 +326,7 @@ def test_doctor_reports_safe_absent_a6_but_no_false_green(tmp_path: Path) -> Non
     config = tmp_path / "config"
     config.mkdir(mode=0o700)
     env = config / "runner-mcp.env"
-    env.write_text("UNRELATED_VALUE=keep\\n", encoding="utf-8")
+    env.write_text("UNRELATED_VALUE=keep\n", encoding="utf-8")
     env.chmod(0o600)
     state = tmp_path / "state"
     state.mkdir(mode=0o700)

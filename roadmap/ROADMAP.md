@@ -1,3 +1,9 @@
+## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)
+
+Following source-merged #769 v0.1.52 (unverified active generation always `self_update_ready=false`), the standalone offline receipt comparator still had a linked-grandparent acceptance gap even after the #767 evidence-chain guard. This new source candidate applies the same safe lexical-path constraints independently to receipt, wheel and installed-package inputs; nine regression cases cover linked ancestors, relative paths and `..` traversal. Failure Museum RMCP-F-0057, exact-head CI required. Unlike a production signer/observer, these are offline byte-check helpers only: original-client central live remains 0.1.38, source/wheel not verified, A6 0/11, self-update not ready. Fabric #1617/#942 off-target A6, #943 A7 and #924 one-target lease plus #609 original-client ACK remain separately WAIT. Six serving roles, storage, credentials and tunnels are untouched.
+
+---
+
 ## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY
 
 Fresh source main 0.1.51 and original first-party central runtime 0.1.38 remain separate. Source audit found `fail_closed_runtime_provenance()` suppressed stale active revision and wheel digest but could still inherit `self_update_ready=True` from historical self-update status, even though `active_build_provenance_verified=False`. v0.1.52 candidate explicitly refuses that conflicting release authority, including malformed manager readiness, before exposing `runtime_status`. It preserves transaction history without making it active identity and tests in-memory loaded-version vs newer dist-info; Failure Museum RMCP-F-0056. No host restart, source promotion, disk/credential alteration, paid model call or OIDC/MFA work. Exact-head CI required before source merge.

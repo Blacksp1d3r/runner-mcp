@@ -1,3 +1,9 @@
+## 2026-10-20 — owner-confirmed MCP boundary and cockpit integration (docs only)
+
+AIfordable remains the **business/customer/registration/infrastructure desired-state cockpit**; Runner-Fabric owns the **technical F10/F17 Cockpit and sole technical orchestration**; Runner-MCP remains the **bounded authenticated execution/bridge** product, not a competing scheduler, updater or relay. The AIfordable-owned relay is an existing transport with Fabric work/result/ACK semantics. Preserve current MCP and A6/A7 recovery paths, fixed host/worker/work-unit workspace capability bounds, and existing six serving roles. Reference: https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md. No release, live host change, 0.1.38 promotion, or Agent Bus/Claude/Qwen approval claimed; #669/#509 and Fabric #924 remain gated.
+
+---
+
 ## 2026-10-20 — checkpoint: #725 source test hardening complete, update gates stay WAIT
 
 - [x] Source PR #744 (520+ synthetic stateless GitHub App tokens, wrappers and truncation) merged `67ebbff96dd6708fff927663c01bf0563258550b`, exact-head validation #39455822522 and attribution #39455821986 SUCCESS. No source version increment and no host mutation.

@@ -1,5 +1,7 @@
 # Runner MCP
 
+**Confirmed cross-product role (2026-10-20):** Runner-MCP is the **bounded authenticated execution and MCP access boundary**, not the company cockpit or a second technical orchestrator. AIfordable owns the company-wide business cockpit and customer/product/registration/desired-state data; Runner-Fabric owns the **technical F10/F17 Cockpit** and is the **sole technical coordinator**. Existing Agent Bus relay code is retained as a transport, not a duplicate scheduler. Runner-MCP's optional Fabric bridge remains narrow, with no automatic expansion of authority. [Cross-product role contract](https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md).
+
 <!-- mcp-name: io.github.Blacksp1d3r/runner-mcp -->
 
 [![Runner MCP validation](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml/badge.svg?branch=main)](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml)

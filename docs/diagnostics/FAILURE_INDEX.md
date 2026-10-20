@@ -68,6 +68,6 @@ Closed/known failures remain here after fixes. Do not include private host/path/
 
 | RMCP-F-0053 | A6 private binding semantic integrity | SOURCE_MERGED_LIVE_UNVERIFIED | eleven non-empty keys previously green despite wrong fixed private values | verify canonical private values/roots and revision consistency, refuse all synthetic tampering | #509 / #669 / Fabric #1617 |
 
-| RMCP-F-0054 | offline installed wheel/RECORD matching | SOURCE_FIX_CANDIDATE / LIVE_NOT_OBSERVED | unexpected exterior/duplicate pip RECORD entries silently ignored as expected installer additions | admit only pinned console scripts and standard pip metadata, validate optional digest/size and reject duplicates; negative tests; still OFFLINE ONLY | #669 |
+| RMCP-F-0054 | offline installed wheel/RECORD matching | SOURCE_MERGED_LIVE_UNVERIFIED | unexpected exterior/duplicate pip RECORD entries silently ignored as expected installer additions | admit only pinned console scripts and standard pip metadata, validate optional digest/size and reject duplicates; negative tests; still OFFLINE ONLY | #669 |
 
-| RMCP-F-0055 | offline evidence chain path canonicality | SOURCE_FIX_CANDIDATE / LIVE_NOT_OBSERVED | lexical parent traversal or linked grandparent can masquerade as generation-local path across independent offline subchecks | refuse nonabsolute/`..`/symlink-ancestor evidence paths on all five input roles, fail closed; no live attestation | #669 |
+| RMCP-F-0055 | offline evidence chain path canonicality | SOURCE_MERGED_LIVE_UNVERIFIED | lexical parent traversal or linked grandparent can masquerade as generation-local path across independent offline subchecks | refuse nonabsolute/`..`/symlink-ancestor evidence paths on all five input roles, fail closed; no live attestation | #669 |

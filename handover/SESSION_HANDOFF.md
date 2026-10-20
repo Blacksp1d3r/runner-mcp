@@ -2,7 +2,7 @@
 
 Existing PR #744 (not a duplicate branch) was rebased semantically onto v0.1.55 `main` by a lease-protected non-forced merge commit, CI validation #39455822522 and attribution #39455821986 both SUCCESS; squash source merge `67ebbff96dd6708fff927663c01bf0563258550b`. Synthetic long stateless `ghs_APPID_JWT` tokens are now additionally tested in wrappers/truncation, no real credentials or live server changes. #725 cross-project review remains a separate item.
 
-Read-only original-client live central 0.1.38: serving provenance NULL, `self_update_ready=false`, A6 0/11, two Doctor FAIL, Fabric bridge ready/read-only, Agent Bus relay UNKNOWN and execution OFF, release mirror private bindings unconfigured; Q7 private configuration incomplete. Continue the independent source/test backlog without claiming live success. Core upgrade gate remains Runner-MCP #669 + Fabric #1617/#942/#943/#924 + original-client ACK #609. No self_update, replacement of six roles, second relay or OIDC/MFA work.
+Read-only original-client live central 0.1.38: serving provenance NULL, `self_update_ready=false`, A6 0/11, two Doctor FAIL, Fabric bridge ready/read-only, Agent Bus relay UNKNOWN and execution OFF, release mirror private bindings unconfigured; Q7 private configuration incomplete. Continue the independent source/test backlog without claiming live success. Core upgrade gate remains Runner-MCP #669 + Fabric #1617/#942/#943/#924 + Fabric #1556 live original-client ACK, #1563 Black target acceptance and AIfordable #585 relay continuity (AIfordable #609 concerns Claude/Qwen workspaces only). No self_update, replacement of six roles, second relay or OIDC/MFA work.
 
 ---
 

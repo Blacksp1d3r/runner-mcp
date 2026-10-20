@@ -1,3 +1,9 @@
+## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)
+
+Following SOURCE MERGED v0.1.50 #766, a separate bounded source child tightens the offline evidence chain's path semantics: all five candidate paths must be absolute, free of lexical `..` and have no symlinked lexical ancestors. A path alias cannot be construed as independently observed installed generation. Negative regressions exercise each of five linked-grandparent inputs, relative paths and inside-generation parent traversal. Failure Museum RMCP-F-0055. The result remains OFFLINE ONLY even for an exact match, with active source/wheel intentionally NULL. Correct-host loaded/process signer proof #669, Fabric off-target A6 #1617/#942, independent A7 #943 and original-client ACK #609 remain operationally WAIT. The central six roles on 0.1.38 are not changed.
+
+---
+
 ## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)
 
 Main v0.1.49, central original-client serving 0.1.38 with active source/wheel unknown and `self_update_ready=false`. Candidate source v0.1.50 tightens a narrow `offline_installed_record_preflight` consistency gap: previously any outside-package installed RECORD addition was ignored; bounded policy permits only known pip CLI/script and standard metadata extras, refuses foreign/traversal/duplicate entries and malformed optional hashes. A wheel/installed-RECORD match remains OFFLINE ONLY; no current-process/loaded-module attestation, host signer, original client ACK or A6/A7 recovery authority. Regression tests, Failure Museum RMCP-F-0054, exact-head CI and clean Ubuntu installer required. This does not authorize changing the six active services or creating another tunnel/update plane.

@@ -27,3 +27,7 @@ Source checkout baseline evaluation previously expected a valid `clean_head` dic
 ## 2026-10-20 — RMCP-F-0054 (source-only installed RECORD parser negative admission)
 
 The existing offline installed RECORD comparator accepted *any* pip RECORD entry not present in the source wheel unless its path began `runner_mcp/`. That silently tolerated arbitrary exterior paths and duplicate console entries as if they were normal installer metadata. The source v0.1.50 correction admits only known bounded pip console scripts and common installer metadata, validates optional external digest/size shape and refuses duplicates with synthetic negative tests. No evidence of real host exploit, no installed-process proof, no live updater/host action, and no change to A6/A7/ACK gates. Tracking #669.
+
+## 2026-10-20 — RMCP-F-0055 (offline evidence path redirection)
+
+The offline evidence chain previously delegated each input to separate helpers and used lexical `Path.is_relative_to()` for generation membership. Source-only negative review exposed that lexical `..` or linked ancestors can reference a different physical path while looking generation-relative. Candidate source v0.1.51 refuses nonabsolute inputs, lexical parent traversal and symlinked ancestors for every path, with parametrized synthetic tests. No proof of a live incident; even successful offline chain remains `active_build_provenance_verified=false`, never independently signed correct-host process trust. Tracking #669.

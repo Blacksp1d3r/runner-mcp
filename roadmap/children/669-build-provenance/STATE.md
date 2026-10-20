@@ -2,8 +2,8 @@
 
 status: SOURCE_OFFLINE_GUARDS_MERGED / CORRECT_HOST_WITNESS_WAIT
 owner: Runner-MCP source lane (#669); Fabric authority/activation separately #924
-source_main_version: 0.1.55
-source_main_merge: 701f507ac00754c6e869448ed3158dcfb4eac539
+source_main_version: 0.1.58
+latest_669_source_merge: 701f507ac00754c6e869448ed3158dcfb4eac539
 live_connected_serving_version: 0.1.38
 active_loaded_wheel_verified: false
 active_source_revision_verified: false
@@ -11,6 +11,9 @@ self_update_ready: false
 production_changes_performed: false
 
 ## Accepted source-only progress (2026-10-20)
+
+- #509 v0.1.58 PR #776 merged `22b3efc6a35375c9033f5aa71a8f9930fcf64843` with 11-key private env hardlink guard and exact-head full CI green; this is not a #669 independent live witness, or a host update.
+- #739 v0.1.56 #746 and v0.1.57 #748 source merged with 33/33 offline Q7 asset consistency, not a signed trusted host import.
 
 - v0.1.54 PR #770 fixed existing Fabric bridge A6 local read-only preflight; SOURCE MERGED, central 0.1.38 cannot yet call.
 - v0.1.55 PR #773 current connected process only three-module roster/version observer, locked 100 tools; SOURCE MERGED exact-head full CI all green, active source/wheel still unverified.

@@ -71,3 +71,5 @@ Closed/known failures remain here after fixes. Do not include private host/path/
 | RMCP-F-0054 | offline installed wheel/RECORD matching | SOURCE_MERGED_LIVE_UNVERIFIED | unexpected exterior/duplicate pip RECORD entries silently ignored as expected installer additions | admit only pinned console scripts and standard pip metadata, validate optional digest/size and reject duplicates; negative tests; still OFFLINE ONLY | #669 |
 
 | RMCP-F-0055 | offline evidence chain path canonicality | SOURCE_MERGED_LIVE_UNVERIFIED | lexical parent traversal or linked grandparent can masquerade as generation-local path across independent offline subchecks | refuse nonabsolute/`..`/symlink-ancestor evidence paths on all five input roles, fail closed; no live attestation | #669 |
+
+| RMCP-F-0056 | runtime_status build provenance / self-update gate | SOURCE_FIX_CANDIDATE / LIVE_NOT_OBSERVED | historical updater readiness could coexist with unverified active wheel/source (false-green self_update_ready) | mask readiness to false until separately qualified correct-host active generation and recovery/ACK; negative tests | #669 |

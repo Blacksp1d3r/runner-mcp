@@ -130,6 +130,10 @@ def fail_closed_runtime_provenance(
             "active_build_provenance_verified": False,
             "active_artifact_revision": None,
             "active_artifact_digest": None,
+            # A manager's self-update transaction readiness is NOT sufficient
+            # while the loaded wheel/source and current process are unknown.
+            # Never forward a stale True into release/fleet admission.
+            "self_update_ready": False,
         }
     )
     return result

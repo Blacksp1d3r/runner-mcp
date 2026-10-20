@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.52 (source-only #669 active-generation update readiness fails closed)
+
+- Prevent `runtime_status` from inheriting `self_update_ready=true` from a self-update transaction manager when the current loaded wheel/source and serving process remain unverified. Historical commit, git checkout, installed package version and manager readiness are not current-generation authority. Explicitly set update readiness to false alongside null active provenance; tests cover stale true/false/malformed manager data and hot-installed dist-info without process restart. Source only: this does not create any updater, trusted signer, A6/A7 journal or operational installation. (#669)
+
+
 ## 0.1.51 (source-only #669 canonical offline evidence paths)
 
 - Reject relative, `..`-redirected or symlink-ancestor manifest/receipt/wheel/installed-package/generation paths before offline evidence-chain comparisons. Prevent a lexical `is_relative_to()` success from masking a redirected generation candidate; negative tests preserve fail-closed state and never claim active build identity. No host scanner or production install authority. (#669)

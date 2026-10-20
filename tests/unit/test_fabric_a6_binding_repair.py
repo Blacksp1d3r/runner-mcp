@@ -410,3 +410,77 @@ def test_a6_lexical_parent_traversal_is_not_canonical_private_root(
         )
     assert load_env_file(config / "runner-mcp.env") == {"UNRELATED_VALUE": "keep"}
     assert environment == {"RUNNER_MCP_BEARER_TOKEN": "r" * 48}
+
+@pytest.mark.parametrize(
+    ("key", "replacement"),
+    [
+        ("RUNNER_FABRIC_UPDATE_JOURNAL_ROOT", "/untrusted/a6"),
+        ("RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN", "target:runner-mcp"),
+        ("RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN", "control:evidence"),
+        ("RUNNER_FABRIC_RUNNER_MCP_ENDPOINT", "http://127.0.0.1:8020/mcp"),
+        ("RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN", "short"),
+        ("RUNNER_FABRIC_SYNTHETIC_PROBE_ID", "other-probe"),
+        ("RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT", "runner:primary"),
+        ("RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION", "f" * 40),
+        ("RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS", "0"),
+        ("RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT", "/untrusted/evidence"),
+        ("RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION", "f" * 40),
+    ],
+)
+def test_doctor_a6_refuses_full_count_with_mismatched_private_fixed_value(
+    tmp_path: Path, key: str, replacement: str,
+) -> None:
+    config, state, environment = _private_runtime(tmp_path)
+    repair_a6_qualification_binding(
+        environment=environment,
+        config_dir=config,
+        state_root=state,
+        fabric_revision="a" * 40,
+    )
+    env_path = config / "runner-mcp.env"
+    values = load_env_file(env_path)
+    assert len([name for name in values if name.startswith("RUNNER_FABRIC_")]) == 11
+    before = inspect_a6_binding_state(config_dir=config, state_root=state)
+    assert before["binding_complete"] is True
+    values[key] = replacement
+    env_path.write_text(
+        "".join(f"{name}={value}\n" for name, value in values.items()),
+        encoding="utf-8",
+    )
+    env_path.chmod(0o600)
+    inspected = inspect_a6_binding_state(config_dir=config, state_root=state)
+    assert inspected["state_roots"] == "ready"
+    assert inspected["binding_count"] == 11
+    assert inspected["binding_complete"] is False
+    assert classify_a6_bindings_for_doctor(inspected) == ("warn", "unavailable")
+
+
+def test_doctor_a6_full_count_without_owner_private_roots_is_not_ready(
+    tmp_path: Path,
+) -> None:
+    config, state, environment = _private_runtime(tmp_path)
+    repair_a6_qualification_binding(
+        environment=environment, config_dir=config, state_root=state,
+        fabric_revision="a" * 40,
+    )
+    (state / "a6-evidence").rmdir()
+    observed = inspect_a6_binding_state(config_dir=config, state_root=state)
+    assert observed["state_roots"] == "incomplete"
+    assert observed["binding_count"] == 11
+    assert observed["binding_complete"] is False
+    assert classify_a6_bindings_for_doctor(observed) == ("warn", "unavailable")
+
+
+def test_doctor_a6_complete_fixed_values_still_not_physical_recovery_proof(
+    tmp_path: Path,
+) -> None:
+    config, state, environment = _private_runtime(tmp_path)
+    repair_a6_qualification_binding(
+        environment=environment, config_dir=config, state_root=state,
+        fabric_revision="a" * 40,
+    )
+    observed = inspect_a6_binding_state(config_dir=config, state_root=state)
+    assert observed["binding_complete"] is True
+    assert classify_a6_bindings_for_doctor(observed) == ("pass", "ready_11_of_11")
+    # PASS here is confined to structural PRIVATE CONFIG ONLY; no assertion
+    # about independent storage, A6 journal append, A7 or client ACK.

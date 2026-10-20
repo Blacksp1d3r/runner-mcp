@@ -84,6 +84,36 @@ def a6_state_requested(state_root: Path) -> bool:
     return all(present)
 
 
+def _a6_fixed_values_consistent(
+    values: Mapping[str, str], journal: Path, evidence: Path,
+) -> bool:
+    """Compare only owner-private fixed A6 values; never return the values.
+
+    A caller-controlled full set can look like 11/11 while pointing at the
+    wrong endpoint, custody root, target or old Fabric generation. This is
+    only local configuration consistency, not an off-target trust witness.
+    """
+    revision = values.get("RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION")
+    if not isinstance(revision, str) or _COMMIT_RE.fullmatch(revision) is None:
+        return False
+    if values.get("RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION") != revision:
+        return False
+    bearer = values.get("RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN")
+    if not _valid_secret(bearer):
+        return False
+    expected = {
+        "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": str(journal),
+        "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN": _JOURNAL_DOMAIN,
+        "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN": _TARGET_DOMAIN,
+        "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": _RUNNER_MCP_ENDPOINT,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_ID": _PROBE_ID,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT": _TARGET_SUBJECT,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS": _INTERVAL_SECONDS,
+        "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT": str(evidence),
+    }
+    return all(values.get(name) == expected_value for name, expected_value in expected.items())
+
+
 def inspect_a6_binding_state(
     *,
     config_dir: Path,
@@ -124,11 +154,19 @@ def inspect_a6_binding_state(
             else:
                 root_state = "ready"
 
+    # A full *count* is not enough: stale or substituted fixed values must
+    # never be presented as a qualified private A6 binding. This still does
+    # NOT certify the physical off-target A6 journal, A7, or caller ACK.
+    consistent = (
+        root_state == "ready"
+        and binding_count == len(_A6_KEYS)
+        and _a6_fixed_values_consistent(values, journal, evidence)
+    )
     return {
         "state_roots": root_state,
         "binding_count": binding_count,
         "binding_total": len(_A6_KEYS),
-        "binding_complete": binding_count == len(_A6_KEYS),
+        "binding_complete": consistent,
     }
 
 

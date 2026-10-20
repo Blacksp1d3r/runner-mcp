@@ -2,7 +2,7 @@
 
 - [x] Source PR #744 (520+ synthetic stateless GitHub App tokens, wrappers and truncation) merged `67ebbff96dd6708fff927663c01bf0563258550b`, exact-head validation #39455822522 and attribution #39455821986 SUCCESS. No source version increment and no host mutation.
 - [ ] #725 downstream consumer boundary review; no production incident claimed.
-- [ ] #669 correct-host six-role serving-wheel/source identity and previous-generation escrow; #509 A6 bindings through existing fixed routine; Fabric #1617/#942 independent off-target A6, #943 actual offline rollback, #924 single-node controlled cutover and original-client result/ACK #609. Live 0.1.38 remains not update-ready.
+- [ ] #669 correct-host six-role serving-wheel/source identity and previous-generation escrow; #509 A6 bindings through existing fixed routine; Fabric #1617/#942 independent off-target A6, #943 actual offline rollback, #924 single-node controlled cutover and Fabric #1556 original-client result/ACK plus Fabric #1563 Black admission and AIfordable #585 relay continuity; AIfordable #609 is a separate Claude/Qwen workspace child. Live 0.1.38 remains not update-ready.
 - [ ] #739 source PRs #746/#748 remain unmerged and version-stale; reconcile serially with next independently available version and full exact-head CI. These pure source checks never authorize a live import or update.
 
 ---

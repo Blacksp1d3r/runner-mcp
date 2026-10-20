@@ -181,6 +181,7 @@ from .operational_safety import (
     SafetyConfigurationError,
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
+from .serving_process_readonly import observe_current_process_modules
 from .service_manager import ServiceManager, ServiceManagerError
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
@@ -854,6 +855,22 @@ def build_mcp(
             result,
             loaded_version=_loaded_package_version,
             installed_distribution_version=package,
+        )
+
+    @mcp.tool()
+    def serving_process_observation_preflight() -> dict[str, object]:
+        """Observe ONLY the current loaded MCP process; no live wheel attestation.
+
+        This cannot inspect other managed roles or independent storage, issue a
+        signer receipt, or grant self-update/dispatch/rollback authority.
+        """
+        try:
+            installed = version("aifordable-runner-mcp")
+        except PackageNotFoundError:
+            installed = "development"
+        return observe_current_process_modules(
+            imported_version=_loaded_package_version,
+            installed_distribution_version=installed,
         )
 
     @mcp.tool()

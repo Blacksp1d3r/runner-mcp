@@ -1,0 +1,3 @@
+# #669 — signed serving statement source v0.1.44
+
+2026-10-19: Earlier #743 v0.1.42 and #745 v0.1.43 are now merged. This draft #750 source candidate reconciles to actual main `b4e9a5ad07c4da1861a95363777d4e84bb81e840` v0.1.43, preserving the new Fabric release metadata/byte verifier, Claude/Qwen workspace code and shared flow. Source-only signed offline statement input comparator with negative tests; correct-host signer issuer, nonce, process-loaded RECORD and original-client ACK remain external WAIT. Only exact-head CI and owner-authorized source merge may mark source ready; no live central 0.1.38 update or installation.

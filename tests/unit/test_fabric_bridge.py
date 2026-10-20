@@ -1127,3 +1127,96 @@ def test_worker_qualification_proxy_rejects_private_or_mismatched_result(
             "bewind-ocr-qualification-v1",
             1,
         )
+
+
+def test_worker_process_bridge_calls_only_existing_fabric_mcp_fixed_name():
+    from runner_mcp.worker_process_readonly import bounded_worker_wait
+
+    payload = bounded_worker_wait("claude", "host_observer_not_configured")
+    bridge, fake = bridge_with_responses(payload)
+    outcome = bridge.worker_process_inspect("claude")
+    assert outcome == payload
+    assert fake.calls == [("worker_process_inspect", {"worker": "claude"})]
+
+
+def test_missing_or_unsupported_fabric_tool_returns_wait_without_retries():
+    bridge, fake = bridge_with_responses()
+    # Existing clients without a deployed Fabric agent worker tool fail closed.
+    def deny(_name, _args):
+        raise BridgeExecutionAdapterError("optional tool unavailable")
+
+    fake._call_tool = deny
+    result = bridge.worker_process_inspect("qwen")
+    assert result["reasonCode"] == "fabric_read_unavailable"
+    assert result["dispatchAuthorized"] is False
+
+
+def test_wrong_host_or_mutation_claim_denied_in_existing_bridge():
+    from runner_mcp.worker_process_readonly import bounded_worker_wait
+
+    forged = bounded_worker_wait("claude", "host_observer_not_configured")
+    forged["hostAssetId"] = "AF-VM-0003"
+    bridge, fake = bridge_with_responses(forged)
+    result = bridge.worker_process_inspect("claude")
+    assert fake.calls == [("worker_process_inspect", {"worker": "claude"})]
+    assert result["state"] == "wait"
+    assert result["reasonCode"] == "fabric_read_invalid"
+
+
+def test_unknown_worker_cannot_probe_fabric_or_supply_pid():
+    bridge, fake = bridge_with_responses()
+    with pytest.raises(FabricBridgeError, match="allowlisted"):
+        bridge.worker_process_inspect("root")
+    assert fake.calls == []
+
+
+def test_a6_readonly_bridge_uses_same_existing_fixed_fabric_peer():
+    from runner_mcp.a6_storage_readonly import a6_storage_wait
+
+    payload = a6_storage_wait("private_roots_absent")
+    bridge, fake = bridge_with_responses(payload)
+    assert bridge.a6_storage_preflight() == payload
+    assert fake.calls == [("a6_storage_preflight", {})]
+
+
+def test_absent_fabric_a6_tool_yields_sanitized_wait_not_retry():
+    def deny(_name, _args):
+        raise BridgeExecutionAdapterError("/private/token/old-fabric-tool")
+
+    bridge, fake = bridge_with_responses()
+    fake._call_tool = deny
+    result = bridge.a6_storage_preflight()
+    assert result["reasonCode"] == "fabric_read_unavailable"
+    assert result["a6Ready"] is False
+    assert result["mutationEnabled"] is False
+    assert "private" not in str(result)
+
+
+def test_fabric_a6_local_hash_is_never_off_target_readback_proof():
+    from runner_mcp.a6_storage_readonly import a6_storage_wait
+
+    payload = a6_storage_wait("local_journal_hash_chain_verified_only")
+    payload.update({
+        "journalRootObserved": True,
+        "evidenceRootObserved": True,
+        "journalIntegrityVerified": True,
+    })
+    bridge, fake = bridge_with_responses(payload)
+    result = bridge.a6_storage_preflight()
+    assert result["journalIntegrityVerified"] is True
+    assert result["physicalIndependenceVerified"] is False
+    assert result["offTargetReadbackVerified"] is False
+    assert result["a6Ready"] is False
+    assert fake.calls == [("a6_storage_preflight", {})]
+
+
+def test_a6_bridge_rejects_peer_forged_physical_pass():
+    from runner_mcp.a6_storage_readonly import a6_storage_wait
+
+    payload = a6_storage_wait("private_roots_absent")
+    payload["physicalIndependenceVerified"] = True
+    bridge, fake = bridge_with_responses(payload)
+    result = bridge.a6_storage_preflight()
+    assert result["reasonCode"] == "fabric_read_invalid"
+    assert result["physicalIndependenceVerified"] is False
+    assert fake.calls == [("a6_storage_preflight", {})]

@@ -1,3 +1,36 @@
+## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT
+
+Runner-MCP #763 SOURCE MERGED v0.1.48, squash c5f88102f3d36ad0ffb968215594d9daf19f5328; PR exact-head validation 39380236274, clean Ubuntu 39380236331 and attribution 39380236370 ALL SUCCESS. Private A6 state/config paths reject linked ancestors and lexical traversal; RMCP-F-0052.
+
+Runner-MCP #764 SOURCE MERGED v0.1.49, squash 585890997c6ec11147ef3b7d28101e0072f8d238; PR exact-head validation 39381025511, clean Ubuntu 39381025486 and attribution 39381025450 ALL SUCCESS. Full 11/11 A6 binding count with wrong fixed values no longer yields a PASS; RMCP-F-0053. Correct private configuration is not independent physical off-target A6 admission.
+
+Original connected central Runner-MCP still 0.1.38, serving source/wheel null, self_update_ready=false, Doctor two FAIL, A6 0/11 and Agent Bus relay UNKNOWN. Six roles, hosts, worker processes, relay, credentials and disks unchanged. Missing correct-host signer/loaded wheel #669, Fabric independent off-target A6 #1617/#942, offline A7 #943 and same-client durable ACK #609; Fabric #924 alone guards first node. No OIDC/MFA or second update plane.
+
+---
+## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)
+
+Source review found a previously uncovered synthetic redirection case: the fixed A6 state root and fixed private config directory were each resolved after verifying only their final lexical path was not a symlink. A symlink in a *parent* could still redirect private reads/updates to another tree. This is a SOURCE-OBSERVED security boundary, not evidence of a live exploit. Candidate source v0.1.48 rejects linked ancestors, relative paths and lexical ".." before resolving both paths and exercising existing fixed A6 key repair; tests verify no private config or environment writes under redirects. Failure Museum RMCP-F-0052, with distinct issue owner #509 and serving-trust dependency #669.
+
+Physical acceptance remains unchanged: original central runtime v0.1.38, wheel/process current trust unverified, A6 0/11, self_update_ready=false, Fabric independent journal (#1617/#942), A7 offline rollback (#943) and exact original-client ACK (#609) are still WAIT. This code must pass exact-head CI and is NOT installed on the central host. No OIDC/MFA, second relay/update system, arbitrary filesystem tool or host action.
+
+---
+
+## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT
+
+Runner-MCP PR [#760](https://github.com/Blacksp1d3r/runner-mcp/pull/760) SOURCE MERGED squash `0f3fa078e97458c8ae3982ec71251422b2e10151`, v0.1.47, exact tested head `11cf153ad19325113c947e0b3115fa2920172556`; validation #39371276604, clean Ubuntu #39371276607 and attribution #39371276627 ALL SUCCESS. `runtime_doctor.fabric_a6_binding_state` now reports `warn/not_configured_0_of_11` for both private roots and all keys intentionally absent, instead of prior misleading PASS. Structural binding READY is NOT off-target A6 journal readiness. No live install, restart, folder or token mutation.
+
+Runner-MCP PR [#761](https://github.com/Blacksp1d3r/runner-mcp/pull/761) TEST-ONLY MERGED squash `f7c37c53197f6c06207c646db3af41e0b0454858`, exact tested head `abe615d89b997641859bc83f3a3a0898f0b9c615`; validation #39371812361 and attribution #39371812310 SUCCESS. Synthetic six-role signed witness parity and eleven wrong/missing/duplicated/stale role, host, nonce and expiry negative regressions remain `active_build_provenance_verified=false`. No operational worker role names asserted, no runtime tool change or shipping-version bump.
+
+The v0.1.47 pushed source artifact is independently checked OFF-HOST only: GitHub Actions #39371598373 candidate SHA wheel `d0dd841c9da39d9d85c26221c207c488fe091aaf22dd459caedaa0767fb9bef6`, sdist `258e2cc5c99cecb9616f0e3a1d6b6275473882fed4db8f7f34a6b336f2ff3c69`, 123/123 RECORD file checks, 117/117 package module equality; no loaded-process/signer/restore proof. Current original first-party LIVE central Runner-MCP remains 0.1.38, source/wheel NULL, `self_update_ready=false`, A6 0/11 live historical PASS/no readiness, Fabric Agent Bus relay UNKNOWN; six roles untouched. Next real accepted operator proofs: #669 correct-host generation+witness, Fabric #1617/#942 independently off-target A6 and #943 A7 offline rollback, AIfordable #609 exact same-original-client terminal ACK. Fabric #924 alone may later admit one guarded target. GitHub required admission branch policy #757 remains independent.
+
+---
+
+## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)
+
+Following Runner-MCP [#760](https://github.com/Blacksp1d3r/runner-mcp/pull/760) SOURCE MERGED v0.1.47, an independent bounded test-only child now checks a deliberately SYNTHETIC six-role Ed25519 offline serving-statement comparator: all six consistent roles STILL return `active_build_provenance_verified=false` with source/wheel null, and eleven missing/foreign/stale/duplicated role, signer-host/nonce/expiry and expected-list mismatches refuse without promoting a live identity. No real host role names are asserted and no worker/service is contacted; this reuses existing pure comparator, makes NO executable release or version bump, and requires exact-head CI before merge. Correct-host actual loaded process, trusted issuer/revocation, original-client ACK, Fabric #1617/#942 A6 and #943 A7 remain WAIT. Existing connected central v0.1.38 is not changed by this test branch.
+
+---
+
 ## 2026-10-19 — Second bounded source-hardening checkpoint
 
 Malformed source-baseline checkout evidence now returns `source_commit=None` and `source_baseline_aligned=False`; synthetic malformed and thrown-provider negative tests deny updater start even where a fake active identity matches history. RMCP-F-0046 recorded as source-only, NOT a confirmed live failure. Serving 0.1.38 remains separately unverified and `self_update_ready=false`; physical proof still requires trusted host operator and Fabric A6/A7. The 0.1.40 metadata bump is retained, but exact-head CI is still required before merging.

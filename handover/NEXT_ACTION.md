@@ -1,24 +1,18 @@
-## 2026-10-19 — verified sequence for #739 source stack
+## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases
 
-1. Allow separate owner to complete #742 exact CI, then reconcile/rebase #743 and #745 and new v0.1.43 roster child in order. All must pass own exact-head GitHub validation, Ubuntu proof and attribution. #745 was fully green at head a064f8526c1d53c2c466b025fc0cdeb4acc17c0c; no main merge yet.
-2. Verify actual independent signer-issued source/release/33-asset pins before any real asset download; a self-described roster is untrusted. Next actual code child: safe full 33/33 bytes manifest verification + rootless sealed local custody (separate host permission and rollback).
-3. Leave AIfordable issuer, Fabric #1563 original-client ACK, Agent Bus admission and websites disabled until physical host-bound proof.
+User-authorized single release sequence has merged pinned metadata PR #743 (0.1.42) and bounded release bytes PR #745 (0.1.43); draft PR #750 now reconciles this source with actual main as the next unique 0.1.44. Independently pinned offline Ed25519 signed statement comparator checks exact host, challenge, source, loaded version, wheel, generation and process role set, but returns current source/digest NULL and active_build_provenance_verified=false regardless of signed consistency. No trusted correct-host observer, nonce issuance, original requester ACK, host installation or Fabric A6/A7 recovery is gained from this source. Review exact new CI head before merge; keep historical self-update state and existing running central 0.1.38 unchanged.
 
 ---
 
-### 2026-10-19 — #739 source sequencing
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
 
-1. Exact-PR-head CI for #742 then #743, followed by current 0.1.42 asset-byte candidate; preserve per-head attribution and Ubuntu tests. Retarget/reconcile stacked PRs to `main` sequentially only after green and protected GitHub rules.
-2. Confirm independent publisher signature, pinned source/release ID + exactly 33 trusted asset digests and safe redirect behavior before ANY real download. Byte-helper 0.1.42 is not a command or custody operation.
-3. Prepare rootless atomic owner-only 33/33 offline importer, rollback/replay-denial and separately operator-authorized installation; Fabric #1563 ACK and AIfordable #585 issuer remain WAIT, no tunnel or physical target change.
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
 
 ---
 
-## 2026-10-19 — independent #739 next actions
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
 
-1. CI verify fixed pinned release read-only access probe branch `feat/739-release-metadata-access-probe-20261019` (candidate 0.1.41 stacked after #742 v0.1.40), then GitHub-enforced merge only with exact-head gates. Never infer production deployment from source.
-2. Finish #739 protected 33-asset byte importer + independent signature/digest source and replay-safe local custody; current child is metadata-read ACCESS ONLY.
-3. Physical first-host short-lived token permission read, local setup and target-bound Agent Bus ACK remain owner/private actions; no credential requested in chat, no private host mutation or broad shell fallback.
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
 
 ---
 

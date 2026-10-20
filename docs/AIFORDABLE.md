@@ -27,6 +27,8 @@ Do not:
 
 ## Cross-project rule
 
+**Confirmed ownership (2026-10-20):** AIfordable = company and business cockpit (customer/product registrations and desired state); Runner-Fabric = technical F10/F17 Cockpit and sole orchestration authority; Runner-MCP = independently useful bounded MCP/execution product. An AIfordable Control Center technical view consumes Fabric truth instead of recreating it. Relay implementation in an AIfordable repository remains transport, not a second scheduler or project orchestrator. Details: [cross-product role contract](https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md).
+
 Each AIfordable product remains independently understandable and usable.
 
 Cross-project links may help people discover other tools, but they must never create a runtime dependency between unrelated products. Security boundaries, credentials, deployment configuration and user data remain separate per product.

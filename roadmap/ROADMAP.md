@@ -1,3 +1,9 @@
+## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47
+
+The connected central live v0.1.38 Doctor reports `pass/not_configured_0_of_11` for safely absent private A6 roots and fixed keys. This conflates safe absence with update-readiness in green-status aggregators; no evidence of a real unsafe update. Bounded SOURCE-ONLY candidate v0.1.47 changes this row to `warn/not_configured_0_of_11`, retains structurally `ready_11_of_11` private binding PASS (NOT off-target A6 qualification), and denies malformed/bool/unknown fields as `warn/unavailable`. Fixed private 11-key repair code, host services, credential custody, actual installed 0.1.38 and all six active roles remain UNCHANGED. Full exact-head CI and independent Fabric A6 #1617/#942, A7 #943, host source/wheel witness #669 and same-original-client ACK #609 are still required. Failure Museum RMCP-F-0048. This is not installation permission.
+
+---
+
 ## 2026-10-20 — first-node blocking gate reconciled, no service mutation
 
 GitHub `main` source v0.1.46 (PR #756 merged; docs PR #758 merged); original connected central runtime v0.1.38, loaded source/wheel NULL and `self_update_ready=false`. Doctor 2 FAIL, A6 `pass/not_configured_0_of_11`: PASS means deliberately absent private state/config, NOT A6 readiness. Fabric bridge READY read-only but A6 prepare/probe false, relay layer UNKNOWN and execution/mutation disabled. Existing immutable baseline and independent A6/A7 recovery/original-requester ACK still unqualified. New [F30 first-node evidence gates](../docs/operations/F30_FIRST_NODE_ADMISSION_GATES.md) (linked from repository root) states the non-mutating prerequisites and narrow ownership. No host/relay/service/credential/disk/worker modification. #509 / #669 / Fabric #924/#942/#943 / AIfordable #609 remain the real operational owners. Subsequent source development may continue without pretending a source merge is installed or current host identity is attested.

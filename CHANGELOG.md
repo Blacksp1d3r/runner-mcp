@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.47 (source-only A6 diagnostic safety; not installed)
+
+- Prevent `runtime_doctor` from reporting A6 unconfigured (0/11, absent journal/evidence roots) as PASS. Preserve safe non-mutating absence detail with WARN, classify malformed/private-root configurations fail-closed, and retain PASS for structurally complete private bindings only. Separate Fabric #942/#1617 off-target journal, A7 independent rollback and original requester ACK remain required for live update authority. This source correction does not modify private configuration, restart processes or install a wheel. (#509/#669)
+
 ## 0.1.45 (source-only candidate; release guard not yet branch-required)
 
 - Implement fail-closed read-only GitHub current-main / PR-head / version admission for the unique next patch, with deterministic READY PR priority and twice-sampled contender inventory against races (#662). Reject wrong source/version, invalid API data and inherited proxy/redirect. Source CI alone cannot enforce merge atomicity: administrator-required check and fresh branch/serialized merges are separate gates. No live host release.

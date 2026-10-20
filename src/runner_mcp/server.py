@@ -96,6 +96,7 @@ from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
     a6_state_requested,
+    classify_a6_bindings_for_doctor,
     inspect_a6_binding_state,
     repair_a6_qualification_binding,
 )
@@ -976,31 +977,7 @@ def build_mcp(
                 "unavailable",
             )
         else:
-            roots = str(a6_state.get("state_roots", "unknown"))
-            count = a6_state.get("binding_count")
-            total = a6_state.get("binding_total")
-            complete = a6_state.get("binding_complete") is True
-            if (
-                roots == "ready"
-                and complete
-                and isinstance(count, int)
-                and isinstance(total, int)
-            ):
-                detail = f"ready_{count}_of_{total}"
-                state = "pass"
-            elif (
-                roots == "absent"
-                and count == 0
-                and isinstance(total, int)
-            ):
-                detail = f"not_configured_0_of_{total}"
-                state = "pass"
-            elif isinstance(count, int) and isinstance(total, int):
-                detail = f"{roots}_{count}_of_{total}"
-                state = "warn"
-            else:
-                detail = "unavailable"
-                state = "warn"
+            state, detail = classify_a6_bindings_for_doctor(a6_state)
             add("fabric_a6_binding_state", state, detail)
 
         try:

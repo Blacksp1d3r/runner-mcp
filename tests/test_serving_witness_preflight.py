@@ -295,10 +295,13 @@ def test_six_role_witness_negative_families_fail_closed(fault: str) -> None:
     assert result["artifact_digest"] is None
 
 
+_SYNTHETIC_PINS_UNSET = object()
+
+
 def _six_process_pin_check(
     *,
     claims: dict[str, object] | None = None,
-    pins: object = None,
+    pins: object = _SYNTHETIC_PINS_UNSET,
     expected_roles: object = _SIX_SYNTHETIC_ROLES,
     expected_override: dict[str, object] | None = None,
 ) -> dict[str, object]:
@@ -319,7 +322,7 @@ def _six_process_pin_check(
         expected.update(expected_override)
     process_pins = (
         {role: f"{i:064x}" for i, role in enumerate(_SIX_SYNTHETIC_ROLES, start=1)}
-        if pins is None else pins
+        if pins is _SYNTHETIC_PINS_UNSET else pins
     )
     return signed_six_role_process_pin_preflight(
         body, signer.sign(body), key,

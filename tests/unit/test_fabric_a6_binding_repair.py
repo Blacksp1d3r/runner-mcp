@@ -444,7 +444,7 @@ def test_doctor_a6_refuses_full_count_with_mismatched_private_fixed_value(
     assert before["binding_complete"] is True
     values[key] = replacement
     env_path.write_text(
-        "".join(f"{name}={value}\\n" for name, value in values.items()),
+        "".join(f"{name}={value}\n" for name, value in values.items()),
         encoding="utf-8",
     )
     env_path.chmod(0o600)

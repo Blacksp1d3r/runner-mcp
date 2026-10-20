@@ -29,6 +29,30 @@ def _fail(ledger, request_id="req-poison", fingerprint=None):
     )
 
 
+def test_absent_ledger_inspection_does_not_create_private_state(tmp_path):
+    ledger = _ledger(tmp_path)
+    target = tmp_path / "quarantine.json"
+    assert not target.exists()
+    assert ledger.inspect("req-poison") is None
+    assert not target.exists()
+    assert ledger.inspect("req-healthy") is None
+    assert not target.exists()
+
+    # The first valid, guarded WRITE still explicitly creates its state.
+    created = _fail(ledger)
+    assert created.attempts == 1
+    assert target.is_file()
+    assert ledger.inspect("req-poison") == created
+
+
+def test_absent_ledger_with_unsafe_parent_fails_closed_without_creation(tmp_path):
+    tmp_path.chmod(0o755)
+    target = tmp_path / "quarantine.json"
+    with pytest.raises(RecoveryQuarantineError, match="directory is unsafe"):
+        _ledger(tmp_path).inspect("req-poison")
+    assert not target.exists()
+
+
 def test_poison_quarantined_after_three_failures_and_persists_across_restart(tmp_path):
     ledger = _ledger(tmp_path)
     assert _fail(ledger).attempts == 1

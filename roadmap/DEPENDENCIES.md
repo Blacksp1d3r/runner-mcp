@@ -1,3 +1,12 @@
+## 2026-10-20 — #664/#665 autonomous source v0.1.60 MERGED; connected 0.1.38 still WAIT
+
+- #664 PR #778 merged `55c26eaef2d7f08a1f84c1c79df03898fd413842` v0.1.59 (pure legacy tools/list input/output schema compatibility check, failure RMCP-F-0061 fixed, exact-head CI all green).
+- #665 PR #779 merged `2188fd3f89d05ae6c50d0fbe5a3216de0dc5a740` v0.1.60 (pure tool mismatch cooldown reset after source-observed READY, failure RMCP-F-0062, exact-head CI all green).
+- Source-only: no historic customer-wheel attestation, real serving identity, live dispatch, notifications, result/ACK or host update. Parent #664/#665 OPEN. #669/#509 and Fabric #1617/#942/#943/#924 physical evidence still WAIT, existing six roles untouched.
+- Canonical handover: [#664/#665 source guard acceptance](https://github.com/Blacksp1d3r/runner-mcp/blob/main/handover/COMPATIBILITY_664_665_20261020.md).
+
+---
+
 ## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT
 
 - Runner-MCP [PR #776](https://github.com/Blacksp1d3r/runner-mcp/pull/776) source MERGED as `22b3efc6a35375c9033f5aa71a8f9930fcf64843`, version **0.1.58**. Existing fixed 11-key A6 private repair and diagnostic now reject multiply linked private `runner-mcp.env`; two synthetic no-write hardlink negative cases. Exact PR head `efaa513dc7424eaff74f851ec3be22e6326c3a19`: release reservation, Ruff/pytest, full validation + demo + built artifact [39464803945](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39464803945), clean Ubuntu [39464803996](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39464803996), attribution [39464804237](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/39464804237) ALL SUCCESS. Failure Museum RMCP-F-0060 source mitigated; NOT a live rollout.

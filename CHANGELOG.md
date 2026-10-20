@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.49 (source-only fixed A6 value integrity; not installed)
+
+- In `runtime_doctor`, require exact fixed A6 configuration values, canonical already-qualified owner-private roots, plausible private bearer format and matching canonical Fabric revisions before returning `ready_11_of_11`. Eleven nonempty keys with a stale revision, wrong storage root/domain, loopback endpoint, probe target or secret format are no longer a green status. Synthetic regressions for each of eleven fixed keys, absent evidence directory, and correctly generated fixed values. This does NOT grant off-target A6 journal, independent A7 rollback, current loaded wheel/process proof or original-client ACK. (#509/#669)
+
+
 ## 0.1.48 (source-only A6 ancestor symlink hardening; not installed)
 
 - Refuse symlinked *ancestors*, not only the final A6 private state/configuration directory, before canonical resolution. Also reject relative/parent-traversal lexical roots. A redirected grandparent must never cause an A6 journal/configuration read or the fixed 11-key private repair to be accepted. Add negative tests for state-root and config-parent aliases, traversal and no private writes; unchanged fixed binding authority. (#509/#669/Fabric #1617)

@@ -1,3 +1,11 @@
+## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)
+
+Follow-up after SOURCE MERGED v0.1.48 linked-ancestor guard. Candidate v0.1.49 closes a second source-level false-green: previously `binding_count==11` and ready A6 roots were enough for Doctor `pass/ready_11_of_11`, including stale Fabric revisions or foreign fixed journal/probe values. New bounded private inspection checks exact sanctioned endpoint/roots/storage domains, probe ID/target/interval, matching 40-hex Fabric revisions and valid private bearer format. Full count with incorrect values or missing private evidence directory now returns NOT COMPLETE and `warn/unavailable`. No raw secret output, no credential edit or new runtime tool. Synthetic tests cover all eleven wrong fixed values, missing root and valid repaired config. Failure Museum RMCP-F-0053.
+
+This is only SOURCE-LEVEL CONFIG CONSISTENCY, not independent physically off-target journal or live operation. Connected central runtime still 0.1.38 with A6 0/11 and `self_update_ready=false`. Fabric #1617/#942, #943, Runner-MCP #669 and same original-client ACK #609 must qualify independently before Fabric #924 can authorize one-node cutover. No host mutation and no OIDC/MFA reintroduction.
+
+---
+
 ## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)
 
 Source review found a previously uncovered synthetic redirection case: the fixed A6 state root and fixed private config directory were each resolved after verifying only their final lexical path was not a symlink. A symlink in a *parent* could still redirect private reads/updates to another tree. This is a SOURCE-OBSERVED security boundary, not evidence of a live exploit. Candidate source v0.1.48 rejects linked ancestors, relative paths and lexical ".." before resolving both paths and exercising existing fixed A6 key repair; tests verify no private config or environment writes under redirects. Failure Museum RMCP-F-0052, with distinct issue owner #509 and serving-trust dependency #669.

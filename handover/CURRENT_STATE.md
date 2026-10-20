@@ -1,3 +1,9 @@
+## 2026-10-20 — owner-confirmed three-product responsibility contract (docs-only)
+
+AIfordable is the overarching **business cockpit** and owns customer/product registrations and infrastructure metadata/desired state. Runner-Fabric owns the **technical F10/F17 Cockpit and sole orchestration**, including workers, project work units, leases and results. Runner-MCP remains bounded authenticated MCP/host execution and optional fixed Fabric bridge; existing AIfordable Agent Bus relay is transport, not a competing technical coordinator. Link: https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md. Documentation-only: existing central 0.1.38 still not update-ready; original-client relay result/ACK, A6/A7 physical qualification, #669/#509 and Fabric #924 remain pending. No additional relay, updater, OIDC/MFA deployment or worker dispatch.
+
+---
+
 ## 2026-10-20 — #725 520+ stateless-token regressions SOURCE MERGED; live remains WAIT
 
 Runner-MCP PR [#744](https://github.com/Blacksp1d3r/runner-mcp/pull/744) merged as `67ebbff96dd6708fff927663c01bf0563258550b` after exact-head validation #39455822522 (Ruff/pytest, built artifact and clean demo SUCCESS) and attribution #39455821986 SUCCESS. The previous draft was reconciled without force-push against v0.1.55 `main`; this tests-only change includes synthetic 520+ character JWT-shaped GitHub App token wrappers, truncation and benign-text cases, with NO actual tokens, product interface change, source version bump or host operation. #725 remains available for external-consumer coordination.

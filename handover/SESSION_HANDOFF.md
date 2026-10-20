@@ -1,3 +1,12 @@
+## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT
+
+Runner-MCP #763 SOURCE MERGED v0.1.48, squash c5f88102f3d36ad0ffb968215594d9daf19f5328; PR exact-head validation 39380236274, clean Ubuntu 39380236331 and attribution 39380236370 ALL SUCCESS. Private A6 state/config paths reject linked ancestors and lexical traversal; RMCP-F-0052.
+
+Runner-MCP #764 SOURCE MERGED v0.1.49, squash 585890997c6ec11147ef3b7d28101e0072f8d238; PR exact-head validation 39381025511, clean Ubuntu 39381025486 and attribution 39381025450 ALL SUCCESS. Full 11/11 A6 binding count with wrong fixed values no longer yields a PASS; RMCP-F-0053. Correct private configuration is not independent physical off-target A6 admission.
+
+Original connected central Runner-MCP still 0.1.38, serving source/wheel null, self_update_ready=false, Doctor two FAIL, A6 0/11 and Agent Bus relay UNKNOWN. Six roles, hosts, worker processes, relay, credentials and disks unchanged. Missing correct-host signer/loaded wheel #669, Fabric independent off-target A6 #1617/#942, offline A7 #943 and same-client durable ACK #609; Fabric #924 alone guards first node. No OIDC/MFA or second update plane.
+
+---
 ## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)
 
 Follow-up after SOURCE MERGED v0.1.48 linked-ancestor guard. Candidate v0.1.49 closes a second source-level false-green: previously `binding_count==11` and ready A6 roots were enough for Doctor `pass/ready_11_of_11`, including stale Fabric revisions or foreign fixed journal/probe values. New bounded private inspection checks exact sanctioned endpoint/roots/storage domains, probe ID/target/interval, matching 40-hex Fabric revisions and valid private bearer format. Full count with incorrect values or missing private evidence directory now returns NOT COMPLETE and `warn/unavailable`. No raw secret output, no credential edit or new runtime tool. Synthetic tests cover all eleven wrong fixed values, missing root and valid repaired config. Failure Museum RMCP-F-0053.

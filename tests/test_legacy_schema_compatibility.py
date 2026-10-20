@@ -92,6 +92,18 @@ def test_oversized_inventory_and_deep_schema_do_not_dispatch():
     assert _compare([_tool()], deep) is LegacySchemaReason.INVALID_INVENTORY
 
 
+def test_recursive_or_reused_schema_container_is_rejected():
+    cyclic = [_tool()]
+    cyclic[0]["inputSchema"]["properties"]["loop"] = cyclic[0]["inputSchema"]
+    assert _compare([_tool()], cyclic) is LegacySchemaReason.INVALID_INVENTORY
+
+    shared = [_tool()]
+    prop = {"type": "string"}
+    shared[0]["inputSchema"]["properties"]["first"] = prop
+    shared[0]["inputSchema"]["properties"]["second"] = prop
+    assert _compare([_tool()], shared) is LegacySchemaReason.INVALID_INVENTORY
+
+
 def test_output_contract_presence_must_not_be_implicitly_added_or_removed():
     old = [_tool()]
     new = copy.deepcopy(old)

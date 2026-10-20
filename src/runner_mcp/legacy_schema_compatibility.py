@@ -27,8 +27,33 @@ class LegacySchemaReason(StrEnum):
     LEGACY_SCHEMA_CHANGED = "LEGACY_SCHEMA_CHANGED"
 
 
+def _bounded_json_shape(value: object) -> bool:
+    """Reject deep, aliased or oversized JSON objects independently of JSON encoder limits."""
+    pending = [(value, 0)]
+    seen: set[int] = set()
+    count = 0
+    while pending:
+        current, depth = pending.pop()
+        count += 1
+        if count > 8192 or depth > 64:
+            return False
+        if isinstance(current, (dict, list)):
+            if id(current) in seen:
+                return False
+            seen.add(id(current))
+            if isinstance(current, dict):
+                if not all(isinstance(key, str) for key in current):
+                    return False
+                pending.extend((item, depth + 1) for item in current.values())
+            else:
+                pending.extend((item, depth + 1) for item in current)
+        elif type(current) not in (str, int, float, bool, type(None)):
+            return False
+    return True
+
+
 def _canonical_schema(value: object) -> bytes | None:
-    if not isinstance(value, dict) or value.get("type") != "object":
+    if not _bounded_json_shape(value) or not isinstance(value, dict) or value.get("type") != "object":
         return None
     if not isinstance(value.get("properties"), dict):
         return None

@@ -5,6 +5,7 @@ import pytest
 from runner_mcp.fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
     inspect_a6_binding_state,
+    classify_a6_bindings_for_doctor,
     repair_a6_qualification_binding,
 )
 from runner_mcp.onboarding import load_env_file
@@ -253,3 +254,86 @@ def test_a6_symlink_cycle_in_parent_is_sanitized_before_mutation(
         "UNRELATED_VALUE": "keep",
     }
     assert "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT" not in environment
+
+
+@pytest.mark.parametrize(
+    ("inspection", "expected"),
+    [
+        (
+            {"state_roots": "absent", "binding_count": 0, "binding_total": 11,
+             "binding_complete": False},
+            ("warn", "not_configured_0_of_11"),
+        ),
+        (
+            {"state_roots": "ready", "binding_count": 11, "binding_total": 11,
+             "binding_complete": True},
+            ("pass", "ready_11_of_11"),
+        ),
+        (
+            {"state_roots": "ready", "binding_count": 0, "binding_total": 11,
+             "binding_complete": False},
+            ("warn", "ready_0_of_11"),
+        ),
+        (
+            {"state_roots": "absent", "binding_count": 2, "binding_total": 11,
+             "binding_complete": False},
+            ("warn", "absent_2_of_11"),
+        ),
+        (
+            {"state_roots": "unsafe", "binding_count": 11, "binding_total": 11,
+             "binding_complete": True},
+            ("warn", "unsafe_11_of_11"),
+        ),
+        (
+            {"state_roots": "incomplete", "binding_count": 3, "binding_total": 11,
+             "binding_complete": False},
+            ("warn", "incomplete_3_of_11"),
+        ),
+    ],
+)
+def test_doctor_a6_private_config_classification_is_not_update_admission(
+    inspection: dict[str, object], expected: tuple[str, str],
+) -> None:
+    assert classify_a6_bindings_for_doctor(inspection) == expected
+
+
+@pytest.mark.parametrize(
+    "bad",
+    [
+        None,
+        {},
+        {"state_roots": "ready", "binding_count": True, "binding_total": 11,
+         "binding_complete": False},
+        {"state_roots": "ready", "binding_count": 11, "binding_total": 11,
+         "binding_complete": False},
+        {"state_roots": "absent", "binding_count": 0, "binding_total": 11,
+         "binding_complete": True},
+        {"state_roots": "ready", "binding_count": 11, "binding_total": 12,
+         "binding_complete": True},
+        {"state_roots": "private-secret", "binding_count": 11, "binding_total": 11,
+         "binding_complete": True},
+        {"state_roots": "ready", "binding_count": -1, "binding_total": 11,
+         "binding_complete": False},
+    ],
+)
+def test_doctor_a6_unknown_or_malformed_inspection_never_admits(
+    bad: object,
+) -> None:
+    assert classify_a6_bindings_for_doctor(bad) == ("warn", "unavailable")
+
+
+def test_doctor_reports_safe_absent_a6_but_no_false_green(tmp_path: Path) -> None:
+    config = tmp_path / "config"
+    config.mkdir(mode=0o700)
+    env = config / "runner-mcp.env"
+    env.write_text("UNRELATED_VALUE=keep\\n", encoding="utf-8")
+    env.chmod(0o600)
+    state = tmp_path / "state"
+    state.mkdir(mode=0o700)
+    inspected = inspect_a6_binding_state(config_dir=config, state_root=state)
+    assert classify_a6_bindings_for_doctor(inspected) == (
+        "warn", "not_configured_0_of_11",
+    )
+    assert load_env_file(env) == {"UNRELATED_VALUE": "keep"}
+
+

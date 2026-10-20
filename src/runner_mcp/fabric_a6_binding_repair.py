@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from .fabric_worker_qualification_provisioning import (
@@ -114,6 +114,40 @@ def inspect_a6_binding_state(
         "binding_total": len(_A6_KEYS),
         "binding_complete": binding_count == len(_A6_KEYS),
     }
+
+
+
+def classify_a6_bindings_for_doctor(inspection: Mapping[str, object]) -> tuple[str, str]:
+    """Classify safe A6 *configuration*, never certify A6 update authority.
+
+    An absent, unconfigured A6 is safe for general server operation, but it
+    cannot be treated as PASS by an update-readiness consumer. Real update
+    admission also requires off-target journal, A7 rollback and original ACK.
+    """
+    if not isinstance(inspection, Mapping):
+        return "warn", "unavailable"
+    roots = inspection.get("state_roots")
+    count = inspection.get("binding_count")
+    total = inspection.get("binding_total")
+    complete = inspection.get("binding_complete")
+    if (
+        roots not in ("ready", "absent", "incomplete", "unsafe")
+        or type(count) is not int
+        or type(total) is not int
+        or total != len(_A6_KEYS)
+        or count < 0
+        or count > total
+        or type(complete) is not bool
+        or complete != (count == total)
+    ):
+        return "warn", "unavailable"
+    if roots == "ready" and complete:
+        # PASS confirms this narrow private configuration, not off-target
+        # physical storage or protected A6/A7 update recovery.
+        return "pass", f"ready_{count}_of_{total}"
+    if roots == "absent" and count == 0:
+        return "warn", f"not_configured_0_of_{total}"
+    return "warn", f"{roots}_{count}_of_{total}"
 
 
 def repair_a6_qualification_binding(

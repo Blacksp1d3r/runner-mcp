@@ -1,0 +1,5 @@
+# #664 — strict source-only legacy MCP schema preservation
+
+Compare two bounded, separately pinned/authenticated `tools/list` inventories without network, live MCP, dispatch, policy, keys or host operations. Old tool names must remain, existing old input and declared output schemas must be byte-equivalent after canonical JSON normalization; new tool names are allowed. Any changed required/default/property/permission-related schema needs a separate v2 contract review, not silent compatibility.
+
+Acceptance: hostless test vectors for added new tools, removed old tools, changed type/default/required/output, untrusted pins and missing/duplicate/malformed/oversized inventories. Preserve full original inputs; no executable MCP tool added. Pinned booleans passed to this pure helper are NOT independently proven authority. Actual old customer-wheel snapshots, v1/v2 live dispatch semantics, service identity #669 and Fabric original-client ACK remain separate operational gates. Parent #664 stays open.

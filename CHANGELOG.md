@@ -1,24 +1,64 @@
 # Changelog
 
-## 0.1.44 (source candidate; not published)
+## 0.1.56 (source-only #739 independent Q7 33-asset release roster)
 
-- Add inert in-memory Q7 complete 33-asset checksum and manifest-consistency verification against independent exact roster pins. Enforce exact manifests, COMMIT_SHA, SHA256SUMS, bootstrap and 29 wheel-hash relations with bounded sizes, duplicate-key denials, no filesystem/network/token/install effects. Result explicitly marks signer, wheel metadata, local custody, mutation, and original-client ACK unverified (#739).
+- Add in-memory `compare_exact_pinned_q7_roster` for exactly 33 Q7 metadata assets: exact source/tag/release ID, filenames, numeric asset IDs, byte sizes and SHA-256 comparison with independently held pins. Malformed/duplicate/bool/unsafe records fail closed, with synthetic tests. A match is not signer proof, download/custody, mutation, installation or original-client result ACK. Parent #739 and Fabric A6/A7 gates remain open. (#746)
 
+## 0.1.55 (source-only #669 current-MCP-process observation)
 
-## 0.1.43 (source candidate; not published)
-
-- Source-only strict comparison of one Q7 33-asset Release inventory with independently held exact (repository-context, tag, commit, Release ID, per-asset numeric ID/name/size/SHA256) pins. Denies wrong/duplicate/malformed roster data and only returns an explicit MATCH_ONLY result with signer trust, download, mutation and original-client ACK all false (#739). Does not verify signer custody, store bytes or install anything.
-
-
-## 0.1.42 (source candidate; not published)
-
-- Add an INERT fixed-ID GitHub Release asset-byte verifier (#739): direct 200 or one allowlisted HTTPS 302 with bearer stripped, no proxy or auto redirect, at most 64 MiB streamed, exact size and independently supplied SHA256. No real bytes imported, disk custody, deployment, source attestation, credential enrollment or run authority. Source-only negative regression coverage; upstream trusted digest and all 33/33 actual asset/rollback/ACK gates remain separate.
+- Add fixed zero-argument read-only `serving_process_observation_preflight` for the authenticated currently connected Runner-MCP process. Categorically observes three already-imported modules and any loaded-vs-installed distribution version mismatch, never reads a remote host, filesystem paths, system PIDs, tokens or private signers. Output never attests a wheel/source generation, recovery authority or the other five managed roles; source/digest remain null and update/dispatch false even for an observed local roster. Synthetic negative tests cover missing/forged modules, loaded-vs-disk mismatch and private-output denial. (#669)
 
 
-## 0.1.41 (source candidate; not published)
+## 0.1.53 (source-only standalone #669 receipt path canonicality)
 
-- Add an operator-interactive pinned, standalone read-only GitHub Release metadata access probe for first-host Fabric bootstrap (#739). Proxy-free, redirect-denying, bounded API response with fixed repository/tag, category-only failures and synthetic security tests. A metadata PASS is not binary custody, source attestation, an update/install permit, relay enrollment or an ACK; no host action performed.
+- Make the standalone `offline_artifact_receipt_preflight` refuse lexical parent traversal, relative input and linked ancestor paths for each of the receipt, wheel and installed-package inputs. Leaf-only `lstat()` previously allowed a linked grandparent before `resolve()`; this remains an offline byte-consistency check, NOT trust in the running process. Nine negative regressions prevent path aliasing and retain unverified active source and digest. No host/service mutation. (#669)
 
+
+## 0.1.52 (source-only #669 active-generation update readiness fails closed)
+
+- Prevent `runtime_status` from inheriting `self_update_ready=true` from a self-update transaction manager when the current loaded wheel/source and serving process remain unverified. Historical commit, git checkout, installed package version and manager readiness are not current-generation authority. Explicitly set update readiness to false alongside null active provenance; tests cover stale true/false/malformed manager data and hot-installed dist-info without process restart. Source only: this does not create any updater, trusted signer, A6/A7 journal or operational installation. (#669)
+
+
+## 0.1.51 (source-only #669 canonical offline evidence paths)
+
+- Reject relative, `..`-redirected or symlink-ancestor manifest/receipt/wheel/installed-package/generation paths before offline evidence-chain comparisons. Prevent a lexical `is_relative_to()` success from masking a redirected generation candidate; negative tests preserve fail-closed state and never claim active build identity. No host scanner or production install authority. (#669)
+
+
+## 0.1.50 (source-only #669 installed RECORD negative admission)
+
+- Limit extra pip-installed RECORD entries to the two declared Runner-MCP CLI scripts and standard pip metadata. Refuse arbitrary out-of-tree paths, duplicate console entries, malformed external digests and unbounded entries that were previously silently ignored by the offline source-vs-install comparison. Preserve legitimate pip extras and deliberately keep the resulting classification OFFLINE ONLY, never live attestation or update authority. (#669)
+
+
+## 0.1.49 (source-only fixed A6 value integrity; not installed)
+
+- In `runtime_doctor`, require exact fixed A6 configuration values, canonical already-qualified owner-private roots, plausible private bearer format and matching canonical Fabric revisions before returning `ready_11_of_11`. Eleven nonempty keys with a stale revision, wrong storage root/domain, loopback endpoint, probe target or secret format are no longer a green status. Synthetic regressions for each of eleven fixed keys, absent evidence directory, and correctly generated fixed values. This does NOT grant off-target A6 journal, independent A7 rollback, current loaded wheel/process proof or original-client ACK. (#509/#669)
+
+
+## 0.1.48 (source-only A6 ancestor symlink hardening; not installed)
+
+- Refuse symlinked *ancestors*, not only the final A6 private state/configuration directory, before canonical resolution. Also reject relative/parent-traversal lexical roots. A redirected grandparent must never cause an A6 journal/configuration read or the fixed 11-key private repair to be accepted. Add negative tests for state-root and config-parent aliases, traversal and no private writes; unchanged fixed binding authority. (#509/#669/Fabric #1617)
+- The original connected central v0.1.38 remains unverified and unchanged. This source-only hardening does not prove off-target A6 storage, independent A7 rollback, a trusted currently loaded wheel or original requester ACK.
+
+
+## 0.1.47 (source-only A6 diagnostic safety; not installed)
+
+- Prevent `runtime_doctor` from reporting A6 unconfigured (0/11, absent journal/evidence roots) as PASS. Preserve safe non-mutating absence detail with WARN, classify malformed/private-root configurations fail-closed, and retain PASS for structurally complete private bindings only. Separate Fabric #942/#1617 off-target journal, A7 independent rollback and original requester ACK remain required for live update authority. This source correction does not modify private configuration, restart processes or install a wheel. (#509/#669)
+
+## 0.1.45 (source-only candidate; release guard not yet branch-required)
+
+- Implement fail-closed read-only GitHub current-main / PR-head / version admission for the unique next patch, with deterministic READY PR priority and twice-sampled contender inventory against races (#662). Reject wrong source/version, invalid API data and inherited proxy/redirect. Source CI alone cannot enforce merge atomicity: administrator-required check and fresh branch/serialized merges are separate gates. No live host release.
+
+## 0.1.44 (source-only candidate; not deployed)
+
+- Add independently pinned Ed25519 signed serving-witness input validator (#669), with exact host, source, wheel, generation, nonce, role instances, expiry and signature checks. Even a valid signed statement is OFFLINE and cannot establish current loaded host/process provenance or trigger update. No signing issuer, credential, live host observation or rollback authority.
+
+## 0.1.43 (source candidate; not installed)
+
+- Add bounded inert fixed GitHub Release asset-ID byte verifier (#739/#745), with no inherited proxy, exact size and independently supplied SHA256; allow strict direct 200 or narrowly authorized 302 with credentials stripped. Source-only security tests; never a full 33/33 signed importer, immutable storage, service activation, private host permission or Agent Bus ACK.
+
+## 0.1.42 (source candidate; not deployed)
+
+- Add operator-interactive pinned, standalone read-only GitHub Release metadata probe for first-host Fabric access (#739). Restricts repo/tag, disables proxies/redirects, bounds response, checks expected metadata and secret-safe category outputs. Offline security regressions. Neither release asset integrity, local custody, host activation nor original requester ACK is proven; no host action.
 
 ## 0.1.40 (source candidate; not published)
 

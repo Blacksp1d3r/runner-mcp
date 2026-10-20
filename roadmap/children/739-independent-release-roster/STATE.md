@@ -1,9 +1,7 @@
-# #739 — independent Q7 roster state
+# #739 — independent Q7 release roster comparison
 
-Status: SOURCE_CANDIDATE / NOT DEPLOYED / EXACT_GITHUB_CI_PENDING.
+Status: SOURCE_CANDIDATE / NEW EXACT_HEAD_CI_PENDING / NOT_DEPLOYED.
 
-Branch: `feat/739-independent-release-roster-20261019`, stacked on PR #745, source version 0.1.43. Tests in `tests/test_fabric_release_independent_roster.py`; 36 synthetic test cases defined, CI outcome pending. No claims of physical/wheel/signature authority or real host verification.
+Existing PR #746 is reconciled with current `main` on its original branch, v0.1.56 candidate; 36 synthetic cases and one pure 33-asset roster comparer. It refuses malformed/duplicate IDs, names, sizes, hashes, source/tag and wheel metadata, with fixed fail-closed categories. Positive output is match_only; trusted signer, full byte import, private custody, install, mutation and durable original-client ACK remain false.
 
-Previous PR #745 exact head a064f8526c1d53c2c466b025fc0cdeb4acc17c0c validation/clean Ubuntu/attribution SUCCESS. Underlying #742 and #743 still open/active; do not preempt.
-
-Next: fix actual exact-head failures; then merge only in qualified order #742 → #743 → #745 → this child with protected GitHub checks; independent trusted pin issuance, full binary materialization and operator-only sealed custody remain blocked until physical authority.
+Next: green exact-head CI, release reservation check, build/demo, attribution, clean Ubuntu if available; then source-only merge. PR #748 is stacked and must receive its own later version reservation after #746 merges. Parent #739 remains open for independently authenticated pins, 33 actual byte proofs and owner-controlled immutable correct-host custody, with independent Fabric A6/A7 and original-client ACK.

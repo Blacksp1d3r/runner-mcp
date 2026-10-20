@@ -57,3 +57,7 @@ Even a green clean-image proof does not clear the live host incident that showed
 - no credentials/private infrastructure;
 - no new MCP/mailbox/Agent-Bus/package-manager action;
 - clean-image result and private-host integrity status remain separately reported.
+
+## Source-only release metadata comparisons
+
+A clean Ubuntu installer check for source-only release-roster code (for example #739) verifies that the resulting package remains installable and that the fixed launcher still passes import/CLI smoke checks. It does **not** independently authenticate GitHub release pins, qualify immutable package bytes on the serving host, or establish an A6 journal, offline A7 rollback, installation authority or original-client ACK. These remain separate fail-closed operational gates.

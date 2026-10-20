@@ -1,24 +1,177 @@
-## 2026-10-19 — source-only Q7 33-file consistency candidate
+## 2026-10-20 — continuation checkpoint: #744 safely merged, runtime admission WAIT
 
-Continue from stacked #742 -> #743 -> #745 -> #746 -> current v0.1.44. Current code only compares independently pinned in-memory bytes and checks Q7 `BUNDLE.json`, `COMMIT_SHA`, `SHA256SUMS`, BOOTSTRAP and wheel digest relationships; no real bytes/token/host interaction. Synthetic regression and CI required. Do not promote if wheel metadata/signer/issuer/local custody and original-client ACK unqualified. Reconcile GitHub head/status before next work, avoid conflicting other owner's #742 self-update changes.
+Existing PR #744 (not a duplicate branch) was rebased semantically onto v0.1.55 `main` by a lease-protected non-forced merge commit, CI validation #39455822522 and attribution #39455821986 both SUCCESS; squash source merge `67ebbff96dd6708fff927663c01bf0563258550b`. Synthetic long stateless `ghs_APPID_JWT` tokens are now additionally tested in wrappers/truncation, no real credentials or live server changes. #725 cross-project review remains a separate item.
 
----
-
-### 2026-10-19 — parallel #739 independent-release-roster candidate
-
-New v0.1.43 pure metadata comparator branch `feat/739-independent-release-roster-20261019` stacked on fully-green #745 v0.1.42. Parent #739 importer remains incomplete; this is NOT independent signer custody, 33/33 downloaded bytes or host install/ACK. Source and 36 negative/positive synthetic tests committed; exact-head GitHub validation still pending. Other actor owns active PR #742, not modified here. Reconcile stack before merges; safe independent tasks can proceed without invoking physical host operations.
+Read-only original-client live central 0.1.38: serving provenance NULL, `self_update_ready=false`, A6 0/11, two Doctor FAIL, Fabric bridge ready/read-only, Agent Bus relay UNKNOWN and execution OFF, release mirror private bindings unconfigured; Q7 private configuration incomplete. Continue the independent source/test backlog without claiming live success. Core upgrade gate remains Runner-MCP #669 + Fabric #1617/#942/#943/#924 + Fabric #1556 live original-client ACK, #1563 Black target acceptance and AIfordable #585 relay continuity (AIfordable #609 concerns Claude/Qwen workspaces only). No self_update, replacement of six roles, second relay or OIDC/MFA work.
 
 ---
 
-### 2026-10-19 — #739 second source child prepared, v0.1.42 not installed
+## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT
 
-Distinct PR branch `feat/739-fixed-release-asset-bytes-20261019` contains inert fixed REST asset ID + one allowlisted HTTPS redirect downloader/verifier, independent SHA and bounded bytes, synthetic 33 pytest locally PASS, compileall PASS. Pending PR/exact GitHub CI/attribution/clean Ubuntu; no production/token/site/tunnel/relay work. Stacked only for numeric source versions behind #743 v0.1.41 and #742 v0.1.40. Next importer step must qualify independent signed 33-asset digest+release ID and rootless atomic replay-safe custody before any real byte download, install or host ACK claim.
+Runner-MCP [#770](https://github.com/Blacksp1d3r/runner-mcp/pull/770) SOURCE MERGED 0.1.54 (`247c3803ac8050c41c96eea93197fab0f3951129`): existing authenticated Fabric bridge fixed zero-input A6 local storage read. This only reads existing A6 journal and never proves physical independence or update authority.
+
+Runner-MCP [#773](https://github.com/Blacksp1d3r/runner-mcp/pull/773) SOURCE MERGED 0.1.55 (`701f507ac00754c6e869448ed3158dcfb4eac539`, tested PR head `fe00e88e771d2d2876b9f1829972438f1e106435`): zero-arg `serving_process_observation_preflight` observes only three already-imported Python modules on the serving MCP process and its loaded-vs-installed-version comparison. 100 registered tools in the exact lock file; release admission, full Ruff/pytest, built wheel, clean Ubuntu proof #39451435006, five-minute demo #39451433529 and attribution #39451434036 ALL SUCCESS. Never emits paths, PIDs, tokens, source SHA or wheel digest; `activeBuildProvenanceVerified=false`, update/dispatch false for all results. Failure Museum RMCP-F-0058 SOURCE_MERGED_LIVE_UNVERIFIED.
+
+**Critical bootstrap dependency:** live first-party central remains 0.1.38 with no actual imported wheel/source attestation, A6 0/11, `self_update_ready=false` and existing six roles. New 0.1.54/0.1.55 tools are SOURCE, not callable from old 0.1.38, and cannot be prerequisites that only self-certify a future upgrade. Correct-host independent owner-controlled pre-admission witness for the old installed/loaded baseline and immutable previous release escrow must be established through existing authorized Fabric/host operator authority under #669/#924; absent that stay WAIT. Fabric #1617/#942 independently off-target physical A6, #943 disconnected actual A7 rollback, original-client result + durable ACK #609 remain separate blockers. No second relay/updater, unsafe backdoor or OIDC/MFA reintroduction.
 
 ---
 
-## 2026-10-19 — #739 distinct source lane, candidate 0.1.41
 
-Reconciled AGENTS, dependencies, diagnostics and GitHub open PRs. #742 on active runtime-doctor provenance remains separate; choose unclaimed #739 fixed-release access prerequisite, standalone code and 39 synthetic tests locally PASS, no private token needed. New stacked branch `feat/739-release-metadata-access-probe-20261019`; candidate v0.1.41 not published or installed. Exact PR-head CI/attribution/Ubuntu and protected merge rules are pending. No physical host work. Next after verified source: full protected, 33/33 SHA256 binary importer, operator-held independent signed bundle source, immutable local custody, then distinct host-qualified install and Agent Bus ACK; metadata access alone never authorizes those effects.
+## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT
+
+Runner-MCP [PR #769](https://github.com/Blacksp1d3r/runner-mcp/pull/769) SOURCE MERGED v0.1.52 squash `6a227aa3af380e99878d3083a1ae9eb1fe0bd76d`: manager-supplied stale `self_update_ready=true` can no longer survive fail-closed projection when loaded wheel/source remain unverified. Exact-head validation #39400157473, Ubuntu #39400157458, attribution #39400157524 ALL SUCCESS; RMCP-F-0056. Official pushed artifact #12254268229 rehashed OFF-HOST (wheel SHA256 `0873f5bee3d813fadcbe62259538c96cba98863f4ed684746f973e3568be6ec0`, sdist SHA256 `8eb20b97a00472df1525b1a3086a69fa69e1a71e8481c1d0bdcb237a6f5915a9`, 123/123 RECORD, 117/117 wheel/sdist Python modules). Does NOT attest a loaded process.
+
+Runner-MCP [PR #771](https://github.com/Blacksp1d3r/runner-mcp/pull/771) SOURCE MERGED v0.1.53 squash `6b352d89c196790e5b6bfdb73f05e786934aa4a5`: standalone receipt preflight refuses symlinked ancestors, relative and lexical `..` aliases for receipt, wheel, installed package. Nine negative tests, exact-head validation #39401119807, clean Ubuntu #39401119744, attribution #39401119762 ALL SUCCESS; RMCP-F-0057. No host mutation.
+
+Fabric source progress independently verified: PRs #1625 (`2575d497` fixed no-follow A6 root chain), #1626 (`54f10654` existing LOCAL journal hash-chain readback), #1627 (`7ceff5ac` existing A7 baseline wheel/receipt opened-inode custody), and #1628 (`77d1054c` canonical handover) MERGED. These are **source progress, NOT physically proven independent storage or exercised disconnected rollback**. Do not duplicate Fabric's code.
+
+Live original-client central last verified 0.1.38, installed version 0.1.38, source/wheel NULL, `self_update_ready=false`, Doctor two FAIL and A6 0/11 (legacy Doctor `pass/not_configured_0_of_11` is absence), Fabric read-only, Agent Bus relay layer UNKNOWN, dispatch/mutation disabled. No six-role replacement, tunnel, credential or disk changes.
+
+Next real #669 deliverable: correct-host loaded interpreter/imported module to independently trusted pinned wheel/source binding for all six roles plus immutable previous-generation escrow and a one-use signed host-specific witness, consumed by the same original authenticated client. Fabric #1617/#942 must prove physically separate A6 journal and #943 independently exercised offline rollback before Fabric #924 one-node cutover, with original result/durable ACK #609. A signed OFFLINE candidate statement is not authority; don't enable self_update or OIDC/MFA from this source checkpoint.
+
+---
+
+## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)
+
+Following source-merged #769 v0.1.52 (unverified active generation always `self_update_ready=false`), the standalone offline receipt comparator still had a linked-grandparent acceptance gap even after the #767 evidence-chain guard. This new source candidate applies the same safe lexical-path constraints independently to receipt, wheel and installed-package inputs; nine regression cases cover linked ancestors, relative paths and `..` traversal. Failure Museum RMCP-F-0057, exact-head CI required. Unlike a production signer/observer, these are offline byte-check helpers only: original-client central live remains 0.1.38, source/wheel not verified, A6 0/11, self-update not ready. Fabric #1617/#942 off-target A6, #943 A7 and #924 one-target lease plus #609 original-client ACK remain separately WAIT. Six serving roles, storage, credentials and tunnels are untouched.
+
+---
+
+## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY
+
+Fresh source main 0.1.51 and original first-party central runtime 0.1.38 remain separate. Source audit found `fail_closed_runtime_provenance()` suppressed stale active revision and wheel digest but could still inherit `self_update_ready=True` from historical self-update status, even though `active_build_provenance_verified=False`. v0.1.52 candidate explicitly refuses that conflicting release authority, including malformed manager readiness, before exposing `runtime_status`. It preserves transaction history without making it active identity and tests in-memory loaded-version vs newer dist-info; Failure Museum RMCP-F-0056. No host restart, source promotion, disk/credential alteration, paid model call or OIDC/MFA work. Exact-head CI required before source merge.
+
+Missing original-client physical proof still under Runner-MCP #669: operator-trusted correct-host loaded process/wheel and complete six-role escrow; Fabric #1617/#942 independently off-target A6, #943 A7 offline rollback and AIfordable #609 original requester ACK; Fabric #924 owns one-target rollout. A source fix alone does not install onto live 0.1.38.
+
+---
+
+## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT
+
+- [PR #766](https://github.com/Blacksp1d3r/runner-mcp/pull/766) SOURCE MERGED v0.1.50, squash `b1300b57b114c0970deb35c565b3fb5fe16ef5cd`, exact head `2bd545b8ef88db1f10df95d7b7526bf15ca0c520`, CI validation #39390108398, Ubuntu #39390108426 and attribution #39390108361 ALL PASS. Installed-RECORD offline comparator only permits known pip CLI/metadata extras, refuses unapproved/duplicate/malformed exterior records; RMCP-F-0054.
+- [PR #767](https://github.com/Blacksp1d3r/runner-mcp/pull/767) SOURCE MERGED v0.1.51, squash `8104f244085adc68b8b705e9f7ec7a38dd69b2be`, exact head `bc11541c4eb2870f9203dbf5f23651c941d64b6d`, CI validation #39390980634, Ubuntu #39390980640 and attribution #39390980656 ALL PASS. Offline evidence chain refuses lexical `..`, relative inputs and symlinked lexical ancestors on all five files; RMCP-F-0055.
+- Original authenticated central Runner-MCP remains **0.1.38** installed and loaded with source/wheel NULL, active provenance false, `self_update_ready=false`, Doctor two FAIL; A6 0/11 is safe absence (historical 0.1.38 Doctor PASS != A6 qualified). Fabric bridge READY read-only, A6 prepare false, mutation/execution false, Agent Bus relay evidence UNKNOWN. No serving host/roles, relay, credentials, storage or worker changes in these source merges.
+- Remaining actual proof: operator-trusted correct-host six-role loaded module + wheel / source + rollback escrow witness #669; Fabric independently off-target journal #1617/#942, offline independent A7 #943, exact same-original-client terminal ACK #609. Fabric #924 guards first node. No direct self_update and no OIDC/MFA deflection. Source CI/offline hash evidence is NOT the loaded server identity.
+
+---
+
+## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)
+
+Following SOURCE MERGED v0.1.50 #766, a separate bounded source child tightens the offline evidence chain's path semantics: all five candidate paths must be absolute, free of lexical `..` and have no symlinked lexical ancestors. A path alias cannot be construed as independently observed installed generation. Negative regressions exercise each of five linked-grandparent inputs, relative paths and inside-generation parent traversal. Failure Museum RMCP-F-0055. The result remains OFFLINE ONLY even for an exact match, with active source/wheel intentionally NULL. Correct-host loaded/process signer proof #669, Fabric off-target A6 #1617/#942, independent A7 #943 and original-client ACK #609 remain operationally WAIT. The central six roles on 0.1.38 are not changed.
+
+---
+
+## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)
+
+Main v0.1.49, central original-client serving 0.1.38 with active source/wheel unknown and `self_update_ready=false`. Candidate source v0.1.50 tightens a narrow `offline_installed_record_preflight` consistency gap: previously any outside-package installed RECORD addition was ignored; bounded policy permits only known pip CLI/script and standard metadata extras, refuses foreign/traversal/duplicate entries and malformed optional hashes. A wheel/installed-RECORD match remains OFFLINE ONLY; no current-process/loaded-module attestation, host signer, original client ACK or A6/A7 recovery authority. Regression tests, Failure Museum RMCP-F-0054, exact-head CI and clean Ubuntu installer required. This does not authorize changing the six active services or creating another tunnel/update plane.
+
+---
+
+## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT
+
+Runner-MCP #763 SOURCE MERGED v0.1.48, squash c5f88102f3d36ad0ffb968215594d9daf19f5328; PR exact-head validation 39380236274, clean Ubuntu 39380236331 and attribution 39380236370 ALL SUCCESS. Private A6 state/config paths reject linked ancestors and lexical traversal; RMCP-F-0052.
+
+Runner-MCP #764 SOURCE MERGED v0.1.49, squash 585890997c6ec11147ef3b7d28101e0072f8d238; PR exact-head validation 39381025511, clean Ubuntu 39381025486 and attribution 39381025450 ALL SUCCESS. Full 11/11 A6 binding count with wrong fixed values no longer yields a PASS; RMCP-F-0053. Correct private configuration is not independent physical off-target A6 admission.
+
+Original connected central Runner-MCP still 0.1.38, serving source/wheel null, self_update_ready=false, Doctor two FAIL, A6 0/11 and Agent Bus relay UNKNOWN. Six roles, hosts, worker processes, relay, credentials and disks unchanged. Missing correct-host signer/loaded wheel #669, Fabric independent off-target A6 #1617/#942, offline A7 #943 and same-client durable ACK #609; Fabric #924 alone guards first node. No OIDC/MFA or second update plane.
+
+---
+## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)
+
+Follow-up after SOURCE MERGED v0.1.48 linked-ancestor guard. Candidate v0.1.49 closes a second source-level false-green: previously `binding_count==11` and ready A6 roots were enough for Doctor `pass/ready_11_of_11`, including stale Fabric revisions or foreign fixed journal/probe values. New bounded private inspection checks exact sanctioned endpoint/roots/storage domains, probe ID/target/interval, matching 40-hex Fabric revisions and valid private bearer format. Full count with incorrect values or missing private evidence directory now returns NOT COMPLETE and `warn/unavailable`. No raw secret output, no credential edit or new runtime tool. Synthetic tests cover all eleven wrong fixed values, missing root and valid repaired config. Failure Museum RMCP-F-0053.
+
+This is only SOURCE-LEVEL CONFIG CONSISTENCY, not independent physically off-target journal or live operation. Connected central runtime still 0.1.38 with A6 0/11 and `self_update_ready=false`. Fabric #1617/#942, #943, Runner-MCP #669 and same original-client ACK #609 must qualify independently before Fabric #924 can authorize one-node cutover. No host mutation and no OIDC/MFA reintroduction.
+
+---
+
+## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)
+
+Source review found a previously uncovered synthetic redirection case: the fixed A6 state root and fixed private config directory were each resolved after verifying only their final lexical path was not a symlink. A symlink in a *parent* could still redirect private reads/updates to another tree. This is a SOURCE-OBSERVED security boundary, not evidence of a live exploit. Candidate source v0.1.48 rejects linked ancestors, relative paths and lexical ".." before resolving both paths and exercising existing fixed A6 key repair; tests verify no private config or environment writes under redirects. Failure Museum RMCP-F-0052, with distinct issue owner #509 and serving-trust dependency #669.
+
+Physical acceptance remains unchanged: original central runtime v0.1.38, wheel/process current trust unverified, A6 0/11, self_update_ready=false, Fabric independent journal (#1617/#942), A7 offline rollback (#943) and exact original-client ACK (#609) are still WAIT. This code must pass exact-head CI and is NOT installed on the central host. No OIDC/MFA, second relay/update system, arbitrary filesystem tool or host action.
+
+---
+
+## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT
+
+Runner-MCP PR [#760](https://github.com/Blacksp1d3r/runner-mcp/pull/760) SOURCE MERGED squash `0f3fa078e97458c8ae3982ec71251422b2e10151`, v0.1.47, exact tested head `11cf153ad19325113c947e0b3115fa2920172556`; validation #39371276604, clean Ubuntu #39371276607 and attribution #39371276627 ALL SUCCESS. `runtime_doctor.fabric_a6_binding_state` now reports `warn/not_configured_0_of_11` for both private roots and all keys intentionally absent, instead of prior misleading PASS. Structural binding READY is NOT off-target A6 journal readiness. No live install, restart, folder or token mutation.
+
+Runner-MCP PR [#761](https://github.com/Blacksp1d3r/runner-mcp/pull/761) TEST-ONLY MERGED squash `f7c37c53197f6c06207c646db3af41e0b0454858`, exact tested head `abe615d89b997641859bc83f3a3a0898f0b9c615`; validation #39371812361 and attribution #39371812310 SUCCESS. Synthetic six-role signed witness parity and eleven wrong/missing/duplicated/stale role, host, nonce and expiry negative regressions remain `active_build_provenance_verified=false`. No operational worker role names asserted, no runtime tool change or shipping-version bump.
+
+The v0.1.47 pushed source artifact is independently checked OFF-HOST only: GitHub Actions #39371598373 candidate SHA wheel `d0dd841c9da39d9d85c26221c207c488fe091aaf22dd459caedaa0767fb9bef6`, sdist `258e2cc5c99cecb9616f0e3a1d6b6275473882fed4db8f7f34a6b336f2ff3c69`, 123/123 RECORD file checks, 117/117 package module equality; no loaded-process/signer/restore proof. Current original first-party LIVE central Runner-MCP remains 0.1.38, source/wheel NULL, `self_update_ready=false`, A6 0/11 live historical PASS/no readiness, Fabric Agent Bus relay UNKNOWN; six roles untouched. Next real accepted operator proofs: #669 correct-host generation+witness, Fabric #1617/#942 independently off-target A6 and #943 A7 offline rollback, AIfordable #609 exact same-original-client terminal ACK. Fabric #924 alone may later admit one guarded target. GitHub required admission branch policy #757 remains independent.
+
+---
+
+## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)
+
+Following Runner-MCP [#760](https://github.com/Blacksp1d3r/runner-mcp/pull/760) SOURCE MERGED v0.1.47, an independent bounded test-only child now checks a deliberately SYNTHETIC six-role Ed25519 offline serving-statement comparator: all six consistent roles STILL return `active_build_provenance_verified=false` with source/wheel null, and eleven missing/foreign/stale/duplicated role, signer-host/nonce/expiry and expected-list mismatches refuse without promoting a live identity. No real host role names are asserted and no worker/service is contacted; this reuses existing pure comparator, makes NO executable release or version bump, and requires exact-head CI before merge. Correct-host actual loaded process, trusted issuer/revocation, original-client ACK, Fabric #1617/#942 A6 and #943 A7 remain WAIT. Existing connected central v0.1.38 is not changed by this test branch.
+
+---
+
+## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47
+
+The connected central live v0.1.38 Doctor reports `pass/not_configured_0_of_11` for safely absent private A6 roots and fixed keys. This conflates safe absence with update-readiness in green-status aggregators; no evidence of a real unsafe update. Bounded SOURCE-ONLY candidate v0.1.47 changes this row to `warn/not_configured_0_of_11`, retains structurally `ready_11_of_11` private binding PASS (NOT off-target A6 qualification), and denies malformed/bool/unknown fields as `warn/unavailable`. Fixed private 11-key repair code, host services, credential custody, actual installed 0.1.38 and all six active roles remain UNCHANGED. Full exact-head CI and independent Fabric A6 #1617/#942, A7 #943, host source/wheel witness #669 and same-original-client ACK #609 are still required. Failure Museum RMCP-F-0048. This is not installation permission.
+
+---
+
+## 2026-10-20 — first-node blocking gate reconciled, no service mutation
+
+GitHub `main` source v0.1.46 (PR #756 merged; docs PR #758 merged); original connected central runtime v0.1.38, loaded source/wheel NULL and `self_update_ready=false`. Doctor 2 FAIL, A6 `pass/not_configured_0_of_11`: PASS means deliberately absent private state/config, NOT A6 readiness. Fabric bridge READY read-only but A6 prepare/probe false, relay layer UNKNOWN and execution/mutation disabled. Existing immutable baseline and independent A6/A7 recovery/original-requester ACK still unqualified. New [F30 first-node evidence gates](../docs/operations/F30_FIRST_NODE_ADMISSION_GATES.md) (linked from repository root) states the non-mutating prerequisites and narrow ownership. No host/relay/service/credential/disk/worker modification. #509 / #669 / Fabric #924/#942/#943 / AIfordable #609 remain the real operational owners. Subsequent source development may continue without pretending a source merge is installed or current host identity is attested.
+
+---
+
+## 2026-10-19 — F30 fixed Claude/Qwen worker process source read route merged / live WAIT
+
+Runner-MCP [#756](https://github.com/Blacksp1d3r/runner-mcp/pull/756) source **v0.1.46 MERGED** `d15d5007a5e880fd4ad55f46cd0a0f1913479792` (from exact tested head `d4b31adfd991bec47ee6552f21909066931a730e`). Checks: Runner MCP validation #39319130336 SUCCESS (98 tool-name canonical baseline, unique next-release reservation, Ruff/pytest, built exact wheel, full clean demo), Clean Ubuntu #39319130367 SUCCESS, attribution #39319130494 SUCCESS. Fabric existing loopback agent [#1614](https://github.com/Blacksp1d3r/Runner-Fabric/pull/1614) earlier source merged `20c8cc44cda8a1bfe7916b85a0dde65201606e4e` with Foundation #39317011482 + attribution #39317011467 SUCCESS. These source merges must NEVER be read as current worker process or authenticated client result ACK.
+
+New conditional authenticated read-only `fabric_worker_process_inspect(worker)` uses existing `FabricBridgeClient`, fixed Claude/Qwen only, no arbitrary host/PID/path/cmd/URL/credential, no second server or relay/tunnel. Only optional correct-host privately pinned process start ticks/UID permits a **non-authorizing** observation. Correct result `observed_unverified` is not imported wheel RECORD, source/wheel signer, per-subject issuer, original requester durable ACK or deployment permission; wrong host/missing observer/old Fabric peer gives WAIT. Existing github-runner relay transport (PID 1103700, /healthz 200, public GET 405) already physically observed PASS, do not repeat/rebuild.
+
+**Operational state:** original connected central Runner-MCP v0.1.38 still installed and lacks trustworthy active source_revision/artifact_digest; Fabric Agent Bus status UNKNOWN/evidence-unavailable, A6 0/11, execution/mutation OFF. Distinct Claude AF-SVC-0011/aifordable-coder on AF-VM-0001 and Qwen AF-SVC-0019/qwenagent on AF-VM-0003 require existing authenticated correct-host route and separately protected A6/A7 independent recovery. Only Fabric #924 controls one host activation after Runner-MCP #669 current wheel/import trust and AIfordable #428/#585/#609 issuer/ACK evidence. No host install, model, credential, service or tunnel action in source task.
+
+---
+
+## 2026-10-19 — RELEASE ADMISSION MERGED, main 0.1.45; live operation remains WAIT
+
+Runner-MCP source [PR #753](https://github.com/Blacksp1d3r/runner-mcp/pull/753) squash **MERGED** `8dbbd1263f32c868df259ad2c77b7306faf683c1`; verified `main` package v0.1.45. Exact final PR head `5fe81a7fb4ae503b9b911b7ce57d65eddaa2d9a5` with validation #39316596943 (release-admission, Ruff/pytest, built artifact, clean demo), Ubuntu #39316597003 and attribution #39316597250 **ALL PASS**. #743/#745/#750 previously merged unique source v0.1.42/43/44. A source-only GitHub next-patch/competing-ready-PR gate now exists and passed for this actual READY PR. **Actual required branch protection is NOT ATTESTED:** branch protection GET returned 403 to the integration; rulesets listing [] does not prove enforcement; merge_group qualification and automatic deployment are still missing. Stacked source PR #746/#748 carry stale version reservations and remain owned by their separate authors.
+
+Live original-client connected central Runner-MCP is a separate earlier installation **0.1.38**, active wheel/source digest NULL, Doctor `source_baseline_drift` + `active_revision_unavailable` FAIL, `self_update_ready=false`. Fabric bridge readable but mutation/execution false, Agent Bus relay evidence UNKNOWN despite independently observed relay transport, Q7 central WAIT and no correct-worker task/result/same-client ACK. No worker, relay, host, production installer, credential, backup, restore or disk mutation occurred in the source merge. Next ordered gates: GitHub admin required check and freshness/serialized steward → correct-host active identity #669 → Fabric guarded A6/A7 recovery/one-target activation #924 → original requester durable ACK AIfordable #609 → actual worker-local bounded workspace preflight/prepare #747. Avoid repeating already completed operator relay or workspace preparation.
+
+---
+
+## 2026-10-19 — #662 release collision READY-admission receipt; enforcement and live rollout separate
+
+Source #662 PR #753 v0.1.45, exact branch head `fc87cf46d55a1c4b37310682530c56bf6b3959f4` on current main `908f09fafad0ed1f9c8edeea5318f689e92cc483` v0.1.44: switched READY after #743/#745/#750 merged. First real READY `Release reservation admission` job #118276865364 PASS on workflow #39315811193. Exact-head prior draft validation/Ubuntu/attribution succeeded; fresh READY workflow is still subject to terminal full validation and any later docs-only head retest. Actual branch-protection API read 403 and ruleset listing []; REQUIRED status and up-to-date settings CANNOT be attested. The gate is advisory until independently configured; no merge queue/merge_group acceptance. The current central serving Runner-MCP is independently 0.1.38 with active source/wheel NULL, Doctor 2 FAIL, self_update_ready=false; Fabric relay-layer UNKNOWN, original requester ACK and physical A6/A7 blocked. NO live install/dispatch/backup/cloud secret.
+
+Independent next gates: (1) exact-head terminal PR CI plus 12-hour review policy/actual branch rules; (2) repository administrator must enforce Release reservation admission + current-main revalidation / serialized release steward, and only separately qualify merge_group if queue enabled; (3) correct-host wheel/process/source identity #669, A6/A7 and same-original-client task/result/ACK; (4) only then guarded first-node activation. Documents-only changes do not reserve 0.1.46 or prove production readiness.
+
+---
+
+## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases
+
+User-authorized single release sequence has merged pinned metadata PR #743 (0.1.42) and bounded release bytes PR #745 (0.1.43); draft PR #750 now reconciles this source with actual main as the next unique 0.1.44. Independently pinned offline Ed25519 signed statement comparator checks exact host, challenge, source, loaded version, wheel, generation and process role set, but returns current source/digest NULL and active_build_provenance_verified=false regardless of signed consistency. No trusted correct-host observer, nonce issuance, original requester ACK, host installation or Fabric A6/A7 recovery is gained from this source. Review exact new CI head before merge; keep historical self-update state and existing running central 0.1.38 unchanged.
+
+---
+
+## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge
+
+Following user-authorized #743 takeover and merge (main `02970477d35b37c38fe67a4a645f2ad5c0ea7a11`, v0.1.42), this session reconciled stacked PR #745 to main as v0.1.43. It adds ONLY an inert fixed-ID release byte integrity helper, negative tests and runbook; no executable tool, client token, real download, owner-only directory, installer, scheduler or host operation. The embedded source helper requires separately trusted size/digest, never treats Github API as a signature authority, and denies unapproved redirects or forwarding Authorization. Real 33/33 importer, independent published signature, rootless custody, rollback and original-client Agent Bus ACK remain blocked. After qualified source-only merge, #750 draft v0.1.44 and #753 draft v0.1.45 follow with independent exact-head CI. No active central 0.1.38 update from this source work.
+
+---
+
+## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42
+
+This session is now accountable for #739 fixed, operator-interactive GitHub Release metadata read-only source PR #743 (previously handled by another account). Reconciled onto current merged main 0.1.41 preserving Claude/Qwen owner-local workspace #751, cross-project flow #752 and handover #754. Unique 0.1.42 candidate has bounded offline tests and explicit no-proxy/no-redirect, no asset download or credential storage. Exact new head CI/attribution/Ubuntu proof must pass before merge. After this source commit, stacked #745 is separately reconciled to 0.1.43; independent drafts #750 0.1.44 and #753 0.1.45 remain later. Live connected central 0.1.38 has unresolved current wheel/source provenance and original-client ACK; no host, token, relay, installer, download or deployment authorized by PR merge.
+
+---
+
+## 2026-10-19 — Last release sequencing source checkpoint
+
+Shared Fabric #924/AIfordable #609/Runner-MCP #662/#669 flow is the canonical owner split. Source main 0.1.41; earlier #743 0.1.41 duplicate needs owner reconcile; stacked #745 0.1.42; independent #750 source branch now reconciled to main and candidate 0.1.44 DRAFT; #753 ready-gate source 0.1.45 DRAFT, prior head 6a2c880... CI 3/3 SUCCESS. Branch protection read 403; new admission not required/atomic, no merge queue support. Need #743/#745 unique version merges then exact-head rechecks on #750/#753. Central server 0.1.38 unverified. No installed runtime or private host mutation has occurred in this doc-only checkpoint.
+
+---
+
+## 2026-10-19 — #669 release collision and host/ACK authority split
+
+Docs-only branch updates roadmap and [Runner-MCP local single-flow contract](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/coordination/CONTROL_PLANE_SINGLE_FLOW.md) linked to canonical Fabric #924. Runtime/MCP control source release owner Runner-MCP; sole target mutation/campaign owner Fabric #924/A6/A7; host/relay/credential+original requester ACK owner AIfordable #428/#585; one-worker acceptance AIfordable #609. Source main 0.1.41 merged #751, collides with open #743 0.1.41 and stacked #745 0.1.42 plus draft #750 0.1.43. Coordinate branch owners rather than edit foreign PRs. A new deterministic release reservation CI child is still REQUIRED/NOT IMPLEMENTED. First-party central runtime still 0.1.38, serving provenance unverified, self_update_ready=false; no live host mutation authorized. Reuse earlier physical controlled update rollback evidence. Distinguish SOURCE_MERGED from installed/serving/ACK; after actual read-only host inventory follow only guarded Fabric single-target activation.
 
 ---
 

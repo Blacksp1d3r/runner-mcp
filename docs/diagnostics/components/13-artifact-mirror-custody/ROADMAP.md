@@ -1,18 +1,10 @@
-## 2026-10-19 — Q7 complete in-memory bundle verifier
+## 2026-10-19 — #739 next source child: bounded asset bytes verifier 0.1.43
 
-Candidate v0.1.44 enforces all 33 independently pinned bytes and Q7 manifest, BOOTSTRAP, COMMIT and SHA256SUMS consistency before any future local import. Inert and source-only; no signer, wheel metadata proof, process, host, storage, rollback or ACK granted. CI pending.
+Following source-only metadata #743 (main 0.1.42), this independent #745 source helper validates fixed numeric asset REST bytes against an independently supplied SHA256 and size, with bounded redirect. Not an operator-authorized full bundle import or physical release. New exact-head Ruff/pytest/demo/artifact/Ubuntu/attribution required before source merge. Real host/private signer/asset custody + Fabric A6/A7 and original-client ACK remain separate.
 
-## 2026-10-19 — independent fixed Q7 Release metadata roster comparator
+## 2026-10-19 — #739 independent read-only Release access prerequisite
 
-Candidate v0.1.43 matches 33/33 independent asset IDs/names/byte counts/SHA-256 pins to observed fixed Release metadata. Pure zero-I/O; no signer or physical approval, binary download, atomic custody, host install, credentials or ACK. Parent #739 still requires trusted signatures, bytes and physical custody receipts. Exact-head CI pending.
-
-## 2026-10-19 — source-only asset byte integrity child #739
-
-Inert fixed release asset REST numeric-ID verifier, direct HTTP 200 or narrowly admitted official HTTPS 302, no bearer onward, bounded 64 MiB/asset and independently supplied SHA256; 33 isolated synthetic tests PASS, production unavailable/CI pending. This is separate from #743 metadata visibility. Physical protected custody and 33/33 pinned signatures/rollback remain external gates.
-
-## 2026-10-19 — first-host pinned Release access (#739)
-
-Distinct source-only standalone read-only metadata access prerequisite (candidate 0.1.41, 33 local synthetic regressions) precedes any protected bytes importer. It cannot authorize or perform downloads, changes to custody or host. Exact-head CI and host-private original-client read remain pending; #739 parent OPEN. Do not confuse API visibility with integrity, provider identity or release activation.
+User-authorized owner takeover of #743 from prior external account; source candidate 0.1.42 reconciled on main with prior #751/#752/#754 code preserved. Full exact-head CI before guarded merge. A metadata API PASS is not a full 33-asset importer or host/install/Agent Bus authorization; that remains a separate owner-approved project child.
 
 # 13-artifact-mirror-custody — Artifact custody, repository mirrors en Fabric update artifacts — roadmap
 

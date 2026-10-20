@@ -192,7 +192,7 @@ def test_runtime_managers_cannot_override_serving_build_version_or_commit() -> N
     assert result["self_update_history_active_runtime_revision"] == "a" * 40
     assert result["self_update_history_source_baseline_aligned"] is True
     assert result["self_update_history_runtime_activation_aligned"] is True
-    assert result["self_update_ready"] is True
+    assert result["self_update_ready"] is False
     assert payload["source_commit"] == "a" * 40
 
 
@@ -274,3 +274,36 @@ def test_bounded_identity_rejects_malformed_serialization(monkeypatch) -> None:
         "reasonCode": "build-identity-unavailable",
         "identityEvidenceComplete": False,
     }
+@pytest.mark.parametrize("reported_ready", [True, False, None, "true", 1, {}])
+@pytest.mark.parametrize(
+    ("loaded_version", "installed_version"),
+    [("0.1.38", "0.1.38"), ("0.1.38", "0.1.52")],
+)
+def test_unverified_active_generation_never_inherits_manager_update_ready(
+    reported_ready: object,
+    loaded_version: str,
+    installed_version: str,
+) -> None:
+    manager_state = {
+        "self_update_ready": reported_ready,
+        "active_build_provenance_verified": True,
+        "active_artifact_revision": "a" * 40,
+        "active_artifact_digest": "b" * 64,
+        "source_commit": "c" * 40,
+        "runtime_activation_aligned": True,
+    }
+    observed = fail_closed_runtime_provenance(
+        manager_state,
+        loaded_version=loaded_version,
+        installed_distribution_version=installed_version,
+    )
+    assert observed["version"] == loaded_version
+    assert observed["installed_distribution_version"] == installed_version
+    assert observed["self_update_ready"] is False
+    assert observed["active_build_provenance_verified"] is False
+    assert observed["active_artifact_revision"] is None
+    assert observed["active_artifact_digest"] is None
+    assert observed["source_commit"] is None
+    assert observed["self_update_history_source_commit"] == "c" * 40
+    assert observed["runtime_activation_aligned"] is None
+    assert manager_state["self_update_ready"] == reported_ready

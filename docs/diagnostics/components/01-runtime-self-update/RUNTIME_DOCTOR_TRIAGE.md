@@ -1,5 +1,9 @@
 # Runtime doctor — source baseline vs active generation
 
+## A6 safety classification is not installation admission (2026-10-20)
+
+Original-client live 0.1.38 Doctor reports `fabric_a6_binding_state=pass/not_configured_0_of_11`. Candidate source v0.1.47 changes this to `warn/not_configured_0_of_11`; this is NOT installed. This specifically means BOTH private A6 journal/evidence roots are absent and NONE of the 11 approved keys are present: safe no-op configuration, not readiness. The independent read-only Fabric bridge simultaneously reports `a6_prepare_available=false`, `synthetic_probe_status_available=false`, `mutation_enabled=false`. NEVER count that historical green diagnostic row as permission to update; likewise a structurally READY 11/11 row is not independent physical A6/A7 qualification. Existing conditional repair in `fabric_a6_binding_repair.py` only applies if both correct-host 0700 roots already exist; calling its parent `fabric_agent_restart` is a SERVICE mutation and is not a discovery substitute. See `docs/operations/F30_FIRST_NODE_ADMISSION_GATES.md` and #509/#942.
+
 ## Public diagnostic interpretation (2026-10-19)
 
 The original connected central instance was confirmed running 0.1.38 after guarded owner-operated cutover. The two outstanding doctor FAIL results are **safety refusals**; they do not show that the server is down.

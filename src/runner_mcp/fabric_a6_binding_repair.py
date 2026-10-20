@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import os
 import re
-from collections.abc import MutableMapping
+from collections.abc import Mapping, MutableMapping
 from pathlib import Path
 
 from .fabric_worker_qualification_provisioning import (
@@ -42,16 +42,32 @@ class FabricA6BindingRepairError(RuntimeError):
     """Sanitized fixed A6 private-binding repair failure."""
 
 
-def _resolve_a6_state_root(state_root: Path) -> Path:
-    """Fail closed without returning raw state-root path errors."""
+def _resolve_private_a6_path(path: Path, failure: str) -> Path:
+    """Reject lexical ancestor redirects before resolving an A6 private path.
 
+    A leaf-only symlink check is insufficient: a linked grandparent can send
+    otherwise private journal and runtime configuration writes to another tree.
+    This is a fixed local path, not arbitrary filesystem authority.
+    """
     try:
-        expanded = state_root.expanduser()
-        if expanded.is_symlink():
-            raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
+        expanded = path.expanduser()
+        if not expanded.is_absolute() or ".." in expanded.parts:
+            raise FabricA6BindingRepairError(failure)
+        if any(ancestor.is_symlink() for ancestor in (expanded, *expanded.parents)):
+            raise FabricA6BindingRepairError(failure)
         return expanded.resolve()
-    except (OSError, RuntimeError) as exc:
-        raise FabricA6BindingRepairError("fabric_a6_state_unsafe") from exc
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        raise FabricA6BindingRepairError(failure) from exc
+
+
+def _resolve_a6_state_root(state_root: Path) -> Path:
+    """Fail closed for linked state-root ancestors with sanitized errors."""
+    return _resolve_private_a6_path(state_root, "fabric_a6_state_unsafe")
+
+
+def _resolve_a6_config_dir(config_dir: Path) -> Path:
+    """Reject linked config ancestors before reading or merging private keys."""
+    return _resolve_private_a6_path(config_dir, "fabric_a6_runtime_config_unavailable")
 
 
 def a6_state_requested(state_root: Path) -> bool:
@@ -68,6 +84,36 @@ def a6_state_requested(state_root: Path) -> bool:
     return all(present)
 
 
+def _a6_fixed_values_consistent(
+    values: Mapping[str, str], journal: Path, evidence: Path,
+) -> bool:
+    """Compare only owner-private fixed A6 values; never return the values.
+
+    A caller-controlled full set can look like 11/11 while pointing at the
+    wrong endpoint, custody root, target or old Fabric generation. This is
+    only local configuration consistency, not an off-target trust witness.
+    """
+    revision = values.get("RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION")
+    if not isinstance(revision, str) or _COMMIT_RE.fullmatch(revision) is None:
+        return False
+    if values.get("RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION") != revision:
+        return False
+    bearer = values.get("RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN")
+    if not _valid_secret(bearer):
+        return False
+    expected = {
+        "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": str(journal),
+        "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN": _JOURNAL_DOMAIN,
+        "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN": _TARGET_DOMAIN,
+        "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": _RUNNER_MCP_ENDPOINT,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_ID": _PROBE_ID,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT": _TARGET_SUBJECT,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS": _INTERVAL_SECONDS,
+        "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT": str(evidence),
+    }
+    return all(values.get(name) == expected_value for name, expected_value in expected.items())
+
+
 def inspect_a6_binding_state(
     *,
     config_dir: Path,
@@ -77,7 +123,7 @@ def inspect_a6_binding_state(
 
     from .onboarding import load_env_file
 
-    config = config_dir.expanduser().resolve()
+    config = _resolve_a6_config_dir(config_dir)
     env_path = config / "runner-mcp.env"
     try:
         _require_private_file(env_path)
@@ -108,12 +154,54 @@ def inspect_a6_binding_state(
             else:
                 root_state = "ready"
 
+    # A full *count* is not enough: stale or substituted fixed values must
+    # never be presented as a qualified private A6 binding. This still does
+    # NOT certify the physical off-target A6 journal, A7, or caller ACK.
+    consistent = (
+        root_state == "ready"
+        and binding_count == len(_A6_KEYS)
+        and _a6_fixed_values_consistent(values, journal, evidence)
+    )
     return {
         "state_roots": root_state,
         "binding_count": binding_count,
         "binding_total": len(_A6_KEYS),
-        "binding_complete": binding_count == len(_A6_KEYS),
+        "binding_complete": consistent,
     }
+
+
+
+def classify_a6_bindings_for_doctor(inspection: Mapping[str, object]) -> tuple[str, str]:
+    """Classify safe A6 *configuration*, never certify A6 update authority.
+
+    An absent, unconfigured A6 is safe for general server operation, but it
+    cannot be treated as PASS by an update-readiness consumer. Real update
+    admission also requires off-target journal, A7 rollback and original ACK.
+    """
+    if not isinstance(inspection, Mapping):
+        return "warn", "unavailable"
+    roots = inspection.get("state_roots")
+    count = inspection.get("binding_count")
+    total = inspection.get("binding_total")
+    complete = inspection.get("binding_complete")
+    if (
+        roots not in ("ready", "absent", "incomplete", "unsafe")
+        or type(count) is not int
+        or type(total) is not int
+        or total != len(_A6_KEYS)
+        or count < 0
+        or count > total
+        or type(complete) is not bool
+        or complete != (count == total)
+    ):
+        return "warn", "unavailable"
+    if roots == "ready" and complete:
+        # PASS confirms this narrow private configuration, not off-target
+        # physical storage or protected A6/A7 update recovery.
+        return "pass", f"ready_{count}_of_{total}"
+    if roots == "absent" and count == 0:
+        return "warn", f"not_configured_0_of_{total}"
+    return "warn", f"{roots}_{count}_of_{total}"
 
 
 def repair_a6_qualification_binding(
@@ -128,7 +216,7 @@ def repair_a6_qualification_binding(
     if not isinstance(fabric_revision, str) or _COMMIT_RE.fullmatch(fabric_revision) is None:
         raise FabricA6BindingRepairError("fabric_a6_revision_invalid")
 
-    config = config_dir.expanduser().resolve()
+    config = _resolve_a6_config_dir(config_dir)
     env_path = config / "runner-mcp.env"
     try:
         _require_private_file(env_path)

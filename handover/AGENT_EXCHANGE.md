@@ -1,3 +1,12 @@
+## 2026-10-20 — #664/#665 SOURCE MERGED 0.1.60, original central 0.1.38 unchanged
+
+- #664 PR #778 v0.1.59 merged `55c26eaef2d7f08a1f84c1c79df03898fd413842`, strict read-only metadata old tools/list schema check; validation #39468368681, Ubuntu #39468368736, attribution #39468368707 SUCCESS; RMCP-F-0061.
+- #665 PR #779 v0.1.60 merged `2188fd3f89d05ae6c50d0fbe5a3216de0dc5a740`, recovery-aware mismatch alert dedupe; validation #39469163886, Ubuntu #39469163938, attribution #39469163766 SUCCESS; RMCP-F-0062.
+- Parents #664/#665 remain OPEN for historical wheel compatibility and independent authenticated live notifications/dispatch; original Runner-MCP v0.1.38 six serving roles, A6 0/11, #669/#509 and Fabric #1617/#942/#943/#924 physical gates unchanged. No host/relay/credential/worker/storage mutation.
+- Detail: [canonical #664/#665 handover](https://github.com/Blacksp1d3r/runner-mcp/blob/main/handover/COMPATIBILITY_664_665_20261020.md).
+
+---
+
 ## 2026-10-20 — #725 previously drafted regression PR #744 now MERGED
 
 No duplicate security branch: existing draft PR #744 was reconciled on current main and merged as `67ebbff96dd6708fff927663c01bf0563258550b` only after exact-head validation #39455822522 and attribution #39455821986 succeeded. 520+ synthetic stateless GitHub App-token redaction cases added without runtime/code version or real credentials. Original first-party central still 0.1.38, A6 0/11, active source/wheel unverified, Agent Bus relay UNKNOWN and dispatch OFF. #725 external consumer reviews can proceed independently; #669/Fabric A6-A7/original-client ACK still block live promotion.

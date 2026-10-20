@@ -1,6 +1,6 @@
 ## 2026-10-20 — #725 test-only merge does not alter A6/A7 admission
 
-PR #744 merged `67ebbff96dd6708fff927663c01bf0563258550b` after exact-head validation/attribution success. No deployed generation or permission change. Live connected 0.1.38 still lacks verified serving source/wheel, A6 0/11, off-target recovery proof and durable original-client ACK. Dependency chain unchanged: Runner-MCP #669 and #509; Fabric #1617/#942 and #943; Fabric #924 one-target rollout; AIfordable #609 ACK. Agent Bus relay remains UNKNOWN/mutation disabled. For independent Q7 #739, reconcile existing PR #746 before stacked #748 rather than duplicating work, with fresh unique version reservations and all CI gates. No second updater, second relay or OIDC/MFA.
+PR #744 merged `67ebbff96dd6708fff927663c01bf0563258550b` after exact-head validation/attribution success. No deployed generation or permission change. Live connected 0.1.38 still lacks verified serving source/wheel, A6 0/11, off-target recovery proof and durable original-client ACK. Dependency chain unchanged: Runner-MCP #669 and #509; Fabric #1617/#942 and #943; Fabric #924 one-target rollout; Fabric #1556 live A3 result/ACK, Fabric #1563 Black ACK and AIfordable #585 relay continuity (AIfordable #609 is Claude/Qwen workspace-scoped). Agent Bus relay remains UNKNOWN/mutation disabled. For independent Q7 #739, reconcile existing PR #746 before stacked #748 rather than duplicating work, with fresh unique version reservations and all CI gates. No second updater, second relay or OIDC/MFA.
 
 ---
 

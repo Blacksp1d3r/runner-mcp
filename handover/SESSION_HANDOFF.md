@@ -1,3 +1,7 @@
+## 2026-10-21 — first-host zipapp safe fixed private-root admission
+
+- CI-green merged #785 v0.1.67 standalone Q7 source zipapp enables operator-local owner-held Black v0.1.30 Python to execute verified source-only `preflight` or `import` (no package/server upgrade). Next exact-head CI candidate v0.1.68 adds a **single hardcoded** `prepare-root` for `~/.local/state/runner-fabric/control-plane-update` under existing 0700 owner-private anchor; no general directory management or A6 log creation. Must not run on operator host until independently checked zipapp source hash and publisher signer authorization, with physical high-level trust. Black local HTTPS authentication PASS but original issuer→result→ACK still WAIT; original central unverified 0.1.38/A6 0/11 untouched.
+
 ## 2026-10-21 — F30 owner-Black #739 no-install private Release source milestones
 
 - Black owner-observed `BLACK_AUTH=PASS` with existing original relay, not client ACK. Runner-MCP #782 v0.1.64 wheel RECORD validator merged; #783 v0.1.65 one-shot safe custody merged; #784 v0.1.66 signed owner-key Q7 release + 33/33 API/byte downloader merged CI-green as `0e56ec4897e0a6947cc28707750e22a1a87360de`; #739 remains OPEN. Next v0.1.67 source candidate standalone bounded Python zipapp packs these modules, no installed new Black Runner-MCP version required but signed publisher key authority and real Black owner-local bundle transfer NOT PROVEN. Owner must not execute untrusted source artifact or transfer keys via chat. `preflight` no network/mutation; `import` no install/worker.

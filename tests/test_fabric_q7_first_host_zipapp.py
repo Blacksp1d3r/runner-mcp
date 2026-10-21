@@ -32,7 +32,7 @@ def test_bounded_zipapp_build_is_deterministic_and_disconnected(tmp_path):
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
     )
     assert result.returncode == 0
-    assert "Usage: fabric-q7-first-host.pyz preflight | import" in result.stdout
+    assert "Usage: fabric-q7-first-host.pyz prepare-root | preflight | import" in result.stdout
     assert "NO_INSTALL" not in result.stdout
 
 
@@ -78,3 +78,18 @@ def test_preflight_refuses_unconfigured_source_without_mutation(tmp_path):
     assert result.returncode != 0
     assert result.stdout.strip().startswith("WAIT_")
     assert list(sandbox_home.iterdir()) == []
+
+
+def test_prepare_root_requires_real_fixed_host_no_mutation_in_ci(tmp_path):
+    target = tmp_path / "importer.pyz"
+    build_q7_first_host_zipapp(source_root=_SOURCE, destination=target)
+    home = tmp_path / "home"
+    home.mkdir()
+    result = subprocess.run(
+        [sys.executable, str(target), "prepare-root"],
+        check=False, cwd=tmp_path, capture_output=True, text=True, timeout=15,
+        env={**os.environ, "HOME": str(home)},
+    )
+    assert result.returncode != 0
+    assert result.stdout.strip().startswith("Q7_FIXED_PRIVATE_ROOT=WAIT")
+    assert list(home.iterdir()) == []

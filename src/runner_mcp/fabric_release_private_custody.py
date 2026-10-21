@@ -411,8 +411,15 @@ def read_q7_lab_custody_offline(
             not {"BOOTSTRAP.py", "BUNDLE.json", "COMMIT_SHA", "SHA256SUMS"}.issubset(names)
             or sum(n.endswith(".whl") for n in names) != 29
             or sum(n.startswith("runner_fabric-") and n.endswith(".whl") for n in names) != 1
-            or set(os.listdir(bundle_fd)) != names | {_LAB_RECEIPT}
         ):
+            _deny()
+        observed: set[str] = set()
+        with os.scandir(bundle_fd) as entries:
+            for index, child in enumerate(entries):
+                if index >= 34 or child.name in observed:
+                    _deny()
+                observed.add(child.name)
+        if observed != names | {_LAB_RECEIPT}:
             _deny()
         for entry in data["files"]:
             if _read_lab_digest(bundle_fd, entry["name"], entry["bytes"]) != entry["sha256"]:

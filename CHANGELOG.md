@@ -1,3 +1,9 @@
+## 0.1.75 (#669 reply-local identity scope; source only)
+
+- `runtime_status` explicitly labels its evidence as **this connected serving process only**. Even if another host or an interactive CLI has the same package version, the reply does **not** claim independently verified host/route, loaded wheel/module bytes, or all six real role process identities. Version equality is reported only as a literal loaded-vs-installed string comparison, never as attestation.
+- Override untrusted status-manager claims about reply origin or other roles with deterministic unverified fields; synthetic tests cover a stale CLI, an in-place upgrade, equality across distinct hosts, and managers claiming false cross-host trust. No host identifier, path, credential, new agent/updater, production installation, or service mutation.
+- Current original connected production v0.1.38 remains unverified: wheel/source null, A6 0/11, `self_update_ready=false`. A source merge cannot attest an old live process; independent #669 old-wheel/real-role evidence and Fabric A6/A7/original-client ACK are still separate gates.
+
 ## 0.1.74 (F30 local Agent Bus worker preflight, source only)
 
 - Added `runner-mcp agent-bus preflight` for safe **read-only** static local worker prerequisites on a configured rootless host. Reuses existing strict private configuration, relay/subject/credential, loopback endpoint and fixed Fabric launcher validators. Missing rootless launcher reports `wait/fabric_launcher_unavailable` rather than a false online claim; incomplete, unsafe or malformed local prerequisites fail closed.

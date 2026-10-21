@@ -1,4 +1,4 @@
-## 2026-10-21 — serving instance epoch candidate v0.1.75 (#669 substep)
+## 2026-10-21 — serving instance epoch candidate v0.1.76 (#669 substep)
 
 - Exact prior source 0.1.74 already merged: `runner-mcp agent-bus preflight`. Central 0.1.38 and lab 0.1.38 still serving separately; lab terminal CLI 0.1.3 is not the current lab service. Runner-Fabric #1694/#1695 merged pure source read-only fleet origin and sequential update policy. Do not repeat.
 - This bounded source increment adds a per-`build_mcp` process epoch (32 opaque hex characters, fork-specific, no PID, paths or credentials) returned consistently by existing `runtime_status` and `serving_process_observation_preflight`; no new MCP tool and no private topology labels. Every response explicitly states `serving_instance_epoch_authenticated=false`. It helps detect restart / stale process / client route switching but does **NOT** prove source, wheel, host/route or ACK. Actual active artifact receipt remains #669 WAIT; never infer one from token or historical `self-update-state.json`.

@@ -1,3 +1,7 @@
+## 2026-10-21 — F30 Black signed Q7 bundle import source stage (no host installer)
+
+- Operator-proven Black stage 0.1.30+existing unique HTTPS relay auth `BLACK_AUTH=PASS`; AIfordable relay reused with original primary and lab subjects, no terminal ACK. #739 source versions 0.1.64/0.1.65/0.1.66 merged via #782/#783/#784 with exact-head full CI. Candidate v0.1.67 standalone zipapp without newer installed Runner-MCP source, only fixed private Black signed roster key+sha 0600; physical signer authority and same-host release asset custody remain NOT PROVEN. Original runtime central 0.1.38/unknown source+wheel/self_update_ready=false unchanged, A6 0/11, no production install. #739/ #1563 owner-private qualification gates remain.
+
 ## 2026-10-21 — Black #739 signed importer source candidate, production held
 
 - Actual Black rootless Runner-MCP 0.1.30 owner-observed private Agent Bus config+HTTPS relay authentication `BLACK_AUTH=PASS` against canonical original github-runner relay; original requester terminal result ACK **NOT TESTED**. Existing two other relay identities preserved.

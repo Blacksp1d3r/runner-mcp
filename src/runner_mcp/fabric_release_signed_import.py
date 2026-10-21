@@ -28,6 +28,7 @@ from .fabric_release_assets import (
 from .fabric_release_independent_roster import (
     PinnedReleaseAsset,
     PinnedReleaseRoster,
+    PinnedReleaseAsset,
     compare_exact_pinned_q7_roster,
 )
 from .fabric_release_private_custody import stage_pinned_q7_bundle_once
@@ -199,6 +200,109 @@ def read_pinned_q7_release(
 
 
 
+def _lab_observed_pins(
+    token: str,
+    api_reader: Callable[[str, str], object],
+) -> tuple[ReleaseAdmission, PinnedReleaseRoster]:
+    """DISPOSABLE LAB ONLY: untrusted API digests, not publisher provenance.
+
+    Exact pinned GitHub owner/release/source and 33 internally checked assets,
+    no arbitrary repo, path, URL, generation or production authorization.
+    """
+    release = api_reader(token, "releases/tags/" + _Q7_TAG)
+    tag = api_reader(token, "git/ref/tags/" + _Q7_TAG)
+    try:
+        observed = inspect_exact_release(_Q7_COMMIT, release, tag)
+        if observed.release_id != _Q7_RELEASE_ID or len(observed.files) != 33:
+            _deny()
+        pins = PinnedReleaseRoster(
+            _Q7_COMMIT, _Q7_TAG, _Q7_RELEASE_ID,
+            tuple(PinnedReleaseAsset(a.name, a.asset_id, a.bytes, a.sha256)
+                  for a in observed.files),
+        )
+        compare_exact_pinned_q7_roster(observed, pins)
+        return observed, pins
+    except (FabricReleaseAdmissionError, ValueError, TypeError, KeyError):
+        _deny()
+
+
+def _download_and_stage(
+    token: str,
+    pins: PinnedReleaseRoster,
+    observed: ReleaseAdmission,
+    asset_reader: Callable[..., bytes],
+    stage: Callable[..., dict[str, object]],
+) -> None:
+    """Use the SAME bytes/hash/wheelhouse/private-custody gates for both routes."""
+    blobs: dict[str, bytes] = {}
+    total = 0
+    for pin in sorted(pins.files, key=lambda p: p.name):
+        try:
+            blob = asset_reader(
+                token=token,
+                asset_id=pin.asset_id,
+                expected_size=pin.bytes,
+                independently_pinned_sha256=pin.sha256,
+            )
+        except (OSError, ValueError, TypeError):
+            _deny()
+        if type(blob) is not bytes or len(blob) != pin.bytes or not hmac.compare_digest(
+            hashlib.sha256(blob).hexdigest(), pin.sha256
+        ):
+            _deny()
+        total += len(blob)
+        if total > _MAX_ALL_ASSETS:
+            _deny()
+        blobs[pin.name] = blob
+    try:
+        result = stage(observed, pins, blobs)
+    except (ValueError, TypeError, OSError):
+        _deny()
+    if type(result) is not dict or result.get("state") != "owner_private_bytes_custodied":
+        _deny()
+
+
+def probe_q7_disposable_lab_metadata(
+    *,
+    token: str,
+    api_reader: Callable[[str, str], object] = _private_api_json,
+) -> dict[str, object]:
+    """Read-only non-signed lab probe. Never treat returned digests as signed."""
+    _lab_observed_pins(token, api_reader)
+    return {
+        "state": "q7_lab_metadata_only_untrusted_publisher",
+        "asset_count": 33,
+        "publisher_authenticated": False,
+        "download_performed": False,
+        "install_authorized": False,
+        "original_client_ack": False,
+    }
+
+
+def import_q7_disposable_lab_once(
+    *,
+    token: str,
+    api_reader: Callable[[str, str], object] = _private_api_json,
+    asset_reader: Callable[..., bytes] = fetch_pinned_asset_bytes,
+    stage: Callable[..., dict[str, object]] = stage_pinned_q7_bundle_once,
+) -> dict[str, object]:
+    """Private no-overwrite test custody without Ed25519; NEVER install/dispatch.
+
+    Owner explicitly deferred independent publisher keys until after local tests.
+    Data from authenticated GitHub API is NOT independently publisher-pinned:
+    permit only an isolated disposable lab and never upgrade protected roles.
+    """
+    observed, pins = _lab_observed_pins(token, api_reader)
+    _download_and_stage(token, pins, observed, asset_reader, stage)
+    return {
+        "state": "q7_lab_bytes_custodied_only",
+        "asset_count": 33,
+        "publisher_authenticated": False,
+        "install_authorized": False,
+        "original_client_ack": False,
+    }
+
+
 def probe_signed_pinned_q7_metadata(
     *,
     token: str,
@@ -248,32 +352,7 @@ def import_signed_pinned_q7_once(
         signed_roster, signature, public_key, independently_trusted_key_sha256
     )
     observed = read_pinned_q7_release(token, pins, api_reader=api_reader)
-    blobs: dict[str, bytes] = {}
-    total = 0
-    for pin in sorted(pins.files, key=lambda p: p.name):
-        try:
-            blob = asset_reader(
-                token=token,
-                asset_id=pin.asset_id,
-                expected_size=pin.bytes,
-                independently_pinned_sha256=pin.sha256,
-            )
-        except (OSError, ValueError, TypeError):
-            _deny()
-        if type(blob) is not bytes or len(blob) != pin.bytes or not hmac.compare_digest(
-            hashlib.sha256(blob).hexdigest(), pin.sha256
-        ):
-            _deny()
-        total += len(blob)
-        if total > _MAX_ALL_ASSETS:
-            _deny()
-        blobs[pin.name] = blob
-    try:
-        result = stage(observed, pins, blobs)
-    except (ValueError, TypeError, OSError):
-        _deny()
-    if type(result) is not dict or result.get("state") != "owner_private_bytes_custodied":
-        _deny()
+    _download_and_stage(token, pins, observed, asset_reader, stage)
     return {
         "state": "q7_signed_bytes_custodied_only",
         "asset_count": 33,

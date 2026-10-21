@@ -1,3 +1,9 @@
+## 2026-10-21 — serving instance epoch candidate v0.1.75 (#669 substep)
+
+- Exact prior source 0.1.74 already merged: `runner-mcp agent-bus preflight`. Central 0.1.38 and lab 0.1.38 still serving separately; lab terminal CLI 0.1.3 is not the current lab service. Runner-Fabric #1694/#1695 merged pure source read-only fleet origin and sequential update policy. Do not repeat.
+- This bounded source increment adds a per-`build_mcp` process epoch (32 opaque hex characters, fork-specific, no PID, paths or credentials) returned consistently by existing `runtime_status` and `serving_process_observation_preflight`; no new MCP tool and no private topology labels. Every response explicitly states `serving_instance_epoch_authenticated=false`. It helps detect restart / stale process / client route switching but does **NOT** prove source, wheel, host/route or ACK. Actual active artifact receipt remains #669 WAIT; never infer one from token or historical `self-update-state.json`.
+- No distribution or instance installed; release qualification uses exact-head automated CI and merges without mandatory human reviews. Next #669: retain original wheel manifest/receipt at authorized initial install and compare against memory-loaded modules/actual serving process independently, then integrate with Fabric #924 authenticated route verifier and sequential A6/A7 supervised rollout.
+
 ## 2026-10-20 original-client 20:30 verification — still UNVERIFIED
 
 - GitHub #509 CLOSED source-only 2026-10-20 17:20:58 UTC. Latest source v0.1.62 includes the already-written conditional fixed A6 11-key repair, but current connected v0.1.38 cannot prove it is loaded; A6 config remains 0/11.

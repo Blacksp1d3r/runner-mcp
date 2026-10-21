@@ -1,3 +1,9 @@
+## 2026-10-21 — keyless Black lab cannot contaminate signed release custody (v0.1.71)
+
+- Security review of already SOURCE-MERGED #789 v0.1.70 identified an unsafe storage coupling: test-only unsigned GitHub-digest-verified bundle would occupy the same fixed `bundle` leaf as production signed release custody. No physical import had occurred, so this was caught before any live lab action.
+- The ORIGINAL no-overwrite/fsync/nofollow verification is reused, but `lab-import` now targets a distinct `lab-unsigned-bundle` leaf, with a different fixed in-flight leaf. Signed `bundle` and its original receipt schema are untouched. Negative tests prove lab partial write and replay fail closed while retaining signed bundle bytes, and both fixed leaves can coexist. This is NOT independent signer identity or install approval.
+- A6 physical journal/outage witness, private bindings 0/11, central 0.1.38, Black original-client ACK and A7 physical original-six return remain WAIT. DO NOT install current #739 code onto the six central serving roles. Next: exact-head full CI/merge of this correction before any Black keyless importer execution.
+
 ## 2026-10-21 — owner chooses KEYLESS DISPOSABLE LAB first; Q7 signed publisher key deferred
 
 - Owner explicitly deferred independent Ed25519 publisher-key custody until after functional lab tests. Source branch `feat/739-q7-keyless-disposable-lab-20261021` v0.1.70 adds **opt-in** `lab-preflight`, `lab-probe-release`, `lab-import` to the SAME fixed Black standalone Q7 importer (not a parallel updater). Existing signed Ed25519 route is retained and unchanged for later production security.

@@ -1,3 +1,8 @@
+## 2026-10-21 — v0.1.72 source PR #791 also closes first-host zipapp handoff artifact gap
+
+- Runner-MCP existing `validation.yml` main-push candidate job (not a new release system) now builds the audited fixed Q7 source-only zipapp after the green exact-source release candidate. It uploads a **separate**, explicitly UNSIGNED KEYLESS LAB-ONLY 7-day GitHub Actions artifact containing `fabric-q7-first-host-import.pyz`, SHA256SUMS, SOURCE_COMMIT, and `NOT_FOR_PRODUCTION`. The normal verified wheel artifact remains separately held; no production install authorization is implied. The owner can move exactly those checked bytes onto physical Black without installing/updating the old 0.1.30/0.1.38 Runner-MCP roles.
+- Intended physical test sequence: inspect exact artifact/source SHA; offline private root `prepare-root`; keyless metadata `lab-probe-release`; `lab-import` with a private one-time read token; `lab-readback` with token/network absent after a process restart. This validates only Q7 package local persistence, not Fabric A6 cross-host append-only journal. Fabric worker install requires separately admitted existing bootstrap. Physical activation still WAIT because the central connected first-party tool targets the wrong host and cannot mutate Black remotely.
+
 ## 2026-10-21 — #739 keyless Q7 lab retained bytes: offline post-import readback source candidate
 
 - Previous SOURCE MERGED: #789 v0.1.70 explicit keyless lab API import and #790 v0.1.71 separate `lab-unsigned-bundle` fixed custody; exact-head full CI green. Signed original importer and `bundle` unchanged.

@@ -13,4 +13,3 @@ The v0.1.75 code change adds a **stable current-MCP-server epoch** across the tw
 ## Regression
 
 Unit test `tests/unit/test_serving_instance_epoch.py`; match active session epoch from two tools once version v0.1.75 is separately installed into an isolated disposable target. Independently test wrong-route/version/source negatives in Fabric #1694.
-

@@ -29,7 +29,7 @@ def test_bounded_zipapp_build_is_deterministic_and_disconnected(tmp_path):
 
     result = subprocess.run(
         [sys.executable, str(outputs[0]), "--help"],
-        cwd=tmp_path, capture_output=True, text=True, timeout=15,
+        check=False, cwd=tmp_path, capture_output=True, text=True, timeout=15,
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
     )
     assert result.returncode == 0
@@ -59,7 +59,7 @@ def test_unrecognized_invocation_denied_without_fetch_or_write(tmp_path):
     for command in [["evil"], ["--source", "/tmp/evil"], ["--token", "SECRET"]]:
         result = subprocess.run(
             [sys.executable, str(target), *command],
-            cwd=tmp_path, capture_output=True, text=True, timeout=15,
+            check=False, cwd=tmp_path, capture_output=True, text=True, timeout=15,
         )
         assert result.returncode == 2
         assert result.stdout.strip() == "WAIT_UNSUPPORTED_ACTION"
@@ -73,7 +73,7 @@ def test_preflight_refuses_unconfigured_source_without_mutation(tmp_path):
     sandbox_home.mkdir()
     result = subprocess.run(
         [sys.executable, str(target), "preflight"],
-        cwd=tmp_path, capture_output=True, text=True, timeout=15,
+        check=False, cwd=tmp_path, capture_output=True, text=True, timeout=15,
         env={**os.environ, "HOME": str(sandbox_home)},
     )
     assert result.returncode != 0

@@ -3,9 +3,9 @@ from __future__ import annotations
 
 import hashlib
 import os
+import stat
 import subprocess
 import sys
-import stat
 from dataclasses import replace
 from pathlib import Path
 

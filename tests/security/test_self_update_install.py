@@ -4,6 +4,7 @@ import os
 import stat
 import subprocess
 import sys
+import zipfile
 from pathlib import Path
 
 import pytest
@@ -393,3 +394,119 @@ def test_install_recovery_state_is_safe_and_bounded(tmp_path: Path) -> None:
 
     installer.transaction_path.write_text("{", encoding="utf-8")
     assert install_recovery_state(installer.transaction_path.parent) == "invalid"
+
+
+def _staged_original_receipt_wheel(
+    installer: SelfUpdatePackageInstaller,
+    tmp_path: Path,
+    *,
+    job_id: str,
+    label: str,
+) -> tuple[Path, Path]:
+    package = tmp_path / "runner_mcp"
+    package.mkdir(exist_ok=True)
+    (package / "__init__.py").write_text('__version__ = "0.1.79"\n')
+    (package / "worker.py").write_text("def answer():\n    return 42\n")
+    stage = installer.artifacts_root / job_id / label
+    stage.mkdir(mode=0o700, parents=True)
+    wheel = stage / "runner_mcp-0.1.79-py3-none-any.whl"
+    with zipfile.ZipFile(wheel, "w") as archive:
+        for name in ("__init__.py", "worker.py"):
+            archive.writestr(
+                "runner_mcp/" + name, (package / name).read_bytes(),
+            )
+    wheel.chmod(0o600)
+    return wheel, package
+
+
+def test_existing_installer_transaction_captures_exact_target_wheel(
+    tmp_path: Path,
+) -> None:
+    installer = make_installer(tmp_path)
+    job = "a" * 32
+    wheel, package = _staged_original_receipt_wheel(
+        installer, tmp_path, job_id=job, label="target",
+    )
+    installer.begin_transaction(
+        job_id=job, target_commit="b" * 40, baseline_commit="c" * 40,
+    )
+    result = installer.capture_transaction_wheel_receipt(
+        job_id=job, label="target", installed_package=package,
+    )
+    assert result["state"] == "retained_original_wheel_modules_match"
+    assert result["active_build_provenance_verified"] is False
+    receipt = wheel.parent / "original-wheel-candidate-receipt.json"
+    assert receipt.is_file()
+    assert stat.S_IMODE(receipt.stat().st_mode) == 0o600
+    import json
+
+    record = json.loads(receipt.read_text())
+    assert record["source_revision"] == "b" * 40
+    assert record["wheel_sha256"]
+    assert set(record["modules"]) == {"__init__.py", "worker.py"}
+
+
+def test_installer_receipt_refuses_nonmatching_transaction_or_missing_baseline(
+    tmp_path: Path,
+) -> None:
+    installer = make_installer(tmp_path)
+    job = "a" * 32
+    wheel, package = _staged_original_receipt_wheel(
+        installer, tmp_path, job_id=job, label="target",
+    )
+    with pytest.raises(PackageInstallError, match="transaction"):
+        installer.capture_transaction_wheel_receipt(
+            job_id=job, label="target", installed_package=package,
+        )
+    installer.begin_transaction(
+        job_id=job, target_commit="b" * 40, baseline_commit=None,
+    )
+    with pytest.raises(PackageInstallError, match="transaction"):
+        installer.capture_transaction_wheel_receipt(
+            job_id="c" * 32, label="target", installed_package=package,
+        )
+    with pytest.raises(PackageInstallError, match="baseline"):
+        installer.capture_transaction_wheel_receipt(
+            job_id=job, label="baseline", installed_package=package,
+        )
+    assert not (wheel.parent / "original-wheel-candidate-receipt.json").exists()
+
+
+def test_installer_receipt_rejects_modified_modules_without_stale_receipt(
+    tmp_path: Path,
+) -> None:
+    installer = make_installer(tmp_path)
+    job = "a" * 32
+    wheel, package = _staged_original_receipt_wheel(
+        installer, tmp_path, job_id=job, label="target",
+    )
+    installer.begin_transaction(
+        job_id=job, target_commit="b" * 40, baseline_commit="c" * 40,
+    )
+    (package / "worker.py").write_text("changed after wheel build\n")
+    with pytest.raises(PackageInstallError, match="could not be captured"):
+        installer.capture_transaction_wheel_receipt(
+            job_id=job, label="target", installed_package=package,
+        )
+    assert not (wheel.parent / "original-wheel-candidate-receipt.json").exists()
+
+
+def test_installer_receipt_no_replace_on_second_capture(tmp_path: Path) -> None:
+    installer = make_installer(tmp_path)
+    job = "a" * 32
+    wheel, package = _staged_original_receipt_wheel(
+        installer, tmp_path, job_id=job, label="target",
+    )
+    installer.begin_transaction(
+        job_id=job, target_commit="b" * 40, baseline_commit="c" * 40,
+    )
+    installer.capture_transaction_wheel_receipt(
+        job_id=job, label="target", installed_package=package,
+    )
+    receipt = wheel.parent / "original-wheel-candidate-receipt.json"
+    original = receipt.read_bytes()
+    with pytest.raises(PackageInstallError, match="could not be captured"):
+        installer.capture_transaction_wheel_receipt(
+            job_id=job, label="target", installed_package=package,
+        )
+    assert receipt.read_bytes() == original

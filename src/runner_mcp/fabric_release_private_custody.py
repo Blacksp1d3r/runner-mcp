@@ -23,6 +23,8 @@ _Q7_COMMIT = "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
 _Q7_RELEASE_ID = 415955374
 _STAGE = ".q7-bundle-inflight"
 _FINAL = "bundle"
+_LAB_STAGE = ".q7-lab-unsigned-inflight"
+_LAB_FINAL = "lab-unsigned-bundle"
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,150}\Z")
 
 
@@ -70,7 +72,9 @@ def _absent(fd: int, name: str) -> bool:
 
 
 
-def _promote_noreplace(root_fd: int) -> None:
+def _promote_noreplace(
+    root_fd: int, stage_name: str = _STAGE, final_name: str = _FINAL
+) -> None:
     """Atomic Linux directory promotion; never replace a racing final bundle."""
     try:
         operation = ctypes.CDLL(None, use_errno=True).renameat2
@@ -81,19 +85,23 @@ def _promote_noreplace(root_fd: int) -> None:
         ctypes.c_uint,
     )
     operation.restype = ctypes.c_int
-    if operation(root_fd, _STAGE.encode("ascii"),
-                 root_fd, _FINAL.encode("ascii"), 1) != 0:
+    if operation(root_fd, stage_name.encode("ascii"),
+                 root_fd, final_name.encode("ascii"), 1) != 0:
         raise OSError(ctypes.get_errno(), "no-replace promotion denied")
 
 
 def _stage_verified_bytes(
-    root: Path, pins: PinnedReleaseRoster, asset_bodies: dict[str, bytes]
+    root: Path, pins: PinnedReleaseRoster, asset_bodies: dict[str, bytes],
+    *, lab: bool = False,
 ) -> dict[str, object]:
     """Private post-verification storage implementation; test root is injectable.
 
     Called ONLY after verify_pinned_q7_wheelhouse. Root must already exist with
     mode 0700; no arbitrary caller-selected destination is exposed publicly.
     """
+    if type(lab) is not bool:
+        _deny()
+    stage_name, final_name = (_LAB_STAGE, _LAB_FINAL) if lab else (_STAGE, _FINAL)
     if (
         type(asset_bodies) is not dict
         or len(asset_bodies) != 33
@@ -114,12 +122,12 @@ def _stage_verified_bytes(
             fcntl.flock(root_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except OSError:
             _deny()
-        if not _absent(root_fd, _FINAL) or not _absent(root_fd, _STAGE):
+        if not _absent(root_fd, final_name) or not _absent(root_fd, stage_name):
             _deny()
-        os.mkdir(_STAGE, mode=0o700, dir_fd=root_fd)
+        os.mkdir(stage_name, mode=0o700, dir_fd=root_fd)
         os.fsync(root_fd)
         stage_fd = os.open(
-            _STAGE, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+            stage_name, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
             dir_fd=root_fd,
         )
         st = os.fstat(stage_fd)
@@ -151,15 +159,19 @@ def _stage_verified_bytes(
         # Require the fixed destination still absent. Locking alone is not an
         # adversarial same-UID filesystem integrity guarantee, so callers must
         # preserve this private root and retain any incomplete stage for review.
-        if not _absent(root_fd, _FINAL):
+        if not _absent(root_fd, final_name):
             _deny()
-        _promote_noreplace(root_fd)
+        if lab:
+            _promote_noreplace(root_fd, _LAB_STAGE, _LAB_FINAL)
+        else:
+            _promote_noreplace(root_fd)
         os.fsync(root_fd)
         return {
             "state": "owner_private_bytes_custodied",
             "asset_count": 33,
             "content_fingerprint": digest.hexdigest(),
             "independent_signer_verified": False,
+            "unsigned_lab_custody": lab,
             "host_qualified": False,
             "install_authorized": False,
             "original_client_ack": False,
@@ -174,16 +186,12 @@ def _stage_verified_bytes(
         os.close(root_fd)
 
 
-def stage_pinned_q7_bundle_once(
+def _stage_pinned_q7_validated(
     admission: ReleaseAdmission,
     independent_pins: PinnedReleaseRoster,
     asset_bodies: dict[str, bytes],
+    *, lab: bool,
 ) -> dict[str, object]:
-    """Fixed-path source-only local cache, never an installation permit.
-
-    The asset roster MUST be independently authenticated before invoking this
-    method. Content comparisons cannot establish origin or signer trust.
-    """
     if (
         type(admission) is not ReleaseAdmission
         or type(independent_pins) is not PinnedReleaseRoster
@@ -194,4 +202,28 @@ def stage_pinned_q7_bundle_once(
     ):
         _deny()
     verify_pinned_q7_wheelhouse(admission, independent_pins, asset_bodies)
-    return _stage_verified_bytes(_fixed_root(), independent_pins, asset_bodies)
+    return _stage_verified_bytes(
+        _fixed_root(), independent_pins, asset_bodies, lab=lab
+    )
+
+
+def stage_pinned_q7_bundle_once(
+    admission: ReleaseAdmission,
+    independent_pins: PinnedReleaseRoster,
+    asset_bodies: dict[str, bytes],
+) -> dict[str, object]:
+    """Existing signed-route fixed bundle directory; never lab bytes."""
+    return _stage_pinned_q7_validated(
+        admission, independent_pins, asset_bodies, lab=False
+    )
+
+
+def stage_pinned_q7_lab_bundle_once(
+    admission: ReleaseAdmission,
+    independent_pins: PinnedReleaseRoster,
+    asset_bodies: dict[str, bytes],
+) -> dict[str, object]:
+    """Explicit unsigned lab evidence: separate leaf, NEVER signed bundle."""
+    return _stage_pinned_q7_validated(
+        admission, independent_pins, asset_bodies, lab=True
+    )

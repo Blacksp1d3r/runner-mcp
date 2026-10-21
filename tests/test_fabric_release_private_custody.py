@@ -10,7 +10,9 @@ import pytest
 
 from runner_mcp.fabric_release_independent_roster import PinnedReleaseAsset, PinnedReleaseRoster
 from runner_mcp.fabric_release_private_custody import (
-    Q7CustodyUnqualified, _stage_verified_bytes, stage_pinned_q7_bundle_once,
+    Q7CustodyUnqualified,
+    _stage_verified_bytes,
+    stage_pinned_q7_bundle_once,
 )
 
 COMMIT = "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
@@ -140,3 +142,29 @@ def test_public_entry_requires_real_independent_bundle_verification(monkeypatch,
     with pytest.raises(ValueError):
         stage_pinned_q7_bundle_once(None, pins, bodies)  # type: ignore[arg-type]
     assert list(root.iterdir()) == []
+
+
+def test_racing_destination_cannot_replace_existing_files(tmp_path, monkeypatch):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    from runner_mcp import fabric_release_private_custody as custody
+
+    real_promote = custody._promote_noreplace
+
+    def racing_promote(fd):
+        os.mkdir("bundle", 0o700, dir_fd=fd)
+        extra = os.open("bundle", os.O_RDONLY | os.O_DIRECTORY, dir_fd=fd)
+        try:
+            handle = os.open("prior", os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                             0o600, dir_fd=extra)
+            os.write(handle, b"preserve")
+            os.close(handle)
+        finally:
+            os.close(extra)
+        return real_promote(fd)
+
+    monkeypatch.setattr(custody, "_promote_noreplace", racing_promote)
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+    assert (root / "bundle/prior").read_bytes() == b"preserve"
+    assert (root / ".q7-bundle-inflight").is_dir()

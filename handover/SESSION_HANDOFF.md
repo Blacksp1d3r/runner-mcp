@@ -1,3 +1,9 @@
+## 2026-10-21 — #739 keyless Q7 lab retained bytes: offline post-import readback source candidate
+
+- Previous SOURCE MERGED: #789 v0.1.70 explicit keyless lab API import and #790 v0.1.71 separate `lab-unsigned-bundle` fixed custody; exact-head full CI green. Signed original importer and `bundle` unchanged.
+- v0.1.72 branch `feat/739-q7-lab-offline-readback-20261021`: adds local-only `lab-readback` command to the SAME standalone Black zipapp (never a generic filesystem tool). `lab-import` now saves a 0600 bounded unsigned receipt INSIDE its fsynced 0700 stage, atomically promoted with all 33 bytes. Separate process can reopen no-follow fixed existing leaf, hash-verify exact 33 files with strict count/size/owner/permission/hardlink policy, no token, network, folder creation, install, rollback or model call. CI synthetic subprocess and corruption negatives required before merge.
+- This proves only local process-restart retention / accidental corruption detection of an **UNSIGNED LAB** release import after physical execution. Receipt and stored files live on the same host, so no independently authenticated publisher key, no A6 control-host vs target failure domain, no target-outage journal proof, and no original-client result/ACK are claimed. Actual first-party serving central remains old 0.1.38 unverified; A6 config 0/11, Black worker not installed/activated. Physical A6 #1617/#942 and real Claude/Qwen #972/#1579 stay OPEN; continue relevant independent lanes without putting issuer Ed25519 key back as lab prerequisite.
+
 ## 2026-10-21 — keyless Black lab cannot contaminate signed release custody (v0.1.71)
 
 - Security review of already SOURCE-MERGED #789 v0.1.70 identified an unsafe storage coupling: test-only unsigned GitHub-digest-verified bundle would occupy the same fixed `bundle` leaf as production signed release custody. No physical import had occurred, so this was caught before any live lab action.

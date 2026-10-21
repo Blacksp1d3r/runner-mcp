@@ -1,3 +1,9 @@
+## 2026-10-21 — Black #739 signed importer source candidate, production held
+
+- Actual Black rootless Runner-MCP 0.1.30 owner-observed private Agent Bus config+HTTPS relay authentication `BLACK_AUTH=PASS` against canonical original github-runner relay; original requester terminal result ACK **NOT TESTED**. Existing two other relay identities preserved.
+- #739 source PR #782 v0.1.64 merged for 29 Python wheel ZIP/METADATA/RECORD. PR #783 v0.1.65 merged for one-time nofollow owner-private 33-asset custody with atomic no-replace. Candidate v0.1.66 composes already-existing signed pins + fixed-release API + safe 33/33 asset byte fetch and safe custody, but remains SOURCE ONLY until exact-head green CI and merge. Actual independent operator publisher trust root, standalone Black installation-free entrypoint, physical asset custody and Fabric installed launcher still WAIT.
+- Original central first-party Runner-MCP still 0.1.38 with null source/wheel, self_update_ready=false and A6 0/11. Do not mistake new GitHub source for any serving generation; A6 off-target, A7 rollback, one guarded installer and original client result ACK all mandatory.
+
 ## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT
 
 - [PR #781](https://github.com/Blacksp1d3r/runner-mcp/pull/781) v0.1.63 MERGED `8d0405490c73bc324a522e66e5e596649d169371` (exact tested head `a9b9df31aa8e79e29cf85183e75e6ba25dca1215`). Existing Ed25519 signed offline statement check now has a strictly six-role process-identity-pin wrapper; each role must match a **separately supplied independent** unique process-instance SHA-256 pin; 5-role/swapped/substituted/duplicate/stale-wheel/host/nonce all refuse. ALWAYS `active_build_provenance_verified=false`, source/digest NULL and no update authority.

@@ -1,3 +1,9 @@
+## 2026-10-21 — independent offline wheel-content qualification candidate
+
+- New version 0.1.64 source PR: `fabric_release_wheelhouse.py` and adversarial synthetic tests extend the existing exact 33/33 Q7 immutable-pins in-memory manifest comparator to genuine Python wheel ZIP/METADATA/WHEEL/RECORD payload structure for exactly 29 wheels. Fail closed on ZIP substitution, duplicate member, wrong metadata, bad RECORD digest, missing/unrecorded entry, unsafe path/symlink, decompression bounds; explicitly no download, private signed custody, install or process mutation. Source CI is required before merge; until green, candidate only.
+- **Physical progress separate:** owner observed actual NEW Black private `BLACK_CONFIG=PASS`; existing `runner:black` admitted to the ORIGINAL github-runner AIfordable relay; owner-observed auth negative/positive check returned `BLACK_AUTH=PASS` (no-secret HTTP401, with Black secret invalid-query HTTP422). This is identity-only, no work claimed. Existing primary/lab identities, service and central production roles unaffected.
+- **Still WAIT:** independently authenticated publisher pin signer, exactly 33 real Release asset bodies in owner-local immutable 0700 custody, host preflight/install of approved Fabric bundle, original authenticated initiating client's request→claim/result→durable ACK, original six-serving-role A7 and independent A6. Parent #739 remains OPEN.
+
 # #739 — complete Q7 in-memory 33-asset bundle consistency
 
 Status: SOURCE_MERGED / LIVE_NOT_DEPLOYED.

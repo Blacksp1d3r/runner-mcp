@@ -1,3 +1,7 @@
+## 0.1.64 (source-only #739 pinned Q7 wheel ZIP/METADATA/RECORD gate)
+
+- Add `verify_pinned_q7_wheelhouse` after the existing 33/33 independent-pin bundle check. Validate 29 wheels in memory without writing, downloading or executing: bounded ZIP members/decompression, filename-versus-METADATA identities, WHEEL v1.0, SHA-256 and size of every non-RECORD member, complete RECORD coverage, duplicate/path traversal/symlink/encrypted/archive-bomb denial. Adversarial ZIP fixtures cover corrupt names, bad digest, missing metadata, extra entries, symlink/traversal and malformed wheel bytes. Return `wheel_metadata_record_only` and explicitly keep independent signer, local custody, host activation, mutation and original-client ACK false. This does not install on Black and does not qualify Fabric A6/A7 or central 0.1.38.
+
 # Changelog
 
 ## 0.1.57 (source-only #739 Q7 in-memory 33-asset bundle consistency)

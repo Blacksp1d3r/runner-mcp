@@ -32,7 +32,7 @@ def test_bounded_zipapp_build_is_deterministic_and_disconnected(tmp_path):
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
     )
     assert result.returncode == 0
-    assert "Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import" in result.stdout
+    assert "Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import | lab-readback" in result.stdout
     assert "NO_INSTALL" not in result.stdout
 
 
@@ -177,3 +177,34 @@ def test_lab_import_cli_is_explicit_and_never_installs(monkeypatch, capsys):
     assert "Q7_LAB_PRIVATE_CUSTODY=PASS_UNSIGNED_SOURCE_BYTES_ONLY" in output
     assert "NO_INSTALL_NO_WORKER_NO_ACK" in output
     assert "synthetic-secret" not in output
+
+
+def test_lab_readback_cli_is_offline_and_never_asks_for_token(monkeypatch, capsys):
+    source = run_path(str(_SOURCE / "scripts/fabric_q7_first_host_main.py"))
+    main = source["main"]
+    area = main.__globals__
+    area["_lab_owner_private_root"] = lambda: None
+    area["_private_inputs"] = lambda: pytest.fail("no publisher signer for lab readback")
+    area["read_q7_lab_custody_offline"] = lambda: {
+        "state": "q7_lab_local_readback_verified_only", "asset_count": 33,
+    }
+    area["probe_q7_disposable_lab_metadata"] = lambda **kw: pytest.fail("no network")
+    area["import_q7_disposable_lab_once"] = lambda **kw: pytest.fail("no writes")
+    monkeypatch.setattr("getpass.getpass", lambda prompt: pytest.fail("no token"))
+    assert main(["lab-readback"]) == 0
+    output = capsys.readouterr().out
+    assert "Q7_LAB_OFFLINE_READBACK=PASS_UNSIGNED_LOCAL_ONLY" in output
+    assert "NO_NETWORK_NO_INSTALL_NO_ACK" in output
+
+
+def test_lab_readback_cli_refuses_invalid_local_custody(monkeypatch, capsys):
+    source = run_path(str(_SOURCE / "scripts/fabric_q7_first_host_main.py"))
+    main = source["main"]
+    area = main.__globals__
+    area["_lab_owner_private_root"] = lambda: None
+    area["read_q7_lab_custody_offline"] = lambda: (_ for _ in ()).throw(
+        ValueError("synthetic corruption")
+    )
+    monkeypatch.setattr("getpass.getpass", lambda prompt: pytest.fail("no token"))
+    assert main(["lab-readback"]) == 1
+    assert "Q7_LAB_OFFLINE_READBACK=WAIT" in capsys.readouterr().out

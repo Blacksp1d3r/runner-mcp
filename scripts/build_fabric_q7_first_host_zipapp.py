@@ -33,8 +33,8 @@ class ZipappBuildRefused(ValueError):
 def build_q7_first_host_zipapp(*, source_root: Path, destination: Path) -> str:
     """Tests may supply isolated inputs; production CLI uses fixed repo layout."""
     if (
-        type(source_root) is not Path
-        or type(destination) is not Path
+        not isinstance(source_root, Path)
+        or not isinstance(destination, Path)
         or not source_root.is_absolute()
         or not destination.is_absolute()
     ):

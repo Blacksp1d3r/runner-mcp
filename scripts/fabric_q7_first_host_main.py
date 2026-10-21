@@ -67,8 +67,6 @@ def _private_inputs() -> tuple[bytes, bytes, bytes, str]:
     """Never create/repair missing private source material or trust key."""
     if socket.gethostname().split(".")[0] != "black" or os.geteuid() == 0:
         _deny()
-    from runner_mcp.fabric_release_private_custody import _private_root_fd
-
     config_fd = _private_root_fd(_ROOT)
     try:
         values = {

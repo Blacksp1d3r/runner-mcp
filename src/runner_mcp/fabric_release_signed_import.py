@@ -198,6 +198,35 @@ def read_pinned_q7_release(
     return observed
 
 
+
+def probe_signed_pinned_q7_metadata(
+    *,
+    token: str,
+    signed_roster: bytes,
+    signature: bytes,
+    public_key: bytes,
+    independently_trusted_key_sha256: str,
+    api_reader: Callable[[str, str], object] = _private_api_json,
+) -> dict[str, object]:
+    """Auth + exact signed Q7 Release/tag metadata; NO asset GET, NO custody.
+
+    This read-only qualification does not prove the owner's independent
+    authorization of a public key, admit a host, or authorize installation.
+    """
+    pins = _signed_pins(
+        signed_roster, signature, public_key, independently_trusted_key_sha256
+    )
+    read_pinned_q7_release(token, pins, api_reader=api_reader)
+    return {
+        "state": "q7_release_metadata_exact_under_supplied_key",
+        "asset_count": 33,
+        "download_performed": False,
+        "custody_performed": False,
+        "operator_signer_authority_attested": False,
+        "install_authorized": False,
+        "original_client_ack": False,
+    }
+
 def import_signed_pinned_q7_once(
     *,
     token: str,

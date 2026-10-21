@@ -19,6 +19,7 @@ from runner_mcp.fabric_release_private_custody import _fixed_root, _private_root
 from runner_mcp.fabric_release_signed_import import (
     _signed_pins,
     import_signed_pinned_q7_once,
+    probe_signed_pinned_q7_metadata,
 )
 
 _ROOT = Path.home() / ".config/runner-mcp"
@@ -97,10 +98,10 @@ def _private_inputs() -> tuple[bytes, bytes, bytes, str]:
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args == ["--help"]:
-        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | import")
+        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import")
         print("Fixed Black host, exact signed Q7 release, no install or service activation.")
         return 0
-    if args not in (["prepare-root"], ["preflight"], ["import"]):
+    if args not in (["prepare-root"], ["preflight"], ["probe-release"], ["import"]):
         print("WAIT_UNSUPPORTED_ACTION")
         return 2
     if sys.version_info[:2] != (3, 12):
@@ -134,6 +135,17 @@ def main(argv: list[str] | None = None) -> int:
     try:
         token = getpass.getpass("One-time scoped GitHub Contents:read token (hidden): ")
         try:
+            if args == ["probe-release"]:
+                result = probe_signed_pinned_q7_metadata(
+                    token=token, signed_roster=roster, signature=signature,
+                    public_key=public_key,
+                    independently_trusted_key_sha256=fingerprint,
+                )
+                if result.get("state") != "q7_release_metadata_exact_under_supplied_key":
+                    _deny()
+                print("Q7_RELEASE_METADATA=PASS")
+                print("NO_ASSETS_NO_INSTALL_NO_ACK")
+                return 0
             result = import_signed_pinned_q7_once(
                 token=token, signed_roster=roster, signature=signature,
                 public_key=public_key,

@@ -192,3 +192,42 @@ def test_public_custody_rejects_wrong_source_pin_before_mutation(
             replace(candidate, commit=COMMIT), replace(pins, release_id=999), bodies
         )
     assert list(root.iterdir()) == []
+
+
+def test_unsigned_lab_bytes_never_share_signed_final_bundle(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    lab_receipt = _stage_verified_bytes(root, pins, bodies, lab=True)
+    assert lab_receipt["unsigned_lab_custody"] is True
+    assert (root / "lab-unsigned-bundle").is_dir()
+    assert not (root / "bundle").exists()
+    assert not (root / ".q7-lab-unsigned-inflight").exists()
+    signed_receipt = _stage_verified_bytes(root, pins, bodies)
+    assert signed_receipt["unsigned_lab_custody"] is False
+    assert (root / "bundle").is_dir()
+    assert (root / "lab-unsigned-bundle").is_dir()
+    assert sorted(p.name for p in (root / "bundle").iterdir()) == sorted(bodies)
+    assert sorted(p.name for p in (root / "lab-unsigned-bundle").iterdir()) == sorted(bodies)
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies, lab=True)
+    assert (root / "bundle").is_dir()
+
+
+def test_unsigned_lab_failed_partial_stage_preserves_original_signed_custody(
+    tmp_path, monkeypatch
+):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    _stage_verified_bytes(root, pins, bodies)
+    original = (root / "bundle/file_00.whl").read_bytes()
+
+    def fail(*args, **kwargs):
+        raise OSError("synthetic no-write")
+    monkeypatch.setattr(os, "write", fail)
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies, lab=True)
+    assert (root / ".q7-lab-unsigned-inflight").is_dir()
+    assert not (root / "lab-unsigned-bundle").exists()
+    assert (root / "bundle/file_00.whl").read_bytes() == original
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies, lab=True)

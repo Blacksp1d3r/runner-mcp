@@ -19,6 +19,8 @@ from .fabric_release_assets import ReleaseAdmission
 from .fabric_release_independent_roster import PinnedReleaseRoster
 from .fabric_release_wheelhouse import verify_pinned_q7_wheelhouse
 
+_Q7_COMMIT = "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
+_Q7_RELEASE_ID = 415955374
 _STAGE = ".q7-bundle-inflight"
 _FINAL = "bundle"
 _NAME = re.compile(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,150}\Z")
@@ -182,5 +184,14 @@ def stage_pinned_q7_bundle_once(
     The asset roster MUST be independently authenticated before invoking this
     method. Content comparisons cannot establish origin or signer trust.
     """
+    if (
+        type(admission) is not ReleaseAdmission
+        or type(independent_pins) is not PinnedReleaseRoster
+        or admission.commit != _Q7_COMMIT
+        or independent_pins.commit != _Q7_COMMIT
+        or admission.release_id != _Q7_RELEASE_ID
+        or independent_pins.release_id != _Q7_RELEASE_ID
+    ):
+        _deny()
     verify_pinned_q7_wheelhouse(admission, independent_pins, asset_bodies)
     return _stage_verified_bytes(_fixed_root(), independent_pins, asset_bodies)

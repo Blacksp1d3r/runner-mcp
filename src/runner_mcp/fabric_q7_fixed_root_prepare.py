@@ -62,7 +62,10 @@ def _prepare_fixed_q7_root_under(base: Path) -> dict[str, object]:
     """Internal isolated fixture root: only the two fixed child names."""
     if os.geteuid() == 0:
         _deny()
-    outer = _private_root_fd(base)
+    try:
+        outer = _private_root_fd(base)
+    except ValueError:
+        _deny()
     mid = -1
     try:
         try:

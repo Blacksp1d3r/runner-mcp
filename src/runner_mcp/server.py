@@ -182,6 +182,7 @@ from .operational_safety import (
 )
 from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
+from .serving_instance_epoch import ServingInstanceEpoch
 from .serving_process_readonly import observe_current_process_modules
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
@@ -468,6 +469,7 @@ def build_mcp(
     tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
+    serving_epoch = ServingInstanceEpoch()
     mcp = MCPServer(
         "Runner MCP",
         token_verifier=StaticBearerVerifier(settings.bearer_token, settings.resource_url),
@@ -792,6 +794,8 @@ def build_mcp(
             # Python modules already executing in this process.
             "version": _loaded_package_version,
             "installed_distribution_version": package,
+            "serving_instance_epoch": serving_epoch.value(),
+            "serving_instance_epoch_authenticated": False,
             "active_build_provenance_verified": False,
             "active_artifact_revision": None,
             "active_artifact_digest": None,
@@ -868,10 +872,14 @@ def build_mcp(
             installed = version("aifordable-runner-mcp")
         except PackageNotFoundError:
             installed = "development"
-        return observe_current_process_modules(
-            imported_version=_loaded_package_version,
-            installed_distribution_version=installed,
-        )
+        return {
+            **observe_current_process_modules(
+                imported_version=_loaded_package_version,
+                installed_distribution_version=installed,
+            ),
+            "servingInstanceEpoch": serving_epoch.value(),
+            "servingInstanceEpochAuthenticated": False,
+        }
 
     @mcp.tool()
     def runtime_doctor() -> dict:

@@ -1,3 +1,9 @@
+## 0.1.76 (#669 local serving-instance epoch, source only)
+
+- Added one per-MCP-server **opaque serving instance epoch** to the existing `runtime_status` and `serving_process_observation_preflight` output, stable for one live server instance but different across process forks and restarts. The two reads can now be correlated without confusing an interactive PATH-selected `runner-mcp` executable with the actual serving MCP process. A second service using the same package version receives its own epoch.
+- This identifier **does not authenticate host, service asset, route, source revision, wheel digest, original client, or result ACK**. Both fields explicitly mark `*authenticated=false`; central 0.1.38 remains live and unverified. The existing `active_build_provenance_verified=false`, `self_update_ready=false` fail-closed rules are unchanged.
+- Local unit tests cover same-instance stability, distinct instances, forked process separation and accidental disclosure regressions. No new updater/relay/worker, no host state changes, no automatic 0.1.76 deployment.
+
 ## 0.1.75 (#669 reply-local identity scope; source only)
 
 - `runtime_status` explicitly labels its evidence as **this connected serving process only**. Even if another host or an interactive CLI has the same package version, the reply does **not** claim independently verified host/route, loaded wheel/module bytes, or all six real role process identities. Version equality is reported only as a literal loaded-vs-installed string comparison, never as attestation.

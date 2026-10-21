@@ -1,9 +1,9 @@
 """Bounded source-only Q7 private Release importer with separate signed roster.
 
-No untrusted release metadata can establish its own SHA pins. The Ed25519
-trust-key *digest* must be known through an independent owner-controlled
-channel. This module checks possession of that key, not key authorization,
-freshness, independent custody, serving identity or install permission.
+The signed path requires independent owner-controlled Ed25519 pins. The opt-in
+keyless disposable-lab path uses authenticated GitHub metadata as UNTRUSTED
+issuer digests and stores only in an isolated lab leaf, never signed custody.
+Neither path authorizes installation, serving identity or a worker dispatch.
 """
 from __future__ import annotations
 
@@ -30,7 +30,10 @@ from .fabric_release_independent_roster import (
     PinnedReleaseRoster,
     compare_exact_pinned_q7_roster,
 )
-from .fabric_release_private_custody import stage_pinned_q7_bundle_once
+from .fabric_release_private_custody import (
+    stage_pinned_q7_bundle_once,
+    stage_pinned_q7_lab_bundle_once,
+)
 
 _Q7_COMMIT = "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
 _Q7_TAG = "fabric-q7-bundle-" + _Q7_COMMIT
@@ -283,7 +286,7 @@ def import_q7_disposable_lab_once(
     token: str,
     api_reader: Callable[[str, str], object] = _private_api_json,
     asset_reader: Callable[..., bytes] = fetch_pinned_asset_bytes,
-    stage: Callable[..., dict[str, object]] = stage_pinned_q7_bundle_once,
+    stage: Callable[..., dict[str, object]] = stage_pinned_q7_lab_bundle_once,
 ) -> dict[str, object]:
     """Private no-overwrite test custody without Ed25519; NEVER install/dispatch.
 

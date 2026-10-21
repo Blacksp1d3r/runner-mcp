@@ -1,3 +1,7 @@
+## 2026-10-21 — F30 Black #739 one owner-authorized offline Q7 importer path
+
+- Existing black v0.1.30 isolated rootless stage and unique relay identity/HTTPS authentication are operator-observed PASS, but Fabric worker and exact original requester result ACK remain WAIT. #739 source milestones: #782 v0.1.64 audited 29 wheel ZIP/RECORD; #783 v0.1.65 fixed 33-body 0700 one-time custody; #784 v0.1.66 signed roster + fixed GitHub release + verified 33 downloads all merged; v0.1.67 standalone zipapp first-host packaging CANDIDATE. Authenticated independent publisher key/roster enrollment and real same-host asset import require separate correct-host operator action. A6 0/11 and A7 real six-role networkless rollback remain required before any central Runner-MCP production update. No second relay/installer/updater or OIDC/MFA work.
+
 ## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT
 
 - [PR #781](https://github.com/Blacksp1d3r/runner-mcp/pull/781) v0.1.63 MERGED `8d0405490c73bc324a522e66e5e596649d169371` (exact tested head `a9b9df31aa8e79e29cf85183e75e6ba25dca1215`). Existing Ed25519 signed offline statement check now has a strictly six-role process-identity-pin wrapper; each role must match a **separately supplied independent** unique process-instance SHA-256 pin; 5-role/swapped/substituted/duplicate/stale-wheel/host/nonce all refuse. ALWAYS `active_build_provenance_verified=false`, source/digest NULL and no update authority.

@@ -23,6 +23,7 @@ _FILES = (
     "runner_mcp/fabric_release_private_custody.py",
     "runner_mcp/fabric_release_signed_import.py",
     "runner_mcp/fabric_q7_fixed_root_prepare.py",
+    "runner_mcp/fabric_q7_lab_session_auth.py",
 )
 _FIXED_TIME = (2020, 1, 1, 0, 0, 0)
 

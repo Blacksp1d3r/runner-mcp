@@ -18,9 +18,9 @@ from runner_mcp.fabric_q7_fixed_root_prepare import prepare_black_q7_private_roo
 from runner_mcp.fabric_release_private_custody import _fixed_root, _private_root_fd
 from runner_mcp.fabric_release_signed_import import (
     _signed_pins,
+    import_q7_disposable_lab_once,
     import_signed_pinned_q7_once,
     probe_q7_disposable_lab_metadata,
-    import_q7_disposable_lab_once,
     probe_signed_pinned_q7_metadata,
 )
 

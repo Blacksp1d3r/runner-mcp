@@ -32,7 +32,7 @@ def test_bounded_zipapp_build_is_deterministic_and_disconnected(tmp_path):
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
     )
     assert result.returncode == 0
-    assert "Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import | lab-readback" in result.stdout
+    assert "Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import | lab-readback | lab-login | lab-logout" in result.stdout
     assert "NO_INSTALL" not in result.stdout
 
 
@@ -208,3 +208,78 @@ def test_lab_readback_cli_refuses_invalid_local_custody(monkeypatch, capsys):
     monkeypatch.setattr("getpass.getpass", lambda prompt: pytest.fail("no token"))
     assert main(["lab-readback"]) == 1
     assert "Q7_LAB_OFFLINE_READBACK=WAIT" in capsys.readouterr().out
+
+
+def test_lab_login_validates_exact_metadata_then_caches_once(monkeypatch, capsys):
+    source = run_path(str(_SOURCE / "scripts/fabric_q7_first_host_main.py"))
+    main = source["main"]
+    scope = main.__globals__
+    scope["_lab_owner_private_root"] = lambda: None
+    observed = []
+    scope["probe_q7_disposable_lab_metadata"] = lambda **kw: (
+        observed.append(kw["token"]) or
+        {"state": "q7_lab_metadata_only_untrusted_publisher"}
+    )
+    scope["clear_lab_login"] = lambda: observed.append("clear")
+    scope["save_lab_login"] = lambda token: observed.append("save")
+    scope["import_q7_disposable_lab_once"] = lambda **kw: pytest.fail(
+        "login must not import"
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stderr.isatty", lambda: True)
+    monkeypatch.setattr("getpass.getpass", lambda prompt: "SYNTHETIC-PRIVATE-TOKEN")
+    assert main(["lab-login"]) == 0
+    assert observed == ["SYNTHETIC-PRIVATE-TOKEN", "clear", "save"]
+    output = capsys.readouterr().out
+    assert "Q7_LAB_LOGIN=PASS_ONE_HOUR_USER_RUNTIME_ONLY" in output
+    assert "SYNTHETIC-PRIVATE-TOKEN" not in output
+
+
+def test_lab_import_reuses_cached_credential_without_terminal_then_forgets(monkeypatch, capsys):
+    source = run_path(str(_SOURCE / "scripts/fabric_q7_first_host_main.py"))
+    main = source["main"]
+    scope = main.__globals__
+    scope["_lab_owner_private_root"] = lambda: None
+    scope["read_lab_login"] = lambda: "SYNTHETIC-CACHED-TOKEN"
+    scope["clear_lab_login"] = lambda: events.append("logout")
+    events = []
+    scope["import_q7_disposable_lab_once"] = lambda **kw: (
+        events.append(kw["token"]) or {"state": "q7_lab_bytes_custodied_only"}
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: False)
+    monkeypatch.setattr("sys.stderr.isatty", lambda: False)
+    monkeypatch.setattr("getpass.getpass", lambda prompt: pytest.fail("token reentry"))
+    assert main(["lab-import"]) == 0
+    assert events == ["SYNTHETIC-CACHED-TOKEN", "logout"]
+    assert "SYNTHETIC-CACHED-TOKEN" not in capsys.readouterr().out
+
+
+def test_lab_logout_does_not_read_token_or_call_network(monkeypatch, capsys):
+    source = run_path(str(_SOURCE / "scripts/fabric_q7_first_host_main.py"))
+    main = source["main"]
+    scope = main.__globals__
+    scope["_lab_owner_private_root"] = lambda: None
+    scope["clear_lab_login"] = lambda: None
+    scope["read_lab_login"] = lambda: pytest.fail("logout never reads token")
+    scope["probe_q7_disposable_lab_metadata"] = lambda **kw: pytest.fail(
+        "logout never contacts GitHub"
+    )
+    monkeypatch.setattr("getpass.getpass", lambda prompt: pytest.fail("token"))
+    assert main(["lab-logout"]) == 0
+    assert "Q7_LAB_LOGOUT=PASS_NO_TOKEN_PERSISTED" in capsys.readouterr().out
+
+
+def test_lab_login_denies_when_release_auth_unavailable_without_caching(monkeypatch, capsys):
+    source = run_path(str(_SOURCE / "scripts/fabric_q7_first_host_main.py"))
+    main = source["main"]
+    scope = main.__globals__
+    scope["_lab_owner_private_root"] = lambda: None
+    scope["probe_q7_disposable_lab_metadata"] = lambda **kw: (
+        (_ for _ in ()).throw(ValueError("synthetic denied"))
+    )
+    scope["save_lab_login"] = lambda token: pytest.fail("invalid token must not persist")
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stderr.isatty", lambda: True)
+    monkeypatch.setattr("getpass.getpass", lambda prompt: "SYNTHETIC-FAILED-TOKEN")
+    assert main(["lab-login"]) == 1
+    assert "Q7_PRIVATE_CUSTODY=WAIT" in capsys.readouterr().out

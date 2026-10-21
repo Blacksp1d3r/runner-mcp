@@ -7,6 +7,7 @@ update root. No network, token, subprocess, service, rollback or activation.
 """
 from __future__ import annotations
 
+import ctypes
 import fcntl
 import hashlib
 import os
@@ -64,6 +65,23 @@ def _absent(fd: int, name: str) -> bool:
         return False
     except FileNotFoundError:
         return True
+
+
+
+def _promote_noreplace(root_fd: int) -> None:
+    """Atomic Linux directory promotion; never replace a racing final bundle."""
+    try:
+        operation = ctypes.CDLL(None, use_errno=True).renameat2
+    except AttributeError:
+        _deny()
+    operation.argtypes = (
+        ctypes.c_int, ctypes.c_char_p, ctypes.c_int, ctypes.c_char_p,
+        ctypes.c_uint,
+    )
+    operation.restype = ctypes.c_int
+    if operation(root_fd, _STAGE.encode("ascii"),
+                 root_fd, _FINAL.encode("ascii"), 1) != 0:
+        raise OSError(ctypes.get_errno(), "no-replace promotion denied")
 
 
 def _stage_verified_bytes(
@@ -133,7 +151,7 @@ def _stage_verified_bytes(
         # preserve this private root and retain any incomplete stage for review.
         if not _absent(root_fd, _FINAL):
             _deny()
-        os.rename(_STAGE, _FINAL, src_dir_fd=root_fd, dst_dir_fd=root_fd)
+        _promote_noreplace(root_fd)
         os.fsync(root_fd)
         return {
             "state": "owner_private_bytes_custodied",

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 import hashlib
 import json
-from dataclasses import replace
 
 import pytest
 from cryptography.hazmat.primitives import serialization

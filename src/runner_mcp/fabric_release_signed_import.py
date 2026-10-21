@@ -7,14 +7,13 @@ freshness, independent custody, serving identity or install permission.
 """
 from __future__ import annotations
 
-from collections.abc import Callable
-
 import hashlib
 import hmac
 import json
 import re
 import urllib.error
 import urllib.request
+from collections.abc import Callable
 from typing import Any
 
 from cryptography.exceptions import InvalidSignature

@@ -22,7 +22,7 @@ from .fabric_release_independent_roster import PinnedReleaseRoster
 _WHEEL_FILENAME = re.compile(
     r"(?P<name>[A-Za-z0-9_]+)-(?P<version>[A-Za-z0-9][A-Za-z0-9_.!]*)"
     r"(?:-[0-9][A-Za-z0-9_]*)?-[A-Za-z0-9_.]+-[A-Za-z0-9_.]+"
-    r"-[A-Za-z0-9_.]+\\.whl\\Z"
+    r"-[A-Za-z0-9_.]+\.whl\Z"
 )
 _MAX_ZIP_MEMBERS = 8192
 _MAX_EXPANDED_WHEEL = 128 * 1024 * 1024

@@ -6,15 +6,14 @@ import os
 import subprocess
 import sys
 from pathlib import Path
+from runpy import run_path
 
 import pytest
 
-from scripts.build_fabric_q7_first_host_zipapp import (
-    ZipappBuildRefused,
-    build_q7_first_host_zipapp,
-)
-
 _SOURCE = Path(__file__).resolve().parents[1]
+_BUILDER = run_path(str(_SOURCE / "scripts/build_fabric_q7_first_host_zipapp.py"))
+ZipappBuildRefused = _BUILDER["ZipappBuildRefused"]
+build_q7_first_host_zipapp = _BUILDER["build_q7_first_host_zipapp"]
 
 
 def test_bounded_zipapp_build_is_deterministic_and_disconnected(tmp_path):

@@ -15,6 +15,11 @@ import sys
 from pathlib import Path
 
 from runner_mcp.fabric_q7_fixed_root_prepare import prepare_black_q7_private_root
+from runner_mcp.fabric_q7_lab_session_auth import (
+    clear_lab_login,
+    read_lab_login,
+    save_lab_login,
+)
 from runner_mcp.fabric_release_private_custody import (
     _fixed_root,
     _private_root_fd,
@@ -112,10 +117,10 @@ def _lab_owner_private_root() -> None:
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args == ["--help"]:
-        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import | lab-readback")
+        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import | lab-readback | lab-login | lab-logout")
         print("Fixed Black host, exact signed Q7 release, no install or service activation.")
         return 0
-    if args not in (["prepare-root"], ["preflight"], ["probe-release"], ["import"], ["lab-preflight"], ["lab-probe-release"], ["lab-import"], ["lab-readback"]):
+    if args not in (["prepare-root"], ["preflight"], ["probe-release"], ["import"], ["lab-preflight"], ["lab-probe-release"], ["lab-import"], ["lab-readback"], ["lab-login"], ["lab-logout"]):
         print("WAIT_UNSUPPORTED_ACTION")
         return 2
     if sys.version_info[:2] != (3, 12):
@@ -133,7 +138,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Q7_FIXED_PRIVATE_ROOT=PASS")
         print("NO_SIGNER_AUTHORITY_NO_DOWNLOAD_NO_INSTALL")
         return 0
-    lab = args in (["lab-preflight"], ["lab-probe-release"], ["lab-import"], ["lab-readback"])
+    lab = args in (["lab-preflight"], ["lab-probe-release"], ["lab-import"], ["lab-readback"], ["lab-login"], ["lab-logout"])
     try:
         if lab:
             _lab_owner_private_root()
@@ -142,6 +147,14 @@ def main(argv: list[str] | None = None) -> int:
     except (ValueError, TypeError, OSError):
         print("WAIT_PRIVATE_LAB_ROOT_OR_SIGNED_ROSTER")
         return 1
+    if args == ["lab-logout"]:
+        try:
+            clear_lab_login()
+        except (ValueError, TypeError, OSError):
+            print("Q7_LAB_LOGOUT=WAIT")
+            return 1
+        print("Q7_LAB_LOGOUT=PASS_NO_TOKEN_PERSISTED")
+        return 0
     if args == ["lab-preflight"]:
         print("Q7_KEYLESS_DISPOSABLE_LAB=PASS")
         print("UNSIGNED_SOURCE_NO_INSTALL_NO_WORKER")
@@ -162,12 +175,25 @@ def main(argv: list[str] | None = None) -> int:
         print("OPERATOR_SIGNER_AUTHORITY=NOT_ATTESTED")
         print("NO_DOWNLOAD_NO_INSTALL_NO_WORKER")
         return 0
-    if not (sys.stdin.isatty() and sys.stderr.isatty()):
-        print("WAIT_INTERACTIVE_TERMINAL")
-        return 1
     try:
-        token = getpass.getpass("One-time scoped GitHub Contents:read token (hidden): ")
+        cached = read_lab_login() if lab and args != ["lab-login"] else None
+        if cached is not None:
+            token = cached
+        else:
+            if not (sys.stdin.isatty() and sys.stderr.isatty()):
+                print("WAIT_INTERACTIVE_TERMINAL")
+                return 1
+            token = getpass.getpass("One-time scoped GitHub Contents:read token (hidden): ")
         try:
+            if args == ["lab-login"]:
+                verified = probe_q7_disposable_lab_metadata(token=token)
+                if verified.get("state") != "q7_lab_metadata_only_untrusted_publisher":
+                    _deny()
+                clear_lab_login()
+                save_lab_login(token)
+                print("Q7_LAB_LOGIN=PASS_ONE_HOUR_USER_RUNTIME_ONLY")
+                print("NO_TOKEN_IN_HOME_OR_GITHUB_NO_INSTALL")
+                return 0
             if args == ["lab-probe-release"]:
                 result = probe_q7_disposable_lab_metadata(token=token)
                 if result.get("state") != "q7_lab_metadata_only_untrusted_publisher":
@@ -179,6 +205,7 @@ def main(argv: list[str] | None = None) -> int:
                 result = import_q7_disposable_lab_once(token=token)
                 if result.get("state") != "q7_lab_bytes_custodied_only":
                     _deny()
+                clear_lab_login()
                 print("Q7_LAB_PRIVATE_CUSTODY=PASS_UNSIGNED_SOURCE_BYTES_ONLY")
                 print("NO_INSTALL_NO_WORKER_NO_ACK")
                 return 0

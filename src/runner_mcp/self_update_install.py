@@ -9,6 +9,11 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
+from .artifact_receipt_capture import (
+    WheelReceiptCaptureError,
+    capture_candidate_wheel_receipt,
+)
+
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _WHEEL_LABELS = {"baseline", "target"}
@@ -348,6 +353,47 @@ class SelfUpdatePackageInstaller:
         if not resolved.is_relative_to(self.artifacts_root):
             raise PackageInstallError("Self-update wheel stage is unsafe")
         return resolved
+
+    def capture_transaction_wheel_receipt(
+        self,
+        *,
+        job_id: str,
+        label: str,
+        installed_package: Path,
+    ) -> dict[str, object]:
+        """Bind an original staged wheel to the existing install transaction.
+
+        Source-only, local installer-stage operation. NOT a build signer,
+        serving-process attestation, permanent custody, authorized update or
+        restoration of baseline after the current job is cleaned up.
+        """
+        if not isinstance(installed_package, Path):
+            raise PackageInstallError("original installed package input is invalid")
+        transaction = self.pending_transaction()
+        if transaction is None or transaction["job_id"] != job_id:
+            raise PackageInstallError("original wheel transaction is unavailable")
+        if label == "target":
+            source_revision = transaction["target_commit"]
+        elif label == "baseline":
+            source_revision = transaction["baseline_commit"]
+        else:
+            raise PackageInstallError("original wheel stage label is invalid")
+        if source_revision is None:
+            raise PackageInstallError("original baseline source is unavailable")
+        wheel = self.staged_wheel(job_id=job_id, label=label)
+        receipt = wheel.parent / "original-wheel-candidate-receipt.json"
+        try:
+            result = capture_candidate_wheel_receipt(
+                wheel=wheel,
+                installed_package=installed_package,
+                receipt=receipt,
+                source_revision=source_revision,
+            )
+        except WheelReceiptCaptureError as exc:
+            raise PackageInstallError(
+                "original staged wheel receipt could not be captured"
+            ) from exc
+        return result
 
     def install_wheel(self, wheel: Path) -> None:
         if wheel.is_symlink():

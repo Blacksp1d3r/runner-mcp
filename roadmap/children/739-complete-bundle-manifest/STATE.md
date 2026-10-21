@@ -1,3 +1,8 @@
+## 2026-10-21 — v0.1.65 source-only one-time Q7 private custody candidate
+
+- Building on green/merged v0.1.64 29-wheel ZIP/RECORD gate, new narrow source `fabric_release_private_custody.py` writes only the already-checked 33 bounded bodies to exactly one fixed 0700 per-user Fabric control-plane update root, using nofollow pinned directory handles, O_EXCL mode-0600 files, fsync and no replay/overwrite. Corrupt/partial stage is retained and marks NOT READY. Synthetic negative tests cover symlinks, unsafe root, existing bundle, partial write, replay and bad asset identities. Exact-HEAD full CI needed before source merge.
+- **Signer / live distinction:** source does NOT independently authenticate the published Q7 roster, acquire bytes, qualify real Black root, install Fabric, prove result→original ACK, turn on protected production mutation or satisfy A6/A7. Source-only cache is not an installation permit. Original Black existing agent-bus credentials and HTTPS auth PASS remain preserved; do not duplicate relay or reinstall old stage.
+
 ## 2026-10-21 — independent offline wheel-content qualification candidate
 
 - New version 0.1.64 source PR: `fabric_release_wheelhouse.py` and adversarial synthetic tests extend the existing exact 33/33 Q7 immutable-pins in-memory manifest comparator to genuine Python wheel ZIP/METADATA/WHEEL/RECORD payload structure for exactly 29 wheels. Fail closed on ZIP substitution, duplicate member, wrong metadata, bad RECORD digest, missing/unrecorded entry, unsafe path/symlink, decompression bounds; explicitly no download, private signed custody, install or process mutation. Source CI is required before merge; until green, candidate only.

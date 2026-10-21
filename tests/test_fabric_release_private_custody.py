@@ -4,6 +4,8 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
+import subprocess
+import sys
 from dataclasses import replace
 from pathlib import Path
 
@@ -14,6 +16,7 @@ from runner_mcp.fabric_release_independent_roster import PinnedReleaseAsset, Pin
 from runner_mcp.fabric_release_private_custody import (
     Q7CustodyUnqualified,
     _stage_verified_bytes,
+    read_q7_lab_custody_offline,
     stage_pinned_q7_bundle_once,
 )
 
@@ -207,7 +210,7 @@ def test_unsigned_lab_bytes_never_share_signed_final_bundle(tmp_path):
     assert (root / "bundle").is_dir()
     assert (root / "lab-unsigned-bundle").is_dir()
     assert sorted(p.name for p in (root / "bundle").iterdir()) == sorted(bodies)
-    assert sorted(p.name for p in (root / "lab-unsigned-bundle").iterdir()) == sorted(bodies)
+    assert sorted(p.name for p in (root / "lab-unsigned-bundle").iterdir()) == sorted([*bodies, ".lab-custody-receipt.json"])
     with pytest.raises(Q7CustodyUnqualified):
         _stage_verified_bytes(root, pins, bodies, lab=True)
     assert (root / "bundle").is_dir()
@@ -231,3 +234,84 @@ def test_unsigned_lab_failed_partial_stage_preserves_original_signed_custody(
     assert (root / "bundle/file_00.whl").read_bytes() == original
     with pytest.raises(Q7CustodyUnqualified):
         _stage_verified_bytes(root, pins, bodies, lab=True)
+
+
+def _realistic_unsigned_lab():
+    names = ["BOOTSTRAP.py", "BUNDLE.json", "COMMIT_SHA", "SHA256SUMS"]
+    names += ["runner_fabric-0.0.1-py3-none-any.whl"]
+    names += [f"synthetic_{i:02d}-1.0-py3-none-any.whl" for i in range(28)]
+    blobs = {name: f"synthetic-{i}".encode() for i, name in enumerate(names)}
+    pins = PinnedReleaseRoster(
+        COMMIT, "fabric-q7-bundle-" + COMMIT, 415955374,
+        tuple(PinnedReleaseAsset(
+            name, i + 100, len(blobs[name]),
+            hashlib.sha256(blobs[name]).hexdigest()
+        ) for i, name in enumerate(names)),
+    )
+    return pins, blobs
+
+
+def test_lab_offline_readback_survives_separate_python_process(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _realistic_unsigned_lab()
+    _stage_verified_bytes(root, pins, bodies, lab=True)
+    before = read_q7_lab_custody_offline(root)
+    assert before == {
+        "state": "q7_lab_local_readback_verified_only",
+        "asset_count": 33, "publisher_authenticated": False,
+        "independent_off_target_verified": False,
+        "install_authorized": False, "original_client_ack": False,
+    }
+    child = subprocess.run(
+        [sys.executable, "-c", (
+            "from pathlib import Path; "
+            "from runner_mcp.fabric_release_private_custody import read_q7_lab_custody_offline; "
+            "import sys; "
+            "assert read_q7_lab_custody_offline(Path(sys.argv[1]))['asset_count'] == 33"
+        ), str(root)], check=False, capture_output=True, text=True, timeout=15,
+    )
+    assert child.returncode == 0, child.stderr
+    assert sorted(x.name for x in (root / "lab-unsigned-bundle").iterdir()) == sorted(
+        [*bodies, ".lab-custody-receipt.json"]
+    )
+    assert not (root / "bundle").exists()
+
+
+@pytest.mark.parametrize("fault", [
+    "missing", "tampered", "symlink", "hardlink", "extra", "marker_deleted"
+])
+def test_lab_offline_readback_refuses_corruption_without_writing(tmp_path, fault):
+    root = _private(tmp_path)
+    pins, bodies = _realistic_unsigned_lab()
+    _stage_verified_bytes(root, pins, bodies, lab=True)
+    folder = root / "lab-unsigned-bundle"
+    selected = folder / "BOOTSTRAP.py"
+    if fault == "missing":
+        selected.unlink()
+    elif fault == "tampered":
+        selected.write_bytes(b"wrong-body")
+    elif fault == "symlink":
+        selected.unlink()
+        selected.symlink_to(tmp_path / "unrelated", target_is_directory=False)
+    elif fault == "hardlink":
+        os.link(selected, folder / "extra-hardlink")
+    elif fault == "extra":
+        (folder / "extra").write_text("extra")
+    else:
+        (folder / ".lab-custody-receipt.json").unlink()
+    before = sorted(x.name for x in folder.iterdir())
+    with pytest.raises(Q7CustodyUnqualified):
+        read_q7_lab_custody_offline(root)
+    assert sorted(x.name for x in folder.iterdir()) == before
+    assert not (root / "bundle").exists()
+
+
+def test_lab_offline_readback_refuses_wrong_perms_without_auto_fix(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _realistic_unsigned_lab()
+    _stage_verified_bytes(root, pins, bodies, lab=True)
+    target = root / "lab-unsigned-bundle/BOOTSTRAP.py"
+    target.chmod(0o644)
+    with pytest.raises(Q7CustodyUnqualified):
+        read_q7_lab_custody_offline(root)
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644

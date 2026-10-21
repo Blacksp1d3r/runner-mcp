@@ -1,3 +1,8 @@
+## 2026-10-21 — F30 owner-Black #739 no-install private Release source milestones
+
+- Black owner-observed `BLACK_AUTH=PASS` with existing original relay, not client ACK. Runner-MCP #782 v0.1.64 wheel RECORD validator merged; #783 v0.1.65 one-shot safe custody merged; #784 v0.1.66 signed owner-key Q7 release + 33/33 API/byte downloader merged CI-green as `0e56ec4897e0a6947cc28707750e22a1a87360de`; #739 remains OPEN. Next v0.1.67 source candidate standalone bounded Python zipapp packs these modules, no installed new Black Runner-MCP version required but signed publisher key authority and real Black owner-local bundle transfer NOT PROVEN. Owner must not execute untrusted source artifact or transfer keys via chat. `preflight` no network/mutation; `import` no install/worker.
+- Original serving central 0.1.38 source/wheel unknown, self_update_ready=false, A6 0/11, Fabric #942/#943 protected rollback and #1563 original requester terminal ACK pending. Never substitute release code/CI for live host proof.
+
 ## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT
 
 - [PR #781](https://github.com/Blacksp1d3r/runner-mcp/pull/781) v0.1.63 MERGED `8d0405490c73bc324a522e66e5e596649d169371` (exact tested head `a9b9df31aa8e79e29cf85183e75e6ba25dca1215`). Existing Ed25519 signed offline statement check now has a strictly six-role process-identity-pin wrapper; each role must match a **separately supplied independent** unique process-instance SHA-256 pin; 5-role/swapped/substituted/duplicate/stale-wheel/host/nonce all refuse. ALWAYS `active_build_provenance_verified=false`, source/digest NULL and no update authority.

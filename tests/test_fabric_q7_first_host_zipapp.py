@@ -32,7 +32,7 @@ def test_bounded_zipapp_build_is_deterministic_and_disconnected(tmp_path):
         env={**os.environ, "PYTHONDONTWRITEBYTECODE": "1"},
     )
     assert result.returncode == 0
-    assert "Usage: fabric-q7-first-host.pyz prepare-root | preflight | import" in result.stdout
+    assert "Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import" in result.stdout
     assert "NO_INSTALL" not in result.stdout
 
 
@@ -93,3 +93,30 @@ def test_prepare_root_requires_real_fixed_host_no_mutation_in_ci(tmp_path):
     assert result.returncode != 0
     assert result.stdout.strip().startswith("Q7_FIXED_PRIVATE_ROOT=WAIT")
     assert list(home.iterdir()) == []
+
+
+
+def test_signed_metadata_probe_cli_only_checks_metadata(monkeypatch, capsys):
+    source = run_path(str(_SOURCE / "scripts/fabric_q7_first_host_main.py"))
+    entry = source["main"]
+    objects = entry.__globals__
+    roster = b"synthetic-roster"
+    objects["_private_inputs"] = lambda: (roster, b"x" * 64, b"k" * 32, "a" * 64)
+    received = []
+    def safe_probe(**kwargs):
+        received.append(kwargs)
+        return {"state": "q7_release_metadata_exact_under_supplied_key"}
+    objects["probe_signed_pinned_q7_metadata"] = safe_probe
+    objects["import_signed_pinned_q7_once"] = lambda **kwargs: pytest.fail(
+        "metadata preflight must not download any assets"
+    )
+    monkeypatch.setattr("sys.stdin.isatty", lambda: True)
+    monkeypatch.setattr("sys.stderr.isatty", lambda: True)
+    monkeypatch.setattr("getpass.getpass", lambda message: "synthetic-token")
+    assert entry(["probe-release"]) == 0
+    captured = capsys.readouterr().out
+    assert "Q7_RELEASE_METADATA=PASS" in captured
+    assert "NO_ASSETS_NO_INSTALL_NO_ACK" in captured
+    assert len(received) == 1
+    assert received[0]["signed_roster"] == roster
+    assert "synthetic-token" not in captured

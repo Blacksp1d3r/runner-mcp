@@ -1,3 +1,3 @@
 """Runner MCP package."""
 
-__version__ = "0.1.68"
+__version__ = "0.1.69"

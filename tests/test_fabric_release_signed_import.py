@@ -13,6 +13,7 @@ from runner_mcp.fabric_release_signed_import import (
     _private_api_json,
     _signed_pins,
     import_signed_pinned_q7_once,
+    probe_signed_pinned_q7_metadata,
 )
 
 REV = "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
@@ -200,3 +201,74 @@ def test_invalid_key_digest_denied_in_separate_signature_preflight():
     del private
     with pytest.raises(SignedQ7ImportUnqualified):
         _signed_pins(raw, signature, key, "not-a-sha256")
+
+
+
+def test_probe_metadata_exact_roster_reuses_private_api_without_asset_fetch():
+    args, calls = _execute()
+    received = []
+
+    def api_reader(token, suffix):
+        received.append(suffix)
+        return args["api_reader"](token, suffix)
+
+    outcome = probe_signed_pinned_q7_metadata(
+        token=args["token"],
+        signed_roster=args["signed_roster"],
+        signature=args["signature"],
+        public_key=args["public_key"],
+        independently_trusted_key_sha256=args["independently_trusted_key_sha256"],
+        api_reader=api_reader,
+    )
+    assert outcome == {
+        "state": "q7_release_metadata_exact_under_supplied_key",
+        "asset_count": 33,
+        "download_performed": False,
+        "custody_performed": False,
+        "operator_signer_authority_attested": False,
+        "install_authorized": False,
+        "original_client_ack": False,
+    }
+    assert received == [
+        "releases/tags/" + TAG,
+        "git/ref/tags/" + TAG,
+    ]
+    assert calls == []
+
+
+@pytest.mark.parametrize("bad", ["signature", "digest"])
+def test_probe_wrong_signer_denied_without_api_or_asset_fetch(bad):
+    args, calls = _execute(wrong_signer=bad)
+    received = []
+    def spy(token, suffix):
+        received.append(suffix)
+        return args["api_reader"](token, suffix)
+    with pytest.raises(SignedQ7ImportUnqualified):
+        probe_signed_pinned_q7_metadata(
+            token=args["token"], signed_roster=args["signed_roster"],
+            signature=args["signature"], public_key=args["public_key"],
+            independently_trusted_key_sha256=args["independently_trusted_key_sha256"],
+            api_reader=spy,
+        )
+    assert received == []
+    assert calls == []
+
+
+def test_probe_changed_release_digest_refuses_exact_signed_roster():
+    args, calls = _execute()
+    original = args["api_reader"]
+    def tampered(token, suffix):
+        data = original(token, suffix)
+        if suffix.startswith("releases/"):
+            assets = [dict(x) for x in data["assets"]]
+            assets[-1]["digest"] = "sha256:" + "e" * 64
+            return {**data, "assets": assets}
+        return data
+    with pytest.raises(SignedQ7ImportUnqualified):
+        probe_signed_pinned_q7_metadata(
+            token=args["token"], signed_roster=args["signed_roster"],
+            signature=args["signature"], public_key=args["public_key"],
+            independently_trusted_key_sha256=args["independently_trusted_key_sha256"],
+            api_reader=tampered,
+        )
+    assert calls == []

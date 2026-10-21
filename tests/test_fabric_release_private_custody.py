@@ -210,7 +210,7 @@ def test_unsigned_lab_bytes_never_share_signed_final_bundle(tmp_path):
     assert (root / "bundle").is_dir()
     assert (root / "lab-unsigned-bundle").is_dir()
     assert sorted(p.name for p in (root / "bundle").iterdir()) == sorted(bodies)
-    assert sorted(p.name for p in (root / "lab-unsigned-bundle").iterdir()) == sorted(bodies)
+    assert sorted(p.name for p in (root / "lab-unsigned-bundle").iterdir()) == sorted([*bodies, ".lab-custody-receipt.json"])
     with pytest.raises(Q7CustodyUnqualified):
         _stage_verified_bytes(root, pins, bodies, lab=True)
     assert (root / "bundle").is_dir()

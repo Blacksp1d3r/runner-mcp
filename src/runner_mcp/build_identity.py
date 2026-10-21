@@ -134,6 +134,16 @@ def fail_closed_runtime_provenance(
             # while the loaded wheel/source and current process are unknown.
             # Never forward a stale True into release/fleet admission.
             "self_update_ready": False,
+            # This authenticated reply observes only the currently connected
+            # serving process. Equal distribution versions across hosts (or
+            # a CLI on the same host) cannot attest route, wheel or role identity.
+            "reply_identity_scope": "this_connected_process_only",
+            "reply_source_host_verified": False,
+            "loaded_module_wheel_identity_verified": False,
+            "six_role_process_roster_verified": False,
+            "loaded_installed_versions_equal": (
+                loaded_version == installed_distribution_version
+            ),
         }
     )
     return result

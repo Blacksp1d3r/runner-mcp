@@ -307,3 +307,44 @@ def test_unverified_active_generation_never_inherits_manager_update_ready(
     assert observed["self_update_history_source_commit"] == "c" * 40
     assert observed["runtime_activation_aligned"] is None
     assert manager_state["self_update_ready"] == reported_ready
+
+
+@pytest.mark.parametrize(
+    ("loaded_version", "installed_version", "equal"),
+    [
+        ("0.1.38", "0.1.38", True),
+        ("0.1.38", "0.1.3", False),
+        ("0.1.38", "0.1.75", False),
+    ],
+)
+def test_669_runtime_answer_never_infers_host_or_wheel_identity_from_versions(
+    loaded_version: str, installed_version: str, equal: bool
+) -> None:
+    # A separately installed CLI, or a second host serving the same version,
+    # must not be interpreted as proof of the responder's wheel or other roles.
+    manager = {
+        "version": "99.99.99",
+        "reply_identity_scope": "all_hosts_verified",
+        "reply_source_host_verified": True,
+        "loaded_module_wheel_identity_verified": True,
+        "six_role_process_roster_verified": True,
+        "loaded_installed_versions_equal": not equal,
+        "self_update_ready": True,
+    }
+    observed = fail_closed_runtime_provenance(
+        manager,
+        loaded_version=loaded_version,
+        installed_distribution_version=installed_version,
+    )
+    assert observed["version"] == loaded_version
+    assert observed["installed_distribution_version"] == installed_version
+    assert observed["loaded_installed_versions_equal"] is equal
+    assert observed["reply_identity_scope"] == "this_connected_process_only"
+    assert observed["reply_source_host_verified"] is False
+    assert observed["loaded_module_wheel_identity_verified"] is False
+    assert observed["six_role_process_roster_verified"] is False
+    assert observed["active_build_provenance_verified"] is False
+    assert observed["active_artifact_revision"] is None
+    assert observed["active_artifact_digest"] is None
+    assert observed["self_update_ready"] is False
+    assert manager["reply_source_host_verified"] is True

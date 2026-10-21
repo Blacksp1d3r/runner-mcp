@@ -150,7 +150,9 @@ def save_lab_login(token: str) -> None:
     raw = _verify_token(token)
     fd = _directory_fd(create=True)
     try:
-        if _existing(fd) is not None:
+        pair = _existing(fd)
+        if pair is not None:
+            os.close(pair[0])
             _deny()
         target = os.open(
             _TOKEN_NAME, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW,

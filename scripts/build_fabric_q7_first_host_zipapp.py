@@ -66,10 +66,9 @@ def build_q7_first_host_zipapp(*, source_root: Path, destination: Path) -> str:
                         package.writestr(record, file.read_bytes())
                 target.flush()
                 os.fsync(target.fileno())
-        except Exception:
-            # Keep incomplete output for forensic investigation; never retry
-            # over it, clean automatically or claim the artifact qualified.
-            raise
+        except Exception as exc:
+            # Preserve any partial output as a fail-closed forensic receipt.
+            raise ZipappBuildRefused("zipapp_build_unqualified") from exc
     except OSError as exc:
         raise ZipappBuildRefused("zipapp_build_unqualified") from exc
     return hashlib.sha256(destination.read_bytes()).hexdigest()

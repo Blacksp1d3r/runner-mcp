@@ -19,6 +19,8 @@ from runner_mcp.fabric_release_private_custody import _fixed_root, _private_root
 from runner_mcp.fabric_release_signed_import import (
     _signed_pins,
     import_signed_pinned_q7_once,
+    probe_q7_disposable_lab_metadata,
+    import_q7_disposable_lab_once,
     probe_signed_pinned_q7_metadata,
 )
 
@@ -95,13 +97,21 @@ def _private_inputs() -> tuple[bytes, bytes, bytes, str]:
     return values[_ROSTER], values[_SIGNATURE], public_key, fingerprint
 
 
+def _lab_owner_private_root() -> None:
+    """A one-host, no-key test. Refuse root/wrong host/unsafe storage."""
+    if socket.gethostname().split(".")[0] != "black" or os.geteuid() == 0:
+        _deny()
+    fd = _private_root_fd(_fixed_root())
+    os.close(fd)
+
+
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args == ["--help"]:
-        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import")
+        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import")
         print("Fixed Black host, exact signed Q7 release, no install or service activation.")
         return 0
-    if args not in (["prepare-root"], ["preflight"], ["probe-release"], ["import"]):
+    if args not in (["prepare-root"], ["preflight"], ["probe-release"], ["import"], ["lab-preflight"], ["lab-probe-release"], ["lab-import"]):
         print("WAIT_UNSUPPORTED_ACTION")
         return 2
     if sys.version_info[:2] != (3, 12):
@@ -119,11 +129,19 @@ def main(argv: list[str] | None = None) -> int:
         print("Q7_FIXED_PRIVATE_ROOT=PASS")
         print("NO_SIGNER_AUTHORITY_NO_DOWNLOAD_NO_INSTALL")
         return 0
+    lab = args in (["lab-preflight"], ["lab-probe-release"], ["lab-import"])
     try:
-        roster, signature, public_key, fingerprint = _private_inputs()
+        if lab:
+            _lab_owner_private_root()
+        else:
+            roster, signature, public_key, fingerprint = _private_inputs()
     except (ValueError, TypeError, OSError):
-        print("WAIT_PRIVATE_SIGNED_ROSTER_OR_ROOT")
+        print("WAIT_PRIVATE_LAB_ROOT_OR_SIGNED_ROSTER")
         return 1
+    if args == ["lab-preflight"]:
+        print("Q7_KEYLESS_DISPOSABLE_LAB=PASS")
+        print("UNSIGNED_SOURCE_NO_INSTALL_NO_WORKER")
+        return 0
     if args == ["preflight"]:
         print("PINNED_Q7_OFFLINE_INPUTS=PASS")
         print("OPERATOR_SIGNER_AUTHORITY=NOT_ATTESTED")
@@ -135,6 +153,20 @@ def main(argv: list[str] | None = None) -> int:
     try:
         token = getpass.getpass("One-time scoped GitHub Contents:read token (hidden): ")
         try:
+            if args == ["lab-probe-release"]:
+                result = probe_q7_disposable_lab_metadata(token=token)
+                if result.get("state") != "q7_lab_metadata_only_untrusted_publisher":
+                    _deny()
+                print("Q7_LAB_METADATA=PASS_UNSIGNED")
+                print("NO_ASSETS_NO_INSTALL_NO_ACK")
+                return 0
+            if args == ["lab-import"]:
+                result = import_q7_disposable_lab_once(token=token)
+                if result.get("state") != "q7_lab_bytes_custodied_only":
+                    _deny()
+                print("Q7_LAB_PRIVATE_CUSTODY=PASS_UNSIGNED_SOURCE_BYTES_ONLY")
+                print("NO_INSTALL_NO_WORKER_NO_ACK")
+                return 0
             if args == ["probe-release"]:
                 result = probe_signed_pinned_q7_metadata(
                     token=token, signed_roster=roster, signature=signature,

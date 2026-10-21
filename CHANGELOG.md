@@ -1,3 +1,8 @@
+## 0.1.72 (#739 Q7 keyless lab offline readback, SOURCE ONLY)
+
+- Extend the SAME fixed standalone Black first-host zipapp with `lab-readback`, an entirely offline/credential-free, read-only verifier for the existing isolated `lab-unsigned-bundle`. At `lab-import`, commit an owner-private immutable unsigned receipt with all 33 actual byte sizes/SHA256 hashes in the same fsynced staging directory before atomic no-replace promotion. `lab-readback` reopens the fixed 0700 lab leaf and 0600/one-link receipt/files through no-follow directory handles, bounds content/count, rehashes all 33 assets without a network call or mutation, and returns LOCAL_STORAGE_ONLY; a second Python process test proves persistence across process boundaries. Tampered/missing/extra/symlink/hardlink/wrong-permission cases fail closed without repair. The existing signed `bundle` path and custody schema are unchanged.
+- Local receipt is mutable by its owner and **not** an independently signed publisher witness, physically off-target A6 journal test, offline target outage proof or authorization to install/dispatch. Actual Black host lab testing/worker/client ACK still WAIT.
+
 ## 0.1.71 (#739 isolate unsigned lab custody from signed production bundle)
 
 - Preserve existing fixed Q7 import and keyed producer, but give keyless disposable-lab bytes a separate owner-private `lab-unsigned-bundle` final leaf and `.q7-lab-unsigned-inflight` stage, preventing untrusted test contents from being mistaken for or blocking `bundle` signed custody. Reuse all existing SHA-256, full-bundle, no-follow, no-overwrite, flock and fsync checks. No install or dispatch. Signed route unchanged, same fixed root, no arbitrary path/second updater.

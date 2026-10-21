@@ -166,16 +166,18 @@ def _stage_verified_bytes(
         else:
             _promote_noreplace(root_fd)
         os.fsync(root_fd)
-        return {
+        receipt = {
             "state": "owner_private_bytes_custodied",
             "asset_count": 33,
             "content_fingerprint": digest.hexdigest(),
             "independent_signer_verified": False,
-            "unsigned_lab_custody": lab,
             "host_qualified": False,
             "install_authorized": False,
             "original_client_ack": False,
         }
+        if lab:
+            receipt["unsigned_lab_custody"] = True
+        return receipt
     except (OSError, ValueError, TypeError):
         # Do NOT clean a partial stage: preserve forensic evidence, fail closed,
         # never overwrite a preexisting prior generation or auto-retry.

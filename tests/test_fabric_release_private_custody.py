@@ -203,7 +203,7 @@ def test_unsigned_lab_bytes_never_share_signed_final_bundle(tmp_path):
     assert not (root / "bundle").exists()
     assert not (root / ".q7-lab-unsigned-inflight").exists()
     signed_receipt = _stage_verified_bytes(root, pins, bodies)
-    assert signed_receipt["unsigned_lab_custody"] is False
+    assert "unsigned_lab_custody" not in signed_receipt
     assert (root / "bundle").is_dir()
     assert (root / "lab-unsigned-bundle").is_dir()
     assert sorted(p.name for p in (root / "bundle").iterdir()) == sorted(bodies)

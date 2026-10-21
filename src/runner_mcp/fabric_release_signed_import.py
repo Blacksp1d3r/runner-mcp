@@ -7,21 +7,29 @@ freshness, independent custody, serving identity or install permission.
 """
 from __future__ import annotations
 
+from collections.abc import Callable
+
 import hashlib
 import hmac
 import json
 import re
 import urllib.error
 import urllib.request
-from typing import Any, Callable
+from typing import Any
 
 from cryptography.exceptions import InvalidSignature
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PublicKey
 
 from .fabric_release_asset_bytes import fetch_pinned_asset_bytes
-from .fabric_release_assets import ReleaseAdmission, inspect_exact_release
+from .fabric_release_assets import (
+    FabricReleaseAdmissionError,
+    ReleaseAdmission,
+    inspect_exact_release,
+)
 from .fabric_release_independent_roster import (
-    PinnedReleaseAsset, PinnedReleaseRoster, compare_exact_pinned_q7_roster,
+    PinnedReleaseAsset,
+    PinnedReleaseRoster,
+    compare_exact_pinned_q7_roster,
 )
 from .fabric_release_private_custody import stage_pinned_q7_bundle_once
 
@@ -184,7 +192,7 @@ def read_pinned_q7_release(
     try:
         observed = inspect_exact_release(_Q7_COMMIT, release, tag)
         compare_exact_pinned_q7_roster(observed, pins)
-    except (ValueError, TypeError, KeyError):
+    except (FabricReleaseAdmissionError, ValueError, TypeError, KeyError):
         _deny()
     if observed.release_id != _Q7_RELEASE_ID:
         _deny()

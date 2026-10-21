@@ -28,7 +28,6 @@ from .fabric_release_assets import (
 from .fabric_release_independent_roster import (
     PinnedReleaseAsset,
     PinnedReleaseRoster,
-    PinnedReleaseAsset,
     compare_exact_pinned_q7_roster,
 )
 from .fabric_release_private_custody import stage_pinned_q7_bundle_once

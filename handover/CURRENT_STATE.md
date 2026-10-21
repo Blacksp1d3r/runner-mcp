@@ -1,3 +1,7 @@
+## 2026-10-21 — #739 no-installed-updater zipapp source and root gap
+
+- v0.1.67 first-host Q7 signed importer zipapp PR #785 MERGED exact-head full CI green, source-only, no Black command performed. The zipapp requires a preexisting correct-owner 0700 `~/.local/state/runner-fabric/control-plane-update` root, plus independent publisher Ed25519 signer authority/trusted key+signed 33-roster file, all absent/unproven physically. v0.1.68 source candidate adds **only** fixed-root owner-local create/adopt `prepare-root` subcommand, no arbitrary filesystem privilege and no relation to independent off-target A6 WDC HDD journal. Physical asset import / original-client terminal ACK / Fabric install still WAIT, central Runner-MCP 0.1.38 unchanged.
+
 ## 2026-10-21 — F30 Black signed Q7 bundle import source stage (no host installer)
 
 - Operator-proven Black stage 0.1.30+existing unique HTTPS relay auth `BLACK_AUTH=PASS`; AIfordable relay reused with original primary and lab subjects, no terminal ACK. #739 source versions 0.1.64/0.1.65/0.1.66 merged via #782/#783/#784 with exact-head full CI. Candidate v0.1.67 standalone zipapp without newer installed Runner-MCP source, only fixed private Black signed roster key+sha 0600; physical signer authority and same-host release asset custody remain NOT PROVEN. Original runtime central 0.1.38/unknown source+wheel/self_update_ready=false unchanged, A6 0/11, no production install. #739/ #1563 owner-private qualification gates remain.

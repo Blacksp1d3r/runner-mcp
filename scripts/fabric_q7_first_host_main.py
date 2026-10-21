@@ -14,6 +14,7 @@ import stat
 import sys
 from pathlib import Path
 
+from runner_mcp.fabric_q7_fixed_root_prepare import prepare_black_q7_private_root
 from runner_mcp.fabric_release_private_custody import _fixed_root, _private_root_fd
 from runner_mcp.fabric_release_signed_import import (
     _signed_pins,
@@ -96,16 +97,27 @@ def _private_inputs() -> tuple[bytes, bytes, bytes, str]:
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args == ["--help"]:
-        print("Usage: fabric-q7-first-host.pyz preflight | import")
+        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | import")
         print("Fixed Black host, exact signed Q7 release, no install or service activation.")
         return 0
-    if args not in (["preflight"], ["import"]):
+    if args not in (["prepare-root"], ["preflight"], ["import"]):
         print("WAIT_UNSUPPORTED_ACTION")
         return 2
     if sys.version_info[:2] != (3, 12):
         print("WAIT_PYTHON")
         return 1
     os.umask(0o077)
+    if args == ["prepare-root"]:
+        try:
+            state = prepare_black_q7_private_root()
+            if state.get("state") not in ("fixed_root_prepared", "already_private"):
+                _deny()
+        except (ValueError, TypeError, OSError):
+            print("Q7_FIXED_PRIVATE_ROOT=WAIT")
+            return 1
+        print("Q7_FIXED_PRIVATE_ROOT=PASS")
+        print("NO_SIGNER_AUTHORITY_NO_DOWNLOAD_NO_INSTALL")
+        return 0
     try:
         roster, signature, public_key, fingerprint = _private_inputs()
     except (ValueError, TypeError, OSError):

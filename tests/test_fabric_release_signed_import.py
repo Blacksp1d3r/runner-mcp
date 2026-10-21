@@ -12,7 +12,9 @@ from runner_mcp.fabric_release_signed_import import (
     SignedQ7ImportUnqualified,
     _private_api_json,
     _signed_pins,
+    import_q7_disposable_lab_once,
     import_signed_pinned_q7_once,
+    probe_q7_disposable_lab_metadata,
     probe_signed_pinned_q7_metadata,
 )
 
@@ -272,3 +274,76 @@ def test_probe_changed_release_digest_refuses_exact_signed_roster():
             api_reader=tampered,
         )
     assert calls == []
+
+
+def test_disposable_lab_probe_no_key_no_asset_fetch_no_authority():
+    args, calls = _execute()
+    result = probe_q7_disposable_lab_metadata(
+        token=args["token"], api_reader=args["api_reader"],
+    )
+    assert result == {
+        "state": "q7_lab_metadata_only_untrusted_publisher",
+        "asset_count": 33, "publisher_authenticated": False,
+        "download_performed": False, "install_authorized": False,
+        "original_client_ack": False,
+    }
+    assert calls == []
+
+
+def test_disposable_lab_keyless_import_reuses_all_33_hash_and_private_stage():
+    args, calls = _execute()
+    result = import_q7_disposable_lab_once(
+        token=args["token"], api_reader=args["api_reader"],
+        asset_reader=args["asset_reader"], stage=args["stage"],
+    )
+    assert result == {
+        "state": "q7_lab_bytes_custodied_only",
+        "asset_count": 33, "publisher_authenticated": False,
+        "install_authorized": False, "original_client_ack": False,
+    }
+    assert len([call for call in calls if call[0] == "asset"]) == 33
+    assert calls.count(("stage", 33)) == 1
+
+
+def test_disposable_lab_tampered_asset_denied_without_storage():
+    args, calls = _execute(wrong_asset=FILES[0])
+    with pytest.raises(SignedQ7ImportUnqualified):
+        import_q7_disposable_lab_once(
+            token=args["token"], api_reader=args["api_reader"],
+            asset_reader=args["asset_reader"], stage=args["stage"],
+        )
+    assert not any(call[0] == "stage" for call in calls)
+
+
+def test_disposable_lab_wrong_fixed_release_denied_before_asset_fetch():
+    args, calls = _execute()
+    original = args["api_reader"]
+    def mismatched_release(token, suffix):
+        data = original(token, suffix)
+        if suffix.startswith("releases/"):
+            return {**data, "id": 99999999}
+        return data
+    with pytest.raises(SignedQ7ImportUnqualified):
+        import_q7_disposable_lab_once(
+            token=args["token"], api_reader=mismatched_release,
+            asset_reader=args["asset_reader"], stage=args["stage"],
+        )
+    assert calls == []
+
+
+def test_disposable_lab_rejects_modified_metadata_digest_by_byte_hash():
+    args, calls = _execute()
+    original = args["api_reader"]
+    def changed_digest(token, suffix):
+        data = original(token, suffix)
+        if suffix.startswith("releases/"):
+            assets = [dict(x) for x in data["assets"]]
+            assets[0]["digest"] = "sha256:" + "f" * 64
+            return {**data, "assets": assets}
+        return data
+    with pytest.raises(SignedQ7ImportUnqualified):
+        import_q7_disposable_lab_once(
+            token=args["token"], api_reader=changed_digest,
+            asset_reader=args["asset_reader"], stage=args["stage"],
+        )
+    assert not any(call[0] == "stage" for call in calls)

@@ -1,3 +1,9 @@
+## 2026-10-21 — v0.1.77 local epoch response integrity (source candidate)
+
+- After #794 v0.1.75 and #796 v0.1.76 MERGED, the existing `runtime_status` aggregator still allowed a status manager to overwrite `serving_instance_epoch` and `serving_instance_epoch_authenticated`. This can produce misleading process correlation even if the loaded distribution version is correct.
+- v0.1.77 source candidate uses only the actual current `build_mcp` closure epoch as trusted local input to the existing `fail_closed_runtime_provenance` response finalizer; manager values, including optimistic `authenticated=true`, cannot override it. Tests include mismatched/stale status managers and malformed epochs; no invented host identity, wheel attestation, or role authority.
+- Parent #669 live current wheel SHA / source / six-role original-client provenance remain WAIT. Central v0.1.38 is not upgraded; A6 0/11, Fabric A7/A6 and ACK prerequisites remain separate.
+
 ## 2026-10-21 — serving instance epoch candidate v0.1.76 (#669 substep)
 
 - Exact prior source 0.1.74 already merged: `runner-mcp agent-bus preflight`. Central 0.1.38 and lab 0.1.38 still serving separately; lab terminal CLI 0.1.3 is not the current lab service. Runner-Fabric #1694/#1695 merged pure source read-only fleet origin and sequential update policy. Do not repeat.

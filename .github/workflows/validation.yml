@@ -184,6 +184,29 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      # This is a separate *unsigned disposable lab* transport artifact,
+      # never the normal trusted candidate wheel/production update bundle.
+      - name: Build fixed Black Q7 lab transfer zipapp
+        if: steps.candidate.outputs.release == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          python scripts/build_fabric_q7_first_host_zipapp.py build
+          mkdir -p dist/q7-lab
+          cp dist/fabric-q7-first-host-import.pyz dist/q7-lab/
+          (cd dist/q7-lab && sha256sum fabric-q7-first-host-import.pyz > SHA256SUMS)
+          printf '%s\n' "$GITHUB_SHA" > dist/q7-lab/SOURCE_COMMIT
+          printf '%s\n' 'UNSIGNED_KEYLESS_LAB_ONLY - NO_INSTALL_NO_AGENT_ACK' > dist/q7-lab/NOT_FOR_PRODUCTION
+
+      - name: Preserve fixed Black Q7 lab transfer artifact
+        if: steps.candidate.outputs.release == 'true'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: runner-mcp-black-q7-keyless-lab-${{ github.sha }}
+          path: dist/q7-lab/
+          if-no-files-found: error
+          retention-days: 7
+
       - name: Record unapproved PR candidate provenance
         if: github.event_name == 'pull_request'
         shell: bash

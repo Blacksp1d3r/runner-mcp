@@ -1,3 +1,8 @@
+## 0.1.71 (#739 isolate unsigned lab custody from signed production bundle)
+
+- Preserve existing fixed Q7 import and keyed producer, but give keyless disposable-lab bytes a separate owner-private `lab-unsigned-bundle` final leaf and `.q7-lab-unsigned-inflight` stage, preventing untrusted test contents from being mistaken for or blocking `bundle` signed custody. Reuse all existing SHA-256, full-bundle, no-follow, no-overwrite, flock and fsync checks. No install or dispatch. Signed route unchanged, same fixed root, no arbitrary path/second updater.
+- Tests verify parallel lab and normal destinations, no source overwrite, partial lab failure cannot erase signed custody and unsigned receipt cannot be promoted to verified publisher identity.
+
 ## 0.1.70 (SOURCE ONLY: opt-in disposable Q7 keyless lab route)
 
 - Owner-requested temporary test route on the fixed Black lab only: new `lab-preflight`, `lab-probe-release`, `lab-import` in the existing standalone importer. No Ed25519 publisher key needed for this explicitly UNTRUSTED-PUBLISHER lab path; it still pins exact GitHub repository, Q7 commit/tag/release ID, validates the 33-asset roster, verifies SHA-256 of every downloaded byte, invokes the existing wheelhouse/bundle/private no-overwrite custody, and takes a hidden read-only GitHub token. It does NOT install or activate a worker, change any serving Runner-MCP role or attest original-client result/ACK.

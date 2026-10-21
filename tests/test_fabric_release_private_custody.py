@@ -4,10 +4,12 @@ from __future__ import annotations
 import hashlib
 import os
 import stat
+from dataclasses import replace
 from pathlib import Path
 
 import pytest
 
+from runner_mcp.fabric_release_assets import ReleaseAdmission
 from runner_mcp.fabric_release_independent_roster import PinnedReleaseAsset, PinnedReleaseRoster
 from runner_mcp.fabric_release_private_custody import (
     Q7CustodyUnqualified,
@@ -168,3 +170,25 @@ def test_racing_destination_cannot_replace_existing_files(tmp_path, monkeypatch)
         _stage_verified_bytes(root, pins, bodies)
     assert (root / "bundle/prior").read_bytes() == b"preserve"
     assert (root / ".q7-bundle-inflight").is_dir()
+
+
+@pytest.mark.parametrize("invalid_commit", ["a" * 40, "b" * 40])
+def test_public_custody_rejects_wrong_source_pin_before_mutation(
+    tmp_path, monkeypatch, invalid_commit
+):
+    root = _private(tmp_path)
+    monkeypatch.setattr(
+        "runner_mcp.fabric_release_private_custody._fixed_root", lambda: root
+    )
+    pins, bodies = _synthetic()
+    candidate = ReleaseAdmission(
+        invalid_commit, "fabric-q7-bundle-" + invalid_commit,
+        415955374, (), "runner_fabric-x.whl"
+    )
+    with pytest.raises(Q7CustodyUnqualified):
+        stage_pinned_q7_bundle_once(candidate, pins, bodies)
+    with pytest.raises(Q7CustodyUnqualified):
+        stage_pinned_q7_bundle_once(
+            replace(candidate, commit=COMMIT), replace(pins, release_id=999), bodies
+        )
+    assert list(root.iterdir()) == []

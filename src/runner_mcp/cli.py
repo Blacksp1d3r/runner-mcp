@@ -14,6 +14,7 @@ import uvicorn
 
 from .agent_bus_worker import (
     agent_bus_convergence_status,
+    agent_bus_worker_preflight,
     run_agent_bus_worker_process,
 )
 from .approval_manager import ApprovalError, ApprovalManager
@@ -1611,6 +1612,14 @@ def cmd_agent_bus(args: argparse.Namespace) -> int:
             print("configured" if result["configured"] else "not configured")
         return 0
 
+    if args.agent_bus_action == "preflight":
+        result = agent_bus_worker_preflight(config_dir)
+        print(
+            f"state={result['state']} reason_code={result['reason_code']} "
+            "original_client_ack_proven=false"
+        )
+        return 0 if result["state"] == "ready" else 2
+
     if args.agent_bus_action == "convergence":
         result = agent_bus_convergence_status(config_dir)
         print(
@@ -2698,6 +2707,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show whether the private Agent Bus relay is configured.",
     )
     agent_bus_status.set_defaults(func=cmd_agent_bus)
+    agent_bus_preflight = agent_bus_sub.add_parser(
+        "preflight",
+        help="Check fixed local Agent Bus worker prerequisites without starting services.",
+    )
+    agent_bus_preflight.set_defaults(func=cmd_agent_bus)
     agent_bus_convergence = agent_bus_sub.add_parser(
         "convergence",
         help="Show bounded durable-result convergence without private result details.",

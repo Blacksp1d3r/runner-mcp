@@ -1,3 +1,9 @@
+## 0.1.74 (F30 local Agent Bus worker preflight, source only)
+
+- Added `runner-mcp agent-bus preflight` for safe **read-only** static local worker prerequisites on a configured rootless host. Reuses existing strict private configuration, relay/subject/credential, loopback endpoint and fixed Fabric launcher validators. Missing rootless launcher reports `wait/fabric_launcher_unavailable` rather than a false online claim; incomplete, unsafe or malformed local prerequisites fail closed.
+- No relay HTTP, worker start, credential generation, network request, durable state creation, disk mutation, service update, original-client ACK or new remote-control path. Output is limited to `state`, fixed `reason_code` and explicit `original_client_ack_proven=false`. Tests cover configured/missing/partial/unsafe/invalid cases, no secret echo and no side effects.
+- Physical first-host `black` Q7 33/33 custody and isolated physical Fabric install already verified separately under Fabric #1563; this **source-only** CLI change is not deployed to the older 0.1.30 Black stage and does not qualify a worker or authorize sending Claude/Qwen jobs.
+
 ## 0.1.73 (#739 Black Q7 one-time private lab login, SOURCE ONLY)
 
 - Existing standalone Black Q7 source zipapp adds **explicit** `lab-login` after privately verifying the fixed prerelease/tag metadata, `lab-logout` (no token/network), and one-hour `lab-probe-release` / `lab-import` credential reuse. Login saves a 0600 owner-only scoped short-lived credential under the existing Linux `/run/user/UID` runtime tmpfs (0700 dir), never in home, source, git, process args, persistent env, Github issue or Actions artifact. Missing/expired session falls back to the existing hidden `getpass`; importer automatically drops the cached credential when all 33 original verified bytes have been privately custodied. No fresh token is needed for subsequent `lab-readback` in any case.

@@ -448,7 +448,9 @@ def test_read_only_preflight_invalid_relay_and_loopback(tmp_path: Path) -> None:
         "relay_configuration_invalid"
     )
 
-    other = private_config(tmp_path / "second")
+    second = tmp_path / "second"
+    second.mkdir()
+    other = private_config(second)
     v = relay_values()
     v["RUNNER_MCP_AGENT_BUS_LOCAL_ENDPOINT"] = "http://untrusted.invalid/mcp"
     append_env(other.env_file, v)

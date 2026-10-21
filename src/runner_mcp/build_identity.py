@@ -9,6 +9,7 @@ from pathlib import Path
 _COMPONENT_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
+_EPOCH_RE = re.compile(r"^[0-9a-f]{32}$")
 _MAX_TEXT = 128
 
 
@@ -106,6 +107,7 @@ def fail_closed_runtime_provenance(
     status: dict[str, object], *,
     loaded_version: str,
     installed_distribution_version: str,
+    serving_instance_epoch: str | None = None,
 ) -> dict[str, object]:
     """Separate historical self-update markers from active build identity.
 
@@ -116,6 +118,11 @@ def fail_closed_runtime_provenance(
     """
     _bounded_text(loaded_version, "loaded_version")
     _bounded_text(installed_distribution_version, "installed_distribution_version")
+    if serving_instance_epoch is not None and (
+        type(serving_instance_epoch) is not str
+        or _EPOCH_RE.fullmatch(serving_instance_epoch) is None
+    ):
+        raise BuildIdentityError("serving instance epoch is invalid")
     result = dict(status)
     for field in ("last_installed_commit", "source_commit", "active_runtime_revision"):
         result[f"self_update_history_{field}"] = result.pop(field, None)
@@ -144,6 +151,12 @@ def fail_closed_runtime_provenance(
             "loaded_installed_versions_equal": (
                 loaded_version == installed_distribution_version
             ),
+            # A manager may return stale/injected epoch fields after status
+            # aggregation. Only this MCP server's in-memory epoch is allowed
+            # to survive in the authenticated local response, never as proof
+            # of the authenticated host or another process.
+            "serving_instance_epoch": serving_instance_epoch,
+            "serving_instance_epoch_authenticated": False,
         }
     )
     return result

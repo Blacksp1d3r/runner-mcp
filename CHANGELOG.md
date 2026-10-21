@@ -1,3 +1,9 @@
+## 0.1.77 (#669 actual serving-instance epoch must survive manager status merges)
+
+- Correct a false-attribution possibility introduced when existing status managers are merged into `runtime_status`: they could overwrite the local `serving_instance_epoch` or set `serving_instance_epoch_authenticated=true`. The existing central provenance finalizer now takes the current MCP server's in-memory epoch separately and always replaces any manager-supplied epoch or trust flag.
+- Preserve backward-compatible unit call sites by emitting a null epoch when no local instance epoch was independently supplied. Reject malformed trusted-local epoch input. Synthetic tests cover swapped/stale/malformed manager values, explicit fake authentication, and unchanged imported-version/wheel fail-closed behavior.
+- This remains a **local correlation hint only** (never verified host/route, six actual process roles, wheel SHA, source revision, original-client ACK or production authorization). No new MCP tool, relay, updater, installer, host process/service or credential work.
+
 ## 0.1.76 (#669 local serving-instance epoch, source only)
 
 - Added one per-MCP-server **opaque serving instance epoch** to the existing `runtime_status` and `serving_process_observation_preflight` output, stable for one live server instance but different across process forks and restarts. The two reads can now be correlated without confusing an interactive PATH-selected `runner-mcp` executable with the actual serving MCP process. A second service using the same package version receives its own epoch.

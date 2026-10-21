@@ -348,3 +348,57 @@ def test_669_runtime_answer_never_infers_host_or_wheel_identity_from_versions(
     assert observed["active_artifact_digest"] is None
     assert observed["self_update_ready"] is False
     assert manager["reply_source_host_verified"] is True
+
+
+@pytest.mark.parametrize(
+    "manager_epoch",
+    ["f" * 32, None, True, "invalid", {"foreign": "host"}],
+)
+def test_669_serving_epoch_cannot_be_overwritten_by_status_managers(
+    manager_epoch: object,
+) -> None:
+    # The current process binds the value, not a merged/historical status
+    # manager or a separate same-version Runner-MCP instance.
+    forged_status = {
+        "serving_instance_epoch": manager_epoch,
+        "serving_instance_epoch_authenticated": True,
+        "version": "0.1.3",
+        "active_artifact_digest": "f" * 64,
+        "self_update_ready": True,
+    }
+    response = fail_closed_runtime_provenance(
+        forged_status,
+        loaded_version="0.1.77",
+        installed_distribution_version="0.1.77",
+        serving_instance_epoch="a" * 32,
+    )
+    assert response["serving_instance_epoch"] == "a" * 32
+    assert response["serving_instance_epoch_authenticated"] is False
+    assert response["reply_identity_scope"] == "this_connected_process_only"
+    assert response["active_artifact_digest"] is None
+    assert response["self_update_ready"] is False
+    assert forged_status["serving_instance_epoch"] == manager_epoch
+    assert forged_status["serving_instance_epoch_authenticated"] is True
+
+
+@pytest.mark.parametrize("bad_epoch", ["short", "A" * 32, "", "0" * 33, 1, True, b"a" * 32])
+def test_669_invalid_caller_serving_epochs_are_rejected(
+    bad_epoch: object,
+) -> None:
+    with pytest.raises(BuildIdentityError, match="serving instance epoch"):
+        fail_closed_runtime_provenance(
+            {},
+            loaded_version="0.1.77",
+            installed_distribution_version="0.1.77",
+            serving_instance_epoch=bad_epoch,  # type: ignore[arg-type]
+        )
+
+
+def test_669_legacy_call_with_no_trusted_epoch_clears_manager_claims() -> None:
+    response = fail_closed_runtime_provenance(
+        {"serving_instance_epoch": "f" * 32, "serving_instance_epoch_authenticated": True},
+        loaded_version="0.1.38",
+        installed_distribution_version="0.1.38",
+    )
+    assert response["serving_instance_epoch"] is None
+    assert response["serving_instance_epoch_authenticated"] is False

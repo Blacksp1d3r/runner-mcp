@@ -859,6 +859,7 @@ def build_mcp(
             result,
             loaded_version=_loaded_package_version,
             installed_distribution_version=package,
+            serving_instance_epoch=serving_epoch.value(),
         )
 
     @mcp.tool()

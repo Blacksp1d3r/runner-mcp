@@ -1,3 +1,9 @@
+## 2026-10-21 — v0.1.78 original wheel candidate custody writer (new code, not live)
+
+- Previous source-only read-side `offline_artifact_receipt_preflight` is merged. Follow-up complements it with bounded original `*.whl` candidate receipt capture: SHA-256 of the retained original zip wheel and every `runner_mcp/` Python entry, checked against installed module content; 0600 atomic-create-once owner-private file in existing 0700 generation directory, no caller-specific dynamic shell, no new runner/relay/updater.
+- Exact wheel is still an **independently untrusted input** at this point. Claimed source revision is NOT verified against CI issuer, currently serving interpreter, or original-client Agent Bus receipt; live source revision/digest must remain NULL. Continue #669 active loaded-module/wheel witness and Fabric #924 original-client route; preserve 0.1.38 roles, no restart/deploy.
+- Isolated positive and tamper/rollback safety tests required via ordinary CI; PR #pending.
+
 # #669 offline receipt — state
 
 - Owner: ChatGPT bounded source child.

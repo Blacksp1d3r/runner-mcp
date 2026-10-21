@@ -1,7 +1,7 @@
-## 2026-10-21 — v0.1.77 local epoch response integrity (source candidate)
+## 2026-10-21 — v0.1.77 local epoch response integrity MERGED, LIVE WAIT
 
 - After #794 v0.1.75 and #796 v0.1.76 MERGED, the existing `runtime_status` aggregator still allowed a status manager to overwrite `serving_instance_epoch` and `serving_instance_epoch_authenticated`. This can produce misleading process correlation even if the loaded distribution version is correct.
-- v0.1.77 source candidate uses only the actual current `build_mcp` closure epoch as trusted local input to the existing `fail_closed_runtime_provenance` response finalizer; manager values, including optimistic `authenticated=true`, cannot override it. Tests include mismatched/stale status managers and malformed epochs; no invented host identity, wheel attestation, or role authority.
+- v0.1.77 merged source uses only the actual current `build_mcp` closure epoch as trusted local input to the existing `fail_closed_runtime_provenance` response finalizer; manager values, including optimistic `authenticated=true`, cannot override it. Tests include mismatched/stale status managers and malformed epochs; no invented host identity, wheel attestation, or role authority.
 - Parent #669 live current wheel SHA / source / six-role original-client provenance remain WAIT. Central v0.1.38 is not upgraded; A6 0/11, Fabric A7/A6 and ACK prerequisites remain separate.
 
 ## 2026-10-21 — serving instance epoch candidate v0.1.76 (#669 substep)
@@ -23,7 +23,7 @@
 
 status: SOURCE_OFFLINE_GUARDS_MERGED / CORRECT_HOST_WITNESS_WAIT
 owner: Runner-MCP source lane (#669); Fabric authority/activation separately #924
-source_main_version: 0.1.62
+source_main_version: 0.1.77
 latest_669_source_merge: 701f507ac00754c6e869448ed3158dcfb4eac539
 live_connected_serving_version: 0.1.38
 active_loaded_wheel_verified: false

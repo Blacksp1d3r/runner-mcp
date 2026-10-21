@@ -183,6 +183,26 @@ A fully initialized base without Agent Bus credentials still reports
 local setup remains separate from Fabric #1563 private issuer/CAS identity
 and original-client result/ACK admission.
 
+## New local static worker preflight (Runner-MCP v0.1.74 source)
+
+After the usual **separately authorized** initial host setup and existing
+Agent Bus private configuration, the current CLI offers
+`runner-mcp agent-bus preflight`. It is **read-only** and reports only
+`state=<ready|wait|blocked> reason_code=<bounded-code>
+original_client_ack_proven=false`.
+
+`wait/fabric_launcher_unavailable` means the fixed launcher under the
+correct operator's `~/.local/bin` is still missing. A successful isolated
+disposable-HOME Fabric `BOOTSTRAP.py install` does **not** create that
+normal-home launcher and must not be described as Agent Bus activation.
+`ready/local_static_prerequisites_ready` only checks local config and the
+existing fixed launcher; it is **not** proof of original-client authenticated
+remote reachability, a running receiver, a terminal result/ACK, generation
+fence or network recovery. The command creates no durable state, runs no
+service and performs no network request. Never supply relay secrets or local
+paths to ChatGPT or GitHub to diagnose a WAIT. Owner-private issuer and real
+original-client ACK remain separately required by Fabric #1563.
+
 ## Separate admission before turning on a service
 
 **Not implemented or authorized by this child.** Next, via the existing

@@ -15,7 +15,11 @@ import sys
 from pathlib import Path
 
 from runner_mcp.fabric_q7_fixed_root_prepare import prepare_black_q7_private_root
-from runner_mcp.fabric_release_private_custody import _fixed_root, _private_root_fd
+from runner_mcp.fabric_release_private_custody import (
+    _fixed_root,
+    _private_root_fd,
+    read_q7_lab_custody_offline,
+)
 from runner_mcp.fabric_release_signed_import import (
     _signed_pins,
     import_q7_disposable_lab_once,
@@ -108,10 +112,10 @@ def _lab_owner_private_root() -> None:
 def main(argv: list[str] | None = None) -> int:
     args = sys.argv[1:] if argv is None else argv
     if args == ["--help"]:
-        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import")
+        print("Usage: fabric-q7-first-host.pyz prepare-root | preflight | probe-release | import | lab-preflight | lab-probe-release | lab-import | lab-readback")
         print("Fixed Black host, exact signed Q7 release, no install or service activation.")
         return 0
-    if args not in (["prepare-root"], ["preflight"], ["probe-release"], ["import"], ["lab-preflight"], ["lab-probe-release"], ["lab-import"]):
+    if args not in (["prepare-root"], ["preflight"], ["probe-release"], ["import"], ["lab-preflight"], ["lab-probe-release"], ["lab-import"], ["lab-readback"]):
         print("WAIT_UNSUPPORTED_ACTION")
         return 2
     if sys.version_info[:2] != (3, 12):
@@ -129,7 +133,7 @@ def main(argv: list[str] | None = None) -> int:
         print("Q7_FIXED_PRIVATE_ROOT=PASS")
         print("NO_SIGNER_AUTHORITY_NO_DOWNLOAD_NO_INSTALL")
         return 0
-    lab = args in (["lab-preflight"], ["lab-probe-release"], ["lab-import"])
+    lab = args in (["lab-preflight"], ["lab-probe-release"], ["lab-import"], ["lab-readback"])
     try:
         if lab:
             _lab_owner_private_root()
@@ -141,6 +145,17 @@ def main(argv: list[str] | None = None) -> int:
     if args == ["lab-preflight"]:
         print("Q7_KEYLESS_DISPOSABLE_LAB=PASS")
         print("UNSIGNED_SOURCE_NO_INSTALL_NO_WORKER")
+        return 0
+    if args == ["lab-readback"]:
+        try:
+            result = read_q7_lab_custody_offline()
+            if result.get("state") != "q7_lab_local_readback_verified_only":
+                _deny()
+        except (ValueError, TypeError, OSError):
+            print("Q7_LAB_OFFLINE_READBACK=WAIT")
+            return 1
+        print("Q7_LAB_OFFLINE_READBACK=PASS_UNSIGNED_LOCAL_ONLY")
+        print("NO_NETWORK_NO_INSTALL_NO_ACK")
         return 0
     if args == ["preflight"]:
         print("PINNED_Q7_OFFLINE_INPUTS=PASS")

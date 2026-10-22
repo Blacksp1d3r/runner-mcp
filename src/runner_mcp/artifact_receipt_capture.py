@@ -34,6 +34,10 @@ class WheelReceiptCaptureError(RuntimeError):
     """Bounded local receipt failure; no private paths or source bytes."""
 
 
+class WheelReceiptPublicationUncertain(WheelReceiptCaptureError):
+    """Receipt may already be durable; preserve it for explicit reconciliation."""
+
+
 def capture_candidate_wheel_receipt(
     *,
     wheel: Path,
@@ -147,6 +151,7 @@ def capture_candidate_wheel_receipt(
         # Never replace an earlier generation's receipt. Unsuccessful writes
         # are removed only if this call created the exclusive destination.
         fd = os.open(receipt, os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW, 0o600)
+        bytes_verified = False
         try:
             with os.fdopen(fd, "wb") as handle:
                 handle.write(data)
@@ -156,13 +161,23 @@ def capture_candidate_wheel_receipt(
                 receipt, wheel, installed_package
             )["state"] != "offline_bytes_match":
                 raise WheelReceiptCaptureError("installed modules differ from original wheel")
-            parent_fd = os.open(receipt.parent, os.O_RDONLY | os.O_DIRECTORY)
+            bytes_verified = True
+            # After byte validation, a failed parent fsync leaves durability
+            # UNKNOWN. Unlinking the receipt could destroy the only recovery
+            # evidence or falsely invite a new create-once capture.
             try:
-                os.fsync(parent_fd)
-            finally:
-                os.close(parent_fd)
+                parent_fd = os.open(receipt.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(parent_fd)
+                finally:
+                    os.close(parent_fd)
+            except OSError as exc:
+                raise WheelReceiptPublicationUncertain(
+                    "original wheel receipt publication requires reconciliation"
+                ) from exc
         except BaseException:
-            receipt.unlink(missing_ok=True)
+            if not bytes_verified:
+                receipt.unlink(missing_ok=True)
             raise
         return {
             **unavailable,

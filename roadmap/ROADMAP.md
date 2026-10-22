@@ -1,6 +1,6 @@
 ## 2026-10-22 — Runner-MCP #341 v0.1.82 source: fixed Black MACHINE issuer evidence
 
-- Owner priority: machine-native Black real status/ACK, then one real Claude and Qwen task; human login/MFA/OIDC later. New v0.1.82 extends the **existing** Black status/ACK validator to accept true `machine` requester `runner:control*` ONLY when original `qual:black:runtime:v1` is present, preserving old `mfa` mode and same original actor/claim/fingerprint/result digest/ACK.
+- Owner priority: machine-native Black real status/ACK, then one real Claude and Qwen task; human login/MFA/OIDC later. New v0.1.82 extends the **existing** Black status/ACK validator to accept true `machine` requester `runner:control` ONLY when original `qual:black:runtime:v1` is present, preserving old `mfa` mode and same original actor/claim/fingerprint/result digest/ACK.
 - AIfordable #636 already source merged/staging; overlapping #637 + Fabric #1714 source must be reconciled into one active SQL publisher route, with independent owner-approved issuer identity. No two relay queues, no new tunnel/updater or arbitrary host/operation. Existing central 0.1.38 remains serving, physical original Black claim/result/durable ACK is unverified; A6/A7 original-host tests and six-role cutover remain WAIT. No live mutation from this source PR.
 
 ## 2026-10-22 — OPERATORBESLUIT: basis vóór menselijke MFA/login (uitgesteld)

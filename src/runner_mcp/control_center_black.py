@@ -93,7 +93,7 @@ def validate_black_record(
         strength == "machine"
         and rid == "qual:black:runtime:v1"
         and type(sub) is str
-        and sub.startswith("runner:control")
+        and sub == "runner:control"
         and _ident(sub)
     )
     if (

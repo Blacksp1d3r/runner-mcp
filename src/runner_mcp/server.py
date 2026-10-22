@@ -2049,6 +2049,9 @@ def build_mcp(
                 observed["requester_acknowledged"] is not True
                 or observed["result_digest"] != result_digest
                 or observed["version"] != ack["result_version"]
+                or observed["owner_generation"] != status["owner_generation"]
+                or observed["requested_by_subject"] != status["requested_by_subject"]
+                or observed["fingerprint"] != status["fingerprint"]
             ):
                 raise BlackControlEvidenceError("Black ACK not confirmed")
         except (FabricBridgeError, BlackControlEvidenceError):

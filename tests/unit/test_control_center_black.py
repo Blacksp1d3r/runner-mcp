@@ -169,6 +169,9 @@ def test_post_ack_readback_same_original_generation_and_requester():
         ("version", 3),
         ("result_digest", "f" * 64),
         ("result_code", "bridge_failed"),
+        # A stale/spoofed peer view must not keep the same claimed digest
+        # while silently replacing the actual terminal result object.
+        ("result_payload", {"version": "changed-after-ack"}),
         ("requester_acknowledged", False),
         ("state", "claimed"),
     ],

@@ -1,3 +1,8 @@
+## 2026-10-22 — #669 offline receipt durability correction v0.1.79 SOURCE CANDIDATE
+
+- RMCP-F-0071 discovered by source analysis: post-validation parent-directory fsync failure previously deleted potentially durable candidate receipt, losing evidence after an ambiguous publication. Narrow fix retains/create-once receipt, classifies `WheelReceiptPublicationUncertain`; early file-sync/byte mismatch cleans unvalidated receipt. Exact-head test/CI pending.
+- Independent correct-host 0.1.38 wheel/RECORD/process/six-role evidence and previous-good generation plus Fabric A6/A7/original-client result ACK still WAIT. No live deployment/change. #669 stays OPEN.
+
 ## 2026-10-22 — #669 v0.1.78 SOURCE MERGED; independent live wheel/route still WAIT
 
 - **Source reconciled**: PR [#800](https://github.com/Blacksp1d3r/runner-mcp/pull/800) merged 2026-10-21T20:34:26Z as `0daa8e7fd2c6edcb53c17d7f024efbb1e3d9e7c4`; exact PR HEAD `acf9e5e7b480e422ff1b6f2d64b27f4515a41732`, validation + clean Ubuntu installer + attribution SUCCESS. Source `pyproject.toml=0.1.78`. Earlier #794, #796, #797 and docs #798 are merged and MUST NOT be repeated. Supersedes the earlier “v0.1.78 candidate/pending” language below.

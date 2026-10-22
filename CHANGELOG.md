@@ -1,3 +1,8 @@
+## 0.1.79 (#669 receipt publication uncertainty; source-only)
+
+- Repair a crash/durability edge in the existing offline original-wheel receipt writer: after verifying the exact wheel and installed Python modules, a failed parent-directory fsync is now classified as `WheelReceiptPublicationUncertain`. The already create-once 0600 receipt is preserved for independent reconciliation rather than silently unlinked and recreated. Early file fsync/byte-verification failure still cleans its own unvalidated receipt. Regression tests inject both errors and verify no false trusted identity or overwrite.
+- This is an isolated source fix. The receipt is still offline candidate data, not a signed source/serving-process witness or authorization for production deployment. The active 0.1.38 generation remains unchanged; Runner-MCP #669 and Fabric physical A6/A7/original-client ACK gates remain open.
+
 ## 0.1.78 (#669 retained original wheel candidate receipt, isolated source only)
 
 - Add `artifact_receipt_capture.capture_candidate_wheel_receipt` to be invoked by the already authorized initial wheel installer. It retains an immutable/owner-private candidate receipt binding supplied source-revision claim, SHA-256 of the exact original wheel and its Python package module bytes to the installed package, reusing the existing `offline_artifact_receipt_preflight` validator.

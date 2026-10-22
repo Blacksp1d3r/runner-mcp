@@ -1,3 +1,8 @@
+## 2026-10-22 — post-validation directory fsync uncertainty candidate
+
+- v0.1.79 source-only durability correction for #800 candidate wheel capture; RMCP-F-0071. Preserve an already byte-validated owner-private receipt when its directory fsync fails, surface explicit publication uncertainty and prohibit automatic overwrite. Clean a receipt on file fsync/byte-check failure before validation. Synthetic fault injection covers both sides. Exact-head CI/merge pending; physical receipt generation on active v0.1.38 still absent and NOT authorized.
+- Do not wire a generic installer path or claim active source/wheel from candidate data. Correct-host Fabric #924 and physical A6/A7/original-client ACK remain WAIT.
+
 ## 2026-10-22 — #669 v0.1.78 SOURCE MERGED; independent live wheel/route still WAIT
 
 - **Source reconciled**: PR [#800](https://github.com/Blacksp1d3r/runner-mcp/pull/800) merged 2026-10-21T20:34:26Z as `0daa8e7fd2c6edcb53c17d7f024efbb1e3d9e7c4`; exact PR HEAD `acf9e5e7b480e422ff1b6f2d64b27f4515a41732`, validation + clean Ubuntu installer + attribution SUCCESS. Source `pyproject.toml=0.1.78`. Earlier #794, #796, #797 and docs #798 are merged and MUST NOT be repeated. Supersedes the earlier “v0.1.78 candidate/pending” language below.

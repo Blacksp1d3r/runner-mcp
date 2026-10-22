@@ -1,3 +1,8 @@
+## 2026-10-22 — #669 original-wheel receipt fsync boundary v0.1.79 SOURCE CANDIDATE
+
+- Following v0.1.78 PR #800 and docs PR #801, found synthetic durability edge RMCP-F-0071: an error fsyncing the parent directory after byte validation could unlink a potentially durable create-once receipt. Narrow v0.1.79 candidate retains and classifies such a receipt as publication uncertain, while failure before validation still removes its own partial receipt. Injected negative tests included; exact-head CI and source merge required.
+- No host access, installer call, A6 binding, source-to-wheel signer/RECORD/loaded-process trust, actual previous wheel escrow, update authority or live 0.1.38 mutation. Fabric #924/#1617/#942/#943 and #1556/#1563 remain the actual physical dependencies. Do not conflate source fix with operational readiness.
+
 ## 2026-10-22 — #669 v0.1.78 SOURCE MERGED; independent live wheel/route still WAIT
 
 - **Source reconciled**: PR [#800](https://github.com/Blacksp1d3r/runner-mcp/pull/800) merged 2026-10-21T20:34:26Z as `0daa8e7fd2c6edcb53c17d7f024efbb1e3d9e7c4`; exact PR HEAD `acf9e5e7b480e422ff1b6f2d64b27f4515a41732`, validation + clean Ubuntu installer + attribution SUCCESS. Source `pyproject.toml=0.1.78`. Earlier #794, #796, #797 and docs #798 are merged and MUST NOT be repeated. Supersedes the earlier “v0.1.78 candidate/pending” language below.

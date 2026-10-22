@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import stat
 import zipfile
 from pathlib import Path
@@ -12,6 +13,7 @@ import pytest
 
 from runner_mcp.artifact_receipt_capture import (
     WheelReceiptCaptureError,
+    WheelReceiptPublicationUncertain,
     capture_candidate_wheel_receipt,
 )
 from runner_mcp.artifact_receipt_preflight import offline_artifact_receipt_preflight
@@ -152,6 +154,51 @@ def test_corrupt_wheel_cannot_create_receipt(tmp_path: Path) -> None:
 def test_private_parent_required(tmp_path: Path) -> None:
     wheel, pkg, receipt = fixture(tmp_path)
     receipt.parent.chmod(0o755)
+    with pytest.raises(WheelReceiptCaptureError):
+        capture(wheel, pkg, receipt)
+    assert not receipt.exists()
+
+
+def test_directory_fsync_failure_keeps_receipt_for_reconciliation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wheel, pkg, receipt = fixture(tmp_path)
+    real_fsync = os.fsync
+    calls = 0
+
+    def fail_directory_sync(fd: int) -> None:
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("synthetic parent directory sync failure")
+        real_fsync(fd)
+
+    monkeypatch.setattr("runner_mcp.artifact_receipt_capture.os.fsync", fail_directory_sync)
+    with pytest.raises(
+        WheelReceiptPublicationUncertain, match="requires reconciliation"
+    ):
+        capture(wheel, pkg, receipt)
+
+    assert calls == 2
+    assert receipt.is_file()
+    assert stat.S_IMODE(receipt.stat().st_mode) == 0o600
+    assert offline_artifact_receipt_preflight(
+        receipt, wheel, pkg,
+    )["state"] == "offline_bytes_match"
+    with pytest.raises(WheelReceiptCaptureError):
+        capture(wheel, pkg, receipt)
+    assert receipt.is_file()
+
+
+def test_file_fsync_failure_cleans_unvalidated_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    wheel, pkg, receipt = fixture(tmp_path)
+
+    def fail_file_sync(_fd: int) -> None:
+        raise OSError("synthetic file sync failure")
+
+    monkeypatch.setattr("runner_mcp.artifact_receipt_capture.os.fsync", fail_file_sync)
     with pytest.raises(WheelReceiptCaptureError):
         capture(wheel, pkg, receipt)
     assert not receipt.exists()

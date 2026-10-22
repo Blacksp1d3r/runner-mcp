@@ -192,7 +192,8 @@ def confirm_black_ack_readback(
     fields = (
         "request_id", "target_subject", "operation", "fingerprint",
         "requested_by_subject", "requested_by_auth_strength",
-        "owner_generation", "version", "result_code", "result_digest",
+        "owner_generation", "version", "result_code", "result_payload",
+        "result_digest",
     )
     if (
         status.get("state") not in {"completed", "failed"}

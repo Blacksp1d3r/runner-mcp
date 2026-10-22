@@ -2,7 +2,7 @@
 
 - Harden the existing fixed Black Control Center `runtime_status` source proxy: queued results require no claimed worker generation (zero); claimed/completed/failed require a positive existing worker claim generation. Never interpret a terminal result with generation zero as having reached the physical target.
 - After an explicit ACK, require the second original-client status readback to preserve the same claim generation, original requester and canonical request fingerprint in addition to the exact result digest/version and acknowledged state. No automatic ACK from GET.
-- Pure synthetic regressions reject unclaimed terminal, bad queued/claimed lineage and non-fixed Fabric operation delegation. One existing authenticated Fabric Agent MCP path only; no new relay, issuer, key, host/endpoint choice, updater or deployment. Central serving 0.1.38 and isolated Black 0.1.30 are unchanged. AIfordable #585 REST PR #632 and physical original-client Black result+ACK are still pending.
+- Pure synthetic regressions reject unclaimed terminal, bad queued/claimed lineage and non-fixed Fabric operation delegation. One existing authenticated Fabric Agent MCP path only; no new relay, issuer, key, host/endpoint choice, updater or deployment. Central serving 0.1.38 and isolated Black 0.1.30 are unchanged. AIfordable #585 REST PR #632 has now SOURCE MERGED; physical original-client Black result+ACK and actual authorized deployment remain pending.
 
 ## 0.1.80 (#341 Black Control Center bounded Fabric bridge, SOURCE ONLY)
 

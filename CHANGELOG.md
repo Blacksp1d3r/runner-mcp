@@ -1,3 +1,8 @@
+## 0.1.83 (#341 fixed Black post-ACK payload readback; SOURCE ONLY)
+
+- The existing fixed Black original-client ACK verification now checks that the **actual terminal result payload** in the second durable SQL readback is identical to the pre-ACK result, not merely the reported digest, result code, version and worker generation. A mismatched payload retaining the old digest fails closed as an inconsistent original-client proof. This does not add another query, relay, endpoint, signer or permission: it strengthens the comparison of the two already fetched authenticated Fabric status records.
+- Regression exercises a tampered terminal result payload with unchanged digest; all existing human MFA/machine-only `runner:control` contract tests remain. Live central still serves 0.1.38 and must not be blindly updated; physical original Black command/result/ACK remains unproven until the separately qualified issuer and actual serving Fabric/Runner-MCP release are available. No host or customer deployment from this source release.
+
 ## 0.1.82 (#341 fixed Black original machine requester evidence; SOURCE ONLY)
 
 - The existing three first-party `control_center_black_submit/status/ack` tools can now validate the **owner-approved MACHINE issuer** as well as the historical human MFA original requester. Machine receipts are accepted only for exact fixed `qual:black:runtime:v1` → `runner:black` → `runtime_status` and requester identity exactly `runner:control`; values are read from the authenticated Fabric Agent result, never treated as authorizing themselves. Worker `runner:black`, `runner:primary` and wrong ID/target cannot become publishers by changing a field.

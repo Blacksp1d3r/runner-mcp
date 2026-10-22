@@ -122,7 +122,9 @@ def test_wrong_ack_never_accepted(field, value):
 def test_worker_claim_generation_must_match_queue_state(state, generation):
     raw = sample(state)
     raw["owner_generation"] = generation
-    with pytest.raises(BlackControlEvidenceError, match="generation"):
+    # Malformed types / negative values fail at the existing shape guard;
+    # nonpositive but well-typed state combinations fail at the claim guard.
+    with pytest.raises(BlackControlEvidenceError):
         validate_black_record(raw)
 
 

@@ -432,3 +432,121 @@ def test_qualification_agent_forwards_a6_and_worker_bindings_together(
         assert environment[key] == value
     for key, value in worker_only.items():
         assert environment[key] == value
+
+
+_AF585_ISSUER = "af585-control-issuer.env"
+_AF585_VALUES = {
+    "RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE": "machine_control_credential",
+    "RUNNER_FABRIC_CONTROL_RELAY_ORIGIN": "https://staging.fiscero.com",
+    "RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL": "z" * 48,
+}
+
+
+def _write_af585_issuer(paths, values=None):
+    issuer = paths.config_dir / _AF585_ISSUER
+    source = _AF585_VALUES if values is None else values
+    issuer.write_text(
+        "".join(f"{key}={value}\n" for key, value in source.items()),
+        encoding="utf-8",
+    )
+    issuer.chmod(0o600)
+    return issuer
+
+
+def test_af585_private_issuer_is_forwarded_to_existing_agent_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    token = _append_bridge(paths)
+    _write_af585_issuer(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL=untrusted-main-env\n")
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification, "_fixed_runner_fabric_executable", lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir, execve=fake_execve,
+    ) == 0
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _AF585_VALUES.items():
+        assert environment[key] == value
+    assert environment["RUNNER_FABRIC_AGENT_BEARER_TOKEN"] == token
+    assert captured["argv"] == [str(executable), "agent-serve-qualification"]
+    assert "UNRELATED_PRIVATE_VALUE" not in environment
+    assert set(environment) == {
+        "HOME", "PATH", "LANG",
+        "RUNNER_FABRIC_AGENT_RESOURCE_URL",
+        "RUNNER_FABRIC_AGENT_BEARER_TOKEN",
+        *_AF585_VALUES,
+    }
+
+
+@pytest.mark.parametrize(
+    ("changes", "reason"),
+    [
+        ({"RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE": "operator_mfa_bearer"}, "mode"),
+        ({"RUNNER_FABRIC_CONTROL_RELAY_ORIGIN": "https://other.example"}, "origin"),
+        ({"RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL": "short"}, "credential"),
+        ({"RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL": "x" * 5000}, "length"),
+    ],
+)
+def test_af585_private_issuer_rejects_wrong_role_origin_or_secret(
+    tmp_path: Path, changes: dict[str, str], reason: str,
+) -> None:
+    del reason
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    values = {**_AF585_VALUES, **changes}
+    _write_af585_issuer(paths, values)
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ) as exc:
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert _AF585_VALUES["RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL"] not in str(exc.value)
+
+
+def test_af585_private_issuer_rejects_missing_key(
+    tmp_path: Path,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    values = dict(_AF585_VALUES)
+    del values["RUNNER_FABRIC_CONTROL_RELAY_ORIGIN"]
+    _write_af585_issuer(paths, values)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_af585_private_issuer_rejects_insecure_mode_and_symlink(
+    tmp_path: Path,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    issuer = _write_af585_issuer(paths)
+    issuer.chmod(0o644)
+    with pytest.raises(FabricAgentQualificationError):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+    issuer.chmod(0o600)
+    target = tmp_path / "elsewhere-private"
+    target.write_text(issuer.read_text(encoding="utf-8"), encoding="utf-8")
+    issuer.unlink()
+    issuer.symlink_to(target)
+    with pytest.raises(FabricAgentQualificationError):
+        qualification.qualification_agent_environment_additions(paths.config_dir)

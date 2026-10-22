@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+import stat
 from collections.abc import Callable
 from pathlib import Path
 
@@ -14,6 +15,16 @@ from .onboarding import load_env_file, read_private_runtime
 _RESOURCE_URL_KEY = "RUNNER_FABRIC_AGENT_RESOURCE_URL"
 _BEARER_TOKEN_KEY = "RUNNER_FABRIC_AGENT_BEARER_TOKEN"
 _EXTERNAL_TARGET_CONFIG_KEY = "RUNNER_FABRIC_EXTERNAL_TARGET_CONFIG"
+# One separately custodied, preauthorized ORIGINAL SQL relay issuer. The
+# worker credential and the general Runner-MCP private environment MUST NOT
+# accidentally enable a Control Center command publisher.
+_AF585_ISSUER_FILE = "af585-control-issuer.env"
+_AF585_ISSUER_KEYS = frozenset({
+    "RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE",
+    "RUNNER_FABRIC_CONTROL_RELAY_ORIGIN",
+    "RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL",
+})
+_AF585_CANONICAL_ORIGIN = "https://staging.fiscero.com"
 _KEYS = (_RESOURCE_URL_KEY, _BEARER_TOKEN_KEY)
 _RUNNER_MCP_KEYS = (
     "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT",
@@ -85,6 +96,7 @@ def qualification_agent_environment_additions(
     paths, _settings, _registry = read_private_runtime(config_dir)
     values = load_env_file(paths.env_file)
     additions: dict[str, str] = {}
+    additions.update(_af585_private_issuer_additions(paths.config_dir))
 
     external_target_config = values.get(_EXTERNAL_TARGET_CONFIG_KEY, "").strip()
     if external_target_config:
@@ -135,6 +147,54 @@ def qualification_agent_environment_additions(
             ),
         )
     return additions
+
+
+
+def _af585_private_issuer_additions(config_dir: Path) -> dict[str, str]:
+    """Forward only the existing original machine issuer's isolated 0600 file.
+
+    This never creates, mints, or copies a credential. The optional file has
+    one fixed owner-private location and a fixed HTTPS origin; an invalid
+    present file aborts the existing agent instead of silently changing roles.
+    """
+    path = config_dir / _AF585_ISSUER_FILE
+    try:
+        info = path.lstat()
+    except FileNotFoundError:
+        return {}
+    except OSError as exc:
+        raise FabricAgentQualificationError(
+            "Runner Fabric original issuer configuration is invalid"
+        ) from exc
+
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or info.st_uid != os.geteuid()
+        or stat.S_IMODE(info.st_mode) != 0o600
+        or info.st_nlink != 1
+    ):
+        raise FabricAgentQualificationError(
+            "Runner Fabric original issuer configuration is invalid"
+        )
+
+    try:
+        values = load_env_file(path)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise FabricAgentQualificationError(
+            "Runner Fabric original issuer configuration is invalid"
+        ) from exc
+    if (
+        set(values) != _AF585_ISSUER_KEYS
+        or values["RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE"]
+        != "machine_control_credential"
+        or values["RUNNER_FABRIC_CONTROL_RELAY_ORIGIN"]
+        != _AF585_CANONICAL_ORIGIN
+        or not _valid_secret(values["RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL"])
+    ):
+        raise FabricAgentQualificationError(
+            "Runner Fabric original issuer configuration is invalid"
+        )
+    return values
 
 
 def _forward_private_values(

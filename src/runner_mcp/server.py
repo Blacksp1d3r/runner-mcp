@@ -89,6 +89,11 @@ from .ci_runner_lifecycle import (
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .coding_workspace import CodingWorkspaceProvisioner
+from .control_center_black import (
+    BlackControlEvidenceError,
+    validate_black_ack,
+    validate_black_record,
+)
 from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
@@ -1972,6 +1977,85 @@ def build_mcp(
     def _fabric_host_inspect_failure(exc: FabricBridgeError) -> dict:
         """Bound one failed read with no implied follow-up Fabric request."""
         return bounded_host_inspection_unavailable(str(exc))
+
+    @mcp.tool()
+    def control_center_black_submit() -> dict[str, object]:
+        """Submit only runtime_status to the prebound Black via Fabric's MFA issuer."""
+        try:
+            raw = _require_fabric_bridge().control_center_black_submit()
+            result = validate_black_record(raw)
+        except (FabricBridgeError, BlackControlEvidenceError):
+            _audit_fabric("control_center_black_submit", "runner:black", "blocked")
+            raise ValueError("authenticated Black issuer unavailable") from None
+        _audit_fabric("control_center_black_submit", "runner:black", "submitted")
+        return result
+
+    @mcp.tool()
+    def control_center_black_status(
+        request_id: str, fingerprint: str, requester_subject: str
+    ) -> dict[str, object]:
+        """Read only the original issuer's receipt-bound Black request status."""
+        try:
+            raw = _require_fabric_bridge().control_center_black_status(
+                request_id, fingerprint, requester_subject
+            )
+            result = validate_black_record(
+                raw, request_id=request_id, fingerprint=fingerprint,
+                requester_subject=requester_subject,
+            )
+        except (FabricBridgeError, BlackControlEvidenceError):
+            _audit_fabric("control_center_black_status", "runner:black", "blocked")
+            raise ValueError("original Black command status unavailable") from None
+        _audit_fabric("control_center_black_status", "runner:black", "read")
+        return result
+
+    @mcp.tool()
+    def control_center_black_ack(
+        request_id: str, fingerprint: str,
+        requester_subject: str, result_digest: str,
+    ) -> dict[str, object]:
+        """Explicit ACK only after terminal digest and SAME MFA issuer readback.
+
+        No automatic ACK from status and no arbitrary target, operation or URL.
+        Fabric must enforce the original MFA requester, not trust these hints.
+        """
+        try:
+            peer = _require_fabric_bridge()
+            raw = peer.control_center_black_status(
+                request_id, fingerprint, requester_subject
+            )
+            status = validate_black_record(
+                raw, request_id=request_id, fingerprint=fingerprint,
+                requester_subject=requester_subject,
+            )
+            if status["state"] not in {"completed", "failed"}:
+                raise BlackControlEvidenceError("Black result not terminal")
+            if result_digest != status["result_digest"]:
+                raise BlackControlEvidenceError("Black result digest mismatch")
+            ack = validate_black_ack(
+                peer.control_center_black_ack(
+                    request_id, fingerprint, requester_subject, result_digest
+                ),
+                status=status,
+            )
+            observed = validate_black_record(
+                peer.control_center_black_status(
+                    request_id, fingerprint, requester_subject
+                ),
+                request_id=request_id, fingerprint=fingerprint,
+                requester_subject=requester_subject,
+            )
+            if (
+                observed["requester_acknowledged"] is not True
+                or observed["result_digest"] != result_digest
+                or observed["version"] != ack["result_version"]
+            ):
+                raise BlackControlEvidenceError("Black ACK not confirmed")
+        except (FabricBridgeError, BlackControlEvidenceError):
+            _audit_fabric("control_center_black_ack", "runner:black", "blocked")
+            raise ValueError("original Black result ACK unavailable") from None
+        _audit_fabric("control_center_black_ack", "runner:black", "verified")
+        return ack
 
     def fabric_bridge_preflight() -> dict:
         """Return bounded read-only Fabric MCP handshake readiness."""

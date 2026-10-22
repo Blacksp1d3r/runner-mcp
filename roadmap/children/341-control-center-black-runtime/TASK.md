@@ -1,0 +1,11 @@
+# #341 — fixed Black Control Center runtime_status bridge
+
+Owner: Runner-MCP source; upstream Fabric #924/#1556/#1563, AIfordable #585.
+Scope: only the predesignated `runner:black`, operation `runtime_status`.
+
+- Use existing authenticated Runner-MCP -> Fabric Agent MCP bridge, then Fabric's existing `ControlRelayCommandClient` and the existing AIfordable Control Relay operator API. No new relay/controller/tunnel/updater, caller-controlled host/URL, arbitrary shell, or change to six serving production roles.
+- Fabric adapter must expose the optional fixed methods `control_center_black_submit()`, `control_center_black_status(request_id,fingerprint,requester_subject)`, `control_center_black_ack(request_id,fingerprint,requester_subject,result_digest)`; it MUST authenticate actual original MFA issuer server-side and never treat caller-supplied requester hints as authentication. AIfordable issue #585/PR #632 provides the missing original operator REST result digest/ACK route; Fabric must adapt real bearer/MFA and HTTP 201/schema, not send worker credential to the operator route.
+- Return existing operator record keys, including: request_id, target_subject, operation, fingerprint, state, version, owner_generation, result_digest, requester_acknowledged, result_code, result_payload, requested_by_subject, requested_by_auth_strength. ACK returns explicit state authenticated-requester-ack, request_id, result_digest, result_version, acknowledged_at.
+- Runner-MCP validates fixed target/operation, original receipt fingerprint/subject, MFA strength, terminal result digest and explicit ACK + post-ACK observation; no implicit acknowledgement on result GET.
+- CI: unit tests wrong target/operation/requester/fingerprint/request, premature or foreign ACK, invalid payload secrets; exact-head full CI + release gate; a source merge cannot count as a live result/ACK.
+- Live acceptance (pending): one previously authorized real original client with actual MFA bearer submits fixed operation, Black claims/responds, result digest matches, same requester explicitly ACKs; document command ID, target generation/lease, source/receiver and durable ACK without secrets. Wrong-target/replay/lost-ACK tests only after one positive. Do not touch central production update.

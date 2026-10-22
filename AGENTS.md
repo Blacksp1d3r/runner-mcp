@@ -1,3 +1,54 @@
+## Mandatory physical topology + exact serving-runtime preflight (owner decision 2026-10-22)
+
+**Before generating an executable host script, giving a host-specific terminal
+command, calling a mutating host tool, installing/updating software, or claiming
+a live end-to-end result, perform this gate for the EXACT physical target.**
+This applies at each new session, after a handover, after a deployment/restart,
+and whenever target host, user, runtime or connection changes. A prior chat
+summary is never current host evidence.
+
+1. **Read the existing topology and current authority first:** this repository's
+   `AGENTS.md`, canonical diagnostic/infrastructure topology, current handover,
+   relevant issue/PR and actual private AIfordable infrastructure/credential
+   metadata authority. GitHub topology is an *expected logical map*, NOT proof
+   of a currently installed version, actual reachability or mutation authority.
+   Do not create a second topology source or copy private coordinates into Git.
+2. **Resolve target host and scope:** distinguish physical host, VM/container,
+   SSH/tunnel alias, authenticated first-party endpoint, service manager
+   (`system` vs `user`), service owner UID, and exact service/listener
+   being changed or tested. Different instances of the same named project
+   are DIFFERENT deployments. A connected MCP/Fabric peer attests only its
+   OWN serving endpoint, never an unrelated host's installed runtime.
+3. **Attest what is REALLY SERVING on that same target:** through an existing
+   authorized bounded read-only first-party capability, correlate host identity,
+   service unit, MainPID, port/listener owner, resolved live executable and
+   installation slot, interpreter/imported module, trusted wheel/source identity,
+   and any relevant database/credential owner and rollback state. Distinguish
+   `GitHub source` vs `locally installed slot` vs `process actually serving`;
+   source merges, passing CI, successful installation and bridge readiness
+   are NOT interchangeable or cross-host evidence.
+4. **STOP ON MISMATCH OR UNKNOWN:** if owner/host/source/slot/process/port
+   mapping is stale, conflicting, inaccessible, or unverified, perform only
+   bounded non-secret, read-only diagnosis. Do NOT infer, retry a mutating
+   script, suggest alternate host addresses, select a different launcher,
+   switch releases, bypass self-update/A6/A7, or use broad remote shell as a
+   shortcut. Record the precise evidence gap and owner in the existing issue.
+5. **Every operator command must say WHERE:** explicitly label the machine,
+   shell (Windows PowerShell vs Linux), intended user, read-only versus
+   mutation, prerequisites and expected safe stop result. Avoid copied steps
+   that target an ambiguous host alias; never print credentials or private
+   environment values.
+6. **Reconcile after a successful change:** verify the same physical service's
+   serving revision/health and existing rollback, then update the authorized
+   topology metadata, issue and handover with fresh non-secret evidence.
+   A real SQL command/result/ACK needs its own end-to-end evidence; liveness
+   and HTTP authentication-only probes are not an ACK.
+
+This is an **operational precondition**, not an additional relay, controller,
+auth/login mechanism, installer, approval/review queue, or authority to bypass
+existing bounded-tool and service constraints. Related existing fleet coordination:
+Runner-Fabric #924, Runner-MCP #341/#669 and AIfordable #585.
+
 ## Owner-confirmed MCP scope in integrated cockpit (2026-10-20)
 
 AIfordable is the company-wide **business cockpit**, holding customer/product registrations and canonical desired-state/infrastructure identity metadata. Runner-Fabric owns the **technical F10/F17 Cockpit and all technical task/AI orchestration**. Runner-MCP is the **bounded authenticated MCP execution/access boundary** plus the optional narrow Fabric bridge, not another scheduler, provider/gateway authority, relay, updater or generic filesystem manager. Existing AIfordable-owned relay code/service stays a transport with Fabric coordinating work/results/ACK; Agent Bus traffic need not physically pass through Runner-MCP. Reuse approved workspace preflight/prepare on bounded worker/work-unit IDs only; Fabric decides scheduling. No host mutation or release/relay/runtime qualification follows from this documentation. Canonical contract: [https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md](https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md).

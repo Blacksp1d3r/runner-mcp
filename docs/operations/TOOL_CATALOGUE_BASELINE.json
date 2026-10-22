@@ -1,7 +1,7 @@
 {
   "schemaVersion": "runner-mcp/tool-catalogue-baseline/v1",
   "sourceFile": "src/runner_mcp/server.py",
-  "minimumToolCount": 100,
+  "minimumToolCount": 103,
   "tools": [
     "apply_migrations",
     "approval_status",
@@ -21,6 +21,9 @@
     "ci_runner_status",
     "coding_workspace_preflight",
     "coding_workspace_prepare",
+    "control_center_black_ack",
+    "control_center_black_status",
+    "control_center_black_submit",
     "deploy_staging",
     "deployment_status",
     "fabric_a6_storage_preflight",

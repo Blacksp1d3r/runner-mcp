@@ -15,4 +15,4 @@ Scope: Runner-MCP #341 source-only; physical original issuer ACK remains WAIT.
 - Keep one existing Fabric adapter, AIfordable SQL relay and MFA control issuer; no new host scope, credential, controller or live server install.
 
 ## Remaining independent gates
-Fabric #1710/#1711 SOURCE MERGED, no active confirmation on old 0.1.38; AIfordable #585 PR #632 is still OPEN with CI reconciliation underway. Do not mark live `runner:black` claim/result/original-client durable ACK proven from GitHub CI.
+Fabric #1710/#1711 SOURCE MERGED, no active confirmation on old 0.1.38; AIfordable #585 PR #632 has now SOURCE MERGED as a9bf1519ded257fdc73850fafad831b95a6e08b5; actual API deployment and original MFA issuer are not qualified. Do not mark live `runner:black` claim/result/original-client durable ACK proven from GitHub CI.

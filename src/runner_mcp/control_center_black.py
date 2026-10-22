@@ -101,7 +101,16 @@ def validate_black_record(
         or (requester_subject is not None and sub != requester_subject)
     ):
         raise BlackControlEvidenceError("original issuer receipt mismatch")
-    terminal = raw["state"] in {"completed", "failed"}
+    state = raw["state"]
+    generation = raw["owner_generation"]
+    # The real relay has no worker claim while queued. Claimed/terminal
+    # commands MUST have a positively fenced target-worker generation.
+    # A fabricated terminal result with generation=0 is not proof of Black.
+    if (state == "queued" and generation != 0) or (
+        state != "queued" and generation < 1
+    ):
+        raise BlackControlEvidenceError("incoherent worker claim generation")
+    terminal = state in {"completed", "failed"}
     code, payload, digest = raw["result_code"], raw["result_payload"], raw["result_digest"]
     if terminal:
         if not _ident(code) or not _digest(digest):

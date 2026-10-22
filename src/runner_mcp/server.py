@@ -89,12 +89,12 @@ from .ci_runner_lifecycle import (
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .coding_workspace import CodingWorkspaceProvisioner
+from .config import ProjectRegistry, load_project_registry
 from .control_center_black import (
     BlackControlEvidenceError,
     validate_black_ack,
     validate_black_record,
 )
-from .config import ProjectRegistry, load_project_registry
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager

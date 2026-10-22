@@ -446,7 +446,7 @@ def _write_af585_issuer(paths, values=None):
     issuer = paths.config_dir / _AF585_ISSUER
     source = _AF585_VALUES if values is None else values
     issuer.write_text(
-        "".join(f"{key}={value}\\n" for key, value in source.items()),
+        "".join(f"{key}={value}\n" for key, value in source.items()),
         encoding="utf-8",
     )
     issuer.chmod(0o600)
@@ -460,11 +460,11 @@ def test_af585_private_issuer_is_forwarded_to_existing_agent_only(
     token = _append_bridge(paths)
     _write_af585_issuer(paths)
     with paths.env_file.open("a", encoding="utf-8") as handle:
-        handle.write("RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL=untrusted-main-env\\n")
-        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\\n")
+        handle.write("RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL=untrusted-main-env\n")
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
 
     executable = tmp_path / "runner-fabric"
-    executable.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
     executable.chmod(0o700)
     monkeypatch.setattr(
         qualification, "_fixed_runner_fabric_executable", lambda: executable,

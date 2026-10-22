@@ -1,3 +1,8 @@
+## 0.1.84 (#341/#585 privately custodied original Control Center issuer forwarding; SOURCE ONLY)
+
+- The existing Runner-MCP qualification Agent may now load the **already owner-custodied** `af585-control-issuer.env` private file and forward only its exact fixed machine issuer identity, HTTPS origin, and credential to the same pre-existing Fabric Agent process. Reject world-readable files, symlinks, other origins, role substitution, wrong key sets, or invalid credential values. A missing optional file retains previous behavior. Existing untrusted main configuration cannot promote a worker to a publisher.
+- This is **source-only**; the physical `aifordable-lab` managed Fabric launcher is still exact revision `927c15392e1caae74463b1322296d367811e116c`, and the new `build_black_original_issuer_service` does not yet exist in its active slot. Current central Runner-MCP 0.1.38 also remains without qualified upgrade. Physical original one-shot Black SQL command/result/ACK is NOT claimed.
+
 ## 0.1.83 (#341 fixed Black post-ACK payload readback; SOURCE ONLY)
 
 - The existing fixed Black original-client ACK verification now checks that the **actual terminal result payload** in the second durable SQL readback is identical to the pre-ACK result, not merely the reported digest, result code, version and worker generation. A mismatched payload retaining the old digest fails closed as an inconsistent original-client proof. This does not add another query, relay, endpoint, signer or permission: it strengthens the comparison of the two already fetched authenticated Fabric status records.

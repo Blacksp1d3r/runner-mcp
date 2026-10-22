@@ -89,7 +89,7 @@ def validate_black_record(
         or type(sub) is not str or not 1 <= len(sub) <= 255
         or any(ord(ch) < 32 or ord(ch) == 127 for ch in sub)
         or raw["requested_by_auth_strength"] != "mfa"
-        or raw["state"] not in _STATES
+        or type(raw["state"]) is not str or raw["state"] not in _STATES
         or type(raw["version"]) is not int or raw["version"] < 1
         or type(raw["owner_generation"]) is not int or raw["owner_generation"] < 0
         or type(raw["requester_acknowledged"]) is not bool

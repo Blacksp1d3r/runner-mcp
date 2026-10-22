@@ -188,10 +188,7 @@ def test_post_ack_readback_foreign_ack_rejected():
 
 
 
-@pytest.mark.parametrize("machine_subject", [
-    "runner:control",
-    "runner:control-center",
-])
+@pytest.mark.parametrize("machine_subject", ["runner:control"])
 def test_authenticated_machine_original_black_receipt_and_durable_ack(
     machine_subject,
 ):
@@ -234,6 +231,7 @@ def test_authenticated_machine_original_black_receipt_and_durable_ack(
 @pytest.mark.parametrize(("subject", "request_id"), [
     ("runner:black", "qual:black:runtime:v1"),
     ("runner:primary", "qual:black:runtime:v1"),
+    ("runner:control-center", "qual:black:runtime:v1"),
     ("runner:aifordable-lab", "qual:black:runtime:v1"),
     ("runner:other", "qual:black:runtime:v1"),
     ("runner:control", "qual:black:other"),
@@ -255,7 +253,7 @@ def test_machine_proof_cannot_be_relabelled_as_human_or_lose_identity_after_ack(
     raw = sample("completed")
     raw.update(
         request_id="qual:black:runtime:v1",
-        requested_by_subject="runner:control-center",
+        requested_by_subject="runner:control",
         requested_by_auth_strength="machine",
         version=3,
     )

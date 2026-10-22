@@ -92,6 +92,7 @@ from .coding_workspace import CodingWorkspaceProvisioner
 from .config import ProjectRegistry, load_project_registry
 from .control_center_black import (
     BlackControlEvidenceError,
+    confirm_black_ack_readback,
     validate_black_ack,
     validate_black_record,
 )
@@ -2045,15 +2046,9 @@ def build_mcp(
                 request_id=request_id, fingerprint=fingerprint,
                 requester_subject=requester_subject,
             )
-            if (
-                observed["requester_acknowledged"] is not True
-                or observed["result_digest"] != result_digest
-                or observed["version"] != ack["result_version"]
-                or observed["owner_generation"] != status["owner_generation"]
-                or observed["requested_by_subject"] != status["requested_by_subject"]
-                or observed["fingerprint"] != status["fingerprint"]
-            ):
-                raise BlackControlEvidenceError("Black ACK not confirmed")
+            confirm_black_ack_readback(
+                status=status, ack=ack, observed=observed,
+            )
         except (FabricBridgeError, BlackControlEvidenceError):
             _audit_fabric("control_center_black_ack", "runner:black", "blocked")
             raise ValueError("original Black result ACK unavailable") from None

@@ -1220,3 +1220,56 @@ def test_a6_bridge_rejects_peer_forged_physical_pass():
     assert result["reasonCode"] == "fabric_read_invalid"
     assert result["physicalIndependenceVerified"] is False
     assert fake.calls == [("a6_storage_preflight", {})]
+
+
+def test_fixed_black_control_fabric_forwarding_never_selects_target_or_url():
+    fake = FakeMCPClient([
+        {"request_id": "r-001"},
+        {"request_id": "r-001"},
+        {"request_id": "r-001"},
+    ])
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:8000/mcp",
+            bearer_token="a" * 32,
+        )
+    )
+    bridge._local.client = fake
+    bridge.control_center_black_submit()
+    bridge.control_center_black_status("r-001", "b" * 64, "operator-one")
+    bridge.control_center_black_ack(
+        "r-001", "b" * 64, "operator-one", "c" * 64,
+    )
+    assert fake.calls == [
+        ("control_center_black_submit", {}),
+        ("control_center_black_status", {
+            "request_id": "r-001",
+            "fingerprint": "b" * 64,
+            "requester_subject": "operator-one",
+        }),
+        ("control_center_black_ack", {
+            "request_id": "r-001",
+            "fingerprint": "b" * 64,
+            "requester_subject": "operator-one",
+            "result_digest": "c" * 64,
+        }),
+    ]
+    with pytest.raises(FabricBridgeError, match="unsupported"):
+        bridge._call_black_control("run_work_unit", {"target": "runner:primary"})
+    assert len(fake.calls) == 3
+
+
+def test_fixed_black_control_fabric_unavailable_fails_without_retry():
+    fake = FakeMCPClient([])
+    def denied(_name, _args):
+        raise BridgeExecutionAdapterError("synthetic missing peer")
+    fake._call_tool = denied
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:8000/mcp",
+            bearer_token="a" * 32,
+        )
+    )
+    bridge._local.client = fake
+    with pytest.raises(FabricBridgeError, match="unavailable"):
+        bridge.control_center_black_submit()

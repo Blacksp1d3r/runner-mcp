@@ -13,3 +13,9 @@ Prevention:
 - Runner-MCP source validates request ID, exact target and operation, canonical fingerprint, original authenticated subject+MFA, queue version, bounded result, terminal digest, explicit ACK and post-ACK readback. Reject unsupported peer tools and mismatches.
 - Tests include wrong-host, wrong-operation, wrong-requester, weak MFA, stale fingerprint, premature result and ACK, contaminated result and mismatched ACK.
 - No host/update/auth changes; physical proof stays WAIT until original issuer -> Black -> result -> explicit original-client ACK observed with durable evidence.
+
+## 2026-10-22 — CI recurrence prevention and source closure
+
+- During PR #804, exact-head CI first rejected newly registered MCP tools because the frozen `docs/operations/TOOL_CATALOGUE_BASELINE.json` still counted 100 instead of approved 103. Updated baseline and the attestation test together, without suppressing the safety gate.
+- Second round Ruff import-order check rejected the unsorted `config` / `control_center_black` imports. Reordered imports. Subsequent exact-head CI (validation #39747583227, clean Ubuntu #39747583162, attribution #39747583241) SUCCESS, then PR #804 SOURCE MERGED `ea641e691796556cd9f612b01946d7ab45951d5e`.
+- Prevent new feature-tool PRs from omitting approved static tool-catalogue baseline/test updates. These CI errors were source/process bugs, not a physical Control Relay outage. Physical original-client Black result ACK remains WAIT; no production changes.

@@ -43,3 +43,17 @@ The standalone offline artifact/receipt comparator inspected final-path `lstat` 
 ## 2026-10-20 — RMCP-F-0058 (connected process cannot distinguish old loaded modules from newer dist-info)
 
 Current read-only `runtime_status` provides two versions but not a capped current-process module-roster observation. A separately installed wheel may change metadata without replacing old imported Python modules. SOURCE MERGED v0.1.55 adds fixed zero-input `serving_process_observation_preflight`: checks only `runner_mcp`, `runner_mcp.server`, `runner_mcp.build_identity` presence and loaded-versus-dist-info version categorically, no filesystem paths/host identifiers, no signer/rollback/Agent Bus authority. Even exact local agreement returns `observed_local_only`, never `activeBuildProvenanceVerified`, a nonnull digest or update approval. This does not settle host identity, true memory byte hashes or other five roles. Tracking #669.
+
+## 2026-10-22 — RMCP-F-0071 (synthetic original-wheel receipt publication uncertainty)
+
+Source review found that `capture_candidate_wheel_receipt` deleted the newly
+created private receipt even after offline wheel+installed-module agreement, if
+the final directory fsync failed. On a power-loss/durability boundary, that
+operation could destroy reconciliable evidence while inviting a subsequent
+create-once retry. v0.1.79 candidate preserves a byte-validated receipt on
+post-validation directory fsync failure and raises a fixed
+`WheelReceiptPublicationUncertain` error; earlier unvalidated file failures
+still remove partial receipts. Injected file-versus-directory fsync regressions
+distinguish the two boundaries. This is a synthetic source finding, not a
+verified live incident or a current source/wheel identity; #669 A6/A7 and
+original-client admission remain WAIT.

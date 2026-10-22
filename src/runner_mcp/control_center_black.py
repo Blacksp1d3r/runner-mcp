@@ -1,8 +1,9 @@
 """Fixed Black runtime-status issuer evidence boundary (#341).
 
-Runner-MCP does not own the relay or operator authentication. Fabric must route
-through the existing AIfordable MFA operator issuer; these validators only
-correlate and sanitize its authenticated response, never manufacture identity.
+Runner-MCP does not own relay or requester authentication. Fabric must route
+through the existing AIfordable authenticated issuer, human MFA or qualified
+fixed machine, and bind its response to the original issuer. Validation is not
+a substitute for authenticating the actual SQL relay issuer.
 """
 from __future__ import annotations
 
@@ -70,7 +71,8 @@ def validate_black_record(
     """Validate existing operator REST/Fabric evidence and original receipt binding.
 
     A caller's expected requester is a correlation check, not authentication.
-    The Fabric adapter MUST enforce the authenticating MFA issuer at the relay.
+    The Fabric adapter MUST enforce authentication and distinct machine issuer
+    authority at the relay; caller correlation values cannot grant authority.
     """
     if not isinstance(raw, Mapping):
         raise BlackControlEvidenceError("invalid control evidence")
@@ -83,12 +85,23 @@ def validate_black_record(
     if not needed.issubset(raw):
         raise BlackControlEvidenceError("incomplete control evidence")
     rid, sub, fp = raw["request_id"], raw["requested_by_subject"], raw["fingerprint"]
+    strength = raw["requested_by_auth_strength"]
+    # Only the prebound Black one-shot can be machine-issued. The separately
+    # authenticated relay issuer must be a control identity, not a worker;
+    # this *validation* never authenticates credentials itself.
+    recognized_issuer = strength == "mfa" or (
+        strength == "machine"
+        and rid == "qual:black:runtime:v1"
+        and type(sub) is str
+        and sub == "runner:control"
+        and _ident(sub)
+    )
     if (
         not _ident(rid) or raw["target_subject"] != _TARGET
         or raw["operation"] != _OPERATION or not _digest(fp)
         or type(sub) is not str or not 1 <= len(sub) <= 255
         or any(ord(ch) < 32 or ord(ch) == 127 for ch in sub)
-        or raw["requested_by_auth_strength"] != "mfa"
+        or not recognized_issuer
         or type(raw["state"]) is not str or raw["state"] not in _STATES
         or type(raw["version"]) is not int or raw["version"] < 1
         or type(raw["owner_generation"]) is not int or raw["owner_generation"] < 0
@@ -128,7 +141,7 @@ def validate_black_record(
         "operation": _OPERATION,
         "fingerprint": fp,
         "requested_by_subject": sub,
-        "requested_by_auth_strength": "mfa",
+        "requested_by_auth_strength": strength,
         "state": raw["state"],
         "version": raw["version"],
         "owner_generation": raw["owner_generation"],

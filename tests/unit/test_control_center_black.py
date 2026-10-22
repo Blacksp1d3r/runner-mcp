@@ -185,3 +185,98 @@ def test_post_ack_readback_foreign_ack_rejected():
     ack["requested_by_subject"] = "foreign"
     with pytest.raises(BlackControlEvidenceError, match="durably correlated"):
         confirm_black_ack_readback(status=before, ack=ack, observed=after)
+
+
+
+@pytest.mark.parametrize("machine_subject", ["runner:control"])
+def test_authenticated_machine_original_black_receipt_and_durable_ack(
+    machine_subject,
+):
+    queued = sample()
+    queued["request_id"] = "qual:black:runtime:v1"
+    queued["requested_by_subject"] = machine_subject
+    queued["requested_by_auth_strength"] = "machine"
+    original = validate_black_record(queued)
+    assert original["requested_by_auth_strength"] == "machine"
+    assert original["requested_by_subject"] == machine_subject
+    terminal = dict(
+        queued,
+        state="completed",
+        version=3,
+        owner_generation=1,
+        result_code="ok",
+        result_payload={"version": "0.1.30"},
+        result_digest="b" * 64,
+    )
+    result = validate_black_record(
+        terminal,
+        request_id=original["request_id"],
+        fingerprint=original["fingerprint"],
+        requester_subject=machine_subject,
+    )
+    receipt = validate_black_ack(
+        {
+            "request_id": result["request_id"],
+            "result_digest": result["result_digest"],
+            "result_version": result["version"],
+            "acknowledged_at": "2026-10-22T12:00:00Z",
+            "state": "authenticated-requester-ack",
+        },
+        status=result,
+    )
+    after = dict(result, requester_acknowledged=True)
+    confirm_black_ack_readback(status=result, ack=receipt, observed=after)
+
+
+@pytest.mark.parametrize(("subject", "request_id"), [
+    ("runner:black", "qual:black:runtime:v1"),
+    ("runner:primary", "qual:black:runtime:v1"),
+    ("runner:control-center", "qual:black:runtime:v1"),
+    ("runner:aifordable-lab", "qual:black:runtime:v1"),
+    ("runner:other", "qual:black:runtime:v1"),
+    ("runner:control", "qual:black:other"),
+    ("user:operator", "qual:black:runtime:v1"),
+    ("runner:control\nspoof", "qual:black:runtime:v1"),
+])
+def test_machine_issuer_never_accepts_worker_foreign_request_or_subject(
+    subject, request_id,
+):
+    raw = sample()
+    raw["request_id"] = request_id
+    raw["requested_by_subject"] = subject
+    raw["requested_by_auth_strength"] = "machine"
+    with pytest.raises(BlackControlEvidenceError):
+        validate_black_record(raw)
+
+
+def test_machine_proof_cannot_be_relabelled_as_human_or_lose_identity_after_ack():
+    raw = sample("completed")
+    raw.update(
+        request_id="qual:black:runtime:v1",
+        requested_by_subject="runner:control",
+        requested_by_auth_strength="machine",
+        version=3,
+    )
+    before = validate_black_record(raw)
+    ack = validate_black_ack(
+        {
+            "request_id": before["request_id"],
+            "result_digest": before["result_digest"],
+            "result_version": before["version"],
+            "acknowledged_at": "2026-10-22T12:00:00Z",
+            "state": "authenticated-requester-ack",
+        },
+        status=before,
+    )
+    after = dict(before, requester_acknowledged=True)
+    confirm_black_ack_readback(status=before, ack=ack, observed=after)
+    for field, value in (
+        ("requested_by_auth_strength", "mfa"),
+        ("requested_by_subject", "runner:primary"),
+        ("owner_generation", 2),
+        ("fingerprint", "c" * 64),
+        ("result_digest", "c" * 64),
+    ):
+        changed = dict(after, **{field: value})
+        with pytest.raises(BlackControlEvidenceError):
+            confirm_black_ack_readback(status=before, ack=ack, observed=changed)

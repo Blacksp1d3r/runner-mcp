@@ -16,3 +16,8 @@ Scope: Runner-MCP #341 source-only; physical original issuer ACK remains WAIT.
 
 ## Remaining independent gates
 Fabric #1710/#1711 SOURCE MERGED, no active confirmation on old 0.1.38; AIfordable #585 PR #632 has now SOURCE MERGED as a9bf1519ded257fdc73850fafad831b95a6e08b5; actual API deployment and original MFA issuer are not qualified. Do not mark live `runner:black` claim/result/original-client durable ACK proven from GitHub CI.
+
+## CI regression: error message over-specificity
+
+- First PR #806 full CI ran 4,037 pytest cases: 4,035 passed, 2 failed solely because tests demanded the word `generation` in a rejection message. The existing type/negative-value guard correctly rejected those two values earlier with the generic `invalid control evidence` message; the new generation-state guard handles otherwise-valid values.
+- Corrected test assertions to require the fail-closed `BlackControlEvidenceError` regardless of which of these two deliberately safe guards rejects first. No runtime validation was loosened or bypassed. Exact-head CI must still rerun green before merge.

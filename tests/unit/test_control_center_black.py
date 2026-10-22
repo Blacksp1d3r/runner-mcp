@@ -105,3 +105,29 @@ def test_wrong_ack_never_accepted(field, value):
     ack[field] = value
     with pytest.raises(BlackControlEvidenceError):
         validate_black_ack(ack, status=status)
+
+
+@pytest.mark.parametrize(
+    ("state", "generation"),
+    [
+        ("queued", 1),
+        ("claimed", 0),
+        ("completed", 0),
+        ("failed", 0),
+        ("claimed", -1),
+        ("completed", True),
+    ],
+)
+def test_worker_claim_generation_must_match_queue_state(state, generation):
+    raw = sample(state)
+    raw["owner_generation"] = generation
+    with pytest.raises(BlackControlEvidenceError, match="generation"):
+        validate_black_record(raw)
+
+
+def test_real_claimed_and_terminal_records_remain_valid():
+    for state in ("queued", "claimed", "completed", "failed"):
+        raw = sample(state)
+        if state == "claimed":
+            raw["owner_generation"] = 1
+        assert validate_black_record(raw)["state"] == state

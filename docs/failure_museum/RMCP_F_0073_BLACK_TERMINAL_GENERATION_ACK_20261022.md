@@ -21,3 +21,8 @@ Fabric #1710/#1711 SOURCE MERGED, no active confirmation on old 0.1.38; AIfordab
 
 - First PR #806 full CI ran 4,037 pytest cases: 4,035 passed, 2 failed solely because tests demanded the word `generation` in a rejection message. The existing type/negative-value guard correctly rejected those two values earlier with the generic `invalid control evidence` message; the new generation-state guard handles otherwise-valid values.
 - Corrected test assertions to require the fail-closed `BlackControlEvidenceError` regardless of which of these two deliberately safe guards rejects first. No runtime validation was loosened or bypassed. Exact-head CI must still rerun green before merge.
+
+## Resolution: source-level controls merged
+
+- #806 v0.1.81 SOURCE MERGED `2fd8dcacc4c357663457d6651a93d572c31fe36a`, exact-head validation #39756255817, clean Ubuntu #39756255754 and attribution #39756257158 all SUCCESS.
+- Failing tests were an over-specific regex assertion on two existing earlier safe-denial guards; correction retained all denials, tests green. Production activation and physical Black original-client ACK remain a separate WAIT gate.

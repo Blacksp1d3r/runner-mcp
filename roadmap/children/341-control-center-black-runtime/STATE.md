@@ -1,3 +1,7 @@
+## 2026-10-22 — v0.1.81 SOURCE MERGED, terminal ACK physically unverified
+
+Runner-MCP #806 commit `2fd8dcacc4c357663457d6651a93d572c31fe36a` with exact-head CI validation #39756255817, Ubuntu #39756255754 and attribution #39756257158 **SUCCESS**. Fabric #1710 fixed issuer Agent MCP methods and AIfordable #632 authenticated operator ACK API are also SOURCE MERGED, without evidence that the original controller/relay processes were updated. Central connected 0.1.38 has execution disabled/relay unknown; isolated `runner:black` original-client result/durable ACK remains WAIT. No service/host/credential update performed. #341 OPEN.
+
 # STATE — #341 fixed Black Control Center bridge (2026-10-22)
 
 - Phase: SOURCE MERGED (PR #804, commit ea641e691796556cd9f612b01946d7ab45951d5e; Runner-MCP v0.1.80); actual issuer and ACK: WAIT.

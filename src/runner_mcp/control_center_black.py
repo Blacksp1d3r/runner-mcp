@@ -101,7 +101,16 @@ def validate_black_record(
         or (requester_subject is not None and sub != requester_subject)
     ):
         raise BlackControlEvidenceError("original issuer receipt mismatch")
-    terminal = raw["state"] in {"completed", "failed"}
+    state = raw["state"]
+    generation = raw["owner_generation"]
+    # The real relay has no worker claim while queued. Claimed/terminal
+    # commands MUST have a positively fenced target-worker generation.
+    # A fabricated terminal result with generation=0 is not proof of Black.
+    if (state == "queued" and generation != 0) or (
+        state != "queued" and generation < 1
+    ):
+        raise BlackControlEvidenceError("incoherent worker claim generation")
+    terminal = state in {"completed", "failed"}
     code, payload, digest = raw["result_code"], raw["result_payload"], raw["result_digest"]
     if terminal:
         if not _ident(code) or not _digest(digest):
@@ -154,3 +163,34 @@ def validate_black_ack(raw: object, *, status: Mapping[str, object]) -> dict[str
         "result_version": status["version"],
         "state": "authenticated-requester-ack",
     }
+
+
+def confirm_black_ack_readback(
+    *,
+    status: Mapping[str, object],
+    ack: Mapping[str, object],
+    observed: Mapping[str, object],
+) -> None:
+    """Refuse ACK completion if the retained original command changed identity.
+
+    All three records have already passed their respective schema validators.
+    This pure final comparison does NOT authenticate a remote issuer on its own.
+    """
+    fields = (
+        "request_id", "target_subject", "operation", "fingerprint",
+        "requested_by_subject", "requested_by_auth_strength",
+        "owner_generation", "version", "result_code", "result_digest",
+    )
+    if (
+        status.get("state") not in {"completed", "failed"}
+        or observed.get("state") != status.get("state")
+        or observed.get("requester_acknowledged") is not True
+        or any(observed.get(key) != status.get(key) for key in fields)
+        or ack.get("state") != "authenticated-requester-ack"
+        or ack.get("request_id") != status.get("request_id")
+        or ack.get("fingerprint") != status.get("fingerprint")
+        or ack.get("requested_by_subject") != status.get("requested_by_subject")
+        or ack.get("result_digest") != status.get("result_digest")
+        or ack.get("result_version") != status.get("version")
+    ):
+        raise BlackControlEvidenceError("Black ACK not durably correlated")

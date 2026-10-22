@@ -5,6 +5,7 @@ import pytest
 
 from runner_mcp.control_center_black import (
     BlackControlEvidenceError,
+    confirm_black_ack_readback,
     validate_black_ack,
     validate_black_record,
 )
@@ -105,3 +106,82 @@ def test_wrong_ack_never_accepted(field, value):
     ack[field] = value
     with pytest.raises(BlackControlEvidenceError):
         validate_black_ack(ack, status=status)
+
+
+@pytest.mark.parametrize(
+    ("state", "generation"),
+    [
+        ("queued", 1),
+        ("claimed", 0),
+        ("completed", 0),
+        ("failed", 0),
+        ("claimed", -1),
+        ("completed", True),
+    ],
+)
+def test_worker_claim_generation_must_match_queue_state(state, generation):
+    raw = sample(state)
+    raw["owner_generation"] = generation
+    # Malformed types / negative values fail at the existing shape guard;
+    # nonpositive but well-typed state combinations fail at the claim guard.
+    with pytest.raises(BlackControlEvidenceError):
+        validate_black_record(raw)
+
+
+def test_real_claimed_and_terminal_records_remain_valid():
+    for state in ("queued", "claimed", "completed", "failed"):
+        raw = sample(state)
+        if state == "claimed":
+            raw["owner_generation"] = 1
+        assert validate_black_record(raw)["state"] == state
+
+
+def _terminal_ack_fixture():
+    original = validate_black_record(sample("completed"))
+    ack = validate_black_ack(
+        {
+            "request_id": original["request_id"],
+            "result_digest": original["result_digest"],
+            "result_version": original["version"],
+            "acknowledged_at": "2026-10-22T10:00:00Z",
+            "state": "authenticated-requester-ack",
+        },
+        status=original,
+    )
+    returned = dict(original, requester_acknowledged=True)
+    return original, ack, returned
+
+
+def test_post_ack_readback_same_original_generation_and_requester():
+    before, ack, after = _terminal_ack_fixture()
+    confirm_black_ack_readback(status=before, ack=ack, observed=after)
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("owner_generation", 2),
+        ("requested_by_subject", "other-requester"),
+        ("fingerprint", "e" * 64),
+        ("request_id", "other-request"),
+        ("target_subject", "runner:primary"),
+        ("operation", "runtime_doctor"),
+        ("version", 3),
+        ("result_digest", "f" * 64),
+        ("result_code", "bridge_failed"),
+        ("requester_acknowledged", False),
+        ("state", "claimed"),
+    ],
+)
+def test_post_ack_readback_changed_lineage_rejected(field, value):
+    before, ack, after = _terminal_ack_fixture()
+    after[field] = value
+    with pytest.raises(BlackControlEvidenceError, match="durably correlated"):
+        confirm_black_ack_readback(status=before, ack=ack, observed=after)
+
+
+def test_post_ack_readback_foreign_ack_rejected():
+    before, ack, after = _terminal_ack_fixture()
+    ack["requested_by_subject"] = "foreign"
+    with pytest.raises(BlackControlEvidenceError, match="durably correlated"):
+        confirm_black_ack_readback(status=before, ack=ack, observed=after)

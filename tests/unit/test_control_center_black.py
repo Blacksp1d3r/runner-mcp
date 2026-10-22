@@ -1,0 +1,107 @@
+"""Pure fail-closed issuer correlation tests; no relay/network/credential."""
+from __future__ import annotations
+
+import pytest
+
+from runner_mcp.control_center_black import (
+    BlackControlEvidenceError,
+    validate_black_ack,
+    validate_black_record,
+)
+
+
+def sample(state="queued"):
+    terminal = state in {"completed", "failed"}
+    return {
+        "request_id": "black-req-001",
+        "target_subject": "runner:black",
+        "operation": "runtime_status",
+        "fingerprint": "a" * 64,
+        "requested_by_subject": "operator-one",
+        "requested_by_auth_strength": "mfa",
+        "state": state,
+        "version": 2,
+        "owner_generation": 1 if terminal else 0,
+        "result_code": "completed" if terminal else None,
+        "result_payload": {"version": "0.1.30"} if terminal else None,
+        "result_digest": "b" * 64 if terminal else None,
+        "requester_acknowledged": False,
+    }
+
+
+def test_original_issuer_receipt_and_terminal_ack():
+    original = validate_black_record(sample())
+    result = validate_black_record(
+        sample("completed"),
+        request_id=original["request_id"],
+        fingerprint=original["fingerprint"],
+        requester_subject=original["requested_by_subject"],
+    )
+    receipt = validate_black_ack(
+        {
+            "request_id": result["request_id"],
+            "result_digest": result["result_digest"],
+            "result_version": result["version"],
+            "acknowledged_at": "2026-10-22T10:00:00Z",
+            "state": "authenticated-requester-ack",
+        },
+        status=result,
+    )
+    assert receipt["target_subject"] == "runner:black"
+    assert receipt["result_digest"] == "b" * 64
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("target_subject", "runner:primary"),
+        ("operation", "runtime_doctor"),
+        ("requested_by_auth_strength", "password"),
+        ("requested_by_subject", "foreign-operator"),
+        ("fingerprint", "c" * 64),
+        ("request_id", "another-request"),
+        ("version", True),
+        ("requester_acknowledged", True),
+        ("result_digest", "c" * 64),
+    ],
+)
+def test_wrong_identity_or_unproven_state_rejected(field, value):
+    raw = sample()
+    raw[field] = value
+    with pytest.raises(BlackControlEvidenceError):
+        validate_black_record(
+            raw, request_id="black-req-001",
+            fingerprint="a" * 64,
+            requester_subject="operator-one",
+        )
+
+
+def test_secret_result_and_implicit_ack_rejected():
+    raw = sample("completed")
+    raw["result_payload"]["operator_token"] = "never"
+    with pytest.raises(BlackControlEvidenceError):
+        validate_black_record(raw)
+    raw = sample("queued")
+    raw["requester_acknowledged"] = True
+    with pytest.raises(BlackControlEvidenceError):
+        validate_black_record(raw)
+
+
+@pytest.mark.parametrize("field,value", [
+    ("request_id", "different"),
+    ("result_digest", "c" * 64),
+    ("result_version", 1),
+    ("state", "complete"),
+])
+def test_wrong_ack_never_accepted(field, value):
+    status = validate_black_record(sample("completed"))
+    ack = {
+        "request_id": "black-req-001",
+        "result_digest": "b" * 64,
+        "result_version": 2,
+        "acknowledged_at": "2026-10-22T10:00:00Z",
+        "state": "authenticated-requester-ack",
+    }
+    ack[field] = value
+    with pytest.raises(BlackControlEvidenceError):
+        validate_black_ack(ack, status=status)

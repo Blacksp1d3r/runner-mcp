@@ -48,6 +48,9 @@ _FABRIC_TOOLS = frozenset(
         "ci_runner_guest_enroll",
         "ci_runner_guest_start",
         "ci_runner_guest_stop",
+        "control_center_black_submit",
+        "control_center_black_status",
+        "control_center_black_ack",
     }
 )
 
@@ -609,6 +612,56 @@ class FabricBridgeClient:
             expected_work_unit_id=work_unit_id,
         )
         return result
+
+
+    def _call_black_control(self, name: str, arguments: dict[str, object]) -> dict[str, object]:
+        """Delegate ONLY fixed Black readback/ACK to the authenticated Fabric peer.
+
+        Fabric owns the actual operator-MFA credential, relay client and durable
+        original-requester receipt. Missing peer tools fail closed.
+        """
+        if name not in {
+            "control_center_black_submit",
+            "control_center_black_status",
+            "control_center_black_ack",
+        }:
+            raise FabricBridgeError("unsupported Control Center operation")
+        try:
+            result = self._client()._call_tool(name, arguments)
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError("Control Center Fabric issuer unavailable") from exc
+        if not isinstance(result, dict):
+            raise FabricBridgeError("Control Center evidence unavailable")
+        return result
+
+    def control_center_black_submit(self) -> dict[str, object]:
+        return self._call_black_control("control_center_black_submit", {})
+
+    def control_center_black_status(
+        self, request_id: str, fingerprint: str, requester_subject: str
+    ) -> dict[str, object]:
+        return self._call_black_control(
+            "control_center_black_status",
+            {
+                "request_id": request_id,
+                "fingerprint": fingerprint,
+                "requester_subject": requester_subject,
+            },
+        )
+
+    def control_center_black_ack(
+        self, request_id: str, fingerprint: str,
+        requester_subject: str, result_digest: str
+    ) -> dict[str, object]:
+        return self._call_black_control(
+            "control_center_black_ack",
+            {
+                "request_id": request_id,
+                "fingerprint": fingerprint,
+                "requester_subject": requester_subject,
+                "result_digest": result_digest,
+            },
+        )
 
     def _client(self) -> LocalMCPClient:
         client = getattr(self._local, "client", None)

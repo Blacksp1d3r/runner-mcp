@@ -1,3 +1,9 @@
+## 0.1.80 (#341 Black Control Center bounded Fabric bridge, SOURCE ONLY)
+
+- Added three optional MCP tools for only `runner:black`/`runtime_status`: `control_center_black_submit`, `control_center_black_status`, and explicit `control_center_black_ack`. These delegate to the already-authenticated local Fabric Agent MCP; no second relay, listener, tunnel, general command, host/path/endpoint choice or central live update.
+- Existing Fabric and AIfordable own command issuance, operator MFA/subject and durable ACK. Runner-MCP enforces exact target, operation, request ID, canonical fingerprint, original requester subject with MFA claim, queue version, terminal result digest, and separate post-ACK readback. Missing Fabric issuer tools, weak/mismatched identity, premature ACK and invalid result fail closed.
+- This is SOURCE ONLY. Fabric Agent MCP issuer adapter to the original Fabric commandclient and AIfordable MFA operator endpoint is not deployed; AIfordable #585 PR #632 is upstream SOURCE CANDIDATE. Original client physical `runner:black` request/result/ACK is NOT PROVEN. Existing central six roles and live 0.1.38 are unchanged; #341 remains open.
+
 ## 0.1.79 (#669 receipt publication uncertainty; source-only)
 
 - Repair a crash/durability edge in the existing offline original-wheel receipt writer: after verifying the exact wheel and installed Python modules, a failed parent-directory fsync is now classified as `WheelReceiptPublicationUncertain`. The already create-once 0600 receipt is preserved for independent reconciliation rather than silently unlinked and recreated. Early file fsync/byte-verification failure still cleans its own unvalidated receipt. Regression tests inject both errors and verify no false trusted identity or overwrite.

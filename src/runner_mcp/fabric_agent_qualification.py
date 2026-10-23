@@ -166,15 +166,24 @@ def _af585_private_issuer_additions(config_dir: Path) -> dict[str, str]:
     home_config = Path.home() / ".config"
     if config_dir == home_config / "runner-mcp":
         issuer_dir = home_config / "runner-fabric"
+        sibling = issuer_dir / _AF585_ISSUER_FILE
         try:
-            directory = issuer_dir.lstat()
+            sibling.lstat()
         except FileNotFoundError:
+            # Optional issuer stays absent, even if this sibling directory
+            # happens to be used for unrelated, non-private Fabric data.
             pass
         except OSError as exc:
             raise FabricAgentQualificationError(
                 "Runner Fabric original issuer configuration is invalid"
             ) from exc
         else:
+            try:
+                directory = issuer_dir.lstat()
+            except OSError as exc:
+                raise FabricAgentQualificationError(
+                    "Runner Fabric original issuer configuration is invalid"
+                ) from exc
             if (
                 not stat.S_ISDIR(directory.st_mode)
                 or directory.st_uid != os.geteuid()
@@ -183,7 +192,7 @@ def _af585_private_issuer_additions(config_dir: Path) -> dict[str, str]:
                 raise FabricAgentQualificationError(
                     "Runner Fabric original issuer configuration is invalid"
                 )
-            paths.append(issuer_dir / _AF585_ISSUER_FILE)
+            paths.append(sibling)
 
     selected: Path | None = None
     for candidate in paths:

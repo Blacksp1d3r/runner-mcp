@@ -157,25 +157,69 @@ def _af585_private_issuer_additions(config_dir: Path) -> dict[str, str]:
     one fixed owner-private location and a fixed HTTPS origin; an invalid
     present file aborts the existing agent instead of silently changing roles.
     """
-    path = config_dir / _AF585_ISSUER_FILE
-    try:
-        info = path.lstat()
-    except FileNotFoundError:
-        return {}
-    except OSError as exc:
-        raise FabricAgentQualificationError(
-            "Runner Fabric original issuer configuration is invalid"
-        ) from exc
+    # Legacy qualification remains supported in the existing Runner-MCP config.
+    # The ORIGINAL publisher may already custody its independent 0600 issuer
+    # alongside that config, under the same owner's runner-fabric directory.
+    # Accept this sibling ONLY for the owner's default Runner-MCP config root:
+    # no arbitrary path setting, worker token, host alias or credential copy.
+    paths = [config_dir / _AF585_ISSUER_FILE]
+    home_config = Path.home() / ".config"
+    if config_dir == home_config / "runner-mcp":
+        issuer_dir = home_config / "runner-fabric"
+        sibling = issuer_dir / _AF585_ISSUER_FILE
+        try:
+            sibling.lstat()
+        except FileNotFoundError:
+            # Optional issuer stays absent, even if this sibling directory
+            # happens to be used for unrelated, non-private Fabric data.
+            pass
+        except OSError as exc:
+            raise FabricAgentQualificationError(
+                "Runner Fabric original issuer configuration is invalid"
+            ) from exc
+        else:
+            try:
+                directory = issuer_dir.lstat()
+            except OSError as exc:
+                raise FabricAgentQualificationError(
+                    "Runner Fabric original issuer configuration is invalid"
+                ) from exc
+            if (
+                not stat.S_ISDIR(directory.st_mode)
+                or directory.st_uid != os.geteuid()
+                or stat.S_IMODE(directory.st_mode) != 0o700
+            ):
+                raise FabricAgentQualificationError(
+                    "Runner Fabric original issuer configuration is invalid"
+                )
+            paths.append(sibling)
 
-    if (
-        not stat.S_ISREG(info.st_mode)
-        or info.st_uid != os.geteuid()
-        or stat.S_IMODE(info.st_mode) != 0o600
-        or info.st_nlink != 1
-    ):
-        raise FabricAgentQualificationError(
-            "Runner Fabric original issuer configuration is invalid"
-        )
+    selected: Path | None = None
+    for candidate in paths:
+        try:
+            info = candidate.lstat()
+        except FileNotFoundError:
+            continue
+        except OSError as exc:
+            raise FabricAgentQualificationError(
+                "Runner Fabric original issuer configuration is invalid"
+            ) from exc
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.geteuid()
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_nlink != 1
+            or selected is not None
+        ):
+            # Two competing publisher files must never be chosen by priority.
+            raise FabricAgentQualificationError(
+                "Runner Fabric original issuer configuration is invalid"
+            )
+        selected = candidate
+
+    if selected is None:
+        return {}
+    path = selected
 
     try:
         values = load_env_file(path)

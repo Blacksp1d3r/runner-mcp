@@ -550,3 +550,142 @@ def test_af585_private_issuer_rejects_insecure_mode_and_symlink(
     issuer.symlink_to(target)
     with pytest.raises(FabricAgentQualificationError):
         qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def _default_original_publisher_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    """Synthetic same-owner default Runner-MCP tree, never a real host."""
+    home = tmp_path / "owner-home"
+    home.mkdir(mode=0o700)
+    home_config = home / ".config"
+    home_config.mkdir(mode=0o700)
+    monkeypatch.setattr(Path, "home", lambda: home)
+    project = tmp_path / "project"
+    project.mkdir()
+    paths = install_private_configuration(
+        config_dir=home_config / "runner-mcp",
+        answers=SetupAnswers(
+            resource_url="http://127.0.0.1:8000/mcp",
+            auth_issuer="http://127.0.0.1:8000/",
+            project_code="demo",
+            project_name="Demo",
+            repository="example/demo",
+            project_root=project,
+        ),
+    )
+    return paths, home_config / "runner-fabric"
+
+
+def _write_original_custody(issuer_dir: Path, values=None) -> Path:
+    issuer_dir.mkdir(mode=0o700)
+    file = issuer_dir / _AF585_ISSUER
+    source = _AF585_VALUES if values is None else values
+    file.write_text(
+        "".join(f"{key}={value}\n" for key, value in source.items()),
+        encoding="utf-8",
+    )
+    file.chmod(0o600)
+    return file
+
+
+def test_af585_original_owner_sibling_forwards_without_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _write_original_custody(issuer_dir)
+    assert not (paths.config_dir / _AF585_ISSUER).exists()
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification, "_fixed_runner_fabric_executable", lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir, execve=fake_execve,
+    ) == 0
+    env = captured["env"]
+    assert isinstance(env, dict)
+    assert all(env[key] == value for key, value in _AF585_VALUES.items())
+    assert not (paths.config_dir / _AF585_ISSUER).exists()
+    assert captured["argv"] == [str(executable), "agent-serve-qualification"]
+
+
+def test_af585_two_owner_issuer_files_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _write_af585_issuer(paths)
+    _write_original_custody(issuer_dir)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+@pytest.mark.parametrize("invalid", ["world-readable-dir", "symlink-dir", "symlink-file", "world-readable-file"])
+def test_af585_sibling_rejects_unsafe_custody(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    if invalid == "symlink-dir":
+        outside = tmp_path / "elsewhere"
+        _write_original_custody(outside)
+        issuer_dir.symlink_to(outside, target_is_directory=True)
+    else:
+        file = _write_original_custody(issuer_dir)
+        if invalid == "world-readable-dir":
+            issuer_dir.chmod(0o755)
+        elif invalid == "symlink-file":
+            target = tmp_path / "outside-issuer"
+            target.write_text(file.read_text(encoding="utf-8"), encoding="utf-8")
+            file.unlink()
+            file.symlink_to(target)
+        else:
+            file.chmod(0o644)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_af585_unrelated_config_must_not_implicitly_adopt_sibling(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _write_original_custody(issuer_dir)
+    assert qualification._af585_private_issuer_additions(tmp_path / "other") == {}
+
+
+def test_af585_sibling_invalid_role_or_origin_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    values = {**_AF585_VALUES, "RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE": "operator_mfa_bearer"}
+    _write_original_custody(issuer_dir, values)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_af585_no_sibling_file_preserves_disabled_mode_with_nonprivate_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    issuer_dir.mkdir(mode=0o755)
+    assert qualification._af585_private_issuer_additions(paths.config_dir) == {}

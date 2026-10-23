@@ -1,3 +1,11 @@
+## 2026-10-23 — original-host prior Fabric slot doctor PASS; command chain remains WAIT
+
+Operator guarded previous-slot `doctor` on the **original control-host process generation**: `ORIGINAL_PROCESS=VERIFIED`, `PREVIOUS_SLOT=BOUNDED`, `PREVIOUS_DOCTOR=PASS`, `NO_CHANGES=TRUE`. Separate prior same-host 407 RECORD file-hash and receipt checks already PASS. These prove only the old CLI's fixed self-check, **not** actual service/connection rollback. No update, launcher switch, credential change or task dispatch occurred. Fabric #924's original rollback failure-path code defect remains unresolved.
+
+Original publisher `runner:control` exists in original relay registry but source-host private credential custody/issuer opt-in remains UNKNOWN/INACTIVE; AIfordable #585 owns that proof. Existing connected Runner-MCP serves 0.1.38 with active wheel/source unverified; relay UNKNOWN and execution disabled. Do not confuse a lab-private credential or different serving Fabric peer with this original publisher. One fixed `qual:black:runtime:v1` real result+durable ACK still WAIT. Canonical correct-host evidence: Runner-MCP #341/#669, Fabric #924 and AIfordable #585; retain private coordinates only in existing infrastructure authority.
+
+---
+
 ## 2026-10-23 — original fixed Black logical issuer path and correct-host evidence
 
 ```text

@@ -680,3 +680,12 @@ def test_af585_sibling_invalid_role_or_origin_rejected(
         match="original issuer configuration is invalid",
     ):
         qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_af585_no_sibling_file_preserves_disabled_mode_with_nonprivate_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    issuer_dir.mkdir(mode=0o755)
+    assert qualification._af585_private_issuer_additions(paths.config_dir) == {}

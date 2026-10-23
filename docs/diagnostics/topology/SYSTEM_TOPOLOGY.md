@@ -1,3 +1,13 @@
+## 2026-10-23 — original publisher `runner:control` AUTH PASS, live dispatch WAIT
+
+**Distinct evidence boundaries:** physical original `github-runner`/owner `gha-runner` has existing owner-private issuer material whose exact-mode/origin/secret-shape were validated and whose machine credential has now been authenticated by the existing original SQL relay: `RELAY_ISSUER_GET=AUTHENTICATED_NO_COMMAND` with `NO_CHANGES=TRUE`. The fixed read-only GET accepted the original machine subject `runner:control` and returned no queued SQL command (404). It did **not** submit or claim work. Lab issuer custody never substitutes for the original server.
+
+**Original serving launcher remains UNARMED:** connected Runner-MCP 0.1.38 lacks source-only PR #813 optional private file forwarding and v0.1.84 methods. The existing Fabric agent's active original issuer config/methods are absent per physical process readout. Fabric #1730 merged *source* rollback failure-path repair (`d111ba8...`) but the serving original Fabric slot still has not been qualified/installed on that commit; old slot 407 RECORD checks and old CLI doctor PASS are not service rollback. On-target config source-parent/launcher/active process/import map and real A6/A7 must be proven before guarded activation.
+
+**No physical Black result:** no authentic original `qual:black:runtime:v1` SQL POST, `runner:black` claim, terminal SHA result, same machine-actor durable ACK or original readback. Owners: AIfordable #585 original private authority/relay, Fabric #924 exact original host and recovery, Runner-MCP #341 fixed existing client and #669 active six-role build provenance. No new hosts, transfer of credentials, updater, relay, MFA/OIDC or blind central installation.
+
+---
+
 ## 2026-10-23 — original-host prior Fabric slot doctor PASS; command chain remains WAIT
 
 Operator guarded previous-slot `doctor` on the **original control-host process generation**: `ORIGINAL_PROCESS=VERIFIED`, `PREVIOUS_SLOT=BOUNDED`, `PREVIOUS_DOCTOR=PASS`, `NO_CHANGES=TRUE`. Separate prior same-host 407 RECORD file-hash and receipt checks already PASS. These prove only the old CLI's fixed self-check, **not** actual service/connection rollback. No update, launcher switch, credential change or task dispatch occurred. Fabric #924's original rollback failure-path code defect remains unresolved.

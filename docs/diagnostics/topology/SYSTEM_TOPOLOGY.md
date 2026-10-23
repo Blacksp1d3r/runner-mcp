@@ -1,3 +1,11 @@
+## 2026-10-23 — original github-runner issuer storage and active parent are DIFFERENT private roots
+
+Original exact-host operator report (read-only, sanitized): `ORIGINAL_PROCESS=VERIFIED`; `PARENT_ROLE=RUNNER_MCP`; `CONFIG_SELECTION=EXPLICIT`; `CONFIG_ROOT=OWNER_PRIVATE`; `PARENT_ISSUER_FILE=ABSENT_IN_PARENT_CONFIG`; `LIVE_ISSUER_ACTIVATION=NOT_PROVEN`; `NO_CHANGES=TRUE`. Independently, existing owner-private issuer material on that **same original host** has successfully authenticated to the existing AIfordable SQL relay as registered `runner:control` via the fixed GET (no command). These are two distinct private **directories**, not two credential identities or two hosts.
+
+GitHub SOURCE PR #813 only loads `af585-control-issuer.env` from the actual Runner-MCP config root. The physical v0.1.38 original parent cannot be assumed to include that source. Source-only Fabric #1730 rollback fix is not on the serving original host. Live Fabric fixed three original Black tools remain unarmed; connected bridge READY/read-only does not prove SQL POST/ACK. Preserve private path names, argv, env and credential bytes in existing authorized Infrastructure Authority only. AIfordable #585: exact credential custody/active private config-root reconciliation; Fabric #924: owner-physical service launcher/wheel/rollback admission; Runner-MCP #341/#669: fixed tools, active six-role provenance and one real command/result/ACK after qualification. No ad hoc credential copy/symlink/move, extra loader/relay or update/restart until qualified.
+
+---
+
 ## 2026-10-23 — original publisher `runner:control` AUTH PASS, live dispatch WAIT
 
 **Distinct evidence boundaries:** physical original `github-runner`/owner `gha-runner` has existing owner-private issuer material whose exact-mode/origin/secret-shape were validated and whose machine credential has now been authenticated by the existing original SQL relay: `RELAY_ISSUER_GET=AUTHENTICATED_NO_COMMAND` with `NO_CHANGES=TRUE`. The fixed read-only GET accepted the original machine subject `runner:control` and returned no queued SQL command (404). It did **not** submit or claim work. Lab issuer custody never substitutes for the original server.

@@ -24,7 +24,7 @@ from runner_mcp.fabric_update import (
         ("unexpected future private failure", "fabric_update_readiness_unavailable"),
     ],
 )
-@pytest.mark.parametrize("source", ["github-actions", "local-custody"])
+@pytest.mark.parametrize("source", ["github-actions", "local-custody", "github-release"])
 def test_readiness_failure_is_bounded_and_never_authorizes_update(
     message: str, expected: str, source: str,
 ) -> None:

@@ -1705,6 +1705,36 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def fabric_release_assets_readiness(commit: str) -> dict:
+        """Check fixed GitHub Release metadata; never stage or authorize an update."""
+        try:
+            result = fabric_update_manager.release_assets_readiness(commit)
+        except FabricUpdateError as exc:
+            blocked = bounded_fabric_readiness_failure(exc, source="github-release")
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_release_assets_readiness",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "blocked",
+                    utc_timestamp(),
+                )
+            )
+            return blocked
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_release_assets_readiness",
+                "runner-fabric",
+                "authenticated-client",
+                "ready",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
     def fabric_local_bundle_stage(commit: str) -> dict:
         """Stage one exact canonical Runner Fabric update bundle into local custody."""
         try:

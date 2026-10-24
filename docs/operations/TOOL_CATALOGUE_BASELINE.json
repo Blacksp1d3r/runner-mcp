@@ -1,7 +1,7 @@
 {
   "schemaVersion": "runner-mcp/tool-catalogue-baseline/v1",
   "sourceFile": "src/runner_mcp/server.py",
-  "minimumToolCount": 104,
+  "minimumToolCount": 105,
   "tools": [
     "apply_migrations",
     "approval_status",
@@ -49,6 +49,7 @@
     "fabric_local_update",
     "fabric_local_update_readiness",
     "fabric_operational_snapshot",
+    "fabric_release_archive_mirror_backup",
     "fabric_release_archive_mirror_readiness",
     "fabric_release_assets_readiness",
     "fabric_repository_mirrors_activate",

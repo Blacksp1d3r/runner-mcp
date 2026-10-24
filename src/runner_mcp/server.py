@@ -133,6 +133,10 @@ from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
 )
+from .fabric_release_archive_mirror import (
+    ProtectedReleaseArchiveMirror,
+    ProtectedReleaseMirrorError,
+)
 from .fabric_release_archive_mirror_readiness import (
     FabricReleaseArchiveMirrorReadiness,
 )
@@ -695,6 +699,11 @@ def build_mcp(
     )
     release_archive_mirror_readiness = FabricReleaseArchiveMirrorReadiness(
         environment=private_values,
+    )
+    protected_release_archive_mirror = ProtectedReleaseArchiveMirror(
+        environment=private_values,
+        safety=safety,
+        readiness=release_archive_mirror_readiness,
     )
     mirror_runtime_environment = dict(private_values)
     fabric_repository_mirror_runner = FabricRepositoryMirrorRunner(
@@ -1549,6 +1558,46 @@ def build_mcp(
             AuditEvent(
                 current_request_id(),
                 "fabric_release_archive_mirror_readiness",
+                "runner-fabric:release-archive-mirror",
+                "authenticated-client",
+                str(result.get("reasonCode", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_release_archive_mirror_backup() -> dict:
+        """Mirror exactly the two locally protected Fabric archives; no caller args."""
+        try:
+            result = protected_release_archive_mirror.run()
+        except (
+            ProtectedReleaseMirrorError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            reason = (
+                str(exc) if isinstance(exc, ProtectedReleaseMirrorError)
+                else "operator-backup-not-permitted"
+            )
+            result = {
+                "schemaVersion": "runner-mcp/protected-release-archive-mirror/v1",
+                "state": "blocked",
+                "protectedRevisionCount": 2,
+                "mirroredCount": 0,
+                "verifiedCount": 0,
+                "alreadyStoredCount": 0,
+                "separateDeviceReady": False,
+                "reasonCode": reason,
+                "mutationScope": "protected-release-archive-mirror",
+                "restoreTriggered": False,
+                "updateTriggered": False,
+                "deleteTriggered": False,
+            }
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_release_archive_mirror_backup",
                 "runner-fabric:release-archive-mirror",
                 "authenticated-client",
                 str(result.get("reasonCode", "unknown")),

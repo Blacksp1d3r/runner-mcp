@@ -1,7 +1,6 @@
 """#587 fixed protected-release BACKUP tests. No host filesystem/network."""
 
 import json
-import os
 from pathlib import Path
 from types import SimpleNamespace
 

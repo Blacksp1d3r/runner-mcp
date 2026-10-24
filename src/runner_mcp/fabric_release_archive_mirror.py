@@ -53,7 +53,7 @@ def _checked_tool(directory: Path, filename: str) -> Path:
             raise ProtectedReleaseMirrorError("first-party-tool-untrusted")
         with path.open("rb") as stream:
             data = stream.read(65_537)
-        blob = b"blob " + str(len(data)).encode("ascii") + b"\\0" + data
+        blob = b"blob " + str(len(data)).encode("ascii") + b"\0" + data
         if hashlib.sha1(blob).hexdigest() != _TOOL_DIGESTS[filename]:
             raise ProtectedReleaseMirrorError("first-party-tool-untrusted")
     except (OSError, KeyError) as exc:

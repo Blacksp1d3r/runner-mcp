@@ -1,3 +1,7 @@
+## 2026-10-24 — Fabric GitHub Release metadata-only readiness
+
+`fabric_release_assets_readiness(exact40hex)` → existing `FabricUpdateManager.release_assets_readiness` → original manager runtime/managed-launcher safety gate → fixed Runner-Fabric GitHub Release tag and Git tag ref metadata → `inspect_exact_release` validates exact source pin, asset names/counts, size and SHA-256 metadata → sanitized `source=github-release`, `state=ready`, `mutation_authorized=false`, `download_performed=false`, bounded audit event. On bad source/unsafe runtime/unqualified ref/digest metadata → `bounded_fabric_readiness_failure(source=github-release)`, `artifact_ready=false`. Neither result verifies bytes, independent signer, staging, actual serving module, previous-good rollback or permission to install. The distinct `fabric_update_readiness` retains GitHub Actions-only semantics; NO silent fallback to GitHub Releases. Regression: `tests/test_fabric_release_metadata_readiness.py` and `tests/test_fabric_update_readiness_unavailable.py`.
+
 # Runner-MCP field/action lineage
 
 For Runner-MCP, field-level lineage means tracing every public tool field or result field to the exact bounded authority that produced it.

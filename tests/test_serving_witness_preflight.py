@@ -410,3 +410,53 @@ def test_six_role_untrusted_pin_collections_do_not_authorize(bad: object) -> Non
     result = _six_process_pin_check(pins=bad)
     assert result["state"] == "unverified"
     assert result["active_build_provenance_verified"] is False
+
+
+class _ForgedEqualString(str):
+    """Adversarial Python-only expected input: never a trusted source pin."""
+
+    def __eq__(self, _other: object) -> bool:
+        return True
+
+    def __ne__(self, _other: object) -> bool:
+        return False
+
+    __hash__ = str.__hash__
+
+
+@pytest.mark.parametrize(
+    ("field", "value"),
+    [
+        ("independently_authorized_key_sha256", _ForgedEqualString("f" * 64)),
+        ("independently_expected_host_digest", _ForgedEqualString("f" * 64)),
+        ("independently_expected_challenge", _ForgedEqualString("f" * 32)),
+        ("independently_expected_source_revision", _ForgedEqualString("f" * 40)),
+        ("independently_expected_loaded_version", _ForgedEqualString("0.1.45")),
+        ("independently_expected_wheel_sha256", _ForgedEqualString("f" * 64)),
+        ("independently_expected_generation_digest", _ForgedEqualString("f" * 64)),
+        ("independently_expected_roles", (_ForgedEqualString("server"), "watcher", "tunnel")),
+    ],
+)
+def test_trusted_expected_identity_pins_refuse_overridden_string_comparisons(
+    field: str, value: object,
+) -> None:
+    result = _check(expected_override={field: value})
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None
+
+
+class _SubTuple(tuple):
+    pass
+
+
+def test_trusted_expected_roles_refuse_mutable_python_subclass_semantics() -> None:
+    result = _check(expected_override={"independently_expected_roles": _SubTuple(_ROLES)})
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False
+
+
+def test_honest_exact_builtin_pins_still_match_offline_without_live_promotion() -> None:
+    assert _check()["state"] == "signed_statement_consistent_offline"
+    assert _six_process_pin_check()["state"] == "six_role_process_pins_consistent_offline"

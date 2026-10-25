@@ -207,7 +207,7 @@ def signed_six_role_process_pin_preflight(
         "schema_version": "runner-mcp/six-role-process-pin-preflight/v1",
     }
     if (
-        not isinstance(independently_expected_roles, tuple)
+        type(independently_expected_roles) is not tuple
         or len(independently_expected_roles) != 6
         or type(independently_expected_process_instances) is not dict
         or not all(

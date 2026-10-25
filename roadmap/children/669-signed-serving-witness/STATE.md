@@ -1,5 +1,11 @@
 # #669 — signed serving statement source v0.1.44
 
+## 2026-10-25 — v0.1.88 offline signed-witness authority pin hardening MERGED; original six-serving-process witness still OPEN
+
+- **Source**: [Runner-MCP #834](https://github.com/Blacksp1d3r/runner-mcp/pull/834) merged `ce327e5db688fe6bae835a4c181824320f01f762`, exact-head Runner MCP validation #40228298337, clean Ubuntu installer #40228298330 and attribution #40228298325 all SUCCESS. The existing offline signed witness and six-role process-pin comparisons now reject string/tuple/bytes subclasses in authority-supplied independent identity material (host, source, wheel, loaded version, generation, signer, nonce, roles). Tests prove subclass-redefined equality cannot match a foreign signed claim and ordinary synthetic trusted pins remain offline-only. [Failure Museum RMCP-F-0074](https://github.com/Blacksp1d3r/runner-mcp/blob/main/docs/failure_museum/RMCP_F_0074_SIGNED_WITNESS_AUTHORITY_INPUT_EQUALITY_20261025.md).
+- **Already done, do not repeat**: historical original 0.1.38 candidate wheel source/RECORD=117/117 + 112 installed-module aggregate and original A7 independent custody PASS; original six-role nonserving archival restore PASS; real original client→Black terminal SQL result and ACK PASS. None of those is a new active-process loaded-wheel witness.
+- **Remaining**: connected original 0.1.38 still has null active source/digest and `active_build_provenance_verified=false`; independent correct-host six simultaneous actual process/import identity with trusted original-client challenge is not established. Source 0.1.88 was not deployed. Physical automatic six-service offline revert and campaign-specific good ACK (#943/#1650) plus A6 #942 independent journal remain unqualified. NO host mutation or repeated historical hash/check.
+
 ## 2026-10-25 — historical wheel protected; independent signed LIVE serving witness still NOT established
 
 - The original 0.1.38 historical release wheel digest, RECORD and 112 installed-module aggregate have already matched and the exact historical artifact is now retained on the existing protected A7 independent medium ([#669](https://github.com/Blacksp1d3r/runner-mcp/issues/669#issuecomment-6396900810)). This does **not** authenticate the process-loaded wheel, current interpreter generation, authorized observer, trusted nonce or all six serving roles.

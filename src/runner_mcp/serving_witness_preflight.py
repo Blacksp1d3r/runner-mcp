@@ -70,30 +70,30 @@ def signed_serving_witness_preflight(
     unavailable = _unverified()
     try:
         if (
-            not isinstance(body, bytes)
+            type(body) is not bytes
             or not 0 < len(body) <= _MAX_BODY
-            or not isinstance(signature, bytes)
+            or type(signature) is not bytes
             or len(signature) != 64
-            or not isinstance(public_key, bytes)
+            or type(public_key) is not bytes
             or len(public_key) != 32
-            or not isinstance(independently_authorized_key_sha256, str)
+            or type(independently_authorized_key_sha256) is not str
             or _SHA.fullmatch(independently_authorized_key_sha256) is None
-            or not isinstance(independently_expected_host_digest, str)
+            or type(independently_expected_host_digest) is not str
             or _SHA.fullmatch(independently_expected_host_digest) is None
-            or not isinstance(independently_expected_source_revision, str)
+            or type(independently_expected_source_revision) is not str
             or _REV.fullmatch(independently_expected_source_revision) is None
-            or not isinstance(independently_expected_loaded_version, str)
+            or type(independently_expected_loaded_version) is not str
             or _VERSION.fullmatch(independently_expected_loaded_version) is None
-            or not isinstance(independently_expected_wheel_sha256, str)
+            or type(independently_expected_wheel_sha256) is not str
             or _SHA.fullmatch(independently_expected_wheel_sha256) is None
-            or not isinstance(independently_expected_generation_digest, str)
+            or type(independently_expected_generation_digest) is not str
             or _SHA.fullmatch(independently_expected_generation_digest) is None
-            or not isinstance(independently_expected_challenge, str)
+            or type(independently_expected_challenge) is not str
             or _NONCE.fullmatch(independently_expected_challenge) is None
-            or not isinstance(independently_expected_roles, tuple)
+            or type(independently_expected_roles) is not tuple
             or not 1 <= len(independently_expected_roles) <= _MAX_ROLES
             or not all(
-                isinstance(role, str) and _ROLE.fullmatch(role) is not None
+                type(role) is str and _ROLE.fullmatch(role) is not None
                 for role in independently_expected_roles
             )
             or len(set(independently_expected_roles)) != len(independently_expected_roles)

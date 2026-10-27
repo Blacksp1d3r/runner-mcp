@@ -1,6 +1,6 @@
 # #747 state — updated 2026-10-27
 
-## 2026-10-27 — #747 read-only mount and full storage preflight (SOURCE CANDIDATE v0.1.101)
+## 2026-10-27 — #747 read-only mount and full storage preflight (SOURCE v0.1.102, LIVE ACCEPTANCE WAIT)
 
 - **Functionele fout:** de owner-local `preflight` beschouwde een bestaande 0700 jobs/patches-indeling met ruimte voor opdrachten altijd als `ready`. Bij een inmiddels alleen-lezen bestandssysteem, nul vrije gebruikersblokken of nul vrije inodes kan echter geen nieuwe taakdirectory worden aangemaakt; `prepare` loopt dan in een opslagfout.
 - **Gerichte read-only verbetering:** terwijl de bestaande gedeelde flock actief is, lees alleen `os.fstatvfs` op elk van de twee **bestaande** directory-FDs. Bij `ST_RDONLY`, `f_bavail == 0` of `f_favail == 0`: geef bestaande `unavailable/workspace_storage_unavailable` in plaats van een misleidende `ready`. Geen testbestand, schrijfcontrole, nieuw mountbeheer of extra autoriteit. `inspect` blijft ook op read-only opslag bruikbaar.

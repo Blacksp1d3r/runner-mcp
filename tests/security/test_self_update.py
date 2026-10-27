@@ -1836,6 +1836,7 @@ def test_provisional_activation_keeps_baseline_transaction_through_restart(
     )
     assert previous.exists()
     assert manager.runtime_status()["provisional_activation_pending"] is True
+    assert manager.runtime_status()["provisional_baseline_wheel_present"] is True
     assert manager.runtime_status()["install_recovery_pending"] is True
 
     for component in ("server", "github-watcher", "completion-watcher"):
@@ -1847,9 +1848,22 @@ def test_provisional_activation_keeps_baseline_transaction_through_restart(
         retain_activation_baseline=True,
     )
     assert restarted.runtime_status()["provisional_activation_pending"] is True
-    assert restarted._package_installer.staged_wheel(
+    assert restarted.runtime_status()["provisional_baseline_wheel_present"] is True
+    saved_wheel = restarted._package_installer.staged_wheel(
         job_id=finished["job_id"], label="baseline",
-    ).exists()
+    )
+    assert saved_wheel.exists()
+    # A transaction and completed job alone cannot certify a retained wheel.
+    original_bytes = saved_wheel.read_bytes()
+    saved_wheel.unlink()
+    missing = restarted.runtime_status()
+    assert missing["provisional_activation_pending"] is True
+    assert missing["install_recovery_pending"] is True
+    assert missing["provisional_baseline_wheel_present"] is False
+    assert missing["self_update_ready"] is False
+    saved_wheel.write_bytes(original_bytes)
+    saved_wheel.chmod(0o600)
+    assert restarted.runtime_status()["provisional_baseline_wheel_present"] is True
     with pytest.raises(SelfUpdateError, match="recovery is still pending"):
         restarted.start("c" * 40)
 
@@ -1860,6 +1874,7 @@ def test_provisional_activation_keeps_baseline_transaction_through_restart(
     assert live["commit"] == baseline
     assert restarted._package_installer.pending_transaction() is None
     assert restarted.runtime_status()["provisional_activation_pending"] is False
+    assert restarted.runtime_status()["provisional_baseline_wheel_present"] is None
 
 
 def test_provisional_mode_refuses_first_install_without_baseline(tmp_path: Path) -> None:
@@ -1883,3 +1898,4 @@ def test_legacy_update_keeps_current_behavior_by_default(tmp_path: Path) -> None
     manager, _project, _exits = make_manager(tmp_path)
     assert manager._retain_activation_baseline is False
     assert manager.runtime_status()["provisional_activation_pending"] is False
+    assert manager.runtime_status()["provisional_baseline_wheel_present"] is None

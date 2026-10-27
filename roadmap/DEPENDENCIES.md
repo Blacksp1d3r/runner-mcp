@@ -1,3 +1,7 @@
+## 2026-10-27 — #341 wheel-presence read-only signal; physical dependency unchanged
+
+- Source candidate v0.1.101 records baseline wheel presence separately from pending retained transaction. The field is not a wheel hash, signer/process witness or independent six-role autonomous restoration. #669 live identity, Fabric #942 A6, #943 A7 offline and new campaign-specific original-client ACK remain mandatory before host activation. No new infrastructure, updates or backup.
+
 ## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered
 
 - Runner-MCP [PR #853](https://github.com/Blacksp1d3r/runner-mcp/pull/853) **MERGED** source v0.1.98 as `bfd246929a1434e6a572344dd125cd53d43ad2ce` (exact tested PR head `33679d3bf2a57957e4788ddee8a232def863d64f`). Exact-head validation #40576773564, clean Ubuntu #40576773598, attribution #40576773573: all **SUCCESS**. The v0.1.96 retention option is now forwarded through existing `create_app` / `build_mcp` into the same manager. **Strict explicit opt-in, default OFF**; production CLI has no opt-in.

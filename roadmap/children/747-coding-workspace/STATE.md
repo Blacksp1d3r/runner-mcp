@@ -1,5 +1,11 @@
 # #747 state — updated 2026-10-27
 
+## 2026-10-27 — #747 owner-rwx correctness of existing private directories (SOURCE CANDIDATE v0.1.100)
+
+- **Functionele fout:** directory-modus 0500 was met eigenaar UID en afwezige groep/other bits acceptabel in de bestaande `_open_directory` en `_entry`. Daardoor kan `coding_workspace_preflight` ten onrechte `ready` rapporteren, hoewel `prepare` niet kan schrijven; en een bestaande jobs/patches-pair kan `prepared` worden gemeld terwijl de eigenaar in een taakdirectory niet kan schrijven.
+- **Beperkte correctie:** vereis owner `rwx` (0700) plus de bestaande afwijzing van group/other rechten op alleen de reeds bestaande twee privéouders en individuele werk-unit directories. Het 0755 worker-root, de aparte owner-UID, padbescherming, flock en idempotentie blijven ongewijzigd. Test afzonderlijk de niet-schrijfbare 0500 jobs-ouder én één niet-schrijfbare 0500 task-entry, inclusief herstel van 0700, geen writes op fout.
+- **Grens:** bron/CI zijn geen live owner-local installatie of Fabric lease/ACK. #972/#1579/#609 behoudt het integratie-eigenaarschap. Geen nieuwe relays, authenticatie, disk of dienst.
+
 ## 2026-10-27 — #747 accurate owner-local capacity preflight (SOURCE CANDIDATE v0.1.99)
 
 - **Concrete bug:** `preflight(worker_id)` returned `ready` for an accessible owner-private layout even when either the fixed `jobs` or `patches` parent had already reached 128 entries, while `prepare` immediately rejected each NEW work unit with `workspace_capacity_reached`. During in-progress pair creation, unguarded preflight could also return a misleading ready state.

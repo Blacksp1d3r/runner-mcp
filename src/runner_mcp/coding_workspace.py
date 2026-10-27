@@ -90,7 +90,10 @@ class CodingWorkspaceProvisioner:
         if not stat.S_ISDIR(info.st_mode):
             raise WorkspaceDenied("workspace_directory_unsafe")
         if private:
-            if info.st_uid != uid or info.st_mode & 0o077:
+            # Private also means usable: owner read, write and search are
+            # required by the later task-directory create/inspection steps.
+            if (info.st_uid != uid or info.st_mode & 0o077
+                    or (info.st_mode & 0o700) != 0o700):
                 raise WorkspaceDenied("workspace_directory_unsafe")
         # Root-owned sticky parents such as /tmp may contain privately owned
         # descendants; ordinary writable ancestors are unsafe.
@@ -122,7 +125,8 @@ class CodingWorkspaceProvisioner:
         except OSError:
             raise WorkspaceDenied("workspace_entry_unsafe") from None
         if (not stat.S_ISDIR(info.st_mode)
-                or info.st_uid != uid or info.st_mode & 0o077):
+                or info.st_uid != uid or info.st_mode & 0o077
+                or (info.st_mode & 0o700) != 0o700):
             raise WorkspaceDenied("workspace_entry_unsafe")
         return True
 

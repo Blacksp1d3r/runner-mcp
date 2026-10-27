@@ -1,5 +1,11 @@
 # #747 state — updated 2026-10-27
 
+## 2026-10-27 — #747 accurate owner-local capacity preflight (SOURCE CANDIDATE v0.1.99)
+
+- **Concrete bug:** `preflight(worker_id)` returned `ready` for an accessible owner-private layout even when either the fixed `jobs` or `patches` parent had already reached 128 entries, while `prepare` immediately rejected each NEW work unit with `workspace_capacity_reached`. During in-progress pair creation, unguarded preflight could also return a misleading ready state.
+- **Bounded fix:** use the already existing shared, nonblocking Linux flock on `jobs` during read-only preflight, then check both current entry counts. Return only the EXISTING `unavailable/workspace_busy` or `unavailable/workspace_capacity_reached` classifications, without new tool IDs, paths, storage, workers or cross-host authority. Repeat of an already-prepared work unit can still be accepted by `prepare` at full capacity (intentional idempotency).
+- **Acceptance:** one-sided/full/available/concurrent-busy regression and exact GitHub PR CI; correct-worker original host installation and end-to-end original-client ACK are still `WAIT` under Fabric #972/#1579 and shared #609. No host changes.
+
 ## 2026-10-27 — #747 per-task read-only pair receipt (SOURCE MERGED 0.1.97)
 
 - **Functionele aanleiding:** ouder-`coding_workspace_preflight(worker_id)` bewijst enkel dat het bestaande lokale root-/jobs-/patches-layout toegankelijk is; een initiërende client kan niet bepalen of een *specifieke* work-unit pair reeds bestaat na een onzekere opdracht zonder nogmaals het muterende `prepare` aan te roepen.

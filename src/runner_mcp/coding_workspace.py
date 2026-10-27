@@ -136,7 +136,17 @@ class CodingWorkspaceProvisioner:
         try:
             uid, root = self._binding(worker_id)
             with ExitStack() as stack:
-                self._checked_layout(stack, uid, root)
+                jobs, patches = self._checked_layout(stack, uid, root)
+                # Read capacity under the same parent lock that serializes
+                # prepare. A live but full workspace is not ready for new work.
+                try:
+                    fcntl.flock(jobs, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise WorkspaceDenied("workspace_busy") from None
+                except OSError:
+                    raise WorkspaceDenied("workspace_storage_unavailable") from None
+                if len(os.listdir(jobs)) >= _MAX_TASKS or len(os.listdir(patches)) >= _MAX_TASKS:
+                    raise WorkspaceDenied("workspace_capacity_reached")
         except WorkspaceDenied as exc:
             return _reply("unavailable", exc.reason, worker_id)
         except OSError:

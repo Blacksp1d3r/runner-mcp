@@ -1,6 +1,6 @@
-## 2026-10-27 — #669 unmanaged six-role cron conflict denial (v0.1.93 SOURCE / CI gate)
-
 ## 2026-10-27 — Runner-MCP-B (#381/#747) reikwijdte en bewijs (SOURCE, niet LIVE-ACK)
+
+## 2026-10-27 — #669 unmanaged six-role cron conflict denial (v0.1.93 SOURCE / CI gate)
 
 - **#747 SOURCE VOLTOOID:** [PR #751](https://github.com/Blacksp1d3r/runner-mcp/pull/751) is al gemerged (`601afc953495fa0c2faa511d4601186ff269e034`), met exacte head `47da001a9bb73a1624fdeb9d00f33efd72b09902` en eerder geregistreerde groene bron-CI (#747-comment). `coding_workspace_preflight(worker_id)` en `coding_workspace_prepare(worker_id, work_unit_id)` bestaan in source `server.py` en `coding_workspace.py`; ze bedienen **alleen dezelfde lokale effectieve UID en filesystem** als de server. Geen nieuwe root, disk of modelsmoke vereist.
 - **#381 SOURCE VOLTOOID / LIVE GEBLOKKEERD:** fixed rootless Claude-actuator [PR #628](https://github.com/Blacksp1d3r/runner-mcp/pull/628) is gemerged, maar wordt volgens zijn eigen contract bewust niet als publiek MCP-tool geregistreerd totdat de bestaande Fabric issuer/verifier/lease/fence en eigenaar-lokale binding gekwalificeerd zijn.

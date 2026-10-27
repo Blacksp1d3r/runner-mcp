@@ -136,3 +136,81 @@ receipt, verified source bundle, same-original-client ACK, or a
 permission to call Ollama. Source-of-truth: Runner-MCP #844 and the
 central AIfordable topology; the local shell script has not been
 promoted into a fabricated repository release.
+
+## 2026-10-27 acceptance: unattended cron really ran at 21:17 UTC
+
+The first **genuinely unattended** tick after removing the PR #661
+starvation condition and fixing empty-batch manifest persistence is now
+**PROVEN**, not inferred from a manual command. On original Blacky
+(`hostname=blacky`, user `blacky` UID1000), `cron` was active and the
+single existing `:17` crontab row was still unchanged. At original
+host UTC `21:17:17`, its **systemd cron journal** contained exactly one
+matching invocation of the bounded `review-public-open-prs.py` command
+in the `21:16:50–21:18:00` window. The same existing atomic
+`review-public-manifest.json` had a fresh mtime of
+**2026-10-27T21:17:01.732936Z** and 18 tracked PR records.
+
+The executing file SHA256 still matched
+`4e6a47c54cdbd201ef0863f4aa9f265d95bc807758cead8f028d64a9fae707d2`.
+No attended/manual review was executed since 20:43 UTC; the cron
+journal and existing manifest together qualify this specific real tick.
+This is local **quick advisory scheduler** acceptance only, NOT Fabric
+Agent Bus dispatch, authenticated reviewer publication, model/GPU
+review of actual PR content or original requester durable ACK.
+
+## Follow-up: official pinned-commit producer needs matching local allowlist
+
+After the first scanner upgrade, Blacky's installed
+`runner_fabric/review_github_readonly.py` was still the older Git blob
+`4a6c552a6d5c3603a224f40c631aac678e91109d`. Merged Fabric
+source from #1834 was
+`7a0b37be5b30ec0aaab6fdbe304e72024fd6af3c`.
+The new producer additionally cross-checks mutable PR file listings
+with the immutable GitHub `compare/{base_sha}...{head_sha}` resource.
+**Installing only the new producer would cause all normal Blacky
+reviews to return WAIT**, because the existing rootless
+`public_pr_review.py` allowlist admitted only `pulls/*` paths.
+
+The same existing credential-free wrapper was therefore updated to
+accept *only* a fixed SHA-paired `compare` resource with exact
+`per_page=1&page=1`; no arbitrary URLs, redirects, credentials, review
+publication or broader network interface were introduced.
+The resulting local wrapper Git blob is
+`75ae7f7941101c4cd208456349897b7881036b9a`
+(previous `19b12a2b580755d0397db08b5a52768000750dd0`).
+
+The staged upstream producer and wrapper passed seven strict
+resource-allowlist negative checks and source mismatch fail-closed
+cases. Two **real public open PR** reads, #678 (9 files) and #710
+(12 files), gave `REVIEW_REQUIRED`, all four authority booleans false,
+with exact pinned compare checks. A single owner-local switch under the
+**existing batch flock** preserved an original private source copy for
+each file and atomically replaced the two existing module files.
+Actual live post-install PR #678 read returned `REVIEW_REQUIRED`,
+`github_head_rechecked=true`, 9 files and a valid 64-hex
+`preview_sha256`. This preview hash is NOT authenticated reviewer or
+GitHub signing evidence. A separate on-host check confirmed both
+active and recovery Git blobs; cron, model and SSH routes unchanged.
+
+The separate physical Windows Worker locally executed an **original
+synthetic** Python bug-finding prompt with installed local Ollama
+Qwen2.5 Coder 7B, returning the right finding in 20.63 seconds with
+22 generated tokens. Ollama `/api/ps` showed the model GPU-resident
+(`4,530,089,491` bytes) and `nvidia-smi` showed one RTX5080
+snapshot at 6% utilization and 6,820/16,303 MiB VRAM in use. This
+is only Windows-local GPU model availability, **not** a real PR
+GPU review or a Blacky-to-Windows transport qualification. The
+historical Blacky loopback reverse-review listener `:11435` was
+still absent when last checked. Fabric #1491 retains exclusive
+ownership of admitted F18 `review_local` work-unit, issuer,
+host identity, lease/fence, Conductor and original-client ACK;
+Runner-MCP #844 can actuate locally only after that contract exists.
+
+**No-repeat guidance:** for source updates of the *existing* quick
+reviewer, inspect the selected producer's fixed resource vocabulary
+and the consumer wrapper's exact allowlist together; validate
+standalone current public PRs before replacing active files.
+Do not mistake a valid SHA digest, file write, two local model
+responses, or a connector connection for an authenticated F18 review
+receipt. The central AIfordable topology, not another registry, is
+the canonical physical topology.

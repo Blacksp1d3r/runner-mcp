@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
 import pwd
 import stat
@@ -138,3 +139,18 @@ def test_capacity_limit_rejects_new_job_but_allows_repeat(tmp_path: Path) -> Non
     assert provisioner.prepare("qwen", "first")["state"] == "already_prepared"
     assert provisioner.prepare("qwen", "next")["reason_code"] == "workspace_capacity_reached"
     assert not (root / "jobs" / "next").exists()
+
+
+def test_busy_workspace_blocks_without_write_then_replays(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    fd = os.open(root / "jobs", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        result = provisioner.prepare("qwen", "f18-replay")
+        assert result["reason_code"] == "workspace_busy"
+        assert not (root / "jobs" / "f18-replay").exists()
+        assert not (root / "patches" / "f18-replay").exists()
+    finally:
+        os.close(fd)
+    assert provisioner.prepare("qwen", "f18-replay")["state"] == "prepared"
+    assert provisioner.prepare("qwen", "f18-replay")["state"] == "already_prepared"

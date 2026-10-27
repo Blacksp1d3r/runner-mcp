@@ -60,6 +60,7 @@ from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
     BewindWorkerQualificationPolicyError,
 )
+from .bounded_status_read import bounded_status_object
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
@@ -840,8 +841,8 @@ def build_mcp(
             ("fabric-update-state-unavailable", fabric_update_manager.runtime_status),
         ):
             try:
-                state = read_status()
-                if not isinstance(state, dict):
+                state = bounded_status_object(read_status)
+                if state is None:
                     raise TypeError("runtime manager returned non-object status")
                 result.update(state)
             except (OSError, RuntimeError, ValueError, TypeError):
@@ -942,7 +943,9 @@ def build_mcp(
             add("connector_tunnel_readiness", *tunnel_status)
 
         try:
-            self_update_status = self_update_manager.runtime_status()
+            self_update_status = bounded_status_object(self_update_manager.runtime_status)
+            if self_update_status is None:
+                raise SelfUpdateError("unavailable")
         except SelfUpdateError:
             add(
                 "self_update_source_baseline",
@@ -1008,10 +1011,14 @@ def build_mcp(
                 )
 
         try:
-            a6_state = inspect_a6_binding_state(
-                config_dir=settings.projects_config.parent,
-                state_root=_a6_state_root(),
+            a6_state = bounded_status_object(
+                lambda: inspect_a6_binding_state(
+                    config_dir=settings.projects_config.parent,
+                    state_root=_a6_state_root(),
+                )
             )
+            if a6_state is None:
+                raise FabricA6BindingRepairError("unavailable")
         except FabricA6BindingRepairError:
             add(
                 "fabric_a6_binding_state",
@@ -1023,7 +1030,11 @@ def build_mcp(
             add("fabric_a6_binding_state", state, detail)
 
         try:
-            actions_readiness = fabric_update_manager.actions_readiness()
+            actions_readiness = bounded_status_object(
+                fabric_update_manager.actions_readiness
+            )
+            if actions_readiness is None:
+                raise FabricUpdateError("unavailable")
         except FabricUpdateError:
             add(
                 "runner_fabric_actions_read",
@@ -1038,12 +1049,20 @@ def build_mcp(
             )
 
         try:
-            fabric_continuity_status_runner.status()
+            continuity = fabric_continuity_status_runner.status()
+            if type(continuity) is not dict:
+                raise FabricContinuityStatusError("unavailable")
         except FabricContinuityStatusError as exc:
             add(
                 "fabric_continuity_status",
                 "warn",
                 str(exc),
+            )
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
+            add(
+                "fabric_continuity_status",
+                "warn",
+                "unavailable",
             )
         else:
             add(
@@ -1060,10 +1079,14 @@ def build_mcp(
             )
         else:
             try:
-                readiness = fabric_bridge.worker_qualification_readiness(
-                    "aifordable-lab",
-                    "bewind-ocr-qualification-v1",
+                readiness = bounded_status_object(
+                    lambda: fabric_bridge.worker_qualification_readiness(
+                        "aifordable-lab",
+                        "bewind-ocr-qualification-v1",
+                    )
                 )
+                if readiness is None:
+                    raise FabricBridgeError("unavailable")
             except FabricBridgeError:
                 add(
                     "fabric_worker_qualification_readiness",

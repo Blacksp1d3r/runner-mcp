@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import fcntl
+import os
 import subprocess
 from pathlib import Path
 
@@ -295,6 +296,7 @@ def test_cron_tunnel_uses_fixed_runtime_when_server_lock_is_active(
     executable.chmod(0o700)
     server_lock = config / "autostart-server.lock"
     server_fd = server_lock.open("w")
+    server_lock.chmod(0o600)
     fcntl.flock(server_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     captured: dict[str, object] = {}
 
@@ -434,12 +436,16 @@ def test_cron_run_failure_diagnostic_is_bounded(
 def test_component_active_observes_shared_lock(tmp_path: Path) -> None:
     config = tmp_path / "private"
     config.mkdir(mode=0o700)
-    assert component_active(config, "server") is False
-
     lock_path = config / "autostart-server.lock"
+    assert component_active(config, "server") is False
+    assert not lock_path.exists()
+
+    lock_path.write_bytes(b"")
+    lock_path.chmod(0o600)
     with lock_path.open("r+") as handle:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
         assert component_active(config, "server") is True
+    assert lock_path.stat().st_mode & 0o777 == 0o600
 
 
 def test_cron_status_reports_only_managed_components(
@@ -461,6 +467,7 @@ def test_cron_status_reports_only_managed_components(
         components=("server",),
         runner=crontab,
     )
+    assert not (config / "autostart-server.lock").exists()
 
     assert [row.public_dict() for row in rows] == [
         {
@@ -531,3 +538,78 @@ def test_install_without_clear_permit_does_not_read_or_write_crontab(
 
     assert crontab.calls == []
     assert crontab.content == original
+
+
+def test_cron_status_does_not_change_preexisting_lock_bytes_or_mode(
+    tmp_path: Path, fake_crontab_executable: None,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    lock = config / "autostart-server.lock"
+    lock.write_bytes(b"owner-lock")
+    lock.chmod(0o600)
+    crontab = FakeCrontab(
+        f"{CRON_BEGIN}\n"
+        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server "
+        "--port 8000 >/dev/null 2>&1\n"
+        f"{CRON_END}\n"
+    )
+    before = lock.stat()
+    result = cron_status(config_dir=config, components=("server",), runner=crontab)
+    after = lock.stat()
+    assert result[0].installed is True
+    assert result[0].active is False
+    assert lock.read_bytes() == b"owner-lock"
+    assert after.st_ino == before.st_ino
+    assert after.st_mode == before.st_mode
+    assert after.st_mtime_ns == before.st_mtime_ns
+    assert len(crontab.calls) == 1
+    assert crontab.calls[0][0][-1] == "-l"
+
+
+@pytest.mark.parametrize("unsafe", ("symlink", "hardlink", "fifo", "permissions"))
+def test_component_active_rejects_unsafe_lock_without_rewriting_it(
+    tmp_path: Path, unsafe: str,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    lock = config / "autostart-server.lock"
+    outside = tmp_path / "outside"
+    outside.write_text("untouched")
+    if unsafe == "symlink":
+        lock.symlink_to(outside)
+    elif unsafe == "hardlink":
+        os.link(outside, lock)
+    elif unsafe == "fifo":
+        os.mkfifo(lock, mode=0o600)
+    else:
+        lock.write_bytes(b"not-private")
+        lock.chmod(0o644)
+    with pytest.raises(CronAutostartError, match="cron lock observation"):
+        component_active(config, "server")
+    assert outside.read_text() == "untouched"
+    if unsafe == "permissions":
+        assert lock.stat().st_mode & 0o777 == 0o644
+    elif unsafe == "symlink":
+        assert lock.is_symlink()
+
+
+def test_missing_cron_lock_is_not_a_claim_that_scheduled_role_failed(
+    tmp_path: Path, fake_crontab_executable: None,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    crontab = FakeCrontab(
+        f"{CRON_BEGIN}\n"
+        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run "
+        "topology-heartbeat >/dev/null 2>&1\n"
+        f"{CRON_END}\n"
+    )
+    rows = cron_status(
+        config_dir=config, components=("topology-heartbeat",), runner=crontab,
+    )
+    observed = next(row for row in rows if row.component == "topology-heartbeat")
+    assert observed.installed is True
+    assert observed.enabled is True
+    assert observed.active is False
+    assert not (config / "autostart-topology-heartbeat.lock").exists()

@@ -189,3 +189,15 @@ def test_inspect_reports_pair_without_mutation(tmp_path: Path) -> None:
     receipt = provisioner.inspect("qwen", "new-f18")
     assert receipt["state"] == "prepared"
     assert receipt["reason_code"] == "already_prepared"
+
+
+def test_inspect_denies_partial_unsafe_and_wrong_identity(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    (root / "jobs" / "partial").mkdir(mode=0o700)
+    assert provisioner.inspect("qwen", "partial")["reason_code"] == "workspace_partial_existing"
+    assert not (root / "patches" / "partial").exists()
+    assert provisioner.inspect("qwen", "../escape")["reason_code"] == "work_unit_id_invalid"
+    assert provisioner.inspect("claude", "partial")["reason_code"] == "worker_binding_mismatch"
+    (root / "jobs" / "unsafe").symlink_to(tmp_path, target_is_directory=True)
+    assert provisioner.inspect("qwen", "unsafe")["reason_code"] == "workspace_entry_unsafe"
+    assert not (root / "patches" / "unsafe").exists()

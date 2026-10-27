@@ -394,6 +394,7 @@ def cron_status(
                 and argv[6] == "--port"
                 and argv[7].isascii()
                 and argv[7].isdecimal()
+                and len(argv[7]) <= 5
                 and 1 <= int(argv[7]) <= 65535
             )
         return len(argv) == 6

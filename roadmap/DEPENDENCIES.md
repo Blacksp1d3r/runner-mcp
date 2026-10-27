@@ -1,3 +1,7 @@
+## 2026-10-27 — #341 provisional rollback retention (0.1.96 SOURCE CANDIDATE)
+
+Existing self-update prematurely deleted baseline wheel/transaction before first real reconnect. Only **opt-in** retention in existing manager is being added, default OFF and without commit/ack authority. Fabric #943 owns independent boot-persistent offline restore and confirm/disarm, #942 owns off-target journal; #669 owns original loaded wheel/six-role process proof. Source CI may merge independently but first target live activation remains WAIT. No new controller, updater, relay, backup or host commands.
+
 ## 2026-10-27 — #669/#341 source diagnostic dependency (0.1.94 candidate)
 
 - The existing read-only runtime_status/runtime_doctor read boundary may report generic tool failure on a connected v0.1.88. Bounded source patch 0.1.94 is independent of and DOES NOT supersede #669 authenticated original-host loaded wheel and six role witness, Fabric A6 #942 and A7 #943, or #662 GitHub required-merge rules/first-node activation. CI and source merging are allowed independently; live activation remains separate WAIT. Reuse prior six-role/archival/Black+LAB SQL ACK evidence; no new updater, observer, physical actions or checks merely to restart a session.

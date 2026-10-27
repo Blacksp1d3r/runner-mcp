@@ -662,3 +662,58 @@ def test_cron_status_accepts_only_exact_rendered_managed_role_entries(
     installed = {row.component for row in rows if row.installed}
     assert installed == {"server", "topology-heartbeat", "github-watcher"}
     assert not list(config.glob("autostart-*.lock"))
+
+
+
+@pytest.mark.parametrize("mismatch", ("foreign_config", "old_release", "both"))
+def test_cron_status_does_not_promote_foreign_configuration_or_release(
+    tmp_path: Path, fake_crontab_executable: None, mismatch: str,
+) -> None:
+    current_config = tmp_path / "current-config"
+    current_config.mkdir(mode=0o700)
+    foreign_config = tmp_path / "other-config"
+    foreign_config.mkdir(mode=0o700)
+    current_executable = tmp_path / "current-release" / "runner-mcp"
+    old_executable = tmp_path / "old-release" / "runner-mcp"
+    scheduled_config = (
+        foreign_config if mismatch in {"foreign_config", "both"}
+        else current_config
+    )
+    scheduled_executable = (
+        old_executable if mismatch in {"old_release", "both"}
+        else current_executable
+    )
+    crontab = FakeCrontab("\n".join(render_cron_block(
+        executable=scheduled_executable, config_dir=scheduled_config,
+        components=("server", "github-watcher"), port=8000,
+    )) + "\n")
+    observed = cron_status(
+        config_dir=current_config,
+        executable=current_executable,
+        components=("server", "github-watcher"),
+        runner=crontab,
+    )
+    assert all(not row.installed and not row.active for row in observed)
+    assert not list(current_config.glob("autostart-*.lock"))
+
+
+def test_cron_status_exact_config_and_release_reports_configured_not_live(
+    tmp_path: Path, fake_crontab_executable: None,
+) -> None:
+    config = tmp_path / "private config"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "version-0.1.90" / "runner-mcp"
+    cron = FakeCrontab("\n".join(render_cron_block(
+        executable=executable, config_dir=config,
+        components=("server", "topology-heartbeat"), port=8000,
+    )) + "\n")
+    result = cron_status(
+        config_dir=config, executable=executable,
+        components=("server", "topology-heartbeat"),
+        runner=cron,
+    )
+    assert [row.component for row in result if row.installed] == [
+        "server", "topology-heartbeat",
+    ]
+    assert all(not row.active for row in result)
+    assert not list(config.glob("autostart-*.lock"))

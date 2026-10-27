@@ -151,6 +151,14 @@ class CodingWorkspaceProvisioner:
                     raise WorkspaceDenied("workspace_storage_unavailable") from None
                 if len(os.listdir(jobs)) >= _MAX_TASKS or len(os.listdir(patches)) >= _MAX_TASKS:
                     raise WorkspaceDenied("workspace_capacity_reached")
+                # Permission bits and an empty task queue cannot prove the
+                # underlying filesystem still accepts writes. Query only
+                # existing directory FDs: never create a probe file.
+                for parent in (jobs, patches):
+                    volume = os.fstatvfs(parent)
+                    if (volume.f_flag & os.ST_RDONLY
+                            or volume.f_bavail == 0 or volume.f_favail == 0):
+                        raise WorkspaceDenied("workspace_storage_unavailable")
         except WorkspaceDenied as exc:
             return _reply("unavailable", exc.reason, worker_id)
         except OSError:

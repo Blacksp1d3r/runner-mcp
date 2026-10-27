@@ -1,3 +1,9 @@
+## 2026-10-27 — #341 application wiring for A7 provisional custody (v0.1.98 SOURCE CANDIDATE)
+
+- Existing v0.1.96 `SelfUpdateManager(retain_activation_baseline=True)` preserved baseline wheel and private transaction but **neither `build_mcp` nor `create_app` forwarded an opt-in**, leaving the feature unreachable through the actual application composition. This branch forwards an explicit `self_update_retain_activation_baseline: bool = False` through the existing two app factories to the SAME manager. Production CLI intentionally supplies no opt-in, so effective default remains **FALSE**. No environment variable, runtime switch, new endpoint, updater, background process, relay, privilege or update authority is added.
+- Isolated application-construction regressions inspect the actual manager kwargs for implicit OFF / explicit OFF / explicit ON and reject malformed caller values via existing `SelfUpdateError`. No real host process, private config, cron, update, A6/A7 change or backup.
+- **This source wiring does NOT qualify Fabric #943 to enable the feature**. Fabric must first provide separately accepted original-host identity #669, A6 #942 target-loss journal, offline boot-persistent six-role rollback #943 and original-client same-campaign ACK; only a future independently authorized application composition may opt in. The connected original `github-runner` serving wheel/source remains UNVERIFIED. No automatic live promotion.
+
 # #341 — provisional rollback baseline retention
 
 2026-10-27: **SOURCE_MERGED / EXACT_HEAD_CI_SUCCESS / LIVE_OPT_IN_FALSE / PHYSICAL_A7_WAIT**.

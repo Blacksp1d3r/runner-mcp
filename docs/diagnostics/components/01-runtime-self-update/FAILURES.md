@@ -1,3 +1,7 @@
+## 2026-10-27 — RMCP-F-0077: provisional rollback option not forwarded by app
+
+The manager-level opt-in added in v0.1.96 was not forwarded at either `build_mcp` or `create_app`, so a qualified Fabric caller could not select it during legitimate application construction. New source v0.1.98 forwards one strict boolean through those existing layers, default OFF; malformed values fail at the existing manager. No environment-based opt-in, deployment authorization or automatic A7 acceptance. App-level tests verify actual downstream forwarding, not merely a manager constructor unit test. Serving 0.1.88 unchanged.
+
 ## 2026-10-27 — RMCP-F-0076: premature baseline disposal before reconnect (SOURCE-OBSERVED)
 
 - **Earliest layer:** `src/runner_mcp/self_update.py` successful `_run_job` path. After `install_wheel(target)`, `verify_runtime` and restart markers it invoked `clear_transaction()` and `preserve_artifacts=False`, leading `finally` to remove baseline wheel. A failed restart or broken tunnel/Agent Bus can then lose the normal manager's previous wheel before actual requester result/ACK. A green new-process import does **not** prove the original client can still communicate.

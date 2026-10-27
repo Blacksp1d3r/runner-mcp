@@ -1,3 +1,8 @@
+## 2026-10-27 — #341 A7 application wiring source candidate
+
+- Proposed source v0.1.98 branch `chat-a/341-a7-retention-integration-20261027`. Existing manager retention (v0.1.96) now reachable through explicit `create_app` / `build_mcp` parameter, default OFF. No new user-facing config flag or hidden auto-activation. App tests cover both defaults/ON and invalid types.
+- Earlier physical original 0.1.88 source/wheel, real A6/A7 offline and signed six-role proof remain WAIT. No live install; this does not complete #341. Exact head CI/merge evidence pending.
+
 ## 2026-10-27 — #341 source 0.1.96 provisional baseline retention MERGED / live qualification WAIT
 
 - Runner-MCP [PR #849](https://github.com/Blacksp1d3r/runner-mcp/pull/849) **MERGED** squash `01ed6f7be61595ced45767abcccc10e261b19c9e`; tested PR head `d6a57eccd511185e9724acecb9346e03a6338300`. Exact-head **validation 40568498378 SUCCESS** (release reservation, Ruff/pytest, built wheel, clean demo), **Clean Ubuntu installer 40568498277 SUCCESS**, **Commit attribution 40568498358 SUCCESS**. Workstream B [#848](https://github.com/Blacksp1d3r/runner-mcp/pull/848) v0.1.95 was already merged and preserved in the v0.1.96 base. Candidate collision on initial shared 0.1.95 was correctly blocked, then resolved without bypass or edits to B.

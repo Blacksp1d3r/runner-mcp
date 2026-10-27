@@ -1306,6 +1306,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
             return 0
@@ -1321,6 +1322,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
         else:

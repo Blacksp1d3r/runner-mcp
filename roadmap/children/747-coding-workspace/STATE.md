@@ -1,9 +1,10 @@
 # #747 state — updated 2026-10-27
 
-## 2026-10-27 — #747 per-task read-only pair receipt (SOURCE kandidaat 0.1.96)
+## 2026-10-27 — #747 per-task read-only pair receipt (SOURCE MERGED 0.1.97)
 
 - **Functionele aanleiding:** ouder-`coding_workspace_preflight(worker_id)` bewijst enkel dat het bestaande lokale root-/jobs-/patches-layout toegankelijk is; een initiërende client kan niet bepalen of een *specifieke* work-unit pair reeds bestaat na een onzekere opdracht zonder nogmaals het muterende `prepare` aan te roepen.
 - **Oplossing binnen bestaande Runner-MCP:** de aanvullende begrensde `coding_workspace_inspect(worker_id, work_unit_id)` leest **alleen** onder de vaste lokale UID, met precies dezelfde privébinding, padvalidatie en Linux directory-fd lock als `prepare`. Beide bestaande 0700 directories aanwezig = `prepared/already_prepared`; beide afwezig = `absent/workspace_not_prepared`; halve, onveilige, vreemde of gelockte pair = fail-closed `unavailable`. Audit per bestaande MCP-route, geen paden/credentials of cross-host-autorisatie.
+- **Controleerbare bronstatus:** [PR #850](https://github.com/Blacksp1d3r/runner-mcp/pull/850) MERGED na #849; exact getest head `70435c225bd409522ef3eade760f7da33d48448f`, main squash `b1a9d4c1f35a455a69620f0346f978a6a9eeee9d`, Python/discovery/registry versie **0.1.97**. Release reservation, Ruff/pytest, wheel en schone demo [CI #40571199561](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/40571199561), attribution [#40571199231](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/40571199231), Ubuntu installatie [#40571094373](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/40571094373): **SUCCESS**. De 106-tools broncatalogus is geen bewijs van correct-host ingeladen client-tools.
 - **Grenzen:** bron en CI zijn geen geïnstalleerde correct-host worker, geen externe onafhankelijke hostattestatie, geen Fabric lease/fence of SQL origineel-client ACK. Gedeelde F18 #609 en Claude/Qwen #972/#1579 blijven exclusief bij hun eigenaar. Geen nieuwe worker, scheduler, relay, diskmap of modeltest.
 
 ## 2026-10-27 — gelijktijdige F18-herlevering / werkruimte-idempotentie (source-test)

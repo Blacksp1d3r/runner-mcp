@@ -96,3 +96,43 @@ different, and no remote review route was activated here.
 - AIfordable #428; merged topology PR #720 for Blacky hardware/software
   scope, plus Worker PR #719. Do not treat YAML evidence comments as
   live Fabric dispatcher attestation.
+
+## 2026-10-27 follow-up: successful 0-review runs left no durable stamp
+
+After removing the stale pinned task, the original generic Blacky script
+`review-public-open-prs.py` had another proof gap: its existing manifest was
+written only *inside* the per-new-PR loop. A successful 0-new-review run
+exited 0 but left the manifest timestamp unchanged; the lack of a new
+receipt was not trustworthy evidence that the cron had failed.
+
+A one-line change in the **same existing rootless script** now calls the
+**already-existing** `atomic_json(manifest, history)` once after a
+successfully completed batch, even when `reviewed=0`. No new status
+file/registry, heartbeat daemon, scheduler, tunnel, remote source route,
+review authority, or model call was introduced. Discovery failure exits
+before that new final write and therefore cannot assert success.
+
+Original Blacky user UID1000 script SHA-256:
+- Before: `5743f7e6b0c65793ee8c52ed62e6f39006d08743996453694c0c2cd90ef89517`.
+- Installed: `4e6a47c54cdbd201ef0863f4aa9f265d95bc807758cead8f028d64a9fae707d2`.
+
+One original same-owner local script is retained for manual rollback.
+Candidate and actual post-install module separately passed isolated,
+no-network tests: completed no-op writes the SAME manifest; second no-op
+replaces its inode; injected GitHub discovery error returns 2 without
+changing the prior successful manifest. No privileged service involved.
+
+Two later real minimal-cron-environment runs on Blacky also succeeded.
+One scanned new public PR #857 (`REVIEW_REQUIRED` advisory); the next
+scanned **zero new PRs / 12 previously checked**, exited 0 and refreshed
+the existing manifest timestamp. Neither granted `approval_authorized`,
+`dispatch_authorized` or `merge_authorized` nor exercised Windows GPU.
+
+**Do not overclaim:** both were still attended invocations. The first
+genuinely unattended post-repair hourly cron completion remained
+**NOT TESTED** when this follow-up was recorded. The manifest timestamp
+is an operational completion hint, not an authenticated Fabric issuer
+receipt, verified source bundle, same-original-client ACK, or a
+permission to call Ollama. Source-of-truth: Runner-MCP #844 and the
+central AIfordable topology; the local shell script has not been
+promoted into a fabricated repository release.

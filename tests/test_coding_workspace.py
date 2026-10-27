@@ -174,3 +174,18 @@ def test_simultaneous_same_id_returns_one_completed_pair(tmp_path: Path) -> None
         entries = list((root / name).iterdir())
         assert len(entries) == 1
         assert stat.S_IMODE(entries[0].stat().st_mode) == 0o700
+
+
+def test_inspect_reports_pair_without_mutation(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    before = (list((root / "jobs").iterdir()), list((root / "patches").iterdir()))
+    absent = provisioner.inspect("qwen", "new-f18")
+    assert absent["state"] == "absent"
+    assert absent["reason_code"] == "workspace_not_prepared"
+    assert absent["filesystem_path_exposed"] is False
+    assert absent["cross_host_execution_authorized"] is False
+    assert before == (list((root / "jobs").iterdir()), list((root / "patches").iterdir()))
+    assert provisioner.prepare("qwen", "new-f18")["state"] == "prepared"
+    receipt = provisioner.inspect("qwen", "new-f18")
+    assert receipt["state"] == "prepared"
+    assert receipt["reason_code"] == "already_prepared"

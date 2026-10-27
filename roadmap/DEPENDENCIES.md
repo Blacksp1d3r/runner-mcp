@@ -1,6 +1,7 @@
-## 2026-10-27 — #341 provisional rollback retention (0.1.96 SOURCE CANDIDATE)
+## 2026-10-27 — #341 v0.1.96 original-baseline retention source MERGED / live WAIT
 
-Existing self-update prematurely deleted baseline wheel/transaction before first real reconnect. Only **opt-in** retention in existing manager is being added, default OFF and without commit/ack authority. Fabric #943 owns independent boot-persistent offline restore and confirm/disarm, #942 owns off-target journal; #669 owns original loaded wheel/six-role process proof. Source CI may merge independently but first target live activation remains WAIT. No new controller, updater, relay, backup or host commands.
+- [PR #849](https://github.com/Blacksp1d3r/runner-mcp/pull/849) source merge `01ed6f7be61595ced45767abcccc10e261b19c9e`; full exact-head PR CI SUCCESS. This only retains the **existing** wheel/transaction across provisional activation when explicitly opted-in; default OFF, no commit authority, no host change.
+- Fabric #943 controls independent boot-persistent six-role offline revert and after-ACK commit/disarm; #942 controls A6 separate off-target journal, #669 controls the correct physical loaded process/wheel source witness. No live update authority, no new updater, relay, manager, or backup cycle. First real original-host update still WAIT.
 
 ## 2026-10-27 — #669/#341 source diagnostic dependency (0.1.94 candidate)
 

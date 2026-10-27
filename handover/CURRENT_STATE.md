@@ -1,3 +1,7 @@
+## 2026-10-27 — #341 read-only provisional wheel-presence status (source candidate v0.1.101)
+
+- Scoped, source-only improvement to the EXISTING `SelfUpdateManager.runtime_status`: a matching provisional job and retained transaction is not evidence that the baseline wheel is still present. New `provisional_baseline_wheel_present` is nullable outside the provisional window, true only after the pre-existing `staged_wheel` path/file check, false if missing/unsafe. `provisional_activation_pending` and `install_recovery_pending` remain true on missing wheel; next update remains denied. No new watcher, controller, relay, recovery actuator or live activation; no redundant archival tests. Exact-head CI/merge pending. #669 original process/wheel provenance and Fabric #942/#943 real A6/A7 and new same-campaign requester ACK still WAIT.
+
 ## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered
 
 - Runner-MCP [PR #853](https://github.com/Blacksp1d3r/runner-mcp/pull/853) **MERGED** source v0.1.98 as `bfd246929a1434e6a572344dd125cd53d43ad2ce` (exact tested PR head `33679d3bf2a57957e4788ddee8a232def863d64f`). Exact-head validation #40576773564, clean Ubuntu #40576773598, attribution #40576773573: all **SUCCESS**. The v0.1.96 retention option is now forwarded through existing `create_app` / `build_mcp` into the same manager. **Strict explicit opt-in, default OFF**; production CLI has no opt-in.

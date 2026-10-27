@@ -457,7 +457,7 @@ def test_cron_status_reports_only_managed_components(
     crontab = FakeCrontab(
         f"{CRON_BEGIN}\n"
         'MAILTO=""\n'
-        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server "
+        f"* * * * * /x/runner-mcp --config-dir {config} autostart cron-run server "
         "--port 8000 >/dev/null 2>&1\n"
         f"{CRON_END}\n"
     )
@@ -550,7 +550,7 @@ def test_cron_status_does_not_change_preexisting_lock_bytes_or_mode(
     lock.chmod(0o600)
     crontab = FakeCrontab(
         f"{CRON_BEGIN}\n"
-        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server "
+        f"* * * * * /x/runner-mcp --config-dir {config} autostart cron-run server "
         "--port 8000 >/dev/null 2>&1\n"
         f"{CRON_END}\n"
     )
@@ -601,7 +601,7 @@ def test_missing_cron_lock_is_not_a_claim_that_scheduled_role_failed(
     config.mkdir(mode=0o700)
     crontab = FakeCrontab(
         f"{CRON_BEGIN}\n"
-        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run "
+        f"* * * * * /x/runner-mcp --config-dir {config} autostart cron-run "
         "topology-heartbeat >/dev/null 2>&1\n"
         f"{CRON_END}\n"
     )

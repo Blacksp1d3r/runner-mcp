@@ -303,18 +303,35 @@ def _safe_lock_path(config_dir: Path, component: str) -> Path:
 
 
 def _open_component_lock(config_dir: Path, component: str) -> int:
+    """Open the existing fixed cron lock without modifying a foreign inode.
+
+    This is the component START path, not the read-only status observer.
+    O_CREAT is necessary for the owned lock but may encounter an existing
+    hardlink or FIFO. Pin the opened fd and validate its actual inode BEFORE
+    fchmod or flock; O_NONBLOCK prevents opening a FIFO from hanging.
+    """
     path = _safe_lock_path(config_dir, component)
-    if path.exists() and path.is_symlink():
-        raise CronAutostartError("cron autostart lock path is unsafe")
-    flags = os.O_RDWR | os.O_CREAT
-    if hasattr(os, "O_NOFOLLOW"):
-        flags |= os.O_NOFOLLOW
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise CronAutostartError("safe cron autostart lock opening unavailable")
+    flags = os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW | os.O_NONBLOCK
     try:
         fd = os.open(path, flags, 0o600)
-        os.fchmod(fd, 0o600)
-        return fd
     except OSError as exc:
         raise CronAutostartError("cron autostart lock could not be opened") from exc
+    try:
+        opened = os.fstat(fd)
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_uid != os.geteuid()
+            or opened.st_nlink != 1
+            or opened.st_mode & 0o077
+        ):
+            raise CronAutostartError("cron autostart lock path is unsafe")
+        os.fchmod(fd, 0o600)
+        return fd
+    except (OSError, CronAutostartError) as exc:
+        os.close(fd)
+        raise CronAutostartError("cron autostart lock path is unsafe") from exc
 
 
 def component_active(config_dir: Path, component: str) -> bool:

@@ -843,3 +843,88 @@ def test_cron_run_reuses_valid_private_lock_without_overwriting_bytes(
     assert called == [True]
     assert lock.read_bytes() == b"legacy-lock-content"
     assert lock.stat().st_ino == original_inode
+
+
+@pytest.mark.parametrize("component", (
+    "server", "tunnel", "topology-heartbeat", "github-watcher",
+    "completion-watcher", "agent-bus-worker",
+    "fabric-agent-qualification", "fabric-live-overview",
+))
+def test_unmanaged_cron_run_role_blocks_install_without_changing_crontab(
+    tmp_path: Path, fake_crontab_executable: None, component: str,
+) -> None:
+    """A legacy supervisor outside the owner block must not be duplicated."""
+    legacy = (
+        f"* * * * * /legacy/runner-mcp --config-dir /legacy/private "
+        f"autostart cron-run {component}"
+    )
+    if component in {"server", "tunnel"}:
+        legacy += " --port 8000"
+    crontab = FakeCrontab(legacy + "\n")
+    old_content = crontab.content
+    with pytest.raises(CronAutostartError, match="unmanaged Runner MCP"):
+        install_cron_services(
+            executable=tmp_path / "current-release" / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server", "topology-heartbeat"),
+            runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert crontab.content == old_content
+    assert len(crontab.calls) == 1
+    assert crontab.calls[0][0][-1] == "-l"
+
+
+@pytest.mark.parametrize("relative_position", ("before", "after"))
+def test_status_refuses_duplicate_unmanaged_server_outside_owned_block(
+    tmp_path: Path, fake_crontab_executable: None, relative_position: str,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "current-release" / "runner-mcp"
+    block = render_cron_block(
+        executable=executable,
+        config_dir=config,
+        components=("server", "topology-heartbeat"),
+        port=8000,
+    )
+    old_server = (
+        "* * * * * /old-release/runner-mcp --config-dir /old/private "
+        "autostart cron-run server --port 8000 >/dev/null 2>&1"
+    )
+    lines = ([old_server, *block] if relative_position == "before"
+             else [*block, old_server])
+    crontab = FakeCrontab("\n".join(lines) + "\n")
+    with pytest.raises(CronAutostartError, match="unmanaged Runner MCP"):
+        cron_status(
+            config_dir=config,
+            executable=executable,
+            components=("server", "topology-heartbeat"),
+            runner=crontab,
+        )
+    assert crontab.content == "\n".join(lines) + "\n"
+    assert not list(config.glob("autostart-*.lock"))
+
+
+def test_cron_status_ignores_commented_legacy_entry_outside_managed_block(
+    tmp_path: Path, fake_crontab_executable: None,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "current-release" / "runner-mcp"
+    block = render_cron_block(
+        executable=executable, config_dir=config,
+        components=("server",), port=8000,
+    )
+    comment = (
+        "# * * * * * /legacy/runner-mcp autostart "
+        "cron-run server --port 8000"
+    )
+    rows = cron_status(
+        config_dir=config, executable=executable, components=("server",),
+        runner=FakeCrontab("\n".join([comment, *block]) + "\n"),
+    )
+    server = next(row for row in rows if row.component == "server")
+    assert server.installed is True
+    assert server.active is False
+    assert not list(config.glob("autostart-*.lock"))

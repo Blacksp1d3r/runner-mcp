@@ -1,3 +1,7 @@
+## 2026-10-27 — #341 provisional wheel-presence observation (v0.1.101 SOURCE CANDIDATE)
+
+- After v0.1.98 app wiring, a held self-update transaction and completed job did not verify the previous wheel still existed. Existing read-only status now distinguishes `provisional_activation_pending` from nullable `provisional_baseline_wheel_present`; disappearance remains blocked pending recovery, never claims A7. Source-only tests; original v0.1.88 still unverified and Fabric #942/#943/ACK WAIT. No second recovery service. Exact CI/merge pending.
+
 ## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered
 
 - Runner-MCP [PR #853](https://github.com/Blacksp1d3r/runner-mcp/pull/853) **MERGED** source v0.1.98 as `bfd246929a1434e6a572344dd125cd53d43ad2ce` (exact tested PR head `33679d3bf2a57957e4788ddee8a232def863d64f`). Exact-head validation #40576773564, clean Ubuntu #40576773598, attribution #40576773573: all **SUCCESS**. The v0.1.96 retention option is now forwarded through existing `create_app` / `build_mcp` into the same manager. **Strict explicit opt-in, default OFF**; production CLI has no opt-in.

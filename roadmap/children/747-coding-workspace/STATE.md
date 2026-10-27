@@ -1,5 +1,11 @@
 # #747 state — updated 2026-10-27
 
+## 2026-10-27 — #747 read-only mount and full storage preflight (SOURCE v0.1.102, LIVE ACCEPTANCE WAIT)
+
+- **Functionele fout:** de owner-local `preflight` beschouwde een bestaande 0700 jobs/patches-indeling met ruimte voor opdrachten altijd als `ready`. Bij een inmiddels alleen-lezen bestandssysteem, nul vrije gebruikersblokken of nul vrije inodes kan echter geen nieuwe taakdirectory worden aangemaakt; `prepare` loopt dan in een opslagfout.
+- **Gerichte read-only verbetering:** terwijl de bestaande gedeelde flock actief is, lees alleen `os.fstatvfs` op elk van de twee **bestaande** directory-FDs. Bij `ST_RDONLY`, `f_bavail == 0` of `f_favail == 0`: geef bestaande `unavailable/workspace_storage_unavailable` in plaats van een misleidende `ready`. Geen testbestand, schrijfcontrole, nieuw mountbeheer of extra autoriteit. `inspect` blijft ook op read-only opslag bruikbaar.
+- **Acceptatie:** synthetische regressies voor beide directory-FDs en alle drie opslagcondities, normale read-only succesroute, exacte PR-CI. Een gunstige `statvfs`-momentopname is geen garantie voor toekomstige schrijfbaarheid, geen werkelijke owner-local installatie of F18/ACK.
+
 ## 2026-10-27 — #747 owner-rwx correctness of existing private directories (SOURCE CANDIDATE v0.1.100)
 
 - **Functionele fout:** directory-modus 0500 was met eigenaar UID en afwezige groep/other bits acceptabel in de bestaande `_open_directory` en `_entry`. Daardoor kan `coding_workspace_preflight` ten onrechte `ready` rapporteren, hoewel `prepare` niet kan schrijven; en een bestaande jobs/patches-pair kan `prepared` worden gemeld terwijl de eigenaar in een taakdirectory niet kan schrijven.

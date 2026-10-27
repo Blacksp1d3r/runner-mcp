@@ -8,6 +8,7 @@ import pwd
 import stat
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
@@ -203,6 +204,56 @@ def test_preflight_during_prepare_lock_is_retryable_not_false_ready(tmp_path: Pa
     finally:
         os.close(fd)
     assert provisioner.preflight("qwen")["state"] == "ready"
+
+
+@pytest.mark.parametrize("parent_index", [0, 1])
+@pytest.mark.parametrize("capacity_failure", ["read_only", "blocks_full", "inodes_full"])
+def test_preflight_declines_unwritable_storage_without_a_write_probe(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    parent_index: int, capacity_failure: str,
+) -> None:
+    provisioner, root = _configured(tmp_path)
+    actual_fstatvfs = os.fstatvfs
+    calls = []
+
+    def filesystem_status(fd):
+        calls.append(fd)
+        if len(calls) - 1 != parent_index:
+            return actual_fstatvfs(fd)
+        return SimpleNamespace(
+            f_flag=os.ST_RDONLY if capacity_failure == "read_only" else 0,
+            f_bavail=0 if capacity_failure == "blocks_full" else 100,
+            f_favail=0 if capacity_failure == "inodes_full" else 100,
+        )
+
+    monkeypatch.setattr(os, "fstatvfs", filesystem_status)
+    result = provisioner.preflight("qwen")
+    assert result["state"] == "unavailable"
+    assert result["reason_code"] == "workspace_storage_unavailable"
+    assert result["filesystem_path_exposed"] is False
+    assert len(calls) == parent_index + 1
+    assert list((root / "jobs").iterdir()) == []
+    assert list((root / "patches").iterdir()) == []
+    # Inspection is read-only and remains meaningful on a read-only volume.
+    assert provisioner.inspect("qwen", "no-task")["state"] == "absent"
+
+
+def test_preflight_storage_capacity_available_is_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    provisioner, root = _configured(tmp_path)
+    observed = []
+    original = os.fstatvfs
+
+    def passthrough(fd):
+        observed.append(fd)
+        return original(fd)
+
+    monkeypatch.setattr(os, "fstatvfs", passthrough)
+    assert provisioner.preflight("qwen")["state"] == "ready"
+    assert len(observed) == 2
+    assert list((root / "jobs").iterdir()) == []
+    assert list((root / "patches").iterdir()) == []
 
 
 def test_busy_workspace_blocks_without_write_then_replays(tmp_path: Path) -> None:

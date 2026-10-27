@@ -367,10 +367,43 @@ def cron_status(
     lines = read_crontab(runner=runner).splitlines()
     bounds = _managed_block_bounds(lines)
     block = lines[bounds[0] : bounds[1] + 1] if bounds is not None else []
-    joined = "\n".join(block)
+    # Only exact owner-managed schedule entries count. Comments, suffix
+    # aliases (e.g. 'server-old') and a quoted sentence containing cron-run
+    # cannot be interpreted as installed role evidence.
+    def exact_scheduled_role(line: str, role: str) -> bool:
+        if not line.startswith("* * * * * "):
+            return False
+        try:
+            tokens = shlex.split(line)
+        except ValueError:
+            return False
+        if tokens[:5] != ["*"] * 5 or tokens[-2:] != [">/dev/null", "2>&1"]:
+            return False
+        argv = tokens[5:-2]
+        if (
+            len(argv) not in (6, 8)
+            or not argv[0].startswith("/")
+            or not argv[2].startswith("/")
+            or argv[1:2] != ["--config-dir"]
+            or argv[3:6] != ["autostart", "cron-run", role]
+        ):
+            return False
+        if role in {"server", "tunnel"}:
+            return (
+                len(argv) == 8
+                and argv[6] == "--port"
+                and argv[7].isascii()
+                and argv[7].isdecimal()
+                and 1 <= int(argv[7]) <= 65535
+            )
+        return len(argv) == 6
+
     results: list[CronComponentStatus] = []
     for component in CRON_COMPONENTS:
-        installed = component in components and f" cron-run {component}" in joined
+        installed = (
+            component in components
+            and any(exact_scheduled_role(line, component) for line in block)
+        )
         results.append(
             CronComponentStatus(
                 component=component,

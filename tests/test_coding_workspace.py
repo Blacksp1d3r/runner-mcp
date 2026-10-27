@@ -201,3 +201,17 @@ def test_inspect_denies_partial_unsafe_and_wrong_identity(tmp_path: Path) -> Non
     (root / "jobs" / "unsafe").symlink_to(tmp_path, target_is_directory=True)
     assert provisioner.inspect("qwen", "unsafe")["reason_code"] == "workspace_entry_unsafe"
     assert not (root / "patches" / "unsafe").exists()
+
+
+def test_inspect_busy_does_not_report_partial_during_prepare(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    fd = os.open(root / "jobs", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        (root / "jobs" / "half-done").mkdir(mode=0o700)
+        result = provisioner.inspect("qwen", "half-done")
+        assert result["state"] == "unavailable"
+        assert result["reason_code"] == "workspace_busy"
+    finally:
+        os.close(fd)
+    assert provisioner.inspect("qwen", "half-done")["reason_code"] == "workspace_partial_existing"

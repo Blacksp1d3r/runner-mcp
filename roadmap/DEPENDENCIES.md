@@ -1,3 +1,7 @@
+## 2026-10-27 — #669/#341 source diagnostic dependency (0.1.94 candidate)
+
+- The existing read-only runtime_status/runtime_doctor read boundary may report generic tool failure on a connected v0.1.88. Bounded source patch 0.1.94 is independent of and DOES NOT supersede #669 authenticated original-host loaded wheel and six role witness, Fabric A6 #942 and A7 #943, or #662 GitHub required-merge rules/first-node activation. CI and source merging are allowed independently; live activation remains separate WAIT. Reuse prior six-role/archival/Black+LAB SQL ACK evidence; no new updater, observer, physical actions or checks merely to restart a session.
+
 ## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT
 
 - [PR #781](https://github.com/Blacksp1d3r/runner-mcp/pull/781) v0.1.63 MERGED `8d0405490c73bc324a522e66e5e596649d169371` (exact tested head `a9b9df31aa8e79e29cf85183e75e6ba25dca1215`). Existing Ed25519 signed offline statement check now has a strictly six-role process-identity-pin wrapper; each role must match a **separately supplied independent** unique process-instance SHA-256 pin; 5-role/swapped/substituted/duplicate/stale-wheel/host/nonce all refuse. ALWAYS `active_build_provenance_verified=false`, source/digest NULL and no update authority.

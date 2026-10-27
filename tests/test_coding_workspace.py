@@ -137,9 +137,37 @@ def test_capacity_limit_rejects_new_job_but_allows_repeat(tmp_path: Path) -> Non
     for i in range(127):
         for parent in ("jobs", "patches"):
             (root / parent / f"existing-{i}").mkdir(mode=0o700)
+    preflight = provisioner.preflight("qwen")
+    assert preflight["state"] == "unavailable"
+    assert preflight["reason_code"] == "workspace_capacity_reached"
     assert provisioner.prepare("qwen", "first")["state"] == "already_prepared"
     assert provisioner.prepare("qwen", "next")["reason_code"] == "workspace_capacity_reached"
     assert not (root / "jobs" / "next").exists()
+
+
+def test_preflight_reports_full_when_only_one_parent_is_at_capacity(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    for i in range(127):
+        (root / "jobs" / f"existing-{i}").mkdir(mode=0o700)
+    assert provisioner.preflight("qwen")["state"] == "ready"
+    (root / "jobs" / "existing-127").mkdir(mode=0o700)
+    result = provisioner.preflight("qwen")
+    assert result["state"] == "unavailable"
+    assert result["reason_code"] == "workspace_capacity_reached"
+    assert list((root / "patches").iterdir()) == []
+
+
+def test_preflight_during_prepare_lock_is_retryable_not_false_ready(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    fd = os.open(root / "jobs", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        result = provisioner.preflight("qwen")
+        assert result["state"] == "unavailable"
+        assert result["reason_code"] == "workspace_busy"
+    finally:
+        os.close(fd)
+    assert provisioner.preflight("qwen")["state"] == "ready"
 
 
 def test_busy_workspace_blocks_without_write_then_replays(tmp_path: Path) -> None:

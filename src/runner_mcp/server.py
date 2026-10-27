@@ -2879,6 +2879,16 @@ def build_mcp(
         return result
 
     @mcp.tool()
+    def coding_workspace_inspect(worker_id: str, work_unit_id: str) -> dict:
+        """Read a fixed owner-local task pair without preparing or mutating it."""
+        result = coding_workspaces.inspect(worker_id, work_unit_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_inspect", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
     def coding_workspace_prepare(worker_id: str, work_unit_id: str) -> dict:
         """Create only fixed jobs/patches directories inside this worker's private root."""
         if safety.status().stop_active:

@@ -17,3 +17,9 @@ This is a safe local lock observation, **not** independent physical source/insta
 ## Prevention
 
 A status/diagnostic function must be side-effect free and verify complete exact managed identity, never a text substring. Tests must assert no new lock, original inode/mode/bytes/mtime unchanged, and bounded denial of unsafe linked/nonregular locks.
+
+## 2026-10-27 follow-up: false installed proof from foreign config / old launcher
+
+The v0.1.89 shape matcher recognized exactly formatted cron commands but did not compare their `--config-dir` and executable against the instance issuing the read. A canonical old-release launcher or unrelated private configuration inside the managed block could therefore be shown as `installed` for the wrong instance. The proposed v0.1.90 correction binds the CLI status to its exact resolved config root and currently selected CLI entrypoint, with negative regressions for wrong-release/wrong-config mixes. It still cannot prove actual role execution or loaded source/wheel. No second inventory, readback daemon or host action was added.
+
+A further negative test treats duplicate role claims within the one managed block as ambiguous, even when one row names the current release and a second names an older release or foreign configuration. Neither can be reported as a uniquely installed role. This reports configuration uncertainty; it still does not attest actual process execution.

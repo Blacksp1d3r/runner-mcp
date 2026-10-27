@@ -362,8 +362,17 @@ def cron_status(
     *,
     config_dir: Path,
     components: tuple[str, ...],
+    executable: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[CronComponentStatus]:
+    """Observe this configuration's exact cron launcher without changing cron.
+
+    A matching command structure for another config/release is not proof that
+    THIS instance is managed. Callers with the expected release entrypoint
+    must supply executable; no imported wheel or live process is attested.
+    """
+    expected_config = str(config_dir.expanduser().resolve())
+    expected_executable = str(executable) if executable is not None else None
     lines = read_crontab(runner=runner).splitlines()
     bounds = _managed_block_bounds(lines)
     block = lines[bounds[0] : bounds[1] + 1] if bounds is not None else []
@@ -385,6 +394,11 @@ def cron_status(
             or not argv[0].startswith("/")
             or not argv[2].startswith("/")
             or argv[1:2] != ["--config-dir"]
+            or argv[2] != expected_config
+            or (
+                expected_executable is not None
+                and argv[0] != expected_executable
+            )
             or argv[3:6] != ["autostart", "cron-run", role]
         ):
             return False
@@ -399,11 +413,28 @@ def cron_status(
             )
         return len(argv) == 6
 
+    def claimed_role(line: str, role: str) -> bool:
+        # Count managed role claims independently of source path, so an
+        # old and a new release cannot coexist unnoticed in one block.
+        if not line.startswith("* * * * * "):
+            return False
+        try:
+            tokens = shlex.split(line)
+        except ValueError:
+            return False
+        return (
+            tokens[:5] == ["*"] * 5
+            and len(tokens) >= 11
+            and tokens[8:11] == ["autostart", "cron-run", role]
+        )
+
     results: list[CronComponentStatus] = []
     for component in CRON_COMPONENTS:
+        claims = [line for line in block if claimed_role(line, component)]
         installed = (
             component in components
-            and any(exact_scheduled_role(line, component) for line in block)
+            and len(claims) == 1
+            and exact_scheduled_role(claims[0], component)
         )
         results.append(
             CronComponentStatus(

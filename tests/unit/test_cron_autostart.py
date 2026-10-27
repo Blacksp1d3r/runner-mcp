@@ -457,7 +457,7 @@ def test_cron_status_reports_only_managed_components(
     crontab = FakeCrontab(
         f"{CRON_BEGIN}\n"
         'MAILTO=""\n'
-        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server "
+        f"* * * * * /x/runner-mcp --config-dir {config} autostart cron-run server "
         "--port 8000 >/dev/null 2>&1\n"
         f"{CRON_END}\n"
     )
@@ -550,7 +550,7 @@ def test_cron_status_does_not_change_preexisting_lock_bytes_or_mode(
     lock.chmod(0o600)
     crontab = FakeCrontab(
         f"{CRON_BEGIN}\n"
-        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server "
+        f"* * * * * /x/runner-mcp --config-dir {config} autostart cron-run server "
         "--port 8000 >/dev/null 2>&1\n"
         f"{CRON_END}\n"
     )
@@ -601,7 +601,7 @@ def test_missing_cron_lock_is_not_a_claim_that_scheduled_role_failed(
     config.mkdir(mode=0o700)
     crontab = FakeCrontab(
         f"{CRON_BEGIN}\n"
-        "* * * * * /x/runner-mcp --config-dir /x autostart cron-run "
+        f"* * * * * /x/runner-mcp --config-dir {config} autostart cron-run "
         "topology-heartbeat >/dev/null 2>&1\n"
         f"{CRON_END}\n"
     )
@@ -662,3 +662,96 @@ def test_cron_status_accepts_only_exact_rendered_managed_role_entries(
     installed = {row.component for row in rows if row.installed}
     assert installed == {"server", "topology-heartbeat", "github-watcher"}
     assert not list(config.glob("autostart-*.lock"))
+
+
+
+@pytest.mark.parametrize("mismatch", ("foreign_config", "old_release", "both"))
+def test_cron_status_does_not_promote_foreign_configuration_or_release(
+    tmp_path: Path, fake_crontab_executable: None, mismatch: str,
+) -> None:
+    current_config = tmp_path / "current-config"
+    current_config.mkdir(mode=0o700)
+    foreign_config = tmp_path / "other-config"
+    foreign_config.mkdir(mode=0o700)
+    current_executable = tmp_path / "current-release" / "runner-mcp"
+    old_executable = tmp_path / "old-release" / "runner-mcp"
+    scheduled_config = (
+        foreign_config if mismatch in {"foreign_config", "both"}
+        else current_config
+    )
+    scheduled_executable = (
+        old_executable if mismatch in {"old_release", "both"}
+        else current_executable
+    )
+    crontab = FakeCrontab("\n".join(render_cron_block(
+        executable=scheduled_executable, config_dir=scheduled_config,
+        components=("server", "github-watcher"), port=8000,
+    )) + "\n")
+    observed = cron_status(
+        config_dir=current_config,
+        executable=current_executable,
+        components=("server", "github-watcher"),
+        runner=crontab,
+    )
+    assert all(not row.installed and not row.active for row in observed)
+    assert not list(current_config.glob("autostart-*.lock"))
+
+
+def test_cron_status_exact_config_and_release_reports_configured_not_live(
+    tmp_path: Path, fake_crontab_executable: None,
+) -> None:
+    config = tmp_path / "private config"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "version-0.1.90" / "runner-mcp"
+    cron = FakeCrontab("\n".join(render_cron_block(
+        executable=executable, config_dir=config,
+        components=("server", "topology-heartbeat"), port=8000,
+    )) + "\n")
+    result = cron_status(
+        config_dir=config, executable=executable,
+        components=("server", "topology-heartbeat"),
+        runner=cron,
+    )
+    assert [row.component for row in result if row.installed] == [
+        "server", "topology-heartbeat",
+    ]
+    assert all(not row.active for row in result)
+    assert not list(config.glob("autostart-*.lock"))
+
+
+
+@pytest.mark.parametrize("duplicate", ("same", "old_release", "foreign_config"))
+def test_cron_status_duplicate_role_claim_not_marked_installed(
+    tmp_path: Path, fake_crontab_executable: None, duplicate: str,
+) -> None:
+    config = tmp_path / "config"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "release-current" / "runner-mcp"
+    original = render_cron_block(
+        executable=executable, config_dir=config,
+        components=("server",), port=8000,
+    )
+    if duplicate == "same":
+        second = original[2]
+    else:
+        second = render_cron_block(
+            executable=(
+                tmp_path / "release-old" / "runner-mcp"
+                if duplicate == "old_release" else executable
+            ),
+            config_dir=(
+                tmp_path / "foreign-config"
+                if duplicate == "foreign_config" else config
+            ),
+            components=("server",), port=8000,
+        )[2]
+    lines = [*original[:-1], second, CRON_END]
+    observed = cron_status(
+        config_dir=config, executable=executable,
+        components=("server",), runner=FakeCrontab("\n".join(lines) + "\n"),
+    )
+    server = next(row for row in observed if row.component == "server")
+    assert server.installed is False
+    assert server.enabled is False
+    assert server.active is False
+    assert not (config / "autostart-server.lock").exists()

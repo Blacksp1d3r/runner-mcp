@@ -270,6 +270,7 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
         rows = cron_status(
             config_dir=config_dir,
             components=components,
+            executable=(Path(sys.executable).parent / "runner-mcp").resolve(),
         )
         tunnel = next((row for row in rows if row.component == "tunnel"), None)
         return bool(tunnel is not None and tunnel.installed and tunnel.active)
@@ -1305,6 +1306,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
             return 0
@@ -1320,6 +1322,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
         else:

@@ -137,6 +137,40 @@ def bounded_snapshot_unavailable(reason: object) -> dict[str, object]:
     }
 
 
+
+def bounded_external_target_read_unavailable(
+    reason: object, *, phase: str
+) -> dict[str, object]:
+    """Report a known blocked Fabric target read without leaking peer errors.
+
+    A failed INSPECT may already have performed network reads. Never claim it
+    was not attempted, and never attempt another remote read to classify it.
+    """
+    if phase not in {"preflight", "inspect"}:
+        raise ValueError("invalid fixed external target read phase")
+    known_invalid = {
+        "Runner Fabric returned invalid external target preflight",
+        "Runner Fabric external target preflight is not ready",
+        "Runner Fabric external target preflight is not read-only",
+        "Runner Fabric returned invalid external target inspection",
+        "Runner Fabric external target inspection is invalid",
+        "Runner Fabric external target inspection must be read-only",
+    }
+    return {
+        "schema_version": "runner-mcp/fabric-external-target-read-unavailable/v1",
+        "state": "unavailable",
+        "phase": phase,
+        "reason_code": (
+            "invalid_peer_evidence"
+            if type(reason) is str and reason in known_invalid
+            else "target_read_unavailable"
+        ),
+        "ready": False,
+        "mutation_enabled": False,
+        "execution_enabled": False,
+    }
+
+
 def bounded_ci_guest_status_unavailable(reason: object) -> dict[str, object]:
     """Represent a failed optional CI guest READ without guessing guest state.
 

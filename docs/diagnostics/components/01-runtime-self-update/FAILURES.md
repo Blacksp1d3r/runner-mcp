@@ -1,3 +1,7 @@
+## 2026-10-27 — RMCP-F-0078: provisional window misread as retained recovery wheel (SOURCE)
+
+Source review found that a completed self-update job plus pending install transaction could set `provisional_activation_pending=true` even when the previous wheel file had disappeared from the existing staging directory. The status now carries a separate, bounded read-only `provisional_baseline_wheel_present` field: `null` when inapplicable, `false` when missing/unsafe and `true` only for valid path/file presence. A true value is not a wheel hash, qualified rollback or authorization to deploy. Synthetic test removes the previously staged baseline wheel, observes the missing state, restores the same isolated fixture, and verifies attended recovery remains possible. Original live host, A6/A7 and fresh ACK remain WAIT.
+
 ## 2026-10-27 — RMCP-F-0077: provisional rollback option not forwarded by app
 
 The manager-level opt-in added in v0.1.96 was not forwarded at either `build_mcp` or `create_app`, so a qualified Fabric caller could not select it during legitimate application construction. New source v0.1.98 forwards one strict boolean through those existing layers, default OFF; malformed values fail at the existing manager. No environment-based opt-in, deployment authorization or automatic A7 acceptance. App-level tests verify actual downstream forwarding, not merely a manager constructor unit test. Serving 0.1.88 unchanged.

@@ -4,6 +4,7 @@ import fcntl
 import os
 import shlex
 import shutil
+import stat
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -317,12 +318,40 @@ def _open_component_lock(config_dir: Path, component: str) -> int:
 
 
 def component_active(config_dir: Path, component: str) -> bool:
-    fd = _open_component_lock(config_dir, component)
+    """Observe an existing cron lock without creating or modifying it.
+
+    A short-lived cron task may legitimately have no resident lock between
+    scheduled executions; False must not be used as a failed-job receipt.
+    This read-only observer is not trusted process/wheel attestation.
+    """
+    path = _safe_lock_path(config_dir, component)
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise CronAutostartError("safe cron lock observation is unavailable")
     try:
+        fd = os.open(
+            path, os.O_RDONLY | os.O_NONBLOCK | os.O_NOFOLLOW,
+        )
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise CronAutostartError("cron lock observation is unavailable") from exc
+    try:
+        observed = os.fstat(fd)
+        if (
+            not stat.S_ISREG(observed.st_mode)
+            or observed.st_uid != os.geteuid()
+            or observed.st_nlink != 1
+            or observed.st_mode & 0o077
+        ):
+            raise CronAutostartError("cron lock observation is unsafe")
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
             return True
+        except OSError as exc:
+            raise CronAutostartError(
+                "cron lock observation is unavailable"
+            ) from exc
         fcntl.flock(fd, fcntl.LOCK_UN)
         return False
     finally:

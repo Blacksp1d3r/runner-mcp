@@ -613,3 +613,52 @@ def test_missing_cron_lock_is_not_a_claim_that_scheduled_role_failed(
     assert observed.enabled is True
     assert observed.active is False
     assert not (config / "autostart-topology-heartbeat.lock").exists()
+
+
+@pytest.mark.parametrize("fake_entry", (
+    "# * * * * * /x/runner-mcp --config-dir /x autostart cron-run server --port 8000 >/dev/null 2>&1",
+    "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server-stale --port 8000 >/dev/null 2>&1",
+    "* * * * * echo autostart cron-run server --port 8000 >/dev/null 2>&1",
+    "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server --port 0 >/dev/null 2>&1",
+    "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server --port 99999999999999999999999999999 >/dev/null 2>&1",
+    "* * * * * /x/runner-mcp --config-dir /x autostart cron-run server --port 8000 >/dev/null",
+    "5 * * * * /x/runner-mcp --config-dir /x autostart cron-run server --port 8000 >/dev/null 2>&1",
+))
+def test_cron_status_cannot_mark_noncanonical_role_command_installed(
+    tmp_path: Path, fake_crontab_executable: None, fake_entry: str,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    crontab = FakeCrontab(
+        f"{CRON_BEGIN}\n{fake_entry}\n{CRON_END}\n"
+    )
+    rows = cron_status(
+        config_dir=config, components=("server",), runner=crontab,
+    )
+    server = next(row for row in rows if row.component == "server")
+    assert server.installed is False
+    assert server.enabled is False
+    assert server.active is False
+    assert not (config / "autostart-server.lock").exists()
+
+
+def test_cron_status_accepts_only_exact_rendered_managed_role_entries(
+    tmp_path: Path, fake_crontab_executable: None,
+) -> None:
+    config = tmp_path / "private config"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "runner-mcp"
+    block = render_cron_block(
+        executable=executable,
+        config_dir=config,
+        components=("server", "topology-heartbeat", "github-watcher"),
+        port=8000,
+    )
+    rows = cron_status(
+        config_dir=config,
+        components=("server", "topology-heartbeat", "github-watcher"),
+        runner=FakeCrontab("\n".join(block) + "\n"),
+    )
+    installed = {row.component for row in rows if row.installed}
+    assert installed == {"server", "topology-heartbeat", "github-watcher"}
+    assert not list(config.glob("autostart-*.lock"))

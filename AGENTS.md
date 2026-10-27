@@ -1,3 +1,11 @@
+## Evidence-first diagnostics: session startup and reuse
+
+Before a new task, consult the current canonical AIfordable infrastructure registry and scoped Runner-MCP #669 operator receipts, in addition to AGENTS, roadmap, topology, CURRENT_STATE and SESSION_HANDOFF. Classify each fact as REUSE (stable mapping already known), REFRESH_TARGETED (expired or changed process generation, imported wheel or completion result), or WAIT (authority missing). Only ask for a new measurement when a scoped fact is actually missing. Do not repeat already qualified archive and cron checks merely because a new conversation starts.
+
+Original github-runner uses Fabric command 'agent-bus-run' for the Agent Bus role, and 'agent-serve-qualification' for Fabric qualification. The narrow Runner-MCP '*-worker run' and 'fabric-agent-qualification run' patterns are not the sole accepted commands. See existing central AF-HOST-0001 / AF-SVC-0010 and #669 for owner, historical PID/startticks and different Fabric slots. Short cron tasks need run-result proof; older PID alone never proves new live bytes or loaded-wheel identity.
+
+Missing or conflicting original host, service, executable/source or recovery proof still forbids mutations. Any truly new check is read-only, original-host-scoped and labelled with host/terminal/user. Record qualified evidence in the existing registry/handover, never a second inventory or controller.
+
 ## Mandatory physical topology + exact serving-runtime preflight (owner decision 2026-10-22)
 
 **Before generating an executable host script, giving a host-specific terminal

@@ -117,6 +117,7 @@ def make_manager(
     seed_compatibility: bool = True,
     restart_components=None,
     active_revision_provider=None,
+    retain_activation_baseline=False,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -138,6 +139,7 @@ def make_manager(
         restart_delay_seconds=1,
         restart_components=restart_components,
         active_revision_provider=active_revision_provider,
+        retain_activation_baseline=retain_activation_baseline,
     )
     pyproject = project / "pyproject.toml"
     pyproject.write_text(
@@ -1786,3 +1788,98 @@ def test_source_baseline_provider_exception_is_denied_without_leaking_details(
         manager.start("b" * 40)
     assert "private checkout details" not in str(caught.value)
     assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_provisional_activation_keeps_baseline_transaction_through_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The old wheel must survive an install and a new-process restart."""
+    baseline, target = "a" * 40, "b" * 40
+    live = {"commit": baseline}
+
+    class PinnedSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            live["commit"] = commit
+            return super().sync_project_main_tip(project, commit)
+
+        def restore_project_main_commit_for_recovery(self, project: str, commit: str):
+            live["commit"] = commit
+            return super().restore_project_main_commit_for_recovery(project, commit)
+
+    def installer(command, **kwargs):
+        command = list(command)
+        if len(command) > 3 and command[3] == "wheel":
+            stage_fake_wheel(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    source = PinnedSource()
+    manager, _root, _exits = make_manager(
+        tmp_path, source=source, installer_runner=installer,
+        retain_activation_baseline=True,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": live["commit"], "clean": True},
+    )
+
+    finished = wait_terminal(manager, manager.start(target)["job_id"])
+    assert finished["state"] == "completed"
+    assert finished["restart_required"] is True
+    transaction = manager._package_installer.pending_transaction()
+    assert transaction is not None
+    assert transaction["job_id"] == finished["job_id"]
+    assert transaction["target_commit"] == target
+    assert transaction["baseline_commit"] == baseline
+    previous = manager._package_installer.staged_wheel(
+        job_id=finished["job_id"], label="baseline",
+    )
+    assert previous.exists()
+    assert manager.runtime_status()["provisional_activation_pending"] is True
+    assert manager.runtime_status()["install_recovery_pending"] is True
+
+    for component in ("server", "github-watcher", "completion-watcher"):
+        assert consume_restart_marker(manager.config_dir, component) is True
+
+    # Restarting the manager must not erase the retained wheel.
+    restarted, _root, _exits = make_manager(
+        tmp_path, source=source, installer_runner=installer,
+        retain_activation_baseline=True,
+    )
+    assert restarted.runtime_status()["provisional_activation_pending"] is True
+    assert restarted._package_installer.staged_wheel(
+        job_id=finished["job_id"], label="baseline",
+    ).exists()
+    with pytest.raises(SelfUpdateError, match="recovery is still pending"):
+        restarted.start("c" * 40)
+
+    # The existing explicitly authorized emergency-stop recovery still works.
+    restarted.safety.stop_file.touch()
+    receipt = restarted.recover_installation()
+    assert receipt["recovered"] is True
+    assert live["commit"] == baseline
+    assert restarted._package_installer.pending_transaction() is None
+    assert restarted.runtime_status()["provisional_activation_pending"] is False
+
+
+def test_provisional_mode_refuses_first_install_without_baseline(tmp_path: Path) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, retain_activation_baseline=True,
+    )
+    with pytest.raises(SelfUpdateError, match="requires an existing recorded rollback baseline"):
+        manager.start("f" * 40)
+    assert manager._package_installer.pending_transaction() is None
+
+
+@pytest.mark.parametrize("bad", [None, "true", 1, [], {}])
+def test_provisional_flag_must_be_an_explicit_boolean(
+    tmp_path: Path, bad: object,
+) -> None:
+    with pytest.raises(SelfUpdateError, match="retention flag is invalid"):
+        make_manager(tmp_path, retain_activation_baseline=bad)
+
+
+def test_legacy_update_keeps_current_behavior_by_default(tmp_path: Path) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    assert manager._retain_activation_baseline is False
+    assert manager.runtime_status()["provisional_activation_pending"] is False

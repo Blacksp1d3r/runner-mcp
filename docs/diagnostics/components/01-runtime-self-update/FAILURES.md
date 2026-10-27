@@ -1,3 +1,9 @@
+## 2026-10-27 — RMCP-F-0076: premature baseline disposal before reconnect (SOURCE-OBSERVED)
+
+- **Earliest layer:** `src/runner_mcp/self_update.py` successful `_run_job` path. After `install_wheel(target)`, `verify_runtime` and restart markers it invoked `clear_transaction()` and `preserve_artifacts=False`, leading `finally` to remove baseline wheel. A failed restart or broken tunnel/Agent Bus can then lose the normal manager's previous wheel before actual requester result/ACK. A green new-process import does **not** prove the original client can still communicate.
+- **Fix candidate:** opt-in constructor `retain_activation_baseline=True` on the ORIGINAL manager; require a recorded baseline and keep original transaction + baseline/target wheel until separately confirmed/returned by Fabric A7. Report `provisional_activation_pending`, disallow next update. Existing source default remains false for compatibility; do not mistake this for a physically enrolled A7.
+- **Regression:** successful install/restart-manager/retained-wheel/emergency-stop recover; strict bool, baseline-required denial and default legacy unchanged. Exact-head CI required. Fabric #943 still owns real persistent independent A7 hardware/boot/no-NIC tests, #942 off-target A6, #669 original signed live wheel witness. No production incident asserted and no host action performed.
+
 # 01-runtime-self-update — Runtime en self-update — failure register
 
 | Failure ID | Status | Earliest layer | Symptom | Root cause/evidence | Prevention/regression | Tracking |

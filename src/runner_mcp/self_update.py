@@ -398,6 +398,7 @@ class SelfUpdateManager:
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
         active_revision_provider: Callable[[], str | None] | None = None,
+        retain_activation_baseline: bool = False,
     ) -> None:
         root = config_dir.expanduser()
         if root.exists() and root.is_symlink():
@@ -474,6 +475,11 @@ class SelfUpdateManager:
         if active_revision_provider is not None and not callable(active_revision_provider):
             raise SelfUpdateError("Active runtime revision provider is invalid")
         self._active_revision_provider = active_revision_provider
+        if type(retain_activation_baseline) is not bool:
+            raise SelfUpdateError("Provisional baseline retention flag is invalid")
+        # An independent A7 actuator must own confirmation/clearance.
+        # Never discard the only local rollback wheel in a provisional window.
+        self._retain_activation_baseline = retain_activation_baseline
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()
@@ -760,7 +766,18 @@ class SelfUpdateManager:
             package_version = "development"
 
         last_commit = self._installed_commit()
-        recovery_pending = self._pending_install_transaction() is not None
+        transaction = self._pending_install_transaction()
+        recovery_pending = transaction is not None
+        provisional_pending = (
+            self._retain_activation_baseline
+            and transaction is not None
+            and any(
+                item.job_id == transaction["job_id"]
+                and item.commit == transaction["target_commit"]
+                and item.state == SelfUpdateJobState.COMPLETED
+                for item in self._jobs.values()
+            )
+        )
         active_revision = self._active_runtime_revision()
         runtime_activation_aligned: bool | None = None
         if last_commit is not None and self._active_revision_provider is not None:
@@ -811,6 +828,7 @@ class SelfUpdateManager:
             "restart_pending": pending_restarts > 0,
             "pending_restart_count": pending_restarts,
             "install_recovery_pending": recovery_pending,
+            "provisional_activation_pending": provisional_pending,
             "latest_self_update_job": self._latest_job_public(),
         }
 
@@ -833,6 +851,10 @@ class SelfUpdateManager:
                 "Runner MCP self-update installation recovery is still pending"
             )
         installed_commit = self._installed_commit()
+        if self._retain_activation_baseline and installed_commit is None:
+            raise SelfUpdateError(
+                "Provisional self-update requires an existing recorded rollback baseline"
+            )
         if installed_commit is not None:
             if self._active_revision_provider is not None:
                 active_revision = self._active_runtime_revision()
@@ -1391,13 +1413,23 @@ class SelfUpdateManager:
                     job.commit,
                     self._restart_components,
                 )
-                try:
-                    self._package_installer.clear_transaction()
-                except PackageInstallError as exc:
-                    raise SelfUpdateError(
-                        "Self-update install transaction could not be finalized"
-                    ) from exc
-                preserve_artifacts = False
+                if self._retain_activation_baseline:
+                    if baseline_commit is None or baseline_wheel is None:
+                        raise SelfUpdateError(
+                            "Provisional rollback baseline is unavailable"
+                        )
+                    # The fixed transaction and both wheels stay in the
+                    # existing private custody through activation/reconnect.
+                    # No automatic commit or new remote clearance authority.
+                    preserve_artifacts = True
+                else:
+                    try:
+                        self._package_installer.clear_transaction()
+                    except PackageInstallError as exc:
+                        raise SelfUpdateError(
+                            "Self-update install transaction could not be finalized"
+                        ) from exc
+                    preserve_artifacts = False
                 self._set_job(
                     job_id,
                     state=SelfUpdateJobState.COMPLETED,

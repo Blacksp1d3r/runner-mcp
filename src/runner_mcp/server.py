@@ -474,6 +474,7 @@ def build_mcp(
     safety_guard: OperatorSafetyGuard | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    self_update_retain_activation_baseline: bool = False,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
@@ -631,6 +632,7 @@ def build_mcp(
             if build_identity_provider is not None
             else None
         ),
+        retain_activation_baseline=self_update_retain_activation_baseline,
     )
     fabric_bootstrap_manager = FabricBootstrapManager(
         config_dir=settings.projects_config.parent,
@@ -4103,6 +4105,7 @@ def create_app(
     registry: ProjectRegistry | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    self_update_retain_activation_baseline: bool = False,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
     tunnel_expected: bool = False,
@@ -4154,6 +4157,7 @@ def create_app(
         safety_guard=safety_guard,
         secret_values=secret_values,
         self_update_restart_components=self_update_restart_components,
+        self_update_retain_activation_baseline=self_update_retain_activation_baseline,
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
         build_identity_provider=current_build_identity,

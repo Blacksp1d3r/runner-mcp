@@ -717,3 +717,41 @@ def test_cron_status_exact_config_and_release_reports_configured_not_live(
     ]
     assert all(not row.active for row in result)
     assert not list(config.glob("autostart-*.lock"))
+
+
+
+@pytest.mark.parametrize("duplicate", ("same", "old_release", "foreign_config"))
+def test_cron_status_duplicate_role_claim_not_marked_installed(
+    tmp_path: Path, fake_crontab_executable: None, duplicate: str,
+) -> None:
+    config = tmp_path / "config"
+    config.mkdir(mode=0o700)
+    executable = tmp_path / "release-current" / "runner-mcp"
+    original = render_cron_block(
+        executable=executable, config_dir=config,
+        components=("server",), port=8000,
+    )
+    if duplicate == "same":
+        second = original[2]
+    else:
+        second = render_cron_block(
+            executable=(
+                tmp_path / "release-old" / "runner-mcp"
+                if duplicate == "old_release" else executable
+            ),
+            config_dir=(
+                tmp_path / "foreign-config"
+                if duplicate == "foreign_config" else config
+            ),
+            components=("server",), port=8000,
+        )[2]
+    lines = [*original[:-1], second, CRON_END]
+    observed = cron_status(
+        config_dir=config, executable=executable,
+        components=("server",), runner=FakeCrontab("\n".join(lines) + "\n"),
+    )
+    server = next(row for row in observed if row.component == "server")
+    assert server.installed is False
+    assert server.enabled is False
+    assert server.active is False
+    assert not (config / "autostart-server.lock").exists()

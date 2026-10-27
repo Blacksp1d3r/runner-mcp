@@ -91,6 +91,41 @@ def test_symlinked_task_denied_without_patch_creation(tmp_path: Path) -> None:
     assert not (root / "patches" / "job-1").exists()
 
 
+def test_owner_only_read_only_parent_is_not_workspace_ready(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    (root / "jobs").chmod(0o500)
+    for method in (
+        lambda: provisioner.preflight("qwen"),
+        lambda: provisioner.prepare("qwen", "new-work"),
+        lambda: provisioner.inspect("qwen", "new-work"),
+    ):
+        result = method()
+        assert result["state"] == "unavailable"
+        assert result["reason_code"] == "workspace_directory_unsafe"
+        assert result["filesystem_path_exposed"] is False
+    assert not (root / "patches" / "new-work").exists()
+    (root / "jobs").chmod(0o700)
+    assert provisioner.preflight("qwen")["state"] == "ready"
+    assert provisioner.prepare("qwen", "new-work")["state"] == "prepared"
+
+
+def test_read_only_existing_task_pair_never_returns_prepared(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    assert provisioner.prepare("qwen", "existing-work")["state"] == "prepared"
+    (root / "patches" / "existing-work").chmod(0o500)
+    for method in (
+        lambda: provisioner.inspect("qwen", "existing-work"),
+        lambda: provisioner.prepare("qwen", "existing-work"),
+    ):
+        result = method()
+        assert result["state"] == "unavailable"
+        assert result["reason_code"] == "workspace_entry_unsafe"
+        assert result["filesystem_path_exposed"] is False
+    (root / "patches" / "existing-work").chmod(0o700)
+    assert provisioner.inspect("qwen", "existing-work")["state"] == "prepared"
+    assert provisioner.prepare("qwen", "existing-work")["state"] == "already_prepared"
+
+
 def test_existing_partial_task_denied_without_modification(tmp_path: Path) -> None:
     provisioner, root = _configured(tmp_path)
     (root / "jobs" / "job-1").mkdir(mode=0o700)

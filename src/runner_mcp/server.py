@@ -116,6 +116,7 @@ from .fabric_bridge import (
     FabricBridgeConfig,
     FabricBridgeError,
     bounded_ci_guest_status_unavailable,
+    bounded_external_target_read_unavailable,
     bounded_host_inspection_unavailable,
     bounded_snapshot_unavailable,
 )
@@ -2206,7 +2207,9 @@ def build_mcp(
                 "external-target:managed",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_external_target_read_unavailable(
+                str(exc), phase="preflight"
+            )
         _audit_fabric(
             "fabric_external_target_preflight",
             "external-target:managed",
@@ -2224,7 +2227,9 @@ def build_mcp(
                 "external-target:managed",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_external_target_read_unavailable(
+                str(exc), phase="inspect"
+            )
         _audit_fabric(
             "fabric_external_target_inspect",
             "external-target:managed",

@@ -2,9 +2,11 @@
 
 from __future__ import annotations
 
+import fcntl
 import os
 import pwd
 import stat
+from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 import pytest
@@ -138,3 +140,37 @@ def test_capacity_limit_rejects_new_job_but_allows_repeat(tmp_path: Path) -> Non
     assert provisioner.prepare("qwen", "first")["state"] == "already_prepared"
     assert provisioner.prepare("qwen", "next")["reason_code"] == "workspace_capacity_reached"
     assert not (root / "jobs" / "next").exists()
+
+
+def test_busy_workspace_blocks_without_write_then_replays(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    fd = os.open(root / "jobs", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        result = provisioner.prepare("qwen", "f18-replay")
+        assert result["reason_code"] == "workspace_busy"
+        assert not (root / "jobs" / "f18-replay").exists()
+        assert not (root / "patches" / "f18-replay").exists()
+    finally:
+        os.close(fd)
+    assert provisioner.prepare("qwen", "f18-replay")["state"] == "prepared"
+    assert provisioner.prepare("qwen", "f18-replay")["state"] == "already_prepared"
+
+
+def test_simultaneous_same_id_returns_one_completed_pair(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        results = list(executor.map(
+            lambda _: provisioner.prepare("qwen", "same-f18-work-unit"), range(16),
+        ))
+    assert sum(reply["state"] == "prepared" for reply in results) == 1
+    assert all(
+        reply["state"] in {"prepared", "already_prepared"}
+        or (reply["state"] == "unavailable" and reply["reason_code"] == "workspace_busy")
+        for reply in results
+    )
+    assert provisioner.prepare("qwen", "same-f18-work-unit")["state"] == "already_prepared"
+    for name in ("jobs", "patches"):
+        entries = list((root / name).iterdir())
+        assert len(entries) == 1
+        assert stat.S_IMODE(entries[0].stat().st_mode) == 0o700

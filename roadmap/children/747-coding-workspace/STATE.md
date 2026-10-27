@@ -1,5 +1,11 @@
 # #747 state — updated 2026-10-27
 
+## 2026-10-27 — gelijktijdige F18-herlevering / werkruimte-idempotentie (source-test)
+
+- **Concrete oorzaak:** twee gelijktijdige lokale `prepare`-aanroepen voor exact hetzelfde work-unit ID konden zonder synchronisatie elk een lege jobs/patches-pair zien en vervolgens met `mkdir(..., EEXIST)` inconsistent `workspace_create_failed` antwoorden; capacity- en pair-check gebeurden niet atomair ten opzichte van een tweede aanroep.
+- **Beperkte source-oplossing:** exclusieve, niet-blokkerende `fcntl.flock` op de **reeds bestaande** eigenaar-private `jobs`-directory-FD houdt de pair-check, limietcontrole, beide mkdirs, fsync en lokale rollback samen. Een concurrerende aanroep retourneert veilig `unavailable/workspace_busy` zonder writes en is met hetzelfde ID te herhalen; de voltooide pair retourneert daarna `already_prepared`. Geen lockfile, nieuwe service, hostpad, autorisatie of remote controller.
+- **Acceptance-eis:** tests voor een reeds gelockte oudermap en meerdere gelijktijdige identieke aanroepen plus exacte PR-CI. Nog steeds **geen bewezen worker-UID-integratie**, geen Claude/Qwen F18 modeltaak of originele duurzame ACK; die blijven afhankelijk van Fabric #972/#1579 en AIfordable #609. Geen service/hostconfig verandert door deze bronwijziging.
+
 ## 2026-10-27 — Runner-MCP-B (#381/#747) reikwijdte en bewijs (SOURCE, niet LIVE-ACK)
 
 - **#747 SOURCE VOLTOOID:** [PR #751](https://github.com/Blacksp1d3r/runner-mcp/pull/751) is al gemerged (`601afc953495fa0c2faa511d4601186ff269e034`), met exacte head `47da001a9bb73a1624fdeb9d00f33efd72b09902` en eerder geregistreerde groene bron-CI (#747-comment). `coding_workspace_preflight(worker_id)` en `coding_workspace_prepare(worker_id, work_unit_id)` bestaan in source `server.py` en `coding_workspace.py`; ze bedienen **alleen dezelfde lokale effectieve UID en filesystem** als de server. Geen nieuwe root, disk of modelsmoke vereist.

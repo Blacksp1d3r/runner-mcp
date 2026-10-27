@@ -366,6 +366,7 @@ def test_cron_run_does_not_start_duplicate_component(tmp_path: Path) -> None:
     executable.chmod(0o700)
     lock_path = config / "autostart-server.lock"
     lock_fd = lock_path.open("w")
+    lock_path.chmod(0o600)
     fcntl.flock(lock_fd.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     called = []
     diagnostics: list[str] = []
@@ -755,3 +756,90 @@ def test_cron_status_duplicate_role_claim_not_marked_installed(
     assert server.enabled is False
     assert server.active is False
     assert not (config / "autostart-server.lock").exists()
+
+
+@pytest.mark.parametrize("unsafe", (
+    "symlink", "hardlink", "fifo", "directory", "permissions",
+))
+def test_cron_run_never_changes_unsafe_existing_lock_or_executes(
+    tmp_path: Path, unsafe: str,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    lock = config / "autostart-server.lock"
+    external = tmp_path / "unrelated-existing-file"
+    external.write_bytes(b"do-not-chmod-or-write")
+    external.chmod(0o600)
+    if unsafe == "symlink":
+        lock.symlink_to(external)
+    elif unsafe == "hardlink":
+        os.link(external, lock)
+    elif unsafe == "fifo":
+        os.mkfifo(lock, mode=0o600)
+    elif unsafe == "directory":
+        lock.mkdir(mode=0o700)
+    else:
+        lock.write_bytes(b"existing-unsafe-mode")
+        lock.chmod(0o644)
+
+    before_mode = external.stat().st_mode
+    before_bytes = external.read_bytes()
+    calls: list[tuple[str, list[str]]] = []
+    with pytest.raises(CronAutostartError, match="cron autostart lock"):
+        run_cron_component(
+            config_dir=config,
+            executable=tmp_path / "unused-entrypoint",
+            component="server",
+            exec_fn=lambda path, argv: calls.append((path, argv)),
+        )
+    assert calls == []
+    assert external.read_bytes() == before_bytes
+    assert external.stat().st_mode == before_mode
+    if unsafe == "permissions":
+        assert lock.stat().st_mode & 0o777 == 0o644
+        assert lock.read_bytes() == b"existing-unsafe-mode"
+    if unsafe == "symlink":
+        assert lock.is_symlink()
+
+
+def test_cron_run_creates_single_owner_private_lock_for_actual_exec(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    lock = config / "autostart-github-watcher.lock"
+    calls: list[tuple[str, list[str]]] = []
+    assert run_cron_component(
+        config_dir=config,
+        executable=tmp_path / "runner-mcp",
+        component="github-watcher",
+        exec_fn=lambda path, argv: calls.append((path, argv)),
+    ) == 0
+    assert len(calls) == 1
+    assert calls[0][1][-2:] == ["github-watcher", "run"]
+    assert lock.is_file()
+    st = lock.stat()
+    assert st.st_uid == os.geteuid()
+    assert st.st_nlink == 1
+    assert st.st_mode & 0o777 == 0o600
+
+
+def test_cron_run_reuses_valid_private_lock_without_overwriting_bytes(
+    tmp_path: Path,
+) -> None:
+    config = tmp_path / "private"
+    config.mkdir(mode=0o700)
+    lock = config / "autostart-completion-watcher.lock"
+    lock.write_bytes(b"legacy-lock-content")
+    lock.chmod(0o600)
+    original_inode = lock.stat().st_ino
+    called: list[bool] = []
+    assert run_cron_component(
+        config_dir=config,
+        executable=tmp_path / "runner-mcp",
+        component="completion-watcher",
+        exec_fn=lambda *_args: called.append(True),
+    ) == 0
+    assert called == [True]
+    assert lock.read_bytes() == b"legacy-lock-content"
+    assert lock.stat().st_ino == original_inode

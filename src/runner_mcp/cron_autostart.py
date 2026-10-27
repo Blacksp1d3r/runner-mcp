@@ -362,8 +362,17 @@ def cron_status(
     *,
     config_dir: Path,
     components: tuple[str, ...],
+    executable: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[CronComponentStatus]:
+    """Observe this configuration's exact cron launcher without changing cron.
+
+    A matching command structure for another config/release is not proof that
+    THIS instance is managed. Callers with the expected release entrypoint
+    must supply executable; no imported wheel or live process is attested.
+    """
+    expected_config = str(config_dir.expanduser().resolve())
+    expected_executable = str(executable) if executable is not None else None
     lines = read_crontab(runner=runner).splitlines()
     bounds = _managed_block_bounds(lines)
     block = lines[bounds[0] : bounds[1] + 1] if bounds is not None else []
@@ -385,6 +394,11 @@ def cron_status(
             or not argv[0].startswith("/")
             or not argv[2].startswith("/")
             or argv[1:2] != ["--config-dir"]
+            or argv[2] != expected_config
+            or (
+                expected_executable is not None
+                and argv[0] != expected_executable
+            )
             or argv[3:6] != ["autostart", "cron-run", role]
         ):
             return False

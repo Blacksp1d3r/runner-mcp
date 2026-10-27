@@ -241,7 +241,10 @@ def test_bounded_identity_keeps_valid_identity_unchanged() -> None:
     assert bounded_build_identity_payload(lambda: identity) == identity.to_payload()
 
 
-@pytest.mark.parametrize("error_type", [OSError, RuntimeError, TypeError, ValueError])
+@pytest.mark.parametrize(
+    "error_type",
+    [OSError, RuntimeError, TypeError, ValueError, KeyError, IndexError, AttributeError],
+)
 def test_bounded_identity_reports_unavailable_without_private_exception(
     error_type: type[Exception],
 ) -> None:
@@ -255,6 +258,23 @@ def test_bounded_identity_reports_unavailable_without_private_exception(
         "reasonCode": "build-identity-unavailable",
         "identityEvidenceComplete": False,
     }
+    assert "NEVER_EXPOSE" not in str(result)
+
+
+@pytest.mark.parametrize("error_type", [KeyError, IndexError, AttributeError])
+def test_bounded_identity_cannot_leak_broken_serialization(
+    monkeypatch: pytest.MonkeyPatch, error_type: type[Exception]
+) -> None:
+    identity = runner_mcp_build_identity("0.1.102")
+
+    def broken_serialization(_self: BuildIdentity) -> dict[str, object]:
+        raise error_type("/private/original-serving-wheel token=NEVER_EXPOSE")
+
+    monkeypatch.setattr(BuildIdentity, "to_payload", broken_serialization)
+    result = bounded_build_identity_payload(lambda: identity)
+    assert result["state"] == "unavailable"
+    assert result["identityEvidenceComplete"] is False
+    assert result["reasonCode"] == "build-identity-unavailable"
     assert "NEVER_EXPOSE" not in str(result)
 
 

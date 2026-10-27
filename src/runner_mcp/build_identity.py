@@ -285,5 +285,5 @@ def bounded_build_identity_payload(
         }:
             return unavailable
         return payload
-    except (OSError, RuntimeError, TypeError, ValueError):
+    except (OSError, RuntimeError, TypeError, ValueError, LookupError, AttributeError):
         return unavailable

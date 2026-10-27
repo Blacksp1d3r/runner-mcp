@@ -1,3 +1,9 @@
+## 2026-10-27 — ORIGINAL :8000 v0.1.88 confirmed; multi-role provenance still WAIT
+
+- **Last distinct original-host physical witness (2026-10-26):** `github-runner` / `gha-runner`, loopback port 8000 PID `3217524`, pinned manual install v0.1.88 and six managed cron entries changed. Four previous-generation processes stopped; retained v0.1.38 rollback. Main server's live v0.1.88 process proof is accepted and **not** to be reinstalled or reconfirmed using obsolete PID `520762` as if still live. [#669 physical receipt](https://github.com/Blacksp1d3r/runner-mcp/issues/669#issuecomment-6427575625).
+- **2026-10-27 first-party connected read-only observation:** `runtime_status.version=0.1.88`, `installed_distribution_version=0.1.88`; `reply_source_host_verified=false`, `active_build_provenance_verified=false`, `active_artifact_revision=null`, `active_artifact_digest=null`, `loaded_module_wheel_identity_verified=false`, `six_role_process_roster_verified=false`, `self_update_ready=false`, no active update, restart or installation recovery. Because reply host is not authenticated, this observation is NOT new original-host process/pid/source proof. `build_identity` and `runtime_doctor` currently return separate internal-tool errors; classify those **UNKNOWN**, not server-down.
+- **Missing qualification:** five separate remaining cron roles' actual execution/loaded generation (schedule/receipt where short-lived), source+wheel linkage of each serving generation, and authenticated signed multi-role witness. A6 off-target append-only journal (#942) and autonomous independent fixed six-role rollback in existing persistent Black isolated guest (#943/#1650) remain separate WAIT. Already accepted normalized original runtime copy and six-role archive/isolated content restore (AF-SB-0002) **must not be repeated**. Historical entries below are dated snapshots, NOT current runtime truth. No host, release, cron, server or credential changed by this documentation update.
+
 ## 2026-10-21 — v0.1.77 local epoch response integrity MERGED, LIVE WAIT
 
 - After #794 v0.1.75 and #796 v0.1.76 MERGED, the existing `runtime_status` aggregator still allowed a status manager to overwrite `serving_instance_epoch` and `serving_instance_epoch_authenticated`. This can produce misleading process correlation even if the loaded distribution version is correct.
@@ -19,7 +25,7 @@
 - Evidence and strict #509 conditional activation chain recorded in [handover/ISSUES_669_509_OPERATOR_GATES_20261020.md](../../handover/ISSUES_669_509_OPERATOR_GATES_20261020.md).
 - No host, process, A6 private file, Fabric agent, relay, six serving roles, or update modified.
 
-# #669 — serving-generation provenance
+# #669 — serving-generation provenance (historical 2026-10-20 status, superseded)
 
 status: SOURCE_OFFLINE_GUARDS_MERGED / CORRECT_HOST_WITNESS_WAIT
 owner: Runner-MCP source lane (#669); Fabric authority/activation separately #924

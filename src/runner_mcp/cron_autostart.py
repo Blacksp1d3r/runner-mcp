@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -162,6 +163,17 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
         lowered = line.lower()
         if "runner-mcp" not in lowered:
             continue
+        # Reuse the canonical role set: an unmanaged legacy "cron-run server"
+        # outside our one managed block can start a SECOND serving process.
+        # Checking only " serve " missed that original supervisor spelling.
+        if any(
+            re.search(
+                r"(?<!\\S)cron-run\\s+" + re.escape(component) + r"(?=\\s|$)",
+                lowered,
+            )
+            for component in CRON_COMPONENTS
+        ):
+            return True
         if any(
             token in lowered
             for token in (
@@ -392,6 +404,12 @@ def cron_status(
     expected_executable = str(executable) if executable is not None else None
     lines = read_crontab(runner=runner).splitlines()
     bounds = _managed_block_bounds(lines)
+    # Status must not falsely report one uniquely owned role if another
+    # legacy supervisor command outside the managed block can start it too.
+    if _has_unmanaged_runner_mcp_entries(lines):
+        raise CronAutostartError(
+            "unmanaged Runner MCP cron entries already exist"
+        )
     block = lines[bounds[0] : bounds[1] + 1] if bounds is not None else []
     # Only exact owner-managed schedule entries count. Comments, suffix
     # aliases (e.g. 'server-old') and a quoted sentence containing cron-run

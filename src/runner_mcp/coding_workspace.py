@@ -9,6 +9,7 @@ separate Fabric/Agent Bus qualification and is never inferred here.
 
 from __future__ import annotations
 
+import fcntl
 import os
 import pwd
 import re
@@ -149,6 +150,16 @@ class CodingWorkspaceProvisioner:
             uid, root = self._binding(worker_id)
             with ExitStack() as stack:
                 jobs, patches = self._checked_layout(stack, uid, root)
+                # Multiple authenticated deliveries may name the same work unit.
+                # Hold an advisory lock on the EXISTING private jobs directory
+                # across both entry checks, capacity checks and pair creation.
+                # ExitStack closes the descriptor and releases the lock.
+                try:
+                    fcntl.flock(jobs, fcntl.LOCK_EX | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise WorkspaceDenied("workspace_busy") from None
+                except OSError:
+                    raise WorkspaceDenied("workspace_storage_unavailable") from None
                 job_exists = self._entry(jobs, work_unit_id, uid)
                 patch_exists = self._entry(patches, work_unit_id, uid)
                 if job_exists != patch_exists:

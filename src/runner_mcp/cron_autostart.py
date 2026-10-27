@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import fcntl
 import os
-import re
 import shlex
 import shutil
 import stat
@@ -163,15 +162,18 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
         lowered = line.lower()
         if "runner-mcp" not in lowered:
             continue
-        # Reuse the canonical role set: an unmanaged legacy "cron-run server"
-        # outside our one managed block can start a SECOND serving process.
-        # Checking only " serve " missed that original supervisor spelling.
+        # Parse bounded role tokens, reusing the original role registry.
+        # An unmanaged legacy "cron-run server" outside the owner block can
+        # start a SECOND serving process; " serve " did not detect it.
+        try:
+            tokens = shlex.split(line)
+        except ValueError:
+            # Do not admit a malformed runner-mcp cron command as harmless.
+            return True
         if any(
-            re.search(
-                r"(?<!\\S)cron-run\\s+" + re.escape(component) + r"(?=\\s|$)",
-                lowered,
-            )
-            for component in CRON_COMPONENTS
+            tokens[index] == "cron-run"
+            and tokens[index + 1] in CRON_COMPONENTS
+            for index in range(len(tokens) - 1)
         ):
             return True
         if any(

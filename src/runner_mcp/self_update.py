@@ -778,6 +778,19 @@ class SelfUpdateManager:
                 for item in self._jobs.values()
             )
         )
+        # A retained transaction/job is not evidence that its rollback wheel
+        # still exists. This is presence-only, not byte integrity, installer
+        # custody, live serving provenance or autonomous A7 recovery proof.
+        provisional_baseline_wheel_present: bool | None = None
+        if provisional_pending:
+            try:
+                self._package_installer.staged_wheel(
+                    job_id=transaction["job_id"],
+                    label="baseline",
+                )
+                provisional_baseline_wheel_present = True
+            except (PackageInstallError, OSError):
+                provisional_baseline_wheel_present = False
         active_revision = self._active_runtime_revision()
         runtime_activation_aligned: bool | None = None
         if last_commit is not None and self._active_revision_provider is not None:
@@ -829,6 +842,7 @@ class SelfUpdateManager:
             "pending_restart_count": pending_restarts,
             "install_recovery_pending": recovery_pending,
             "provisional_activation_pending": provisional_pending,
+            "provisional_baseline_wheel_present": provisional_baseline_wheel_present,
             "latest_self_update_job": self._latest_job_public(),
         }
 

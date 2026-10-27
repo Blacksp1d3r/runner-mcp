@@ -1,3 +1,7 @@
+## 2026-10-27 — Workstream A #341 source v0.1.101: distinguish transaction from wheel presence
+
+- The existing opt-in provisional status could report a held transaction/job after the actual baseline wheel disappeared. The existing manager now adds **presence-only** `provisional_baseline_wheel_present` (`null` inactive, true existing accepted wheel path, false missing/unsafe). Retained transaction and next-update block remain untouched; no live recovery authority or actual A7 approval. Source tests cover disappearance, restoration, restarted manager and attended recovery. #669 trust-bound loaded wheel/six-role witness, Fabric #942 off-target A6 and #943 independent offline restore remain WAIT. Source candidate only, no host/service/cron operation or backup. Exact-head CI/merge pending.
+
 ## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered
 
 - Runner-MCP [PR #853](https://github.com/Blacksp1d3r/runner-mcp/pull/853) **MERGED** source v0.1.98 as `bfd246929a1434e6a572344dd125cd53d43ad2ce` (exact tested PR head `33679d3bf2a57957e4788ddee8a232def863d64f`). Exact-head validation #40576773564, clean Ubuntu #40576773598, attribution #40576773573: all **SUCCESS**. The v0.1.96 retention option is now forwarded through existing `create_app` / `build_mcp` into the same manager. **Strict explicit opt-in, default OFF**; production CLI has no opt-in.

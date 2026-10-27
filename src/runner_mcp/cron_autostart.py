@@ -162,6 +162,20 @@ def _has_unmanaged_runner_mcp_entries(lines: list[str]) -> bool:
         lowered = line.lower()
         if "runner-mcp" not in lowered:
             continue
+        # Parse bounded role tokens, reusing the original role registry.
+        # An unmanaged legacy "cron-run server" outside the owner block can
+        # start a SECOND serving process; " serve " did not detect it.
+        try:
+            tokens = shlex.split(line)
+        except ValueError:
+            # Do not admit a malformed runner-mcp cron command as harmless.
+            return True
+        if any(
+            tokens[index] == "cron-run"
+            and tokens[index + 1] in CRON_COMPONENTS
+            for index in range(len(tokens) - 1)
+        ):
+            return True
         if any(
             token in lowered
             for token in (
@@ -392,6 +406,12 @@ def cron_status(
     expected_executable = str(executable) if executable is not None else None
     lines = read_crontab(runner=runner).splitlines()
     bounds = _managed_block_bounds(lines)
+    # Status must not falsely report one uniquely owned role if another
+    # legacy supervisor command outside the managed block can start it too.
+    if _has_unmanaged_runner_mcp_entries(lines):
+        raise CronAutostartError(
+            "unmanaged Runner MCP cron entries already exist"
+        )
     block = lines[bounds[0] : bounds[1] + 1] if bounds is not None else []
     # Only exact owner-managed schedule entries count. Comments, suffix
     # aliases (e.g. 'server-old') and a quoted sentence containing cron-run

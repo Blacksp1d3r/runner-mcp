@@ -143,6 +143,34 @@ class CodingWorkspaceProvisioner:
             return _reply("unavailable", "workspace_storage_unavailable", worker_id)
         return _reply("ready", "ready", worker_id)
 
+    def inspect(self, worker_id: str, work_unit_id: str) -> dict[str, object]:
+        """Read an existing pair under its true local owner, without creating it."""
+        if type(work_unit_id) is not str or _TASK.fullmatch(work_unit_id) is None:
+            return _reply("blocked", "work_unit_id_invalid", worker_id)
+        try:
+            uid, root = self._binding(worker_id)
+            with ExitStack() as stack:
+                jobs, patches = self._checked_layout(stack, uid, root)
+                # Coordinate with prepare's exclusive lock so an in-progress
+                # two-directory create is never misread as a durable partial.
+                try:
+                    fcntl.flock(jobs, fcntl.LOCK_SH | fcntl.LOCK_NB)
+                except BlockingIOError:
+                    raise WorkspaceDenied("workspace_busy") from None
+                except OSError:
+                    raise WorkspaceDenied("workspace_storage_unavailable") from None
+                job_exists = self._entry(jobs, work_unit_id, uid)
+                patch_exists = self._entry(patches, work_unit_id, uid)
+                if job_exists != patch_exists:
+                    raise WorkspaceDenied("workspace_partial_existing")
+                if job_exists:
+                    return _reply("prepared", "already_prepared", worker_id, work_unit_id)
+                return _reply("absent", "workspace_not_prepared", worker_id, work_unit_id)
+        except WorkspaceDenied as exc:
+            return _reply("unavailable", exc.reason, worker_id, work_unit_id)
+        except OSError:
+            return _reply("unavailable", "workspace_storage_unavailable", worker_id, work_unit_id)
+
     def prepare(self, worker_id: str, work_unit_id: str) -> dict[str, object]:
         if type(work_unit_id) is not str or _TASK.fullmatch(work_unit_id) is None:
             return _reply("blocked", "work_unit_id_invalid", worker_id)

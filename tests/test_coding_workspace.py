@@ -174,3 +174,44 @@ def test_simultaneous_same_id_returns_one_completed_pair(tmp_path: Path) -> None
         entries = list((root / name).iterdir())
         assert len(entries) == 1
         assert stat.S_IMODE(entries[0].stat().st_mode) == 0o700
+
+
+def test_inspect_reports_pair_without_mutation(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    before = (list((root / "jobs").iterdir()), list((root / "patches").iterdir()))
+    absent = provisioner.inspect("qwen", "new-f18")
+    assert absent["state"] == "absent"
+    assert absent["reason_code"] == "workspace_not_prepared"
+    assert absent["filesystem_path_exposed"] is False
+    assert absent["cross_host_execution_authorized"] is False
+    assert before == (list((root / "jobs").iterdir()), list((root / "patches").iterdir()))
+    assert provisioner.prepare("qwen", "new-f18")["state"] == "prepared"
+    receipt = provisioner.inspect("qwen", "new-f18")
+    assert receipt["state"] == "prepared"
+    assert receipt["reason_code"] == "already_prepared"
+
+
+def test_inspect_denies_partial_unsafe_and_wrong_identity(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    (root / "jobs" / "partial").mkdir(mode=0o700)
+    assert provisioner.inspect("qwen", "partial")["reason_code"] == "workspace_partial_existing"
+    assert not (root / "patches" / "partial").exists()
+    assert provisioner.inspect("qwen", "../escape")["reason_code"] == "work_unit_id_invalid"
+    assert provisioner.inspect("claude", "partial")["reason_code"] == "worker_binding_mismatch"
+    (root / "jobs" / "unsafe").symlink_to(tmp_path, target_is_directory=True)
+    assert provisioner.inspect("qwen", "unsafe")["reason_code"] == "workspace_entry_unsafe"
+    assert not (root / "patches" / "unsafe").exists()
+
+
+def test_inspect_busy_does_not_report_partial_during_prepare(tmp_path: Path) -> None:
+    provisioner, root = _configured(tmp_path)
+    fd = os.open(root / "jobs", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        (root / "jobs" / "half-done").mkdir(mode=0o700)
+        result = provisioner.inspect("qwen", "half-done")
+        assert result["state"] == "unavailable"
+        assert result["reason_code"] == "workspace_busy"
+    finally:
+        os.close(fd)
+    assert provisioner.inspect("qwen", "half-done")["reason_code"] == "workspace_partial_existing"

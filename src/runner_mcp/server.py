@@ -883,12 +883,37 @@ def build_mcp(
                 utc_timestamp(),
             )
         )
-        return fail_closed_runtime_provenance(
+        # Use the SAME in-process observer as the existing narrower preflight.
+        # This is already reachable through the authenticated runtime_status
+        # connector, without adding another tool/relay/observer. A local code
+        # digest is not independently trusted wheel or six-role provenance.
+        local = observe_current_process_modules(
+            imported_version=_loaded_package_version,
+            installed_distribution_version=package,
+        )
+        safe = fail_closed_runtime_provenance(
             result,
             loaded_version=_loaded_package_version,
             installed_distribution_version=package,
             serving_instance_epoch=serving_epoch.value(),
         )
+        measured = local.get("loadedCodeObservationComplete") is True
+        safe.update(
+            {
+                "selected_loaded_code_observation_complete": measured,
+                "selected_loaded_code_sha256": (
+                    local.get("loadedCodeObjectDigest") if measured else None
+                ),
+                "selected_loaded_code_object_count": (
+                    local.get("loadedCodeObjectCount") if measured else 0
+                ),
+                "selected_loaded_code_module_count": (
+                    local.get("loadedCodeModuleCount") if measured else 0
+                ),
+                "selected_loaded_code_wheel_verified": False,
+            }
+        )
+        return safe
 
     @mcp.tool()
     def serving_process_observation_preflight() -> dict[str, object]:

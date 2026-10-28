@@ -250,6 +250,53 @@ def test_disposable_rendered_units_pass_real_systemd_parser(tmp_path: Path) -> N
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")
+def test_all_configured_roles_pass_real_systemd_parser(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The complete known service graph must parse before any live cutover."""
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module,
+        "configured_autostart_components",
+        lambda _config_dir: (
+            "server",
+            "tunnel",
+            "topology-heartbeat",
+            "github-watcher",
+            "completion-watcher",
+            "agent-bus-worker",
+            "fabric-agent-qualification",
+            "fabric-live-overview",
+        ),
+    )
+    units = render_user_units(config_dir=paths.config_dir, executable=executable)
+    assert set(units) == set(autostart_module.KNOWN_UNITS)
+    sandbox = tmp_path / "candidate-graph"
+    sandbox.mkdir()
+    paths_to_verify: list[str] = []
+    for unit_name, content in sorted(units.items()):
+        candidate = sandbox / unit_name
+        candidate.write_text(content, encoding="utf-8")
+        paths_to_verify.append(str(candidate))
+        assert "Restart=on-failure" in content
+        assert "RestartSec=3" in content
+        if unit_name != SERVER_UNIT:
+            assert f"Requires={SERVER_UNIT}" in content
+    result = subprocess.run(
+        [analyze, "verify", *paths_to_verify],
+        text=True,
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr[-1200:]
+    assert {p.name for p in sandbox.iterdir()} == set(units)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")
 def test_disposable_systemd_parser_rejects_broken_execstart(tmp_path: Path) -> None:
     """A malformed candidate must fail before any real manager is involved."""
     analyze = shutil.which("systemd-analyze")

@@ -2532,6 +2532,17 @@ def test_connector_readonly_smoke_matrix_through_authenticated_mcp(tmp_path: Pat
                 assert [project["code"] for project in payload] == ["demo"]
             elif tool_name == "runtime_status":
                 assert payload["projects"] == 1
+                # Same authenticated MCP response carries a bounded *partial*
+                # in-memory code fingerprint without any host/wheel authority.
+                assert payload["selected_loaded_code_observation_complete"] is True
+                assert len(payload["selected_loaded_code_sha256"]) == 64
+                assert payload["selected_loaded_code_module_count"] == 2
+                assert payload["selected_loaded_code_object_count"] >= 2
+                assert payload["selected_loaded_code_wheel_verified"] is False
+                assert payload["active_build_provenance_verified"] is False
+                assert payload["active_artifact_revision"] is None
+                assert payload["active_artifact_digest"] is None
+                assert payload["self_update_ready"] is False
             else:
                 assert isinstance(payload["checks"], list)
 

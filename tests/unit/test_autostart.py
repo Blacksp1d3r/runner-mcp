@@ -246,10 +246,7 @@ def test_disposable_rendered_units_pass_real_systemd_parser(tmp_path: Path) -> N
     assert "synthetic-qualification-key" not in result.stdout
     # Verification did not activate or install a service; only test-owned
     # disposable candidate files exist and the original source is untouched.
-    assert sorted(file.name for file in sandbox.iterdir()) == [
-        SERVER_UNIT,
-        TUNNEL_UNIT,
-    ]
+    assert {file.name for file in sandbox.iterdir()} == {SERVER_UNIT, TUNNEL_UNIT}
 
 
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")

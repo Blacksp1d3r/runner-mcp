@@ -285,9 +285,11 @@ def has_managed_user_units(
         raise AutostartError("systemd user unit directory is unavailable")
     for unit_name in KNOWN_UNITS:
         path = expanded / unit_name
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
         if not path.exists():
             continue
-        if path.is_symlink() or not path.is_file():
+        if not path.is_file():
             raise AutostartError("autostart unit path is unsafe")
         try:
             content = path.read_text(encoding="utf-8")

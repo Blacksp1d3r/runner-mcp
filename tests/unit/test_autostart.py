@@ -770,6 +770,30 @@ def test_remove_only_deletes_runner_mcp_managed_units(tmp_path: Path) -> None:
     assert systemctl.calls[-1] == ["systemctl", "--user", "daemon-reload"]
 
 
+def test_remove_preserves_unit_when_systemctl_disable_fails(tmp_path: Path) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    target = unit_dir / SERVER_UNIT
+    original = MANAGED_MARKER + "\n[Service]\nExecStart=/bin/true\n"
+    target.write_text(original, encoding="utf-8")
+
+    class RejectDisable(FakeSystemctl):
+        def __call__(self, argv, **kwargs):
+            result = super().__call__(argv, **kwargs)
+            if argv[2:4] == ["disable", "--now"]:
+                return subprocess.CompletedProcess(argv, 1, "", "synthetic failure")
+            return result
+
+    systemctl = RejectDisable()
+    with pytest.raises(AutostartError, match="service operation failed"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+    assert target.read_text(encoding="utf-8") == original
+    assert systemctl.calls == [
+        ["systemctl", "--user", "show-environment"],
+        ["systemctl", "--user", "disable", "--now", SERVER_UNIT],
+    ]
+
+
 def test_remove_refuses_foreign_unit(tmp_path: Path) -> None:
     unit_dir = tmp_path / "units"
     unit_dir.mkdir()

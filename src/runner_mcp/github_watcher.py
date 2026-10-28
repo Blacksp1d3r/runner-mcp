@@ -95,12 +95,15 @@ class GitHubWatcherCursorStore:
         self._path = path
 
     def read(self) -> str | None:
-        fd = self._open()
+        """Inspect the existing cursor without creating or repairing a file."""
+        fd = self._open(read_only=True)
+        if fd is None:
+            return None
         try:
             with os.fdopen(fd, "r", encoding="utf-8", closefd=True) as handle:
                 fcntl.flock(handle.fileno(), fcntl.LOCK_SH)
                 return self._load(handle)
-        except OSError as exc:
+        except (OSError, UnicodeError) as exc:
             raise GitHubWatcherError("watcher cursor read failed") from exc
 
     def initialize(self, head_sha: str) -> None:
@@ -132,23 +135,40 @@ class GitHubWatcherCursorStore:
         except OSError as exc:
             raise GitHubWatcherError("watcher cursor update failed") from exc
 
-    def _open(self) -> int:
+    def _open(self, *, read_only: bool = False) -> int | None:
         parent = self._path.parent
         if not parent.exists() or not parent.is_dir():
             raise GitHubWatcherError("watcher cursor parent is unavailable")
 
         try:
-            flags = os.O_RDWR | os.O_CREAT
+            # Status is not an implicit bootstrap or mode-repair operation.
+            flags = os.O_RDONLY if read_only else os.O_RDWR | os.O_CREAT
             if hasattr(os, "O_NOFOLLOW"):
                 flags |= os.O_NOFOLLOW
-            fd = os.open(self._path, flags, 0o600)
+            try:
+                fd = os.open(self._path, flags, 0o600)
+            except FileNotFoundError:
+                if read_only:
+                    return None
+                raise
             metadata = os.fstat(fd)
             if not stat.S_ISREG(metadata.st_mode):
                 os.close(fd)
                 raise GitHubWatcherError(
                     "watcher cursor must be a regular file"
                 )
-            os.fchmod(fd, 0o600)
+            if read_only:
+                if (
+                    metadata.st_uid != os.geteuid()
+                    or metadata.st_mode & 0o077
+                    or not metadata.st_mode & stat.S_IRUSR
+                ):
+                    os.close(fd)
+                    raise GitHubWatcherError(
+                        "watcher cursor read permissions are unsafe"
+                    )
+            else:
+                os.fchmod(fd, 0o600)
             return fd
         except OSError as exc:
             raise GitHubWatcherError("watcher cursor could not be opened") from exc

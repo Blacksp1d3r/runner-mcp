@@ -210,6 +210,70 @@ def test_cursor_store_initializes_reads_and_restricts_permissions(tmp_path) -> N
     assert oct(path.stat().st_mode & 0o777) == "0o600"
 
 
+def test_cursor_status_missing_file_does_not_create(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "cursor.json"
+    store = GitHubWatcherCursorStore(path)
+
+    def forbidden_chmod(*args, **kwargs):
+        raise AssertionError("read must not chmod")
+
+    monkeypatch.setattr("runner_mcp.github_watcher.os.fchmod", forbidden_chmod)
+    assert store.read() is None
+    assert not path.exists()
+
+
+def test_cursor_status_opens_readonly_without_chmod(tmp_path, monkeypatch) -> None:
+    import os
+
+    path = tmp_path / "cursor.json"
+    store = GitHubWatcherCursorStore(path)
+    store.initialize("a" * 40)
+    before = path.stat().st_mode
+    real_open = os.open
+    flags_seen = []
+
+    def observed_open(filename, flags, *args, **kwargs):
+        if str(filename) == str(path):
+            flags_seen.append(flags)
+        return real_open(filename, flags, *args, **kwargs)
+
+    def forbidden_chmod(*args, **kwargs):
+        raise AssertionError("read must not chmod")
+
+    monkeypatch.setattr("runner_mcp.github_watcher.os.open", observed_open)
+    monkeypatch.setattr("runner_mcp.github_watcher.os.fchmod", forbidden_chmod)
+    assert store.read() == "a" * 40
+    assert path.stat().st_mode == before
+    assert len(flags_seen) == 1
+    assert flags_seen[0] & os.O_ACCMODE == os.O_RDONLY
+    assert not flags_seen[0] & os.O_CREAT
+
+
+def test_cursor_status_rejects_unsafe_mode_without_repair(
+    tmp_path, monkeypatch,
+) -> None:
+    path = tmp_path / "cursor.json"
+    store = GitHubWatcherCursorStore(path)
+    store.initialize("a" * 40)
+    path.chmod(0o644)
+
+    def forbidden_chmod(*args, **kwargs):
+        raise AssertionError("read must not repair file permissions")
+
+    monkeypatch.setattr("runner_mcp.github_watcher.os.fchmod", forbidden_chmod)
+    with pytest.raises(GitHubWatcherError, match="permissions are unsafe"):
+        store.read()
+    assert path.stat().st_mode & 0o777 == 0o644
+
+
+def test_cursor_status_invalid_utf8_is_bounded(tmp_path) -> None:
+    path = tmp_path / "cursor.json"
+    path.write_bytes(bytes([0xFF]))
+    path.chmod(0o600)
+    with pytest.raises(GitHubWatcherError, match="read failed"):
+        GitHubWatcherCursorStore(path).read()
+
+
 def test_cursor_store_refuses_second_initialization(tmp_path) -> None:
     store = GitHubWatcherCursorStore(tmp_path / "cursor.json")
     store.initialize("a" * 40)
@@ -268,6 +332,7 @@ def test_cursor_store_refuses_symlink(tmp_path) -> None:
 def test_cursor_store_rejects_invalid_state(tmp_path, content: str) -> None:
     path = tmp_path / "cursor.json"
     path.write_text(content, encoding="utf-8")
+    path.chmod(0o600)
     store = GitHubWatcherCursorStore(path)
 
     with pytest.raises(GitHubWatcherError):
@@ -277,6 +342,7 @@ def test_cursor_store_rejects_invalid_state(tmp_path, content: str) -> None:
 def test_cursor_store_rejects_oversized_state(tmp_path) -> None:
     path = tmp_path / "cursor.json"
     path.write_text("x" * (MAX_CURSOR_BYTES + 1), encoding="utf-8")
+    path.chmod(0o600)
 
     with pytest.raises(GitHubWatcherError, match="size limit"):
         GitHubWatcherCursorStore(path).read()

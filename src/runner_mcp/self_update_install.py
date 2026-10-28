@@ -1,9 +1,11 @@
 from __future__ import annotations
 
+import hashlib
 import json
 import os
 import re
 import shutil
+import stat
 import subprocess
 from collections.abc import Callable
 from pathlib import Path
@@ -11,6 +13,7 @@ from typing import Any
 
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
+_SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
 _WHEEL_LABELS = {"baseline", "target"}
 _TRANSACTION_FILENAME = "self-update-install-transaction.json"
 
@@ -81,12 +84,10 @@ def _read_transaction_path(path: Path) -> dict[str, Any] | None:
         raw = json.loads(path.read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
         raise PackageInstallError("Self-update install transaction is invalid") from exc
-    if not isinstance(raw, dict) or set(raw) != {
-        "job_id",
-        "target_commit",
-        "baseline_commit",
-        "rollback_capable",
-    }:
+    original_keys = {"job_id", "target_commit", "baseline_commit", "rollback_capable"}
+    if not isinstance(raw, dict) or set(raw) not in (
+        original_keys, original_keys | {"baseline_wheel_sha256"}
+    ):
         raise PackageInstallError("Self-update install transaction is invalid")
     job_id = raw.get("job_id")
     target_commit = raw.get("target_commit")
@@ -105,6 +106,14 @@ def _read_transaction_path(path: Path) -> dict[str, Any] | None:
         raise PackageInstallError("Self-update install transaction is invalid")
     if rollback_capable != (baseline_commit is not None):
         raise PackageInstallError("Self-update install transaction is invalid")
+    if "baseline_wheel_sha256" in raw:
+        digest = raw["baseline_wheel_sha256"]
+        if (
+            baseline_commit is None
+            or type(digest) is not str
+            or _SHA256_RE.fullmatch(digest) is None
+        ):
+            raise PackageInstallError("Self-update install transaction is invalid")
     return raw
 
 
@@ -349,6 +358,43 @@ class SelfUpdatePackageInstaller:
             raise PackageInstallError("Self-update wheel stage is unsafe")
         return resolved
 
+    def staged_wheel_sha256(self, *, job_id: str, label: str) -> str | None:
+        """Hash the existing staged wheel; NOT independent/signed wheel provenance.
+
+        Read-only, bounded, owner-local seal for a recovery transaction. Compare
+        the value again immediately before attempting to reinstall the wheel.
+        The separate A7 supervisor and original-host provenance remain required.
+        """
+        try:
+            wheel = self.staged_wheel(job_id=job_id, label=label)
+            before = wheel.lstat()
+            if (
+                not stat.S_ISREG(before.st_mode)
+                or before.st_uid != os.geteuid()
+                or before.st_nlink != 1
+                or before.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
+                or not 0 < before.st_size <= 128 * 1024 * 1024
+            ):
+                return None
+            with wheel.open("rb") as handle:
+                opened = os.fstat(handle.fileno())
+                if (opened.st_dev, opened.st_ino, opened.st_size) != (
+                    before.st_dev, before.st_ino, before.st_size
+                ):
+                    return None
+                digest = hashlib.file_digest(handle, "sha256").hexdigest()
+                after_read = os.fstat(handle.fileno())
+            after = wheel.lstat()
+            if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != (
+                before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns
+            ) or (after_read.st_dev, after_read.st_ino, after_read.st_size) != (
+                before.st_dev, before.st_ino, before.st_size
+            ):
+                return None
+            return digest
+        except (OSError, PackageInstallError, ValueError):
+            return None
+
     def install_wheel(self, wheel: Path) -> None:
         if wheel.is_symlink():
             raise PackageInstallError("Self-update wheel is unsafe")
@@ -422,7 +468,17 @@ class SelfUpdatePackageInstaller:
         job_id: str,
         target_commit: str,
         baseline_commit: str | None,
+        baseline_wheel_sha256: str | None = None,
     ) -> None:
+        if (
+            baseline_wheel_sha256 is not None
+            and (
+                baseline_commit is None
+                or type(baseline_wheel_sha256) is not str
+                or _SHA256_RE.fullmatch(baseline_wheel_sha256) is None
+            )
+        ):
+            raise PackageInstallError("Invalid self-update baseline wheel digest")
         if not _JOB_ID_RE.fullmatch(job_id):
             raise PackageInstallError("Invalid self-update install job identifier")
         if not _COMMIT_RE.fullmatch(target_commit):
@@ -441,6 +497,10 @@ class SelfUpdatePackageInstaller:
             "baseline_commit": baseline_commit,
             "rollback_capable": baseline_commit is not None,
         }
+        # Preserve read/recovery of old pending transactions without pretending
+        # they had a cryptographic baseline wheel seal.
+        if baseline_wheel_sha256 is not None:
+            payload["baseline_wheel_sha256"] = baseline_wheel_sha256
         try:
             with temporary.open("x", encoding="utf-8") as handle:
                 handle.write(

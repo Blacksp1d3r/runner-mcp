@@ -876,3 +876,175 @@ def test_q7_does_not_block_or_forward_legacy_nonq7_mode_without_bindings(
     assert isinstance(env, dict)
     assert _Q7_MODE not in env
     assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in env)
+
+
+def _staged_q7_owner_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    values: dict[str, str] | None = None,
+) -> tuple[object, Path]:
+    """Synthetic same-owner pre-existing stage, never a real LAB configuration."""
+    paths, _issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    unit_dir = (
+        Path.home() / ".config" / "systemd" / "user"
+        / "runner-mcp-fabric-agent-qualification.service.d"
+    )
+    unit_dir.mkdir(parents=True, mode=0o700)
+    unit_dir.chmod(0o700)
+    stage = unit_dir / "q7-private.env"
+    data = {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1"}
+    if values is not None:
+        data = values
+    stage.write_text(
+        "".join(f"{key}={value}\n" for key, value in data.items()), encoding="utf-8"
+    )
+    stage.chmod(0o600)
+    return paths, stage
+
+
+def test_q7_preexisting_stage_is_inert_without_owner_config_opt_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    initial = stage.read_bytes()
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert _Q7_MODE not in env
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in env)
+    assert stage.read_bytes() == initial
+    assert not any(k in qualification.load_env_file(paths.env_file) for k in _Q7_VALUES)
+
+
+def test_q7_explicit_mode_consumes_existing_owner_stage_without_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    original = stage.read_bytes()
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert all(env[key] == value for key, value in _Q7_VALUES.items())
+    assert env[_Q7_MODE] == "subscription-coding-q7-v1"
+    assert stage.read_bytes() == original
+    assert all(key not in qualification.load_env_file(paths.env_file) for key in _Q7_VALUES)
+    assert not (paths.config_dir / "q7-private.env").exists()
+
+
+def test_q7_stage_rejects_two_credential_sources_without_exec(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1"})
+    called = []
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        run_fabric_agent_qualification_process(
+            paths.config_dir, execve=lambda *args: called.append(args),
+        )
+    assert called == []
+    assert stage.exists()
+
+
+@pytest.mark.parametrize("invalid", [
+    "file-symlink", "file-hardlink", "file-world-readable", "file-wrong-owner",
+    "dir-symlink", "dir-world-writable",
+])
+def test_q7_stage_refuses_unsafe_existing_custody(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    if invalid == "file-symlink":
+        target = tmp_path / "foreign-token"
+        target.write_bytes(stage.read_bytes())
+        stage.unlink()
+        stage.symlink_to(target)
+    elif invalid == "file-hardlink":
+        (tmp_path / "hardlink").hardlink_to(stage)
+    elif invalid == "file-world-readable":
+        stage.chmod(0o644)
+    elif invalid == "file-wrong-owner":
+        # Never invoke chown in a disposable test: replace the stat read.
+        real_lstat = type(stage).lstat
+        def lstat_foreign(self):
+            result = real_lstat(self)
+            if self == stage:
+                class Foreign:
+                    st_mode = result.st_mode
+                    st_uid = result.st_uid + 100
+                    st_nlink = result.st_nlink
+                return Foreign()
+            return result
+        monkeypatch.setattr(type(stage), "lstat", lstat_foreign)
+    elif invalid == "dir-symlink":
+        parent = stage.parent
+        sibling = tmp_path / "symlink-parent"
+        parent.rename(sibling)
+        parent.symlink_to(sibling, target_is_directory=True)
+    else:
+        stage.parent.chmod(0o777)
+    called = []
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        run_fabric_agent_qualification_process(
+            paths.config_dir, execve=lambda *args: called.append(args),
+        )
+    assert called == []
+
+
+@pytest.mark.parametrize("missing", list(_Q7_VALUES) + [_Q7_MODE])
+def test_q7_stage_requires_exact_complete_fields(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: str,
+) -> None:
+    source = {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1"}
+    del source[missing]
+    paths, _stage = _staged_q7_owner_file(tmp_path, monkeypatch, source)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+@pytest.mark.parametrize(("key", "value"), [
+    ("RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN", "short"),
+    ("RUNNER_FABRIC_CODING_Q7_WORKER_URL", "http://127.0.0.1:8031/mcp"),
+    ("RUNNER_FABRIC_CODING_Q7_UNKNOWN", "untrusted"),
+    (_Q7_MODE, "synthetic-read-only-v1"),
+])
+def test_q7_stage_refuses_invalid_field_or_mode_without_token_leak(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, key: str, value: str,
+) -> None:
+    source = {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1", key: value}
+    paths, _stage = _staged_q7_owner_file(tmp_path, monkeypatch, source)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid") as exc:
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert _Q7_VALUES["RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN"] not in str(exc.value)
+
+
+@pytest.mark.parametrize("mode", ["synthetic-read-only-v1", "other-reserved"])
+def test_q7_stage_does_not_autoselect_on_legacy_modes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: mode})
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert _Q7_MODE not in env
+    assert all(key not in env for key in _Q7_VALUES)
+    assert stage.exists()
+
+
+def test_q7_custom_config_does_not_adopt_default_owner_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _default_paths, _stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    custom = _private_config(tmp_path)
+    _append_bridge(custom)
+    _append_q7(custom, {_Q7_MODE: "subscription-coding-q7-v1"})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*incomplete"):
+        qualification.qualification_agent_environment_additions(custom.config_dir)

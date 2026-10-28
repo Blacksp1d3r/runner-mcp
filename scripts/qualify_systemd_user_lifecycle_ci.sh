@@ -88,6 +88,9 @@ for _ in {1..30}; do
   sleep 1
 done
 [[ "$manager_recovered" == true ]]
+[[ -L "$link" ]]
+[[ "$(readlink "$link")" == "$target" ]]
+[[ "$(systemctl --user is-enabled "$unit")" == "enabled" ]]
 # Simulate rollback of an inactive unit candidate by restoring its original bytes.
 cp "$target" "$target.previous"
 sed -i 's/RestartSec=1/RestartSec=2/' "$target"

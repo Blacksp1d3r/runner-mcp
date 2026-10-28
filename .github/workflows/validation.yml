@@ -18,6 +18,22 @@ concurrency:
 
 jobs:
 
+
+  disposable-systemd-user:
+    name: Disposable real systemd user lifecycle
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout test-only lifecycle qualification
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Test actual isolated user manager restart and rollback
+        shell: bash
+        run: bash scripts/qualify_systemd_user_lifecycle_ci.sh
+
   release-reservation:
     name: Release reservation admission
     if: github.event_name == 'pull_request' && github.event.pull_request.draft == false

@@ -63,6 +63,12 @@ for _ in {1..25}; do
   sleep 1
 done
 [[ "$restarted" == true ]]
+# Verify that the recovered test unit has an enabled boot target link. This is
+# an offline persistence guard; it does not prove a full physical host reboot.
+link="$unit_dir/default.target.wants/$unit"
+[[ -L "$link" ]]
+[[ "$(readlink "$link")" == "$target" ]]
+[[ "$(systemctl --user is-enabled "$unit")" == "enabled" ]]
 # Recycle only the disposable GitHub-hosted runner's user manager, never PID1.
 # The enabled test unit must recover under a NEW manager and process generation.
 manager_pid_before="$(systemctl show "user@${uid}.service" --property=MainPID --value)"

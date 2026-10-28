@@ -61,7 +61,11 @@ def _local_test_layer(queue: object) -> dict[str, object]:
 
     if not all(_count(x) for x in (queued, claimed, running, limit, available)):
         return _unknown_layer("local-test-queue", "invalid-local-evidence")
-    if limit < 1 or available > limit or claimed + running > limit:
+    if (
+        limit < 1
+        or claimed + running > limit
+        or available != limit - claimed - running
+    ):
         return _unknown_layer("local-test-queue", "invalid-local-evidence")
     if oldest is None:
         if queued:
@@ -124,6 +128,20 @@ def bounded_operational_snapshot(
             entry["layer"] == "local-test-queue" for entry in peer["layers"]
         ):
             raise FabricBridgeError("operational layer collision or absence")
+        # The peer's explicit unknown list must agree with its actual layers.
+        # Otherwise apparently healthy zero-count layers could falsely qualify
+        # as idle even though the peer itself reported unknown evidence.
+        actual_unknown = {
+            entry["layer"]
+            for entry in peer["layers"]
+            if entry["health"] in {"unknown", "unavailable"}
+        }
+        declared_unknown = peer["unknown_layers"]
+        if (
+            len(declared_unknown) != len(actual_unknown)
+            or set(declared_unknown) != actual_unknown
+        ):
+            raise FabricBridgeError("Fabric snapshot unknown-layer evidence conflicts")
         layers.extend(
             {key: entry[key] for key in _LAYER_FIELDS}
             for entry in peer["layers"]

@@ -177,6 +177,47 @@ def test_fabric_layer_collision_refused_without_double_counting():
     ]
 
 
+def test_claimed_unknown_layer_cannot_be_advertised_as_healthy_idle():
+    peer = _fabric()
+    peer["unknown_layers"] = ["agent-bus.relay"]
+    view = _view(_queue(), peer)
+    assert view["busy"] is False
+    assert view["degraded"] is True
+    assert view["observable_layers_idle"] is False
+    assert view["unknown_layers"] == ["fabric-bridge"]
+    assert view["fabric_observed_at"] is None
+
+
+def test_missing_or_duplicated_peer_unknown_list_is_invalid():
+    layer = _fabric_layer(health="unknown", reason_code="evidence-unavailable")
+    for unknown in ([], ["agent-bus.relay", "agent-bus.relay"]):
+        peer = _fabric(layers=[layer], degraded=True)
+        peer["unknown_layers"] = unknown
+        view = _view(_queue(), peer)
+        assert view["degraded"] is True
+        assert view["unknown_layers"] == ["fabric-bridge"]
+        assert view["observable_layers_idle"] is False
+
+
+def test_local_available_worker_count_must_match_claimed_and_running():
+    for claimed, running, available in ((0, 0, 1), (1, 0, 2), (0, 1, 2)):
+        queue = _queue(claimed=claimed, running=running)
+        queue["available_workers"] = available
+        view = _view(queue, _fabric())
+        assert view["degraded"] is True
+        assert view["unknown_layers"] == ["local-test-queue"]
+        assert view["observable_layers_idle"] is False
+
+
+def test_waiting_ack_remains_busy_when_peer_busy_flag_is_inconsistent():
+    # Never rely only on a remote summary flag; the validated counts matter.
+    peer = _fabric(layers=[_fabric_layer(waiting_for_ack=2)], busy=False)
+    view = _view(_queue(), peer)
+    assert view["busy"] is True
+    assert view["layers"][1]["waiting_for_ack"] == 2
+    assert view["observable_layers_idle"] is False
+
+
 def test_read_only_presentation_never_grants_dispatch():
     view = _view(_queue(running=1), _fabric())
     assert view["busy"] is True

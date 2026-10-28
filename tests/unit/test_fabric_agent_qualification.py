@@ -1043,7 +1043,9 @@ def test_q7_custom_config_does_not_adopt_default_owner_stage(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     _default_paths, _stage = _staged_q7_owner_file(tmp_path, monkeypatch)
-    custom = _private_config(tmp_path)
+    custom_root = tmp_path / "independent"
+    custom_root.mkdir()
+    custom = _private_config(custom_root)
     _append_bridge(custom)
     _append_q7(custom, {_Q7_MODE: "subscription-coding-q7-v1"})
     with pytest.raises(FabricAgentQualificationError, match="Q7.*incomplete"):

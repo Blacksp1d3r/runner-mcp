@@ -25,7 +25,9 @@ for _ in {1..20}; do
 done
 systemctl --user show-environment >/dev/null
 mkdir -p "$unit_dir"
+test_crontab_owned=false
 cleanup() {
+  if [[ "$test_crontab_owned" == true ]]; then crontab -r >/dev/null 2>&1 || true; fi
   systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
   rm -f -- "$target"
   systemctl --user daemon-reload >/dev/null 2>&1 || true
@@ -108,4 +110,43 @@ restored_restart="$(systemctl --user show "$unit" --property=RestartUSec --value
 systemctl --user disable --now "$unit"
 [[ "$(systemctl --user is-enabled "$unit" 2>/dev/null || :)" != "enabled" ]]
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+# Test ONLY the disposable GitHub-hosted runner scheduler with harmless /usr/bin/true.
+# There must be no pre-existing owner crontab; never replace third-party cron entries.
+command -v crontab >/dev/null
+if cron_output="$(LC_ALL=C crontab -l 2>&1)"; then
+  echo "STOP: disposable CI user already has a crontab" >&2
+  exit 1
+else
+  cron_rc=$?
+  if [[ "$cron_rc" != 1 || "$cron_output" != "no crontab for $(id -un)" ]]; then
+    echo "STOP: disposable CI cron state is ambiguous" >&2
+    exit 1
+  fi
+fi
+cron_line="17 * * * * /usr/bin/true"
+printf '%s\n' "$cron_line" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$cron_line" ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+# Stop cron before starting the test-owned unit: never overlap supervisors.
+crontab -r
+if crontab -l >/dev/null 2>&1; then
+  echo "STOP: cron remains during systemd activation" >&2
+  exit 1
+fi
+systemctl --user enable --now "$unit"
+[[ "$(systemctl --user is-active "$unit")" == "active" ]]
+if crontab -l >/dev/null 2>&1; then
+  echo "STOP: cron and systemd overlap" >&2
+  exit 1
+fi
+# Rollback: stop the test-owned user unit before restoring the original cron.
+systemctl --user disable --now "$unit"
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+printf '%s\n' "$cron_line" | crontab -
+[[ "$(crontab -l)" == "$cron_line" ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+crontab -r
+test_crontab_owned=false
+echo "M2_DISPOSABLE_CRON_TO_SYSTEMD_TO_CRON_ROUNDTRIP=PASS"
 echo "M2_DISPOSABLE_ACTUAL_SYSTEMD_RESTART_AND_UNIT_ROLLBACK=PASS"

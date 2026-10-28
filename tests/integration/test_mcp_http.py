@@ -106,6 +106,7 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             "register_known_project",
             "safety_status",
             "runtime_status",
+            "operational_snapshot",
             "runtime_doctor",
             "build_identity",
             "tunnel_topology_refresh",
@@ -238,6 +239,31 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         assert runtime_payload["runtime_activation_aligned"] is None
         assert str(tmp_path) not in runtime.text
         assert "https://" not in runtime.text
+
+        combined = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 32,
+                "method": "tools/call",
+                "params": {"name": "operational_snapshot", "arguments": {}},
+            },
+        )
+        assert combined.status_code == 200
+        combined_payload = parse_tool_json(combined)
+        assert combined_payload["schema_version"] == "runner-mcp/operational-snapshot/v1"
+        assert combined_payload["busy"] is False
+        assert combined_payload["degraded"] is True
+        assert combined_payload["observable_layers_idle"] is False
+        assert combined_payload["end_to_end_idle_verified"] is False
+        assert combined_payload["unknown_layers"] == [
+            "local-test-queue", "fabric-bridge",
+        ]
+        assert combined_payload["mutation_enabled"] is False
+        assert combined_payload["execution_enabled"] is False
+        assert "https://" not in combined.text
+        assert str(tmp_path) not in combined.text
 
         doctor = client.post(
             "/mcp",

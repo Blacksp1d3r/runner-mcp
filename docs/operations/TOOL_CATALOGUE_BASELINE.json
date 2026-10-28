@@ -82,6 +82,7 @@
     "list_test_profiles",
     "migration_job_status",
     "migration_status",
+    "operational_snapshot",
     "plan_deploy",
     "prepare_known_project",
     "project_capabilities",

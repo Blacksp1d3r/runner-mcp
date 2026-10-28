@@ -798,6 +798,21 @@ def test_fabric_agent_qualification_unit_is_optional_and_contains_no_credentials
     assert "token" not in content.casefold()
 
 
+def test_managed_user_units_refuse_dangling_symlink(tmp_path: Path) -> None:
+    """A broken peer unit must not look absent to the cron installer."""
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    link = unit_dir / SERVER_UNIT
+    referent = tmp_path / "missing-foreign-unit"
+    link.symlink_to(referent)
+
+    with pytest.raises(AutostartError, match="unit path is unsafe"):
+        autostart_module.has_managed_user_units(unit_dir=unit_dir)
+
+    assert link.is_symlink()
+    assert not referent.exists()
+
+
 def test_systemd_user_status_does_not_create_absent_unit_tree(
     tmp_path: Path,
 ) -> None:

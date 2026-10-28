@@ -633,7 +633,7 @@ def remove_user_services(
         path = target / unit_name
         if not path.exists():
             continue
-        _run_systemctl(["disable", "--now", unit_name], runner=runner, check=False)
+        _run_systemctl(["disable", "--now", unit_name], runner=runner)
         try:
             path.unlink()
         except OSError as exc:

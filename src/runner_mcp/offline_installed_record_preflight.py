@@ -19,6 +19,7 @@ from pathlib import Path
 
 _SHA = re.compile(r"^[0-9a-f]{64}$")
 _HASH = re.compile(r"^[A-Za-z0-9_-]{43}$")
+_GENERATED_PYC = re.compile(r"^([A-Za-z_][A-Za-z0-9_]*)\.cpython-\d{2,3}(?:\.opt-[12])?\.pyc$")
 _MAX_ENTRIES = 8192
 _MAX_FILE_BYTES = 128 * 1024 * 1024
 _MAX_TOTAL_BYTES = 256 * 1024 * 1024
@@ -88,6 +89,25 @@ def _allowed_installer_record_extra(name: str, record_name: str) -> bool:
     }
 
 
+def _allowed_installer_generated_pyc(name: str, wheel_files: set[str]) -> bool:
+    """Only recognize CPython bytecode for a .py already declared by the wheel.
+
+    The installed RECORD may list pip-generated, unhashed __pycache__ files.
+    Such bytes are NOT wheel contents, trusted executable code, or a live
+    imported-module attestation. Never allow a foreign module or native code.
+    """
+    if not _safe_name(name):
+        return False
+    parts = name.split("/")
+    if len(parts) < 3 or parts[0] != "runner_mcp" or parts[-2] != "__pycache__":
+        return False
+    match = _GENERATED_PYC.fullmatch(parts[-1])
+    if match is None:
+        return False
+    source = "/".join((*parts[:-2], f"{match.group(1)}.py"))
+    return source in wheel_files
+
+
 def _read_record(
     data: bytes,
     *,
@@ -109,22 +129,27 @@ def _read_record(
             # These extras are not compared to the wheel and cannot attest
             # installed entry-point bytes or any serving process.
             if wheel_files is not None and name not in wheel_files:
-                if (
-                    not _allowed_installer_record_extra(name, record_name)
-                    or name in external_names
-                    or len(result) + len(external_names) >= _MAX_ENTRIES
-                ):
+                if name in external_names or len(result) + len(external_names) >= _MAX_ENTRIES:
                     return None
-                if (digest or size_text) and (
-                    not digest.startswith("sha256=")
-                    or _HASH.fullmatch(digest[7:]) is None
-                    or not size_text.isascii()
-                    or not size_text.isdecimal()
-                    or (len(size_text) > 1 and size_text.startswith("0"))
-                    or int(size_text) > _MAX_FILE_BYTES
-                    or len(base64.urlsafe_b64decode(digest[7:] + "=")) != 32
-                ):
-                    return None
+                if _allowed_installer_generated_pyc(name, wheel_files):
+                    # pip may compile wheel .py sources into hashless .pyc files.
+                    # Preserve the source-only comparison; bytecode is not
+                    # validated here and cannot establish serving provenance.
+                    if digest or size_text:
+                        return None
+                else:
+                    if not _allowed_installer_record_extra(name, record_name):
+                        return None
+                    if (digest or size_text) and (
+                        not digest.startswith("sha256=")
+                        or _HASH.fullmatch(digest[7:]) is None
+                        or not size_text.isascii()
+                        or not size_text.isdecimal()
+                        or (len(size_text) > 1 and size_text.startswith("0"))
+                        or int(size_text) > _MAX_FILE_BYTES
+                        or len(base64.urlsafe_b64decode(digest[7:] + "=")) != 32
+                    ):
+                        return None
                 external_names.add(name)
                 continue
             if (

@@ -76,6 +76,64 @@ def test_offline_wheel_and_installed_record_match_is_not_live_proof(tmp_path: Pa
     }
 
 
+
+def test_installed_record_accepts_only_source_bound_unhashed_generated_pyc(
+    tmp_path: Path,
+) -> None:
+    """Real pip installs include optional hashless CPython cache rows."""
+    wheel, package, digest, _ = _fixture(tmp_path)
+    cache = package / "__pycache__"
+    cache.mkdir()
+    with (package.parent / _RECORD).open("ab") as stream:
+        for name in ("__init__", "module"):
+            relative = f"runner_mcp/__pycache__/{name}.cpython-312.pyc"
+            (cache / f"{name}.cpython-312.pyc").write_bytes(b"generated-bytecode")
+            stream.write(f"{relative},,\n".encode())
+    result = offline_installed_record_preflight(wheel, package, digest)
+    assert result["state"] == "offline_installed_record_match"
+    assert result["active_build_provenance_verified"] is False
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None
+
+
+@pytest.mark.parametrize(
+    ("name", "digest", "size"),
+    [
+        ("runner_mcp/__pycache__/foreign.cpython-312.pyc", "", ""),
+        ("runner_mcp/nested/__pycache__/module.cpython-312.pyc", "", ""),
+        ("runner_mcp/module.pyc", "", ""),
+        ("runner_mcp/__pycache__/module.cpython-312.opt-9.pyc", "", ""),
+        ("runner_mcp/__pycache__/module.cpython-312.pyc", "sha256=" + "A" * 43, "8"),
+        ("runner_mcp/__pycache__/module.cpython-312.pyc", "", "8"),
+        ("runner_mcp/__pycache__/module.cpython-312.so", "", ""),
+        ("runner_mcp/__pycache__/../module.cpython-312.pyc", "", ""),
+    ],
+)
+def test_installed_record_denies_untrusted_generated_cache_entries(
+    tmp_path: Path, name: str, digest: str, size: str,
+) -> None:
+    wheel, package, wheel_hash, _ = _fixture(tmp_path)
+    with (package.parent / _RECORD).open("ab") as stream:
+        stream.write(f"{name},{digest},{size}\n".encode())
+    result = offline_installed_record_preflight(wheel, package, wheel_hash)
+    assert result["state"] == "unverified"
+    assert result["active_build_provenance_verified"] is False
+    assert result["source_revision"] is None
+    assert result["artifact_digest"] is None
+
+
+def test_installed_record_denies_duplicate_generated_cache_row(tmp_path: Path) -> None:
+    wheel, package, digest, _ = _fixture(tmp_path)
+    cache = package / "__pycache__"
+    cache.mkdir()
+    (cache / "module.cpython-312.pyc").write_bytes(b"generated-bytecode")
+    with (package.parent / _RECORD).open("ab") as stream:
+        stream.write(b"runner_mcp/__pycache__/module.cpython-312.pyc,,\n" * 2)
+    assert offline_installed_record_preflight(
+        wheel, package, digest
+    )["state"] == "unverified"
+
+
 @pytest.mark.parametrize(
     "tamper",
     [

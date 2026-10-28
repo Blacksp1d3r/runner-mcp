@@ -754,6 +754,15 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
     ]
 
 
+def test_remove_absent_user_unit_tree_is_noop_without_writes(tmp_path: Path) -> None:
+    missing = tmp_path / "absent" / "units"
+    systemctl = FakeSystemctl()
+    assert remove_user_services(unit_dir=missing, runner=systemctl) == []
+    assert not missing.exists()
+    assert not missing.parent.exists()
+    assert systemctl.calls == []
+
+
 def test_remove_only_deletes_runner_mcp_managed_units(tmp_path: Path) -> None:
     unit_dir = tmp_path / "units"
     unit_dir.mkdir()

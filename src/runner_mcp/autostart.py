@@ -389,6 +389,9 @@ def render_user_units(
 
 def _safe_unit_dir(unit_dir: Path) -> Path:
     expanded = unit_dir.expanduser()
+    # Installing must not traverse a symlinked parent to another unit tree.
+    if any(parent.is_symlink() for parent in (expanded, *expanded.parents)):
+        raise AutostartError("systemd user unit directory must not be a symlink")
     if expanded.exists() and expanded.is_symlink():
         raise AutostartError("systemd user unit directory must not be a symlink")
     try:

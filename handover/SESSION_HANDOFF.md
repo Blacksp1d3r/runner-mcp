@@ -1,3 +1,9 @@
+## 2026-10-28 — #866 echte geïsoleerde systemd-user herstart en unitrollback: CI PASS (0.1.119)
+
+- [PR #900](https://github.com/Blacksp1d3r/runner-mcp/pull/900) MERGED `c31552ae1fdce9209f9dfe65056e5473397fadc3` exact head `175f1d6a76d42c7e9e43a21bae15487c171d64be`, GitHub-source **0.1.119**. Volledige CI `40688569198`, clean Ubuntu-installatie `40688568938` en commit-attributie `40688568975` **SUCCESS**. Bestaande validatieworkflow gebruikt een **tijdelijke GitHub-hosted Ubuntu 24.04 runner** (niet `github-runner`, Blacky of `aifordable-lab`) met echte systemd PID1 en non-root user-manager.
+- **Bewezen op disposable testhost:** één test-eigen unit daadwerkelijk `enable --now`/ACTIVE, eigen main PID `SIGKILL`, systemd `Restart=on-failure` start automatisch nieuwe actieve PID, tijdelijke kandidaatunit-configuratie gewijzigd en de oorspronkelijke bytes teruggezet/daemon-reload, daarna disable/stop/cleanup. CI-uitvoer `M2_DISPOSABLE_ACTUAL_SYSTEMD_RESTART_AND_UNIT_ROLLBACK=PASS`. Dit is geen syntactische simulatie en geen handeling op productieservers.
+- **NIET GETEST:** herstart van de volledige host met blijvende user manager/linger, complete oorspronkelijke cron→systemd→cron rollback inclusief 6 Runner-MCP rollen, bron/wheel/procesattestatie op echte hosts, Blacky externe monitorklanten en oorspronkelijke result+ACK. M3–M6 oorspronkelijke hostcutover **WAIT**. Bestaande cron blijft actief; geen productieomgeving gewijzigd. Referentie [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866).
+
 ## 2026-10-28 — #866 no-op removal does not create systemd tree; SOURCE 0.1.118 MERGED
 
 - [PR #898](https://github.com/Blacksp1d3r/runner-mcp/pull/898) **MERGED** `ba06150880f17a7081d23fe83ac1a8a83a97a2c6`, exact head `6a17ebd9cdb6d7ee636f8e5dd06f218006154951`. Full CI `40672733681`, clean Ubuntu `40672733668`, attribution `40672733696` all SUCCESS. GitHub-source **0.1.118**, not proof of running host installation.

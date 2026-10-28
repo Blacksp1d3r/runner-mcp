@@ -754,6 +754,22 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
     ]
 
 
+def test_remove_refuses_symlinked_parent_without_systemctl_or_writes(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    unit_dir = real / "systemd" / "user"
+    unit_dir.mkdir(parents=True)
+    original = MANAGED_MARKER + "\n[Service]\nExecStart=/bin/true\n"
+    target = unit_dir / SERVER_UNIT
+    target.write_text(original, encoding="utf-8")
+    linked = tmp_path / "linked"
+    linked.symlink_to(real, target_is_directory=True)
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="unit directory is unavailable"):
+        remove_user_services(unit_dir=linked / "systemd" / "user", runner=systemctl)
+    assert target.read_text(encoding="utf-8") == original
+    assert systemctl.calls == []
+
+
 def test_remove_absent_user_unit_tree_is_noop_without_writes(tmp_path: Path) -> None:
     missing = tmp_path / "absent" / "units"
     systemctl = FakeSystemctl()

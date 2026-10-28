@@ -1,3 +1,9 @@
+## 2026-10-28 — #381 Q7 private binding forwarding fix (SOURCE candidate; LIVE WAIT)
+
+- Root cause from Fabric #972 original LAB PID9265: managed Fabric :9020 now serves actual 2d4b7ae... but Runner-MCP `fabric_agent_qualification.py` constructs a fixed, sanitized exec environment that dropped all seven optional `RUNNER_FABRIC_CODING_Q7_*` values. An existing staged private Q7 env file is not automatically equivalent to an effective Runner-MCP owner-private config entry or serving process env.
+- Source change forwards only the exact seven Q7 fields from the EXISTING owner-private Runner-MCP configuration as one fully validated group. Fixed project/provider/repository/loopback URL, absolute bounded source/workspace paths and safe bearer shape are checked; missing, empty, unknown or unsafe Q7 fields fail closed with generic errors, never log the bearer. Explicit optional `RUNNER_FABRIC_AGENT_QUALIFICATION_MODE=subscription-coding-q7-v1` is required to select Q7 mode; seven fields alone do not authorize dispatch or change the legacy mode. Existing A6, worker and original relay issuer paths preserved.
+- Unit regressions: complete execve allowlist, each missing/empty field, wrong endpoint/project/repository, unsafe path/token/mode, unknown Q7 key, ambient-environment non-leakage, coexistence with A6 and non-activation when mode absent. **SOURCE != LIVE**: no actual LAB Runner-MCP wrapper rollout, Fabric restart, Claude task, original issuer lease/fence or original-client ACK from this code. Keep #381 OPEN; Fabric #972 and AIfordable #609 own admitted physical target and authenticated workload.
+
 # #381 — Claude worker lifecycle (independent child roadmap)
 
 ## 2026-10-28 — Runner-MCP-B #381 Q7 launcher-cycle defect merged; live Claude admission remains WAIT

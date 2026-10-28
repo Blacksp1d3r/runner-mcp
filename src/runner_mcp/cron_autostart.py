@@ -123,7 +123,11 @@ def read_crontab(
     if completed.returncode == 0:
         return completed.stdout
     # Most cron implementations return 1 when the user has no crontab.
-    if completed.returncode == 1:
+    if (
+        completed.returncode == 1
+        and not completed.stdout
+        and "no crontab" in completed.stderr.lower()
+    ):
         return ""
     raise CronAutostartError("crontab could not be read")
 

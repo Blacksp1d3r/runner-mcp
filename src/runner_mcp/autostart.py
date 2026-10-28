@@ -610,7 +610,11 @@ def remove_user_services(
 ) -> list[str]:
     # Removal is a no-op when no owner unit directory exists. Never create it.
     target = (unit_dir or default_user_unit_dir()).expanduser()
-    if target.is_symlink() or (target.exists() and not target.is_dir()):
+    # Do not follow a symlinked ancestor to an unrelated unit directory.
+    # Removal must not modify directories outside the original owner tree.
+    if any(parent.is_symlink() for parent in (target, *target.parents)):
+        raise AutostartError("systemd user unit directory is unavailable")
+    if target.exists() and not target.is_dir():
         raise AutostartError("systemd user unit directory is unavailable")
     if not target.exists():
         return []

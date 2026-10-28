@@ -255,6 +255,60 @@ def test_optional_watchers_are_added_only_after_bootstrap(tmp_path: Path) -> Non
     assert "completion-watcher" in units[COMPLETION_WATCHER_UNIT]
 
 
+def test_direct_systemd_install_refuses_active_managed_cron_before_any_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    unit_dir = tmp_path / "uncreated_units"
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr("runner_mcp.cron_autostart.cron_available", lambda: True)
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: True)
+
+    with pytest.raises(AutostartError, match="parallel systemd activation"):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert not unit_dir.exists()
+    assert systemctl.calls == []
+
+
+def test_direct_systemd_install_refuses_unreadable_managed_cron(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.cron_autostart import CronAutostartError
+
+    paths, executable = _private_config(tmp_path)
+    unit_dir = tmp_path / "uncreated_units"
+    systemctl = FakeSystemctl()
+
+    def unavailable() -> bool:
+        raise CronAutostartError("private crontab details")
+
+    monkeypatch.setattr("runner_mcp.cron_autostart.cron_available", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.cron_autostart.has_managed_cron", unavailable
+    )
+
+    with pytest.raises(AutostartError, match="managed cron status is unavailable"):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert not unit_dir.exists()
+    assert systemctl.calls == []
+
+
 def test_install_uses_fixed_systemctl_arrays_and_managed_files(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
     unit_dir = tmp_path / "units"

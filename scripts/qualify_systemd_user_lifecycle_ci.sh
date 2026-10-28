@@ -63,6 +63,25 @@ for _ in {1..25}; do
   sleep 1
 done
 [[ "$restarted" == true ]]
+# Recycle only the disposable GitHub-hosted runner's user manager, never PID1.
+# The enabled test unit must recover under a NEW manager and process generation.
+manager_pid_before="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+[[ "$manager_pid_before" =~ ^[1-9][0-9]*$ ]]
+oldpid="$(systemctl --user show "$unit" --property=MainPID --value)"
+sudo systemctl restart "user@${uid}.service"
+manager_recovered=false
+for _ in {1..30}; do
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    manager_pid_after="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+    current_pid="$(systemctl --user show "$unit" --property=MainPID --value)"
+    if [[ "$manager_pid_after" =~ ^[1-9][0-9]*$ && "$manager_pid_after" != "$manager_pid_before" && "$current_pid" =~ ^[1-9][0-9]*$ && "$current_pid" != "$oldpid" && "$(systemctl --user is-active "$unit")" == "active" ]]; then
+      manager_recovered=true
+      break
+    fi
+  fi
+  sleep 1
+done
+[[ "$manager_recovered" == true ]]
 # Simulate rollback of an inactive unit candidate by restoring its original bytes.
 cp "$target" "$target.previous"
 sed -i 's/RestartSec=1/RestartSec=2/' "$target"

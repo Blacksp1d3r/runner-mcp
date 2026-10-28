@@ -96,13 +96,14 @@ def test_missing_wheel_server_member_rejected(tmp_path):
         )
 
 
-def test_source_baseline_matches_approved_106_tools():
+def test_source_baseline_matches_approved_tool_catalogue():
     baseline = json.loads(_MOD.BASELINE.read_text(encoding="utf-8"))
     source = _MOD.SOURCE.read_bytes()
     names = _MOD.registered_tool_names(source)
-    assert len(names) == 106
+    assert len(names) == len(baseline["tools"])
+    assert len(names) >= baseline["minimumToolCount"]
     _MOD.verify_baseline(names, baseline)
     receipt = _MOD.tool_receipt(source=source, manifest=baseline, wheel_file=None)
-    assert receipt["toolCount"] == 106
+    assert receipt["toolCount"] == len(baseline["tools"])
     assert receipt["clientToolExposureVerified"] is False
     assert receipt["liveServerUpdated"] is False

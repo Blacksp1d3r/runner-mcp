@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -203,6 +205,79 @@ def test_render_server_unit_contains_no_credentials(tmp_path: Path) -> None:
     assert "serve" in units[SERVER_UNIT]
     assert "Authorization" not in units[SERVER_UNIT]
     assert "token" not in units[SERVER_UNIT].lower()
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")
+def test_disposable_rendered_units_pass_real_systemd_parser(tmp_path: Path) -> None:
+    """Validate real unit syntax/dependencies without a user manager or install."""
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=synthetic-qualification-id\\n"
+        "CONTROL_PLANE_API_KEY=synthetic-qualification-key\\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+    units = render_user_units(
+        config_dir=paths.config_dir,
+        executable=executable,
+        port=8123,
+    )
+    assert set(units) == {SERVER_UNIT, TUNNEL_UNIT}
+    sandbox = tmp_path / "candidates"
+    sandbox.mkdir()
+    candidates = []
+    for name, content in sorted(units.items()):
+        target = sandbox / name
+        target.write_text(content, encoding="utf-8")
+        candidates.append(str(target))
+
+    result = subprocess.run(
+        [analyze, "verify", *candidates],
+        text=True,
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr[-1200:]
+    assert "synthetic-qualification-key" not in result.stderr
+    assert "synthetic-qualification-key" not in result.stdout
+    # Verification did not activate or install a service; only test-owned
+    # disposable candidate files exist and the original source is untouched.
+    assert sorted(file.name for file in sandbox.iterdir()) == [
+        SERVER_UNIT,
+        TUNNEL_UNIT,
+    ]
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")
+def test_disposable_systemd_parser_rejects_broken_execstart(tmp_path: Path) -> None:
+    """A malformed candidate must fail before any real manager is involved."""
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    good = render_user_units(config_dir=paths.config_dir, executable=executable)[
+        SERVER_UNIT
+    ]
+    broken = "\\n".join(
+        'ExecStart="unterminated' if line.startswith("ExecStart=") else line
+        for line in good.splitlines()
+    ) + "\\n"
+    candidate = tmp_path / SERVER_UNIT
+    candidate.write_text(broken, encoding="utf-8")
+
+    result = subprocess.run(
+        [analyze, "verify", str(candidate)],
+        text=True,
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert candidate.read_text(encoding="utf-8") == broken
+    assert not (tmp_path / "units").exists()
 
 
 def test_complete_tunnel_config_adds_fixed_dependent_tunnel_unit(

@@ -225,6 +225,15 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         runtime_payload = json.loads(runtime_event["result"]["content"][0]["text"])
         assert runtime_payload["projects"] == 1
         assert runtime_payload["retention_confirmed"] is True
+        # One existing authenticated MCP session sees the same exact
+        # server-side tool/schema digest through both legacy read tools.
+        assert runtime_payload["interface_schema_digest"] == identity_payload[
+            "interface_schema_digest"
+        ]
+        assert runtime_payload["interface_schema_digest"] is not None
+        # The server cannot inspect ChatGPT's separately cached catalogue.
+        assert runtime_payload["client_catalogue_alignment_verified"] is False
+        assert runtime_payload["reply_identity_scope"] == "this_connected_process_only"
         assert runtime_payload["active_runtime_revision"] is None
         assert runtime_payload["runtime_activation_aligned"] is None
         assert str(tmp_path) not in runtime.text

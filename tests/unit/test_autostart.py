@@ -103,18 +103,18 @@ def test_migration_plan_is_never_a_cutover_permit() -> None:
         AutostartStatus(name, installed=False, enabled=False, active=False)
         for name in CRON_COMPONENTS
     )
-    inputs = dict(
-        component="server",
-        expected_hostname="test-host",
-        expected_uid=1001,
-        observed_hostname="test-host",
-        observed_uid=1001,
-        configured_components=("server",),
-        cron_managed=True,
-        cron_rows=cron,
-        systemd_rows=units,
-        systemd_manager_reachable=True,
-    )
+    inputs = {
+        "component": "server",
+        "expected_hostname": "test-host",
+        "expected_uid": 1001,
+        "observed_hostname": "test-host",
+        "observed_uid": 1001,
+        "configured_components": ("server",),
+        "cron_managed": True,
+        "cron_rows": cron,
+        "systemd_rows": units,
+        "systemd_manager_reachable": True,
+    }
     plan = plan_cron_to_systemd(**inputs)
     assert plan.state == "PLAN_ONLY"
     assert plan.reason_code == "original_host_and_rollback_not_attested"
@@ -143,21 +143,21 @@ def test_migration_plan_fails_closed_for_missing_owner_or_manager(
     from runner_mcp.autostart import AutostartStatus, plan_cron_to_systemd
     from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
 
-    inputs = dict(
-        component="server",
-        expected_hostname="lab-host",
-        expected_uid=1001,
-        observed_hostname="lab-host",
-        observed_uid=1001,
-        configured_components=("server",),
-        cron_managed=True,
-        cron_rows=(CronComponentStatus("server", True, True, False),),
-        systemd_rows=tuple(
+    inputs = {
+        "component": "server",
+        "expected_hostname": "lab-host",
+        "expected_uid": 1001,
+        "observed_hostname": "lab-host",
+        "observed_uid": 1001,
+        "configured_components": ("server",),
+        "cron_managed": True,
+        "cron_rows": (CronComponentStatus("server", True, True, False),),
+        "systemd_rows": tuple(
             AutostartStatus(name, False, False, False)
             for name in CRON_COMPONENTS
         ),
-        systemd_manager_reachable=True,
-    )
+        "systemd_manager_reachable": True,
+    }
     plan = plan_cron_to_systemd(**(inputs | change))
     assert plan.state == "WAIT"
     assert plan.reason_code == reason

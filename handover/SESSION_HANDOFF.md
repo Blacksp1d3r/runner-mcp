@@ -1,3 +1,9 @@
+## 2026-10-28 — #866 M0 cron-leesfout fail-closed; source 0.1.116 MERGED
+
+- [PR #894](https://github.com/Blacksp1d3r/runner-mcp/pull/894) **MERGED** `7cae2b5d2d32bbe5e99ad6f35a98a2a51460c27b` uit exact head `e336e870c9be5dfec3b0ac068e7d7bf9511cdc88`. Full CI `40669228365`, clean Ubuntu `40669228357`, attribution `40669228101` SUCCESS; GitHub **SOURCE** 0.1.116, geen origineel runtimebewijs.
+- **Oorzaak:** `read_crontab()` interpreteerde elke `crontab -l` exitcode 1 als geen crontab. Een lees-/spool-/toestemmingsfout kon daarom bestaande onafhankelijke cronjobs doen verdwijnen bij een latere `install_cron_services()`. Alleen een exacte afwezigheidsdiagnose met lege stdout wordt nu als leeg beschouwd; andere fouten blokkeren vóór enige write. Vier negatieve tests bewijzen geen crontab-overwrite. De eerste CI vond nog een fout bij gemengde diagnostiek; exact-match hersteld en volledige exact-head CI groen vóór merge.
+- **Open poorten:** M0 onbekende feitelijke externe cron-consumenten op originele Blacky; M2 geïsoleerde echte rootless systemd-user-manager boot/uitval/herstart/rollback; M3–M6 live cutover WAIT. Geen productiecron of service gewijzigd. Referentie: [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866), reeds afgeronde PRs #889–#893.
+
 ## 2026-10-28 — #866 C: bescherming cron/systemd en onafhankelijke F35-job (source-only)
 
 - **VOLTOOID, source v0.1.114:** [PR #889](https://github.com/Blacksp1d3r/runner-mcp/pull/889) merged `3b7cc80ed4f53e8c44ac2a1eb9a3b7c913d8d1c4`. Een dangling systemd-user-unit symlink wordt in de cron-coexistentiecontrole niet meer als afwezig beschouwd. Exact-head release-/pytest-/Ubuntu-/attributiechecks PASS.

@@ -813,6 +813,31 @@ def test_managed_user_units_refuse_dangling_symlink(tmp_path: Path) -> None:
     assert not referent.exists()
 
 
+@pytest.mark.parametrize("kind", ["foreign", "dangling_symlink"])
+def test_remove_user_services_preflights_every_unit_before_mutation(
+    tmp_path: Path,
+    kind: str,
+) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    server = unit_dir / SERVER_UNIT
+    original = MANAGED_MARKER + "\n[Service]\nExecStart=/bin/true\n"
+    server.write_text(original, encoding="utf-8")
+    optional = unit_dir / TUNNEL_UNIT
+    if kind == "foreign":
+        optional.write_text("[Service]\nExecStart=/bin/false\n", encoding="utf-8")
+    else:
+        optional.symlink_to(tmp_path / "unresolved")
+    systemctl = FakeSystemctl()
+
+    with pytest.raises(AutostartError, match="not managed|unit path is unsafe"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+
+    assert server.read_text(encoding="utf-8") == original
+    assert optional.is_symlink() if kind == "dangling_symlink" else optional.is_file()
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
+
+
 def test_systemd_user_status_does_not_create_absent_unit_tree(
     tmp_path: Path,
 ) -> None:

@@ -110,75 +110,37 @@ restored_restart="$(systemctl --user show "$unit" --property=RestartUSec --value
 systemctl --user disable --now "$unit"
 [[ "$(systemctl --user is-enabled "$unit" 2>/dev/null || :)" != "enabled" ]]
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
-# Reversible scheduler switch using only this fresh disposable runner's crontab.
-# No original fleet jobs are touched; abort if this CI user already has any cron.
+# Test ONLY the disposable GitHub-hosted runner scheduler with harmless /usr/bin/true.
+# There must be no pre-existing owner crontab; never replace third-party cron entries.
 command -v crontab >/dev/null
-cron_error="$(mktemp)"
-if crontab -l >/dev/null 2>"$cron_error"; then
-  echo "STOP: disposable user already has cron entries" >&2
-  rm -f -- "$cron_error"
+if cron_output="$(LC_ALL=C crontab -l 2>&1)"; then
+  echo "STOP: disposable CI user already has a crontab" >&2
   exit 1
 else
-  cron_status=$?
-  if [[ "$cron_status" != 1 ]] || ! grep -Eq '^no crontab for [A-Za-z0-9_.-]+; then
-    echo "STOP: disposable cron state is ambiguous" >&2
-    rm -f -- "$cron_error"
+  cron_rc=$?
+  if [[ "$cron_rc" != 1 || "$cron_output" != "no crontab for $(id -un)" ]]; then
+    echo "STOP: disposable CI cron state is ambiguous" >&2
     exit 1
   fi
 fi
-rm -f -- "$cron_error"
 cron_line="17 * * * * /usr/bin/true"
 printf '%s\n' "$cron_line" | crontab -
 test_crontab_owned=true
 [[ "$(crontab -l)" == "$cron_line" ]]
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
-# Switch: remove cron FIRST, then enable systemd, verify no double-active.
+# Stop cron before starting the test-owned unit: never overlap supervisors.
 crontab -r
 if crontab -l >/dev/null 2>&1; then
-  echo "STOP: cron remained present during systemd activation" >&2
+  echo "STOP: cron remains during systemd activation" >&2
   exit 1
 fi
 systemctl --user enable --now "$unit"
 [[ "$(systemctl --user is-active "$unit")" == "active" ]]
 if crontab -l >/dev/null 2>&1; then
-  echo "STOP: overlapping cron and systemd" >&2
+  echo "STOP: cron and systemd overlap" >&2
   exit 1
 fi
-# Rollback: disable systemd FIRST, then restore exact cron line.
-systemctl --user disable --now "$unit"
-[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
-printf '%s\n' "$cron_line" | crontab -
-[[ "$(crontab -l)" == "$cron_line" ]]
-[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
-crontab -r
-test_crontab_owned=false
-echo "M2_DISPOSABLE_CRON_TO_SYSTEMD_TO_CRON_ROUNDTRIP=PASS"
-echo "M2_DISPOSABLE_ACTUAL_SYSTEMD_RESTART_AND_UNIT_ROLLBACK=PASS"
- "$cron_error"; then
-    echo "STOP: disposable cron state is ambiguous" >&2
-    rm -f -- "$cron_error"
-    exit 1
-  fi
-fi
-rm -f -- "$cron_error"
-cron_line="17 * * * * /usr/bin/true"
-printf '%s\n' "$cron_line" | crontab -
-test_crontab_owned=true
-[[ "$(crontab -l)" == "$cron_line" ]]
-[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
-# Switch: remove cron FIRST, then enable systemd, verify no double-active.
-crontab -r
-if crontab -l >/dev/null 2>&1; then
-  echo "STOP: cron remained present during systemd activation" >&2
-  exit 1
-fi
-systemctl --user enable --now "$unit"
-[[ "$(systemctl --user is-active "$unit")" == "active" ]]
-if crontab -l >/dev/null 2>&1; then
-  echo "STOP: overlapping cron and systemd" >&2
-  exit 1
-fi
-# Rollback: disable systemd FIRST, then restore exact cron line.
+# Rollback: stop the test-owned user unit before restoring the original cron.
 systemctl --user disable --now "$unit"
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
 printf '%s\n' "$cron_line" | crontab -

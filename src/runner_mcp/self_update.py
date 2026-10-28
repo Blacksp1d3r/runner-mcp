@@ -1306,14 +1306,6 @@ class SelfUpdateManager:
                         raise SelfUpdateError(
                             "Self-update source changed while staging recovery"
                         )
-                    baseline_wheel_sha256 = self._package_installer.staged_wheel_sha256(
-                        job_id=job_id, label="baseline"
-                    )
-                    if baseline_wheel_sha256 is None:
-                        raise SelfUpdateError(
-                            "Self-update recovery wheel could not be sealed"
-                        )
-
                 self._set_job(
                     job_id,
                     state=SelfUpdateJobState.SYNCING,
@@ -1370,6 +1362,17 @@ class SelfUpdateManager:
                     ActionClass.TEST,
                     environment=config.environment,
                 )
+                # Seal the baseline at the transaction boundary, after lint,
+                # tests and source-contract checks. Pre-install failures must
+                # retain their existing independent source recovery behavior.
+                if baseline_commit is not None:
+                    baseline_wheel_sha256 = self._package_installer.staged_wheel_sha256(
+                        job_id=job_id, label="baseline"
+                    )
+                    if baseline_wheel_sha256 is None:
+                        raise SelfUpdateError(
+                            "Self-update recovery wheel could not be sealed"
+                        )
                 try:
                     self._package_installer.begin_transaction(
                         job_id=job_id,

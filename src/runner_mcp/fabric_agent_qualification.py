@@ -172,27 +172,100 @@ def qualification_agent_environment_additions(
         )
     # Build and validate a complete Q7 group BEFORE modifying the launch
     # environment. No token values are ever included in failure messages.
-    additions.update(_q7_private_environment_additions(values))
+    additions.update(_q7_private_environment_additions(values, paths.config_dir))
     return additions
 
 
-def _q7_private_environment_additions(values: dict[str, str]) -> dict[str, str]:
-    """Forward only an all-or-nothing fixed Q7 binding from private MCP config.
+def _q7_staged_owner_file(config_dir: Path) -> Path | None:
+    """Only the already staged SAME-OWNER Q7 leaf for default MCP config.
 
-    The separate explicit mode is optional: seven valid fields alone do NOT
-    activate Q7. No bearer, source path, or mode is read from ambient env.
+    A custom --config-dir never gains implicit access to another user's
+    systemd or Fabric files. This merely locates an existing file; never
+    creates, copies, chmods, or enables anything.
     """
-    # Legacy non-Q7 modes were not forwarded by this wrapper. Preserve that
-    # behavior unless a Q7 field or the explicit Q7 mode is actually present.
-    q7_fields_present = any(key in values for key in _Q7_KEYS)
-    if not q7_fields_present and values.get(_Q7_MODE_KEY) != _Q7_MODE:
-        return {}
+    home_config = Path.home() / ".config"
+    if config_dir != home_config / "runner-mcp":
+        return None
+    return (
+        home_config / "systemd" / "user"
+        / "runner-mcp-fabric-agent-qualification.service.d" / "q7-private.env"
+    )
+
+
+def _load_q7_staged_owner_file(path: Path) -> dict[str, str]:
+    """Require same UID, safe ancestor directories, exact 0600 regular leaf."""
+    invalid = "Runner Fabric Q7 qualification configuration is invalid"
+    config_root = Path.home() / ".config"
+    parents = (
+        config_root,
+        config_root / "systemd",
+        config_root / "systemd" / "user",
+        path.parent,
+    )
+    try:
+        for directory in parents:
+            info = directory.lstat()
+            if (
+                not stat.S_ISDIR(info.st_mode)
+                or info.st_uid != os.geteuid()
+                or stat.S_IMODE(info.st_mode) & 0o022
+            ):
+                raise FabricAgentQualificationError(invalid)
+        info = path.lstat()
+        if (
+            not stat.S_ISREG(info.st_mode)
+            or info.st_uid != os.geteuid()
+            or stat.S_IMODE(info.st_mode) != 0o600
+            or info.st_nlink != 1
+        ):
+            raise FabricAgentQualificationError(invalid)
+        staged = load_env_file(path)
+    except (OSError, RuntimeError, ValueError) as exc:
+        raise FabricAgentQualificationError(invalid) from exc
+    if set(staged) != {*_Q7_KEYS, _Q7_MODE_KEY}:
+        raise FabricAgentQualificationError(invalid)
+    return staged
+
+
+def _q7_private_environment_additions(
+    values: dict[str, str], config_dir: Path,
+) -> dict[str, str]:
+    """Forward the complete Q7 group, never a staged token automatically.
+
+    A pre-existing same-owner q7-private.env can be consumed WITHOUT copying
+    its bearer only when the default Runner-MCP private config explicitly
+    opts in via the exact Q7 mode. Staging alone keeps legacy mode inactive.
+    """
     invalid = "Runner Fabric Q7 qualification configuration is invalid"
     if any(
         key.startswith("RUNNER_FABRIC_CODING_Q7_") and key not in _Q7_KEYS
         for key in values
     ):
         raise FabricAgentQualificationError(invalid)
+    q7_fields_present = any(key in values for key in _Q7_KEYS)
+    if not q7_fields_present and values.get(_Q7_MODE_KEY) != _Q7_MODE:
+        return {}
+
+    staged_path = _q7_staged_owner_file(config_dir)
+    staged_exists = False
+    if staged_path is not None:
+        try:
+            staged_path.lstat()
+        except FileNotFoundError:
+            pass
+        except OSError as exc:
+            raise FabricAgentQualificationError(invalid) from exc
+        else:
+            staged_exists = True
+    if staged_exists:
+        # Never choose between two bearer sources by priority.
+        if q7_fields_present:
+            raise FabricAgentQualificationError(invalid)
+        staged = _load_q7_staged_owner_file(staged_path)
+        if staged[_Q7_MODE_KEY] != _Q7_MODE:
+            raise FabricAgentQualificationError(invalid)
+        values = staged
+
     if not all(values.get(key, "").strip() for key in _Q7_KEYS):
         raise FabricAgentQualificationError(
             "Runner Fabric Q7 qualification configuration is incomplete"

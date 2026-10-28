@@ -1,3 +1,9 @@
+## 2026-10-28 — #866 M2 verwijderen faalt veilig; source 0.1.117 MERGED
+
+- [PR #896](https://github.com/Blacksp1d3r/runner-mcp/pull/896) **MERGED** `84e4c539bd64e790e88dc27567e35a91d50afb6d`; exact PR-head `bc9f29ddd2ad929a60308b18ee103d3b24ce4143`. CI `40671431022` SUCCESS, clean Ubuntu `40671431019` SUCCESS, attribution `40671431067` SUCCESS; GitHub-source **0.1.117**, niet noodzakelijk live geïnstalleerd.
+- **Oorzaak/herstel:** `remove_user_services` negeerde eerder een mislukte `systemctl --user disable --now` via `check=False` en verwijderde toch het beheerde unitbestand. Nu blokkeert de disable-fout vóór unlink/daemon-reload. Negatieve test: oorspronkelijke unitbytes blijven behouden na synthetische managerfout. Geen echte productieherstart of systemd-manageracceptatie geclaimd.
+- **Nog open:** echte aparte rootless user-manager boot/crash/automatic restart/rollback op bevoegde disposable omgeving; externe Blacky cronstatus-monitorconsumenten op hun oorspronkelijke hosts; live M3–M6 WAIT. Production cron/user systemd niet aangepast. Zie [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) en eerder gemergede #889–#895.
+
 ## 2026-10-28 — #866 M0 cron-leesfout fail-closed; source 0.1.116 MERGED
 
 - [PR #894](https://github.com/Blacksp1d3r/runner-mcp/pull/894) **MERGED** `7cae2b5d2d32bbe5e99ad6f35a98a2a51460c27b` uit exact head `e336e870c9be5dfec3b0ac068e7d7bf9511cdc88`. Full CI `40669228365`, clean Ubuntu `40669228357`, attribution `40669228101` SUCCESS; GitHub **SOURCE** 0.1.116, geen origineel runtimebewijs.

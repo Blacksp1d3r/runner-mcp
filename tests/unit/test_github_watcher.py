@@ -377,6 +377,97 @@ def test_explicit_bootstrap_skips_existing_history(tmp_path) -> None:
     assert transport.compare_calls == []
 
 
+def test_watcher_head_changed_while_persisting_blocks_cursor_until_recheck(
+    tmp_path,
+) -> None:
+    class MutatingHeadTransport(FakeTransport):
+        def persist_result(self, request_id: str, result_json: str) -> None:
+            super().persist_result(request_id, result_json)
+            self.head = "c" * 40
+
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path, transport=MutatingHeadTransport()
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-head-changed"]
+    transport.requests["req-head-changed"] = _request("req-head-changed")
+
+    first = watcher.run_cycle(publish_heartbeat=False)
+    assert first.state == GitHubWatcherCycleState.DEGRADED
+    assert first.processed_requests == 1
+    assert first.recovery_attention == 1
+    assert cursor.read() == "a" * 40
+    assert len(executor.calls) == 1
+
+    # A subsequent exact-head comparison reconciles the durable result;
+    # it must not run the already-claimed request twice.
+    second = watcher.run_cycle(publish_heartbeat=False)
+    assert second.state == GitHubWatcherCycleState.PROCESSED
+    assert second.reconciled_requests == 1
+    assert cursor.read() == "c" * 40
+    assert len(executor.calls) == 1
+
+
+def test_watcher_head_read_failure_after_batch_preserves_cursor(tmp_path) -> None:
+    class RecheckUnavailableTransport(FakeTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.head_reads = 0
+
+        def request_head_sha(self) -> str:
+            self.head_reads += 1
+            if self.head_reads == 2:
+                raise GitHubMailboxTransportError(
+                    "head read temporarily unavailable",
+                    kind=TransportFailureKind.UNAVAILABLE,
+                )
+            return super().request_head_sha()
+
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path, transport=RecheckUnavailableTransport()
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-recheck-timeout"]
+    transport.requests["req-recheck-timeout"] = _request("req-recheck-timeout")
+
+    first = watcher.run_cycle(publish_heartbeat=False)
+    assert first.state == GitHubWatcherCycleState.DEGRADED
+    assert first.processed_requests == 1
+    assert cursor.read() == "a" * 40
+
+    second = watcher.run_cycle(publish_heartbeat=False)
+    assert second.state == GitHubWatcherCycleState.PROCESSED
+    assert second.reconciled_requests == 1
+    assert cursor.read() == "b" * 40
+    assert len(executor.calls) == 1
+
+
+def test_watcher_invalid_final_head_does_not_commit_cursor(tmp_path) -> None:
+    class InvalidFinalHeadTransport(FakeTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.head_reads = 0
+
+        def request_head_sha(self) -> str:
+            self.head_reads += 1
+            if self.head_reads == 2:
+                return "NOT_A_COMMIT_SHA"
+            return super().request_head_sha()
+
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path, transport=InvalidFinalHeadTransport()
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-bad-head"]
+    transport.requests["req-bad-head"] = _request("req-bad-head")
+
+    outcome = watcher.run_cycle(publish_heartbeat=False)
+    assert outcome.state == GitHubWatcherCycleState.DEGRADED
+    assert outcome.processed_requests == 1
+    assert cursor.read() == "a" * 40
+    assert len(executor.calls) == 1
+
+
 def test_fresh_request_executes_once_and_advances_cursor(tmp_path) -> None:
     watcher, transport, executor, ledger, cursor = _watcher(tmp_path)
     cursor.initialize("a" * 40)

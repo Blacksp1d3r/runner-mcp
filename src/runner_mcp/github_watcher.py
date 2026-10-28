@@ -707,14 +707,20 @@ class GitHubMailboxWatcher:
         processed, reconciled, observations = self._process_request_batch(request_ids)
 
         cursor_advanced = False
+        head_recheck_failed = False
         if not observations:
             try:
-                self._cursor_store.advance(
-                    expected_sha=cursor,
-                    new_sha=current_head,
-                )
-                cursor_advanced = True
-            except GitHubWatcherError:
+                # The request head can move while worker results are persisted.
+                # Do not advance the old cursor without rechecking the source.
+                final_head = self._transport.request_head_sha()
+                _validate_commit_sha(final_head)
+            except (GitHubMailboxTransportError, ValueError, TypeError):
+                head_recheck_failed = True
+            else:
+                if final_head != current_head:
+                    head_recheck_failed = True
+
+            if head_recheck_failed:
                 observations.append(
                     RecoveryObservation(
                         request_id=request_ids[0] if request_ids else "cursor",
@@ -722,18 +728,35 @@ class GitHubMailboxWatcher:
                         disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
                     )
                 )
+            else:
+                try:
+                    self._cursor_store.advance(
+                        expected_sha=cursor,
+                        new_sha=current_head,
+                    )
+                    cursor_advanced = True
+                except GitHubWatcherError:
+                    observations.append(
+                        RecoveryObservation(
+                            request_id=request_ids[0] if request_ids else "cursor",
+                            age_seconds=0,
+                            disposition=RecoveryDisposition.AMBIGUOUS_CLAIM,
+                        )
+                    )
 
         heartbeat = assess_watcher_health(
             observations,
             stale_after_seconds=self._stale_after_seconds,
-            transport_healthy=cursor_advanced or bool(observations),
+            transport_healthy=(
+                cursor_advanced or bool(observations)
+            ) and not head_recheck_failed,
         )
         heartbeat_ok, published = self._heartbeat_delivery(
             heartbeat,
             publish_heartbeat=publish_heartbeat,
         )
 
-        if not heartbeat_ok:
+        if not heartbeat_ok or head_recheck_failed:
             state = GitHubWatcherCycleState.DEGRADED
         elif observations:
             state = GitHubWatcherCycleState.RECOVERY_REQUIRED

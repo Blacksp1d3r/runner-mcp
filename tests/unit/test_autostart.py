@@ -726,6 +726,23 @@ def test_systemd_user_status_rejects_unsafe_unit_dir_without_writes(
         assert not (referent / SERVER_UNIT).exists()
 
 
+def test_systemd_user_status_rejects_dangling_unit_symlink_without_writes(
+    tmp_path: Path,
+) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    link = unit_dir / SERVER_UNIT
+    referent = tmp_path / "foreign"
+    link.symlink_to(referent)
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="unit path is unsafe"):
+        user_service_status(unit_dir=unit_dir, runner=systemctl)
+    assert link.is_symlink()
+    assert not referent.exists()
+    # The read-only status may probe the user manager; it never modifies it.
+    assert all("--now" not in command for command in systemctl.calls)
+
+
 def test_systemd_user_status_does_not_misreport_down_when_session_bus_unreachable(
     tmp_path: Path,
 ) -> None:

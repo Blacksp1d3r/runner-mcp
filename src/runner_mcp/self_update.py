@@ -782,6 +782,9 @@ class SelfUpdateManager:
         # still exists. This is presence-only, not byte integrity, installer
         # custody, live serving provenance or autonomous A7 recovery proof.
         provisional_baseline_wheel_present: bool | None = None
+        # This is strictly an owner-local SHA-256 match to the preserved
+        # transaction, NOT independently trusted wheel provenance or A7.
+        provisional_baseline_wheel_sha256_matches: bool | None = None
         if provisional_pending:
             try:
                 self._package_installer.staged_wheel(
@@ -791,6 +794,14 @@ class SelfUpdateManager:
                 provisional_baseline_wheel_present = True
             except (PackageInstallError, OSError):
                 provisional_baseline_wheel_present = False
+            pinned_digest = transaction.get("baseline_wheel_sha256")
+            if pinned_digest is not None:
+                observed_digest = self._package_installer.staged_wheel_sha256(
+                    job_id=transaction["job_id"], label="baseline"
+                )
+                provisional_baseline_wheel_sha256_matches = (
+                    observed_digest is not None and observed_digest == pinned_digest
+                )
         active_revision = self._active_runtime_revision()
         runtime_activation_aligned: bool | None = None
         if last_commit is not None and self._active_revision_provider is not None:
@@ -843,6 +854,9 @@ class SelfUpdateManager:
             "install_recovery_pending": recovery_pending,
             "provisional_activation_pending": provisional_pending,
             "provisional_baseline_wheel_present": provisional_baseline_wheel_present,
+            "provisional_baseline_wheel_sha256_matches": (
+                provisional_baseline_wheel_sha256_matches
+            ),
             "latest_self_update_job": self._latest_job_public(),
         }
 
@@ -1130,6 +1144,13 @@ class SelfUpdateManager:
                 job_id=job_id,
                 label="baseline",
             )
+            pinned_digest = transaction.get("baseline_wheel_sha256")
+            if pinned_digest is not None and (
+                self._package_installer.staged_wheel_sha256(
+                    job_id=job_id, label="baseline"
+                ) != pinned_digest
+            ):
+                raise SelfUpdateError("Self-update baseline wheel digest mismatch")
             self._package_installer.install_wheel(baseline_wheel)
             self._package_installer.verify_runtime()
             self.source.restore_project_main_commit_for_recovery(
@@ -1264,6 +1285,7 @@ class SelfUpdateManager:
                     return
 
                 baseline_wheel: Path | None = None
+                baseline_wheel_sha256: str | None = None
                 if baseline_commit is not None:
                     self._set_job(
                         job_id,
@@ -1283,6 +1305,13 @@ class SelfUpdateManager:
                     if clean_head(root)["commit"] != baseline_commit:
                         raise SelfUpdateError(
                             "Self-update source changed while staging recovery"
+                        )
+                    baseline_wheel_sha256 = self._package_installer.staged_wheel_sha256(
+                        job_id=job_id, label="baseline"
+                    )
+                    if baseline_wheel_sha256 is None:
+                        raise SelfUpdateError(
+                            "Self-update recovery wheel could not be sealed"
                         )
 
                 self._set_job(
@@ -1346,6 +1375,7 @@ class SelfUpdateManager:
                         job_id=job_id,
                         target_commit=job.commit,
                         baseline_commit=baseline_commit,
+                        baseline_wheel_sha256=baseline_wheel_sha256,
                     )
                     install_transaction_started = True
                 except PackageInstallError as exc:
@@ -1386,6 +1416,12 @@ class SelfUpdateManager:
                     )
                     rollback_succeeded = True
                     try:
+                        if self._package_installer.staged_wheel_sha256(
+                            job_id=job_id, label="baseline"
+                        ) != baseline_wheel_sha256:
+                            raise PackageInstallError(
+                                "Self-update baseline wheel digest mismatch"
+                            )
                         self._package_installer.install_wheel(baseline_wheel)
                         self._package_installer.verify_runtime()
                     except PackageInstallError:

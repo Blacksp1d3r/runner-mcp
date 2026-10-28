@@ -248,7 +248,7 @@ class FabricCodingAvailabilityQualificationRunner:
                 / "control-plane-update"
                 / "slots"
             ).resolve(strict=True)
-        except OSError as exc:
+        except (OSError, RuntimeError) as exc:
             raise FabricCodingAvailabilityQualificationError(
                 "fabric_coding_availability_qualification_launcher_unmanaged"
             ) from exc

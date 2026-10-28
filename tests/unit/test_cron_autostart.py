@@ -83,6 +83,57 @@ def test_render_cron_block_adds_fixed_tunnel_port(tmp_path: Path) -> None:
     assert "autostart cron-run tunnel --port 8123" in block[3]
 
 
+def test_direct_cron_install_refuses_existing_systemd_units_without_crontab_write(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    crontab = FakeCrontab("17 2 * * * /usr/bin/backup\n")
+    monkeypatch.setattr(
+        "runner_mcp.autostart.has_managed_user_units", lambda: True
+    )
+
+    with pytest.raises(CronAutostartError, match="parallel cron activation"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert crontab.calls == []
+    assert crontab.content == "17 2 * * * /usr/bin/backup\n"
+
+
+def test_direct_cron_install_refuses_unreadable_systemd_units_without_writes(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import AutostartError
+
+    crontab = FakeCrontab("17 2 * * * /usr/bin/backup\n")
+
+    def unavailable() -> bool:
+        raise AutostartError("private unit path")
+
+    monkeypatch.setattr(
+        "runner_mcp.autostart.has_managed_user_units", unavailable
+    )
+    with pytest.raises(CronAutostartError, match="managed systemd status is unavailable"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert crontab.calls == []
+    assert crontab.content == "17 2 * * * /usr/bin/backup\n"
+
+
 def test_install_preserves_unrelated_lines_and_is_idempotent(
     tmp_path: Path,
     fake_crontab_executable: None,

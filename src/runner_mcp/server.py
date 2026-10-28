@@ -192,6 +192,7 @@ from .operational_safety import (
     RetentionPolicy,
     SafetyConfigurationError,
 )
+from .operational_snapshot import bounded_operational_snapshot
 from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
 from .serving_instance_epoch import ServingInstanceEpoch
@@ -3417,6 +3418,37 @@ def build_mcp(
             tool_name="test_status",
             project=result.get("project"),
             result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def operational_snapshot() -> dict:
+        """Aggregate bounded local tests and existing Fabric status in one read."""
+        local_queue = None
+        fabric_state = None
+        if tests is not None:
+            try:
+                local_queue = tests.queue_status()
+            except (TestRunnerError, OSError, RuntimeError, ValueError, TypeError):
+                pass
+        if fabric_bridge is not None:
+            try:
+                fabric_state = fabric_bridge.operational_snapshot()
+            except (FabricBridgeError, OSError, RuntimeError, ValueError, TypeError):
+                pass
+        result = bounded_operational_snapshot(
+            local_queue=local_queue,
+            fabric_snapshot=fabric_state,
+        )
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "operational_snapshot",
+                None,
+                "authenticated-client",
+                "degraded" if result["degraded"] else "ok",
+                utc_timestamp(),
+            )
         )
         return result
 

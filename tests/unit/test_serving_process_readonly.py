@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-from types import ModuleType
+from pathlib import Path
+from types import CodeType, FunctionType, ModuleType
 
 import pytest
 
@@ -104,6 +105,106 @@ def test_missing_or_malformed_roster_does_not_forge_processes() -> None:
     assert result["moduleRosterCount"] == 0
     assert result["state"] == "wait"
     _never_live_authority(result)
+
+
+def _loaded_modules(
+    code: str = "def active():\n    return 42\n",
+    *,
+    filename: str = "/private/host/secret-original.py",
+) -> dict[str, object]:
+    """Minimal real in-memory code objects, with no wheel-file reading."""
+    modules = _roster()
+    for name in ("runner_mcp.server", "runner_mcp.build_identity"):
+        module = modules[name]
+        assert isinstance(module, ModuleType)
+        module.__dict__["__name__"] = name
+        function_code = next(
+            constant for constant in compile(code, filename, "exec").co_consts
+            if type(constant) is CodeType and constant.co_name == "active"
+        )
+        module.__dict__["active"] = FunctionType(function_code, module.__dict__)
+    return modules
+
+
+def test_actual_imported_code_fingerprint_is_bounded_and_not_build_provenance() -> None:
+    result = _check(modules=_loaded_modules())
+    assert result["loadedCodeObservationSchema"] == "runner-mcp/selected-loaded-code-objects/v1"
+    assert result["loadedCodeObservationComplete"] is True
+    assert result["loadedCodeModuleCount"] == 2
+    assert result["loadedCodeObjectCount"] == 2
+    assert len(result["loadedCodeObjectDigest"]) == 64
+    assert result["state"] == "observed_local_only"
+    _never_live_authority(result)
+
+
+def test_replacing_on_disk_source_does_not_change_already_loaded_code(
+    tmp_path: Path,
+) -> None:
+    original = tmp_path / "live.py"
+    original.write_text("def active():\n    return 42\n", encoding="utf-8")
+    modules = _loaded_modules(original.read_text(encoding="utf-8"), filename=str(original))
+    before = _check(modules=modules)
+    original.write_text("def active():\n    return 9001\n", encoding="utf-8")
+    after = _check(modules=modules)
+    assert before["loadedCodeObjectDigest"] == after["loadedCodeObjectDigest"]
+    assert after["loadedCodeObservationComplete"] is True
+    assert after["activeBuildProvenanceVerified"] is False
+
+
+def test_in_memory_code_changes_even_when_package_versions_do_not() -> None:
+    modules = _loaded_modules()
+    before = _check(modules=modules)
+    changed = _loaded_modules("def active():\n    return 9001\n")
+    after = _check(modules=changed)
+    assert before["loadedCodeObjectDigest"] != after["loadedCodeObjectDigest"]
+    assert before["loadedVersionMatchesInstalled"] is True
+    assert after["loadedVersionMatchesInstalled"] is True
+    _never_live_authority(after)
+
+
+def test_filename_redaction_is_recursive_and_does_not_leak_paths() -> None:
+    body = "def active():\n    def child():\n        return 42\n    return child()\n"
+    one = _check(modules=_loaded_modules(body, filename="/secret/one.py"))
+    two = _check(modules=_loaded_modules(body, filename="/secret/two.py"))
+    assert one["loadedCodeObjectDigest"] == two["loadedCodeObjectDigest"]
+    assert "secret" not in str(one)
+    _never_live_authority(two)
+
+
+def test_real_imported_package_modules_are_observable_in_test_process() -> None:
+    import importlib
+
+    import runner_mcp
+
+    modules = {
+        name: importlib.import_module(name)
+        for name in ("runner_mcp", "runner_mcp.server", "runner_mcp.build_identity")
+    }
+    result = observe_current_process_modules(
+        imported_version=runner_mcp.__version__,
+        installed_distribution_version=runner_mcp.__version__,
+        modules=modules,
+    )
+    assert result["loadedCodeObservationComplete"] is True
+    assert result["loadedCodeModuleCount"] == 2
+    assert result["loadedCodeObjectCount"] >= 2
+    assert len(result["loadedCodeObjectDigest"]) == 64
+    _never_live_authority(result)
+
+
+def test_missing_code_objects_cannot_be_misreported_as_measured() -> None:
+    result = _check()
+    assert result["loadedCodeObjectDigest"] is None
+    assert result["loadedCodeObservationComplete"] is False
+    assert result["loadedCodeModuleCount"] == 0
+    _never_live_authority(result)
+
+
+def test_code_version_mismatch_does_not_yield_fingerprint() -> None:
+    mismatch = _check(loaded="0.1.38", installed="0.1.55", modules=_loaded_modules())
+    assert mismatch["loadedCodeObjectDigest"] is None
+    assert mismatch["loadedCodeObservationComplete"] is False
+    _never_live_authority(mismatch)
 
 
 def test_no_module_source_paths_or_private_values_returned() -> None:

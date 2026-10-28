@@ -608,8 +608,13 @@ def remove_user_services(
     unit_dir: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[str]:
+    # Removal is a no-op when no owner unit directory exists. Never create it.
+    target = (unit_dir or default_user_unit_dir()).expanduser()
+    if target.is_symlink() or (target.exists() and not target.is_dir()):
+        raise AutostartError("systemd user unit directory is unavailable")
+    if not target.exists():
+        return []
     _run_systemctl(["show-environment"], runner=runner)
-    target = _safe_unit_dir(unit_dir or default_user_unit_dir())
     # Validate every known target before disabling or removing any unit.
     # An unsafe later peer must not leave a partially removed service set.
     for unit_name in KNOWN_UNITS:

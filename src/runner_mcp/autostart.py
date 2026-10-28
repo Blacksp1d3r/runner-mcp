@@ -477,6 +477,27 @@ def install_user_services(
     )
     target = _safe_unit_dir(unit_dir or default_user_unit_dir())
 
+    # A foreign or unsafe obsolete unit must be discovered BEFORE replacing
+    # an existing managed server unit. Otherwise a denied installation leaves
+    # partially rewritten files despite never reaching daemon-reload.
+    for unit_name in KNOWN_UNITS:
+        path = target / unit_name
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
+        if not path.exists():
+            continue
+        if not path.is_file():
+            raise AutostartError("autostart unit path is unsafe")
+        try:
+            existing = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise AutostartError("autostart unit could not be inspected") from exc
+        if not existing.startswith(MANAGED_MARKER + "\n"):
+            operation = "replace" if unit_name in units else "remove"
+            raise AutostartError(
+                f"refusing to {operation} a user service not managed by Runner MCP"
+            )
+
     for unit_name, content in units.items():
         _write_managed_unit(target / unit_name, content)
 

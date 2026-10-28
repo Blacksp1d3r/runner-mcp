@@ -47,6 +47,41 @@ def fake_crontab_executable(monkeypatch: pytest.MonkeyPatch) -> None:
     )
 
 
+@pytest.mark.parametrize(
+    ("stderr", "stdout"),
+    [
+        ("permission denied", ""),
+        ("cannot access crontab spool", ""),
+        ("no crontab for user; permission denied", ""),
+        ("no crontab for user", "unexpected data"),
+    ],
+)
+def test_crontab_read_error_does_not_become_empty_and_overwrite(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    stderr: str,
+    stdout: str,
+) -> None:
+    class ReadDenied(FakeCrontab):
+        def __call__(self, argv, **kwargs):
+            if argv[1:] == ["-l"]:
+                self.calls.append((list(argv), kwargs.get("input")))
+                return subprocess.CompletedProcess(argv, 1, stdout, stderr)
+            raise AssertionError("must not write crontab on failed read")
+
+    crontab = ReadDenied()
+    with pytest.raises(CronAutostartError, match="crontab could not be read"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=crontab,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert len(crontab.calls) == 1
+    assert crontab.calls[0][0][-1] == "-l"
+
+
 def test_render_cron_block_is_fixed_and_bounded(tmp_path: Path) -> None:
     executable = tmp_path / "runner-mcp"
     config = tmp_path / "private config"

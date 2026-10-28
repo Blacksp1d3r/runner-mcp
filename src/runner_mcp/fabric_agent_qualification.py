@@ -58,6 +58,30 @@ _WORKER_QUALIFICATION_KEYS = (
     *_RUNNER_MCP_KEYS,
 )
 
+# Fixed correct-host Q7 private configuration. Never inherit the ambient
+# process environment or auto-enable Q7 on a legacy qualification agent.
+_Q7_MODE_KEY = "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE"
+_Q7_MODE = "subscription-coding-q7-v1"
+_Q7_KEYS = (
+    "RUNNER_FABRIC_CODING_Q7_PROJECT_ID",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_PROVIDER",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_REPOSITORY",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_CHECKOUT",
+    "RUNNER_FABRIC_CODING_Q7_WORKSPACE_ROOT",
+    "RUNNER_FABRIC_CODING_Q7_WORKER_URL",
+    "RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN",
+)
+_Q7_FIXED_VALUES = {
+    "RUNNER_FABRIC_CODING_Q7_PROJECT_ID": "aifordable",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_PROVIDER": "github",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_REPOSITORY": "Blacksp1d3r/AIfordable",
+    "RUNNER_FABRIC_CODING_Q7_WORKER_URL": "http://127.0.0.1:8030/mcp",
+}
+_Q7_PATH_KEYS = (
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_CHECKOUT",
+    "RUNNER_FABRIC_CODING_Q7_WORKSPACE_ROOT",
+)
+
 
 class FabricAgentQualificationError(RuntimeError):
     """Safe fixed Runner Fabric qualification-agent wrapper failure."""
@@ -146,8 +170,50 @@ def qualification_agent_environment_additions(
                 "Runner Fabric worker qualification configuration is invalid"
             ),
         )
+    # Build and validate a complete Q7 group BEFORE modifying the launch
+    # environment. No token values are ever included in failure messages.
+    additions.update(_q7_private_environment_additions(values))
     return additions
 
+
+def _q7_private_environment_additions(values: dict[str, str]) -> dict[str, str]:
+    """Forward only an all-or-nothing fixed Q7 binding from private MCP config.
+
+    The separate explicit mode is optional: seven valid fields alone do NOT
+    activate Q7. No bearer, source path, or mode is read from ambient env.
+    """
+    present = any(key in values for key in _Q7_KEYS) or _Q7_MODE_KEY in values
+    if not present:
+        return {}
+    invalid = "Runner Fabric Q7 qualification configuration is invalid"
+    if any(
+        key.startswith("RUNNER_FABRIC_CODING_Q7_") and key not in _Q7_KEYS
+        for key in values
+    ):
+        raise FabricAgentQualificationError(invalid)
+    if not all(values.get(key, "").strip() for key in _Q7_KEYS):
+        raise FabricAgentQualificationError(
+            "Runner Fabric Q7 qualification configuration is incomplete"
+        )
+    if _Q7_MODE_KEY in values and values[_Q7_MODE_KEY] != _Q7_MODE:
+        raise FabricAgentQualificationError(invalid)
+    if any(values[key] != expected for key, expected in _Q7_FIXED_VALUES.items()):
+        raise FabricAgentQualificationError(invalid)
+    if any(
+        len(values[key]) > 4096
+        or not Path(values[key]).is_absolute()
+        or ".." in Path(values[key]).parts
+        for key in _Q7_PATH_KEYS
+    ):
+        raise FabricAgentQualificationError(invalid)
+    if not _valid_secret(values["RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN"]):
+        raise FabricAgentQualificationError(invalid)
+
+    candidate: dict[str, str] = {}
+    _forward_private_values(values, candidate, _Q7_KEYS, invalid_message=invalid)
+    if _Q7_MODE_KEY in values:
+        candidate[_Q7_MODE_KEY] = _Q7_MODE
+    return candidate
 
 
 def _af585_private_issuer_additions(config_dir: Path) -> dict[str, str]:

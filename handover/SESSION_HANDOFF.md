@@ -1,3 +1,10 @@
+## 2026-10-28 — #866 no-op removal does not create systemd tree; SOURCE 0.1.118 MERGED
+
+- [PR #898](https://github.com/Blacksp1d3r/runner-mcp/pull/898) **MERGED** `ba06150880f17a7081d23fe83ac1a8a83a97a2c6`, exact head `6a17ebd9cdb6d7ee636f8e5dd06f218006154951`. Full CI `40672733681`, clean Ubuntu `40672733668`, attribution `40672733696` all SUCCESS. GitHub-source **0.1.118**, not proof of running host installation.
+- **Root cause:** `remove_user_services` used installer helper `_safe_unit_dir` even when unit directory did not exist, creating a new directory during a no-op removal. Now absent exact owner user-unit tree returns empty without file writes or systemctl, and symlink/foreign unit paths fail closed. New negative test attests missing parent/target remains absent and zero systemctl calls.
+- Earlier same-session [PR #896](https://github.com/Blacksp1d3r/runner-mcp/pull/896) v0.1.117 disabled check before unlink and docs [#897](https://github.com/Blacksp1d3r/runner-mcp/pull/897) were merged with exact CI; no live host/cron/unit touched.
+- **BLOCKED/NOT TESTED:** #866 M0 real external Blacky cron monitors, M2 isolated actual rootless systemd-user manager boot/crash/automatic restart/rollback and all M3–M6 live cutovers. Do not infer active process/wheel from source; preserve cron till per-role acceptance. See canonical [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866).
+
 ## 2026-10-28 — #866 M2 verwijderen faalt veilig; source 0.1.117 MERGED
 
 - [PR #896](https://github.com/Blacksp1d3r/runner-mcp/pull/896) **MERGED** `84e4c539bd64e790e88dc27567e35a91d50afb6d`; exact PR-head `bc9f29ddd2ad929a60308b18ee103d3b24ce4143`. CI `40671431022` SUCCESS, clean Ubuntu `40671431019` SUCCESS, attribution `40671431067` SUCCESS; GitHub-source **0.1.117**, niet noodzakelijk live geïnstalleerd.

@@ -406,6 +406,7 @@ def cron_status(
     config_dir: Path,
     components: tuple[str, ...],
     executable: Path | None = None,
+    port: int | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[CronComponentStatus]:
     """Observe this configuration's exact cron launcher without changing cron.
@@ -414,6 +415,8 @@ def cron_status(
     THIS instance is managed. Callers with the expected release entrypoint
     must supply executable; no imported wheel or live process is attested.
     """
+    if port is not None and not 1 <= port <= 65535:
+        raise CronAutostartError("autostart port must be between 1 and 65535")
     expected_config = str(config_dir.expanduser().resolve())
     expected_executable = str(executable) if executable is not None else None
     lines = read_crontab(runner=runner).splitlines()
@@ -459,6 +462,7 @@ def cron_status(
                 and argv[7].isdecimal()
                 and len(argv[7]) <= 5
                 and 1 <= int(argv[7]) <= 65535
+                and (port is None or int(argv[7]) == port)
             )
         return len(argv) == 6
 

@@ -754,6 +754,26 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
     ]
 
 
+def test_install_refuses_symlinked_parent_without_unit_writes(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    (real / "systemd").mkdir(parents=True)
+    linked = tmp_path / "linked"
+    linked.symlink_to(real, target_is_directory=True)
+    unit_dir = linked / "systemd" / "user"
+    systemctl = FakeSystemctl()
+    paths, executable = _private_config(tmp_path)
+    with pytest.raises(AutostartError, match="must not be a symlink"):
+        install_user_services(
+            config_dir=paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert not (real / "systemd" / "user").exists()
+    assert systemctl.calls == []
+
+
 def test_remove_refuses_symlinked_parent_without_systemctl_or_writes(tmp_path: Path) -> None:
     real = tmp_path / "real"
     unit_dir = real / "systemd" / "user"

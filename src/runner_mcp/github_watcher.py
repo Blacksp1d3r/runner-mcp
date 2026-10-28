@@ -714,7 +714,7 @@ class GitHubMailboxWatcher:
                 # Do not advance the old cursor without rechecking the source.
                 final_head = self._transport.request_head_sha()
                 _validate_commit_sha(final_head)
-            except (GitHubMailboxTransportError, ValueError):
+            except (GitHubMailboxTransportError, ValueError, TypeError):
                 head_recheck_failed = True
             else:
                 if final_head != current_head:

@@ -415,7 +415,11 @@ def user_service_status(
     unit_dir: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[AutostartStatus]:
-    target = _safe_unit_dir(unit_dir or default_user_unit_dir())
+    # A read-only status/dry-run must not create a systemd unit directory.
+    # _safe_unit_dir() is reserved for the explicit install/remove paths.
+    target = (unit_dir or default_user_unit_dir()).expanduser()
+    if target.is_symlink() or (target.exists() and not target.is_dir()):
+        raise AutostartError("systemd user unit directory is unavailable")
     results: list[AutostartStatus] = []
     names = (
         ("server", SERVER_UNIT),

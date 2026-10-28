@@ -2387,6 +2387,7 @@ def test_autostart_cli_plan_is_read_only_and_never_authorizes_cutover(
         "--config-dir", str(paths.config_dir),
         "autostart", "plan",
         "--expected-uid", "1001",
+        "--expected-port", "8000",
         "--component", "server",
     ]
     assert main([*base, "--expected-hostname", "example-host"]) == 0

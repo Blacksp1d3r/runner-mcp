@@ -215,8 +215,8 @@ def test_disposable_rendered_units_pass_real_systemd_parser(tmp_path: Path) -> N
     paths, executable = _private_config(tmp_path)
     tunnel_env = paths.config_dir / "tunnel.env"
     tunnel_env.write_text(
-        "CONTROL_PLANE_TUNNEL_ID=synthetic-qualification-id\\n"
-        "CONTROL_PLANE_API_KEY=synthetic-qualification-key\\n",
+        "CONTROL_PLANE_TUNNEL_ID=synthetic-qualification-id\n"
+        "CONTROL_PLANE_API_KEY=synthetic-qualification-key\n",
         encoding="utf-8",
     )
     tunnel_env.chmod(0o600)
@@ -261,10 +261,10 @@ def test_disposable_systemd_parser_rejects_broken_execstart(tmp_path: Path) -> N
     good = render_user_units(config_dir=paths.config_dir, executable=executable)[
         SERVER_UNIT
     ]
-    broken = "\\n".join(
+    broken = "\n".join(
         'ExecStart="unterminated' if line.startswith("ExecStart=") else line
         for line in good.splitlines()
-    ) + "\\n"
+    ) + "\n"
     candidate = tmp_path / SERVER_UNIT
     candidate.write_text(broken, encoding="utf-8")
 

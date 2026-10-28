@@ -372,6 +372,19 @@ def install_user_services(
         require_clear_autostart_permit(activation_permit)
     except PermissionError as exc:
         raise AutostartError("autostart activation is blocked") from exc
+    # Direct Python callers must not bypass the CLI's duplicate-supervisor
+    # guard. This check reads the owner's crontab without changing it.
+    from .cron_autostart import CronAutostartError, cron_available, has_managed_cron
+
+    if cron_available():
+        try:
+            if has_managed_cron():
+                raise AutostartError(
+                    "managed cron autostart exists; refuse parallel systemd activation"
+                )
+        except CronAutostartError as exc:
+            raise AutostartError("managed cron status is unavailable") from exc
+
     # Verify a user manager before touching service files.
     _run_systemctl(["show-environment"], runner=runner)
     units = render_user_units(

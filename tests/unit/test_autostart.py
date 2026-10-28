@@ -568,7 +568,10 @@ def test_install_preflight_rejects_obsolete_foreign_unit_before_server_rewrite(
         )
 
     assert server.read_text(encoding="utf-8") == previous
-    assert obsolete.exists() if invalid_optional == "foreign" else obsolete.is_symlink()
+    if invalid_optional == "foreign":
+        assert obsolete.exists()
+    else:
+        assert obsolete.is_symlink()
     assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
 
 

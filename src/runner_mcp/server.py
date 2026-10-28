@@ -832,6 +832,14 @@ def build_mcp(
             "migration_jobs_configured": migration_jobs is not None,
             "approvals_configured": approval_manager is not None,
             "fabric_bridge_configured": fabric_bridge is not None,
+            # Reuse the already-computed in-process MCP tools/list digest
+            # (also published by build_identity). This is a useful server
+            # catalogue witness, NOT an attestation of the client's cached
+            # tool list or of the physical host/source/wheel identity.
+            "interface_schema_digest": bounded_build_identity_payload(
+                build_identity_provider
+            ).get("interface_schema_digest"),
+            "client_catalogue_alignment_verified": False,
         }
         # Each first-party manager is an independent evidence source. Return
         # only categorical failure facts if any source is unreadable: no

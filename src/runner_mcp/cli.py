@@ -1301,6 +1301,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         if (
             args.expected_hostname != observed_hostname
             or args.expected_uid != observed_uid
+            or args.expected_uid <= 0
         ):
             print("migration_plan=WAIT")
             print("reason=host_or_uid_mismatch")
@@ -1316,6 +1317,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                     config_dir=config_dir,
                     components=components,
                     executable=executable,
+                    port=args.expected_port,
                 )
             )
             if cron_managed
@@ -2533,6 +2535,10 @@ def build_parser() -> argparse.ArgumentParser:
     )
     autostart_plan.add_argument("--expected-hostname", required=True)
     autostart_plan.add_argument("--expected-uid", required=True, type=int)
+    autostart_plan.add_argument(
+        "--expected-port", required=True, type=int,
+        choices=range(1, 65536), metavar="PORT",
+    )
     autostart_plan.add_argument(
         "--component",
         required=True,

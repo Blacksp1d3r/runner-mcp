@@ -182,8 +182,10 @@ def _q7_private_environment_additions(values: dict[str, str]) -> dict[str, str]:
     The separate explicit mode is optional: seven valid fields alone do NOT
     activate Q7. No bearer, source path, or mode is read from ambient env.
     """
-    present = any(key in values for key in _Q7_KEYS) or _Q7_MODE_KEY in values
-    if not present:
+    # Legacy non-Q7 modes were not forwarded by this wrapper. Preserve that
+    # behavior unless a Q7 field or the explicit Q7 mode is actually present.
+    q7_fields_present = any(key in values for key in _Q7_KEYS)
+    if not q7_fields_present and values.get(_Q7_MODE_KEY) != _Q7_MODE:
         return {}
     invalid = "Runner Fabric Q7 qualification configuration is invalid"
     if any(

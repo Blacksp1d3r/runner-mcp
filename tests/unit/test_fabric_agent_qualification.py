@@ -863,3 +863,16 @@ def test_q7_and_existing_a6_binding_are_independent_complete_groups(
         handle.write("RUNNER_FABRIC_CODING_Q7_UNKNOWN=value\n")
     with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
         qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+@pytest.mark.parametrize("legacy_mode", ["synthetic-read-only-v1", "other-reserved", ""])
+def test_q7_does_not_block_or_forward_legacy_nonq7_mode_without_bindings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, legacy_mode: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: legacy_mode})
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert _Q7_MODE not in env
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in env)

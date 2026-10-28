@@ -269,6 +269,7 @@ def test_cursor_status_rejects_unsafe_mode_without_repair(
 def test_cursor_status_invalid_utf8_is_bounded(tmp_path) -> None:
     path = tmp_path / "cursor.json"
     path.write_bytes(bytes([0xFF]))
+    path.chmod(0o600)
     with pytest.raises(GitHubWatcherError, match="read failed"):
         GitHubWatcherCursorStore(path).read()
 
@@ -331,6 +332,7 @@ def test_cursor_store_refuses_symlink(tmp_path) -> None:
 def test_cursor_store_rejects_invalid_state(tmp_path, content: str) -> None:
     path = tmp_path / "cursor.json"
     path.write_text(content, encoding="utf-8")
+    path.chmod(0o600)
     store = GitHubWatcherCursorStore(path)
 
     with pytest.raises(GitHubWatcherError):
@@ -340,6 +342,7 @@ def test_cursor_store_rejects_invalid_state(tmp_path, content: str) -> None:
 def test_cursor_store_rejects_oversized_state(tmp_path) -> None:
     path = tmp_path / "cursor.json"
     path.write_text("x" * (MAX_CURSOR_BYTES + 1), encoding="utf-8")
+    path.chmod(0o600)
 
     with pytest.raises(GitHubWatcherError, match="size limit"):
         GitHubWatcherCursorStore(path).read()

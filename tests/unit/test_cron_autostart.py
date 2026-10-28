@@ -207,7 +207,7 @@ def test_managed_cron_roundtrip_preserves_independent_hourly_review(
 ) -> None:
     """A foreign hourly reviewer is neither a Runner MCP role nor our cleanup target."""
     foreign = "17 * * * * /usr/bin/python3 /home/reviewer/f35-reviewer/review-public-open-prs.py"
-    crontab = FakeCrontab(f"MAILTO=review@example.invalid\\n{foreign}\\n")
+    crontab = FakeCrontab(f"MAILTO=review@example.invalid\n{foreign}\n")
     original = crontab.content
     install_cron_services(
         executable=tmp_path / "runner-mcp",

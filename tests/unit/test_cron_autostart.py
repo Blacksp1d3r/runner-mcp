@@ -201,6 +201,27 @@ def test_install_preserves_unrelated_lines_and_is_idempotent(
     assert "cron-run github-watcher" in crontab.content
 
 
+def test_managed_cron_roundtrip_preserves_independent_hourly_review(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+) -> None:
+    """A foreign hourly reviewer is neither a Runner MCP role nor our cleanup target."""
+    foreign = "17 * * * * /usr/bin/python3 /home/reviewer/f35-reviewer/review-public-open-prs.py"
+    crontab = FakeCrontab(f"MAILTO=review@example.invalid\\n{foreign}\\n")
+    original = crontab.content
+    install_cron_services(
+        executable=tmp_path / "runner-mcp",
+        config_dir=tmp_path / "private",
+        components=("server",),
+        runner=crontab,
+        activation_permit=AutostartActivationPermit.clear(),
+    )
+    assert crontab.content.count(foreign) == 1
+    assert crontab.content.count(CRON_BEGIN) == 1
+    assert remove_cron_services(runner=crontab) is True
+    assert crontab.content == original
+
+
 def test_install_rejects_unmanaged_tunnel_cron_supervisor(
     tmp_path: Path,
     fake_crontab_executable: None,

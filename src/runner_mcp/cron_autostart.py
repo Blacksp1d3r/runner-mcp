@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import fcntl
 import os
+import re
 import shlex
 import shutil
 import stat
@@ -123,7 +124,11 @@ def read_crontab(
     if completed.returncode == 0:
         return completed.stdout
     # Most cron implementations return 1 when the user has no crontab.
-    if completed.returncode == 1:
+    if (
+        completed.returncode == 1
+        and not completed.stdout
+        and re.fullmatch(r"no crontab(?: for [A-Za-z0-9_.-]+)?", completed.stderr.strip().lower())
+    ):
         return ""
     raise CronAutostartError("crontab could not be read")
 

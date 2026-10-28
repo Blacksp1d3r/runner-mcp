@@ -120,8 +120,7 @@ if crontab -l >/dev/null 2>"$cron_error"; then
   exit 1
 else
   cron_status=$?
-  if [[ "$cron_status" != 1 ]] || ! grep -Eq '^no crontab for [A-Za-z0-9_.-]+
- "$cron_error"; then
+  if [[ "$cron_status" != 1 ]] || ! grep -Eq '^no crontab for [A-Za-z0-9_.-]+; then
     echo "STOP: disposable cron state is ambiguous" >&2
     rm -f -- "$cron_error"
     exit 1
@@ -129,7 +128,7 @@ else
 fi
 rm -f -- "$cron_error"
 cron_line="17 * * * * /usr/bin/true"
-printf '%s\\n' "$cron_line" | crontab -
+printf '%s\n' "$cron_line" | crontab -
 test_crontab_owned=true
 [[ "$(crontab -l)" == "$cron_line" ]]
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
@@ -148,7 +147,41 @@ fi
 # Rollback: disable systemd FIRST, then restore exact cron line.
 systemctl --user disable --now "$unit"
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
-printf '%s\\n' "$cron_line" | crontab -
+printf '%s\n' "$cron_line" | crontab -
+[[ "$(crontab -l)" == "$cron_line" ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+crontab -r
+test_crontab_owned=false
+echo "M2_DISPOSABLE_CRON_TO_SYSTEMD_TO_CRON_ROUNDTRIP=PASS"
+echo "M2_DISPOSABLE_ACTUAL_SYSTEMD_RESTART_AND_UNIT_ROLLBACK=PASS"
+ "$cron_error"; then
+    echo "STOP: disposable cron state is ambiguous" >&2
+    rm -f -- "$cron_error"
+    exit 1
+  fi
+fi
+rm -f -- "$cron_error"
+cron_line="17 * * * * /usr/bin/true"
+printf '%s\n' "$cron_line" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$cron_line" ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+# Switch: remove cron FIRST, then enable systemd, verify no double-active.
+crontab -r
+if crontab -l >/dev/null 2>&1; then
+  echo "STOP: cron remained present during systemd activation" >&2
+  exit 1
+fi
+systemctl --user enable --now "$unit"
+[[ "$(systemctl --user is-active "$unit")" == "active" ]]
+if crontab -l >/dev/null 2>&1; then
+  echo "STOP: overlapping cron and systemd" >&2
+  exit 1
+fi
+# Rollback: disable systemd FIRST, then restore exact cron line.
+systemctl --user disable --now "$unit"
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+printf '%s\n' "$cron_line" | crontab -
 [[ "$(crontab -l)" == "$cron_line" ]]
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
 crontab -r

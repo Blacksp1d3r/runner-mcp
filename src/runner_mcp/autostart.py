@@ -545,7 +545,11 @@ def user_service_status(
             )
     for component, unit_name in names:
         path = target / unit_name
-        installed = path.exists() and path.is_file() and not path.is_symlink()
+        # A dangling symlink does not .exist(), but is still an unsafe
+        # installed unit claim for a migration plan or status observer.
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
+        installed = path.exists() and path.is_file()
         enabled = False
         active = False
         if installed:

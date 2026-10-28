@@ -1,3 +1,10 @@
+## 2026-10-28 — #866 v0.1.109 source plan, NO cron/systemd cutover
+
+- Runner-MCP GitHub `main` nu **source 0.1.109** via [PR #879](https://github.com/Blacksp1d3r/runner-mcp/pull/879) MERGED `878c60acef136d16cadc42709a2705ac5161e9dc` na exact-head CI `40646176117` / `40646176124` / `40646176126` SUCCESS. Oorspronkelijke releaseprioriteit #876 (0.1.108) gerespecteerd; foutieve oude draft #877 gesloten, nooit gemerged.
+- M1 pure planning plus bestaande CLI `autostart plan --expected-hostname HOST --expected-uid UID --expected-port PORT --component ROLE` test alleen exact huidig owner-cronblok, bronpad/poort, Linux UID/hostname en systemd-user status zonder writes. Veilig resultaat `WAIT` of `PLAN_ONLY`; **nooit** `cutover_authorized=yes`. Code-/fixturetests groen; geen echte Linux user-bus boot/timer overgang in deze sessie.
+- **Verboden conclusie:** bronversie 0.1.109 is NIET automatisch origineel-host actief (laatst werkelijk verbonden primary 0.1.88). Blacky eigen F35-uurlijkse scriptcron niet gelijkstellen aan Runner-MCP managed cron, en de fysieke Windows RTX5080-worker houdt Windows Taakplanner. Geen originele cron/service/port/update- of topologywijzigingen uitgevoerd.
+- **Herbegin bij bestaande roadmap-issue #866:** gericht M1/M2 echte Linux sandbox/identiteit/rollback bewijs vóór on-actieve service/timer stage; live pas na #669/#341, Fabric #924/#943 en geaccepteerde Claude/Qwen/originele ACK; overschakelen exclusief één host/rol, geen dubbele beheerder. Maak geen nieuwe roadmap, topology, relays of supervisor.
+
 ## 2026-10-28 — #616 watcher-cursorstatus echt alleen-lezen; SOURCE 0.1.108 MERGED, live herstel open
 
 - **Functionele bronfix** [Runner-MCP PR #876](https://github.com/Blacksp1d3r/runner-mcp/pull/876) **MERGED** squash `6762f8681dcbf42916713bf67b43ec193195e594` uit exact head `e0f5a7aa22876c20d39aaa44b93331dcfd7eb095`; source 0.1.108. Bestaande `GitHubWatcherCursorStore.read()` opent cursors met O_RDONLY en maakt/chmodt niets meer. Afwezig blijft `None`/UNINITIALIZED; onveilige bestaande rechten en ongeldige encoding falen begrensd. Bestaande `initialize/advance` mutaties en verwachte-SHA-CAS blijven onveranderd.

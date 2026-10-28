@@ -62,6 +62,89 @@ class AutostartStatus:
         }
 
 
+@dataclass(frozen=True, slots=True)
+class AutostartMigrationPlan:
+    """Bounded observation, never an activation permit or live provenance."""
+
+    component: str
+    state: str
+    reason_code: str
+    cron_installed: bool
+    systemd_manager_reachable: bool
+    systemd_units_absent: bool
+    cutover_authorized: bool = False
+
+
+def plan_cron_to_systemd(
+    *,
+    component: str,
+    expected_hostname: str,
+    expected_uid: int,
+    observed_hostname: str,
+    observed_uid: int,
+    configured_components: tuple[str, ...],
+    cron_managed: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[AutostartStatus, ...],
+    systemd_manager_reachable: bool,
+) -> AutostartMigrationPlan:
+    """Pure read-only decision from existing owner-local status observers.
+
+    An exact source/host schedule is necessary, never sufficient to authorize
+    cutover. Real process/wheel, boot, rollback and Fabric ACK require separate
+    original-host qualification; this function intentionally cannot grant it.
+    """
+    from .cron_autostart import CRON_COMPONENTS
+
+    if component not in CRON_COMPONENTS:
+        raise AutostartError("unknown managed autostart component")
+
+    cron_matches = [row for row in cron_rows if getattr(row, "component", None) == component]
+    cron_ok = (
+        cron_managed
+        and component in configured_components
+        and len(cron_matches) == 1
+        and cron_matches[0].installed is True
+        and cron_matches[0].enabled is True
+        and len({getattr(row, "component", None) for row in cron_rows}) == len(cron_rows)
+    )
+    unit_names = [row.component for row in systemd_rows]
+    units_absent = (
+        len(systemd_rows) == len(KNOWN_UNITS)
+        and len(set(unit_names)) == len(KNOWN_UNITS)
+        and set(unit_names) == set(CRON_COMPONENTS)
+        and all(
+            row.installed is False and row.enabled is False and row.active is False
+            for row in systemd_rows
+        )
+    )
+
+    if (
+        not expected_hostname
+        or observed_hostname != expected_hostname
+        or type(expected_uid) is not int
+        or expected_uid <= 0
+        or observed_uid != expected_uid
+    ):
+        state, reason = "WAIT", "host_or_uid_mismatch"
+    elif not cron_ok:
+        state, reason = "WAIT", "exact_owned_cron_role_unavailable"
+    elif not units_absent:
+        state, reason = "WAIT", "systemd_unit_conflict_or_unknown"
+    elif not systemd_manager_reachable:
+        state, reason = "WAIT", "systemd_user_manager_unreachable"
+    else:
+        state, reason = "PLAN_ONLY", "original_host_and_rollback_not_attested"
+    return AutostartMigrationPlan(
+        component=component,
+        state=state,
+        reason_code=reason,
+        cron_installed=bool(cron_ok),
+        systemd_manager_reachable=bool(systemd_manager_reachable),
+        systemd_units_absent=bool(units_absent),
+    )
+
+
 def default_user_unit_dir() -> Path:
     return (Path.home() / ".config" / "systemd" / "user").resolve()
 

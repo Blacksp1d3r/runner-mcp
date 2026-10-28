@@ -1,7 +1,7 @@
 from __future__ import annotations
 
 from pathlib import Path
-from types import ModuleType
+from types import CodeType, FunctionType, ModuleType
 
 import pytest
 
@@ -118,7 +118,11 @@ def _loaded_modules(
         module = modules[name]
         assert isinstance(module, ModuleType)
         module.__dict__["__name__"] = name
-        exec(compile(code, filename, "exec"), module.__dict__)
+        function_code = next(
+            constant for constant in compile(code, filename, "exec").co_consts
+            if type(constant) is CodeType and constant.co_name == "active"
+        )
+        module.__dict__["active"] = FunctionType(function_code, module.__dict__)
     return modules
 
 

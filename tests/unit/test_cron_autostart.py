@@ -134,6 +134,41 @@ def test_direct_cron_install_refuses_unreadable_systemd_units_without_writes(
     assert crontab.content == "17 2 * * * /usr/bin/backup\n"
 
 
+def test_cron_status_plan_port_match_is_exact_and_read_only(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+) -> None:
+    executable = tmp_path / "runner-mcp"
+    config = tmp_path / "private"
+    crontab = FakeCrontab(
+        "\n".join(
+            render_cron_block(
+                executable=executable,
+                config_dir=config,
+                components=("server",),
+                port=8000,
+            )
+        ) + "\n"
+    )
+    matching = cron_status(
+        config_dir=config,
+        components=("server",),
+        executable=executable,
+        port=8000,
+        runner=crontab,
+    )
+    mismatched = cron_status(
+        config_dir=config,
+        components=("server",),
+        executable=executable,
+        port=8123,
+        runner=crontab,
+    )
+    assert next(row for row in matching if row.component == "server").installed
+    assert not next(row for row in mismatched if row.component == "server").installed
+    assert all(command == ["/usr/bin/crontab", "-l"] for command, _ in crontab.calls)
+
+
 def test_install_preserves_unrelated_lines_and_is_idempotent(
     tmp_path: Path,
     fake_crontab_executable: None,

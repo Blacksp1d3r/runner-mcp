@@ -86,6 +86,109 @@ def _private_config(tmp_path: Path):
     return paths, executable
 
 
+def test_migration_plan_is_never_a_cutover_permit() -> None:
+    from runner_mcp.autostart import AutostartStatus, plan_cron_to_systemd
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    cron = tuple(
+        CronComponentStatus(
+            component=name,
+            installed=name == "server",
+            enabled=name == "server",
+            active=False,
+        )
+        for name in CRON_COMPONENTS
+    )
+    units = tuple(
+        AutostartStatus(name, installed=False, enabled=False, active=False)
+        for name in CRON_COMPONENTS
+    )
+    inputs = {
+        "component": "server",
+        "expected_hostname": "test-host",
+        "expected_uid": 1001,
+        "observed_hostname": "test-host",
+        "observed_uid": 1001,
+        "configured_components": ("server",),
+        "cron_managed": True,
+        "cron_rows": cron,
+        "systemd_rows": units,
+        "systemd_manager_reachable": True,
+    }
+    plan = plan_cron_to_systemd(**inputs)
+    assert plan.state == "PLAN_ONLY"
+    assert plan.reason_code == "original_host_and_rollback_not_attested"
+    assert plan.cron_installed
+    assert plan.systemd_units_absent
+    assert plan.systemd_manager_reachable
+    assert plan.cutover_authorized is False
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ({"observed_hostname": "other-host"}, "host_or_uid_mismatch"),
+        ({"observed_uid": 1002}, "host_or_uid_mismatch"),
+        ({"expected_uid": 0, "observed_uid": 0}, "host_or_uid_mismatch"),
+        ({"cron_managed": False}, "exact_owned_cron_role_unavailable"),
+        ({"configured_components": ()}, "exact_owned_cron_role_unavailable"),
+        ({"cron_rows": ()}, "exact_owned_cron_role_unavailable"),
+        ({"systemd_manager_reachable": False}, "systemd_user_manager_unreachable"),
+    ],
+)
+def test_migration_plan_fails_closed_for_missing_owner_or_manager(
+    change: dict[str, object],
+    reason: str,
+) -> None:
+    from runner_mcp.autostart import AutostartStatus, plan_cron_to_systemd
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    inputs = {
+        "component": "server",
+        "expected_hostname": "lab-host",
+        "expected_uid": 1001,
+        "observed_hostname": "lab-host",
+        "observed_uid": 1001,
+        "configured_components": ("server",),
+        "cron_managed": True,
+        "cron_rows": (CronComponentStatus("server", True, True, False),),
+        "systemd_rows": tuple(
+            AutostartStatus(name, False, False, False)
+            for name in CRON_COMPONENTS
+        ),
+        "systemd_manager_reachable": True,
+    }
+    plan = plan_cron_to_systemd(**(inputs | change))
+    assert plan.state == "WAIT"
+    assert plan.reason_code == reason
+    assert plan.cutover_authorized is False
+
+
+def test_migration_plan_refuses_existing_foreign_or_duplicate_units() -> None:
+    from runner_mcp.autostart import AutostartStatus, plan_cron_to_systemd
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    units = tuple(
+        AutostartStatus(name, name == "server", False, False)
+        for name in CRON_COMPONENTS
+    )
+    plan = plan_cron_to_systemd(
+        component="server",
+        expected_hostname="lab-host",
+        expected_uid=1001,
+        observed_hostname="lab-host",
+        observed_uid=1001,
+        configured_components=("server",),
+        cron_managed=True,
+        cron_rows=(CronComponentStatus("server", True, True, False),),
+        systemd_rows=units,
+        systemd_manager_reachable=True,
+    )
+    assert plan.state == "WAIT"
+    assert plan.reason_code == "systemd_unit_conflict_or_unknown"
+    assert plan.cutover_authorized is False
+
+
 def test_render_server_unit_contains_no_credentials(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
 
@@ -621,6 +724,23 @@ def test_systemd_user_status_rejects_unsafe_unit_dir_without_writes(
         assert unit_dir.is_symlink()
         assert unit_dir.readlink() == referent
         assert not (referent / SERVER_UNIT).exists()
+
+
+def test_systemd_user_status_rejects_dangling_unit_symlink_without_writes(
+    tmp_path: Path,
+) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    link = unit_dir / SERVER_UNIT
+    referent = tmp_path / "foreign"
+    link.symlink_to(referent)
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="unit path is unsafe"):
+        user_service_status(unit_dir=unit_dir, runner=systemctl)
+    assert link.is_symlink()
+    assert not referent.exists()
+    # The read-only status may probe the user manager; it never modifies it.
+    assert all("--now" not in command for command in systemctl.calls)
 
 
 def test_systemd_user_status_does_not_misreport_down_when_session_bus_unreachable(

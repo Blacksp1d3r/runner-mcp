@@ -4,6 +4,7 @@ import argparse
 import getpass
 import os
 import secrets
+import socket
 import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
@@ -26,6 +27,7 @@ from .autostart import (
     default_user_unit_dir,
     has_managed_user_units,
     install_user_services,
+    plan_cron_to_systemd,
     remove_user_services,
     systemd_user_available,
     user_service_status,
@@ -1291,6 +1293,59 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         print(f"Autostart activation: ready ({state})")
         return 0
 
+    if args.autostart_action == "plan":
+        # Refuse to probe another owner or host. These local names are only
+        # bounded consistency checks, not issuer identity or wheel attestation.
+        observed_hostname = socket.gethostname().split(".", 1)[0]
+        observed_uid = os.getuid()
+        if (
+            args.expected_hostname != observed_hostname
+            or args.expected_uid != observed_uid
+            or args.expected_uid <= 0
+        ):
+            print("migration_plan=WAIT")
+            print("reason=host_or_uid_mismatch")
+            print("cutover_authorized=no")
+            return 0
+
+        components = configured_autostart_components(config_dir)
+        cron_present = cron_available()
+        cron_managed = has_managed_cron() if cron_present else False
+        rows = (
+            tuple(
+                cron_status(
+                    config_dir=config_dir,
+                    components=components,
+                    executable=executable,
+                    port=args.expected_port,
+                )
+            )
+            if cron_managed
+            else ()
+        )
+        manager_reachable = systemd_user_available()
+        unit_rows = tuple(user_service_status())
+        plan = plan_cron_to_systemd(
+            component=args.component,
+            expected_hostname=args.expected_hostname,
+            expected_uid=args.expected_uid,
+            observed_hostname=observed_hostname,
+            observed_uid=observed_uid,
+            configured_components=components,
+            cron_managed=cron_managed,
+            cron_rows=rows,
+            systemd_rows=unit_rows,
+            systemd_manager_reachable=manager_reachable,
+        )
+        print(f"migration_plan={plan.state}")
+        print(f"component={plan.component}")
+        print(f"reason={plan.reason_code}")
+        print(f"cron_installed={'yes' if plan.cron_installed else 'no'}")
+        print(f"systemd_user_manager={'yes' if plan.systemd_manager_reachable else 'no'}")
+        print(f"systemd_units_absent={'yes' if plan.systemd_units_absent else 'no'}")
+        print("cutover_authorized=no")
+        return 0
+
     managed_cron = has_managed_cron() if cron_available() else False
     managed_systemd = has_managed_user_units()
 
@@ -2474,6 +2529,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the local read-only autostart activation gate.",
     )
     autostart_preflight.set_defaults(func=cmd_autostart)
+    autostart_plan = autostart_sub.add_parser(
+        "plan",
+        help="Read-only per-owner cron-to-systemd plan; never permits cutover.",
+    )
+    autostart_plan.add_argument("--expected-hostname", required=True)
+    autostart_plan.add_argument("--expected-uid", required=True, type=int)
+    autostart_plan.add_argument(
+        "--expected-port", required=True, type=int,
+        choices=range(1, 65536), metavar="PORT",
+    )
+    autostart_plan.add_argument(
+        "--component",
+        required=True,
+        choices=(
+            "server",
+            "tunnel",
+            "topology-heartbeat",
+            "github-watcher",
+            "completion-watcher",
+            "agent-bus-worker",
+            "fabric-agent-qualification",
+            "fabric-live-overview",
+        ),
+    )
+    autostart_plan.set_defaults(func=cmd_autostart)
     autostart_install = autostart_sub.add_parser(
         "install",
         help="Install and start managed loopback Runner MCP user services.",

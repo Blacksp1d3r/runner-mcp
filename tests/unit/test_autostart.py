@@ -524,6 +524,51 @@ def test_fabric_agent_qualification_unit_is_optional_and_contains_no_credentials
     assert "token" not in content.casefold()
 
 
+def test_systemd_user_status_does_not_create_absent_unit_tree(
+    tmp_path: Path,
+) -> None:
+    """Read-only inspection must never bootstrap files or call systemctl."""
+    unit_dir = tmp_path / "uncreated" / "units"
+    systemctl = FakeSystemctl()
+
+    rows = user_service_status(unit_dir=unit_dir, runner=systemctl)
+
+    assert len(rows) == len(autostart_module.KNOWN_UNITS)
+    assert all(not row.installed and not row.enabled and not row.active for row in rows)
+    assert not unit_dir.exists()
+    assert not unit_dir.parent.exists()
+    assert systemctl.calls == []
+
+
+@pytest.mark.parametrize("target_type", ["file", "symlink", "dangling_symlink"])
+def test_systemd_user_status_rejects_unsafe_unit_dir_without_writes(
+    tmp_path: Path,
+    target_type: str,
+) -> None:
+    """Foreign entries cannot be overwritten or silently reclassified."""
+    unit_dir = tmp_path / "units"
+    referent = tmp_path / "referent"
+    if target_type == "file":
+        unit_dir.write_text("foreign", encoding="utf-8")
+    elif target_type == "symlink":
+        referent.mkdir()
+        unit_dir.symlink_to(referent, target_is_directory=True)
+    else:
+        unit_dir.symlink_to(referent, target_is_directory=True)
+    systemctl = FakeSystemctl()
+
+    with pytest.raises(AutostartError, match="unit directory is unavailable"):
+        user_service_status(unit_dir=unit_dir, runner=systemctl)
+
+    assert systemctl.calls == []
+    if target_type == "file":
+        assert unit_dir.read_text(encoding="utf-8") == "foreign"
+    else:
+        assert unit_dir.is_symlink()
+        assert unit_dir.readlink() == referent
+        assert not (referent / SERVER_UNIT).exists()
+
+
 def test_systemd_user_status_does_not_misreport_down_when_session_bus_unreachable(
     tmp_path: Path,
 ) -> None:

@@ -610,12 +610,15 @@ def remove_user_services(
 ) -> list[str]:
     _run_systemctl(["show-environment"], runner=runner)
     target = _safe_unit_dir(unit_dir or default_user_unit_dir())
-    removed: list[str] = []
+    # Validate every known target before disabling or removing any unit.
+    # An unsafe later peer must not leave a partially removed service set.
     for unit_name in KNOWN_UNITS:
         path = target / unit_name
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
         if not path.exists():
             continue
-        if path.is_symlink() or not path.is_file():
+        if not path.is_file():
             raise AutostartError("autostart unit path is unsafe")
         try:
             content = path.read_text(encoding="utf-8")
@@ -625,6 +628,11 @@ def remove_user_services(
             raise AutostartError(
                 "refusing to remove a user service not managed by Runner MCP"
             )
+    removed: list[str] = []
+    for unit_name in KNOWN_UNITS:
+        path = target / unit_name
+        if not path.exists():
+            continue
         _run_systemctl(["disable", "--now", unit_name], runner=runner, check=False)
         try:
             path.unlink()

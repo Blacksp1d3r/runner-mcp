@@ -771,7 +771,7 @@ def test_install_refuses_symlinked_parent_without_unit_writes(tmp_path: Path) ->
             activation_permit=AutostartActivationPermit.clear(),
         )
     assert not (real / "systemd" / "user").exists()
-    assert systemctl.calls == []
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
 
 
 def test_remove_refuses_symlinked_parent_without_systemctl_or_writes(tmp_path: Path) -> None:

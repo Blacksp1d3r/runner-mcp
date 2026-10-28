@@ -92,13 +92,19 @@ done
 [[ "$(readlink "$link")" == "$target" ]]
 [[ "$(systemctl --user is-enabled "$unit")" == "enabled" ]]
 # Simulate rollback of an inactive unit candidate by restoring its original bytes.
+baseline_restart="$(systemctl --user show "$unit" --property=RestartUSec --value)"
+[[ -n "$baseline_restart" ]]
 cp "$target" "$target.previous"
 sed -i 's/RestartSec=1/RestartSec=2/' "$target"
 systemctl --user daemon-reload
+candidate_restart="$(systemctl --user show "$unit" --property=RestartUSec --value)"
+[[ "$candidate_restart" != "$baseline_restart" ]]
 cmp -s "$target" "$target.previous" && exit 1
 mv "$target.previous" "$target"
 systemctl --user daemon-reload
 grep -Fx 'RestartSec=1' "$target" >/dev/null
+restored_restart="$(systemctl --user show "$unit" --property=RestartUSec --value)"
+[[ "$restored_restart" == "$baseline_restart" ]]
 systemctl --user disable --now "$unit"
 [[ "$(systemctl --user is-enabled "$unit" 2>/dev/null || :)" != "enabled" ]]
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]

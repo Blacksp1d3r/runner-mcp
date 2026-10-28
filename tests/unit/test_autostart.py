@@ -530,6 +530,48 @@ def test_install_refuses_to_replace_foreign_unit(tmp_path: Path) -> None:
     assert unit_path.read_text(encoding="utf-8") == foreign_content
 
 
+@pytest.mark.parametrize(
+    ("invalid_optional", "reason"),
+    [
+        ("foreign", "not managed"),
+        ("dangling_symlink", "unit path is unsafe"),
+    ],
+)
+def test_install_preflight_rejects_obsolete_foreign_unit_before_server_rewrite(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    invalid_optional: str,
+    reason: str,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    server = unit_dir / SERVER_UNIT
+    previous = MANAGED_MARKER + "\noriginal trusted unit\n"
+    server.write_text(previous, encoding="utf-8")
+    server.chmod(0o600)
+    obsolete = unit_dir / TUNNEL_UNIT
+    if invalid_optional == "foreign":
+        obsolete.write_text("[Service]\nExecStart=/bin/false\n", encoding="utf-8")
+    else:
+        obsolete.symlink_to(tmp_path / "not-existing")
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr("runner_mcp.cron_autostart.cron_available", lambda: False)
+
+    with pytest.raises(AutostartError, match=reason):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert server.read_text(encoding="utf-8") == previous
+    assert obsolete.exists() if invalid_optional == "foreign" else obsolete.is_symlink()
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
+
+
 def test_write_managed_unit_uses_private_atomic_replace(tmp_path: Path) -> None:
     target = tmp_path / SERVER_UNIT
     target.write_text(MANAGED_MARKER + "\nold\n", encoding="utf-8")

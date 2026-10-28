@@ -171,6 +171,27 @@ def test_filename_redaction_is_recursive_and_does_not_leak_paths() -> None:
     _never_live_authority(two)
 
 
+def test_real_imported_package_modules_are_observable_in_test_process() -> None:
+    import importlib
+
+    import runner_mcp
+
+    modules = {
+        name: importlib.import_module(name)
+        for name in ("runner_mcp", "runner_mcp.server", "runner_mcp.build_identity")
+    }
+    result = observe_current_process_modules(
+        imported_version=runner_mcp.__version__,
+        installed_distribution_version=runner_mcp.__version__,
+        modules=modules,
+    )
+    assert result["loadedCodeObservationComplete"] is True
+    assert result["loadedCodeModuleCount"] == 2
+    assert result["loadedCodeObjectCount"] >= 2
+    assert len(result["loadedCodeObjectDigest"]) == 64
+    _never_live_authority(result)
+
+
 def test_missing_code_objects_cannot_be_misreported_as_measured() -> None:
     result = _check()
     assert result["loadedCodeObjectDigest"] is None

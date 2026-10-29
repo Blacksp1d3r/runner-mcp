@@ -1050,3 +1050,110 @@ def test_q7_custom_config_does_not_adopt_default_owner_stage(
     _append_q7(custom, {_Q7_MODE: "subscription-coding-q7-v1"})
     with pytest.raises(FabricAgentQualificationError, match="Q7.*incomplete"):
         qualification.qualification_agent_environment_additions(custom.config_dir)
+
+
+_QWEN_VALUES = {
+    "RUNNER_FABRIC_CODING_QWEN_PROJECT_ID": "aifordable",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_PROVIDER": "github",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_REPOSITORY": "Blacksp1d3r/AIfordable",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_CHECKOUT": "/private/qwen/source",
+    "RUNNER_FABRIC_CODING_QWEN_WORKSPACE_ROOT": "/private/qwen/workspaces",
+    "RUNNER_FABRIC_CODING_QWEN_WORKER_URL": "http://10.253.117.2:8031/mcp",
+    "RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN": "q" * 48,
+}
+
+
+def _append_qwen(paths, data: dict[str, str]) -> None:
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in data.items():
+            handle.write(f"{key}={value}\n")
+
+
+def test_qwen_mode_is_inert_without_private_owner_opt_in(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    values = qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_QWEN_") for key in values)
+    assert "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE" not in values
+
+
+def test_qwen_mode_forwards_only_exact_owner_private_fields(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **_QWEN_VALUES,
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+    })
+    values = qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert {key: values[key] for key in _QWEN_VALUES} == _QWEN_VALUES
+    assert values["RUNNER_FABRIC_AGENT_QUALIFICATION_MODE"] == (
+        "subscription-coding-qwen-v1"
+    )
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in values)
+
+
+@pytest.mark.parametrize("missing", tuple(_QWEN_VALUES))
+def test_qwen_mode_rejects_missing_private_binding_without_exec(
+    tmp_path: Path, missing: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **{k: v for k, v in _QWEN_VALUES.items() if k != missing},
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+    })
+    called: list[object] = []
+    with pytest.raises(FabricAgentQualificationError, match="Qwen.*incomplete"):
+        run_fabric_agent_qualification_process(
+            paths.config_dir, execve=lambda *args: called.append(args),
+        )
+    assert called == []
+
+
+@pytest.mark.parametrize(("field", "invalid"), [
+    ("RUNNER_FABRIC_CODING_QWEN_PROJECT_ID", "another"),
+    ("RUNNER_FABRIC_CODING_QWEN_SOURCE_PROVIDER", "gitlab"),
+    ("RUNNER_FABRIC_CODING_QWEN_SOURCE_REPOSITORY", "Other/Repo"),
+    ("RUNNER_FABRIC_CODING_QWEN_SOURCE_CHECKOUT", "relative/source"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKSPACE_ROOT", "/private/../escape"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_URL", "http://10.253.117.3:8031/mcp"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_URL", "http://10.253.117.2:80/mcp"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_URL", "http://guest:bad@10.253.117.2:8031/mcp"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN", "short"),
+])
+def test_qwen_wrong_source_guest_or_secret_rejected(
+    tmp_path: Path, field: str, invalid: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **_QWEN_VALUES,
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+        field: invalid,
+    })
+    with pytest.raises(FabricAgentQualificationError, match="Qwen.*invalid"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_qwen_rejects_mixed_q7_and_unknown_source_keys(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **_QWEN_VALUES,
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+        "RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN": "c" * 48,
+    })
+    with pytest.raises(FabricAgentQualificationError, match="Q7|Qwen"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_qwen_source_does_not_autoselect_from_ambient_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    monkeypatch.setenv("RUNNER_FABRIC_AGENT_QUALIFICATION_MODE", "subscription-coding-qwen-v1")
+    monkeypatch.setenv("RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN", "ambient-no")
+    values = qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_QWEN_") for key in values)
+    assert "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE" not in values

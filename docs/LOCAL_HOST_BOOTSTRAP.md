@@ -94,6 +94,46 @@ and a fresh isolated launcher directory, without changing ~/.local/bin.
 It checks installed pip check and runner-mcp --help. A failed stage
 must be diagnosed, not retried automatically. Never use a sudo invocation.
 
+## Offline local wheelhouse (isolated target; no new network route)
+
+The **existing** source-pinned operator-only `plan` and `stage` support
+an optional `--wheelhouse /ABSOLUTE/OWNER-PRIVATE-WHEELS` argument.
+This is for a physically controlled isolated Linux target, not a new updater
+or an Agent Bus/relay authority.
+
+First obtain a **complete CPython 3.12 / Linux x86_64** binary-wheel dependency
+closure for the exact approved release and its `pyproject.toml` build
+requirements on an independently connected, approved operator machine.
+Transfer it over the already authorized operator-controlled offline media/path.
+Do **not** use an arbitrary operating-system wheelhouse, a Windows-only wheel,
+a source distribution, an extracted foreign venv, or the separate Fabric release
+wheel set as if it were a complete Runner-MCP dependency closure.
+
+The wheelhouse must be an absolute, owner-owned, private directory (0700),
+with only regular, owner-owned 0600, single-hardlink `.whl` files.
+Symlinks, other file types, public permissions, empty sets and overlarge
+bundles are refused. The SHA256 of sorted wheel names, sizes and **actual
+file bytes** becomes part of the existing local plan digest. The guest
+still checks the exact source commit, approved Git origin and `install.sh`
+SHA256 in the original private manifest.
+
+Use exactly the same `--wheelhouse` argument for both `plan` and
+`stage`. `plan` is read-only; no stage files are created. During `stage`,
+only the existing upstream installer runs, with `PIP_NO_INDEX=1`,
+`PIP_FIND_LINKS` set to the validated local directory, and pip config
+disabled. No pip index, extra internet, new service, relay, credential,
+SSH listener or user launcher is enabled. The wheel set is rehashed before
+any success receipt; changed bytes cause failure and a preserved partial
+stage, **never an automatic rerun**.
+
+These checks establish file custody and a pinned plan; **they do not prove
+that a wheel set is complete, safe, independently approved or compatible**.
+Before a one-shot stage, require a validated real offline pip dependency
+resolution (including isolated setuptools/build requirements) on a
+matching disposable Python 3.12 Linux environment and separately confirm
+the exact original VM recovery allowance. Neither an online validation
+CI run nor a Fabric bundle proves offline guest installation.
+
 ## Diagnose a blocked physical stage without rerunning it (RMCP-F-0030)
 
 A real operator-local stage returned `existing_installer_failed` on the new

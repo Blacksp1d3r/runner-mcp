@@ -131,6 +131,154 @@ def test_rejects_malformed_private_authority_manifest(
         _plan(manifest, source, tmp_path)
 
 
+@pytest.fixture
+def offline_wheelhouse(tmp_path: Path) -> Path:
+    wheelhouse = tmp_path / "private-wheels"
+    wheelhouse.mkdir(mode=0o700)
+    (wheelhouse / "example-1.0-py3-none-any.whl").write_bytes(b"synthetic-wheel-bytes")
+    (wheelhouse / "example-1.0-py3-none-any.whl").chmod(0o600)
+    return wheelhouse
+
+
+def test_offline_wheelhouse_plan_binds_exact_bytes_and_remains_readonly(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+    offline_wheelhouse: Path,
+) -> None:
+    online_plan = _plan(manifest, source, tmp_path)
+    offline_plan = bootstrap.plan_local_stage(
+        manifest, source[0], home=tmp_path / "home", machine_digest="a" * 64,
+        wheelhouse=offline_wheelhouse,
+    )
+    assert online_plan.digest != offline_plan.digest
+    assert offline_plan.asset_id == "AF-HOST-0000"
+    assert not (tmp_path / "home").exists()
+
+    wheel = offline_wheelhouse / "example-1.0-py3-none-any.whl"
+    wheel.write_bytes(b"different-wheel-bytes")
+    changed_plan = bootstrap.plan_local_stage(
+        manifest, source[0], home=tmp_path / "home", machine_digest="a" * 64,
+        wheelhouse=offline_wheelhouse,
+    )
+    assert changed_plan.digest != offline_plan.digest
+    with pytest.raises(bootstrap.LocalBootstrapError, match="plan_confirmation_mismatch"):
+        bootstrap.stage_local_runner_mcp(
+            manifest, source[0], home=tmp_path / "home",
+            machine_digest="a" * 64, wheelhouse=offline_wheelhouse,
+            accept_digest=offline_plan.digest,
+        )
+    assert not (tmp_path / "home").exists()
+
+
+@pytest.mark.parametrize("problem", [
+    "directory_public", "wheel_public", "wheel_symlink",
+    "extra_file", "empty_directory", "relative_path",
+])
+def test_offline_wheelhouse_rejects_unsafe_or_ambiguous_custody(
+    problem: str, manifest: Path, source: tuple[Path, str, str],
+    tmp_path: Path, offline_wheelhouse: Path,
+) -> None:
+    wheel = offline_wheelhouse / "example-1.0-py3-none-any.whl"
+    selected = offline_wheelhouse
+    if problem == "directory_public":
+        selected.chmod(0o755)
+    elif problem == "wheel_public":
+        wheel.chmod(0o644)
+    elif problem == "wheel_symlink":
+        wheel.unlink()
+        wheel.symlink_to(manifest)
+    elif problem == "extra_file":
+        (selected / "notes.txt").write_text("not a wheel")
+    elif problem == "empty_directory":
+        wheel.unlink()
+    elif problem == "relative_path":
+        selected = Path("relative-wheels")
+
+    with pytest.raises(bootstrap.LocalBootstrapError, match="offline_wheelhouse_"):
+        bootstrap.plan_local_stage(
+            manifest, source[0], home=tmp_path / "home",
+            machine_digest="a" * 64, wheelhouse=selected,
+        )
+    assert not (tmp_path / "home").exists()
+
+
+def test_offline_stage_uses_only_pinned_local_wheels_without_service_activation(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+    offline_wheelhouse: Path,
+) -> None:
+    home = tmp_path / "home"
+    plan = bootstrap.plan_local_stage(
+        manifest, source[0], home=home, machine_digest="a" * 64,
+        wheelhouse=offline_wheelhouse,
+    )
+    observed: list[list[str]] = []
+
+    def fake_runner(args, **kw):
+        observed.append(args)
+        env = kw["env"]
+        assert env["PIP_NO_INDEX"] == "1"
+        assert env["PIP_FIND_LINKS"] == str(offline_wheelhouse)
+        assert env["PIP_CONFIG_FILE"] == "/dev/null"
+        assert env["PIP_NO_CACHE_DIR"] == "1"
+        assert "GITHUB_TOKEN" not in env
+        assert "RUNNER_FABRIC_RELAY_CREDENTIAL" not in env
+        assert kw["stdin"] is subprocess.DEVNULL
+        if args[0] == "/usr/bin/bash":
+            bin_root = plan.stage_root / "runtime" / "venv" / "bin"
+            bin_root.mkdir(parents=True)
+            (bin_root / "runner-mcp").write_text("synthetic")
+            (bin_root / "runner-mcp").chmod(0o700)
+            (bin_root / "python").write_text("synthetic")
+            (plan.stage_root / "bin" / "runner-mcp").symlink_to(
+                bin_root / "runner-mcp"
+            )
+        return subprocess.CompletedProcess(args, 0)
+
+    receipt = bootstrap.stage_local_runner_mcp(
+        manifest, source[0], accept_digest=plan.digest,
+        home=home, machine_digest="a" * 64,
+        wheelhouse=offline_wheelhouse, runner=fake_runner,
+    )
+    assert len(observed) == 3
+    assert receipt["stage_complete"] is True
+    assert receipt["service_activation"] is False
+    assert receipt["relay_enrollment"] is False
+    assert receipt["original_client_ack"] is False
+
+
+def test_offline_wheel_mutation_during_install_does_not_issue_success(
+    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+    offline_wheelhouse: Path,
+) -> None:
+    home = tmp_path / "home"
+    plan = bootstrap.plan_local_stage(
+        manifest, source[0], home=home, machine_digest="a" * 64,
+        wheelhouse=offline_wheelhouse,
+    )
+
+    def fake_runner(args, **kw):
+        if args[0] == "/usr/bin/bash":
+            bin_root = plan.stage_root / "runtime" / "venv" / "bin"
+            bin_root.mkdir(parents=True)
+            (bin_root / "runner-mcp").write_text("synthetic")
+            (bin_root / "runner-mcp").chmod(0o700)
+            (bin_root / "python").write_text("synthetic")
+            (plan.stage_root / "bin" / "runner-mcp").symlink_to(
+                bin_root / "runner-mcp"
+            )
+            (offline_wheelhouse / "example-1.0-py3-none-any.whl").write_bytes(
+                b"changed-after-plan"
+            )
+        return subprocess.CompletedProcess(args, 0)
+
+    with pytest.raises(bootstrap.LocalBootstrapError, match="offline_wheelhouse_changed"):
+        bootstrap.stage_local_runner_mcp(
+            manifest, source[0], accept_digest=plan.digest,
+            home=home, machine_digest="a" * 64,
+            wheelhouse=offline_wheelhouse, runner=fake_runner,
+        )
+    assert not (plan.stage_root / "stage-result.json").exists()
+
+
 def test_wrong_host_rejected_before_any_stage(
     manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
 ) -> None:

@@ -247,9 +247,66 @@ def _pinned_build_copy(source: Path, destination: Path, commit: str) -> Path:
     return build
 
 
+def _offline_wheelhouse_sha256(directory: Path) -> str:
+    """Read-only admission of one owner-private, bounded local wheel set.
+
+    The digest binds the caller's plan to the exact wheel names and bytes,
+    not to mutable ambient pip configuration or any network package index.
+    """
+    if not directory.is_absolute():
+        raise LocalBootstrapError("offline_wheelhouse_path_invalid")
+    _reject_symlink_ancestors(directory)
+    try:
+        root = directory.lstat()
+        if (not stat.S_ISDIR(root.st_mode) or root.st_uid != os.geteuid()
+                or root.st_mode & 0o077):
+            raise LocalBootstrapError("offline_wheelhouse_custody_invalid")
+        names_and_hashes: list[tuple[str, int, str]] = []
+        total = 0
+        for entry in sorted(directory.iterdir()):
+            if len(names_and_hashes) >= 128:
+                raise LocalBootstrapError("offline_wheelhouse_limit_exceeded")
+            metadata = entry.lstat()
+            if (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]*\.whl", entry.name)
+                    or not stat.S_ISREG(metadata.st_mode)
+                    or metadata.st_uid != os.geteuid()
+                    or metadata.st_mode & 0o077 or metadata.st_nlink != 1):
+                raise LocalBootstrapError("offline_wheelhouse_custody_invalid")
+            if not 0 < metadata.st_size <= 128 * 1024 * 1024:
+                raise LocalBootstrapError("offline_wheelhouse_size_invalid")
+            total += metadata.st_size
+            if total > 512 * 1024 * 1024:
+                raise LocalBootstrapError("offline_wheelhouse_limit_exceeded")
+            digest = hashlib.sha256()
+            flags = os.O_RDONLY
+            if hasattr(os, "O_NOFOLLOW"):
+                flags |= os.O_NOFOLLOW
+            fd = os.open(entry, flags)
+            with os.fdopen(fd, "rb") as stream:
+                opened = os.fstat(stream.fileno())
+                if (not stat.S_ISREG(opened.st_mode)
+                        or opened.st_ino != metadata.st_ino
+                        or opened.st_dev != metadata.st_dev
+                        or opened.st_size != metadata.st_size):
+                    raise LocalBootstrapError("offline_wheelhouse_changed")
+                for chunk in iter(lambda: stream.read(65536), b""):
+                    digest.update(chunk)
+            names_and_hashes.append((entry.name, metadata.st_size, digest.hexdigest()))
+        if not names_and_hashes:
+            raise LocalBootstrapError("offline_wheelhouse_empty")
+        return _sha256(
+            json.dumps(names_and_hashes, separators=(",", ":")).encode("ascii")
+        )
+    except LocalBootstrapError:
+        raise
+    except (OSError, ValueError) as exc:
+        raise LocalBootstrapError("offline_wheelhouse_unavailable") from exc
+
+
 def plan_local_stage(
     manifest_path: Path, source_root: Path, *,
     home: Path | None = None, machine_digest: str | None = None,
+    wheelhouse: Path | None = None,
 ) -> LocalStagePlan:
     if sys.version_info < (3, 12) or sys.platform != "linux":
         raise LocalBootstrapError("runtime_unsupported")
@@ -278,6 +335,8 @@ def plan_local_stage(
         "installer_sha256": manifest.installer_sha256,
         "stage_only": True,
     }
+    if wheelhouse is not None:
+        canonical["offline_wheelhouse_sha256"] = _offline_wheelhouse_sha256(wheelhouse)
     digest = _sha256(json.dumps(canonical, sort_keys=True, separators=(",", ":")).encode())
     return LocalStagePlan(
         digest=digest, source_commit=manifest.source_commit,
@@ -334,12 +393,17 @@ def stage_local_runner_mcp(
     manifest_path: Path, source_root: Path, *, accept_digest: str,
     home: Path | None = None, machine_digest: str | None = None,
     runner: Callable[..., subprocess.CompletedProcess[bytes]] = subprocess.run,
+    wheelhouse: Path | None = None,
 ) -> dict[str, object]:
     """Stage via the EXISTING installer; no service or control-plane activation."""
     if type(accept_digest) is not str or _HEX64.fullmatch(accept_digest) is None:
         raise LocalBootstrapError("explicit_plan_confirmation_required")
     plan = plan_local_stage(
         manifest_path, source_root, home=home, machine_digest=machine_digest,
+        wheelhouse=wheelhouse,
+    )
+    expected_wheelhouse_sha256 = (
+        _offline_wheelhouse_sha256(wheelhouse) if wheelhouse is not None else None
     )
     initial_manifest = HostManifest.load(manifest_path)
     if plan.digest != accept_digest:
@@ -373,6 +437,12 @@ def stage_local_runner_mcp(
         "PIP_NO_INPUT": "1",
         "PIP_NO_CACHE_DIR": "1",
     }
+    if wheelhouse is not None:
+        # The EXISTING install.sh uses pip; no new installer or network route.
+        # Ambient pip configuration is excluded even for this local option.
+        environment["PIP_NO_INDEX"] = "1"
+        environment["PIP_FIND_LINKS"] = str(wheelhouse)
+        environment["PIP_CONFIG_FILE"] = "/dev/null"
     try:
         build_source = _pinned_build_copy(source_root, stage_root, plan.source_commit)
         result = runner(
@@ -403,6 +473,10 @@ def stage_local_runner_mcp(
         current_manifest = HostManifest.load(manifest_path)
         if current_manifest != initial_manifest:
             raise LocalBootstrapError("manifest_changed_during_stage")
+        if wheelhouse is not None and (
+            _offline_wheelhouse_sha256(wheelhouse) != expected_wheelhouse_sha256
+        ):
+            raise LocalBootstrapError("offline_wheelhouse_changed")
         _verify_source(source_root, current_manifest)
         if (machine_digest if machine_digest is not None else host_identity_digest()) != (
             current_manifest.machine_id_sha256
@@ -542,6 +616,7 @@ def main(argv: list[str] | None = None) -> int:
         command.add_argument("--manifest", type=Path, required=True)
         if name != "diagnose":
             command.add_argument("--source", type=Path, required=True)
+            command.add_argument("--wheelhouse", type=Path)
         if name == "stage":
             command.add_argument("--accept-plan", required=True)
     args = parser.parse_args(argv)
@@ -549,13 +624,16 @@ def main(argv: list[str] | None = None) -> int:
         if args.action == "identity":
             print(json.dumps({"machine_id_sha256": host_identity_digest()}))
         elif args.action == "plan":
-            plan = plan_local_stage(args.manifest, args.source)
+            plan = plan_local_stage(
+                args.manifest, args.source, wheelhouse=args.wheelhouse
+            )
             print(json.dumps(plan.public_dict(), sort_keys=True))
         elif args.action == "diagnose":
             print(json.dumps(diagnose_failed_stage(args.manifest), sort_keys=True))
         else:
             state = stage_local_runner_mcp(
-                args.manifest, args.source, accept_digest=args.accept_plan
+                args.manifest, args.source, accept_digest=args.accept_plan,
+                wheelhouse=args.wheelhouse,
             )
             print(json.dumps(state, sort_keys=True))
         return 0

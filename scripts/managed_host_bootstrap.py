@@ -267,7 +267,7 @@ def _offline_wheelhouse_sha256(directory: Path) -> str:
             if len(names_and_hashes) >= 128:
                 raise LocalBootstrapError("offline_wheelhouse_limit_exceeded")
             metadata = entry.lstat()
-            if (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]*\\.whl", entry.name)
+            if (not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]*\.whl", entry.name)
                     or not stat.S_ISREG(metadata.st_mode)
                     or metadata.st_uid != os.geteuid()
                     or metadata.st_mode & 0o077 or metadata.st_nlink != 1):

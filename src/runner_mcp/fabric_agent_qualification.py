@@ -4,6 +4,7 @@ import os
 import stat
 from collections.abc import Callable
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from .agent_bus_worker import (
     _fixed_runner_fabric_executable,
@@ -80,6 +81,26 @@ _Q7_FIXED_VALUES = {
 _Q7_PATH_KEYS = (
     "RUNNER_FABRIC_CODING_Q7_SOURCE_CHECKOUT",
     "RUNNER_FABRIC_CODING_Q7_WORKSPACE_ROOT",
+)
+_QWEN_MODE = "subscription-coding-qwen-v1"
+_QWEN_PREFIX = "RUNNER_FABRIC_CODING_QWEN_"
+_QWEN_KEYS = (
+    "RUNNER_FABRIC_CODING_QWEN_PROJECT_ID",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_PROVIDER",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_REPOSITORY",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_CHECKOUT",
+    "RUNNER_FABRIC_CODING_QWEN_WORKSPACE_ROOT",
+    "RUNNER_FABRIC_CODING_QWEN_WORKER_URL",
+    "RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN",
+)
+_QWEN_FIXED_VALUES = {
+    "RUNNER_FABRIC_CODING_QWEN_PROJECT_ID": "aifordable",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_PROVIDER": "github",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_REPOSITORY": "Blacksp1d3r/AIfordable",
+}
+_QWEN_PATH_KEYS = (
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_CHECKOUT",
+    "RUNNER_FABRIC_CODING_QWEN_WORKSPACE_ROOT",
 )
 
 
@@ -173,6 +194,7 @@ def qualification_agent_environment_additions(
     # Build and validate a complete Q7 group BEFORE modifying the launch
     # environment. No token values are ever included in failure messages.
     additions.update(_q7_private_environment_additions(values, paths.config_dir))
+    additions.update(_qwen_private_environment_additions(values))
     return additions
 
 
@@ -289,6 +311,61 @@ def _q7_private_environment_additions(
     if _Q7_MODE_KEY in values:
         candidate[_Q7_MODE_KEY] = _Q7_MODE
     return candidate
+
+
+def _qwen_private_environment_additions(values: dict[str, str]) -> dict[str, str]:
+    """Use one owner-private main-config opt-in, never ambient Qwen secrets.
+
+    No Qwen guest config file is created or discovered. Missing explicit mode
+    preserves the previously reserved/no-Qwen execution behavior.
+    """
+    invalid = "Runner Fabric Qwen qualification configuration is invalid"
+    mode = values.get(_Q7_MODE_KEY)
+    present = any(key.startswith(_QWEN_PREFIX) for key in values)
+    if not present and mode != _QWEN_MODE:
+        return {}
+    if (
+        mode != _QWEN_MODE
+        or any(key.startswith(_QWEN_PREFIX) and key not in _QWEN_KEYS for key in values)
+        or any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in values)
+    ):
+        raise FabricAgentQualificationError(invalid)
+    if not all(values.get(key, "").strip() for key in _QWEN_KEYS):
+        raise FabricAgentQualificationError(
+            "Runner Fabric Qwen qualification configuration is incomplete"
+        )
+    if any(values[key] != expected for key, expected in _QWEN_FIXED_VALUES.items()):
+        raise FabricAgentQualificationError(invalid)
+    if any(
+        len(values[key]) > 4096
+        or not Path(values[key]).is_absolute()
+        or ".." in Path(values[key]).parts
+        for key in _QWEN_PATH_KEYS
+    ):
+        raise FabricAgentQualificationError(invalid)
+    try:
+        parsed = urlsplit(values["RUNNER_FABRIC_CODING_QWEN_WORKER_URL"])
+        port = parsed.port
+    except ValueError as exc:
+        raise FabricAgentQualificationError(invalid) from exc
+    if (
+        parsed.scheme != "http"
+        or parsed.hostname != "10.253.117.2"
+        or port is None
+        or not 1024 <= port <= 65535
+        or parsed.netloc != f"10.253.117.2:{port}"
+        or parsed.path != "/mcp"
+        or parsed.username is not None
+        or parsed.password is not None
+        or parsed.query
+        or parsed.fragment
+    ):
+        raise FabricAgentQualificationError(invalid)
+    if not _valid_secret(values["RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN"]):
+        raise FabricAgentQualificationError(invalid)
+    additions = {_Q7_MODE_KEY: _QWEN_MODE}
+    _forward_private_values(values, additions, _QWEN_KEYS, invalid_message=invalid)
+    return additions
 
 
 def _af585_private_issuer_additions(config_dir: Path) -> dict[str, str]:

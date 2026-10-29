@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import hashlib
 import shutil
 import subprocess
 import sys
@@ -22,6 +23,7 @@ from runner_mcp.autostart import (
     AutostartError,
     _write_managed_unit,
     install_user_services,
+    plan_qualification_override_swap,
     remove_user_services,
     render_user_units,
     user_service_status,
@@ -1056,3 +1058,140 @@ def test_systemd_user_status_can_report_genuinely_disabled_services(
     assert not server.enabled
     assert not server.active
     assert systemctl.calls[0] == ["systemctl", "--user", "show-environment"]
+
+# Fixed source-only A7 handoff; no service, timer, update or restart is triggered.
+_OLD_QUALIFICATION_LAUNCHER = (
+    "/home/fixture/.local/share/runner-mcp-candidates/"
+    "0.1.38-old/bin/runner-mcp"
+)
+_NEW_QUALIFICATION_LAUNCHER = (
+    "/home/fixture/.local/share/runner-mcp-candidates/"
+    "0.1.131-new/install/venv/bin/runner-mcp"
+)
+
+
+def _qualification_override() -> bytes:
+    return (
+        "# old private override remains untouched\n"
+        "[Service]\n"
+        "ExecStart=\n"
+        "ExecStart=" + _OLD_QUALIFICATION_LAUNCHER
+        + " --config-dir /home/fixture/.config/runner-mcp"
+        + " fabric-agent-qualification run\n"
+    ).encode()
+
+
+def _plan_qualification_override(original: bytes, **kwargs):
+    digest = hashlib.sha256(original).hexdigest() if type(original) is bytes else "0" * 64
+    return plan_qualification_override_swap(
+        original_override=original,
+        expected_original_sha256=kwargs.get("expected_original_sha256", digest),
+        original_launcher=kwargs.get(
+            "original_launcher", _OLD_QUALIFICATION_LAUNCHER
+        ),
+        candidate_launcher=kwargs.get(
+            "candidate_launcher", _NEW_QUALIFICATION_LAUNCHER
+        ),
+    )
+
+
+def test_qualification_override_plan_exact_bytes_reversible_without_activation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = _qualification_override()
+    # Prove an in-memory-only plan: any attempted filesystem/service action is a defect.
+    def forbidden(*args, **kwargs):
+        raise AssertionError("planner must not perform any host operation")
+
+    monkeypatch.setattr(autostart_module.subprocess, "run", forbidden)
+    plan = _plan_qualification_override(original)
+    assert plan.original_override == original
+    assert plan.original_sha256 == hashlib.sha256(original).hexdigest()
+    assert plan.candidate_sha256 == hashlib.sha256(plan.candidate_override).hexdigest()
+    assert plan.change_scope == "one_fixed_execstart_executable"
+    assert plan.candidate_override.count(b"ExecStart=") == 2
+    assert plan.candidate_override == original.replace(
+        _OLD_QUALIFICATION_LAUNCHER.encode(),
+        _NEW_QUALIFICATION_LAUNCHER.encode(),
+        1,
+    )
+    assert plan.candidate_override.replace(
+        _NEW_QUALIFICATION_LAUNCHER.encode(),
+        _OLD_QUALIFICATION_LAUNCHER.encode(),
+        1,
+    ) == original
+    assert plan.activation_authorized is False
+    assert plan.rollback_verified is False
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda s: s.replace(b"ExecStart=\n", b""),
+        lambda s: s.replace(b"ExecStart=\n", b"ExecStart=\nExecStart=\n"),
+        lambda s: s.replace(b"[Service]\n", b"[Service]\nEnvironment=X=y\n"),
+        lambda s: s.replace(b"[Service]\n", b"[Install]\n"),
+        lambda s: s.replace(b"fabric-agent-qualification run", b"server run"),
+        lambda s: s.replace(b" --config-dir ", b" --config-dir /other --config-dir "),
+        lambda s: s.replace(b" fabric-agent-qualification run", b"; restart run"),
+        lambda s: s.replace(b"ExecStart=", b"ExecStartPre=", 1),
+        lambda s: s + b"ExecStart=/bin/sh\n",
+        lambda s: s[:-1],
+        lambda s: s.replace(b"\n", b"\r\n"),
+        lambda s: s + b"\x00",
+        lambda s: s + b"\xff",
+    ],
+)
+def test_qualification_override_plan_rejects_extra_or_unsafe_directives(
+    mutation,
+) -> None:
+    original = mutation(_qualification_override())
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(original)
+
+
+@pytest.mark.parametrize(
+    "bad_launcher",
+    [
+        "runner-mcp",
+        "/home/fixture/../escape/bin/runner-mcp",
+        "/home/fixture//bad/bin/runner-mcp",
+        "/home/fixture/bad;reboot/bin/runner-mcp",
+        "/home/fixture/$HOME/bin/runner-mcp",
+        "/home/fixture/%n/bin/runner-mcp",
+        "/home/fixture/x y/bin/runner-mcp",
+        "/home/fixture/bin/runner-mcp\\nExecStart=/bin/sh",
+        "/home/fixture/bin/runner-mcp-other",
+    ],
+)
+def test_qualification_override_plan_rejects_unqualified_candidate_path(
+    bad_launcher: str,
+) -> None:
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            _qualification_override(), candidate_launcher=bad_launcher
+        )
+
+
+def test_qualification_override_plan_denies_unpinned_or_same_release() -> None:
+    original = _qualification_override()
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            original, expected_original_sha256="0" * 64
+        )
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            original, candidate_launcher=_OLD_QUALIFICATION_LAUNCHER
+        )
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            original, original_launcher=_NEW_QUALIFICATION_LAUNCHER
+        )
+
+
+@pytest.mark.parametrize("invalid", [b"", b"A" * 8193, "text", None])
+def test_qualification_override_plan_requires_bounded_bytes(invalid) -> None:
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(invalid)

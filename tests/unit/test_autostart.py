@@ -1082,11 +1082,10 @@ def _qualification_override() -> bytes:
 
 
 def _plan_qualification_override(original: bytes, **kwargs):
+    digest = hashlib.sha256(original).hexdigest() if type(original) is bytes else "0" * 64
     return plan_qualification_override_swap(
         original_override=original,
-        expected_original_sha256=kwargs.get(
-            "expected_original_sha256", hashlib.sha256(original).hexdigest()
-        ),
+        expected_original_sha256=kwargs.get("expected_original_sha256", digest),
         original_launcher=kwargs.get(
             "original_launcher", _OLD_QUALIFICATION_LAUNCHER
         ),

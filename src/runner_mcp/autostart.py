@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from .agent_bus_worker import agent_bus_worker_configured
 from .autostart_activation import AutostartActivationPermit, require_clear_autostart_permit
@@ -44,6 +47,108 @@ KNOWN_UNITS = (
 
 class AutostartError(RuntimeError):
     """Safe user-service packaging failure without private command output."""
+
+
+@dataclass(frozen=True, slots=True)
+class QualificationOverrideSwapPlan:
+    """Private in-memory bytes only; neither rollback nor activation authority."""
+
+    original_sha256: str
+    candidate_sha256: str
+    candidate_override: bytes
+    original_override: bytes
+    change_scope: str = "one_fixed_execstart_executable"
+    activation_authorized: bool = False
+    rollback_verified: bool = False
+
+
+def _fixed_runner_mcp_launcher(value: str) -> bool:
+    """Constrain both executable names without resolving or touching the host."""
+
+    return (
+        type(value) is str
+        and value.startswith("/")
+        and len(value) <= 1024
+        and not any(part in (".", "..") for part in value.split("/"))
+        and not any(char.isspace() or ord(char) < 32 for char in value)
+        and str(PurePosixPath(value)) == value
+        and value.endswith("/bin/runner-mcp")
+    )
+
+
+def plan_qualification_override_swap(
+    *,
+    original_override: bytes,
+    expected_original_sha256: str,
+    original_launcher: str,
+    candidate_launcher: str,
+) -> QualificationOverrideSwapPlan:
+    """Plan an exact one-line change to an already-approved private override.
+
+    No filesystem access, systemctl, write, implicit release admission or
+    watchdog. A7 must independently attest real owner, paths, runtime, retained
+    original bytes, protected rollback and same-client ACK before applying.
+    """
+    invalid = "fixed qualification override plan is unqualified"
+    if (
+        type(original_override) is not bytes
+        or not 0 < len(original_override) <= 8192
+        or type(expected_original_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", expected_original_sha256) is None
+        or not _fixed_runner_mcp_launcher(original_launcher)
+        or not _fixed_runner_mcp_launcher(candidate_launcher)
+        or original_launcher == candidate_launcher
+    ):
+        raise AutostartError(invalid)
+    original_digest = hashlib.sha256(original_override).hexdigest()
+    if not hmac.compare_digest(original_digest, expected_original_sha256):
+        raise AutostartError(invalid)
+    try:
+        data = original_override.decode("utf-8", "strict")
+    except UnicodeError as exc:
+        raise AutostartError(invalid) from exc
+    if not data.endswith("\n") or "\r" in data or "\x00" in data:
+        raise AutostartError(invalid)
+    lines = data.splitlines(keepends=True)
+    effective = [
+        (i, line[:-1])
+        for i, line in enumerate(lines)
+        if line.strip() and not line.lstrip().startswith(("#", ";"))
+    ]
+    if (
+        len(effective) != 3
+        or effective[0][1] != "[Service]"
+        or effective[1][1] != "ExecStart="
+    ):
+        raise AutostartError(invalid)
+    index, command = effective[2]
+    prefix = "ExecStart=" + original_launcher
+    if not command.startswith(prefix + " "):
+        raise AutostartError(invalid)
+    tail = command[len(prefix):]
+    if (
+        not tail.startswith(" --config-dir ")
+        or not tail.endswith(" fabric-agent-qualification run")
+        or tail.count(" --config-dir ") != 1
+        or "\\" in tail
+        or any(ord(char) < 32 for char in tail)
+    ):
+        raise AutostartError(invalid)
+    lines[index] = "ExecStart=" + candidate_launcher + tail + "\n"
+    candidate_override = "".join(lines).encode("utf-8")
+    if candidate_override == original_override:
+        raise AutostartError(invalid)
+    # The exact one-path transformation MUST reverse byte for byte, including
+    # harmless original comments and whitespace; the caller retains custody.
+    lines[index] = "ExecStart=" + original_launcher + tail + "\n"
+    if "".join(lines).encode("utf-8") != original_override:
+        raise AutostartError(invalid)
+    return QualificationOverrideSwapPlan(
+        original_sha256=original_digest,
+        candidate_sha256=hashlib.sha256(candidate_override).hexdigest(),
+        candidate_override=candidate_override,
+        original_override=original_override,
+    )
 
 
 @dataclass(frozen=True, slots=True)

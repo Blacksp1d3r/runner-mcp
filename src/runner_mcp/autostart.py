@@ -70,9 +70,10 @@ def _fixed_runner_mcp_launcher(value: str) -> bool:
         and value.startswith("/")
         and len(value) <= 1024
         and not any(part in (".", "..") for part in value.split("/"))
-        and not any(char.isspace() or ord(char) < 32 for char in value)
+        and re.fullmatch(
+            r"/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*/bin/runner-mcp", value
+        ) is not None
         and str(PurePosixPath(value)) == value
-        and value.endswith("/bin/runner-mcp")
     )
 
 
@@ -127,11 +128,11 @@ def plan_qualification_override_swap(
         raise AutostartError(invalid)
     tail = command[len(prefix):]
     if (
-        not tail.startswith(" --config-dir ")
-        or not tail.endswith(" fabric-agent-qualification run")
-        or tail.count(" --config-dir ") != 1
-        or "\\" in tail
-        or any(ord(char) < 32 for char in tail)
+        re.fullmatch(
+            r" --config-dir /[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*"
+            r" fabric-agent-qualification run",
+            tail,
+        ) is None
     ):
         raise AutostartError(invalid)
     lines[index] = "ExecStart=" + candidate_launcher + tail + "\n"

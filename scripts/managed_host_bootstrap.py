@@ -27,7 +27,7 @@ _MANIFEST_FIELDS = frozenset({
 })
 _HEX40 = re.compile(r"[0-9a-f]{40}\Z")
 _HEX64 = re.compile(r"[0-9a-f]{64}\Z")
-_ASSET = re.compile(r"AF-HOST-[0-9]{4}\Z")
+_ASSET = re.compile(r"AF-(?:HOST|VM)-[0-9]{4}\Z")
 _SUBJECT = re.compile(r"runner:[a-z0-9][a-z0-9._:-]{0,119}\Z")
 _ORIGINS = frozenset({
     "https://github.com/Blacksp1d3r/runner-mcp.git",

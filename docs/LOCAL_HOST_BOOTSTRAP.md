@@ -18,8 +18,11 @@ activates** the host.
   the canonical runner-mcp GitHub origin. The preapproved SHA-256 of its
   **existing** install.sh must match.
 - Private operator manifest: regular 0600 file, owned by the invoking user,
-  without symlinks. Record the asset ID from the existing AIfordable
-  Infrastructure Authority; use a dedicated new runner subject. The
+  without symlinks. Record the exact registered physical-host `AF-HOST-xxxx` or
+  virtual-machine `AF-VM-xxxx` asset ID from the **existing** AIfordable
+  Infrastructure Authority; use a dedicated new runner subject. A VM ID is
+  valid for local non-serving stage identity only: it does **not** imply that
+  the VM or its owner is enrolled, updateable, recoverable or authorized. The
   machine_id_sha256 is a locally observed, operator-confirmed fingerprint
   and **not independent remote attestation**.
 - plan is read-only. stage requires exactly the full plan SHA-256.

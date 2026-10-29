@@ -94,8 +94,27 @@ def test_local_plan_does_not_create_any_file(
     assert result.public_dict()["original_client_ack"] is False
 
 
+@pytest.mark.parametrize("asset_id", ["AF-HOST-0000", "AF-VM-0004"])
+def test_registered_host_or_vm_plan_is_non_serving(
+    asset_id: str, manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+) -> None:
+    payload = json.loads(manifest.read_text())
+    payload["asset_id"] = asset_id
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
+    plan = _plan(manifest, source, tmp_path)
+    assert plan.asset_id == asset_id
+    assert plan.public_dict()["asset_id"] == asset_id
+    assert plan.public_dict()["service_activation"] is False
+    assert plan.public_dict()["relay_enrollment"] is False
+    assert not (tmp_path / "home").exists()
+
+
 @pytest.mark.parametrize(("field", "value", "reason"), [
     ("asset_id", "AF-HOST-xyz", "manifest_field_invalid"),
+    ("asset_id", "AF-VM-xyz", "manifest_field_invalid"),
+    ("asset_id", "AF-CTR-0004", "manifest_field_invalid"),
+    ("asset_id", "AF-SVC-0004", "manifest_field_invalid"),
+    ("asset_id", "AF-VM-00004", "manifest_field_invalid"),
     ("runner_subject", "runner:../../wrong", "manifest_field_invalid"),
     ("source_commit", "A" * 40, "manifest_field_invalid"),
     ("installer_sha256", "a" * 63, "manifest_field_invalid"),
@@ -172,9 +191,13 @@ def test_stage_requires_exact_plan_confirmation_before_mutation(
     assert not home.exists()
 
 
+@pytest.mark.parametrize("asset_id", ["AF-HOST-0000", "AF-VM-0004"])
 def test_stage_reuses_existing_installer_and_remains_unactivated(
-    manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
+    asset_id: str, manifest: Path, source: tuple[Path, str, str], tmp_path: Path,
 ) -> None:
+    payload = json.loads(manifest.read_text())
+    payload["asset_id"] = asset_id
+    manifest.write_text(json.dumps(payload), encoding="utf-8")
     home = tmp_path / "home"
     expected = _plan(manifest, source, tmp_path)
     observed_commands: list[list[str]] = []

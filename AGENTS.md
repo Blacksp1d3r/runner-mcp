@@ -1,3 +1,7 @@
+## Alle projectchats — onmiddellijk origineel toolblokkadebewijs vastleggen (2026-10-31)
+
+De **actuele** Library-standaard `/Standards/MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` is **v1.6**, met bindende §0 `TOOL_BLOCK_V1` voor iedere geweigerde tool-/API-/platformactie. Oudere versieverwijzingen hieronder blijven uitsluitend historisch voor die eerdere regels; ze vervangen de actuele §0 niet. Elke ChatGPT-, Codex-, Claude-, Qwen- en andere agentchat bewaart onmiddellijk de letterlijke **geredigeerde** foutmelding, tijd+zone, tool/actie, target, eventuele foutcode/HTTP/request-ID, uitkomst en onafhankelijke readback in bestaand issue/handover/Failure Museum. Onbekende of niet-getoonde IDs blijven `NIET GETOOND`; bij geweigerde logging moet het blok in dezelfde chat zichtbaar blijven als `IN_CHAT_ONLY`. Voor GitHub/ChatGPT-safety incidenten verwijs naar [Runner-Fabric #1935](https://github.com/Blacksp1d3r/Runner-Fabric/issues/1935). Nooit via alternatieve tool/transport een geweigerde veiligheidsactie omzeilen; werk parallel verder aan veilige, onafhankelijke taken.
+
 ## Verplichte uitvoeringsvolgorde — bewijs → tooltest → uitvoeren (27 oktober 2026)
 
 **Dit is de operationele volgorde bij ELKE nieuwe taak of sessie; deze regel gaat vóór herhaalde diagnosevoorstellen hieronder.** Gebruik uitsluitend bestaande tools, de bestaande centrale AIfordable-topology en eerder gekwalificeerde resultaten.

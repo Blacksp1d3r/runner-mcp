@@ -20,7 +20,7 @@ import pytest
 class SyntheticHandler(BaseHTTPRequestHandler):
     """Fixed allowlisted JSON-RPC test handler, no real tool dispatch."""
 
-    def do_POST(self) -> None:  # noqa: N802
+    def do_POST(self) -> None:
         if self.path != "/synthetic-mcp":
             self.send_error(404)
             return
@@ -43,7 +43,7 @@ class SyntheticHandler(BaseHTTPRequestHandler):
                 raise ValueError("invalid request")
             arguments = request["params"]["arguments"]
             if not isinstance(arguments.get("payload"), str):
-                raise ValueError("invalid payload")
+                raise TypeError("invalid payload")
             answer = {
                 "jsonrpc": "2.0",
                 "id": request["id"],
@@ -98,7 +98,7 @@ def test_loopback_preserves_jsonrpc_correlation(payload_size: int) -> None:
     ).encode()
     with synthetic_server() as url:
         req = Request(url, data=body, headers={"Content-Type": "application/json"})
-        with urlopen(req, timeout=3) as response:  # noqa: S310
+        with urlopen(req, timeout=3) as response:
             assert response.status == 200
             result = json.loads(response.read())
     assert result == {
@@ -121,7 +121,6 @@ def test_loopback_unknown_tool_fails_closed() -> None:
             },
         }
     ).encode()
-    with synthetic_server() as url:
-        with pytest.raises(HTTPError) as exc:
-            urlopen(Request(url, data=body), timeout=3)  # noqa: S310
+    with synthetic_server() as url, pytest.raises(HTTPError) as exc:
+        urlopen(Request(url, data=body), timeout=3)
     assert exc.value.code == 400

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 0.1.143 kandidaat: bestaande getypeerde exact Release-admission delen
+
+- **SOURCE IN UITVOERING, CI NOG OPEN:** `FabricUpdateManager.release_assets_readiness` hergebruikt nu `_read_exact_release_admission`, die bij exact dezelfde bestaande fixed-repository GitHub Release- en tag-ref-aanroepen het getypeerde `ReleaseAdmission` retour geeft. Het oorspronkelijke publieke antwoord is exact `admission.public_dict()`; foutcategorieën/twee-endpoint 404-classificatie blijven hetzelfde. Daardoor is straks dezelfde originele assetmetadata bruikbaar voor de al gemergde source-only signed bytebatch v0.1.142 zonder dubbel transport.
+- **TESTS:** bestaande metadata-testroute, nieuwe typed ID/files/SHA-assertions, identieke publieke status en geen Downloads/Stage/Apply in een disposable mock-manager; normale full CI nodig voor source-acceptatie.
+- **HARD WAIT:** generieke signer-uitgever en operator-pins ontbreken bij Fabric #924. Geen echte release-import/stage/install, serving-host/wheel #669, lokale #341 restore, off-target A6 #942/A7 #943 of original-client ACK bewezen. Qwen V3/Claude/Fabric runtime onaangeraakt.
+
 ## 2026-11-06 — F30 #937 bron kandidaat 0.1.142: generieke signed assetbatch, volledig gescheiden van Claude/Qwen
 
 - **SOURCE IN UITVOERING, CI nog vereist:** `fabric_release_asset_bytes.fetch_exact_signed_fabric_bundle_bytes` verbindt de reeds gemergede signed roster (#939) + complete bundle (#940) + wheelhouse (#941) met de bestaande individuele vaste-repository downloader. Exact signer/source/metadata verplicht vóór enige asset-GET; alle geretourneerde bytes ook opnieuw op size+SHA256 gecontroleerd; manifest/COMMIT/SHA256SUMS/ZIP/RECORD volledig PASS vóór in-memory resultaat. Geen alternatieve transport-API, credentialbron, stage, `start_local`, filewrite of worker-aanroep.

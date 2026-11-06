@@ -1,8 +1,9 @@
-"""Offline ZIP, METADATA and RECORD qualification for a pinned Q7 wheelhouse.
+"""Offline ZIP, METADATA en RECORD-controle voor Q7 én generieke Fabric.
 
-Validates 29 independently pinned in-memory wheel assets after the existing
-33-asset manifest/byte comparator. This never downloads, writes, installs,
-executes package code, authenticates a pin signer or authorizes activation.
+De oude Q7-aanroep blijft exact 29 wheels controleren, terwijl de nieuwe
+signed-Fabric-aanroep dezelfde ZIP/RECORD-parser gebruikt voor 1..156 wheels.
+Beide paden zijn zuiver in geheugen: geen downloads, bestanden, installatie,
+package-uitvoering, eigen signerautoriteit of toestemming om te activeren.
 """
 from __future__ import annotations
 

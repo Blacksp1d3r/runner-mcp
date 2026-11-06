@@ -829,7 +829,7 @@ def test_local_readiness_rechecks_wheel_record_after_checksum_repin(tmp_path):
                            ["BOOTSTRAP.py"])
     (final / "SHA256SUMS").write_text(
         "".join(
-            f"{hashlib.sha256((final / name).read_bytes()).hexdigest()}  {name}\\n"
+            f"{hashlib.sha256((final / name).read_bytes()).hexdigest()}  {name}\n"
             for name in payload_names
         ),
         encoding="ascii",

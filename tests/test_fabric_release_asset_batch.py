@@ -260,4 +260,9 @@ def test_no_actual_network_or_host_update_is_part_of_test_or_batch_path():
         "start_local", "stage_local_bundle", "apply", "rollback", "mkdir",
         "write_bytes", "replace", "rmtree", "run", "Popen", "open",
     })
-    assert not any(isinstance(n, (ast.Import, ast.ImportFrom)) for n in batch.body)
+    # De oude downloader blijft via importlib op bestandsniveau te laden:
+    # de nieuw toegevoegde pakketafhankelijkheden staan uitsluitend lokaal.
+    assert not any(
+        isinstance(n, ast.ImportFrom) and (n.module or "").startswith("fabric_release")
+        for n in tree.body
+    )

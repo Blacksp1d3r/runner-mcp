@@ -1,3 +1,9 @@
+## 0.1.151 — F30/#341 bestaande ZIP/RECORD-hercontrole vóór lokale update (SOURCE-ONLY kandidaat)
+
+- De bestaande `FabricUpdateManager._validated_bootstrap` hergebruikt uitsluitend op het private `local-custody`-pad de AL BESTAANDE ZIP/METADATA/RECORD parser, na de bestaande vlakke bundel- en SHA256SUMS-controle. De originele externe GitHub Actions-route, publieke tools en ondertekende release-import blijven intact.
+- Hercontrole in `local_readiness`, vóór en na kopiëren naar de inactieve werkbundel en onmiddellijk vóór de bestaande lokale BOOTSTRAP-preflight. Daardoor mag een corrupte wheel met nadien opnieuw berekende SHA256SUMS niet worden geaccepteerd. Synthetische positieve 5/33/160-bundels en negatieve hashrepin-test in pytest-tmp_path, GEEN echte update.
+- Geen nieuwe downloader, validator, daemon, release-key, host, permissie of installer. Lokale bestandsacceptatie blijft GEEN onafhankelijke eigenaarstrust, bronpolicy, werkelijke host/wheel-generatie #669, offline A7 #943/#341, A6 #942, originele ACK of toestemming voor toepassing. Exacte PR-head CI en merge nog af te wachten.
+
 ## 0.1.150 — F30/#341 GitHub CI-release alleen INACTIEF bewaren, zonder Ed-productiesleutel (SOURCE ONLY)
 
 - Nieuwe private managerroute _stage_github_release_inactive_once hergebruikt de 0.1.149 vaste GitHub Release/tag-admission en complete asset-ID/bytes/BUNDLE/ZIP/RECORD-controle; daarna exact dezelfde bestaande eigenaar-private create-once NOREPLACE bronopslag in local-bundles/<commit>. Geen tweede downloader, opslagformaat, updater of launcher.

@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 S2e: signed assetbytes op bestaand transport (0.1.142 kandidaat)
+
+- Voeg binnen de al bestaande `fabric_release_asset_bytes.py` een begrensde full-batch-ingang toe: eerst onafhankelijk *aangeleverde* exacte signer/bron/release-ID + gematchte Release/tag metadata, dan per file de huidige pinned downloader, na iedere GET onafhankelijke grootte/digest, en op het einde bestaande full manifest + ZIP/RECORD-verifier. Geen nieuw transport, tokenroute, storage/installer en Q7 ongewijzigd. CI synthetisch met gemockte reader, 5/33/160 items, negatieve ondertekening en verkeerde bytes.
+- **Gaat NIET naar productie:** bronvoorbereiding kwalificeert nog niet de origineel door eigenaar/Fabric beheerde signer of signature-uitgever; echte published roster ontbreekt. Na onafhankelijke signerbron de eerste echte download en uitsluitend lokale INACTIEVE create-once custody onder de bewezen originele eigenaar, dan fysiek #669/#341/A6/A7/ACK. `start_local/apply` blijft verboden als pre-stage.
+
 ## 2026-11-06 — F30 #937 S2e bestaande inactieve local-bundles stage: racefix MERGED 0.1.141
 
 - [Runner-MCP PR #942](https://github.com/Blacksp1d3r/runner-mcp/pull/942) `ebe687b75c1ed7a2979966a43e0fb7e3a97c032f`, source 0.1.141, exact-head full CI `42221040779` / clean Ubuntu `42221041071` / attribution `42221041052` SUCCESS. Hergebruik van bestaande Q7 `renameat2(RENAME_NOREPLACE)` voor de al bestaande `stage_local_bundle`; geen gelijktijdige overschrijving van inactieve `local-bundles/<commit>` meer. Geen tweede updater, geen actie op Qwen/Claude. Failure Museum in bestaande folder.

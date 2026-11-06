@@ -26,6 +26,7 @@ from runner_mcp.fabric_release_asset_bytes import (
     fetch_exact_signed_fabric_bundle_bytes,
 )
 from runner_mcp.fabric_release_assets import inspect_exact_release
+from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
 
 COMMIT = "a" * 40
 RELEASE_ID = 222444
@@ -266,3 +267,173 @@ def test_no_actual_network_or_host_update_is_part_of_test_or_batch_path():
         isinstance(n, ast.ImportFrom) and (n.module or "").startswith("fabric_release")
         for n in tree.body
     )
+
+
+def _mock_manager_for_signed_batch(monkeypatch, args, *, metadata_change=None):
+    """Bevestig dat de manager alleen de TWEE bestaande vaste endpoints leest."""
+    manager = object.__new__(FabricUpdateManager)
+    audit = []
+    observed = args["observed_metadata"]
+    meta = {
+        "id": observed.release_id,
+        "tag_name": observed.tag,
+        "target_commitish": observed.commit,
+        "draft": False,
+        "prerelease": True,
+        "assets": [{
+            "name": row.name,
+            "id": row.asset_id,
+            "size": row.bytes,
+            "digest": "sha256:" + row.sha256,
+        } for row in observed.files],
+    }
+    if metadata_change is not None:
+        meta = metadata_change(meta)
+    tag_ref = {
+        "ref": "refs/tags/" + observed.tag,
+        "object": {"type": "commit", "sha": observed.commit},
+    }
+    monkeypatch.setattr(manager, "_require_safe_runtime",
+                        lambda: audit.append("safe"))
+    monkeypatch.setattr(manager, "_assert_managed_launcher",
+                        lambda: audit.append("launcher"))
+    monkeypatch.setattr(manager, "_github_token",
+                        lambda: TOKEN)
+    def read(token, path, *, category):
+        assert token == TOKEN
+        assert category == "fabric_release_metadata_unavailable"
+        audit.append(path)
+        if path == "/repos/Blacksp1d3r/Runner-Fabric/releases/tags/" + TAG:
+            return meta
+        if path == "/repos/Blacksp1d3r/Runner-Fabric/git/ref/tags/" + TAG:
+            return tag_ref
+        pytest.fail("unexpected GitHub endpoint")
+    monkeypatch.setattr(manager, "_api_json", read)
+    for op in ("start_local", "stage_local_bundle", "_activate_bundle",
+               "_validated_bootstrap", "_download_artifact"):
+        monkeypatch.setattr(
+            manager, op, lambda *a, **k: pytest.fail(
+                "Geen opslag, activatie, oude updater of bootstrap toegestaan"
+            )
+        )
+    return manager, audit
+
+
+def _invoke_manager_batch(manager, args, asset_reader):
+    """Gebruik exacte v1-signer/provenance-invoer, nooit een echte token."""
+    fields = {key: args[key] for key in (
+        "expected_commit", "expected_release_id", "signed_document",
+        "signature", "public_key", "independently_trusted_key_sha256",
+    )}
+    return manager._read_verified_signed_release_bytes(
+        **fields, asset_reader=asset_reader
+    )
+
+
+@pytest.mark.parametrize("count", [5, 33])
+def test_manager_reuses_exact_metadata_and_full_existing_signed_byte_gate(
+    monkeypatch, count,
+):
+    """Geen nieuwe API-route, tweede downloader of servicewijziging."""
+    args, bodies, lookup = _case(count)
+    manager, audit = _mock_manager_for_signed_batch(monkeypatch, args)
+    requested = []
+    verified = _invoke_manager_batch(
+        manager, args, _reader(lookup, requested)
+    )
+    assert verified == bodies
+    assert requested == sorted(lookup)
+    assert audit == [
+        "safe", "launcher",
+        "/repos/Blacksp1d3r/Runner-Fabric/releases/tags/" + TAG,
+        "/repos/Blacksp1d3r/Runner-Fabric/git/ref/tags/" + TAG,
+    ]
+
+
+@pytest.mark.parametrize("broken", [
+    "signature", "wrong_key", "wrong_commit", "wrong_release_id"
+])
+def test_manager_denies_bad_signed_owner_pins_before_metadata_or_download(
+    monkeypatch, broken,
+):
+    args, _, lookup = _case()
+    manager, audit = _mock_manager_for_signed_batch(monkeypatch, args)
+    if broken == "signature":
+        args["signature"] = b"x" * 64
+    elif broken == "wrong_key":
+        args["independently_trusted_key_sha256"] = "f" * 64
+    elif broken == "wrong_commit":
+        args["expected_commit"] = "b" * 40
+    else:
+        args["expected_release_id"] = RELEASE_ID + 1
+    requested = []
+    with pytest.raises(
+        FabricUpdateError, match="^fabric_signed_release_roster_unqualified$"
+    ):
+        _invoke_manager_batch(manager, args, _reader(lookup, requested))
+    assert audit == []
+    assert requested == []
+
+
+def test_manager_denies_changed_github_metadata_before_any_asset_get(monkeypatch):
+    """Zelfde release-ID en commit kunnen gewijzigde asset-ID niet verhullen."""
+    args, _, lookup = _case()
+    def mutate(data):
+        data["assets"][0]["id"] += 17
+        return data
+    manager, audit = _mock_manager_for_signed_batch(
+        monkeypatch, args, metadata_change=mutate
+    )
+    requested = []
+    with pytest.raises(
+        FabricUpdateError, match="^fabric_release_asset_bytes_unqualified$"
+    ):
+        _invoke_manager_batch(manager, args, _reader(lookup, requested))
+    assert len(audit) == 4
+    assert requested == []
+
+
+def test_manager_rejects_partial_or_corrupt_response_without_custody(monkeypatch):
+    args, _, lookup = _case(33)
+    manager, audit = _mock_manager_for_signed_batch(monkeypatch, args)
+    requested = []
+    with pytest.raises(
+        FabricUpdateError, match="^fabric_release_asset_bytes_unqualified$"
+    ):
+        _invoke_manager_batch(
+            manager, args,
+            _reader(lookup, requested, failure_at=sorted(lookup)[2], bad="short"),
+        )
+    assert len(audit) == 4
+    assert requested == sorted(lookup)[:3]
+
+
+def test_internal_manager_batch_not_exported_as_server_or_tool():
+    """Broncontract: nog GEEN publieke importtool en geen installatie-autoriteit."""
+    server = (Path(__file__).resolve().parents[1] / "src/runner_mcp/server.py")
+    tree = ast.parse(server.read_text(encoding="utf-8"))
+    names = {
+        n.name for n in ast.walk(tree)
+        if isinstance(n, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    assert "_read_verified_signed_release_bytes" not in names
+    manager_path = (
+        Path(__file__).resolve().parents[1] / "src/runner_mcp/fabric_update.py"
+    )
+    manager_ast = ast.parse(manager_path.read_text(encoding="utf-8"))
+    method = [
+        m for n in ast.walk(manager_ast)
+        if isinstance(n, ast.ClassDef) and n.name == "FabricUpdateManager"
+        for m in n.body
+        if isinstance(m, ast.FunctionDef)
+        and m.name == "_read_verified_signed_release_bytes"
+    ]
+    assert len(method) == 1
+    called = {
+        n.attr for n in ast.walk(method[0])
+        if isinstance(n, ast.Attribute)
+    }
+    assert "start_local" not in called
+    assert "stage_local_bundle" not in called
+    assert "_activate_bundle" not in called
+    assert "_validated_bootstrap" not in called

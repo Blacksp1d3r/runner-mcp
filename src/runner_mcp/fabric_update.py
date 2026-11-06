@@ -1471,8 +1471,8 @@ class FabricUpdateManager:
                 raise FabricUpdateError("fabric_bundle_integrity_failed")
         if verify_wheel_records:
             from .fabric_release_wheelhouse import (
-                WheelhouseUnqualified,
                 _MAX_EXPANDED_TOTAL,
+                WheelhouseUnqualified,
                 _wheel_record_check,
             )
 

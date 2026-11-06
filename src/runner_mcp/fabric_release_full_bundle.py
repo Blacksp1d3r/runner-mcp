@@ -1,7 +1,9 @@
-"""Offline-only complete Q7 bundle consistency checks against separate asset pins.
+"""Offline controle van volledige Q7- én generieke Fabric-releasebundels.
 
-Not a signer verifier, binary wheel inspector, host importer, installer or
-authorization grant. The caller must independently authenticate release pins.
+De Q7- en generieke controle delen dezelfde byte-, manifest- en SHA256SUMS-
+validatie. De aanroeper moet eerst zelf een onafhankelijk ondertekend rooster
+en een exacte GitHub Release kwalificeren. Deze module doet geen I/O en is geen
+signer-autoriteit, ZIP/RECORD-verificatie, import, installer of activatierecht.
 """
 from __future__ import annotations
 

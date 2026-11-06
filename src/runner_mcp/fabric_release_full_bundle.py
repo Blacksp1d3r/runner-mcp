@@ -25,8 +25,8 @@ _MANIFEST_MAX = 32 * 1024
 _SUMS_MAX = 128 * 1024
 _COMMIT_MAX = 128
 _BOOTSTRAP_MAX = 512 * 1024
-_NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_.+\\-]{0,150}\\Z")
-_SHA256 = re.compile(r"[0-9a-f]{64}\\Z")
+_NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_.+\-]{0,150}\Z")
+_SHA256 = re.compile(r"[0-9a-f]{64}\Z")
 
 
 class CompleteBundleMismatch(ValueError):

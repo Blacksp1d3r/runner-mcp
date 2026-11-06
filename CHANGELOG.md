@@ -1,3 +1,10 @@
+## 0.1.150 — F30/#341 GitHub CI-release alleen INACTIEF bewaren, zonder Ed-productiesleutel (SOURCE ONLY)
+
+- Nieuwe private managerroute _stage_github_release_inactive_once hergebruikt de 0.1.149 vaste GitHub Release/tag-admission en complete asset-ID/bytes/BUNDLE/ZIP/RECORD-controle; daarna exact dezelfde bestaande eigenaar-private create-once NOREPLACE bronopslag in local-bundles/<commit>. Geen tweede downloader, opslagformaat, updater of launcher.
+- Refactor van de bestaande ondertekende storage: gedeelde _store_verified_inactive_bytes_once met 0700 root/source, 0600 bytes, veilige filesystem-dirs, fsync, digest-readback, renameat2 NOREPLACE. Historische Q7 en optionele Ed25519 signed import blijven intact. Na partiële schrijf-/promotiefout blijft .incoming forensisch bewaard; nooit overschrijven.
+- Synthetische 5/33/160 assets + negatieve testmatrix wrong commit/release-ID, corrupt ZIP/manifest, verkeerde root/mode, pre-existing target, herhaalde stage en gekoppelde manager zonder extra metadata-GET. Geen echte host, secrets, service, toolcatalogus, install, active bundle, rollback of ACK.
+- Provider SHA en de supplied releasepin zijn GEEN zelfstandig eigenaarbewijs: github_ci_policy_verified/independent_owner_signer_verified/install_authorized/rollback_verified blijven false. Echte host build-identiteit #669, lokale A7 #341/#943, off-target A6 #942 en oorspronkelijke client-ACK blijven vereisten voor installatie.
+
 ## 0.1.149 — F30/#341 GitHub-release volledige bytes zonder productie-Ed25519 (SOURCE ONLY)
 
 - Private method FabricUpdateManager._read_exact_github_release_bytes uses the EXISTING exact-tag fixed GitHub Release admission and asset-ID downloader, with per-asset SHA256/size, full BUNDLE/COMMIT_SHA/SHA256SUMS and shared ZIP/METADATA/RECORD verification (5..160 assets). No new updater, no second download client, no ED key, no CLI or public MCP capability.

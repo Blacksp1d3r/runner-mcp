@@ -501,7 +501,7 @@ def test_signed_inactive_stage_denies_bad_inputs_without_final_target(tmp_path, 
     elif bad == "digest":
         options["independently_trusted_key_sha256"] = "0" * 64
     elif bad == "asset":
-        first = sorted(bodies)[0]
+        first = min(bodies)
         options["asset_bodies"] = {**bodies, first: bodies[first] + b"!"}
     else:
         redirect = tmp_path / "redirect"

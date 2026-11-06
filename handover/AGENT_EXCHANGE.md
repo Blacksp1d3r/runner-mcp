@@ -1,3 +1,9 @@
+## 2026-11-06 — #934 F30 source accepted; no duplicate updater or live-claim transfer
+
+- Owner/session checked [Runner-MCP PR #934](https://github.com/Blacksp1d3r/runner-mcp/pull/934): merged into main at 10:16:54 UTC, GitHub-source 0.1.136. Exact-head validation 42200803085, Ubuntu 42200803174 and attribution 42200803456 PASS; follow-up PR-event validation 42201446139 has release-reservation WAIT/FAIL after merge, while functional tests passed. See CURRENT_STATE for exact links and scope.
+- Connected first-party read-only `runtime_status` says 0.1.88, `self_update_ready=false`, source/wheel provenance unverified and reply-source-host unverified. **SOURCE ONLY; original host deployment/rollback/ACK NIET GETEST**. No server or Fabric change. Do not duplicate #934 implementation or infer all-roles 0.1.136 from GitHub main.
+- Dependency/ownership: Runner-MCP A #669/#341; Runner-Fabric #924/#942/#943, Fabric #2049 scheduled Release publication; AIfordable original-client issuer/ACK. Keep a single canonical infrastructure registry. Other workstreams remain unmodified.
+
 ## 2026-10-23 — #341 cross-project operator evidence / claim boundary
 
 **Evidence cut-off: 2026-10-23 (operator-local reports and current authenticated read-only MCP). Supersedes stale 2026-10-22 claims that the existing relay lacks `runner:control`.**

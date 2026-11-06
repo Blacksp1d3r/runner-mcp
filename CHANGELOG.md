@@ -1,3 +1,9 @@
+## 0.1.149 — F30/#341 GitHub-release volledige bytes zonder productie-Ed25519 (SOURCE ONLY)
+
+- Private method FabricUpdateManager._read_exact_github_release_bytes uses the EXISTING exact-tag fixed GitHub Release admission and asset-ID downloader, with per-asset SHA256/size, full BUNDLE/COMMIT_SHA/SHA256SUMS and shared ZIP/METADATA/RECORD verification (5..160 assets). No new updater, no second download client, no ED key, no CLI or public MCP capability.
+- GitHub metadata is provider integrity only; NOT an independent owner signature. github_ci_policy_verified=false, independent_owner_signer_verified=false, host installation and rollback unauthorized. Synthetic 5/33/160 checks plus negative cases.
+- Owner priority: working automatic updates and usable Qwen and Claude first; independent ED optional afterward. Connected 0.1.88 and original host #669/#341, physical A6 #942/A7 #943 and original client ACK still WAIT. Source merge never equals installation.
+
 ## 0.1.148 — F30/#937 exact ondertekende Release → bestaande INACTIEVE NOREPLACE custody (SOURCE ONLY)
 
 - Eén nieuwe private managerstap `_stage_signed_release_description_inactive_once` hergebruikt de v0.1.147 eigenaarspins/Release-body/één metadata-snapshot, dezelfde volledige SHA/manifest/ZIP/WHEEL/RECORD signed-bytecontrole en v0.1.145 eigenaar-private `_stage_signed_release_inactive_once` met O_NOFOLLOW, 0600/0700, fsync en atomaire NOREPLACE. Geen tweede systeem of downloadclient, geen actief slot vervangen.

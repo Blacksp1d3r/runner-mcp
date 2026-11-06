@@ -1,7 +1,8 @@
-## 2026-11-06 — F30 #341 inactieve opslagcontracttest vóór automatische installatie
+## 2026-11-06 — F30 #341 tijdelijk genest / definitief vlak bewaarpad verduidelijkt
 
-- Na 0.1.150 GitHub keyless custody is het werkelijke opslagformaat bewust `local-bundles/<SHA>/source/bundle/<asset>`, afgeschermd van de vlakke bestaande `local_readiness` die alleen `<SHA>/BUNDLE.json` kan verwerken. Een storage receipt geeft dus nog GEEN activering-/rollback-/ACK-autoriteit.
-- Corrigeer de bestaande synthetische testverwachting naar de exacte nested structuur en controleer dat de bestaande lokale verificatie deze voorbarige kandidaat afwijst. Pas daarna de read-only bewaarintegriteit en formeel goedgekeurde, bestaande updater-bridge kwalificeren. Niet blind flatten of installeren: originele wheel/procesidentiteit #669, behouden baseline/herstel #341, off-target A6 #942, offline A7 #943 en authentieke original-client result+ACK blijven harde gates. ED signer pas later.
+- Bij GitHub-release-inactieve custody gebruikt de bestaande manager `.incoming-<uuid>/source/bundle/<asset>` als PRIVATE tijdelijke werkboom; de al bestaande `_promote_inactive_bundle_noreplace` promoveert precies `source/bundle` atomair als vlakke `local-bundles/<commit>/<asset>`-bestemming. De tests controleren finale bytes, 0700/0600, NOREPLACE en geen dubbele assetkopie in de bewaarde tijdelijke boom.
+- Een structureel leesbare inactieve bundel is slechts opslaggereed, GEEN installatiebevoegdheid. De ontbrekende originele host/proces/wheel #669, rollout/herstel #341, Fabric off-target A6 #942, onafhankelijk offline A7 #943 en werkelijke original-client result/ACK blijven noodzakelijke gates. ED key pas na automatische updates/Qwen/Claude.
+- Eerste PR #958 head testte ten onrechte geneste FINALE structuur en faalde 4/4698 tests. Herstelde head nog via officiële exacte-head CI valideren; geen wijziging aan live servers of updater.
 
 ## 2026-11-06 — F30/#341 0.1.150 GitHub Release → bestaande inactieve custody, ED pas later
 

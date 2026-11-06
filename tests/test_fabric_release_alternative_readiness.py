@@ -73,7 +73,8 @@ def test_actions_failure_shows_alternate_metadata_without_update_authority(
     assert original["state"] == "blocked"
     assert original["source"] == "github-actions"
     assert original["artifact_ready"] is False
-    assert "installed" not in repr(original)
+    assert "installed" not in original
+    assert original["alternative_release_metadata"]["install_authorized"] is False
 
 
 @pytest.mark.parametrize("error", [

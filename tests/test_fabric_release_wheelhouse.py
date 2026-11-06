@@ -11,10 +11,9 @@ import warnings
 import zipfile
 from dataclasses import replace
 
+import pytest
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
-
-import pytest
 
 from runner_mcp.fabric_release_assets import ReleaseAdmission, ReleaseAsset, inspect_exact_release
 from runner_mcp.fabric_release_independent_roster import PinnedReleaseAsset, PinnedReleaseRoster

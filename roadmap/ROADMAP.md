@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 S2e bronkandidaat 0.1.145: offline signed inactive storage
+
+- Hergebruik 0.1.144 in-memory signed verifiers, Q7 private root-FD en bestaande atomic NOREPLACE onder lokale private update-root. Voeg uitsluitend source-only private offline stage toe met 5/33 synthetische wheel-tests, race en crashfailures.
+- Publicatie-, owner- en fysieke hostbevoegdheid ontbreken, dus GEEN echte releaseimport of live update. Fabric #924 signing authority, #669/#341 en A6 #942/A7 #943 + ACK blijven harde gates. Geen invloed op Claude/Qwen.
+
 ## 2026-11-06 — F30 #937 S2 bronketen 0.1.144 compleet in tests, S2d signer WAIT
 
 - 0.1.144 [Runner-MCP PR #946](https://github.com/Blacksp1d3r/runner-mcp/pull/946) MERGED `86e63ad461e687c7d9f9176bd4cb10c96eef0fc3`, exact CI Validation `42240506433`, Clean Ubuntu `42240506547`, Attribution `42240506486` SUCCESS. Bestaande interne manager `_read_exact_release_admission` en bestaande signed `fetch_exact_signed_fabric_bundle_bytes` zijn met extra vroege signed-rostercheck in één niet-geëxporteerd codepad getest. Full manifest/SHA/ZIP/RECORD en falsificatietests PASS; geen nieuwe controller, updater, API-route of echte mutatie.

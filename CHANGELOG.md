@@ -1,3 +1,10 @@
+## 0.1.145 — F30/#937 signed-release-inactive-custody (SOURCE ONLY)
+
+- Nieuwe private _stage_signed_release_inactive_once hercontroleert Ed25519-rooster, exacte bron/release/key-pins, GitHub metadata en volledig BUNDLE/COMMIT/SHA256SUMS/ZIP/RECORD vóór schijfgebruik. Aangeleverde testpins geven nooit echte eigenaarbevoegdheid.
+- Schrijft 5–160 gecontroleerde bestanden in bestaande owner-private root via O_EXCL/O_NOFOLLOW, 0600, fsync en teruglees-SHA; hergebruikt bestaande atomaire NOREPLACE promotie. Onvolledige .incoming blijft voor onderzoek staan; nooit bestaand slot vervangen.
+- Alleen fictieve offline tests (5/33 wheels, signer/bytes, symlink, race, onderbroken schrijfactie). Geen MCP-tool, echte download, activatie, install, servers, tokens of Claude/Qwen/SQL-mutaties.
+- HARD WAIT: Fabric #924 onafhankelijke echte signer/roster/owner-policy, #669/#341 en A6 #942/A7 #943 + oorspronkelijke result/ACK.
+
 ## 0.1.144 — F30/#937 interne ketentest metadata → volledig signed release-batch (SOURCE ONLY)
 
 - De bestaande `FabricUpdateManager` hergebruikt zijn eigen read-only, getypeerde `_read_exact_release_admission` (exact twee vaste GitHub Release/tag-eindpunten) en de in 0.1.142 geteste `fetch_exact_signed_fabric_bundle_bytes` via één uitsluitend **interne** `_read_verified_signed_release_bytes`. Het ondertekende rooster wordt zelfs vóór het eerste metadata-GET gecontroleerd; de batch controleert dezelfde handtekening opnieuw vóór de eerste asset-GET, alle SHA-/groottespins, het volledige manifest en ZIP/METADATA/RECORD. Geen nieuwe URL, downloader, credentialbron, service of API.

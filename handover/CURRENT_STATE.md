@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 #959 werkelijke local-readiness keten SOURCE/CI VOLTOOID
+
+- [PR #959](https://github.com/Blacksp1d3r/runner-mcp/pull/959) exacte geteste head `c23f3113b66bd29a5c3646ee2d4eab35530a654f` 7/7 CI SUCCESS: `42308123075` Ruff/4704 pytest PASS + release-reservering, gebouwd artifact, clean demo en disposable systemd; `42308123046` attribution PASS. MERGED als `d49940b8e7116b89d1b139b010c5ed72cb50a8e8` op `main` teruggelezen. Post-merge push validation `42308536584` was bij de laatste observatie nog IN PROGRESS, attribution `42308536537` SUCCESS.
+- Bestaande private keyless GitHub Release bytes (synthetisch 5/33/160 assetcases) worden in de bestaande vlakke `local-bundles/<SHA>` via NOREPLACE inactief bewaard; de originele `FabricUpdateManager.local_readiness` verifieert daarop zonder subprocess/installatie. Schijftampering aan BOOTSTRAP, wheel of manifest wordt geweigerd. Geen extra updater/tool/controleplane, geen ED-signing of nieuwe softwareversie: blijft 0.1.150.
+- **GEEN LIVE ACCEPTATIE:** originale AF-HOST-0001/AF-SVC-0001 `github-runner` is historisch 0.1.88; geen volledig actief wheel/imported-PID-identiteitsbewijs #669, eigenaar-/CI-/host-policy, werkelijk zelfstandig offline A7 #943/#341 en off-target A6 #942 plus client result/ACK. Geen server/SQL/Qwen/Claude/Fabric-service gewijzigd.
+
 ## 2026-11-06 — F30 #341 ketentest read-only lokale releaseadmissie gestart
 
 - Gecontroleerd Runner-MCP `main=c9162aedab64a92c291c9847a9ccce5677505944`. #958 is definitief MERGED, PR 7/7 exact-head groen en ook post-merge Validation 42307409919 + Attribution 42307409995 afgerond SUCCESS; geen nieuwe packageversie of serverinstallatie.

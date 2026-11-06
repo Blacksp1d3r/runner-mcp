@@ -1,3 +1,9 @@
+## 2026-11-06 — #341 na source-merges #958 en #959: volgende stap is echte first-node bewijsvoering
+
+- [#958](https://github.com/Blacksp1d3r/runner-mcp/pull/958) c9162aed... complete GETEST/GEMERGED; eerdere foutieve nested-final hypothese in #341 rechtgezet. [#959](https://github.com/Blacksp1d3r/runner-mcp/pull/959) head `c23f3113b66bd29a5c3646ee2d4eab35530a654f`, CI Validation `42308123075` en Attribution `42308123046` beide SUCCESS; 4704 pytest PASS, alle relevante jobs PASS; main merge `d49940b8e7116b89d1b139b010c5ed72cb50a8e8`. Originele manager voert na gesigneerde of keyless release private inactieve opslag de bestaande, read-only local_readiness correct uit en weigert lokaal gewijzigde bytes. Post-merge main validation was laatst nog aan het lopen.
+- Connected Runner-MCP 0.1.88 is niet automatisch de originele `github-runner`/gha-runner/:8000 PID/wheel. Geen echte GitHub-import op host, geen activatie of bewezen watchdog-reset. **Volgende veilige stap alleen originele-host/owner/serving wheel/rollback evidence** onder bestaande AIfordable-topology; eerst #669 + behouden baseline #341, Fabric A6 #942, offline A7 #943 en echte oorspronkelijke-client result/ACK voor een enkele unattended activation. Geen tweede updater, relay, controller of ED-issuer bouwen.
+- Qwen/Claude/SQL blijven onafhankelijke sporen en zijn door deze sessie niet gewijzigd; eigenaar wil eerst automatische updates operationeel, dan Qwen en Claude bruikbaar, ED ownerkey alleen later optioneel.
+
 ## 2026-11-06 — F30 #341 vervolg na #958: echte manager read-only ketentest
 
 - #958 exact geteste head `511cdb9e4b85f3a9f84ab7378e3bec295e386c6f` 7/7 CI PASS, merge `c9162aedab64a92c291c9847a9ccce5677505944` door GitHub teruggelezen; post-merge Runner MCP validation 42307409919 SUCCESS en attribution 42307409995 SUCCESS. Oude foutieve nested-final analyse is gecorrigeerd en in Failure-context #341 bewaard.

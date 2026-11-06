@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #341 keyless Release → eigenaar-private inactieve bundel → lokale read-only check SOURCE DONE
+
+- CI-geteste [Runner-MCP #959](https://github.com/Blacksp1d3r/runner-mcp/pull/959) volledig 7/7 SUCCESS met 4704 pytest tests; gemerged `d49940b8e7116b89d1b139b010c5ed72cb50a8e8`, tests/docs only, versie 0.1.150. Synthetische complete GitHub release 5/33/160 assets → bestaande NOREPLACE lokale opslag → bestaande `FabricUpdateManager.local_readiness` en lokale beschadiging → STOP. Geen echte host-actie, update/rollbackbevoegdheid of nieuw systeem.
+- Fysieke onopgeloste afhankelijkheden blijven: bewezen actieve originele wheel/host/proces #669, CI/source owner authority, rollback-baseline #341, bestaand A6 #942 off-target bewijs, A7 #943 offline autonome rollback, authentieke oorspronkelijke-client result+ACK. ED-sleutel pas na echte auto-updates/Qwen/Claude.
+
 ## 2026-11-06 — F30 #341 fictieve stage → bestaande lokale read-only acceptatie (CI-kandidaat)
 
 - Na #958 (exact-head + post-merge CI groen) is een onafhankelijke test-only keten aangemaakt die dezelfde bestaande lokale flat `local-bundles/<commit>` opnieuw leest na de private keyless GitHub-import en schijftampering weigert. Geen nieuwe validator, updater, API of versie; 5/33/160-assetcases in disposable pytest-tmp_path. ACCEPTATIE UITSLUITEND na exacte PR-head CI.

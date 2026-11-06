@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 bronketen tot en met local_readiness geverifieerd
+
+- Source-only automatische Fabric Release-publicatie werkt; Runner-MCP v0.1.149/0.1.150 verifieert keyless exact Release/asset/ZIP/SHA en bewaart in bestaande eigenaar-private flat local-bundles NOREPLACE. #958 heeft definitieve map/mode test, #959 heeft echte bestaande local_readiness + corruptie-fail-closed op synthetische 5/33/160 assets. [#959](https://github.com/Blacksp1d3r/runner-mcp/pull/959) 7/7 exact-head CI SUCCESS (4704 pytest), MERGED `d49940b8e7116b89d1b139b010c5ed72cb50a8e8`; versie 0.1.150 blijft. Local `artifact_ready` is enkel bestandscontrole, NOOIT owner-/install-/rollbackautoriteit.
+- **Volgende FYSIEKE afhankelijkheid:** echt geattesteerde originele AF-SVC-0001 serving wheel/process generatie #669; onafhankelijke eigenaar-goedgekeurde source/CI/host-pins; behouden startbare oude release #341; off-target A6 #942, zelfstandige offline A7 #943, oorspronkelijke client terminal result/ACK. Alleen dan gecontroleerde first-node en eventueel automatisch uitrollen via de bestaande Fabric Update Plane #924. Geen parallel infra, geen ongeteste `start_local/apply`.
+- ED productsleutel uitgesteld tot werkende automatische updates én bruikbaar Qwen en Claude; bronwerk op gescheiden werksporen blijft toegestaan.
+
 ## 2026-11-06 — F30 #341 volgende veilige schakel: GitHub-inactieve custody → bestaande local_readiness
 
 - Runner-MCP [PR #958](https://github.com/Blacksp1d3r/runner-mcp/pull/958) is **gemerged** `c9162aedab64a92c291c9847a9ccce5677505944`, met exact-head 7/7 CI groen en post-merge Validation/Attribution SUCCESS. Finale `local-bundles/<SHA>/<asset>` is VLAK door bestaande atomaire `source/bundle`-promotie; voorheen foutieve nested-eindmaphypothese expliciet gecorrigeerd.

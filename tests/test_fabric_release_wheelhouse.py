@@ -791,3 +791,72 @@ def test_keyless_local_readiness_refuses_changed_disk_bytes_without_activation(
     assert not (root / "bundle").exists()
     assert not (tmp_path / "slots").exists()
     assert not (tmp_path / "transaction.json").exists()
+
+
+# F30/#341 v0.1.151: hashrepinning na bewaring mag geen ongeldige wheel
+# tot een geschikt lokale-updatebestand maken. Dezelfde, eerder bestaande
+# ZIP/METADATA/RECORD-lezer dient zowel byte-import als lokale consumptie.
+def test_local_readiness_rechecks_wheel_record_after_checksum_repin(tmp_path):
+    """Bewaar fictieve geldige bytes en vervang daarna wheel plus SHA256SUMS.
+
+    De oudere digest-only bundlechecker ziet dan nog overeenstemmende hashes,
+    maar de werkelijke local_readiness en interne local-update stage mogen
+    geen ongeldige ZIP doorlaten. Alle I/O blijft binnen pytest-tmp_path.
+    """
+    from types import SimpleNamespace
+
+    from runner_mcp.fabric_release_inactive_custody import (
+        _stage_github_release_inactive_once,
+    )
+    from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
+
+    _unused_signed, observed, bodies = _generic_signed_inputs(5)
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    stored = _stage_github_release_inactive_once(
+        local_bundles_root=root,
+        expected_commit=observed.commit,
+        expected_release_id=observed.release_id,
+        observed_metadata=observed,
+        asset_bodies=bodies,
+    )
+    assert stored["install_authorized"] is False
+
+    final = root / observed.commit
+    wheel = next(final.glob("*.whl"))
+    wheel.write_bytes(b"invalid zip after local staging")
+    payload_names = sorted([wheel.name for wheel in final.glob("*.whl")] +
+                           ["BOOTSTRAP.py"])
+    (final / "SHA256SUMS").write_text(
+        "".join(
+            f"{hashlib.sha256((final / name).read_bytes()).hexdigest()}  {name}\\n"
+            for name in payload_names
+        ),
+        encoding="ascii",
+    )
+
+    manager = object.__new__(FabricUpdateManager)
+    manager.local_bundles_root = root
+    manager.state_root = tmp_path / "state"
+    manager._require_safe_runtime = lambda: None
+    manager._assert_managed_launcher = lambda: None
+    manager._runner = lambda *args, **kw: pytest.fail("unexpected subprocess")
+
+    # Bewijs precies waarom louter het opnieuw vergelijken van SHA256SUMS
+    # onvoldoende is: ze kunnen samen met de wheel zijn aangepast.
+    assert manager._validated_bootstrap(observed.commit, root=final) == (
+        final / "BOOTSTRAP.py"
+    )
+    with pytest.raises(
+        FabricUpdateError, match="^fabric_bundle_integrity_failed$",
+    ):
+        manager.local_readiness(observed.commit)
+    with pytest.raises(
+        FabricUpdateError, match="^fabric_bundle_integrity_failed$",
+    ):
+        manager._stage_local_bundle(
+            SimpleNamespace(commit=observed.commit, job_id="b" * 32),
+        )
+    assert not (tmp_path / "state").exists()
+    assert not (tmp_path / "bundle").exists()
+    assert not (tmp_path / "transaction.json").exists()

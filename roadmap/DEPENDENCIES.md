@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 signed inactieve custody source 0.1.145, productie blijft WAIT
+
+- Private bronhelper voor exact ondertekende offline 5–160 assets, atomaire create-once onder bestaande private root, nul nieuwe MCP-tools/updaters. Testsigner en caller-supplied policy zijn NIET onafhankelijke owner authorization.
+- Nog verplicht: onafhankelijke werkelijke signer/roster Fabric #924, origineel host/wheel #669, eigen recovery #341, fysieke A6 #942/A7 #943 en originele ACK. Geen automatische installatie.
+
 ## 2026-11-06 — F30 S2 internal end-to-end source pass, generieke production authority ontbreekt
 
 - **SOURCE VOLTOOID 0.1.144:** [PR #946](https://github.com/Blacksp1d3r/runner-mcp/pull/946) merged `86e63ad461e687c7d9f9176bd4cb10c96eef0fc3`; exacte head `b7b8347eb864f823d83d9b0738379e2b9a3f18f4` validation `42240506433`, Ubuntu `42240506547`, attribution `42240506486` success. Private manager-only source method koppelt bestaande signed generic roster/metadata/batch, weigert foutieve key/commit/release-ID vóór metadata-GET en gewijzigde metadata vóór assets, verifieert synthetische 5/33 wheeled bundles volledig. Geen actie op disk/host of servertools.

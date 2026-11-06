@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 S2 intern volledig ketencontract vs externe signing/bevoegdheid
+
+- **SOURCE kandidaat 0.1.144:** bestaande interne Runner-MCP manager direct typed `ReleaseAdmission` (0.1.143) → bestaande generic signed exact asset-bytebatch (0.1.142) en dezelfde historisch Q7 gebruikte ZIP/RECORD+manifest gates (0.1.138..0.1.140); signer/commit/release-ID formeel vooraf gevalideerd, echte eigenaartrust niet afgeleid. Geen nieuwe infrastructuur.
+- **BLOCK:** werkelijke onafhankelijke generieke publisher/signature en eigenaar key/source/release-ID policy vanuit Fabric #924 ontbreken. `_read_verified_signed_release_bytes` is slechts een private voorbereidingsfunctie en is niet als servertool bereikbaar. S2e live signed-byte-stage en fysiek #669/#341/A6 #942/A7 #943/originele client ACK blijven STOP. Qwen/Claude gescheiden.
+
 ## 2026-11-06 — F30 S2 source readiness 0.1.143 vs generieke issuer/productieblokkades
 
 - **SOURCE CI PASS:** 0.1.142 [PR #944](https://github.com/Blacksp1d3r/runner-mcp/pull/944) merged `6b0a3f1a2dca6facec5ae76bbf06f7ae2dfd99f3`, validation `42227959733`/Ubuntu `42227960058`/attribution `42227959888`; 0.1.143 [PR #945](https://github.com/Blacksp1d3r/runner-mcp/pull/945) merged `09a356cde7c94153de7071e0a57b12502c670c0c`, validation `42229739315`/Ubuntu `42229739319`/attribution `42229739237`. Oude Q7 assetlezer en publieke Release-status onveranderd; bron-only generic signed bytebatch en intern getypeerde exact GitHub metadata werken synthetisch offline.

@@ -7,7 +7,6 @@ from pathlib import Path
 import pytest
 
 from runner_mcp.fabric_release_assets import ReleaseAdmission
-
 from runner_mcp.fabric_update import (
     FabricUpdateError,
     FabricUpdateManager,

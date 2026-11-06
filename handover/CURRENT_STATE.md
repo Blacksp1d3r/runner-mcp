@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 0.1.145 bronkandidaat: signed bytes → inactieve NOREPLACE custody
+
+- BRONKANDIDAAT (CI nog niet bewezen): private _stage_signed_release_inactive_once hergebruikt generieke signed/full-bundle controles en Q7 private root-FD + manager NOREPLACE promotie. Synthetische 5/33 testmappen uitsluitend, geen echte host, activa, Fabric/Claude/Qwen/SQL of tokens geraakt.
+- 0700 root/tijdelijke mappen, 0600 bestanden via O_EXCL/O_NOFOLLOW, fsync/teruglees-SHA, bestaande target altijd behouden. Onvolledige .incoming blijft ongewijzigd voor onderzoek. Public install_authorized en owner_authority_proven blijven false; geen nieuwe MCP-exposure.
+- HARD WAIT: daadwerkelijk onafhankelijke Fabric #924 signer/key/source/release-ID policy, originele host/wheel #669, recovery #341, A6 #942/A7 #943, originele issuer-result/ACK. Niet verbonden aan manager live tool of start_local.
+
 ## 2026-11-06 — F30 #937 bron 0.1.144 exact signed metadata→byteketen MERGED, echte signer/host WAIT
 
 - **VOLTOOID OP BRON/CI:** [PR #946](https://github.com/Blacksp1d3r/runner-mcp/pull/946) v0.1.144 squash `86e63ad461e687c7d9f9176bd4cb10c96eef0fc3` (exact geteste head `b7b8347eb864f823d83d9b0738379e2b9a3f18f4`). GitHub Actions Validation `42240506433`, Clean Ubuntu `42240506547`, Commit Attribution `42240506486` alle **SUCCESS**. Interne, niet als MCP-tool registreerde `_read_verified_signed_release_bytes` verbindt bestaande Ed25519 exact signed roster precheck vóór metadata-GET, dezelfde vaste Release/tag-admission en de bestaande in-memory volledige pinned asset-/manifest-/ZIP-/RECORD-gates. Fictieve Ed25519/5/33 wheeltests en fail-closed signature/meta/partialbytes succesvol. Niets op echte server uitgevoerd.

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 volgende veilige schakel: GitHub-inactieve custody → bestaande local_readiness
+
+- Runner-MCP [PR #958](https://github.com/Blacksp1d3r/runner-mcp/pull/958) is **gemerged** `c9162aedab64a92c291c9847a9ccce5677505944`, met exact-head 7/7 CI groen en post-merge Validation/Attribution SUCCESS. Finale `local-bundles/<SHA>/<asset>` is VLAK door bestaande atomaire `source/bundle`-promotie; voorheen foutieve nested-eindmaphypothese expliciet gecorrigeerd.
+- NIEUWE TEST-KANDIDAAT: bestaande private `_stage_github_release_inactive_once` (fictieve 5/33/160 SHA/assetrelease) en gewone `FabricUpdateManager.local_readiness` worden in dezelfde `pytest-tmp_path` getest. Het eerste codepad mag alleen bewaring claimen; het tweede mag alleen lokaal gevalideerde bytes lezen, zonder `preflight/apply/start_local`. Na opslag gewijzigde BOOTSTRAP/wheel/manifest moet expliciet falen. Test/docs only: versie blijft 0.1.150, CI nog af te wachten.
+- Deze ketentest is GEEN productieinstallatie. Vereist blijven oorspronkelijke host/process/installed wheel #669, eigenaar-/CI-bronbeleid, A6 #942 off-target journaal, onafhankelijk A7 #943 / #341 lokale herstelproef en echte originele-client-result+ACK. ED owner signer pas na auto-updates, bruikbaar Qwen en Claude.
+
 ## 2026-11-06 — F30 #341 tijdelijk genest / definitief vlak bewaarpad verduidelijkt
 
 - Bij GitHub-release-inactieve custody gebruikt de bestaande manager `.incoming-<uuid>/source/bundle/<asset>` als PRIVATE tijdelijke werkboom; de al bestaande `_promote_inactive_bundle_noreplace` promoveert precies `source/bundle` atomair als vlakke `local-bundles/<commit>/<asset>`-bestemming. De tests controleren finale bytes, 0700/0600, NOREPLACE en geen dubbele assetkopie in de bewaarde tijdelijke boom.

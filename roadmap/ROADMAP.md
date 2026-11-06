@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #341 inactieve opslagcontracttest vóór automatische installatie
+
+- Na 0.1.150 GitHub keyless custody is het werkelijke opslagformaat bewust `local-bundles/<SHA>/source/bundle/<asset>`, afgeschermd van de vlakke bestaande `local_readiness` die alleen `<SHA>/BUNDLE.json` kan verwerken. Een storage receipt geeft dus nog GEEN activering-/rollback-/ACK-autoriteit.
+- Corrigeer de bestaande synthetische testverwachting naar de exacte nested structuur en controleer dat de bestaande lokale verificatie deze voorbarige kandidaat afwijst. Pas daarna de read-only bewaarintegriteit en formeel goedgekeurde, bestaande updater-bridge kwalificeren. Niet blind flatten of installeren: originele wheel/procesidentiteit #669, behouden baseline/herstel #341, off-target A6 #942, offline A7 #943 en authentieke original-client result+ACK blijven harde gates. ED signer pas later.
+
 ## 2026-11-06 — F30/#341 0.1.150 GitHub Release → bestaande inactieve custody, ED pas later
 
 - Releasepublicatie Fabric #924 operationeel met 33 assets; Runner-MCP 0.1.149 verifieert vaste GitHub Release/tag+assetbytes zonder ED key. Deze kandidaat 0.1.150 hergebruikt dezelfde transport en de AL BESTAANDE signed-custody NOREPLACE opslag voor de keyless CI-bundel, alleen inactief. Geen kopie/parallel downloader/daemon/installer.

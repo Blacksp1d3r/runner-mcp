@@ -23,17 +23,6 @@ import urllib.request
 from collections.abc import Callable
 from typing import Any
 
-from .fabric_release_assets import ReleaseAdmission
-from .fabric_release_signed_roster import (
-    SignedFabricRosterUnqualified,
-    compare_signed_fabric_roster,
-    verify_signed_fabric_roster,
-)
-from .fabric_release_wheelhouse import (
-    WheelhouseUnqualified,
-    verify_signed_fabric_wheelhouse,
-)
-
 _ROOT = "https://api.github.com/repos/Blacksp1d3r/Runner-Fabric/releases/assets/"
 _BLOB_HOST = "release-assets.githubusercontent.com"
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
@@ -202,6 +191,20 @@ def fetch_exact_signed_fabric_bundle_bytes(
     bestand op de host aangemaakt. Bestaande actieve Fabric/Claude/Qwen-paden
     worden nooit aangeroepen; de functie is GEEN custody of installer.
     """
+    # De historische individuele assetlezer wordt ook rechtstreeks als
+    # standalone module geladen. Verplaats alleen de NIEUWE batch-afhankelijk-
+    # heden naar de batch-aanroep, zodat het bestaande Q7/testcontract blijft.
+    from .fabric_release_assets import ReleaseAdmission
+    from .fabric_release_signed_roster import (
+        SignedFabricRosterUnqualified,
+        compare_signed_fabric_roster,
+        verify_signed_fabric_roster,
+    )
+    from .fabric_release_wheelhouse import (
+        WheelhouseUnqualified,
+        verify_signed_fabric_wheelhouse,
+    )
+
     if (
         type(token) is not str
         or not 8 <= len(token) <= 512

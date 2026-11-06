@@ -205,7 +205,7 @@ def fetch_exact_signed_fabric_bundle_bytes(
     if (
         type(token) is not str
         or not 8 <= len(token) <= 512
-        or re.fullmatch(r"[\\x21-\\x7e]+", token) is None
+        or re.fullmatch(r"[\x21-\x7e]+", token) is None
         or not callable(asset_reader)
         or type(observed_metadata) is not ReleaseAdmission
     ):

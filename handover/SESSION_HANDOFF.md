@@ -1,3 +1,9 @@
+## 2026-11-06 — #937 generiek read-only ondertekend rooster: bron kandidaat, generieke trust WAIT
+
+- Werkstroom F30 S2 heeft bestaande Q7-only crypto en bestaande exacte GitHub Release-admission gecontroleerd; nieuwe `fabric_release_signed_roster.py` doet uitsluitend pure validatie voor `runner-fabric/signed-release-roster/v1`: Ed25519 over originele bytes, externe publiekesleutel-hash, vastgepinde SHA/release-ID, exacte Fabric repository/tag en dezelfde asset-regels als `inspect_exact_release`. Een vergelijking met echte metadata blijft expliciet `match_only`; geen proof of authority of download.
+- SYNTHETISCHE securitytests omvatten geldige 5/33/160 assets, verkeerde handtekening/sleutel, valse ondertekende versie/commit/tag/repository, dubbele velden/namen/IDs, grootte/digest, veranderde GitHub-metadata. Dit is NIET de productie-Fabric-signer en mag de specifieke Q7-v1-contracten niet veranderen.
+- Na exacte CI-verificatie van kandidaat 0.1.138: #937 volgende subtaak is Fabric-bevoegdheid voor onafhankelijke generieke trust anchor vastleggen en pas dan veilig inactief custody via de bestaande updater. Fysiek verbonden Runner-MCP laatst 0.1.88 en niet geverifieerde serving wheel/host, A6/A7 en ACK blijven geblokkeerd. Geen operationele update uitgevoerd.
+
 ## 2026-11-06 — F30 #934/#936 bronafwerking en #937 onafhankelijke importstap
 
 - **MERGED:** #934 bron 0.1.136 GitHub Release-diagnostische fallback, #935 handover; [#936](https://github.com/Blacksp1d3r/runner-mcp/pull/936) bron 0.1.137, squash `df71f1ea6c15d271088929a5da280675ed5ceddd`, exact head `2a6e4e097f75dc791ab370ac42a3c48254f49f0a`. #936 heeft vaste foutcodes `release_not_published` (2×404), `release_provider_unavailable`, `release_digest_invalid` en bestaande unqualified, alle volledig fail-closed. Release is geen installatietoelating.

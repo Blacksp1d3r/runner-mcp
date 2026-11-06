@@ -5,6 +5,7 @@ do not qualify the physical two-release offline restore or any production update
 """
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
 import json
@@ -52,16 +53,33 @@ def _make_manager(root: Path) -> FabricUpdateManager:
 
 
 def _wheel_bytes() -> bytes:
+    """Echte kleine ZIP-wheel, zodat een read-only restauratieprobe betekenis heeft.
+
+    Elke opgenomen file heeft een SHA256/size in de interne RECORD; de
+    afzonderlijke tests blijven even strikt over GEEN offline restore/ACK.
+    """
+    dist = "runner_fabric-0.0.1.dist-info/"
+    members = {
+        "runner_fabric/__init__.py": b"__version__ = '0.0.1'\n",
+        dist + "METADATA": (
+            b"Metadata-Version: 2.1\nName: runner-fabric\nVersion: 0.0.1\n"
+        ),
+        dist + "WHEEL": (
+            b"Wheel-Version: 1.0\nGenerator: offline-fixture\n"
+            b"Root-Is-Purelib: true\nTag: py3-none-any\n"
+        ),
+    }
+    rows = []
+    for name, data in sorted(members.items()):
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        rows.append(f"{name},sha256={digest},{len(data)}\n")
+    record = dist + "RECORD"
+    rows.append(f"{record},,\n")
     buf = io.BytesIO()
     with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as archive:
-        archive.writestr(
-            "runner_fabric-0.0.1.dist-info/METADATA",
-            "Metadata-Version: 2.1\nName: runner-fabric\nVersion: 0.0.1\n",
-        )
-        archive.writestr(
-            "runner_fabric-0.0.1.dist-info/WHEEL",
-            "Wheel-Version: 1.0\nGenerator: test\nRoot-Is-Purelib: true\nTag: py3-none-any\n",
-        )
+        for name, data in members.items():
+            archive.writestr(name, data)
+        archive.writestr(record, "".join(rows))
     return buf.getvalue()
 
 

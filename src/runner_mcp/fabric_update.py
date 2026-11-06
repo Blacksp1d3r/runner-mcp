@@ -1276,9 +1276,15 @@ def _promote_inactive_bundle_noreplace(
         incoming_fd = os.open(incoming_name, flags, dir_fd=root_fd)
         source_fd = os.open("source", flags, dir_fd=incoming_fd)
         bundle_fd = os.open("bundle", flags, dir_fd=source_fd)
+        # .incoming is altijd door deze manager met 0700 aangemaakt.
+        # Een gewone git clone maakt source soms met 0755 aan; dat is
+        # veilig onder de privé-ouder zolang geen andere actor mag schrijven.
         for fd in (incoming_fd, source_fd, bundle_fd):
             item = os.fstat(fd)
-            if item.st_uid != os.geteuid() or stat.S_IMODE(item.st_mode) != 0o700:
+            mode = stat.S_IMODE(item.st_mode)
+            if item.st_uid != os.geteuid() or mode & 0o022:
+                raise FabricUpdateError("fabric_bundle_storage_conflict")
+            if fd == incoming_fd and mode != 0o700:
                 raise FabricUpdateError("fabric_bundle_storage_conflict")
 
         # Reuse the same renameat2(RENAME_NOREPLACE) primitive as historical

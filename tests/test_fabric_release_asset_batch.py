@@ -844,3 +844,146 @@ def test_manager_description_bridge_is_private_and_no_live_stage():
         "rollback", "_activate_bundle", "_validated_bootstrap",
         "write_bytes", "mkdir", "systemctl",
     })
+
+
+# F30 #937: source-only volledige getekende Release → bestaande inactieve custody.
+@pytest.mark.parametrize("count", [5, 33])
+def test_manager_signed_description_only_promotes_inactive_noreplace(
+    tmp_path, monkeypatch, count,
+):
+    """Fictieve Release wordt uitsluitend veilig in de bestaande root bewaard."""
+    args, bodies, lookup = _case(count)
+    manager, audit = _mock_manager_for_signed_batch(
+        monkeypatch, args, release_body=_body_for_signed_fixture(args)
+    )
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    manager.local_bundles_root = root
+    active = tmp_path / "bundle"
+    active.mkdir()
+    (active / "active.txt").write_text("unchanged", encoding="utf-8")
+
+    requested = []
+    receipt = manager._stage_signed_release_description_inactive_once(
+        expected_commit=COMMIT,
+        expected_release_id=RELEASE_ID,
+        independently_trusted_key_sha256=args[
+            "independently_trusted_key_sha256"
+        ],
+        asset_reader=_reader(lookup, requested),
+    )
+    assert receipt["commit"] == COMMIT
+    assert receipt["inactive_custody"] is True
+    assert receipt["install_authorized"] is False
+    assert receipt["owner_authority_proven"] is False
+    assert receipt["rollback_verified"] is False
+    assert receipt["original_client_ack"] is False
+    assert requested == sorted(lookup)
+    assert audit == [
+        "safe", "launcher",
+        "/repos/Blacksp1d3r/Runner-Fabric/releases/tags/" + TAG,
+        "/repos/Blacksp1d3r/Runner-Fabric/git/ref/tags/" + TAG,
+    ]
+    final = root / COMMIT
+    assert {file.name for file in final.iterdir()} == set(bodies)
+    assert all((final / name).read_bytes() == raw for name, raw in bodies.items())
+    assert all((final / name).stat().st_mode & 0o077 == 0 for name in bodies)
+    assert (active / "active.txt").read_text("utf-8") == "unchanged"
+    assert not any(path.name.startswith(".incoming-") for path in root.iterdir())
+
+    # Herhaalde stage mag bestaande custody nooit overschrijven of claimen.
+    old_inode = final.stat().st_ino
+    with pytest.raises(
+        FabricUpdateError, match="^fabric_signed_inactive_custody_unqualified$"
+    ):
+        manager._stage_signed_release_description_inactive_once(
+            expected_commit=COMMIT,
+            expected_release_id=RELEASE_ID,
+            independently_trusted_key_sha256=args[
+                "independently_trusted_key_sha256"
+            ],
+            asset_reader=_reader(lookup, []),
+        )
+    assert final.stat().st_ino == old_inode
+
+
+@pytest.mark.parametrize("bad", [
+    "missing_body", "wrong_pin", "corrupt_asset", "symlink_root", "existing_target",
+])
+def test_manager_inactive_stage_fails_closed_without_overwriting(
+    tmp_path, monkeypatch, bad,
+):
+    """Ongeldige gegevens verhinderen echte opslag of vervangen niets."""
+    args, _, lookup = _case()
+    body = None if bad == "missing_body" else _body_for_signed_fixture(args)
+    manager, _ = _mock_manager_for_signed_batch(
+        monkeypatch, args, release_body=body
+    )
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    manager.local_bundles_root = root
+    target = root / COMMIT
+    if bad == "wrong_pin":
+        args["independently_trusted_key_sha256"] = "f" * 64
+    elif bad == "symlink_root":
+        moved = tmp_path / "real-root"
+        root.rename(moved)
+        root.symlink_to(moved, target_is_directory=True)
+    elif bad == "existing_target":
+        target.mkdir(mode=0o700)
+        (target / "sentinel").write_text("old", encoding="utf-8")
+    requested = []
+    reader = _reader(
+        lookup, requested,
+        failure_at=sorted(lookup)[1] if bad == "corrupt_asset" else None,
+        bad="short" if bad == "corrupt_asset" else None,
+    )
+    code = (
+        "fabric_signed_release_body_unqualified"
+        if bad in {"missing_body", "wrong_pin"} else
+        "fabric_release_asset_bytes_unqualified"
+        if bad == "corrupt_asset" else
+        "fabric_signed_inactive_custody_unqualified"
+    )
+    with pytest.raises(FabricUpdateError, match="^" + code + "$"):
+        manager._stage_signed_release_description_inactive_once(
+            expected_commit=COMMIT,
+            expected_release_id=RELEASE_ID,
+            independently_trusted_key_sha256=args[
+                "independently_trusted_key_sha256"
+            ],
+            asset_reader=reader,
+        )
+    if bad in {"missing_body", "wrong_pin"}:
+        assert requested == []
+    if bad == "corrupt_asset":
+        assert requested == sorted(lookup)[:2]
+    if bad == "existing_target":
+        assert (target / "sentinel").read_text("utf-8") == "old"
+    else:
+        assert not target.exists()
+
+
+def test_inactive_description_stage_has_no_mcp_export_or_install_call():
+    root = Path(__file__).resolve().parents[1]
+    tree = ast.parse(
+        (root / "src/runner_mcp/fabric_update.py").read_text("utf-8")
+    )
+    server = (
+        root / "src/runner_mcp/server.py"
+    ).read_text("utf-8")
+    stage_name = "_stage_signed_release_description_inactive_once"
+    assert stage_name not in server
+    methods = [
+        n for n in ast.walk(tree)
+        if isinstance(n, ast.FunctionDef) and n.name == stage_name
+    ]
+    assert len(methods) == 1
+    called = {
+        n.attr for n in ast.walk(methods[0])
+        if isinstance(n, ast.Attribute)
+    }
+    assert not called.intersection({
+        "start_local", "stage_local_bundle", "_validated_bootstrap",
+        "_activate_bundle", "apply", "rollback", "systemctl", "Popen",
+    })

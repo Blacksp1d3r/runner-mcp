@@ -1,3 +1,10 @@
+## 0.1.141 — F30/#937 veilige atomaire inactieve bundelpromotie, SOURCE ONLY
+
+- In de **bestaande** `FabricUpdateManager.stage_local_bundle` wordt de laatste lokale promotie van een reeds gevalideerde `.incoming-<uuid>/source/bundle` naar `local-bundles/<exact commit>` niet langer met `os.replace` uitgevoerd. Een statuscheck vooraf is gevoelig voor een race: twee actoren kunnen tegelijk constateren dat de doelmap vrij is, waarna `os.replace` zelfs een nadien aangemaakte lege doelmap kan vervangen.
+- De nieuwe interne `_promote_inactive_bundle_noreplace` hergebruikt de bestaande Linux `renameat2(RENAME_NOREPLACE)`-primitive uit Q7-custody met vaste relatieve paden en een eigenaar-private open directory-descriptor. Tussenliggende `incoming/source/bundle`-mappen zijn apart `O_NOFOLLOW` geopend en op eigenaar/0700 gecontroleerd. De rename is atomair en weigert elke al bestaande bestemming; geen nieuwe updater, download-API of opslagstructuur.
+- Nieuwe uitsluitend met pytest-tmp_path uitgevoerde tests bewijzen succesvolle create-once, gelijktijdige doelmaprace, lege/volledige bestaande bestemming, symlink/padinput/mode-inbreuken, onvolledige stage en behoud van `bundle/`, `slots/` en `transaction.json`. Bronwijziging verandert geen Q7 historische custody, release-signatures of actuele servers.
+- Dit is **geen** volledig vertrouwde generieke GitHub Release-import. De onafhankelijke Fabric-publisher signer/bronpin, echte bytes, provenance, fysieke A6/A7 en originele ACK zijn afzonderlijke vereisten.
+
 ## 0.1.140 — F30/#937 generieke wheelhouse ZIP/METADATA/RECORD-controle (SOURCE ONLY)
 
 - De bestaande `fabric_release_wheelhouse.py` heeft een extra `verify_signed_fabric_wheelhouse` ingang, die eerst de generieke ondertekende 0.1.138 roster- en volledige 0.1.139 byte/BUNDLE/SHA256SUMS-controles hergebruikt en daarna alle 1..156 wheels controleert met de reeds bestaande Q7 ZIP/METADATA/RECORD-lezer.

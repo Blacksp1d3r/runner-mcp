@@ -1247,7 +1247,7 @@ def _promote_inactive_bundle_noreplace(
     if (
         type(incoming_name) is not str
         or re.fullmatch(r"\.incoming-[0-9a-f]{32}", incoming_name) is None
-        or type(local_bundles_root) is not Path
+        or not isinstance(local_bundles_root, Path)
         or not local_bundles_root.is_absolute()
     ):
         raise FabricUpdateError("fabric_bundle_storage_conflict")

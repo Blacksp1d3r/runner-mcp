@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 S2 internal end-to-end source pass, generieke production authority ontbreekt
+
+- **SOURCE VOLTOOID 0.1.144:** [PR #946](https://github.com/Blacksp1d3r/runner-mcp/pull/946) merged `86e63ad461e687c7d9f9176bd4cb10c96eef0fc3`; exacte head `b7b8347eb864f823d83d9b0738379e2b9a3f18f4` validation `42240506433`, Ubuntu `42240506547`, attribution `42240506486` success. Private manager-only source method koppelt bestaande signed generic roster/metadata/batch, weigert foutieve key/commit/release-ID vóór metadata-GET en gewijzigde metadata vóór assets, verifieert synthetische 5/33 wheeled bundles volledig. Geen actie op disk/host of servertools.
+- **DEPENDENCIES WAIT:** op gecontroleerde main publiceren Fabric releaseworkflow en eigenaar nog geen onafhankelijke generieke Ed25519-signer/rooster/source/release-ID contract. Geen echte owner-/hostbevoegdheid, geen serving wheel #669/recovery #341/off-target A6 #942/offline A7 #943/ACK; live import of update blijft STOP. Geen interferentie met Qwen V3 en Claude.
+
 ## 2026-11-06 — F30 S2 intern volledig ketencontract vs externe signing/bevoegdheid
 
 - **SOURCE kandidaat 0.1.144:** bestaande interne Runner-MCP manager direct typed `ReleaseAdmission` (0.1.143) → bestaande generic signed exact asset-bytebatch (0.1.142) en dezelfde historisch Q7 gebruikte ZIP/RECORD+manifest gates (0.1.138..0.1.140); signer/commit/release-ID formeel vooraf gevalideerd, echte eigenaartrust niet afgeleid. Geen nieuwe infrastructuur.

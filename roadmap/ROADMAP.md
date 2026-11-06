@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 S2 bronketen 0.1.144 compleet in tests, S2d signer WAIT
+
+- 0.1.144 [Runner-MCP PR #946](https://github.com/Blacksp1d3r/runner-mcp/pull/946) MERGED `86e63ad461e687c7d9f9176bd4cb10c96eef0fc3`, exact CI Validation `42240506433`, Clean Ubuntu `42240506547`, Attribution `42240506486` SUCCESS. Bestaande interne manager `_read_exact_release_admission` en bestaande signed `fetch_exact_signed_fabric_bundle_bytes` zijn met extra vroege signed-rostercheck in één niet-geëxporteerd codepad getest. Full manifest/SHA/ZIP/RECORD en falsificatietests PASS; geen nieuwe controller, updater, API-route of echte mutatie.
+- **Volgende voorwaarde buiten Runner-MCP:** Fabric #924/eigenaar levert waarlijk onafhankelijke generieke releaseondertekening en trusted key/source/release-ID, daarna origineel host- en eigenaargebonden inactieve safe custody, vervolgens #669/#341/A6 #942/A7 #943 + client result/ACK. Tot die tijd geen `start_local/apply` en geen nieuwe officiële host-acties. Claude en Qwen V3 parallel onaangeraakt.
+
 ## 2026-11-06 — F30 #937 0.1.144 bronkandidaat: bestaande manager full chain slechts intern koppelen
 
 - Bestaande `FabricUpdateManager._read_exact_release_admission` en vaste assetbyte-batch 0.1.142 nu uitsluitend intern in `_read_verified_signed_release_bytes` gekoppeld, met vroege Ed25519/commit/release-ID preflight. Geen tweede API, geen nieuwe publisher/signing key, geen stage/apply, geen nieuwe tool, cron/daemon of beïnvloeding van Claude/Qwen. Synthetische object-standalone manager-tests op 2 exacte metadata endpoints, volledige 5/33 wheel ZIP/RECORD-validatie, verboden extra API, fail-closed vóór download.

@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 S2a #937: generiek ondertekende Release-inventaris (bron kandidaat)
+
+- Nieuwe source 0.1.138 module: pure Ed25519- en exacte Fabric SHA/release-ID/publisher-schemacontrole, hergebruikt bestaande `inspect_exact_release`; vergelijking met aparte GitHub metadata blijft niet-autoriserend. Historische Q7-import niet aangepast.
+- S2a acceptatie = volledige exacte-head CI en geen I/O of servermutatie. S2b blijft afhankelijk van een **echt onafhankelijk door Fabric/eigenaar gekwalificeerd signer- en bronpincontract**; daarna bestaande assetbyteverificatie en bestaande owner-private inactieve custody hergebruiken. Geen extra updater/scheduler en geen install/rollback totdat #669, #341, Fabric #924/#942/#943 en originele actor-ACK fysiek bewezen zijn.
+
 ## 2026-11-06 — F30 releasecontrolemijlpaal: #934 en #936 SOURCE MERGED; #937 volgende stage
 
 - [#934](https://github.com/Blacksp1d3r/runner-mcp/pull/934) v0.1.136 reuse bestaande exacte GitHub Release-readiness wanneer Actions `actions_run_unavailable` meldt, zonder het oorspronkelijke blocked/install-authority-resultaat te wijzigen. [#935](https://github.com/Blacksp1d3r/runner-mcp/pull/935) handover gemerged.

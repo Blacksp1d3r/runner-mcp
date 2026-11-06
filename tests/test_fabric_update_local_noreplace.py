@@ -95,6 +95,8 @@ def test_second_stage_same_commit_fails_without_replacing_original(tmp_path):
     other = ".incoming-" + "c" * 32
     bundle = root / other / "source" / "bundle"
     bundle.mkdir(parents=True, mode=0o700)
+    (root / other).chmod(0o700)
+    (root / other / "source").chmod(0o700)
     (bundle / "COMMIT_SHA").write_text("other", encoding="ascii")
     with pytest.raises(FabricUpdateError, match="fabric_bundle_storage_conflict"):
         _promote_inactive_bundle_noreplace(root, other, COMMIT)

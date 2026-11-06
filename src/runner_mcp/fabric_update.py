@@ -330,6 +330,13 @@ class FabricUpdateManager:
         return self._read_exact_release_admission(commit).public_dict()
 
     def _read_exact_release_admission(self, commit: str) -> ReleaseAdmission:
+        """Houd het bestaande publieke, getypeerde Release-contract ongewijzigd."""
+        admission, _ = self._read_exact_release_snapshot(commit)
+        return admission
+
+    def _read_exact_release_snapshot(
+        self, commit: str,
+    ) -> tuple[ReleaseAdmission, object]:
         """Lees exact de bestaande GitHub Release én tag-ref als één snapshot.
 
         Alleen een door deze bestaande manager verkregen getypeerd resultaat
@@ -383,7 +390,9 @@ class FabricUpdateManager:
             raise FabricUpdateError("release_digest_invalid") from exc
         except FabricReleaseAdmissionError as exc:
             raise FabricUpdateError("fabric_release_assets_unqualified") from exc
-        return admission
+        # Beschrijving is onbetrouwbare providerdata, geen sleutelpins of
+        # updatebevoegdheid. De private verbruiker valideert dit apart.
+        return admission, release.get("body")
 
     def _read_verified_signed_release_bytes(
         self,
@@ -457,6 +466,69 @@ class FabricUpdateManager:
         except ValueError as exc:
             # Geen ruwe providertekst, tokens, bestandspaden of byte-inhoud
             # opnemen in een mogelijke volgende operator-/CI-foutmelding.
+            raise FabricUpdateError(
+                "fabric_release_asset_bytes_unqualified"
+            ) from exc
+
+    def _read_verified_signed_release_description_bytes(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, bytes]:
+        """Gebruik het bestaande Release/tag-GET als één getypeerde snapshot.
+
+        Fabric #924 mag het ondertekende rooster in de Release-description
+        vervoeren, maar de sleutel uit die beschrijving is nooit autoriteit.
+        Alleen vooraf extern door eigenaar/Fabric vastgelegde commit,
+        Release-ID en vertrouwde sleutelvingerafdruk komen in aanmerking.
+        De bestaande signed-byte downloader controleert bovendien ALLE assets,
+        BUNDLE/COMMIT/SHA256SUMS en de WHEEL/RECORD-inhoud. Er volgt geen
+        schijfwrite, downloadtool-exposure, BOOTSTRAP, installatie of rollback.
+        `asset_reader` is uitsluitend een synthetische testinjectie.
+        """
+        from .fabric_release_asset_bytes import (
+            fetch_exact_signed_fabric_bundle_bytes,
+            fetch_pinned_asset_bytes,
+        )
+        from .fabric_release_body_envelope import (
+            SignedBodyEnvelopeUnqualified,
+            verify_signed_release_body,
+        )
+
+        _require_commit(expected_commit)
+        observed, body = self._read_exact_release_snapshot(expected_commit)
+        try:
+            document, signature, public_key = verify_signed_release_body(
+                body=body,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+            )
+        except SignedBodyEnvelopeUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_signed_release_body_unqualified"
+            ) from exc
+
+        reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
+        token = self._github_token()
+        try:
+            return fetch_exact_signed_fabric_bundle_bytes(
+                token=token,
+                signed_document=document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+                asset_reader=reader,
+            )
+        except ValueError as exc:
+            # Negeer alle provider-/credentialdetails in eventuele fouttekst.
             raise FabricUpdateError(
                 "fabric_release_asset_bytes_unqualified"
             ) from exc

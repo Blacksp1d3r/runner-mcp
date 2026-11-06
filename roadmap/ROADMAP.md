@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 S2e bestaande inactieve local-bundles stage: racefix MERGED 0.1.141
+
+- [Runner-MCP PR #942](https://github.com/Blacksp1d3r/runner-mcp/pull/942) `ebe687b75c1ed7a2979966a43e0fb7e3a97c032f`, source 0.1.141, exact-head full CI `42221040779` / clean Ubuntu `42221041071` / attribution `42221041052` SUCCESS. Hergebruik van bestaande Q7 `renameat2(RENAME_NOREPLACE)` voor de al bestaande `stage_local_bundle`; geen gelijktijdige overschrijving van inactieve `local-bundles/<commit>` meer. Geen tweede updater, geen actie op Qwen/Claude. Failure Museum in bestaande folder.
+- **Nog OPEN:** onafhankelijke generieke issuer-key/owner-pin en werkelijk ondertekend `runner-fabric/signed-release-roster/v1` vanuit Fabric #924; echte exact gepinde byte-download koppelen aan inactieve custody zonder nieuwe admin-/authroute; geen `start_local/apply` voordat #669/#341 + A6 #942/A7 #943 plus originele client-result/ACK fysiek bewezen zijn. Een lokale bronbuildstage is niet dezelfde authority als een gesigneerde GitHub Release-installatie.
+
 ## 2026-11-06 — F30 S2 #937: drie bronmijlpalen MERGED, inactieve custody blijft OPEN
 
 - **SOURCE/CI VOLTOOID:** 0.1.138 [#939](https://github.com/Blacksp1d3r/runner-mcp/pull/939) onafhankelijke ondertekening+SHA-pins; 0.1.139 [#940](https://github.com/Blacksp1d3r/runner-mcp/pull/940) gedeelde Q7/generic volledige asset- en manifestintegriteit; 0.1.140 [#941](https://github.com/Blacksp1d3r/runner-mcp/pull/941) gedeelde ZIP/METADATA/RECORD wheel-inhoud. Exacte-head Validation, Ubuntu en Attributie voor alle drie SUCCESS. Bestaande Q7 contracten behouden.

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 S2 #937: drie bronmijlpalen MERGED, inactieve custody blijft OPEN
+
+- **SOURCE/CI VOLTOOID:** 0.1.138 [#939](https://github.com/Blacksp1d3r/runner-mcp/pull/939) onafhankelijke ondertekening+SHA-pins; 0.1.139 [#940](https://github.com/Blacksp1d3r/runner-mcp/pull/940) gedeelde Q7/generic volledige asset- en manifestintegriteit; 0.1.140 [#941](https://github.com/Blacksp1d3r/runner-mcp/pull/941) gedeelde ZIP/METADATA/RECORD wheel-inhoud. Exacte-head Validation, Ubuntu en Attributie voor alle drie SUCCESS. Bestaande Q7 contracten behouden.
+- **S2d/e GEBLOKKEERD/OPEN:** eerst onafhankelijke generieke Fabric-signer/owner key en bron/release-ID/hostbevoegdheid bewijzen; dan echte releasebyte-download in bestaande verifier en create-once opslag uitsluitend onder bestaande inactieve `local-bundles/<commit>`, geen overschrijven van `bundle/` en geen `start_local/apply`.
+- **S3 FYSIEK OPEN:** #669 actuele serving process/wheel, #341 echte lokale recovery, Fabric #924 compat/lease, onafhankelijke A6 #942, offline A7 #943 en originele actor result+ACK vóór productieactivatie. Bron 0.1.140 ≠ verbonden productie 0.1.88.
+
 ## 2026-11-06 — #937 S2c generieke Python-wheels verifiëren vóór inactieve opslag
 
 - Bron 0.1.140 kandidaat: dezelfde ZIP/Metadata/RECORD-parser gebruikt voor vaste Q7 en toekomstige exact ondertekende generieke Fabric-bundels; eerst signed roster + volledige manifest/SHA, daarna wheelinhoud. Synthetische 5/33/160 asset- en fouttests plus volledige CI verplicht.

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #936 merged; next #937 owns read-only signer/custody investigation
+
+- Runner-MCP [#936](https://github.com/Blacksp1d3r/runner-mcp/pull/936) **SOURCE MERGED** `df71f1ea6c15d271088929a5da280675ed5ceddd` v0.1.137; final head 2a6e4e097f75dc791ab370ac42a3c48254f49f0a, CI validation 42206013659 / clean Ubuntu 42206013610 / attribution 42206013606 ALL SUCCESS. Distinct exact Release 2×404, provider and invalid SHA metadata. No stage/install/rollback.
+- Child [#937](https://github.com/Blacksp1d3r/runner-mcp/issues/937) claims only **generic independent signer/roster analysis plus inactive existing custody**, not another updater. Existing signed import has Q7 fixed source, release ID, 33 wheels; do not loosen its pins or pretend metadata digest is independent trust. Fabric #2049 publisher, #924 policy, #942/#943 A6/A7, #669 exact real serving host retain their owners.
+- Connected actual Runner-MCP tool status 0.1.88, `self_update_ready=false`, source/wheel/host verification false; correct original-host installation is still NOT TESTED and not authorized. No server mutation performed.
+
 ## 2026-11-06 — #934 F30 source accepted; no duplicate updater or live-claim transfer
 
 - Owner/session checked [Runner-MCP PR #934](https://github.com/Blacksp1d3r/runner-mcp/pull/934): merged into main at 10:16:54 UTC, GitHub-source 0.1.136. Exact-head validation 42200803085, Ubuntu 42200803174 and attribution 42200803456 PASS; follow-up PR-event validation 42201446139 has release-reservation WAIT/FAIL after merge, while functional tests passed. See CURRENT_STATE for exact links and scope.

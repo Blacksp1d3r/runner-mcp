@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 tijdelijk genest / definitief vlak bewaarpad verduidelijkt
+
+- Bij GitHub-release-inactieve custody gebruikt de bestaande manager `.incoming-<uuid>/source/bundle/<asset>` als PRIVATE tijdelijke werkboom; de al bestaande `_promote_inactive_bundle_noreplace` promoveert precies `source/bundle` atomair als vlakke `local-bundles/<commit>/<asset>`-bestemming. De tests controleren finale bytes, 0700/0600, NOREPLACE en geen dubbele assetkopie in de bewaarde tijdelijke boom.
+- Een structureel leesbare inactieve bundel is slechts opslaggereed, GEEN installatiebevoegdheid. De ontbrekende originele host/proces/wheel #669, rollout/herstel #341, Fabric off-target A6 #942, onafhankelijk offline A7 #943 en werkelijke original-client result/ACK blijven noodzakelijke gates. ED key pas na automatische updates/Qwen/Claude.
+- Eerste PR #958 head testte ten onrechte geneste FINALE structuur en faalde 4/4698 tests. Herstelde head nog via officiële exacte-head CI valideren; geen wijziging aan live servers of updater.
+
 ## 2026-11-06 — F30/#341 0.1.150 GitHub Release → bestaande inactieve custody, ED pas later
 
 - Releasepublicatie Fabric #924 operationeel met 33 assets; Runner-MCP 0.1.149 verifieert vaste GitHub Release/tag+assetbytes zonder ED key. Deze kandidaat 0.1.150 hergebruikt dezelfde transport en de AL BESTAANDE signed-custody NOREPLACE opslag voor de keyless CI-bundel, alleen inactief. Geen kopie/parallel downloader/daemon/installer.

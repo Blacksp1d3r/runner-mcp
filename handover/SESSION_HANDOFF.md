@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 #958 gerichte CI wees gemiste renameat2-promotie aan
+
+- Mijn voorlopige hypothese "final custody nested" was FOUT. Exacte inspectie van `fabric_update._promote_inactive_bundle_noreplace` toont: input `.incoming-<uuid>/source/bundle` wordt als directory atomair gepromoveerd naar **vlak** `local-bundles/<SHA>`; leeg `.incoming/source` blijft staan. Eerste #958 HEAD `7233aefee2f444ba649900937d36920fbaf9f2df` CI 42306368102 faalde daardoor terecht 4 tests, 4694 PASS; niet merge of als groen behandelen.
+- #958 is gecorrigeerd naar flat finale verificatie plus geen dubbele bytes in forensische tijdelijke boom, zonder uitvoerende codewijzigingen. Nieuwe exact-head CI eerst controleren. Dit levert slechts bewijs voor opslaglayout, NIET toegestane installatie/rollout/rollback.
+- Originele host actieve wheel/procesherkomst #669, bestaande zelfstandige recovery #341/Fabric #943, off-target A6 #942, positieve oorspronkelijke client-result/ACK zijn nog niet gekwalificeerd. Nieuwe ED-sleutel pas na werkende automatische updates/Qwen/Claude; Qwen/Claude/SQL blijven onaangeroerd.
+
 ## 2026-11-06 — F30 #341 keyless release-import naar bestaande inactieve opslag, source only
 
 - Vóór deze kandidaat is Runner-MCP PR #956 (v0.1.149) 7/7 exact-head CI SUCCESS en merged main 0ba0e39600de47f8686c14ba1712846bd019eab1: fixed GitHub Release/tag/asset bytes, manifest+WHEEL/RECORD in RAM, zonder ED key.

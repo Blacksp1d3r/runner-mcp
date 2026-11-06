@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 broncode/CI-mislezing opgelost: tijdelijke versus finale opslag
+
+- Exacte GitHub-v0.1.150-code bouwt de kandidaat TIJDELIJK onder `local-bundles/.incoming-<uuid>/source/bundle/<asset>`. De bestaande `_promote_inactive_bundle_noreplace` roept `renameat2(RENAME_NOREPLACE)` aan met **bron `.incoming-<uuid>/source/bundle`** en **doel `local-bundles/<SHA>`**. De FINALE kandidaat heeft daarom terecht VLAKKE assets. De originele 4698 groene tests waren op dit punt correct.
+- Mijn eerste PR #958-testwijziging vergat deze exacte promotie en faalde terecht op 4 pytestgevallen (CI 42306368102: 4694 PASS / 4 FAIL). Correctie: originele vlakke layout + extra tests dat de achterblijvende `.incoming-...` geen tweede assetkopie bevat en dat de bestaande `_validate_local_bundle_source` de flat bundel structureel accepteert. De echte `local_readiness`/activatie geeft hierdoor NOOIT zelfstandig productiebevoegdheid.
+- Geen nieuw tool, updater, installer of hostwijziging. Wacht op volledige exacte-head CI voor de herstelde PR. Productie staat nog op onvolledig bewezen 0.1.88; #669/#341, Fabric A6 #942/A7 #943 en originele result/ACK blijven harde eisen. ED owner key optioneel pas na auto-updates, Qwen en Claude.
+
 ## 2026-11-06 — F30/#341 keyless GitHub-release INACTIEVE storage (v0.1.150 bronkandidaat)
 
 - SOURCE-ONLY: _stage_github_release_inactive_once op dezelfde FabricUpdateManager bezit dezelfde bestaande fixed repo release/tag GETs + individuele asset-ID transport + manifest/ZIP/RECORD, gevolgd door hergebruik van bestaande private _store_verified_inactive_bytes_once (0700/0600 fsync/readback/NOREPLACE). Nieuwe 0.1.150 is geen geïnstalleerde serverrelease. Signed route en Q7 bewaard.

@@ -1,3 +1,9 @@
+## 2026-11-06 — #937 S2 onafhankelijke signed-roster-gate vóór bestaande inactieve import
+
+- **S2a bron kandidaat 0.1.138:** `fabric_release_signed_roster.verify_signed_fabric_roster` vereist exact Fabric-goedgekeurde `expected_commit`, `expected_release_id` en *extern* vertrouwde sleutel-SHA256, plus een versiegebonden Ed25519-inventaris `runner-fabric/signed-release-roster/v1`. De bestaande `inspect_exact_release` controleert 5..160 exacte asset-pins; pure vergelijking met GitHub metadata geeft altijd `match_only`. Het historisch vaste Q7-contract blijft afzonderlijk.
+- **S2b WAIT:** een werkelijke eigenaar/Fabric-issuer voor dit generieke contract en een onafhankelijke (niet GitHub-afgeleide) hash/ondertekening zijn nog niet geattesteerd. Pas na die authority en offline file-level proof de reeds bestaande byte-verifier / bestaande `local-bundles/<sha>` voor inactieve create-once custody verbinden. Reeds geverifieerde GitHub Release metadata alleen is geen cryptografische trust anchor.
+- **S3 live WAIT:** exact originele host/proces/wheel #669, #341 lokale recovery, Fabric #924 compat/lease, off-target A6 #942, autonome no-NIC A7 #943 en oorspronkelijke result+ACK. Geen tweede updater of alternatieve agent-controller.
+
 ## 2026-11-06 — F30 release-feed en stage-afhankelijkheden
 
 - Runner-Fabric [#2049](https://github.com/Blacksp1d3r/Runner-Fabric/pull/2049) bezit distributie-only automatische exacte main→GitHub Release publicatie; eerste werkelijk onbeheerde schedule-run blijft afzonderlijk te observeren.

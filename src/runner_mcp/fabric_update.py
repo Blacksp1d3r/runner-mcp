@@ -25,7 +25,11 @@ from typing import Any
 from uuid import uuid4
 
 from .fabric_bootstrap import FabricBootstrapError, _private_env_value
-from .fabric_release_assets import FabricReleaseAdmissionError, inspect_exact_release
+from .fabric_release_assets import (
+    FabricReleaseAdmissionError,
+    FabricReleaseDigestError,
+    inspect_exact_release,
+)
 from .operational_safety import OperatorSafetyGuard
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
@@ -41,6 +45,7 @@ _MAX_ARCHIVE = 256 * 1024 * 1024
 _MAX_UNCOMPRESSED = 256 * 1024 * 1024
 _MAX_ENTRY = 64 * 1024 * 1024
 _MAX_FILES = 160
+_RELEASE_RESOURCE_NOT_FOUND = "fabric_release_resource_not_found"
 _TERMINAL = frozenset({"completed", "error", "interrupted"})
 
 
@@ -85,6 +90,9 @@ _READINESS_FAILURE_REASONS = _LOCAL_CUSTODY_FAILURE_REASONS | frozenset(
         "fabric_bundle_integrity_failed",
         "fabric_release_metadata_unavailable",
         "fabric_release_assets_unqualified",
+        "release_not_published",
+        "release_provider_unavailable",
+        "release_digest_invalid",
     }
 )
 
@@ -321,18 +329,35 @@ class FabricUpdateManager:
         tag = prefix + commit
         owner, repo = _REPOSITORY.split("/", 1)
         path = f"/repos/{owner}/{repo}"
-        release = self._api_json(
-            token,
-            f"{path}/releases/tags/{tag}",
-            category="fabric_release_metadata_unavailable",
-        )
-        tag_ref = self._api_json(
-            token,
-            f"{path}/git/ref/tags/{tag}",
-            category="fabric_release_metadata_unavailable",
-        )
+        # Both fixed GitHub endpoints must return 404 before we may classify
+        # this as not published. One 404 plus one present object is a
+        # conflict, never proof that a new release may be created.
+        absent = []
+        records: list[dict[str, Any] | None] = []
+        for suffix in (f"/releases/tags/{tag}", f"/git/ref/tags/{tag}"):
+            try:
+                records.append(self._api_json(
+                    token,
+                    path + suffix,
+                    category="fabric_release_metadata_unavailable",
+                ))
+                absent.append(False)
+            except FabricUpdateError as exc:
+                if str(exc) != _RELEASE_RESOURCE_NOT_FOUND:
+                    raise
+                records.append(None)
+                absent.append(True)
+        if all(absent):
+            # GitHub may deliberately conceal inaccessible resources as 404.
+            # This is a diagnostic only, never publication/update authority.
+            raise FabricUpdateError("release_not_published")
+        if any(absent):
+            raise FabricUpdateError("fabric_release_assets_unqualified")
+        release, tag_ref = records
         try:
             admission = inspect_exact_release(commit, release, tag_ref)
+        except FabricReleaseDigestError as exc:
+            raise FabricUpdateError("release_digest_invalid") from exc
         except FabricReleaseAdmissionError as exc:
             raise FabricUpdateError("fabric_release_assets_unqualified") from exc
         return admission.public_dict()
@@ -919,7 +944,15 @@ class FabricUpdateManager:
         try:
             with self._opener.open(request, timeout=60) as response:
                 raw = response.read(max_bytes + 1)
-        except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
+        except urllib.error.HTTPError as exc:
+            if category == "fabric_release_metadata_unavailable":
+                if exc.code == 404:
+                    raise FabricUpdateError(_RELEASE_RESOURCE_NOT_FOUND) from exc
+                raise FabricUpdateError("release_provider_unavailable") from exc
+            raise FabricUpdateError(category) from exc
+        except (OSError, urllib.error.URLError) as exc:
+            if category == "fabric_release_metadata_unavailable":
+                raise FabricUpdateError("release_provider_unavailable") from exc
             raise FabricUpdateError(category) from exc
         if len(raw) > max_bytes:
             raise FabricUpdateError(category)

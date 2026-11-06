@@ -572,3 +572,143 @@ def test_signed_inactive_stage_is_not_exported_to_mcp_or_update_flow():
     manager = Path(__file__).resolve().parents[1] / "src/runner_mcp/fabric_update.py"
     for source in (server, manager):
         assert "_stage_signed_release_inactive_once" not in source.read_text("utf-8")
+
+
+# F30 Release-description contract: gebruik dezelfde bestaande signed-byte fixtures.
+_NOTES_V1 = "Exact Fabric release notes; never authorized to install."
+_BEGIN_V1 = "\n\n-----BEGIN RUNNER-FABRIC SIGNED-RELEASE-ROSTER V1-----\n"
+_END_V1 = "-----END RUNNER-FABRIC SIGNED-RELEASE-ROSTER V1-----\n"
+
+
+def _body_for_signed_fixture(args):
+    """Bouw alleen in-memory het door Fabric #924 gestandaardiseerde tekstblok."""
+    values = (
+        args["signed_document"], args["signature"], args["public_key"],
+    )
+    lines = (
+        name + base64.b64encode(raw).decode("ascii") + "\n"
+        for name, raw in zip(
+            ("document=", "signature=", "public_key="), values, strict=True
+        )
+    )
+    return _NOTES_V1 + _BEGIN_V1 + "".join(lines) + _END_V1
+
+
+@pytest.mark.parametrize("count", [5, 33, 160])
+def test_signed_fabric_description_matches_existing_verified_roster(count):
+    from runner_mcp.fabric_release_body_envelope import verify_signed_release_body
+
+    args, _, _ = _case(count)
+    body = _body_for_signed_fixture(args)
+    actual = verify_signed_release_body(
+        body=body,
+        independently_trusted_key_sha256=args["independently_trusted_key_sha256"],
+        expected_commit=args["expected_commit"],
+        expected_release_id=args["expected_release_id"],
+        observed_metadata=args["observed_metadata"],
+    )
+    assert actual == (
+        args["signed_document"], args["signature"], args["public_key"]
+    )
+    assert len(body.encode("utf-8")) < 100 * 1024
+    assert body.count(_BEGIN_V1) == body.count(_END_V1) == 1
+
+
+@pytest.mark.parametrize("bad", [
+    "absent", "trailing", "duplicate", "embedded_cr", "bad_document",
+    "bad_signature", "bad_public_key", "wrong_key_pin", "wrong_commit",
+    "wrong_release_id", "metadata_mismatch", "bad_base64", "extra_line",
+    "oversize_notes", "truncated", "noncanonical", "wrong_body_type",
+])
+def test_signed_description_fails_closed_without_import_or_stage(bad):
+    from runner_mcp.fabric_release_body_envelope import (
+        SignedBodyEnvelopeUnqualified,
+        verify_signed_release_body,
+    )
+
+    args, _, _ = _case()
+    body = _body_for_signed_fixture(args)
+    values = {
+        "body": body,
+        "independently_trusted_key_sha256": args[
+            "independently_trusted_key_sha256"
+        ],
+        "expected_commit": args["expected_commit"],
+        "expected_release_id": args["expected_release_id"],
+        "observed_metadata": args["observed_metadata"],
+    }
+    if bad == "absent":
+        values["body"] = _NOTES_V1
+    elif bad == "trailing":
+        values["body"] += "forged-suffix"
+    elif bad == "duplicate":
+        values["body"] += _BEGIN_V1 + "document=fake\n"
+    elif bad == "embedded_cr":
+        values["body"] = values["body"].replace(
+            _NOTES_V1, _NOTES_V1 + "\r"
+        )
+    elif bad == "bad_document":
+        values["body"] = values["body"].replace(
+            "document=", "document=AA", 1
+        )
+    elif bad == "bad_signature":
+        values["body"] = values["body"].replace(
+            "signature=", "signature=AA", 1
+        )
+    elif bad == "bad_public_key":
+        values["body"] = values["body"].replace(
+            "public_key=", "public_key=AA", 1
+        )
+    elif bad == "wrong_key_pin":
+        values["independently_trusted_key_sha256"] = "f" * 64
+    elif bad == "wrong_commit":
+        values["expected_commit"] = "b" * 40
+    elif bad == "wrong_release_id":
+        values["expected_release_id"] = RELEASE_ID + 2
+    elif bad == "metadata_mismatch":
+        original = values["observed_metadata"]
+        changed = replace(original.files[0], sha256="d" * 64)
+        values["observed_metadata"] = replace(
+            original, files=(changed, *original.files[1:])
+        )
+    elif bad == "bad_base64":
+        values["body"] = values["body"].replace(
+            "document=", "document=!", 1
+        )
+    elif bad == "extra_line":
+        values["body"] = values["body"].replace(
+            _END_V1, "injected=true\n" + _END_V1
+        )
+    elif bad == "oversize_notes":
+        values["body"] = "x" * (8 * 1024 + 1) + values["body"]
+    elif bad == "truncated":
+        values["body"] = values["body"][:-5]
+    elif bad == "noncanonical":
+        values["body"] = values["body"].replace(
+            "document=", "document=A", 1
+        )
+    else:
+        values["body"] = b"bytes-not-text"
+
+    with pytest.raises(
+        SignedBodyEnvelopeUnqualified,
+        match="^fabric_signed_release_body_unqualified$",
+    ):
+        verify_signed_release_body(**values)
+
+
+def test_release_description_parser_is_private_and_has_no_network_or_stage():
+    parser = (
+        Path(__file__).resolve().parents[1]
+        / "src/runner_mcp/fabric_release_body_envelope.py"
+    ).read_text("utf-8")
+    server = (
+        Path(__file__).resolve().parents[1]
+        / "src/runner_mcp/server.py"
+    ).read_text("utf-8")
+    assert "verify_signed_release_body" not in server
+    for forbidden in (
+        "start_local", "stage_local_bundle", "os.open", "urllib",
+        "requests.", "subprocess", "systemctl", "github_token",
+    ):
+        assert forbidden not in parser

@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 0.1.146 generieke signed Release-description CONSUMER BRONKANDIDAAT
+
+- Private read-only `src/runner_mcp/fabric_release_body_envelope.py` accepteert uitsluitend een exact Base64 document/signature/public_key-blok achteraan een onbetrouwbare bestaande Release-beschrijving. Bounded 100 KiB body, 64 KiB signed document en 8 KiB notities; strikte canonical Base64/markers. Daarna de bestaande generieke Ed25519 + extern vertrouwde SHA-256 van public key, commit, Release-ID en typed `ReleaseAdmission` voor controle van 5..160 bestaande bestand-ID/groottes/SHA.
+- Fabric PR #2061 is de afzonderlijke bronformatter; automatische publicatieworkflow en echte onafhankelijke uitgeverssleutel zijn niet geconfigureerd. Geen tweede downloader, gh-token pad, MCP-tool, inactieve fysieke import of live host-/Claude-/Qwen-/SQL-wijziging. De originele host en rollbackbewijzen #669/#341 + Fabric #942/#943 blijven blokkades.
+
 ## 2026-11-06 — F30 #937 0.1.145 bronkandidaat: signed bytes → inactieve NOREPLACE custody
 
 - BRONKANDIDAAT (CI nog niet bewezen): private _stage_signed_release_inactive_once hergebruikt generieke signed/full-bundle controles en Q7 private root-FD + manager NOREPLACE promotie. Synthetische 5/33 testmappen uitsluitend, geen echte host, activa, Fabric/Claude/Qwen/SQL of tokens geraakt.

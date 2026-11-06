@@ -478,6 +478,29 @@ class FabricUpdateManager:
         independently_trusted_key_sha256: str,
         asset_reader: Callable[..., bytes] | None = None,
     ) -> dict[str, bytes]:
+        """Behoud het bestaande interne broncontract: uitsluitend bytes in RAM.
+
+        De verifiërende voorbereiding levert ook bewijsmateriaal voor de
+        afzonderlijke inactieve opslag. Hier wordt NOOIT naar schijf geschreven.
+        """
+        _, _, _, _, bodies = (
+            self._read_verified_signed_release_description_candidate(
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                asset_reader=asset_reader,
+            )
+        )
+        return bodies
+
+    def _read_verified_signed_release_description_candidate(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> tuple[ReleaseAdmission, bytes, bytes, bytes, dict[str, bytes]]:
         """Gebruik het bestaande Release/tag-GET als één getypeerde snapshot.
 
         Fabric #924 mag het ondertekende rooster in de Release-description
@@ -516,7 +539,7 @@ class FabricUpdateManager:
         reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
         token = self._github_token()
         try:
-            return fetch_exact_signed_fabric_bundle_bytes(
+            bodies = fetch_exact_signed_fabric_bundle_bytes(
                 token=token,
                 signed_document=document,
                 signature=signature,
@@ -532,6 +555,59 @@ class FabricUpdateManager:
             raise FabricUpdateError(
                 "fabric_release_asset_bytes_unqualified"
             ) from exc
+        return observed, document, signature, public_key, bodies
+
+    def _stage_signed_release_description_inactive_once(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, object]:
+        """Voltooi exact signed Release->bestaande INACTIEVE local-bundles.
+
+        Eerst twee vaste GitHub metadata-GETs, de onafhankelijke signer/
+        source/release-pins, volledige pinned assetbytes en alle wheelchecks.
+        PAS DAARNA schrijft de al aanwezige create-once/no-replace custody
+        de gecontroleerde bytes in de bestaande eigenaar-private 0700 root.
+        Dit is private, niet aan server/MCP tool gekoppelde bronvoorbereiding:
+        ontvangen aanroeperpins bewijzen geen werkelijke operatorbevoegdheid.
+        Geen actieve bundle, BOOTSTRAP, install, launcher, service of rollback.
+        """
+        from .fabric_release_inactive_custody import (
+            InactiveSignedCustodyUnqualified,
+            _stage_signed_release_inactive_once,
+        )
+
+        observed, document, signature, public_key, bodies = (
+            self._read_verified_signed_release_description_candidate(
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                asset_reader=asset_reader,
+            )
+        )
+        try:
+            receipt = _stage_signed_release_inactive_once(
+                local_bundles_root=self.local_bundles_root,
+                signed_document=document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+                asset_bodies=bodies,
+            )
+        except InactiveSignedCustodyUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_signed_inactive_custody_unqualified"
+            ) from exc
+
+        # Alleen na volledig download/verify/fsync/promotie is dit waar.
+        # De echte eigenaar-/install-/rollbackbevoegdheid blijft FALSE.
+        return {**receipt, "download_performed": True}
 
     def local_readiness(self, commit: str) -> dict[str, Any]:
         """Verify one exact locally-custodied Fabric bundle without mutation."""

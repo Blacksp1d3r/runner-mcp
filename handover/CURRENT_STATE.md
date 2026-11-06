@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 Runner-MCP 0.1.148 bron: verified signed release → INACTIEVE owner-private NOREPLACE stage
+
+- Private managerkandidaat bundelt de vorige `ReleaseAdmission`, geldige eigenaar-gepinde Ed25519 signed-document/signature/key en ALLE volledig gevalideerde assetbytes na exact twee bestaande GitHub metadata-GETs. Bestaande bytes-only-API blijft ongewijzigd; nieuwe interne stage benut ALLEEN de al aanwezige owner-private 0700 `local_bundles_root` en Q7 atomic NOREPLACE. Geen installatie, activatie, systemd of extra downloader.
+- Tests gebruiken uitsluitend fictieve Releases, lokale tijdelijke 0700 mappen en 5/33 synthetische wheel-archieven. Onderbreking, ontbrekende body, foutieve signerkey, symlink-root, concurrerend bestaand target fail-closed. Bestaande actieve bundle blijft intact en result-velden install/owner/recovery/ACK staan FALSE. Er is niet echt gedownload van GitHub of op een originele host geschreven.
+- **HARD WAIT:** werkelijk onafhankelijk beheerde eigenaarssigner, owner-key/source/release-ID-trustpolicy en automatisch ondertekende Fabric-releasepublicatie ontbreken nog, evenals oorspronkelijke host/wheel #669, herstel #341, fysieke A6 #942/A7 #943 en echte issuer result/ACK. Claude, Qwen, Fabric-runtime, SQL en services niet geraakt.
+
 ## 2026-11-06 — F30 #937 Runner-MCP 0.1.147 bron: complete private Release-body → bytebatch zonder tweede GET
 
 - Nieuwe interne `_read_exact_release_snapshot` brengt de bestaande vaste GitHub Release + tag-ref samen als één getypeerd `ReleaseAdmission` plus ONBETROUWBARE description; publieke `release_assets_readiness` retourneert nog exact dezelfde status. Private `_read_verified_signed_release_description_bytes` controleert het signed-roster/v1 exact tegen onafhankelijke eigenaarspins en hergebruikt de reeds aanwezige signed/pinned byte-downloader en volledige WHEEL/RECORD gate.

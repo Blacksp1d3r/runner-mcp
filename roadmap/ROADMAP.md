@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 v0.1.148 private signed Release end-to-end source closure
+
+- Exacte onafhankelijke owner-pins → onbetrouwbare GitHub Release/body + tagref → bestaande Ed25519/assetbytes/manifest/wheel-verifier → owner-private create-once INACTIEVE NOREPLACE custody is als **private code**, met synthetische tests, doorverbonden; geen publieke tool, install, restart of rollback.
+- S3 fysieke uitrol moet blijven wachten op echte onafhankelijke signer/trust, automatische ondertekende publicatie in Fabric #924, originele Runner-MCP #669 + #341 herstelsupervisor, Fabric fysieke A6 #942/A7 #943 en originele geauthenticeerde result/ACK. Nooit een geteste codeketen verwarren met een uitrol op de werkelijke machine.
+
 ## 2026-11-06 — F30 #937 source-only gesloten signed Release-body → bestaande manager-verificatie
 
 - Interne manager-route gebruikt één vaste Release/tag-snapshot plus signed description, valideert onafhankelijke key-/commit-/releasepin en hergebruikt volledige bestaande pinned assetbytes-verificatie in geheugen. Geen aparte downloader, updateservice of publieke tool.

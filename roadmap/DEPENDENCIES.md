@@ -1,3 +1,10 @@
+## 2026-11-06 — F30 release-feed en stage-afhankelijkheden
+
+- Runner-Fabric [#2049](https://github.com/Blacksp1d3r/Runner-Fabric/pull/2049) bezit distributie-only automatische exacte main→GitHub Release publicatie; eerste werkelijk onbeheerde schedule-run blijft afzonderlijk te observeren.
+- Runner-MCP [#934](https://github.com/Blacksp1d3r/runner-mcp/pull/934) en [#936](https://github.com/Blacksp1d3r/runner-mcp/pull/936) zijn bron-gemergede **read-only** fallback en afzonderlijke releasefoutcategorieën, geen activatie.
+- Runner-MCP [#937](https://github.com/Blacksp1d3r/runner-mcp/issues/937) **S2 / SOURCE NEXT**: onafhankelijke generieke signer/roster admission vóór exact download + INACTIEVE existing local-custody; historische Q7-only #739 is geen automatische generieke trust anchor. Bestaande FabricUpdateManager/custody hergebruiken, zonder parallelle updater.
+- **S3 LIVE BLOCKED:** #669 original host/loaded wheel, #341 bounded restart/recovery, Fabric #924 leased rollout + #942 physically independent A6 + #943 autonomous no-NIC A7 + originele durable client ACK vereist vóór enige unattended daadwerkelijke upgrade. 0.1.137 bron≠verbonden 0.1.88.
+
 ## 2026-10-28 — #381 hergebruik bestaande LAB Q7-private stage zonder tokenkopie (SOURCE 0.1.131 MERGED; LIVE WAIT)
 
 - [PR #920](https://github.com/Blacksp1d3r/runner-mcp/pull/920) **MERGED** `756143c8149b7ba45cb6a2374069019737e0c542`, exact final head `8932c1651f76701bc88a5065b5e0fb7fbed2614d`, Runner-MCP bron **0.1.131**. Volledige finale [validation #40753798946](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/40753798946), [clean Ubuntu #40753799425](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/40753799425) en [attributie #40753798928](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/40753798928) **SUCCESS** (Ruff, 4355 pytest, version/reservation, echte disposable systemd, artifact en vijfminutendemonstratie). Eerste CI gaf 1 test-fixturepadconflict, geen codefout; gecorrigeerd op de nieuwe HEAD zonder versoepeling van controles.

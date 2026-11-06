@@ -21,7 +21,13 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # Voor typecontrole; bij rechtstreeks laden van de bestaande Q7-lezer
+    # mag deze package-import niet uitgevoerd worden.
+    from .fabric_release_assets import ReleaseAdmission
+
 
 _ROOT = "https://api.github.com/repos/Blacksp1d3r/Runner-Fabric/releases/assets/"
 _BLOB_HOST = "release-assets.githubusercontent.com"

@@ -712,7 +712,7 @@ class FabricUpdateManager:
         self._assert_managed_launcher()
         root = self._local_bundle_root(commit)
         self._validate_local_bundle_source(root)
-        self._validated_bootstrap(commit, root=root)
+        self._validated_bootstrap(commit, root=root, verify_wheel_records=True)
         return {
             "commit": commit,
             "artifact_ready": True,
@@ -1050,7 +1050,9 @@ class FabricUpdateManager:
                 staged = self._extract_bundle(archive, job)
             previous = self._activate_bundle(staged, job)
             try:
-                bootstrap = self._validated_bootstrap(job.commit)
+                bootstrap = self._validated_bootstrap(
+                    job.commit, verify_wheel_records=job.source == "local-custody",
+                )
                 self._update(job_id, state=FabricUpdateState.PREFLIGHT)
                 self._run_fixed(bootstrap, "preflight", "fabric_preflight_failed")
                 if self.safety.status().stop_active:
@@ -1104,7 +1106,7 @@ class FabricUpdateManager:
     def _stage_local_bundle(self, job: FabricUpdateJob) -> Path:
         source = self._local_bundle_root(job.commit)
         self._validate_local_bundle_source(source)
-        self._validated_bootstrap(job.commit, root=source)
+        self._validated_bootstrap(job.commit, root=source, verify_wheel_records=True)
         staged = self.state_root / f".bundle-{job.job_id}"
         if staged.exists() or staged.is_symlink():
             raise FabricUpdateError("fabric_bundle_storage_conflict")
@@ -1124,7 +1126,7 @@ class FabricUpdateManager:
                 target = staged / entry.name
                 shutil.copyfile(entry, target)
                 target.chmod(0o600)
-            self._validated_bootstrap(job.commit, root=staged)
+            self._validated_bootstrap(job.commit, root=staged, verify_wheel_records=True)
         except Exception:
             shutil.rmtree(staged, ignore_errors=True)
             raise
@@ -1376,7 +1378,15 @@ class FabricUpdateManager:
         commit: str,
         *,
         root: Path | None = None,
+        verify_wheel_records: bool = False,
     ) -> Path:
+        """Lees het bestaande bundle-formaat en, voor local-custody, ZIP/RECORD.
+
+        De eerste SHA256SUMS-controle bewijst alleen lokale integriteit.
+        Voor de bestaande inactieve lokale updatebron hergebruiken we daarna
+        de al bestaande ZIP/METADATA/RECORD-parser op exact dezelfde bytes.
+        Dit verifieert GEEN eigenaartrust, host of terugrolbevoegdheid.
+        """
         bundle_root = self.bundle if root is None else root
         manifest = _read_json(
             bundle_root / "BUNDLE.json",
@@ -1459,6 +1469,23 @@ class FabricUpdateManager:
         for name, payload in payloads.items():
             if hashlib.sha256(payload).hexdigest() != sums[name]:
                 raise FabricUpdateError("fabric_bundle_integrity_failed")
+        if verify_wheel_records:
+            from .fabric_release_wheelhouse import (
+                _MAX_EXPANDED_TOTAL,
+                WheelhouseUnqualified,
+                _wheel_record_check,
+            )
+
+            try:
+                expanded = 0
+                for wheel in wheels:
+                    expanded += _wheel_record_check(wheel.name, payloads[wheel.name])
+                    if expanded > _MAX_EXPANDED_TOTAL:
+                        raise WheelhouseUnqualified("expanded_wheelhouse_unqualified")
+            except WheelhouseUnqualified as exc:
+                # Gebruik de bestaande vaste foutcategorie, zonder ZIP-paden
+                # of mogelijk gevoelige wheel-inhoud in de API te lekken.
+                raise FabricUpdateError("fabric_bundle_integrity_failed") from exc
         return bootstrap
 
     def _run_fixed(self, bootstrap: Path, action: str, category: str) -> None:

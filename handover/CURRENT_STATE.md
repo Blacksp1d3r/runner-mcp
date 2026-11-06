@@ -1,3 +1,9 @@
+## 2026-11-07 — F30 #341 wheelinhoud na lokale opslag opnieuw controleren, v0.1.151 BRONKANDIDAAT
+
+- Main vóór branch `f1167cd54e3ec45590285b74f9ef9dd72f46b191`; post-merge main validation 42308860985 en attribution 42308860966 beide SUCCESS. Branch `fix/f30-341-local-recheck-wheel-records-20261107` bevat beperkte optie `verify_wheel_records=True` in bestaande `fabric_update.py::_validated_bootstrap`, actief uitsluitend bij bestaande `local_readiness` en het bestaande lokale stage/preflight pad. Hergebruikt exact de bestaande ZIP/METADATA/RECORD-parser en 384 MiB inhoudslimiet; geen nieuwe verifier/updater/tool.
+- Nieuwe CI-test voert na geldige fictieve release-opslag bewust wijziging aan wheel én SHA256SUMS uit; oude SHA-only check mag overeenstemming zien, nieuwe ZIP/RECORD-check moet weigeren en nooit een staged bundle/slot/transaction aanmaken. Bronversie kandidaat 0.1.151. **Niet getest op originele server; exacte PR-head CI nog niet afgerond.**
+- Echte verbonden 0.1.88 blijft onvoldoende originele serving-wheel/host #669; onmisbaar A6 #942, A7 #943 zelfstandig offline herstel, ouder baseline #341, eigenaarbronbeleid en oorspronkelijke-client result/ACK. Qwen/Claude/SQL ongemoeid.
+
 ## 2026-11-06 — F30 #341 #959 werkelijke local-readiness keten SOURCE/CI VOLTOOID
 
 - [PR #959](https://github.com/Blacksp1d3r/runner-mcp/pull/959) exacte geteste head `c23f3113b66bd29a5c3646ee2d4eab35530a654f` 7/7 CI SUCCESS: `42308123075` Ruff/4704 pytest PASS + release-reservering, gebouwd artifact, clean demo en disposable systemd; `42308123046` attribution PASS. MERGED als `d49940b8e7116b89d1b139b010c5ed72cb50a8e8` op `main` teruggelezen. Post-merge push validation `42308536584` was bij de laatste observatie nog IN PROGRESS, attribution `42308536537` SUCCESS.

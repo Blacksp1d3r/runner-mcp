@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
 import json
@@ -62,10 +63,41 @@ def _managed_launcher(manager: FabricUpdateManager) -> None:
     manager.launcher.symlink_to(target)
 
 
+def _valid_fixture_wheel() -> bytes:
+    """Geef een echte, kleine ZIP-wheel met METADATA/WHEEL en gehashte RECORD.
+
+    De productieverifier laat bewust geen willekeurige 'synthetic-wheel'
+    bytes meer toe; testpaden moeten een werkelijk geldig pakket simuleren.
+    """
+    dist = "runner_fabric-0.0.1.dist-info/"
+    members = {
+        "runner_fabric/__init__.py": b"__version__ = '0.0.1'\n",
+        dist + "METADATA": (
+            b"Metadata-Version: 2.1\nName: runner-fabric\nVersion: 0.0.1\n"
+        ),
+        dist + "WHEEL": (
+            b"Wheel-Version: 1.0\nGenerator: offline-fixture\n"
+            b"Root-Is-Purelib: true\nTag: py3-none-any\n"
+        ),
+    }
+    rows = []
+    for name, data in sorted(members.items()):
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        rows.append(f"{name},sha256={digest},{len(data)}\n")
+    record = dist + "RECORD"
+    rows.append(f"{record},,\n")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as package:
+        for name, data in members.items():
+            package.writestr(name, data)
+        package.writestr(record, "".join(rows))
+    return buf.getvalue()
+
+
 def _bundle(commit: str, *, tamper_bootstrap: bool = False) -> bytes:
     bootstrap = b"raise SystemExit(0)\n"
     wheel_name = "runner_fabric-0.0.1-py3-none-any.whl"
-    wheel = b"synthetic-wheel"
+    wheel = _valid_fixture_wheel()
     sums = {
         "BOOTSTRAP.py": hashlib.sha256(bootstrap).hexdigest(),
         wheel_name: hashlib.sha256(wheel).hexdigest(),

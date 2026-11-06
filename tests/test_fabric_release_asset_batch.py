@@ -565,16 +565,28 @@ def test_interrupted_write_retains_partial_for_review_without_promotion(
     assert len([p for p in root.iterdir() if p.name.startswith(".incoming-")]) == 1
 
 
-def test_signed_inactive_stage_is_not_exported_to_mcp_or_update_flow():
+def test_signed_inactive_stage_is_private_and_not_in_active_update_flow():
     from runner_mcp.fabric_release_inactive_custody import (
         _stage_signed_release_inactive_once,
     )
 
     assert callable(_stage_signed_release_inactive_once)
-    server = Path(__file__).resolve().parents[1] / "src/runner_mcp/server.py"
-    manager = Path(__file__).resolve().parents[1] / "src/runner_mcp/fabric_update.py"
-    for source in (server, manager):
-        assert "_stage_signed_release_inactive_once" not in source.read_text("utf-8")
+    root = Path(__file__).resolve().parents[1] / "src/runner_mcp"
+    server = (root / "server.py").read_text("utf-8")
+    manager_source = (root / "fabric_update.py").read_text("utf-8")
+    assert "_stage_signed_release_inactive_once" not in server
+    manager_tree = ast.parse(manager_source)
+    methods = {
+        n.name: n for n in ast.walk(manager_tree)
+        if isinstance(n, ast.FunctionDef)
+    }
+    # Nu opzettelijk gekoppeld aan EEN PRIVATE inactieve bronroute,
+    # nooit aan bestaande actieve apply/rollback, readiness of MCP-tools.
+    assert "_stage_signed_release_description_inactive_once" in methods
+    for name in ("start_local", "stage_local_bundle",
+                 "release_assets_readiness", "local_readiness"):
+        source = ast.get_source_segment(manager_source, methods[name]) or ""
+        assert "_stage_signed_release_inactive_once" not in source
 
 
 # F30 Release-description contract: gebruik dezelfde bestaande signed-byte fixtures.
@@ -889,7 +901,12 @@ def test_manager_signed_description_only_promotes_inactive_noreplace(
     assert all((final / name).read_bytes() == raw for name, raw in bodies.items())
     assert all((final / name).stat().st_mode & 0o077 == 0 for name in bodies)
     assert (active / "active.txt").read_text("utf-8") == "unchanged"
-    assert not any(path.name.startswith(".incoming-") for path in root.iterdir())
+    # Bestaande NOREPLACE-promotie kan de private .incoming-parent bewaren;
+    # alleen de geverifieerde bundel is gepromoveerd, nooit een tweede copy.
+    assert not any(
+        (path / "source" / "bundle").exists()
+        for path in root.iterdir() if path.name.startswith(".incoming-")
+    )
 
     # Herhaalde stage mag bestaande custody nooit overschrijven of claimen.
     old_inode = final.stat().st_ino

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 source children cleared; S2d/e ownership en veiligheidsgrens
+
+- Runner-MCP #937 S2a [#939](https://github.com/Blacksp1d3r/runner-mcp/pull/939) v0.1.138, S2b [#940](https://github.com/Blacksp1d3r/runner-mcp/pull/940) v0.1.139 en S2c [#941](https://github.com/Blacksp1d3r/runner-mcp/pull/941) v0.1.140 **MERGED**, finale exacte-head tests/Ubuntu/attribution groen. Single reuse van historische Q7 metadata/manifest/wheel validators; signatures/bytes alleen in-memory en niet-authorizing.
+- **Volgende eigenaar:** Fabric #924 bepaalt onafhankelijke issuer-key, release sourcepin/ID/hostpolicy, niet een GitHub digest of caller-selected sleutel. Runner-MCP #937 bezit uitsluitend het begrensde S2d/e-consumentenpad met bestaande asset-byte-verifier en INACTIEVE private `local-bundles` no-replace custody. Werk NIET opnieuw aan reeds geklaarde #939–#941. Q7 `bundle/` en `start_local` zijn niet een veilige passieve stage.
+- Active originele host/wheel #669, #341 recovery, Fabric #942 off-target A6, #943 offline A7, originele durable ACK blijven ongekwalificeerd. Connected runtime was 0.1.88 zonder verified provenance/host. Geen hostwijziging of Fabric/SQL/AI dispatch.
+
 ## 2026-11-06 — F30 #936 merged; next #937 owns read-only signer/custody investigation
 
 - Runner-MCP [#936](https://github.com/Blacksp1d3r/runner-mcp/pull/936) **SOURCE MERGED** `df71f1ea6c15d271088929a5da280675ed5ceddd` v0.1.137; final head 2a6e4e097f75dc791ab370ac42a3c48254f49f0a, CI validation 42206013659 / clean Ubuntu 42206013610 / attribution 42206013606 ALL SUCCESS. Distinct exact Release 2×404, provider and invalid SHA metadata. No stage/install/rollback.

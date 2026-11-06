@@ -498,13 +498,26 @@ def test_github_release_full_bytes_stage_only_in_existing_private_root(
     }
     target = root / observed.commit
     assert target.stat().st_mode & 0o777 == 0o700
-    assert {x.name for x in target.iterdir()} == set(bodies)
-    assert all((target / name).read_bytes() == blob
+    # Een inactieve kandidaat is GEEN vlakke, startbare local-update bundel.
+    assert {x.name for x in target.iterdir()} == {"source"}
+    source = target / "source"
+    bundle = source / "bundle"
+    assert source.stat().st_mode & 0o777 == 0o700
+    assert bundle.stat().st_mode & 0o777 == 0o700
+    assert {x.name for x in bundle.iterdir()} == set(bodies)
+    assert all((bundle / name).read_bytes() == blob
                for name, blob in bodies.items())
-    assert all((target / name).stat().st_mode & 0o777 == 0o600
+    assert all((bundle / name).stat().st_mode & 0o777 == 0o600
                for name in bodies)
-    assert all((target / name).stat().st_nlink == 1 for name in bodies)
+    assert all((bundle / name).stat().st_nlink == 1 for name in bodies)
+    assert not (target / "BUNDLE.json").exists()
     assert (active / "original.txt").read_text() == "keep"
+
+    # Bestaande publieke local_readiness mag deze niet zomaar activeren.
+    from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
+
+    with pytest.raises(FabricUpdateError, match="^fabric_bundle_invalid$"):
+        object.__new__(FabricUpdateManager)._validate_local_bundle_source(target)
 
     # NOREPLACE is source policy; even equal bytes may never overwrite.
     first_inode = target.stat().st_ino
@@ -610,7 +623,9 @@ def test_manager_source_stage_uses_one_release_snapshot_and_no_active_mutation(
     assert len(events) == len(observed.files) + 1
     assert all(events.count(("asset", item.asset_id)) == 1
                for item in observed.files)
-    assert (root / observed.commit / "BUNDLE.json").read_bytes() == bodies["BUNDLE.json"]
+    assert (
+        root / observed.commit / "source" / "bundle" / "BUNDLE.json"
+    ).read_bytes() == bodies["BUNDLE.json"]
 
 
 def test_manager_wrong_release_id_fails_before_asset_transfer_and_stage(tmp_path):

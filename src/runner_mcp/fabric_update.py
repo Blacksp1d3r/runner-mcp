@@ -114,6 +114,78 @@ def bounded_fabric_readiness_failure(
     }
 
 
+def read_alternative_release_metadata_after_actions_failure(
+    manager: FabricUpdateManager,
+    commit: str,
+    actions_error: FabricUpdateError,
+) -> dict[str, object] | None:
+    """Explain an Actions metadata failure via existing Release inspection.
+
+    This NEVER changes the original Actions-only update contract, never stages
+    or downloads a wheel, and is not a host update readiness/approval result.
+    A Release metadata match is still unsigned and not trusted local custody.
+    """
+    if (
+        type(actions_error) is not FabricUpdateError
+        or str(actions_error) != "actions_run_unavailable"
+        or type(commit) is not str
+        or _COMMIT_RE.fullmatch(commit) is None
+    ):
+        return None
+    try:
+        release = manager.release_assets_readiness(commit)
+    except FabricUpdateError as exc:
+        refusal = bounded_fabric_readiness_failure(
+            exc, source="github-release",
+        )
+        return {
+            "source": "github-release",
+            "state": "blocked",
+            "reasonCode": refusal["reasonCode"],
+            "metadata_observed": False,
+            "install_authorized": False,
+            "download_performed": False,
+        }
+    except Exception:  # noqa: BLE001 - private provider faults must never leak
+        return {
+            "source": "github-release",
+            "state": "blocked",
+            "reasonCode": "release_metadata_probe_unavailable",
+            "metadata_observed": False,
+            "install_authorized": False,
+            "download_performed": False,
+        }
+    # A stubbed or malformed provider must not claim metadata observation.
+    if (
+        type(release) is not dict
+        or release.get("state") != "ready"
+        or release.get("source") != "github-release"
+        or release.get("commit") != commit
+        or type(release.get("asset_count")) is not int
+        or not 5 <= release["asset_count"] <= 160
+        or type(release.get("project_wheel_sha256")) is not str
+        or re.fullmatch(r"[a-f0-9]{64}", release["project_wheel_sha256"]) is None
+        or release.get("mutation_authorized") is not False
+        or release.get("download_performed") is not False
+    ):
+        return {
+            "source": "github-release",
+            "state": "blocked",
+            "reasonCode": "release_metadata_probe_invalid",
+            "metadata_observed": False,
+            "install_authorized": False,
+            "download_performed": False,
+        }
+    return {
+        "source": "github-release",
+        "state": "metadata_observed_unverified",
+        "reasonCode": "exact_release_metadata_observed_not_installed",
+        "metadata_observed": True,
+        "install_authorized": False,
+        "download_performed": False,
+    }
+
+
 class FabricUpdateState(StrEnum):
     QUEUED = "queued"
     FETCHING = "fetching"

@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 0.1.144 bronkandidaat: bestaande manager full chain slechts intern koppelen
+
+- Bestaande `FabricUpdateManager._read_exact_release_admission` en vaste assetbyte-batch 0.1.142 nu uitsluitend intern in `_read_verified_signed_release_bytes` gekoppeld, met vroege Ed25519/commit/release-ID preflight. Geen tweede API, geen nieuwe publisher/signing key, geen stage/apply, geen nieuwe tool, cron/daemon of beïnvloeding van Claude/Qwen. Synthetische object-standalone manager-tests op 2 exacte metadata endpoints, volledige 5/33 wheel ZIP/RECORD-validatie, verboden extra API, fail-closed vóór download.
+- Volgende stap na volledige CI: Fabric #924 moet **werkelijke** onafhankelijke eigenaarssigner/pins en releasebron leveren. Daarna echte assettransport op exact bekende originele host/owner + owner-private inactieve create-once local-bundles; pas voor automatische activatie de fysieke #669/#341, A6 #942/A7 #943 en oorspronkelijke client-result/ACK verifiëren.
+
 ## 2026-11-06 — F30 #937 0.1.142 + 0.1.143 SOURCE GREEN; upstream signer/physical owner WAIT
 
 - Runner-MCP [#944](https://github.com/Blacksp1d3r/runner-mcp/pull/944) source 0.1.142 en [#945](https://github.com/Blacksp1d3r/runner-mcp/pull/945) source 0.1.143 beide MERGED met exact-head full CI PASS. De huidige vaste assetbyte-downloader + signed/full/ZIP-verifiers vormen een pure in-memory 5..160 asset-verificatieketen; de bestaande vaste Release/tag-metadatalezer biedt exact hetzelfde getypeerde `ReleaseAdmission` intern aan, zonder tweede API/tokenroute. Geen verandering aan servers of bestaande Q7-contracten.

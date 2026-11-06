@@ -385,6 +385,82 @@ class FabricUpdateManager:
             raise FabricUpdateError("fabric_release_assets_unqualified") from exc
         return admission
 
+    def _read_verified_signed_release_bytes(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        signed_document: bytes,
+        signature: bytes,
+        public_key: bytes,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, bytes]:
+        """Koppel twee BESTAANDE verificatiestappen zonder servermutatie.
+
+        1. Weiger een ongeldige handtekening of onafhankelijke bron-/releasepin
+           nog vóór het eerste GitHub-metadataverzoek.
+        2. Hergebruik dezelfde getypeerde Release/tag-snapshot als de openbare
+           `release_assets_readiness` van deze manager (vaste repository).
+        3. Hergebruik de bestaande vastgepinde assetbyte-transport- én de
+           complete manifest/ZIP/wheelcontroles; retourneer uitsluitend bytes
+           in geheugen en nooit een gedeeltelijke release.
+
+        De aanroeper moet de signer-sleutelvingerafdruk en bron-/release-ID
+        vooraf van een onafhankelijke eigenaar/Fabric-policy ontvangen.
+        Die autoriteit wordt hier NIET aangetoond door het aanleveren van de
+        waarden. Daarom is dit een **interne bronvoorbereiding**, zonder MCP-
+        tool, schijf-custody, BOOTSTRAP, install, `apply`, worker of ACK.
+        `asset_reader` dient alleen voor offline synthetische testinjectie.
+        """
+        from .fabric_release_asset_bytes import (
+            fetch_exact_signed_fabric_bundle_bytes,
+            fetch_pinned_asset_bytes,
+        )
+        from .fabric_release_signed_roster import (
+            SignedFabricRosterUnqualified,
+            verify_signed_fabric_roster,
+        )
+
+        _require_commit(expected_commit)
+        try:
+            verify_signed_fabric_roster(
+                signed_document=signed_document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+            )
+        except SignedFabricRosterUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_signed_release_roster_unqualified"
+            ) from exc
+
+        # Het ontvangen Release-object is GitHub-metadata, nooit een nieuwe
+        # trust anchor. Gebruik exact de bestaande managercontroles/2 endpoints.
+        observed = self._read_exact_release_admission(expected_commit)
+        token = self._github_token()
+        reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
+        try:
+            return fetch_exact_signed_fabric_bundle_bytes(
+                token=token,
+                signed_document=signed_document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+                asset_reader=reader,
+            )
+        except ValueError as exc:
+            # Geen ruwe providertekst, tokens, bestandspaden of byte-inhoud
+            # opnemen in een mogelijke volgende operator-/CI-foutmelding.
+            raise FabricUpdateError(
+                "fabric_release_asset_bytes_unqualified"
+            ) from exc
+
     def local_readiness(self, commit: str) -> dict[str, Any]:
         """Verify one exact locally-custodied Fabric bundle without mutation."""
         _require_commit(commit)

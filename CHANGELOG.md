@@ -1,3 +1,10 @@
+## 0.1.148 — F30/#937 exact ondertekende Release → bestaande INACTIEVE NOREPLACE custody (SOURCE ONLY)
+
+- Eén nieuwe private managerstap `_stage_signed_release_description_inactive_once` hergebruikt de v0.1.147 eigenaarspins/Release-body/één metadata-snapshot, dezelfde volledige SHA/manifest/ZIP/WHEEL/RECORD signed-bytecontrole en v0.1.145 eigenaar-private `_stage_signed_release_inactive_once` met O_NOFOLLOW, 0600/0700, fsync en atomaire NOREPLACE. Geen tweede systeem of downloadclient, geen actief slot vervangen.
+- Oude private in-memory API blijft identiek via dezelfde getypeerde kandidaat; nieuwe status `download_performed=true` pas na volledig geverifieerde en fsync-gepromoveerde inactieve bron. `owner_authority_proven/install_authorized/rollback_verified/original_client_ack` blijven FALSE.
+- Alleen synthetische 5/33 wheel-bundles en 5 negatieve scenario's: ontbrekend signed body/ownerkey, onderbroken transport, symlink-root, bestaand target. Geen nieuwe MCP-tool, geen echte host-/token-/systemd-/Claude-/Qwen-/SQL-wijziging.
+- HARD WAIT blijft de echte onafhankelijke owner-signer/Fabric #924 distributie, oorspronkelijke serving-host/wheel #669, herstel #341, fysieke A6 #942/A7 #943, oorspronkelijke issuer result/ACK. Broncode en groene CI zijn GEEN fysieke updatebevoegdheid.
+
 ## 0.1.147 — F30/#937 bestaande Release-body → manager signed-bytebatch (SOURCE ONLY)
 
 - De private `FabricUpdateManager._read_verified_signed_release_description_bytes` gebruikt de AL bestaande vaste GitHub Release/tag-GET precies eenmaal om het publieke getypeerde `ReleaseAdmission` én de onbetrouwbare Release-description te verkrijgen; de openbare `release_assets_readiness` blijft identiek.

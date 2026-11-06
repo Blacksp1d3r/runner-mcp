@@ -142,7 +142,7 @@ def _stage_signed_release_inactive_once(
     except (ValueError, TypeError):
         _deny()
 
-    if type(local_bundles_root) is not Path:
+    if not isinstance(local_bundles_root, Path):
         _deny()
     root_fd = -1
     work_fd = -1

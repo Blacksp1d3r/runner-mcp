@@ -1,3 +1,10 @@
+## 0.1.142 — F30/#937 generieke signed assetbyte-batch via bestaande downloader (SOURCE ONLY)
+
+- Binnen de **bestaande** `fabric_release_asset_bytes.py` verifieert `fetch_exact_signed_fabric_bundle_bytes` eerst een exact Ed25519-ondertekend Fabric-rooster met onafhankelijk *aangeleverde* key-fingerprint/commit/release-ID, en vergelijkt dat met de bestaande exact-gevalideerde GitHub Release/tag-metadata **vóór de eerste asset GET**. Daarna hergebruikt hij per file de huidige vaste-repository `fetch_pinned_asset_bytes`. Bij iedere respons hercontrole op bytes/grootte/SHA256; pas bij alle 5–160 assets geslaagd wordt het bestaande full manifest-/SHA256SUMS-/ZIP/METADATA/RECORD-gate doorlopen.
+- Volledig in-memory resultaat; geen stage, bestandsschrijfactie, service, updater, daemon, tokenopslag, `start_local`, `apply`, rollback of worker. Bij mislukte byte of providerrespons: vaste veilige foutcode, geen gedeeltelijke resultaten; maximaal 256MiB complete bytes en dezelfde individuele 64MiB-assetlimiet. Bestaande vaste Q7-functies niet gewijzigd.
+- Testbestand `tests/test_fabric_release_asset_batch.py`: fictieve Ed25519-sleutels en ZIP-wheels, 5/33/160 items, voor-download-fail-closed identity mismatches, onjuiste/partiële/verstoorde bytes en negatieve ZIP-inhoud. Geen echte download, host, secret of privé-bron gebruikt.
+- **GEEN echte onafhankelijke uitgeversbevoegdheid:** extern beleid moet signer/source/release-ID werkelijk vastpinnen. Een zelfgekozen sleutel en Github-digest zijn geen approval. Fysieke S2e custody, #669/#341, Fabric #924/#942/#943 en originele client-ACK blijven open.
+
 ## 0.1.141 — F30/#937 veilige atomaire inactieve bundelpromotie, SOURCE ONLY
 
 - In de **bestaande** `FabricUpdateManager.stage_local_bundle` wordt de laatste lokale promotie van een reeds gevalideerde `.incoming-<uuid>/source/bundle` naar `local-bundles/<exact commit>` niet langer met `os.replace` uitgevoerd. Een statuscheck vooraf is gevoelig voor een race: twee actoren kunnen tegelijk constateren dat de doelmap vrij is, waarna `os.replace` zelfs een nadien aangemaakte lege doelmap kan vervangen.

@@ -1,0 +1,268 @@
+"""Offline simulatie van de generieke exact signed Release-byteimport.
+
+Gebruik alleen tijdelijk gegenereerde Ed25519-sleutels, fictieve Release-metadata,
+kleine zelfgemaakte WHEEL/RECORD ZIP's en een nep-assetlezer. Er is geen netwerk,
+werkelijke eigenaarssigner, host, bestandscustody, BOOTSTRAP-uitvoering of update.
+"""
+
+from __future__ import annotations
+
+import ast
+import base64
+import csv
+import hashlib
+import io
+import json
+import zipfile
+from dataclasses import replace
+from pathlib import Path
+
+import pytest
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.asymmetric.ed25519 import Ed25519PrivateKey
+
+from runner_mcp.fabric_release_asset_bytes import (
+    AssetBytesUnqualified,
+    fetch_exact_signed_fabric_bundle_bytes,
+)
+from runner_mcp.fabric_release_assets import inspect_exact_release
+
+COMMIT = "a" * 40
+RELEASE_ID = 222444
+TAG = "fabric-update-bundle-" + COMMIT
+PROJECT = "runner_fabric-1.2.3-py3-none-any.whl"
+TOKEN = "synthetic-no-real-secret"
+
+
+def _wheel(name: str, *, corrupt: bool = False) -> bytes:
+    """Maak een echt, klein wiel waarvan RECORD alle ZIP-inhouden vastpint."""
+    package, version, *_ = name.split("-")
+    stem = f"{package}-{version}.dist-info/"
+    members = {
+        f"{package}/__init__.py": b"x=1\n",
+        stem + "METADATA": (
+            f"Metadata-Version: 2.3\nName: {package}\nVersion: {version}\n\n"
+        ).encode(),
+        stem + "WHEEL": (
+            b"Wheel-Version: 1.0\nGenerator: synthetic\n"
+            b"Root-Is-Purelib: true\nTag: py3-none-any\n\n"
+        ),
+    }
+    out = io.StringIO(newline="")
+    rows = csv.writer(out, lineterminator="\n")
+    for path, data in members.items():
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        rows.writerow((path, "sha256=" + digest, len(data)))
+    rows.writerow((stem + "RECORD", "", ""))
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, "w", zipfile.ZIP_DEFLATED) as archive:
+        for path, data in members.items():
+            archive.writestr(path, data)
+        archive.writestr(stem + "RECORD", out.getvalue())
+        if corrupt:
+            archive.writestr("unrecorded.bin", b"unverified")
+    return buffer.getvalue()
+
+
+def _case(count: int = 5, *, corrupt_wheel: bool = False):
+    """Lever ondertekend, volledig overeenkomend gesimuleerd transport aan."""
+    wheels = [PROJECT, *(
+        f"dependency_{i:03d}-1.0-py3-none-any.whl"
+        for i in range(count - 5)
+    )]
+    bodies = {
+        name: _wheel(name, corrupt=corrupt_wheel and name == wheels[-1])
+        for name in wheels
+    }
+    bodies["BOOTSTRAP.py"] = b"synthetic-bootstrap"
+    bodies["COMMIT_SHA"] = (COMMIT + "\n").encode()
+    bodies["SHA256SUMS"] = "".join(
+        f"{hashlib.sha256(bodies[n]).hexdigest()}  {n}\n"
+        for n in sorted([*wheels, "BOOTSTRAP.py"])
+    ).encode()
+    bodies["BUNDLE.json"] = json.dumps({
+        "schemaVersion": "runner.fabric/control-plane-update-bundle/v1",
+        "commitSha": COMMIT,
+        "python": "3.12",
+        "projectWheel": PROJECT,
+        "wheelCount": len(wheels),
+        "bootstrapSha256": hashlib.sha256(bodies["BOOTSTRAP.py"]).hexdigest(),
+    }).encode()
+    roster = [
+        {
+            "name": name,
+            "asset_id": i + 1001,
+            "bytes": len(data),
+            "sha256": hashlib.sha256(data).hexdigest(),
+        }
+        for i, (name, data) in enumerate(sorted(bodies.items()))
+    ]
+    raw = json.dumps({
+        "schema_version": "runner-fabric/signed-release-roster/v1",
+        "repository": "Blacksp1d3r/Runner-Fabric",
+        "commit": COMMIT,
+        "tag": TAG,
+        "release_id": RELEASE_ID,
+        "files": roster,
+    }, sort_keys=True, separators=(",", ":")).encode()
+    signer = Ed25519PrivateKey.generate()
+    pub = signer.public_key().public_bytes(
+        serialization.Encoding.Raw, serialization.PublicFormat.Raw
+    )
+    observed = inspect_exact_release(COMMIT, {
+        "id": RELEASE_ID,
+        "tag_name": TAG,
+        "target_commitish": COMMIT,
+        "draft": False,
+        "prerelease": True,
+        "assets": [{
+            "name": row["name"],
+            "id": row["asset_id"],
+            "size": row["bytes"],
+            "digest": "sha256:" + row["sha256"],
+        } for row in roster],
+    }, {
+        "ref": "refs/tags/" + TAG,
+        "object": {"type": "commit", "sha": COMMIT},
+    })
+    args = {
+        "token": TOKEN,
+        "signed_document": raw,
+        "signature": signer.sign(raw),
+        "public_key": pub,
+        "independently_trusted_key_sha256": hashlib.sha256(pub).hexdigest(),
+        "expected_commit": COMMIT,
+        "expected_release_id": RELEASE_ID,
+        "observed_metadata": observed,
+    }
+    lookup = {i + 1001: data for i, (_, data) in enumerate(sorted(bodies.items()))}
+    return args, bodies, lookup
+
+
+def _reader(lookup, calls, *, failure_at=None, bad=None):
+    def read(*, token, asset_id, expected_size, independently_pinned_sha256):
+        calls.append(asset_id)
+        assert token == TOKEN
+        assert expected_size == len(lookup[asset_id])
+        assert independently_pinned_sha256 == hashlib.sha256(
+            lookup[asset_id]
+        ).hexdigest()
+        if asset_id == failure_at:
+            if bad == "error":
+                raise ValueError("injected-token-never-expose")
+            if bad == "short":
+                return lookup[asset_id][:-1]
+            if bad == "wrong":
+                return b"x" * expected_size
+            if bad == "nonbytes":
+                return bytearray(lookup[asset_id])
+        return lookup[asset_id]
+    return read
+
+
+@pytest.mark.parametrize("count", [5, 33, 160])
+def test_exact_signed_batch_reuses_asset_reader_and_wheelhouse(count):
+    args, bodies, lookup = _case(count)
+    calls = []
+    actual = fetch_exact_signed_fabric_bundle_bytes(
+        **args, asset_reader=_reader(lookup, calls)
+    )
+    assert actual == bodies
+    assert len(calls) == count
+    assert calls == sorted(lookup)
+    assert all(type(b) is bytes for b in actual.values())
+
+
+@pytest.mark.parametrize("change", [
+    "key", "signature", "commit", "release_id", "api_asset_id",
+    "api_size", "api_digest", "api_tag", "api_commit", "token",
+])
+def test_identity_or_transport_authority_fails_before_any_asset_get(change):
+    args, _, lookup = _case(5)
+    calls = []
+    if change == "key":
+        args["independently_trusted_key_sha256"] = "f" * 64
+    elif change == "signature":
+        args["signature"] = b"\0" * 64
+    elif change == "commit":
+        args["expected_commit"] = "b" * 40
+    elif change == "release_id":
+        args["expected_release_id"] = RELEASE_ID + 1
+    elif change == "api_asset_id":
+        original = args["observed_metadata"]
+        first = replace(original.files[0], asset_id=42)
+        args["observed_metadata"] = replace(original, files=(first, *original.files[1:]))
+    elif change == "api_size":
+        original = args["observed_metadata"]
+        first = replace(original.files[0], bytes=42)
+        args["observed_metadata"] = replace(original, files=(first, *original.files[1:]))
+    elif change == "api_digest":
+        original = args["observed_metadata"]
+        first = replace(original.files[0], sha256="b" * 64)
+        args["observed_metadata"] = replace(original, files=(first, *original.files[1:]))
+    elif change == "api_tag":
+        args["observed_metadata"] = replace(
+            args["observed_metadata"], tag="fabric-update-bundle-" + "b" * 40
+        )
+    elif change == "api_commit":
+        args["observed_metadata"] = replace(
+            args["observed_metadata"], commit="b" * 40
+        )
+    else:
+        args["token"] = "bad\nheader"
+    with pytest.raises(AssetBytesUnqualified, match="^fabric_release_asset_bytes_unqualified$"):
+        fetch_exact_signed_fabric_bundle_bytes(
+            **args, asset_reader=_reader(lookup, calls)
+        )
+    assert calls == []
+
+
+@pytest.mark.parametrize("bad", ["error", "short", "wrong", "nonbytes"])
+def test_failed_asset_read_does_not_return_partial_bodies_or_fetch_more(bad):
+    args, _, lookup = _case(33)
+    calls = []
+    failure_at = sorted(lookup)[2]
+    with pytest.raises(AssetBytesUnqualified) as exc:
+        fetch_exact_signed_fabric_bundle_bytes(
+            **args,
+            asset_reader=_reader(lookup, calls, failure_at=failure_at, bad=bad),
+        )
+    assert calls == sorted(lookup)[:3]
+    assert "injected-token" not in str(exc.value)
+    assert "synthetic-no-real-secret" not in str(exc.value)
+
+
+def test_corrupted_wheel_with_valid_signature_and_sha_denied_after_reads():
+    args, _, lookup = _case(5, corrupt_wheel=True)
+    calls = []
+    with pytest.raises(AssetBytesUnqualified):
+        fetch_exact_signed_fabric_bundle_bytes(
+            **args, asset_reader=_reader(lookup, calls)
+        )
+    assert len(calls) == 5
+
+
+def test_no_actual_network_or_host_update_is_part_of_test_or_batch_path():
+    path = Path(__file__).resolve().parents[1] / (
+        "src/runner_mcp/fabric_release_asset_bytes.py"
+    )
+    tree = ast.parse(path.read_text(encoding="utf-8"))
+    funcs = {
+        node.name: node
+        for node in tree.body if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    batch = funcs["fetch_exact_signed_fabric_bundle_bytes"]
+    call_attrs = {
+        n.func.attr for n in ast.walk(batch)
+        if isinstance(n, ast.Call) and isinstance(n.func, ast.Attribute)
+    }
+    assert not call_attrs.intersection({
+        "start_local", "stage_local_bundle", "apply", "rollback", "mkdir",
+        "write_bytes", "replace", "rmtree", "run", "Popen", "open",
+    })
+    # De oude downloader blijft via importlib op bestandsniveau te laden:
+    # de nieuw toegevoegde pakketafhankelijkheden staan uitsluitend lokaal.
+    assert not any(
+        isinstance(n, ast.ImportFrom) and (n.module or "").startswith("fabric_release")
+        for n in tree.body
+    )

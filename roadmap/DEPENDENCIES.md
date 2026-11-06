@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 bestaande per-asset downloader → generic in-memory signed batch 0.1.142
+
+- **BRON KANDIDAAT:** `fabric_release_asset_bytes.fetch_exact_signed_fabric_bundle_bytes` gebruikt in plaats van een tweede downloader het bestaande `fetch_pinned_asset_bytes` per asset, met exact vooraf geverifieerde Ed25519-roster/metadata (S2a), bestaande manifest/full-bundle (S2b) en ZIP/METADATA/RECORD (S2c). Volledige 5–160-assetronde slaagt of geeft zonder gedeeltelijke resultaten vaste veilige fout. Geen credentialkopie of stage.
+- **EXTERNE BLOKKADE BLIJFT:** geen door Fabric #924/eigenaar apart beheerde generieke signing issuer/sleutelvingerafdruk en getekende publisher-release; alleen caller-supplied pin is geen echte authority. Geen echte assetbytes via owner-credential gedownload; geen originele target-FS gemuteerd.
+- **LIVE GATES ONGEWIJZIGD:** fysieke host/source/wheel #669, lokaal rollback #341, off-target A6 #942, offline A7 #943 en originele issuer result+ACK. Claude en Qwen V3 blijven aparte opdrachten.
+
 ## 2026-11-06 — #937 atomaire lokale custody-promotie source PASS; onafhankelijke signer/live WAIT
 
 - **SOURCE VOLTOOID:** v0.1.141 [Runner-MCP #942](https://github.com/Blacksp1d3r/runner-mcp/pull/942), merge `ebe687b75c1ed7a2979966a43e0fb7e3a97c032f`, CI `42221040779`/`42221041071`/`42221041052` SUCCESS. In bestaande `stage_local_bundle` vervangt atomaire Q7-hergebruikte Linux `NOREPLACE` een `exists` + `os.replace` race. Root/incoming eigen 0700, bron/bundle owner en niet beschrijfbaar voor andere principals, geen symlinkdoorgang, geen actieve bundelwijziging.

@@ -1,8 +1,15 @@
-"""Source-only fixed-repository GitHub Release asset byte integrity verifier.
+"""Begrensde byte-download uit bestaande vaste Runner-Fabric GitHub Release.
 
-This is NOT an installer, local custody importer or identity authority. Callers
-must hold separate trusted release identity/SHA256 pins. No user-provided URL,
-file path, subprocess, authentication enrollment or host mutation is accepted.
+De bestaande individuele downloader controleert de aan een onafhankelijk
+rooster gekoppelde SHA-256 en grootte. De nieuwe batch-ingang hergebruikt
+die downloader én de al bestaande Ed25519-/ZIP-/manifestverifiers: pas na
+volledige bytecontrole levert zij de blobs in geheugen terug.
+
+Een door de aanroeper zelf gekozen signer, bron-pin of GitHub-digest levert
+GEEN eigenaarbevoegdheid op. Geen vrij te kiezen URL, filesystempad, opslag,
+installer, proces-, service- of rollbackmutatie. De bestaande Q7-casus blijft
+afzonderlijk; de toekomstige officiële Fabric-publisher moet zijn eigen
+onafhankelijk vertrouwde sleutel en bronbeleid nog leveren.
 """
 from __future__ import annotations
 
@@ -13,7 +20,14 @@ import re
 import urllib.error
 import urllib.parse
 import urllib.request
-from typing import Any
+from collections.abc import Callable
+from typing import TYPE_CHECKING, Any
+
+if TYPE_CHECKING:
+    # Voor typecontrole; bij rechtstreeks laden van de bestaande Q7-lezer
+    # mag deze package-import niet uitgevoerd worden.
+    from .fabric_release_assets import ReleaseAdmission
+
 
 _ROOT = "https://api.github.com/repos/Blacksp1d3r/Runner-Fabric/releases/assets/"
 _BLOB_HOST = "release-assets.githubusercontent.com"
@@ -151,3 +165,104 @@ def fetch_pinned_asset_bytes(
         ValueError,
     ):
         raise AssetBytesUnqualified("fabric_release_asset_bytes_unqualified") from None
+
+
+def fetch_exact_signed_fabric_bundle_bytes(
+    *,
+    token: str,
+    signed_document: bytes,
+    signature: bytes,
+    public_key: bytes,
+    independently_trusted_key_sha256: str,
+    expected_commit: str,
+    expected_release_id: int,
+    observed_metadata: ReleaseAdmission,
+    asset_reader: Callable[..., bytes] = fetch_pinned_asset_bytes,
+) -> dict[str, bytes]:
+    """Lees alle exacte signed-releasebytes; retour enkel na volledige verificatie.
+
+    De eigenaar/Fabric moet de verwachte commit, release-ID en publieke
+    sleutelvingerafdruk VOORAF onafhankelijk aan de aanroeper bezorgen. Een
+    synthetische of zelf gekozen handtekening geeft nooit autorisatie voor een
+    update. `observed_metadata` is het resultaat van de bestaande exacte
+    GitHub Release- en tag-ref-controle, geen vertrouwde signer.
+
+    Volgorde: valideer ondertekend rooster + exact waargenomen metadata VOOR
+    de eerste asset-GET; hergebruik voor elke asset de bestaande vaste
+    `fetch_pinned_asset_bytes`, controleer de geretourneerde bytes ook bij
+    een gemockte lezer en controleer tenslotte het volledige manifest,
+    SHA256SUMS en alle ZIP/METADATA/RECORD-inhouden met de bestaande parser.
+
+    Bij één fout wordt geen gedeeltelijke dict teruggegeven, en wordt geen
+    bestand op de host aangemaakt. Bestaande actieve Fabric/Claude/Qwen-paden
+    worden nooit aangeroepen; de functie is GEEN custody of installer.
+    """
+    # De historische individuele assetlezer wordt ook rechtstreeks als
+    # standalone module geladen. Verplaats alleen de NIEUWE batch-afhankelijk-
+    # heden naar de batch-aanroep, zodat het bestaande Q7/testcontract blijft.
+    from .fabric_release_assets import ReleaseAdmission
+    from .fabric_release_signed_roster import (
+        SignedFabricRosterUnqualified,
+        compare_signed_fabric_roster,
+        verify_signed_fabric_roster,
+    )
+    from .fabric_release_wheelhouse import (
+        WheelhouseUnqualified,
+        verify_signed_fabric_wheelhouse,
+    )
+
+    if (
+        type(token) is not str
+        or not 8 <= len(token) <= 512
+        or re.fullmatch(r"[\x21-\x7e]+", token) is None
+        or not callable(asset_reader)
+        or type(observed_metadata) is not ReleaseAdmission
+    ):
+        _fail()
+
+    try:
+        signed_pins = verify_signed_fabric_roster(
+            signed_document=signed_document,
+            signature=signature,
+            public_key=public_key,
+            independently_trusted_key_sha256=independently_trusted_key_sha256,
+            expected_commit=expected_commit,
+            expected_release_id=expected_release_id,
+        )
+        # Geen netwerk, disk of gedeeltelijke downloads vóór deze vergelijking.
+        compare_signed_fabric_roster(signed_pins, observed_metadata)
+    except (SignedFabricRosterUnqualified, TypeError, ValueError):
+        _fail()
+
+    blobs: dict[str, bytes] = {}
+    total = 0
+    for pin in signed_pins.files:
+        try:
+            blob = asset_reader(
+                token=token,
+                asset_id=pin.asset_id,
+                expected_size=pin.bytes,
+                independently_pinned_sha256=pin.sha256,
+            )
+        except (OSError, ValueError, TypeError, TimeoutError,
+                urllib.error.URLError, http.client.HTTPException):
+            _fail()
+        if (
+            type(blob) is not bytes
+            or len(blob) != pin.bytes
+            or not hmac.compare_digest(hashlib.sha256(blob).hexdigest(), pin.sha256)
+        ):
+            _fail()
+        total += len(blob)
+        if total > 256 * 1024 * 1024:
+            _fail()
+        blobs[pin.name] = blob
+
+    # De bestaande generieke verifier hergebruikt de historische Q7-wheel-
+    # parser. Ook een ZIP-inhoud met een correct gepinde externe SHA kan
+    # ongeldig zijn; die mag nooit als complete bundel terugkeren.
+    try:
+        verify_signed_fabric_wheelhouse(signed_pins, observed_metadata, blobs)
+    except (WheelhouseUnqualified, ValueError, TypeError):
+        _fail()
+    return blobs

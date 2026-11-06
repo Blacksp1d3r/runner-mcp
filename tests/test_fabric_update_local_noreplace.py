@@ -135,7 +135,8 @@ def test_non_private_directory_denied_without_promotion(tmp_path, part):
     choice = {
         "root": root, "incoming": work, "source": work / "source", "bundle": bundle
     }[part]
-    choice.chmod(0o750)
+    # source en bundle mogen 0755 hebben, maar nooit groepsschrijf.
+    choice.chmod(0o750 if part in {"root", "incoming"} else 0o770)
     with pytest.raises(FabricUpdateError, match="fabric_bundle_storage_conflict"):
         _promote_inactive_bundle_noreplace(root, INCOMING, COMMIT)
     assert not (root / COMMIT).exists()

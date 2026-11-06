@@ -1,3 +1,9 @@
+## 2026-11-06 — #937 atomaire lokale custody-promotie source PASS; onafhankelijke signer/live WAIT
+
+- **SOURCE VOLTOOID:** v0.1.141 [Runner-MCP #942](https://github.com/Blacksp1d3r/runner-mcp/pull/942), merge `ebe687b75c1ed7a2979966a43e0fb7e3a97c032f`, CI `42221040779`/`42221041071`/`42221041052` SUCCESS. In bestaande `stage_local_bundle` vervangt atomaire Q7-hergebruikte Linux `NOREPLACE` een `exists` + `os.replace` race. Root/incoming eigen 0700, bron/bundle owner en niet beschrijfbaar voor andere principals, geen symlinkdoorgang, geen actieve bundelwijziging.
+- **S2d/e NOG BLOK:** generieke door Fabric/eigenaar onafhankelijk gekoppelde signer-public key, exact SHA+release-ID, werkelijke getekende rosterproducer en verifieerbare assetbyteimport ontbreken. Huidig `stage_local_bundle` is bestaande bronbuild, NIET de signed release-import en zeker geen activatiebewijs.
+- **S3 LIVE NOG BLOK:** Runner-MCP fysieke #669/#341, Fabric #924/A6 #942/A7 #943, originele issuer result+ACK; Claude/Qwen afzonderlijke werkstromen. Geen deploy op de originele hosts door deze wijziging.
+
 ## 2026-11-06 — F30 S2 verified source stages vs production gates
 
 - **GREEN exact PR heads:** Runner-MCP [#939](https://github.com/Blacksp1d3r/runner-mcp/pull/939) 0.1.138 (`42209069315`/`42209069408`/`42209069415`); [#940](https://github.com/Blacksp1d3r/runner-mcp/pull/940) 0.1.139 (`42210227804`/`42210227877`/`42210228010`); [#941](https://github.com/Blacksp1d3r/runner-mcp/pull/941) 0.1.140 (`42211540637`/`42211540647`/`42211540826`). Signed inventory → exact full bundle → ZIP/RECORD, pure offline. Q7 unchanged.

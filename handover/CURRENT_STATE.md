@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 ketentest read-only lokale releaseadmissie gestart
+
+- Gecontroleerd Runner-MCP `main=c9162aedab64a92c291c9847a9ccce5677505944`. #958 is definitief MERGED, PR 7/7 exact-head groen en ook post-merge Validation 42307409919 + Attribution 42307409995 afgerond SUCCESS; geen nieuwe packageversie of serverinstallatie.
+- Nieuwe geïsoleerde test op eigen branch hergebruikt uitsluitend `_stage_github_release_inactive_once`, bestaande `FabricUpdateManager.local_readiness` en bestaande wheel/manifest/BOOTSTRAP-validatie. Fictieve 5/33/160 GitHub assets; na opslag gewijzigde BOOTSTRAP/wheel/manifest moet fail-closed; nooit installer/service/rollback. Exact-head CI en PR/merge nog niet bewezen.
+- Live verbonden 0.1.88 blijft zonder bewezen originele host en actieve wheel/source. Productie-/fleet-activatie NO; #669/#341/Fabric #942/#943 en echte originele-client ACK blijven hard WAIT. ED productsleutel nog uitgesteld.
+
 ## 2026-11-06 — F30 #341 broncode/CI-mislezing opgelost: tijdelijke versus finale opslag
 
 - Exacte GitHub-v0.1.150-code bouwt de kandidaat TIJDELIJK onder `local-bundles/.incoming-<uuid>/source/bundle/<asset>`. De bestaande `_promote_inactive_bundle_noreplace` roept `renameat2(RENAME_NOREPLACE)` aan met **bron `.incoming-<uuid>/source/bundle`** en **doel `local-bundles/<SHA>`**. De FINALE kandidaat heeft daarom terecht VLAKKE assets. De originele 4698 groene tests waren op dit punt correct.

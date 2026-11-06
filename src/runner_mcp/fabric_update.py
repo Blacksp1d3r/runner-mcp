@@ -1246,7 +1246,7 @@ def _promote_inactive_bundle_noreplace(
     _require_commit(commit)
     if (
         type(incoming_name) is not str
-        or re.fullmatch(r"\\.incoming-[0-9a-f]{32}", incoming_name) is None
+        or re.fullmatch(r"\.incoming-[0-9a-f]{32}", incoming_name) is None
         or type(local_bundles_root) is not Path
         or not local_bundles_root.is_absolute()
     ):

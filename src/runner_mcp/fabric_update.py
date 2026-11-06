@@ -589,7 +589,7 @@ class FabricUpdateManager:
             )
         )
         try:
-            return _stage_signed_release_inactive_once(
+            receipt = _stage_signed_release_inactive_once(
                 local_bundles_root=self.local_bundles_root,
                 signed_document=document,
                 signature=signature,
@@ -604,6 +604,10 @@ class FabricUpdateManager:
             raise FabricUpdateError(
                 "fabric_signed_inactive_custody_unqualified"
             ) from exc
+
+        # Alleen na volledig download/verify/fsync/promotie is dit waar.
+        # De echte eigenaar-/install-/rollbackbevoegdheid blijft FALSE.
+        return {**receipt, "download_performed": True}
 
     def local_readiness(self, commit: str) -> dict[str, Any]:
         """Verify one exact locally-custodied Fabric bundle without mutation."""

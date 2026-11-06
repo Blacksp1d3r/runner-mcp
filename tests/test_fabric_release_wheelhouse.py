@@ -498,26 +498,33 @@ def test_github_release_full_bytes_stage_only_in_existing_private_root(
     }
     target = root / observed.commit
     assert target.stat().st_mode & 0o777 == 0o700
-    # Een inactieve kandidaat is GEEN vlakke, startbare local-update bundel.
-    assert {x.name for x in target.iterdir()} == {"source"}
-    source = target / "source"
-    bundle = source / "bundle"
-    assert source.stat().st_mode & 0o777 == 0o700
-    assert bundle.stat().st_mode & 0o777 == 0o700
-    assert {x.name for x in bundle.iterdir()} == set(bodies)
-    assert all((bundle / name).read_bytes() == blob
+    # De bestaande NOREPLACE-promotie verplaatst source/bundle als ÉÉN
+    # map naar de VLAKKE eindbestemming (niet de bovenliggende .incoming).
+    assert {x.name for x in target.iterdir()} == set(bodies)
+    assert all((target / name).read_bytes() == blob
                for name, blob in bodies.items())
-    assert all((bundle / name).stat().st_mode & 0o777 == 0o600
+    assert all((target / name).stat().st_mode & 0o777 == 0o600
                for name in bodies)
-    assert all((bundle / name).stat().st_nlink == 1 for name in bodies)
-    assert not (target / "BUNDLE.json").exists()
+    assert all((target / name).stat().st_nlink == 1 for name in bodies)
     assert (active / "original.txt").read_text() == "keep"
+    assert not (root / "bundle").exists()
 
-    # Bestaande publieke local_readiness mag deze niet zomaar activeren.
-    from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
+    # De bewaarde .incoming is uitsluitend lege herstel-/forensische
+    # structuur; er mag nooit een tweede kopie van de assets achterblijven.
+    pending = [p for p in root.iterdir() if p.name.startswith(".incoming-")]
+    assert len(pending) == 1
+    assert pending[0].stat().st_mode & 0o777 == 0o700
+    assert {p.name for p in pending[0].iterdir()} == {"source"}
+    source = pending[0] / "source"
+    assert source.stat().st_mode & 0o777 == 0o700
+    assert list(source.iterdir()) == []
 
-    with pytest.raises(FabricUpdateError, match="^fabric_bundle_invalid$"):
-        object.__new__(FabricUpdateManager)._validate_local_bundle_source(target)
+    # Structurele local-readiness is geen autorisatie tot start_local/apply.
+    from runner_mcp.fabric_update import FabricUpdateManager
+
+    assert object.__new__(FabricUpdateManager)._validate_local_bundle_source(
+        target
+    ) is None
 
     # NOREPLACE is source policy; even equal bytes may never overwrite.
     first_inode = target.stat().st_ino
@@ -623,9 +630,7 @@ def test_manager_source_stage_uses_one_release_snapshot_and_no_active_mutation(
     assert len(events) == len(observed.files) + 1
     assert all(events.count(("asset", item.asset_id)) == 1
                for item in observed.files)
-    assert (
-        root / observed.commit / "source" / "bundle" / "BUNDLE.json"
-    ).read_bytes() == bodies["BUNDLE.json"]
+    assert (root / observed.commit / "BUNDLE.json").read_bytes() == bodies["BUNDLE.json"]
 
 
 def test_manager_wrong_release_id_fails_before_asset_transfer_and_stage(tmp_path):

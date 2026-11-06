@@ -266,3 +266,117 @@ def fetch_exact_signed_fabric_bundle_bytes(
     except (WheelhouseUnqualified, ValueError, TypeError):
         _fail()
     return blobs
+
+
+
+def fetch_exact_github_release_bundle_bytes(
+    *,
+    token: str,
+    expected_commit: str,
+    observed_metadata: ReleaseAdmission,
+    asset_reader: Callable[..., bytes] = fetch_pinned_asset_bytes,
+) -> dict[str, bytes]:
+    """Download alle bestaande Fabric GitHub-releasebytes; geen Ed-key vereist.
+
+    De aanroeper moet zelf de vaste repository, dezelfde exacte Release/tag
+    en het goedgekeurde CI/bronbeleid beoordelen. GitHub als provider
+    wordt hier vertrouwd voor de SHA-256-inventaris; dit levert geen
+    onafhankelijke ondertekenings- of hostinstallatiebevoegdheid.
+
+    Hergbruik exact dezelfde HTTPS asset-ID-lezer. Elke geretourneerde byte
+    wordt afzonderlijk opnieuw getoetst aan de GitHub metadata; pas NA
+    een complete BUNDLE/COMMIT/SHA256SUMS/ZIP/METADATA/RECORD-check
+    wordt de volledige dict teruggegeven. Geen bestand, systemd, runner
+    of actieve release wordt aangeraakt.
+    """
+    from .fabric_release_assets import ReleaseAdmission, ReleaseAsset
+    from .fabric_release_wheelhouse import (
+        WheelhouseUnqualified,
+        verify_github_release_wheelhouse,
+    )
+
+    if (
+        type(token) is not str
+        or not 8 <= len(token) <= 512
+        or re.fullmatch(r"[\x21-\x7e]+", token) is None
+        or type(expected_commit) is not str
+        or re.fullmatch(r"[0-9a-f]{40}", expected_commit) is None
+        or type(observed_metadata) is not ReleaseAdmission
+        or observed_metadata.commit != expected_commit
+        or observed_metadata.tag != "fabric-update-bundle-" + expected_commit
+        or type(observed_metadata.release_id) is not int
+        or observed_metadata.release_id <= 0
+        or type(observed_metadata.files) is not tuple
+        or not 5 <= len(observed_metadata.files) <= 160
+        or type(observed_metadata.project_wheel) is not str
+        or not callable(asset_reader)
+    ):
+        _fail()
+
+    names: set[str] = set()
+    ids: set[int] = set()
+    total = 0
+    required = {"BUNDLE.json", "COMMIT_SHA", "SHA256SUMS", "BOOTSTRAP.py"}
+    for item in observed_metadata.files:
+        if (
+            type(item) is not ReleaseAsset
+            or type(item.name) is not str
+            or re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9_.+-]{0,150}", item.name)
+            is None
+            or item.name in names
+            or (item.name not in required and not item.name.endswith(".whl"))
+            or type(item.asset_id) is not int
+            or item.asset_id <= 0 or item.asset_id in ids
+            or type(item.bytes) is not int
+            or not 0 < item.bytes <= _MAX_ASSET_BYTES
+            or type(item.sha256) is not str
+            or _SHA256.fullmatch(item.sha256) is None
+        ):
+            _fail()
+        total += item.bytes
+        if total > 256 * 1024 * 1024:
+            _fail()
+        names.add(item.name)
+        ids.add(item.asset_id)
+    if (
+        not required.issubset(names)
+        or len(names) != len(required) + sum(x.endswith(".whl") for x in names)
+        or observed_metadata.project_wheel not in names
+        or not observed_metadata.project_wheel.startswith("runner_fabric-")
+        or sum(x.startswith("runner_fabric-") and x.endswith(".whl")
+               for x in names) != 1
+    ):
+        _fail()
+
+    blobs: dict[str, bytes] = {}
+    fetched = 0
+    for item in observed_metadata.files:
+        try:
+            blob = asset_reader(
+                token=token,
+                asset_id=item.asset_id,
+                expected_size=item.bytes,
+                independently_pinned_sha256=item.sha256,
+            )
+        except (
+            OSError, ValueError, TypeError, TimeoutError,
+            urllib.error.URLError, http.client.HTTPException,
+        ):
+            _fail()
+        if (
+            type(blob) is not bytes
+            or len(blob) != item.bytes
+            or not hmac.compare_digest(
+                hashlib.sha256(blob).hexdigest(), item.sha256
+            )
+        ):
+            _fail()
+        fetched += len(blob)
+        if fetched > 256 * 1024 * 1024:
+            _fail()
+        blobs[item.name] = blob
+    try:
+        verify_github_release_wheelhouse(observed_metadata, blobs)
+    except (WheelhouseUnqualified, ValueError, TypeError):
+        _fail()
+    return blobs

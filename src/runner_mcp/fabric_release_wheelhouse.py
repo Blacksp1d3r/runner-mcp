@@ -258,3 +258,63 @@ def verify_signed_fabric_wheelhouse(
         "rollback_verified": False,
         "original_client_ack_proven": False,
     }
+
+
+
+def verify_github_release_wheelhouse(
+    observed_metadata: ReleaseAdmission,
+    asset_bodies: dict[str, bytes],
+) -> dict[str, object]:
+    """Controleer bestaande GitHub-releasebytes zonder eigen Ed25519-sleutel.
+
+    Dit is de GitHub-als-uitgever-variant van dezelfde manifest- en
+    ZIP/METADATA/RECORD-controle die Q7 en de signed route al gebruiken.
+    De vaste GitHub-repository, broncommit, tag en het CI-beleid moeten
+    door de AANROEPER afzonderlijk zijn vastgelegd. De metadatahashes zijn
+    providerintegriteit en dus GEEN onafhankelijke eigenaarshandtekening.
+
+    Alleen de exacte gewone fabric-update-bundle-* tag is toegestaan;
+    de historische vaste Q7-signerroute blijft ongewijzigd. Alle output is
+    source-only in geheugen: GEEN opslag, install, rollback of hosttoestemming.
+    """
+    from .fabric_release_full_bundle import _verify_complete_contents
+
+    if (
+        type(observed_metadata) is not ReleaseAdmission
+        or type(observed_metadata.commit) is not str
+        or re.fullmatch(r"[0-9a-f]{40}", observed_metadata.commit) is None
+        or observed_metadata.tag != (
+            "fabric-update-bundle-" + observed_metadata.commit
+        )
+        or type(observed_metadata.release_id) is not int
+        or observed_metadata.release_id <= 0
+    ):
+        _deny()
+    try:
+        wheels = _verify_complete_contents(observed_metadata, asset_bodies)
+    except (TypeError, ValueError):
+        _deny()
+    wheel_names = sorted(
+        name for name in asset_bodies if name.endswith(".whl")
+    )
+    if not 1 <= len(wheel_names) <= 156 or wheels != len(wheel_names):
+        _deny()
+    expanded = 0
+    for name in wheel_names:
+        expanded += _wheel_record_check(name, asset_bodies[name])
+        if expanded > _MAX_EXPANDED_TOTAL:
+            _deny()
+    return {
+        "inspection": "github_release_wheel_metadata_record_only",
+        "asset_count": len(observed_metadata.files),
+        "wheel_count": wheels,
+        "provider_asset_bytes_verified": True,
+        "wheel_metadata_verified": True,
+        "independent_owner_signer_verified": False,
+        "github_ci_policy_verified": False,
+        "original_host_verified": False,
+        "local_custody_verified": False,
+        "install_authorized": False,
+        "rollback_verified": False,
+        "original_client_ack_proven": False,
+    }

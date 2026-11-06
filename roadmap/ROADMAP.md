@@ -1,3 +1,9 @@
+## 2026-11-06 — F30/#341 S3 GitHub provider-integrity source WITHOUT Ed25519 owner key
+
+- Real Fabric automatic CI-release pipeline already published 33 assets for exact main 2b62cd5c1305433b04f0c5eaca16c86a20ec18e0, GitHub release ID 436869142. 0.1.149 source-only private Runner-MCP route reuses existing fixed-repository tag/Release admission, asset-ID HTTPS transport and complete SHA256/BUNDLE/ZIP/RECORD verifier for non-Ed CI releases.
+- NO fresh signer, new publisher, service, or install authority. Next is to qualify this byte path with owner-approved fixed source/release CI policy and original host #669, only then reuse existing owner-private INACTIVE local-bundles stage. Actual apply requires retained baseline + independently installed A7 offline rollback, A6 off-target journal and same original-client result plus ACK.
+- Binding priority: automatic updates operational FIRST, Qwen usable SECOND, Claude usable THIRD, independent ED25519 key/rotation optional FOURTH. No signing hard block while these three workstreams progress.
+
 ## 2026-11-06 — F30 #937 v0.1.148 private signed Release end-to-end source closure
 
 - Exacte onafhankelijke owner-pins → onbetrouwbare GitHub Release/body + tagref → bestaande Ed25519/assetbytes/manifest/wheel-verifier → owner-private create-once INACTIEVE NOREPLACE custody is als **private code**, met synthetische tests, doorverbonden; geen publieke tool, install, restart of rollback.

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30/#341 Runner-MCP 0.1.149 GitHub SHA full-byte source route; NO ED key
+
+- Verified actual Fabric release on GitHub: workflow-run 42274587598 admit+publish SUCCESS; release 436869142 with 33 assets, exact source/tag SHA 2b62cd5c1305433b04f0c5eaca16c86a20ec18e0. Publication ONLY.
+- This Runner-MCP source candidate reuses the existing fixed GitHub two-endpoint release/tag admission, existing pinned asset ID downloader and common full bundle / ZIP METADATA RECORD parser. No signing-key requirement for this provider-integrity route, but NO evidence of independent owner signature, green CI provenance, original host authority, local custody, installation, rollback or ACK. New manager method private only; tested offline synthetic bytes, no real download, no server change.
+- Post-review and CI merge still required. Production original host proof #669, Runner-MCP #341, Fabric #942/#943 independent local recovery and same original client ACK remain WAIT. Connected runtime 0.1.88 unproven serving wheel. Qwen/Claude/SQL untouched.
+
 ## 2026-11-06 — F30 #937 Runner-MCP 0.1.148 bron: verified signed release → INACTIEVE owner-private NOREPLACE stage
 
 - Private managerkandidaat bundelt de vorige `ReleaseAdmission`, geldige eigenaar-gepinde Ed25519 signed-document/signature/key en ALLE volledig gevalideerde assetbytes na exact twee bestaande GitHub metadata-GETs. Bestaande bytes-only-API blijft ongewijzigd; nieuwe interne stage benut ALLEEN de al aanwezige owner-private 0700 `local_bundles_root` en Q7 atomic NOREPLACE. Geen installatie, activatie, systemd of extra downloader.

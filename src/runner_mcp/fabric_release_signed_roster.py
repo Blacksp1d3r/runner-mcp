@@ -189,11 +189,20 @@ def compare_signed_fabric_roster(
     if (
         type(signed_pins) is not ReleaseAdmission
         or type(observed_metadata) is not ReleaseAdmission
+        or type(signed_pins.commit) is not str
+        or _COMMIT.fullmatch(signed_pins.commit) is None
+        or type(observed_metadata.commit) is not str
         or signed_pins.commit != observed_metadata.commit
+        or type(signed_pins.tag) is not str
+        or type(observed_metadata.tag) is not str
         or signed_pins.tag != observed_metadata.tag
         or signed_pins.tag != "fabric-update-bundle-" + signed_pins.commit
         or type(signed_pins.release_id) is not int
+        or type(observed_metadata.release_id) is not int
+        or signed_pins.release_id <= 0
         or signed_pins.release_id != observed_metadata.release_id
+        or type(signed_pins.project_wheel) is not str
+        or type(observed_metadata.project_wheel) is not str
         or signed_pins.project_wheel != observed_metadata.project_wheel
         or type(signed_pins.files) is not tuple
         or type(observed_metadata.files) is not tuple

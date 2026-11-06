@@ -1,3 +1,10 @@
+## 0.1.138 — F30/#937 generiek ondertekend Release-rooster, alleen offline SOURCE
+
+- Nieuwe zuivere module `fabric_release_signed_roster.py` hergebruikt de bestaande `inspect_exact_release` voor iedere geldige exacte `fabric-update-bundle-<sha>`. De module controleert Ed25519 op originele bytes, door de aanroeper *onafhankelijk* gepinde publieke-sleutel-SHA256, exacte broncommit en release-ID, versiegebonden repository en verplichte assetset met strikte naam/ID/grootte/digestcontrole.
+- Eén pure vergelijking bindt de ondertekende assetinventaris aan echte GitHub Release-metadata. Synthetische negatieve tests omvatten vreemde/verwisselde sleutels, dubbele JSON-velden, te grote documenten, ongeldige assetsets, gewijzigde SHA/IDs en foutieve bron/tag/release-ID. De historische Q7-ondertekening en `fabric_release_signed_import.py` blijven ongewijzigd.
+- De uitkomst blijft `match_only`, met `operator_signer_authority_attested=false`, `download_performed=false`, `install_authorized=false`, `rollback_verified=false` en `original_client_ack_proven=false`. Er bestaat nog GEEN gekwalificeerde generieke eigenaar-signing key/provider-binding; het nieuwe schema `runner-fabric/signed-release-roster/v1` is slechts een toekomstig contract, geen bestaande productiepublicatie. Geen download/custody/import, serveractie of nieuwe updater.
+- GitHub-bron is niet dezelfde toestand als de fysiek verbonden Runner-MCP v0.1.88; #669, #341, Fabric #924/#942/#943 en ACK blijven onafhankelijk vereist.
+
 ## 0.1.137 — F30/#341 exacte Release-foutcategorieën (SOURCE ONLY)
 
 - GitHub Release metadata blijft een read-only controle van het bestaande, exacte Fabric-pakket; nul download, installatie, activatie, nieuwe updater of rollback.

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 exact inactief opslagformaat en bron/CI-acceptatie
+
+- Na merged v0.1.150 controle op exacte main en actieve tests bleek een inconsistentie: de private create-once writer schrijft `local-bundles/<SHA>/source/bundle/<asset>`, terwijl de nieuwe CI-test nog vlakke assets in `local-bundles/<SHA>` verwachtte. De bestaande publieke `local_readiness` verwacht rechtstreeks `BUNDLE.json` en weigert dit opzettelijk niet-actieve nested formaat.
+- Deze PR corrigeert uitsluitend de test naar het ECHTE nested inode-/mode-/digest-adres en controleert expliciet dat dezelfde echte `FabricUpdateManager._validate_local_bundle_source` de kandidaat niet als direct activeerbaar accepteert. Geen installer, releasebevoegdheid, runtime, public tool of server gewijzigd. Exacte-head CI moet dit nog bewijzen.
+- Bron 0.1.150 blijft bron-only; productie 0.1.88 zonder originele wheel-/procesattest, A6/A7/rollback en oorspronkelijke client ACK blijft geblokkeerd. ED-sleutel pas nadat automatische updates, Qwen en Claude bruikbaar zijn.
+
 ## 2026-11-06 — F30/#341 keyless GitHub-release INACTIEVE storage (v0.1.150 bronkandidaat)
 
 - SOURCE-ONLY: _stage_github_release_inactive_once op dezelfde FabricUpdateManager bezit dezelfde bestaande fixed repo release/tag GETs + individuele asset-ID transport + manifest/ZIP/RECORD, gevolgd door hergebruik van bestaande private _store_verified_inactive_bytes_once (0700/0600 fsync/readback/NOREPLACE). Nieuwe 0.1.150 is geen geïnstalleerde serverrelease. Signed route en Q7 bewaard.

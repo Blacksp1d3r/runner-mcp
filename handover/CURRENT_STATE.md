@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 bron kandidaat 0.1.142: generieke signed assetbatch, volledig gescheiden van Claude/Qwen
+
+- **SOURCE IN UITVOERING, CI nog vereist:** `fabric_release_asset_bytes.fetch_exact_signed_fabric_bundle_bytes` verbindt de reeds gemergede signed roster (#939) + complete bundle (#940) + wheelhouse (#941) met de bestaande individuele vaste-repository downloader. Exact signer/source/metadata verplicht vóór enige asset-GET; alle geretourneerde bytes ook opnieuw op size+SHA256 gecontroleerd; manifest/COMMIT/SHA256SUMS/ZIP/RECORD volledig PASS vóór in-memory resultaat. Geen alternatieve transport-API, credentialbron, stage, `start_local`, filewrite of worker-aanroep.
+- **ONLY synthetic:** tijdelijke Ed25519-sleutels, mock asset_reader, 5/33/160 realistische ZIP-wheelbeveiliging, partial read/tamper/identity corruptions. Bronversie 0.1.142 ≠ draaiende/uitgerolde versie. Geen echte bytes, signer, servers, Qwen/Claude, Fabric- of SQL-services gewijzigd.
+- **NOG GEBLOKKEERD:** bewijs van onafhankelijke publisher/owner-signer en externe bron/release-policy vanuit Fabric #924; fysieke goedgekeurde originele host- en user-custody #937 S2e, serving-wheel #669, lokale herstelketen #341, off-target A6 #942, offline A7 #943 en originele terminal result+ACK. Bestaande local-bundles NOREPLACE 0.1.141 is bron-groen, maar geen signed Release-installatie.
+
 ## 2026-11-06 — F30 #937 S2e bestaande inactieve stage NOREPLACE BRON VOLTOOID 0.1.141
 
 - **VOLTOOID op bron en exact-head CI:** [Runner-MCP PR #942](https://github.com/Blacksp1d3r/runner-mcp/pull/942) v0.1.141 gemerged als `ebe687b75c1ed7a2979966a43e0fb7e3a97c032f` (geteste head `d57e12c480dcc5edf83677268ec1ca95e3edc4df`). Validation `42221040779`, Clean Ubuntu `42221041071` en attribution `42221041052` **SUCCESS**: Ruff, pytest, version reservation, built artifact, disposable systemd en einddemo. Bestaande Q7, Runner-Fabric-update en historische bundle/slots/transaction blijven intact.

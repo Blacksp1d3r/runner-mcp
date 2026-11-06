@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 source-only gesloten signed Release-body → bestaande manager-verificatie
+
+- Interne manager-route gebruikt één vaste Release/tag-snapshot plus signed description, valideert onafhankelijke key-/commit-/releasepin en hergebruikt volledige bestaande pinned assetbytes-verificatie in geheugen. Geen aparte downloader, updateservice of publieke tool.
+- Productie nog niet vrijgegeven: eigenaarssigner/rotatie en onafhankelijke trustdistributie plus daadwerkelijk ondertekende releasepublicatie via Fabric #924 ontbreken, evenals originele runtime #669, herstelsupervisor #341, A6/A7 fysieke bewijsstukken en authentieke result/ACK. Nooit een groene CI als bewijs voor productie-activering beschouwen.
+
 ## 2026-11-06 — F30 #937 signed description consumer 0.1.146, source-only
 
 - De generieke Ed25519 signed roster kan als strikt eindblok worden afgenomen uit de bestaande releasebeschrijving zonder de vaste GitHub assetlijst te vergroten. Alleen synthetisch en onbereikbaar vanuit publieke MCP-tools; sleutel, commit en release-ID komen van buiten GitHub/aanroeper.

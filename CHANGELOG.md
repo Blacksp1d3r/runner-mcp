@@ -1,3 +1,10 @@
+## 0.1.143 — F30/#937 hergebruik exact Release-metadataresultaat, geen extra API-route (SOURCE ONLY)
+
+- De bestaande `FabricUpdateManager.release_assets_readiness` behoudt haar publieke JSON-status en twee vaste GitHub Release-/tag-ref-verzoeken, maar verkrijgt het resultaat via een interne `_read_exact_release_admission` die het oorspronkelijke getypeerde `ReleaseAdmission`-object teruggeeft. Hiermee kan een toekomstige onafhankelijke signed-releaseverbruiker dezelfde gevalideerde asset-IDs, namen, groottes, SHA-256 en exact commit/release-ID hergebruiken zonder een tweede parser, tokenroute of metadata-downloader te maken.
+- Exacte generieke en historische Q7 tags blijven ondersteund; bestaande dubbele 404, providerfout, ontbrekende SHA en tegenstrijdige metadata behouden hun huidige openbare foutcodes. Geen assetbyte-download of schijf-/host-/launcher-/servicemutatie, geen `start_local` of `apply`.
+- De bestaande metadata-readiness tests zijn uitgebreid voor het getypeerde resultaat, publieke backwards compatibility en geen onbedoelde download, lokale stage of actieve bundlewissel.
+- Nog niet beschikbaar: werkelijk onafhankelijke publisher/eigenaars-signer en policy, getekend echt generiek Release-rooster, host owner/serving-wheel, originele ACK en fysieke A6/A7 herstelbewijzen.
+
 ## 0.1.142 — F30/#937 generieke signed assetbyte-batch via bestaande downloader (SOURCE ONLY)
 
 - Binnen de **bestaande** `fabric_release_asset_bytes.py` verifieert `fetch_exact_signed_fabric_bundle_bytes` eerst een exact Ed25519-ondertekend Fabric-rooster met onafhankelijk *aangeleverde* key-fingerprint/commit/release-ID, en vergelijkt dat met de bestaande exact-gevalideerde GitHub Release/tag-metadata **vóór de eerste asset GET**. Daarna hergebruikt hij per file de huidige vaste-repository `fetch_pinned_asset_bytes`. Bij iedere respons hercontrole op bytes/grootte/SHA256; pas bij alle 5–160 assets geslaagd wordt het bestaande full manifest-/SHA256SUMS-/ZIP/METADATA/RECORD-gate doorlopen.

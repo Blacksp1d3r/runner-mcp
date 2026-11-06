@@ -1,3 +1,7 @@
+## 2026-11-06 — F30 private signed-bundle bytes → inactive NOREPLACE (source 0.1.145)
+
+Private _stage_signed_release_inactive_once → bestaande Ed25519 + ReleaseAdmission + wheelhouse verifier → Q7 private-root directory-FD → unieke .incoming-uuid/source/bundle → O_EXCL O_NOFOLLOW + 0600/fdatasync + readback SHA → bestaande manager NOREPLACE naar local-bundles/exact_commit. Geen MCP-export, install, source-autoriteit of hostbewijs; onafhankelijke eigenaarsigner en #669/#341/A6/A7/ACK blijven WAIT.
+
 ## 2026-11-06 — F30 #937 één interne bestaande metadata+signed byteketen, nog geen productiebevoegdheid
 
 `FabricUpdateManager._read_verified_signed_release_bytes(expected_commit,expected_release_id,signed_document,signature,public_key,independently_trusted_key_sha256,asset_reader)` → bestaande onafhankelijke-source-input Ed25519 `verify_signed_fabric_roster` **VOOR** metadata GET → `_read_exact_release_admission` (dezelfde owner safety/launcher checks, vaste GitHub Release+tag, dezelfde public readiness) → bestaande `_github_token` (geen tokenretour) → `fetch_exact_signed_fabric_bundle_bytes` (identieke signer/metadata vergelijking, vaste per-asset GitHub GET, 256MiB cap, BUNDLE/COMMIT/SHA256SUMS + wheel ZIP/METADATA/RECORD) → complete in-memory dict of vaste veilige fout. Geen server export, `start_local`, actieve custody, `apply`, herstel of ACK. **Extern vertrouwde eigenaarssigner/bronpolicy nog afwezig.**

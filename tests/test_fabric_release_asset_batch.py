@@ -116,7 +116,6 @@ def _case(count: int = 5, *, corrupt_wheel: bool = False):
         "target_commitish": COMMIT,
         "draft": False,
         "prerelease": True,
-        "body": release_body,
         "assets": [{
             "name": row["name"],
             "id": row["asset_id"],
@@ -283,6 +282,7 @@ def _mock_manager_for_signed_batch(
         "target_commitish": observed.commit,
         "draft": False,
         "prerelease": True,
+        "body": release_body,
         "assets": [{
             "name": row.name,
             "id": row.asset_id,

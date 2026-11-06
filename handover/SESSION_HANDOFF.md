@@ -1,3 +1,9 @@
+## 2026-11-06 — #937 S2b geen dubbelsysteem: gedeelde manifest- en assetcontrole
+
+- Na #939 source MERGED 0.1.138 is bron 0.1.139 kandidaat: binnen dezelfde `fabric_release_full_bundle.py` één gemeenschappelijke 5..160 in-memory byte-/SHA-/BUNDLE-/COMMIT-/SHA256SUMS-check, bestaande Q7 (33 assets) blijft eigen vaste signer/rooster en dezelfde API-respons. Nieuwe generieke `check_complete_signed_fabric_bundle` vereist de 0.1.138 ondertekende metadata-plus-Release vergelijking vooraf; geeft NO UPDATE/DOWNLOAD/INSTALL authority. Exacte head CI voor bronacceptatie eerst afwachten.
+- Gebruik `stage_pinned_q7_bundle_once` NIET voor generieke inactieve stage: schrijft naar `bundle/`. Gebruik `start_local` NIET als stage: activeert proces. Bestaande generieke `local_readiness` kijkt uitsluitend naar `local-bundles/<sha>`. Volgende stap eerst complete ZIP/RECORD en dan eigenaar-geautoriseerde nofollow/atomic create-once root onder de bestaande manager.
+- Trust producer/signer vanuit Fabric #924 nog niet werkelijk geleverd, origineel runner runtime 0.1.88 niet 0.1.139. Geen server, host, toolcatalogus, cron/systemd, auth, updater, model of release gemuteerd. A6/A7/ACK blijven WAIT.
+
 ## 2026-11-06 — #937 generiek read-only ondertekend rooster: bron kandidaat, generieke trust WAIT
 
 - Werkstroom F30 S2 heeft bestaande Q7-only crypto en bestaande exacte GitHub Release-admission gecontroleerd; nieuwe `fabric_release_signed_roster.py` doet uitsluitend pure validatie voor `runner-fabric/signed-release-roster/v1`: Ed25519 over originele bytes, externe publiekesleutel-hash, vastgepinde SHA/release-ID, exacte Fabric repository/tag en dezelfde asset-regels als `inspect_exact_release`. Een vergelijking met echte metadata blijft expliciet `match_only`; geen proof of authority of download.

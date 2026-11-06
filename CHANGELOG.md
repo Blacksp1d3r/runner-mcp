@@ -1,3 +1,9 @@
+## 0.1.139 — F30/#937 gedeelde volledige Fabric-bundelcontrole, SOURCE ONLY
+
+- De bestaande `fabric_release_full_bundle.py` controleert voortaan via één gedeelde zuivere routine Q7 én een generieke exact ondertekende Fabric Release (5..160 assets): elke naam, ID, bytes, SHA256, totale grootte, COMMIT_SHA, BUNDLE.json-velden, BOOTSTRAP.py en SHA256SUMS. De bestaande Q7-interface behoudt de vaste 33 bestands-/29 wheelcontracten en ongewijzigd publiek resultaat.
+- De nieuwe `check_complete_signed_fabric_bundle` vergelijkt eerst via de reeds gemergede 0.1.138 ondertekende exacte roostermetadata met GitHub, dan de volledige in-memory inhoud tegen de afzonderlijke pins en manifestrelaties. Een juiste bytevergelijking levert alleen `bundle_consistency_only` en expliciete `operator_signer_authority_attested=false`, `wheel_metadata_verified=false`, `local_custody_verified=false`, `download_performed=false`, `mutation_authorized=false`, `rollback_verified=false`, `original_client_ack_proven=false`.
+- Nieuwe synthetische regressies voor 5/33/160 bestanden, vervalste manifests/commit, ongeldige SHA256SUMS, veranderde ingelezen bytes en GitHub metadatarijen. Historische Q7 regressies blijven verplichte bronacceptatie. Dit is nog GEEN wheel ZIP/RECORD-inspectie, download, owner-private storage, signer/host authority, update of zelfstandige rollback.
+
 ## 0.1.138 — F30/#937 generiek ondertekend Release-rooster, alleen offline SOURCE
 
 - Nieuwe zuivere module `fabric_release_signed_roster.py` hergebruikt de bestaande `inspect_exact_release` voor iedere geldige exacte `fabric-update-bundle-<sha>`. De module controleert Ed25519 op originele bytes, door de aanroeper *onafhankelijk* gepinde publieke-sleutel-SHA256, exacte broncommit en release-ID, versiegebonden repository en verplichte assetset met strikte naam/ID/grootte/digestcontrole.

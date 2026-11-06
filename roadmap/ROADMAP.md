@@ -1,3 +1,8 @@
+## 2026-11-06 — #937 S2b: Q7 en generieke bundle-inhoud via één codepad
+
+- **SOURCE kandidaat 0.1.139:** na gemergde 0.1.138 signed-pins wordt `fabric_release_full_bundle` gedeeld voor 5..160 bestanden, exacte SHA256SUMS/BUNDLE/COMMIT, met oude Q7-interface vastgehouden op 33/33. Volledige CI en negatieve tests vereist vóór merge.
+- **VOLGENDE S2 stappen:** bestaande ZIP/RECORD wheelhouse-verificatie uitbreiden zonder aparte uploader, vervolgens eerst onafhankelijke echte issuer/signer-pins en real-host custody respecteren voor exact `local-bundles/<sha>` create-once. `start_local` is een echte update/apply, geen stage. Rollout blijft Fabric #924/#942/#943 en #669/#341 fysieke herstel-/ACK-gates.
+
 ## 2026-11-06 — F30 S2a #937: generiek ondertekende Release-inventaris (bron kandidaat)
 
 - Nieuwe source 0.1.138 module: pure Ed25519- en exacte Fabric SHA/release-ID/publisher-schemacontrole, hergebruikt bestaande `inspect_exact_release`; vergelijking met aparte GitHub metadata blijft niet-autoriserend. Historische Q7-import niet aangepast.

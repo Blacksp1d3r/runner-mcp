@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 0.1.142 + 0.1.143 SOURCE GREEN; upstream signer/physical owner WAIT
+
+- Runner-MCP [#944](https://github.com/Blacksp1d3r/runner-mcp/pull/944) source 0.1.142 en [#945](https://github.com/Blacksp1d3r/runner-mcp/pull/945) source 0.1.143 beide MERGED met exact-head full CI PASS. De huidige vaste assetbyte-downloader + signed/full/ZIP-verifiers vormen een pure in-memory 5..160 asset-verificatieketen; de bestaande vaste Release/tag-metadatalezer biedt exact hetzelfde getypeerde `ReleaseAdmission` intern aan, zonder tweede API/tokenroute. Geen verandering aan servers of bestaande Q7-contracten.
+- **Blokkerende externe prerequisite:** onafhankelijke eigenaar/Fabric-gekwalificeerde generieke Ed25519 uitgeverssleutel/owner key pin en getekend `runner-fabric/signed-release-roster/v1`; pas na eigen key/source/release-ID beleid en echte releasebytes kandidaat voor INACTIEVE eigenaar-private NOREPLACE custody op de werkelijk bewezen oorspronkelijke host. `start_local/apply` is geen pre-stage. Fysieke #669/#341 en Fabric #924/A6 #942/A7 #943 + originele issuer terminal result/ACK blijven te kwalificeren.
+
 ## 2026-11-06 — F30 #937 exact ReleaseAdmission hergebruiken, zonder dubbele API-implementatie
 
 - Na bron-merge 0.1.142 generieke in-memory assetbatch: 0.1.143 kandidaat verplaatst enkel de bestaande `release_assets_readiness` interne exacte API-parser naar `_read_exact_release_admission`. De bestaande status gebruikt dezelfde getypeerde parser; geen nieuwe endpoint of auth, geen download/stage/apply, oorspronkelijke Q7 en Release foutcodes blijven intact. CI-regressies op identiteit, aantal metadata-GETs, public_dict, verboden mutatie.

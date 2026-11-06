@@ -1,8 +1,8 @@
-## 2026-11-06 — F30 #341 opvolging na #957: nested custody is geen lokale activatie
+## 2026-11-06 — F30 #341 #958 gerichte CI wees gemiste renameat2-promotie aan
 
-- Exact main f910cb0fd13fa87e03e910ad8e5a4e24409f49a9, GitHub run 42281123242 meldt 4698 pytest PASS, maar na broninspectie bleek dat de nieuwe test twee flat-file-asserties overhoudt van vóór de private nested stage. F30 testcorrectie op eigen branch; check de echte nieuwe exact-head CI alvorens source PASS te claimen.
-- Private `_store_verified_inactive_bytes_once`: `<root>/<SHA>/source/bundle/<asset>`; publieke `local_readiness` verwacht `<root>/<SHA>/BUNDLE.json` en moet deze kandidaat blijven weigeren. Geen flatten, publieke stage, `start_local`, `apply` of hostwerk voordat commit/CI/owner/host/provenance en A6/A7/ACK werkelijk gekwalificeerd zijn.
-- Qwen V3, Claude, SQL en Fabric-services ongemoeid. Volgende onafhankelijke source-stap na CI: werkelijk niet-autoriserende offline readback van de bewaarde private kandidaat of bestaande helper hergebruiken; geen tweede updater/controller.
+- Mijn voorlopige hypothese "final custody nested" was FOUT. Exacte inspectie van `fabric_update._promote_inactive_bundle_noreplace` toont: input `.incoming-<uuid>/source/bundle` wordt als directory atomair gepromoveerd naar **vlak** `local-bundles/<SHA>`; leeg `.incoming/source` blijft staan. Eerste #958 HEAD `7233aefee2f444ba649900937d36920fbaf9f2df` CI 42306368102 faalde daardoor terecht 4 tests, 4694 PASS; niet merge of als groen behandelen.
+- #958 is gecorrigeerd naar flat finale verificatie plus geen dubbele bytes in forensische tijdelijke boom, zonder uitvoerende codewijzigingen. Nieuwe exact-head CI eerst controleren. Dit levert slechts bewijs voor opslaglayout, NIET toegestane installatie/rollout/rollback.
+- Originele host actieve wheel/procesherkomst #669, bestaande zelfstandige recovery #341/Fabric #943, off-target A6 #942, positieve oorspronkelijke client-result/ACK zijn nog niet gekwalificeerd. Nieuwe ED-sleutel pas na werkende automatische updates/Qwen/Claude; Qwen/Claude/SQL blijven onaangeroerd.
 
 ## 2026-11-06 — F30 #341 keyless release-import naar bestaande inactieve opslag, source only
 

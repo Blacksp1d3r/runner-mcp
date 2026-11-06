@@ -110,15 +110,15 @@ def test_mismatched_release_metadata_is_a_bounded_denial(
         ),
     )
     with pytest.raises(
-        FabricUpdateError, match="^fabric_release_assets_unqualified$"
+        FabricUpdateError, match="^release_digest_invalid$"
     ):
         manager.release_assets_readiness(COMMIT)
     assert bounded_fabric_readiness_failure(
-        FabricUpdateError("fabric_release_assets_unqualified"),
+        FabricUpdateError("release_digest_invalid"),
         source="github-release",
     ) == {
         "state": "blocked",
-        "reasonCode": "fabric_release_assets_unqualified",
+        "reasonCode": "release_digest_invalid",
         "artifact_ready": False,
         "source": "github-release",
     }

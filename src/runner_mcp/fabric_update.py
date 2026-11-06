@@ -35,6 +35,7 @@ from .fabric_bootstrap import FabricBootstrapError, _private_env_value
 from .fabric_release_assets import (
     FabricReleaseAdmissionError,
     FabricReleaseDigestError,
+    ReleaseAdmission,
     inspect_exact_release,
 )
 from .fabric_release_private_custody import _promote_noreplace
@@ -320,10 +321,24 @@ class FabricUpdateManager:
         return {"commit": commit, "artifact_ready": True}
 
     def release_assets_readiness(self, commit: str) -> dict[str, Any]:
-        """Read-only fixed-repository GitHub prerelease metadata proof.
+        """Behoud de bestaande publieke, niet-autoriserende Release-status.
 
-        This does not download assets, write owner-local custody, stage the
-        existing updater, switch slots or grant Fabric mutation authority.
+        De exacte onderliggende inspectie wordt gedeeld met een toekomstige
+        ondertekende byte-import. Er wordt niets gedownload, opgeslagen,
+        geïnstalleerd, geactiveerd of met een host geassocieerd.
+        """
+        return self._read_exact_release_admission(commit).public_dict()
+
+    def _read_exact_release_admission(self, commit: str) -> ReleaseAdmission:
+        """Lees exact de bestaande GitHub Release én tag-ref als één snapshot.
+
+        Alleen een door deze bestaande manager verkregen getypeerd resultaat
+        mag de volgende signed-byte-gate ingaan. De vaste repository, exacte
+        commit/tag, beide responsen, SHA-256-inventaris en verschil tussen
+        dubbele 404, providerstoring en tegenstrijdig bestaan blijven gelijk.
+
+        Dit is uitsluitend read-only providerinformatie, NOOIT een
+        onafhankelijke signer, hostbeheerder, releasebevoegdheid of ACK.
         """
         _require_commit(commit)
         self._require_safe_runtime()
@@ -368,7 +383,7 @@ class FabricUpdateManager:
             raise FabricUpdateError("release_digest_invalid") from exc
         except FabricReleaseAdmissionError as exc:
             raise FabricUpdateError("fabric_release_assets_unqualified") from exc
-        return admission.public_dict()
+        return admission
 
     def local_readiness(self, commit: str) -> dict[str, Any]:
         """Verify one exact locally-custodied Fabric bundle without mutation."""

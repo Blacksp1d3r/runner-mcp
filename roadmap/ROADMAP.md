@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 signed description consumer 0.1.146, source-only
+
+- De generieke Ed25519 signed roster kan als strikt eindblok worden afgenomen uit de bestaande releasebeschrijving zonder de vaste GitHub assetlijst te vergroten. Alleen synthetisch en onbereikbaar vanuit publieke MCP-tools; sleutel, commit en release-ID komen van buiten GitHub/aanroeper.
+- Nog nodig: daadwerkelijke owner-managed Fabric signing/rotatie, onafhankelijke public key-trust, publicatie/durable distributie door bestaande Fabric workflow buiten de 5..160 assets, oorspronkelijke doelhost/wheel #669, fysieke recovery A6/A7, resultaat/ACK. Niet activeren bij onzekerheid.
+
 ## 2026-11-06 — F30 #937 S2e bronkandidaat 0.1.145: offline signed inactive storage
 
 - Hergebruik 0.1.144 in-memory signed verifiers, Q7 private root-FD en bestaande atomic NOREPLACE onder lokale private update-root. Voeg uitsluitend source-only private offline stage toe met 5/33 synthetische wheel-tests, race en crashfailures.

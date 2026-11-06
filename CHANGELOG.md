@@ -1,3 +1,9 @@
+## 0.1.146 — F30/#937 signed Fabric Release-body verifier (SOURCE ONLY)
+
+- Nieuwe strikt private `fabric_release_body_envelope.verify_signed_release_body` haalt een exact Base64-tekstblok uit de al bestaande GitHub Release-beschrijving, ZONDER extra release-asset, nieuwe URL, host- of bestandstoegang. Bron, Release-ID en SHA256 van de public key blijven onafhankelijk vanuit eigenaarbeleid vereist.
+- De bestaande Ed25519-verifier controleert de originele bytes en de vaste trusted-key-fingerprint, en vergelijkt daarna ALLE 5–160 assets exact met de al gekwalificeerde `ReleaseAdmission` (IDs, groottes en digests). Dubbele/afwijkende markers, padding, extra regels, ontbrekende handtekening of provider-aanpassingen fail closed.
+- Synthetische tests 5/33/160 bestaande wheelcases en 17 ongeldige omschrijvingen. Geen gekoppelde live manager, nieuwe MCP-tool, download, inactieve fysieke import, echte signer of installatie. Fabric #924 independent owner key/distributie en #669/#341/A6/A7/original client ACK blijven HARD WAIT.
+
 ## 0.1.145 — F30/#937 signed-release-inactive-custody (SOURCE ONLY)
 
 - Nieuwe private _stage_signed_release_inactive_once hercontroleert Ed25519-rooster, exacte bron/release/key-pins, GitHub metadata en volledig BUNDLE/COMMIT/SHA256SUMS/ZIP/RECORD vóór schijfgebruik. Aangeleverde testpins geven nooit echte eigenaarbevoegdheid.

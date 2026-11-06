@@ -673,3 +673,121 @@ def test_keyless_inactive_stage_remains_private_not_a_second_update_or_tool():
     assert "_stage_github_release_inactive_once" not in app
     assert "_stage_github_release_inactive_once" not in installer
     assert "github_release_inactive" not in app
+
+
+# F30/#341: dezelfde bestaande manager moet de gepromoveerde release ook kunnen
+# TERUGLEZEN, zonder ooit bootstrap/preflight/apply of een service te starten.
+@pytest.mark.parametrize("count", [5, 33, 160])
+def test_keyless_release_stage_to_existing_local_readiness_is_read_only(tmp_path, count):
+    """Controleer de hele offline opslag-/leesketen zonder hostbevoegdheid.
+
+    Alle GitHub-data en assets zijn fictief; de enige echte I/O gebeurt binnen
+    pytest-tmp_path. De private source-route krijgt GEEN bevoegdheid tot
+    installatie en de bestaande public local_readiness wordt niet gewijzigd.
+    """
+    from runner_mcp.fabric_update import FabricUpdateManager
+
+    _unused_signed, observed, bodies = _generic_signed_inputs(count)
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "sentinel").write_text("never touch", encoding="ascii")
+
+    manager = object.__new__(FabricUpdateManager)
+    manager.local_bundles_root = root
+    calls = []
+    manager._read_exact_release_admission = lambda commit: (
+        calls.append(("release", commit)) or observed
+    )
+    manager._github_token = lambda: "synthetic-test-token"
+    # Alleen in deze geïsoleerde test: normale runtime/launcher-bevoegdheid
+    # wordt NIET nagebootst als geslaagd productieattest.
+    manager._require_safe_runtime = lambda: None
+    manager._assert_managed_launcher = lambda: None
+    manager._runner = lambda *args, **kw: pytest.fail("bootstrap was executed")
+
+    def asset_reader(*, token, asset_id, expected_size, independently_pinned_sha256):
+        calls.append(("asset", asset_id))
+        name = next(item.name for item in observed.files if item.asset_id == asset_id)
+        return bodies[name]
+
+    stored = manager._stage_github_release_inactive_once(
+        expected_commit=observed.commit,
+        expected_release_id=observed.release_id,
+        asset_reader=asset_reader,
+    )
+    assert stored["inactive_custody"] is True
+    assert stored["download_performed"] is True
+    assert stored["install_authorized"] is False
+    assert stored["rollback_verified"] is False
+    assert stored["original_client_ack"] is False
+
+    # Dit controleert het werkelijk vlak gepromoveerde bundle-formaat met
+    # dezelfde _validated_bootstrap als het bestaande lokale updatepad.
+    ready = manager.local_readiness(observed.commit)
+    assert ready == {
+        "commit": observed.commit,
+        "artifact_ready": True,
+        "source": "local-custody",
+    }
+    assert all(ready.get(key) is not True for key in (
+        "install_authorized", "rollback_verified", "original_client_ack",
+    ))
+    assert calls.count(("release", observed.commit)) == 1
+    assert len(calls) == count + 1
+    assert (active / "sentinel").read_text("ascii") == "never touch"
+    assert not (root / "bundle").exists()
+    assert not (tmp_path / "slots").exists()
+    assert not (tmp_path / "transaction.json").exists()
+
+
+@pytest.mark.parametrize("damage", ["bootstrap", "wheel", "manifest"])
+def test_keyless_local_readiness_refuses_changed_disk_bytes_without_activation(
+    tmp_path, damage,
+):
+    """Na opslag is elk gewijzigd bestand opnieuw een lokale STOP.
+
+    De SHA256SUMS/BUNDLE/BOOTSTRAP-controle is van de bestaande manager;
+    er is geen nieuwe validator, installer, netwerk- of herstelcontroller.
+    """
+    from runner_mcp.fabric_release_inactive_custody import (
+        _stage_github_release_inactive_once,
+    )
+    from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
+
+    _unused_signed, observed, bodies = _generic_signed_inputs(5)
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    receipt = _stage_github_release_inactive_once(
+        local_bundles_root=root,
+        expected_commit=observed.commit,
+        expected_release_id=observed.release_id,
+        observed_metadata=observed,
+        asset_bodies=bodies,
+    )
+    assert receipt["install_authorized"] is False
+    final = root / observed.commit
+    name = (
+        "BOOTSTRAP.py" if damage == "bootstrap" else
+        "BUNDLE.json" if damage == "manifest" else
+        next(name for name in bodies if name.endswith(".whl"))
+    )
+    file = final / name
+    original = file.read_bytes()
+    file.write_bytes((b"x" if original[:1] != b"x" else b"y") + original[1:])
+
+    manager = object.__new__(FabricUpdateManager)
+    manager.local_bundles_root = root
+    manager._require_safe_runtime = lambda: None
+    manager._assert_managed_launcher = lambda: None
+    manager._runner = lambda *args, **kw: pytest.fail("bootstrap was executed")
+    with pytest.raises(
+        FabricUpdateError,
+        match="^fabric_bundle_(?:invalid|integrity_failed)$",
+    ):
+        manager.local_readiness(observed.commit)
+    assert file.read_bytes() != original
+    assert not (root / "bundle").exists()
+    assert not (tmp_path / "slots").exists()
+    assert not (tmp_path / "transaction.json").exists()

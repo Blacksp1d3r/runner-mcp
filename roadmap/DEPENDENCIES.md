@@ -1,3 +1,8 @@
+## 2026-11-07 — F30 #341 bestaande lokale integriteit ook na checksum-repin (CI-kandidaat)
+
+- Geen nieuw systeem: bron v0.1.151 breidt het BESTAANDE `_validated_bootstrap` uit met opt-in `verify_wheel_records` uitsluitend bij lokale custody; hergebruikt exact dezelfde ZIP/RECORD-reader als de keyless GitHub-release import. Bestaande GitHub-Actions-/rollbackpaden blijven ongewijzigd. Harde schijfwijziging aan wheel + SHA256SUMS mag geen valide lokale updatebron worden; nieuwe test met fictieve assets, geen host-mutatie. CI/merge nog vereist.
+- Dit bewijst alleen inhoudsintegriteit in synthetische tests; echte original-host/loaded wheel #669, owner-pins, no-NIC rollback #341/A7 #943, off-target A6 #942 en originele-client ACK blijven REQUIRED. ED key uitgesteld.
+
 ## 2026-11-06 — F30 #341 keyless Release → eigenaar-private inactieve bundel → lokale read-only check SOURCE DONE
 
 - CI-geteste [Runner-MCP #959](https://github.com/Blacksp1d3r/runner-mcp/pull/959) volledig 7/7 SUCCESS met 4704 pytest tests; gemerged `d49940b8e7116b89d1b139b010c5ed72cb50a8e8`, tests/docs only, versie 0.1.150. Synthetische complete GitHub release 5/33/160 assets → bestaande NOREPLACE lokale opslag → bestaande `FabricUpdateManager.local_readiness` en lokale beschadiging → STOP. Geen echte host-actie, update/rollbackbevoegdheid of nieuw systeem.

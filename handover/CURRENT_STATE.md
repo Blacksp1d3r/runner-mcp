@@ -1,8 +1,9 @@
-## 2026-11-07 — F30 #341 wheelinhoud na lokale opslag opnieuw controleren, v0.1.151 BRONKANDIDAAT
+## 2026-11-07 — F30 #341 PR #960 v0.1.151 SOURCE/CI VOLTOOID; originele uitrol nog WAIT
 
-- Main vóór branch `f1167cd54e3ec45590285b74f9ef9dd72f46b191`; post-merge main validation 42308860985 en attribution 42308860966 beide SUCCESS. Branch `fix/f30-341-local-recheck-wheel-records-20261107` bevat beperkte optie `verify_wheel_records=True` in bestaande `fabric_update.py::_validated_bootstrap`, actief uitsluitend bij bestaande `local_readiness` en het bestaande lokale stage/preflight pad. Hergebruikt exact de bestaande ZIP/METADATA/RECORD-parser en 384 MiB inhoudslimiet; geen nieuwe verifier/updater/tool.
-- Nieuwe CI-test voert na geldige fictieve release-opslag bewust wijziging aan wheel én SHA256SUMS uit; oude SHA-only check mag overeenstemming zien, nieuwe ZIP/RECORD-check moet weigeren en nooit een staged bundle/slot/transaction aanmaken. Bronversie kandidaat 0.1.151. **Niet getest op originele server; exacte PR-head CI nog niet afgerond.**
-- Echte verbonden 0.1.88 blijft onvoldoende originele serving-wheel/host #669; onmisbaar A6 #942, A7 #943 zelfstandig offline herstel, ouder baseline #341, eigenaarbronbeleid en oorspronkelijke-client result/ACK. Qwen/Claude/SQL ongemoeid.
+- **MERGED** [PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) als `22624dbf42c63f6b57d2161eaf88f6050128a6bd`, exacte PR-head `920dcf884b0d00c8149464371f867ca5d19a122e`, 7/7 CI SUCCESS: `42310895233` Ruff+4705 pytest PASS, release-reservering, gebouwde distributie, echte disposable systemd en vijfminutendemo; `42310895135` Clean Ubuntu SUCCESS; `42310895172` Attribution SUCCESS. 0.1.151 in pyproject, server.json, glama.json en `__version__`.
+- Bestaande lokale Fabric bundle-admissie herleest nu dezelfde reeds aanwezige ZIP/METADATA/RECORD-parser na eerdere complete NOREPLACE custody en vóór lokale preflight; veranderde ZIP plus herberekende SHA256SUMS wordt niet geaccepteerd. Geen codewijziging externe GitHub Actions updater of rollback; geen nieuwe tool, controller of ED-key.
+- CI-eerste fouten: ongesynchroniseerde `glama.json` (run `42310389215`), Ruff importvolgorde (`42310508247`), vijf oude ongeldige fake-wheel fixtures (`42310613857`: 4700 pass, 5 fail). Oorzaken opgelost, negatieve resultaten bewaard; Failure Museum vastgelegd.
+- **LIVE NIET GETEST/TOEGESTAAN:** Verbonden 0.1.88 bewijst niet de originele `github-runner` loaded wheel/serving generatie #669. Onafhankelijke owner/CI/hostbevoegdheid, startbare vorige release #341, off-target A6 #942, no-network A7 #943 en echte originele-client result+ACK ontbreken. Qwen/Claude/SQL/servers niet gewijzigd.
 
 ## 2026-11-06 — F30 #341 #959 werkelijke local-readiness keten SOURCE/CI VOLTOOID
 

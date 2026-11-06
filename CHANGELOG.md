@@ -1,8 +1,9 @@
-## 0.1.151 — F30/#341 bestaande ZIP/RECORD-hercontrole vóór lokale update (SOURCE-ONLY kandidaat)
+## 0.1.151 — F30/#341 lokale ZIP/RECORD-hercontrole vóór update (SOURCE/CI MERGED; NIET GEÏNSTALLEERD)
 
-- De bestaande `FabricUpdateManager._validated_bootstrap` hergebruikt uitsluitend op het private `local-custody`-pad de AL BESTAANDE ZIP/METADATA/RECORD parser, na de bestaande vlakke bundel- en SHA256SUMS-controle. De originele externe GitHub Actions-route, publieke tools en ondertekende release-import blijven intact.
-- Hercontrole in `local_readiness`, vóór en na kopiëren naar de inactieve werkbundel en onmiddellijk vóór de bestaande lokale BOOTSTRAP-preflight. Daardoor mag een corrupte wheel met nadien opnieuw berekende SHA256SUMS niet worden geaccepteerd. Synthetische positieve 5/33/160-bundels en negatieve hashrepin-test in pytest-tmp_path, GEEN echte update.
-- Geen nieuwe downloader, validator, daemon, release-key, host, permissie of installer. Lokale bestandsacceptatie blijft GEEN onafhankelijke eigenaarstrust, bronpolicy, werkelijke host/wheel-generatie #669, offline A7 #943/#341, A6 #942, originele ACK of toestemming voor toepassing. Exacte PR-head CI en merge nog af te wachten.
+- [PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) gemerged als `22624dbf42c63f6b57d2161eaf88f6050128a6bd` vanaf exact geteste head `920dcf884b0d00c8149464371f867ca5d19a122e`. Alle 7/7 PR-head CI-gates SUCCESS: Validation `42310895233` met Ruff en **4705 pytest PASS**, release-reservering, gebouwd wheel/sdist, disposable systemd en vijfminutendemo; Clean Ubuntu `42310895135` en attribution `42310895172` SUCCESS.
+- Hergebruik van de **bestaande** `fabric_release_wheelhouse._wheel_record_check` in `FabricUpdateManager._validated_bootstrap` met opt-in alleen voor `local-custody`: ZIP/METADATA/RECORD herlezen bij `local_readiness`, vóór/na lokale kopie en vóór de bestaande BOOTSTRAP-preflight. Negatieve test vervangt na geldig bewaren het wheel én herberekent SHA256SUMS; digest-only check passeert, volledige ZIP/RECORD-check weigert zonder activatie.
+- Bestaande oudere positieve fixtures werden naar werkelijk geldige ZIP/METADATA/WHEEL/RECORD bijgewerkt. Eerste PR-heads faalden terecht op ontbrekende `glama.json`-version parity, Ruff importvolgorde en **5 tests met ongeldige oude fixtures**. Negatieve CI bewaard, oorzaak/aanpak in bestaand Failure Museum.
+- **Geen productie-installatie, owner-/CI-/hosttrust, rollback- of ACK-bewijs.** Origineel #669, A6 #942, A7 #943/#341 en echte oorspronkelijke-client result+ACK blijven WAIT; geen nieuwe updater, signer, daemon of Qwen/Claude/SQL-wijziging. ED owner key nog uitgesteld.
 
 ## 0.1.150 — F30/#341 GitHub CI-release alleen INACTIEF bewaren, zonder Ed-productiesleutel (SOURCE ONLY)
 

@@ -1,7 +1,7 @@
-## 2026-11-07 — F30 #341 bestaande lokale integriteit ook na checksum-repin (CI-kandidaat)
+## 2026-11-07 — #341 v0.1.151 lokale wheel-record hercontrole SOURCE/CI DONE, first-node WAIT
 
-- Geen nieuw systeem: bron v0.1.151 breidt het BESTAANDE `_validated_bootstrap` uit met opt-in `verify_wheel_records` uitsluitend bij lokale custody; hergebruikt exact dezelfde ZIP/RECORD-reader als de keyless GitHub-release import. Bestaande GitHub-Actions-/rollbackpaden blijven ongewijzigd. Harde schijfwijziging aan wheel + SHA256SUMS mag geen valide lokale updatebron worden; nieuwe test met fictieve assets, geen host-mutatie. CI/merge nog vereist.
-- Dit bewijst alleen inhoudsintegriteit in synthetische tests; echte original-host/loaded wheel #669, owner-pins, no-NIC rollback #341/A7 #943, off-target A6 #942 en originele-client ACK blijven REQUIRED. ED key uitgesteld.
+- [PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) exact head `920dcf884b0d00c8149464371f867ca5d19a122e` **7/7 CI PASS** (4705 pytest), squash MERGED `22624dbf42c63f6b57d2161eaf88f6050128a6bd`; alle 4 distributie-/discoveryversies 0.1.151. Lokale `_validated_bootstrap(verify_wheel_records=True)` hergebruikt bestaande `_wheel_record_check` bij readiness/stage/preflight, faalt op na opslag gewijzigde wheel+herpinde SHA256SUMS, zonder installer/andere provider/hostactie.
+- Niet verward met automatische productieactivatie: onafhankelijke originele host/actieve wheel #669, eigenaar-/CI-bronbeleid, behouden lokale rollback #341, A6 #942, A7 #943 onafhankelijk offline boot/no-NIC herstel en originele client ACK blijven verplichte open afhankelijkheden. ED key niet vooruitgeschoven. Failure Museum registreert verouderde fixtures en de eerdere terechte CI-fouten.
 
 ## 2026-11-06 — F30 #341 keyless Release → eigenaar-private inactieve bundel → lokale read-only check SOURCE DONE
 

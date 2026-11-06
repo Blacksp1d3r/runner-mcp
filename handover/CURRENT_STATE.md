@@ -1,3 +1,9 @@
+## 2026-11-06 — F30/#341 keyless GitHub-release INACTIEVE storage (v0.1.150 bronkandidaat)
+
+- SOURCE-ONLY: _stage_github_release_inactive_once op dezelfde FabricUpdateManager bezit dezelfde bestaande fixed repo release/tag GETs + individuele asset-ID transport + manifest/ZIP/RECORD, gevolgd door hergebruik van bestaande private _store_verified_inactive_bytes_once (0700/0600 fsync/readback/NOREPLACE). Nieuwe 0.1.150 is geen geïnstalleerde serverrelease. Signed route en Q7 bewaard.
+- Geen ED-productiesleutel vereist voor GitHub-providerintegriteit; onafhankelijk eigenaarbewijs/CI-attest/hostbeheerbewijs niet geleverd. manager return download_performed true uitsluitend na volledige bron- en filesystem-commit, maar install_authorized=false, owner_authority_proven=false, rollback_verified=false, original_client_ack=false.
+- Brontests 5/33/160, verkeerde commit/release-ID, corrupt asset/wheel/manifest, symlink/permissions/conflict; exacte CI en merge pas na readback. Originele Runner-MCP verbonden 0.1.88 active wheel/host onverified, actions_run_unavailable, dus GEEN productieactie. #669/#341/Fabric #942/#943/ACK blijven hard WAIT. Geen invloed Qwen, Claude, SQL of servers.
+
 ## 2026-11-06 — F30/#341 Runner-MCP 0.1.149 GitHub SHA full-byte source route; NO ED key
 
 - Verified actual Fabric release on GitHub: workflow-run 42274587598 admit+publish SUCCESS; release 436869142 with 33 assets, exact source/tag SHA 2b62cd5c1305433b04f0c5eaca16c86a20ec18e0. Publication ONLY.

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 S2b bundel-inhoud vóór inactieve custody
+
+- `#937 S2a` versie 0.1.138 is bron gemerged: generieke zuivere Ed25519 exact-roostercontrole met onafhankelijk te kwalificeren sleutel-/source-pin. `#937 S2b` versie 0.1.139 source kandidaat: één gedeelde Q7/generieke in-memory full-bundle SHA256/BUNDLE/COMMIT/SHA256SUMS-verificatie met behoud van Q7-contract en 5..160 generieke files.
+- Nog niet geleverd: generieke Fabric-issuer signer/trustroot, 5..160 ZIP/RECORD wheelcontent, inactieve create-once `local-bundles/<commit>`-custody zonder bestaand `bundle/` te raken. `FabricUpdateManager.start_local` is ACTIVERING en dus niet gebruiken als voorbereidingspad.
+- Zelfs volledige lokale custody is geen productiebevoegdheid: exact original host/process/wheel #669, lokale onafhankelijke recovery #341, Fabric #924 A6 #942/A7 #943 en originele terminal ACK zijn separate harde gates.
+
 ## 2026-11-06 — #937 S2 onafhankelijke signed-roster-gate vóór bestaande inactieve import
 
 - **S2a bron kandidaat 0.1.138:** `fabric_release_signed_roster.verify_signed_fabric_roster` vereist exact Fabric-goedgekeurde `expected_commit`, `expected_release_id` en *extern* vertrouwde sleutel-SHA256, plus een versiegebonden Ed25519-inventaris `runner-fabric/signed-release-roster/v1`. De bestaande `inspect_exact_release` controleert 5..160 exacte asset-pins; pure vergelijking met GitHub metadata geeft altijd `match_only`. Het historisch vaste Q7-contract blijft afzonderlijk.

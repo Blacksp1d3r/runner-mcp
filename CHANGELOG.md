@@ -1,3 +1,9 @@
+## 0.1.137 — F30/#341 exacte Release-foutcategorieën (SOURCE ONLY)
+
+- GitHub Release metadata blijft een read-only controle van het bestaande, exacte Fabric-pakket; nul download, installatie, activatie, nieuwe updater of rollback.
+- Twee vaste GitHub 404-antwoorden -> `release_not_published`; één van beide ontbrekend -> `fabric_release_assets_unqualified`; HTTP/provider uitval -> `release_provider_unavailable`; asset-SHA metadata ongeldig -> `release_digest_invalid`. De bestaande Actions-updatebron en fail-closed autorisatie blijven ongewijzigd.
+- Synthetische negatieve regressies dekken providerfouten, onvolledige metadata, vervalste HTTP 200 en geheime tekst. Deze **GitHub source** is niet de werkelijk geïnstalleerde Runner-MCP op originele hosts; A6, A7, #669 en oorspronkelijke-client ACK blijven noodzakelijke aparte controles.
+
 ## 0.1.85 (#341/#585 single original owner-private publisher sibling; SOURCE ONLY)
 
 - On physical original `github-runner`/`gha-runner`, the separately held original machine credential already passed exact authenticated SQL issuer GET as `runner:control`, but its active Runner-MCP parent uses a different CLI-selected private config directory and reports `ISSUER_IN_PARENT_CONFIG=MISSING`. No copy or new issuer identity is appropriate.

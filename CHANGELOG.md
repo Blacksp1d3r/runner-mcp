@@ -1,3 +1,9 @@
+## 0.1.140 — F30/#937 generieke wheelhouse ZIP/METADATA/RECORD-controle (SOURCE ONLY)
+
+- De bestaande `fabric_release_wheelhouse.py` heeft een extra `verify_signed_fabric_wheelhouse` ingang, die eerst de generieke ondertekende 0.1.138 roster- en volledige 0.1.139 byte/BUNDLE/SHA256SUMS-controles hergebruikt en daarna alle 1..156 wheels controleert met de reeds bestaande Q7 ZIP/METADATA/RECORD-lezer.
+- De historische vaste Q7-functie `verify_pinned_q7_wheelhouse` blijft 29/29 wheels en 33 assets vereisen en behoudt exact dezelfde resultaatvelden. De algemene variant ondersteunt bijvoorbeeld 5/33/160 assetbundels, test structurele ZIP-fouten en meldt `wheel_metadata_verified=true` enkel over de aangeboden in-memory bytes; onafhankelijke signer-/serverautoriteit, werkelijk gedownloade bytes, private custody en activatie blijven false.
+- Geen netwerk, download, bestandsschrijfactie, packageinstallatie, subprocess, update, nieuwe signer, tweede updater of echte rollback. Origineel verbonden Runner-MCP 0.1.88 en A6/A7/ACK blijven fysiek onbewezen.
+
 ## 0.1.139 — F30/#937 gedeelde volledige Fabric-bundelcontrole, SOURCE ONLY
 
 - De bestaande `fabric_release_full_bundle.py` controleert voortaan via één gedeelde zuivere routine Q7 én een generieke exact ondertekende Fabric Release (5..160 assets): elke naam, ID, bytes, SHA256, totale grootte, COMMIT_SHA, BUNDLE.json-velden, BOOTSTRAP.py en SHA256SUMS. De bestaande Q7-interface behoudt de vaste 33 bestands-/29 wheelcontracten en ongewijzigd publiek resultaat.

@@ -1,3 +1,8 @@
+## 2026-11-06 — #937 S2c generieke ZIP/RECORD bron kandidaat 0.1.140
+
+- **IN UITVOERING — bron-CI:** `verify_signed_fabric_wheelhouse` gebruikt de bestaande Q7 `_wheel_record_check` na de al gemergede exacte signed-roster en complete-bundelgate. Dynamisch 1..156 wheels, maximaal 384MiB uitgepakte ZIP-inhoud en bestaande individuele ZIP / METADATA / RECORD-limieten; Q7 oude 29/29-aanroep onveranderd. Nieuwe tests nemen 5/33/160 assets, interne ZIP-corrupties, verkeerde signed source of gewijzigde downloadbytes op. Pas na exacte head CI bron-voltooid verklaren.
+- **LIVE NIET GETEST:** geheel in geheugen met synthetische sleutels en ZIPs. Geen echte producent van `runner-fabric/signed-release-roster/v1` met eigenaars-pin, geen GitHub byteimport, geen owner-private `local-bundles/<sha>`, geen actieve source/wheel/host-identiteit, fysieke A6/A7 rollback of originele ACK. Oud `start_local` voert apply uit; nooit gebruiken voor inactieve stage.
+
 ## 2026-11-06 — #937 S2b offline volledige bundelcontrole kandidaat 0.1.139
 
 - **BRON IN UITVOERING / CI vereist:** De bestaande Q7-bundelvalidator heeft nu één gemeenschappelijk fail-closed in-memory manifest/SHA/asset-checkpad, zonder het historische 33/33 Q7-contract of antwoord te wijzigen. Een nieuwe generieke functie valideert `verify_signed_fabric_roster`-pins eerst tegen onafhankelijke Release-metadata en daarna alle 5..160 exact gepinde assetbytes, `BUNDLE.json`, `COMMIT_SHA`, `BOOTSTRAP.py` en `SHA256SUMS`. Uitkomst blijft `bundle_consistency_only` zonder autorisatie. Negatieve synthetische regressies en bestaande Q7 tests bijgevoegd.

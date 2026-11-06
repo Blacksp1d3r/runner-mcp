@@ -1,8 +1,9 @@
-"""Offline ZIP, METADATA and RECORD qualification for a pinned Q7 wheelhouse.
+"""Offline ZIP, METADATA en RECORD-controle voor Q7 én generieke Fabric.
 
-Validates 29 independently pinned in-memory wheel assets after the existing
-33-asset manifest/byte comparator. This never downloads, writes, installs,
-executes package code, authenticates a pin signer or authorizes activation.
+De oude Q7-aanroep blijft exact 29 wheels controleren, terwijl de nieuwe
+signed-Fabric-aanroep dezelfde ZIP/RECORD-parser gebruikt voor 1..156 wheels.
+Beide paden zijn zuiver in geheugen: geen downloads, bestanden, installatie,
+package-uitvoering, eigen signerautoriteit of toestemming om te activeren.
 """
 from __future__ import annotations
 
@@ -209,4 +210,51 @@ def verify_pinned_q7_wheelhouse(
         "host_qualified": False,
         "mutation_authorized": False,
         "original_client_ack": False,
+    }
+
+
+def verify_signed_fabric_wheelhouse(
+    signed_pins: ReleaseAdmission,
+    observed_metadata: ReleaseAdmission,
+    asset_bodies: dict[str, bytes],
+) -> dict[str, object]:
+    """Controleer alle generieke Fabric-wheels met de bestaande Q7 ZIP/RECORD-lezer.
+
+    De aanroeper dient eerst het exacte door Fabric goedgekeurde rooster en
+    de onafhankelijke signer-pin toe te laten. `check_complete_signed_fabric_bundle`
+    verifieert de externe bytes, manifesten en SHA256SUMS vóór enige ZIP-leesactie.
+    Deze functie inspecteert uitsluitend bytes in geheugen en mag nooit een
+    update, download, opslag, serverstart of herstelhandeling autoriseren.
+    """
+    from .fabric_release_full_bundle import check_complete_signed_fabric_bundle
+
+    try:
+        checked = check_complete_signed_fabric_bundle(
+            signed_pins, observed_metadata, asset_bodies
+        )
+    except ValueError:
+        _deny()
+
+    wheel_names = sorted(name for name in asset_bodies if name.endswith(".whl"))
+    if (
+        not 1 <= len(wheel_names) <= 156
+        or len(wheel_names) != checked["wheel_count"]
+    ):
+        _deny()
+    expanded = 0
+    for name in wheel_names:
+        expanded += _wheel_record_check(name, asset_bodies[name])
+        if expanded > _MAX_EXPANDED_TOTAL:
+            _deny()
+    return {
+        "inspection": "wheel_metadata_record_only",
+        "asset_count": len(signed_pins.files),
+        "wheel_count": len(wheel_names),
+        "wheel_metadata_verified": True,
+        "operator_signer_authority_attested": False,
+        "local_custody_verified": False,
+        "download_performed": False,
+        "mutation_authorized": False,
+        "rollback_verified": False,
+        "original_client_ack_proven": False,
     }

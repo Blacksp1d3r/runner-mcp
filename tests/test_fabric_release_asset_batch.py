@@ -437,3 +437,138 @@ def test_internal_manager_batch_not_exported_as_server_or_tool():
     assert "stage_local_bundle" not in called
     assert "_activate_bundle" not in called
     assert "_validated_bootstrap" not in called
+
+
+# F30 S2e: enkel tijdelijke Python-testmappen, geen echte release of dienst.
+def _offline_inactive_args(args, bodies, root):
+    return {
+        "local_bundles_root": root,
+        "signed_document": args["signed_document"],
+        "signature": args["signature"],
+        "public_key": args["public_key"],
+        "independently_trusted_key_sha256": args["independently_trusted_key_sha256"],
+        "expected_commit": args["expected_commit"],
+        "expected_release_id": args["expected_release_id"],
+        "observed_metadata": args["observed_metadata"],
+        "asset_bodies": bodies,
+    }
+
+
+@pytest.mark.parametrize("count", [5, 33])
+def test_signed_bundle_private_inactive_noreplace_source_only(tmp_path, count):
+    from runner_mcp.fabric_release_inactive_custody import (
+        _stage_signed_release_inactive_once,
+    )
+
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    args, bodies, _ = _case(count)
+    active = tmp_path / "bundle"
+    active.mkdir()
+    (active / "active").write_text("prior", encoding="utf-8")
+    result = _stage_signed_release_inactive_once(
+        **_offline_inactive_args(args, bodies, root)
+    )
+    assert result["inactive_custody"] is True
+    assert result["install_authorized"] is False
+    assert result["owner_authority_proven"] is False
+    assert result["rollback_verified"] is False
+    assert result["original_client_ack"] is False
+    target = root / COMMIT
+    assert {p.name for p in target.iterdir()} == set(bodies)
+    assert all((target / name).read_bytes() == body for name, body in bodies.items())
+    assert all((target / name).stat().st_mode & 0o077 == 0 for name in bodies)
+    assert (active / "active").read_text(encoding="utf-8") == "prior"
+
+    old_inode = target.stat().st_ino
+    with pytest.raises(ValueError, match="^fabric_signed_inactive_custody_unqualified$"):
+        _stage_signed_release_inactive_once(**_offline_inactive_args(args, bodies, root))
+    assert target.stat().st_ino == old_inode
+
+
+@pytest.mark.parametrize("bad", ["signature", "digest", "asset", "root_symlink"])
+def test_signed_inactive_stage_denies_bad_inputs_without_final_target(tmp_path, bad):
+    from runner_mcp.fabric_release_inactive_custody import (
+        _stage_signed_release_inactive_once,
+    )
+
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    args, bodies, _ = _case()
+    options = _offline_inactive_args(args, bodies, root)
+    if bad == "signature":
+        options["signature"] = b"?" * 64
+    elif bad == "digest":
+        options["independently_trusted_key_sha256"] = "0" * 64
+    elif bad == "asset":
+        first = sorted(bodies)[0]
+        options["asset_bodies"] = {**bodies, first: bodies[first] + b"!"}
+    else:
+        redirect = tmp_path / "redirect"
+        root.rename(redirect)
+        root.symlink_to(redirect, target_is_directory=True)
+    with pytest.raises(ValueError, match="^fabric_signed_inactive_custody_unqualified$"):
+        _stage_signed_release_inactive_once(**options)
+    assert not (root / COMMIT).exists()
+
+
+def test_competing_inactive_stage_never_replaces_existing_target(tmp_path, monkeypatch):
+    from runner_mcp import fabric_release_inactive_custody as custody
+
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    args, bodies, _ = _case()
+    original = custody._promote_inactive_bundle_noreplace
+
+    def concurrent(root_path, incoming, commit):
+        assert commit == COMMIT
+        old = root / commit
+        old.mkdir(mode=0o700)
+        (old / "sentinel").write_text("keep", encoding="utf-8")
+        return original(root_path, incoming, commit)
+
+    monkeypatch.setattr(custody, "_promote_inactive_bundle_noreplace", concurrent)
+    with pytest.raises(ValueError, match="^fabric_signed_inactive_custody_unqualified$"):
+        custody._stage_signed_release_inactive_once(
+            **_offline_inactive_args(args, bodies, root)
+        )
+    assert (root / COMMIT / "sentinel").read_text(encoding="utf-8") == "keep"
+    assert any(p.name.startswith(".incoming-") for p in root.iterdir())
+
+
+def test_interrupted_write_retains_partial_for_review_without_promotion(
+    tmp_path, monkeypatch,
+):
+    from runner_mcp import fabric_release_inactive_custody as custody
+
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    args, bodies, _ = _case()
+    original = custody.os.write
+    count = [0]
+
+    def interrupted(fd, content):
+        count[0] += 1
+        if count[0] == 2:
+            raise OSError("simulated-incomplete-write")
+        return original(fd, content)
+
+    monkeypatch.setattr(custody.os, "write", interrupted)
+    with pytest.raises(ValueError, match="^fabric_signed_inactive_custody_unqualified$"):
+        custody._stage_signed_release_inactive_once(
+            **_offline_inactive_args(args, bodies, root)
+        )
+    assert not (root / COMMIT).exists()
+    assert len([p for p in root.iterdir() if p.name.startswith(".incoming-")]) == 1
+
+
+def test_signed_inactive_stage_is_not_exported_to_mcp_or_update_flow():
+    from runner_mcp.fabric_release_inactive_custody import (
+        _stage_signed_release_inactive_once,
+    )
+
+    assert callable(_stage_signed_release_inactive_once)
+    server = Path(__file__).resolve().parents[1] / "src/runner_mcp/server.py"
+    manager = Path(__file__).resolve().parents[1] / "src/runner_mcp/fabric_update.py"
+    for source in (server, manager):
+        assert "_stage_signed_release_inactive_once" not in source.read_text("utf-8")

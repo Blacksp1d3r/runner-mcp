@@ -498,7 +498,7 @@ def test_github_release_full_bytes_stage_only_in_existing_private_root(
     }
     target = root / observed.commit
     assert target.stat().st_mode & 0o777 == 0o700
-    assert set(x.name for x in target.iterdir()) == set(bodies)
+    assert {x.name for x in target.iterdir()} == set(bodies)
     assert all((target / name).read_bytes() == blob
                for name, blob in bodies.items())
     assert all((target / name).stat().st_mode & 0o777 == 0o600
@@ -641,6 +641,7 @@ def test_manager_wrong_release_id_fails_before_asset_transfer_and_stage(tmp_path
 
 def test_keyless_inactive_stage_remains_private_not_a_second_update_or_tool():
     from pathlib import Path
+
     from runner_mcp.fabric_release_inactive_custody import (
         _stage_github_release_inactive_once,
     )

@@ -400,17 +400,24 @@ class FabricUpdateManager:
         expected_commit: str,
         asset_reader: Callable[..., bytes] | None = None,
     ) -> dict[str, bytes]:
-        """Volledige GitHub Release-bytecontrole ZONDER nieuwe ED-sleutel.
+        """Bestaande private GitHub byte-API blijft ongewijzigd, uitsluitend RAM."""
+        _, blobs = self._read_exact_github_release_candidate(
+            expected_commit=expected_commit, asset_reader=asset_reader,
+        )
+        return blobs
 
-        Hergebruik alleen de bestaande exacte vaste repository Release/tag-
-        inspectie, huidige GitHub token en dezelfde asset-ID downloader,
-        manifest- en ZIP/RECORD-gates. Dit werkt op bestaande gewone
-        fabric-update-bundle-* releases; historische Q7 blijft afgeschermd.
+    def _read_exact_github_release_candidate(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int | None = None,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> tuple[ReleaseAdmission, dict[str, bytes]]:
+        """Dezelfde 2 metadata-GETs en volle bytes, met optionele exacte ID-pin.
 
-        De provider-SHA's bewijzen GEEN onafhankelijke eigenaarsgoedkeuring
-        en deze private ingang controleert NIET zelf de externe CI-push-gates
-        of actuele fysieke host. Daarom geen MCP-tool, geen stage, geen
-        install/start_local/apply/rollback en geen automatische activering.
+        Vóór enige asset-GET wordt een opgegeven Release-ID exact gecontroleerd.
+        De aanroeper moet nog een eigen CI/bron-/host-policy leveren; inputpins
+        of GitHub-hashes zijn op zichzelf nooit onafhankelijk eigenaarbewijs.
         """
         from .fabric_release_asset_bytes import (
             AssetBytesUnqualified,
@@ -419,11 +426,20 @@ class FabricUpdateManager:
         )
 
         _require_commit(expected_commit)
+        if expected_release_id is not None and (
+            type(expected_release_id) is not int or expected_release_id <= 0
+        ):
+            raise FabricUpdateError("fabric_release_assets_unqualified")
         admission = self._read_exact_release_admission(expected_commit)
+        if (
+            expected_release_id is not None
+            and admission.release_id != expected_release_id
+        ):
+            raise FabricUpdateError("fabric_release_assets_unqualified")
         reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
         token = self._github_token()
         try:
-            return fetch_exact_github_release_bundle_bytes(
+            bodies = fetch_exact_github_release_bundle_bytes(
                 token=token,
                 expected_commit=expected_commit,
                 observed_metadata=admission,
@@ -433,6 +449,46 @@ class FabricUpdateManager:
             raise FabricUpdateError(
                 "fabric_release_asset_bytes_unqualified"
             ) from exc
+        return admission, bodies
+
+    def _stage_github_release_inactive_once(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, object]:
+        """Zet GitHub-bytebewijs alleen in bestaand INACTIEF local-bundles.
+
+        Geen ED-productiesleutel vereist. Hergebruik bestaande metadata +
+        per-asset transport en dezelfde atomic 0700/0600 NOREPLACE custody
+        van de vroegere signed-bron. Dit is PRIVATE SOURCE ONLY, geen MCP-
+        tool, geen installatie-/rollbackbevoegdheid of client-ACK. De
+        fysieke eigenaar-host + CI-sourcepolicy moeten later apart slagen.
+        """
+        from .fabric_release_inactive_custody import (
+            InactiveSignedCustodyUnqualified,
+            _stage_github_release_inactive_once,
+        )
+
+        admission, bodies = self._read_exact_github_release_candidate(
+            expected_commit=expected_commit,
+            expected_release_id=expected_release_id,
+            asset_reader=asset_reader,
+        )
+        try:
+            receipt = _stage_github_release_inactive_once(
+                local_bundles_root=self.local_bundles_root,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=admission,
+                asset_bodies=bodies,
+            )
+        except InactiveSignedCustodyUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_release_inactive_custody_unqualified"
+            ) from exc
+        return {**receipt, "download_performed": True}
 
     def _read_verified_signed_release_bytes(
         self,

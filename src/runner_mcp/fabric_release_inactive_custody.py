@@ -90,6 +90,83 @@ def _write_and_check(stage_fd: int, name: str, raw: bytes) -> None:
         os.close(fd)
 
 
+def _store_verified_inactive_bytes_once(
+    *, local_bundles_root: Path, expected_commit: str,
+    asset_bodies: dict[str, bytes],
+) -> None:
+    """Eén bestaand filesystempad voor signed én GitHub-only release-custody.
+
+    De aanroepers moeten eerst hun EIGEN volledige metadata-/byte-/wheels
+    verificatie doen; deze functie controleert ook types, omvang en namen.
+    Het 0700 owner root, 0600 create-once, fsync, veilige readback en
+    renameat2 NOREPLACE zijn dezelfde operatie als vóór deze refactor.
+    Er wordt niets in het actieve bundle-slot of een service aangepast.
+    """
+    if (
+        type(expected_commit) is not str
+        or re.fullmatch(r"[0-9a-f]{40}", expected_commit) is None
+        or type(asset_bodies) is not dict
+        or not 5 <= len(asset_bodies) <= 160
+    ):
+        _deny()
+    total_size = 0
+    for name, blob in asset_bodies.items():
+        if (
+            type(name) is not str
+            or _SAFE_NAME.fullmatch(name) is None
+            or type(blob) is not bytes
+            or not 0 < len(blob) <= _MAX_FILE
+        ):
+            _deny()
+        total_size += len(blob)
+        if total_size > _MAX_BYTES:
+            _deny()
+    if not isinstance(local_bundles_root, Path):
+        _deny()
+    root_fd = -1
+    work_fd = -1
+    source_fd = -1
+    bundle_fd = -1
+    incoming = ".incoming-" + uuid4().hex
+    try:
+        # Er wordt NOOIT een willekeurige root aangemaakt. Root 0700 moet
+        # vooraf bestaan; _private_root_fd weigert symlinks en vreemde owner.
+        root_fd = _private_root_fd(local_bundles_root)
+        if not _absent(root_fd, expected_commit):
+            _deny()
+        os.mkdir(incoming, 0o700, dir_fd=root_fd)
+        os.fsync(root_fd)
+        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+        work_fd = os.open(incoming, flags, dir_fd=root_fd)
+        os.fchmod(work_fd, 0o700)
+        os.mkdir("source", 0o700, dir_fd=work_fd)
+        source_fd = os.open("source", flags, dir_fd=work_fd)
+        os.fchmod(source_fd, 0o700)
+        os.mkdir("bundle", 0o700, dir_fd=source_fd)
+        bundle_fd = os.open("bundle", flags, dir_fd=source_fd)
+        os.fchmod(bundle_fd, 0o700)
+        for name in sorted(asset_bodies):
+            _write_and_check(bundle_fd, name, asset_bodies[name])
+        os.fsync(bundle_fd)
+        os.fsync(source_fd)
+        os.fsync(work_fd)
+        # De atomische promotie hergebruikt de al bestaande, geteste
+        # renameat2(RENAME_NOREPLACE); nooit een andere versie overschrijven.
+        _promote_inactive_bundle_noreplace(
+            local_bundles_root, incoming, expected_commit
+        )
+        os.fsync(root_fd)
+    except (OSError, ValueError, FabricUpdateError):
+        # Onvolledige .incoming blijft bewust staan voor forensisch onderzoek;
+        # geen automatische delete/retry en geen gedeeltelijk 'ready'-bewijs.
+        _deny()
+    finally:
+        for fd in (bundle_fd, source_fd, work_fd, root_fd):
+            if fd >= 0:
+                os.close(fd)
+
+
+
 def _stage_signed_release_inactive_once(
     *,
     local_bundles_root: Path,
@@ -142,49 +219,11 @@ def _stage_signed_release_inactive_once(
     except (ValueError, TypeError):
         _deny()
 
-    if not isinstance(local_bundles_root, Path):
-        _deny()
-    root_fd = -1
-    work_fd = -1
-    source_fd = -1
-    bundle_fd = -1
-    incoming = ".incoming-" + uuid4().hex
-    try:
-        # Er wordt NOOIT een willekeurige root aangemaakt. Root 0700 moet
-        # vooraf bestaan; _private_root_fd weigert symlinks en vreemde owner.
-        root_fd = _private_root_fd(local_bundles_root)
-        if not _absent(root_fd, expected_commit):
-            _deny()
-        os.mkdir(incoming, 0o700, dir_fd=root_fd)
-        os.fsync(root_fd)
-        flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
-        work_fd = os.open(incoming, flags, dir_fd=root_fd)
-        os.fchmod(work_fd, 0o700)
-        os.mkdir("source", 0o700, dir_fd=work_fd)
-        source_fd = os.open("source", flags, dir_fd=work_fd)
-        os.fchmod(source_fd, 0o700)
-        os.mkdir("bundle", 0o700, dir_fd=source_fd)
-        bundle_fd = os.open("bundle", flags, dir_fd=source_fd)
-        os.fchmod(bundle_fd, 0o700)
-        for name in sorted(asset_bodies):
-            _write_and_check(bundle_fd, name, asset_bodies[name])
-        os.fsync(bundle_fd)
-        os.fsync(source_fd)
-        os.fsync(work_fd)
-        # De atomische promotie hergebruikt de al bestaande, geteste
-        # renameat2(RENAME_NOREPLACE); nooit een andere versie overschrijven.
-        _promote_inactive_bundle_noreplace(
-            local_bundles_root, incoming, expected_commit
-        )
-        os.fsync(root_fd)
-    except (OSError, ValueError, FabricUpdateError):
-        # Onvolledige .incoming blijft bewust staan voor forensisch onderzoek;
-        # geen automatische delete/retry en geen gedeeltelijk 'ready'-bewijs.
-        _deny()
-    finally:
-        for fd in (bundle_fd, source_fd, work_fd, root_fd):
-            if fd >= 0:
-                os.close(fd)
+    _store_verified_inactive_bytes_once(
+        local_bundles_root=local_bundles_root,
+        expected_commit=expected_commit,
+        asset_bodies=asset_bodies,
+    )
 
     return {
         "commit": expected_commit,
@@ -193,6 +232,61 @@ def _stage_signed_release_inactive_once(
         "asset_count": len(asset_bodies),
         "install_authorized": False,
         "owner_authority_proven": False,
+        "rollback_verified": False,
+        "original_client_ack": False,
+    }
+
+
+
+def _stage_github_release_inactive_once(
+    *,
+    local_bundles_root: Path,
+    expected_commit: str,
+    expected_release_id: int,
+    observed_metadata: ReleaseAdmission,
+    asset_bodies: dict[str, bytes],
+) -> dict[str, object]:
+    """Bewaar een exact gecontroleerde GitHub-release alleen INACTIEF.
+
+    Geen Ed25519-productiesleutel vereist: de bron is de al bestaande
+    vaste GitHub provider/CI keten, maar de externe CI/source/host-autoriteit
+    wordt door deze private opslagfunctie NIET aangetoond. Beide routes
+    delen exact dezelfde create-once byteschrijven + fsync/readback/rename.
+
+    Source-only: geen MCP tool of externe aanroeper; geen install/activering.
+    """
+    from .fabric_release_wheelhouse import verify_github_release_wheelhouse
+
+    if (
+        type(observed_metadata) is not ReleaseAdmission
+        or type(expected_commit) is not str
+        or re.fullmatch(r"[0-9a-f]{40}", expected_commit) is None
+        or type(expected_release_id) is not int
+        or expected_release_id <= 0
+        or observed_metadata.commit != expected_commit
+        or observed_metadata.release_id != expected_release_id
+        or observed_metadata.tag != "fabric-update-bundle-" + expected_commit
+    ):
+        _deny()
+    try:
+        verify_github_release_wheelhouse(observed_metadata, asset_bodies)
+    except (ValueError, TypeError):
+        _deny()
+    _store_verified_inactive_bytes_once(
+        local_bundles_root=local_bundles_root,
+        expected_commit=expected_commit,
+        asset_bodies=asset_bodies,
+    )
+    return {
+        "commit": expected_commit,
+        "release_id": expected_release_id,
+        "source": "github-release-provider-integrity-only",
+        "inactive_custody": True,
+        "asset_count": len(asset_bodies),
+        "github_ci_policy_verified": False,
+        "independent_owner_signer_verified": False,
+        "owner_authority_proven": False,
+        "install_authorized": False,
         "rollback_verified": False,
         "original_client_ack": False,
     }

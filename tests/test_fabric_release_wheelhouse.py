@@ -456,3 +456,200 @@ def test_manager_github_release_source_reuses_fixed_snapshot_without_install():
     # De publieke update-API, BOOTSTRAP, launcher en originele Q7 blijven
     # ongewijzigd. De private methode downloadt alleen echte gecontroleerde
     # bytes in het geheugen en geeft geen hostbevoegdheid.
+
+
+
+# F30 0.1.150: gedeelde create-once opslag, GitHub trust zonder ED signer.
+@pytest.mark.parametrize("count", [5, 33, 160])
+def test_github_release_full_bytes_stage_only_in_existing_private_root(
+    tmp_path, count,
+):
+    from runner_mcp.fabric_release_inactive_custody import (
+        InactiveSignedCustodyUnqualified,
+        _stage_github_release_inactive_once,
+    )
+
+    _unused_signed, observed, bodies = _generic_signed_inputs(count)
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    active = tmp_path / "active"
+    active.mkdir()
+    (active / "original.txt").write_text("keep", encoding="ascii")
+    args = {
+        "local_bundles_root": root,
+        "expected_commit": observed.commit,
+        "expected_release_id": observed.release_id,
+        "observed_metadata": observed,
+        "asset_bodies": bodies,
+    }
+    receipt = _stage_github_release_inactive_once(**args)
+    assert receipt == {
+        "commit": observed.commit,
+        "release_id": observed.release_id,
+        "source": "github-release-provider-integrity-only",
+        "inactive_custody": True,
+        "asset_count": count,
+        "github_ci_policy_verified": False,
+        "independent_owner_signer_verified": False,
+        "owner_authority_proven": False,
+        "install_authorized": False,
+        "rollback_verified": False,
+        "original_client_ack": False,
+    }
+    target = root / observed.commit
+    assert target.stat().st_mode & 0o777 == 0o700
+    assert {x.name for x in target.iterdir()} == set(bodies)
+    assert all((target / name).read_bytes() == blob
+               for name, blob in bodies.items())
+    assert all((target / name).stat().st_mode & 0o777 == 0o600
+               for name in bodies)
+    assert all((target / name).stat().st_nlink == 1 for name in bodies)
+    assert (active / "original.txt").read_text() == "keep"
+
+    # NOREPLACE is source policy; even equal bytes may never overwrite.
+    first_inode = target.stat().st_ino
+    with pytest.raises(
+        InactiveSignedCustodyUnqualified,
+        match="^fabric_signed_inactive_custody_unqualified$",
+    ):
+        _stage_github_release_inactive_once(**args)
+    assert target.stat().st_ino == first_inode
+
+
+@pytest.mark.parametrize("bad", [
+    "commit", "release_id", "asset_bytes", "manifest", "zip",
+    "symlink_root", "mode_root", "occupied_target",
+])
+def test_github_release_inactive_custody_refuses_without_replacing_target(
+    tmp_path, bad,
+):
+    from runner_mcp.fabric_release_inactive_custody import (
+        InactiveSignedCustodyUnqualified,
+        _stage_github_release_inactive_once,
+    )
+
+    _unused_signed, observed, original = _generic_signed_inputs(5)
+    bodies = dict(original)
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    args = {
+        "local_bundles_root": root,
+        "expected_commit": observed.commit,
+        "expected_release_id": observed.release_id,
+        "observed_metadata": observed,
+        "asset_bodies": bodies,
+    }
+    occupied = False
+    if bad == "commit":
+        args["expected_commit"] = "f" * 40
+    elif bad == "release_id":
+        args["expected_release_id"] += 1
+    elif bad == "asset_bytes":
+        bodies["BOOTSTRAP.py"] += b"modified"
+    elif bad == "manifest":
+        bodies["BUNDLE.json"] = b"not-json"
+    elif bad == "zip":
+        wheel = next(x for x in bodies if x.endswith(".whl"))
+        bodies[wheel] = b"not-a-zip"
+    elif bad == "symlink_root":
+        elsewhere = tmp_path / "private-real"
+        root.rename(elsewhere)
+        root.symlink_to(elsewhere, target_is_directory=True)
+    elif bad == "mode_root":
+        root.chmod(0o755)
+    else:
+        target = root / observed.commit
+        target.mkdir(mode=0o700)
+        (target / "sentinel").write_text("keep", encoding="ascii")
+        occupied = True
+    with pytest.raises(
+        InactiveSignedCustodyUnqualified,
+        match="^fabric_signed_inactive_custody_unqualified$",
+    ):
+        _stage_github_release_inactive_once(**args)
+    if occupied:
+        assert (root / observed.commit / "sentinel").read_text() == "keep"
+        assert not any((root / observed.commit / name).exists()
+                       for name in bodies)
+    else:
+        assert not (root / observed.commit).exists()
+
+
+def test_manager_source_stage_uses_one_release_snapshot_and_no_active_mutation(
+    tmp_path,
+):
+    from runner_mcp.fabric_update import FabricUpdateManager
+
+    _unused_signed, observed, bodies = _generic_signed_inputs(5)
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    manager = object.__new__(FabricUpdateManager)
+    manager.local_bundles_root = root
+    events = []
+    manager._read_exact_release_admission = lambda commit: (
+        events.append(("release", commit)) or observed
+    )
+    manager._github_token = lambda: "synthetic-github-token-123456"
+
+    def reader(*, token, asset_id, expected_size, independently_pinned_sha256):
+        events.append(("asset", asset_id))
+        name = next(item.name for item in observed.files
+                    if item.asset_id == asset_id)
+        return bodies[name]
+
+    result = manager._stage_github_release_inactive_once(
+        expected_commit=observed.commit,
+        expected_release_id=observed.release_id,
+        asset_reader=reader,
+    )
+    assert result["download_performed"] is True
+    assert result["inactive_custody"] is True
+    assert result["install_authorized"] is False
+    assert result["rollback_verified"] is False
+    assert events[0] == ("release", observed.commit)
+    assert len(events) == len(observed.files) + 1
+    assert all(events.count(("asset", item.asset_id)) == 1
+               for item in observed.files)
+    assert (root / observed.commit / "BUNDLE.json").read_bytes() == bodies["BUNDLE.json"]
+
+
+def test_manager_wrong_release_id_fails_before_asset_transfer_and_stage(tmp_path):
+    from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
+
+    _unused_signed, observed, bodies = _generic_signed_inputs(5)
+    root = tmp_path / "local-bundles"
+    root.mkdir(mode=0o700)
+    manager = object.__new__(FabricUpdateManager)
+    manager.local_bundles_root = root
+    requests = []
+    manager._read_exact_release_admission = lambda commit: observed
+    manager._github_token = lambda: "synthetic-github-token-123456"
+
+    def reader(**kw):
+        requests.append(kw)
+        return bodies["BUNDLE.json"]
+
+    with pytest.raises(FabricUpdateError, match="fabric_release_assets_unqualified"):
+        manager._stage_github_release_inactive_once(
+            expected_commit=observed.commit,
+            expected_release_id=observed.release_id + 1,
+            asset_reader=reader,
+        )
+    assert requests == []
+    assert list(root.iterdir()) == []
+
+
+def test_keyless_inactive_stage_remains_private_not_a_second_update_or_tool():
+    from pathlib import Path
+
+    from runner_mcp.fabric_release_inactive_custody import (
+        _stage_github_release_inactive_once,
+    )
+
+    assert callable(_stage_github_release_inactive_once)
+    root = Path(__file__).resolve().parents[1] / "src/runner_mcp"
+    app = (root / "server.py").read_text(encoding="utf-8")
+    installer = (root / "self_update_install.py").read_text(encoding="utf-8")
+    assert "_stage_github_release_inactive_once" not in app
+    assert "_stage_github_release_inactive_once" not in installer
+    assert "github_release_inactive" not in app

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30/#341 0.1.150 GitHub Release → bestaande inactieve custody, ED pas later
+
+- Releasepublicatie Fabric #924 operationeel met 33 assets; Runner-MCP 0.1.149 verifieert vaste GitHub Release/tag+assetbytes zonder ED key. Deze kandidaat 0.1.150 hergebruikt dezelfde transport en de AL BESTAANDE signed-custody NOREPLACE opslag voor de keyless CI-bundel, alleen inactief. Geen kopie/parallel downloader/daemon/installer.
+- Volgende echte operationele koppeling: owner-goedgekeurde repository/commit/CI-source-acceptance en originele host/wheel-attest #669, + bestaande A7 offline watchdog met duurzaam gewapende autonome rollback #341/#943 en off-target A6 #942; vervolgens werkelijke end-to-end original client resultaat en ACK vóór commit. Geen apply/start/hostupdate op basis van een onbetrouwbare GitHub hash alleen.
+- Binding volgorde: volledige automatische updates; Qwen gebruiken; Claude gebruiken; pas daarna optioneel ED25519 keybeleid. Onderlinge onafhankelijke bronwerkstromen hoeven niet stil te staan.
+
 ## 2026-11-06 — F30/#341 S3 GitHub provider-integrity source WITHOUT Ed25519 owner key
 
 - Real Fabric automatic CI-release pipeline already published 33 assets for exact main 2b62cd5c1305433b04f0c5eaca16c86a20ec18e0, GitHub release ID 436869142. 0.1.149 source-only private Runner-MCP route reuses existing fixed-repository tag/Release admission, asset-ID HTTPS transport and complete SHA256/BUNDLE/ZIP/RECORD verifier for non-Ed CI releases.

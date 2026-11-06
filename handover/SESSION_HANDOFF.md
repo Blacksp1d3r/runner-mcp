@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 keyless release-import naar bestaande inactieve opslag, source only
+
+- Vóór deze kandidaat is Runner-MCP PR #956 (v0.1.149) 7/7 exact-head CI SUCCESS en merged main 0ba0e39600de47f8686c14ba1712846bd019eab1: fixed GitHub Release/tag/asset bytes, manifest+WHEEL/RECORD in RAM, zonder ED key.
+- Nieuwe 0.1.150 source-kandidaat hergebruikt EXACT dezelfde bytes en bestaande signed NOREPLACE local-bundles storage in private manager; signed en Q7 blijven onaangeroerd. Geen nieuwe public tool, launcher, host/service/rollback.
+- **No live activation:** connected 0.1.88 does not prove original wheel/source/host and its read-only fabric_update_readiness returns actions_run_unavailable. Physical #669, A7/#341/943 independent offline revert, A6 #942, original-client terminal result/ACK remain hard WAIT. ED product key deferred until automatic updates, Qwen and Claude work.
+
 ## 2026-11-06 — F30 #937 exacte bronacceptatie 0.1.140; eerst issuer en inactieve local-custody
 
 - **SOURCE VOLTOOID 3 PR's:** #939 `a7833ee2d4316ce0d35dab603e5863a59a3c48a9` (0.1.138 signed generiek roster, CI 42209069315/42209069408/42209069415), #940 `c8cd8c2e49fb5e991729bae13e81a37a35a2eae6` (0.1.139 gedeelde manifest-byte-integriteit, CI 42210227804/42210227877/42210228010), #941 `fa08c76966ea526fb1bfa0d7384d6caa56001019` (0.1.140 gedeelde ZIP/METADATA/RECORD, CI 42211540637/42211540647/42211540826). Elke exacte-head CI volledig SUCCESS. Oude Q7 vaste 33 assets/29 wheels intact. Broncode ≠ procesinstallatie.

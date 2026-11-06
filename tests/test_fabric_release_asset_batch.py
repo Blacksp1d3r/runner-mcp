@@ -269,7 +269,9 @@ def test_no_actual_network_or_host_update_is_part_of_test_or_batch_path():
     )
 
 
-def _mock_manager_for_signed_batch(monkeypatch, args, *, metadata_change=None):
+def _mock_manager_for_signed_batch(
+    monkeypatch, args, *, metadata_change=None, release_body=None,
+):
     """Bevestig dat de manager alleen de TWEE bestaande vaste endpoints leest."""
     manager = object.__new__(FabricUpdateManager)
     audit = []
@@ -280,6 +282,7 @@ def _mock_manager_for_signed_batch(monkeypatch, args, *, metadata_change=None):
         "target_commitish": observed.commit,
         "draft": False,
         "prerelease": True,
+        "body": release_body,
         "assets": [{
             "name": row.name,
             "id": row.asset_id,
@@ -712,3 +715,132 @@ def test_release_description_parser_is_private_and_has_no_network_or_stage():
         "requests.", "subprocess", "systemctl", "github_token",
     ):
         assert forbidden not in parser
+
+
+# F30/937: bestaande manager koppelt één exacte Release/body-snapshot aan het
+# reeds aanwezige signed-bytepad; nooit een tweede downloader/updater.
+def _call_manager_description(manager, args, reader):
+    return manager._read_verified_signed_release_description_bytes(
+        expected_commit=args["expected_commit"],
+        expected_release_id=args["expected_release_id"],
+        independently_trusted_key_sha256=args[
+            "independently_trusted_key_sha256"
+        ],
+        asset_reader=reader,
+    )
+
+
+@pytest.mark.parametrize("count", [5, 33, 160])
+def test_manager_signed_description_uses_exact_two_metadata_gets_once(
+    monkeypatch, count,
+):
+    """Volledig ondertekend roster rechtstreeks uit de BÉSTAANDE Release-body."""
+    args, bodies, lookup = _case(count)
+    manager, audit = _mock_manager_for_signed_batch(
+        monkeypatch, args, release_body=_body_for_signed_fixture(args)
+    )
+    requested = []
+    verified = _call_manager_description(
+        manager, args, _reader(lookup, requested)
+    )
+    assert verified == bodies
+    assert requested == sorted(lookup)
+    assert audit == [
+        "safe", "launcher",
+        "/repos/Blacksp1d3r/Runner-Fabric/releases/tags/" + TAG,
+        "/repos/Blacksp1d3r/Runner-Fabric/git/ref/tags/" + TAG,
+    ]
+
+
+@pytest.mark.parametrize("bad", [
+    "body_missing", "body_suffix", "key_pin", "release_id",
+    "api_asset_id", "api_digest", "partial_asset",
+])
+def test_manager_description_denies_before_custody_and_invalid_asset_gets(
+    monkeypatch, bad,
+):
+    """Na ongeldige trust of metadata mag geen enkele asset worden opgehaald."""
+    args, _, lookup = _case(33)
+    body = _body_for_signed_fixture(args)
+    mutated = None
+    if bad == "body_missing":
+        body = None
+    elif bad == "body_suffix":
+        body += "extra"
+    elif bad == "key_pin":
+        args["independently_trusted_key_sha256"] = "f" * 64
+    elif bad == "release_id":
+        args["expected_release_id"] += 1
+    elif bad == "api_asset_id":
+        def changed_id(metadata):
+            metadata["assets"][0]["id"] += 5000
+            return metadata
+        mutated = changed_id
+    elif bad == "api_digest":
+        def changed_digest(metadata):
+            metadata["assets"][0]["digest"] = "sha256:" + "b" * 64
+            return metadata
+        mutated = changed_digest
+    manager, audit = _mock_manager_for_signed_batch(
+        monkeypatch, args, release_body=body, metadata_change=mutated,
+    )
+    requested = []
+    failed_asset = sorted(lookup)[1] if bad == "partial_asset" else None
+    reader = _reader(
+        lookup, requested, failure_at=failed_asset,
+        bad="short" if failed_asset is not None else None,
+    )
+    code = (
+        "fabric_release_asset_bytes_unqualified"
+        if bad == "partial_asset"
+        else "fabric_signed_release_body_unqualified"
+    )
+    with pytest.raises(FabricUpdateError, match="^" + code + "$"):
+        _call_manager_description(manager, args, reader)
+    assert len(audit) == 4
+    if bad == "partial_asset":
+        assert requested == sorted(lookup)[:2]
+    else:
+        assert requested == []
+
+
+def test_unsigned_legacy_public_release_readiness_stays_metadata_only(monkeypatch):
+    """Een ongetekende Release blijft diagnose, nooit installatiebevoegdheid."""
+    args, _, lookup = _case()
+    manager, audit = _mock_manager_for_signed_batch(monkeypatch, args)
+    status = manager.release_assets_readiness(COMMIT)
+    assert status == args["observed_metadata"].public_dict()
+    assert status["mutation_authorized"] is False
+    assert status["download_performed"] is False
+    assert len(audit) == 4
+    assert lookup
+
+
+def test_manager_description_bridge_is_private_and_no_live_stage():
+    """De nieuwe integratie is geen publieke MCP-tool of deployroute."""
+    root = Path(__file__).resolve().parents[1]
+    manager_tree = ast.parse(
+        (root / "src/runner_mcp/fabric_update.py").read_text("utf-8")
+    )
+    server_tree = ast.parse(
+        (root / "src/runner_mcp/server.py").read_text("utf-8")
+    )
+    name = "_read_verified_signed_release_description_bytes"
+    assert name not in {
+        node.name for node in ast.walk(server_tree)
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+    }
+    methods = [
+        node for node in ast.walk(manager_tree)
+        if isinstance(node, ast.FunctionDef) and node.name == name
+    ]
+    assert len(methods) == 1
+    calls = {
+        node.attr for node in ast.walk(methods[0])
+        if isinstance(node, ast.Attribute)
+    }
+    assert not calls.intersection({
+        "start_local", "stage_local_bundle", "apply",
+        "rollback", "_activate_bundle", "_validated_bootstrap",
+        "write_bytes", "mkdir", "systemctl",
+    })

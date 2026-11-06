@@ -1,3 +1,10 @@
+## 0.1.147 — F30/#937 bestaande Release-body → manager signed-bytebatch (SOURCE ONLY)
+
+- De private `FabricUpdateManager._read_verified_signed_release_description_bytes` gebruikt de AL bestaande vaste GitHub Release/tag-GET precies eenmaal om het publieke getypeerde `ReleaseAdmission` én de onbetrouwbare Release-description te verkrijgen; de openbare `release_assets_readiness` blijft identiek.
+- Hergebruikt bestaande Ed25519/canonical-Base64 parser (0.1.146), extern vereiste signer/commit/release-ID-pins en dezelfde batch-downloader (0.1.142) voor volledige BUNDLE/COMMIT_SHA/SHA256SUMS/ZIP/WHEEL/RECORD-verificatie; geen tweede API-client, credentialbron of downloadpad.
+- Alleen synthetische, in-memory 5/33/160-bestandstests, foutieve body/signature/key/source/release-ID, provider asset-ID/digest-mutaties en partiële downloads; blokkade vóór asset-GET. Geen nieuwe MCP-tool, eigenaarstrust, fysieke custody, start/apply, daemon of actieve servermutatie.
+- HARD WAIT: werkelijk onafhankelijk beheerde eigenaarssigner + geactiveerde releasebeschrijving (Fabric #924), originele host/wheel #669, herstel #341 en fysieke A6 #942/A7 #943 met originele result/ACK.
+
 ## 0.1.146 — F30/#937 signed Fabric Release-body verifier (SOURCE ONLY)
 
 - Nieuwe strikt private `fabric_release_body_envelope.verify_signed_release_body` haalt een exact Base64-tekstblok uit de al bestaande GitHub Release-beschrijving, ZONDER extra release-asset, nieuwe URL, host- of bestandstoegang. Bron, Release-ID en SHA256 van de public key blijven onafhankelijk vanuit eigenaarbeleid vereist.

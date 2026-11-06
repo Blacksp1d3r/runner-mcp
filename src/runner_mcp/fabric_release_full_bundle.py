@@ -27,6 +27,7 @@ _COMMIT_MAX = 128
 _BOOTSTRAP_MAX = 512 * 1024
 _NAME = re.compile(r"[a-zA-Z0-9][a-zA-Z0-9_.+\-]{0,150}\Z")
 _SHA256 = re.compile(r"[0-9a-f]{64}\Z")
+_COMMIT = re.compile(r"[0-9a-f]{40}\Z")
 
 
 class CompleteBundleMismatch(ValueError):
@@ -90,6 +91,7 @@ def _verify_complete_contents(
         or not 5 <= len(admission.files) <= 160
         or type(admission.project_wheel) is not str
         or type(admission.commit) is not str
+        or _COMMIT.fullmatch(admission.commit) is None
         or type(asset_bodies) is not dict
         or len(asset_bodies) != len(admission.files)
     ):
@@ -116,6 +118,8 @@ def _verify_complete_contents(
         pins[asset.name] = asset
         ids.add(asset.asset_id)
 
+    if not _REQUIRED.issubset(pins):
+        _deny()
     if set(asset_bodies) != set(pins) or any(
         type(name) is not str for name in asset_bodies
     ):

@@ -26,6 +26,14 @@ class FabricReleaseAdmissionError(RuntimeError):
     """Constant denial reason without origin paths, tokens or URLs."""
 
 
+class FabricReleaseDigestError(FabricReleaseAdmissionError):
+    """A Release asset has missing or malformed SHA-256 metadata.
+
+    De basisklasse houdt het openbare foutcontract strikt begrensd. Alleen de
+    vaste foutcategorie verandert; nooit de inhoud van een providerantwoord.
+    """
+
+
 @dataclass(frozen=True)
 class ReleaseAsset:
     asset_id: int
@@ -120,11 +128,13 @@ def inspect_exact_release(
             or asset_id in seen_ids
             or not _positive(size)
             or size > _MAX_FILE_BYTES
-            or not isinstance(digest, str)
-            or _SHA256.fullmatch(digest) is None
             or not (name.endswith(".whl") or name in _REQUIRED)
         ):
             _deny()
+        if not isinstance(digest, str) or _SHA256.fullmatch(digest) is None:
+            # Een beschadigde of ontbrekende digest is een andere oorzaak dan
+            # een verkeerde tag, bronrevisie of assetlijst.
+            raise FabricReleaseDigestError("fabric_release_assets_unqualified")
         seen_names.add(name)
         seen_ids.add(asset_id)
         total += size

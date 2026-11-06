@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 vervolg na #958: echte manager read-only ketentest
+
+- #958 exact geteste head `511cdb9e4b85f3a9f84ab7378e3bec295e386c6f` 7/7 CI PASS, merge `c9162aedab64a92c291c9847a9ccce5677505944` door GitHub teruggelezen; post-merge Runner MCP validation 42307409919 SUCCESS en attribution 42307409995 SUCCESS. Oude foutieve nested-final analyse is gecorrigeerd en in Failure-context #341 bewaard.
+- Volgende branch is een **alleen tests + bestaande roadmap/handover**-wijziging: private keyless GitHub-release import → final flat local-bundles → originele `FabricUpdateManager.local_readiness` (géén `start_local/apply`), met fictieve 5/33/160 assets en negatief opnieuw lezen na schijftampering. CI vóór merge nodig; versie 0.1.150 blijft.
+- Geen operationele host/SQL/Claude/Qwen/Fabric wijziging of nieuwe updater. Ontbrekend: echte owner/CI/source/host policy, actieve originele wheel #669, zelfstandig rollback #341/A7 #943, off-target A6 #942 en oorspronkelijke client resultaat+ACK. Signing key optional later.
+
 ## 2026-11-06 — F30 #341 #958 gerichte CI wees gemiste renameat2-promotie aan
 
 - Mijn voorlopige hypothese "final custody nested" was FOUT. Exacte inspectie van `fabric_update._promote_inactive_bundle_noreplace` toont: input `.incoming-<uuid>/source/bundle` wordt als directory atomair gepromoveerd naar **vlak** `local-bundles/<SHA>`; leeg `.incoming/source` blijft staan. Eerste #958 HEAD `7233aefee2f444ba649900937d36920fbaf9f2df` CI 42306368102 faalde daardoor terecht 4 tests, 4694 PASS; niet merge of als groen behandelen.

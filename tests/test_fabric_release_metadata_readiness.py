@@ -6,6 +6,8 @@ from pathlib import Path
 
 import pytest
 
+from runner_mcp.fabric_release_assets import ReleaseAdmission
+
 from runner_mcp.fabric_update import (
     FabricUpdateError,
     FabricUpdateManager,
@@ -131,3 +133,65 @@ def test_release_probe_never_falls_back_to_actions_or_stages(monkeypatch):
         "start", "start_local", "stage_local_bundle", "rollback",
         "fetch_exact_artifact", "download_artifact",
     })
+
+
+def test_internal_exact_release_snapshot_uses_same_two_fixed_endpoints(monkeypatch):
+    """Hergebruik dezelfde bronparser; behoud de bestaande publieke velden."""
+    manager, calls = _manager(monkeypatch)
+    snapshot = manager._read_exact_release_admission(_COMMIT)
+    assert type(snapshot) is ReleaseAdmission
+    assert snapshot.commit == _COMMIT
+    assert snapshot.tag == _TAG
+    assert snapshot.release_id == 12345
+    assert snapshot.project_wheel == "runner_fabric-0.0.1-py3-none-any.whl"
+    assert len(snapshot.files) == 5
+    assert snapshot.files[0].sha256 == _SHA
+    assert snapshot.public_dict()["mutation_authorized"] is False
+    assert calls[:2] == ["safe", "launcher"]
+    assert calls[2:] == [
+        "/repos/Blacksp1d3r/Runner-Fabric/releases/tags/" + _TAG,
+        "/repos/Blacksp1d3r/Runner-Fabric/git/ref/tags/" + _TAG,
+    ]
+
+    # Een zelfstandige publieke call moet dezelfde snapshot als beperkt
+    # JSON-statusantwoord tonen, zonder nieuw requestpad of download.
+    public = manager.release_assets_readiness(_COMMIT)
+    assert public == snapshot.public_dict()
+    assert len(calls) == 8
+    assert "install_authorized" not in public
+    assert "token" not in repr(public)
+
+
+@pytest.mark.parametrize("broken", [
+    {"target_commitish": "c" * 40},
+    {"assets": []},
+    {"draft": True},
+    {"tag_name": "fabric-update-bundle-" + "b" * 40},
+])
+def test_internal_typed_release_snapshot_fails_like_existing_public_probe(
+    monkeypatch, broken,
+):
+    manager, calls = _manager(monkeypatch, release={**_metadata(), **broken})
+    with pytest.raises(FabricUpdateError, match="^fabric_release_assets_unqualified$"):
+        manager._read_exact_release_admission(_COMMIT)
+    assert calls[:2] == ["safe", "launcher"]
+    assert len(calls) == 4
+
+
+def test_private_metadata_snapshot_never_fetches_assets_or_changes_storage(monkeypatch):
+    manager, calls = _manager(monkeypatch)
+    monkeypatch.setattr(
+        manager, "_download_artifact",
+        lambda *a: pytest.fail("No Actions artifact download"),
+    )
+    monkeypatch.setattr(
+        manager, "_stage_local_bundle",
+        lambda *a: pytest.fail("No local bundle staging"),
+    )
+    monkeypatch.setattr(
+        manager, "_activate_bundle",
+        lambda *a: pytest.fail("No active bundle replacement"),
+    )
+    result = manager._read_exact_release_admission(_COMMIT)
+    assert result.release_id == 12345
+    assert len(calls) == 4

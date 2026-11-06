@@ -155,6 +155,7 @@ from .fabric_update import (
     FabricUpdateManager,
     bounded_fabric_readiness_failure,
     bounded_local_custody_failure_reason,
+    read_alternative_release_metadata_after_actions_failure,
 )
 from .fabric_worker_qualification_provisioning import (
     FabricWorkerQualificationProvisioner,
@@ -1790,6 +1791,11 @@ def build_mcp(
             result = fabric_update_manager.readiness(commit)
         except FabricUpdateError as exc:
             blocked = bounded_fabric_readiness_failure(exc, source="github-actions")
+            alternate = read_alternative_release_metadata_after_actions_failure(
+                fabric_update_manager, commit, exc,
+            )
+            if alternate is not None:
+                blocked["alternative_release_metadata"] = alternate
             audit.append(
                 AuditEvent(
                     current_request_id(),

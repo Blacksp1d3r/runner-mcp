@@ -1,3 +1,8 @@
+## 2026-11-06 — #937 S2c: ZIP/RECORD hergebruik, geen tweede wheelinspecteur
+
+- Nieuwe 0.1.140 bron kandidaat in bestaande `fabric_release_wheelhouse`: volledige signed generic release eerst via 0.1.138-0.1.139 gates, daarna dezelfde Q7 ZIP/METADATA/RECORD per file; 5..160 assets (1..156 wheels), bestaande totale uitpaklimiet. Q7 33-assets/29-wheel contract blijft ongewijzigd. Synthetische positieve en negatieve tests toevoegen; exacte head CI is vereist.
+- Nog niet veilig voor echte downloads/install: werkelijke signer authority, exact target owner/process/wheel #669, gecontroleerde aparte inactieve custody, fysieke A6 #942, A7 #943, #341 en orig-client ACK ontbreekt. Geen server/service/credential gewijzigd. Volgende #937 fase uitsluitend veilige owner-private nofollow create-once stage in bestaande `local-bundles/<commit>`, niet `bundle/`, niet `start_local` of `apply`.
+
 ## 2026-11-06 — #937 S2b geen dubbelsysteem: gedeelde manifest- en assetcontrole
 
 - Na #939 source MERGED 0.1.138 is bron 0.1.139 kandidaat: binnen dezelfde `fabric_release_full_bundle.py` één gemeenschappelijke 5..160 in-memory byte-/SHA-/BUNDLE-/COMMIT-/SHA256SUMS-check, bestaande Q7 (33 assets) blijft eigen vaste signer/rooster en dezelfde API-respons. Nieuwe generieke `check_complete_signed_fabric_bundle` vereist de 0.1.138 ondertekende metadata-plus-Release vergelijking vooraf; geeft NO UPDATE/DOWNLOAD/INSTALL authority. Exacte head CI voor bronacceptatie eerst afwachten.

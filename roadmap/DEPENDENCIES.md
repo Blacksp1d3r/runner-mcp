@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #341 fictieve stage → bestaande lokale read-only acceptatie (CI-kandidaat)
+
+- Na #958 (exact-head + post-merge CI groen) is een onafhankelijke test-only keten aangemaakt die dezelfde bestaande lokale flat `local-bundles/<commit>` opnieuw leest na de private keyless GitHub-import en schijftampering weigert. Geen nieuwe validator, updater, API of versie; 5/33/160-assetcases in disposable pytest-tmp_path. ACCEPTATIE UITSLUITEND na exacte PR-head CI.
+- Hoewel lokaal `artifact_ready` mogelijk wordt, is dit geen owner-/host-/rollback-/updateautoriteit; echte source/CI-policy, origineel actief wheel #669, eerdere startbare release #341, Fabric A6 #942 en offline A7 #943 met originele-client-result+ACK blijven hard WAIT. Qwen/Claude/SQL en servers ongemoeid; ED sleutel later.
+
 ## 2026-11-06 — F30 signed inactieve custody source 0.1.145, productie blijft WAIT
 
 - Private bronhelper voor exact ondertekende offline 5–160 assets, atomaire create-once onder bestaande private root, nul nieuwe MCP-tools/updaters. Testsigner en caller-supplied policy zijn NIET onafhankelijke owner authorization.

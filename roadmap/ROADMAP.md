@@ -1,3 +1,8 @@
+## 2026-11-06 — #937 S2c generieke Python-wheels verifiëren vóór inactieve opslag
+
+- Bron 0.1.140 kandidaat: dezelfde ZIP/Metadata/RECORD-parser gebruikt voor vaste Q7 en toekomstige exact ondertekende generieke Fabric-bundels; eerst signed roster + volledige manifest/SHA, daarna wheelinhoud. Synthetische 5/33/160 asset- en fouttests plus volledige CI verplicht.
+- Resterend: werkelijk onafhankelijk geautoriseerde signer/rooster gepubliceerd door Fabric #924, daarna vaste byteimport en inactieve `local-bundles/<commit>`-custody, echte host/provenance en A6/A7/original-client ACK vóór activatie. Geen nieuwe updater of tweede wheel-parser.
+
 ## 2026-11-06 — #937 S2b: Q7 en generieke bundle-inhoud via één codepad
 
 - **SOURCE kandidaat 0.1.139:** na gemergde 0.1.138 signed-pins wordt `fabric_release_full_bundle` gedeeld voor 5..160 bestanden, exacte SHA256SUMS/BUNDLE/COMMIT, met oude Q7-interface vastgehouden op 33/33. Volledige CI en negatieve tests vereist vóór merge.

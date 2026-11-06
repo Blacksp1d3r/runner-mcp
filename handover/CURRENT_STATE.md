@@ -1,8 +1,8 @@
-## 2026-11-06 — F30 #341 exact inactief opslagformaat en bron/CI-acceptatie
+## 2026-11-06 — F30 #341 broncode/CI-mislezing opgelost: tijdelijke versus finale opslag
 
-- Na merged v0.1.150 controle op exacte main en actieve tests bleek een inconsistentie: de private create-once writer schrijft `local-bundles/<SHA>/source/bundle/<asset>`, terwijl de nieuwe CI-test nog vlakke assets in `local-bundles/<SHA>` verwachtte. De bestaande publieke `local_readiness` verwacht rechtstreeks `BUNDLE.json` en weigert dit opzettelijk niet-actieve nested formaat.
-- Deze PR corrigeert uitsluitend de test naar het ECHTE nested inode-/mode-/digest-adres en controleert expliciet dat dezelfde echte `FabricUpdateManager._validate_local_bundle_source` de kandidaat niet als direct activeerbaar accepteert. Geen installer, releasebevoegdheid, runtime, public tool of server gewijzigd. Exacte-head CI moet dit nog bewijzen.
-- Bron 0.1.150 blijft bron-only; productie 0.1.88 zonder originele wheel-/procesattest, A6/A7/rollback en oorspronkelijke client ACK blijft geblokkeerd. ED-sleutel pas nadat automatische updates, Qwen en Claude bruikbaar zijn.
+- Exacte GitHub-v0.1.150-code bouwt de kandidaat TIJDELIJK onder `local-bundles/.incoming-<uuid>/source/bundle/<asset>`. De bestaande `_promote_inactive_bundle_noreplace` roept `renameat2(RENAME_NOREPLACE)` aan met **bron `.incoming-<uuid>/source/bundle`** en **doel `local-bundles/<SHA>`**. De FINALE kandidaat heeft daarom terecht VLAKKE assets. De originele 4698 groene tests waren op dit punt correct.
+- Mijn eerste PR #958-testwijziging vergat deze exacte promotie en faalde terecht op 4 pytestgevallen (CI 42306368102: 4694 PASS / 4 FAIL). Correctie: originele vlakke layout + extra tests dat de achterblijvende `.incoming-...` geen tweede assetkopie bevat en dat de bestaande `_validate_local_bundle_source` de flat bundel structureel accepteert. De echte `local_readiness`/activatie geeft hierdoor NOOIT zelfstandig productiebevoegdheid.
+- Geen nieuw tool, updater, installer of hostwijziging. Wacht op volledige exacte-head CI voor de herstelde PR. Productie staat nog op onvolledig bewezen 0.1.88; #669/#341, Fabric A6 #942/A7 #943 en originele result/ACK blijven harde eisen. ED owner key optioneel pas na auto-updates, Qwen en Claude.
 
 ## 2026-11-06 — F30/#341 keyless GitHub-release INACTIEVE storage (v0.1.150 bronkandidaat)
 

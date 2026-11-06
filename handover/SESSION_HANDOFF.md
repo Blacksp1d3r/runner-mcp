@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 exacte bronacceptatie 0.1.140; eerst issuer en inactieve local-custody
+
+- **SOURCE VOLTOOID 3 PR's:** #939 `a7833ee2d4316ce0d35dab603e5863a59a3c48a9` (0.1.138 signed generiek roster, CI 42209069315/42209069408/42209069415), #940 `c8cd8c2e49fb5e991729bae13e81a37a35a2eae6` (0.1.139 gedeelde manifest-byte-integriteit, CI 42210227804/42210227877/42210228010), #941 `fa08c76966ea526fb1bfa0d7384d6caa56001019` (0.1.140 gedeelde ZIP/METADATA/RECORD, CI 42211540637/42211540647/42211540826). Elke exacte-head CI volledig SUCCESS. Oude Q7 vaste 33 assets/29 wheels intact. Broncode ≠ procesinstallatie.
+- **VOLGENDE #937 S2d/e:** Fabric #924/eigenaar moet generieke externe signer-pins/rooster daadwerkelijk verstrekken met bevoegdheid, dan bestaande assetbyte-verifier en huidige owner-private `local-bundles/<SHA>` exact bytes create-once in INACTIEVE stage testen. Hergebruik bestaande nofollow/flock/fsync/atomic-noreplace patronen, geen andere controller of updater. Q7 stage schrijft `bundle/`; `start_local` schakelt naar `apply`: beide NIET gebruiken voor inactieve voorbereiding.
+- **LIVE WAIT:** verbonden 0.1.88 is niet host/geheel-wiel-attest, originele fysieke #669/#341/ Fabric #924/#942/#943 autonome recovery + oorspronkelijke requester ACK vereist vóór unattended updates. In deze sessie geen server, systemd, cron, token, relay, model, download, installatie of restart aangepast.
+
 ## 2026-11-06 — #937 S2c: ZIP/RECORD hergebruik, geen tweede wheelinspecteur
 
 - Nieuwe 0.1.140 bron kandidaat in bestaande `fabric_release_wheelhouse`: volledige signed generic release eerst via 0.1.138-0.1.139 gates, daarna dezelfde Q7 ZIP/METADATA/RECORD per file; 5..160 assets (1..156 wheels), bestaande totale uitpaklimiet. Q7 33-assets/29-wheel contract blijft ongewijzigd. Synthetische positieve en negatieve tests toevoegen; exacte head CI is vereist.

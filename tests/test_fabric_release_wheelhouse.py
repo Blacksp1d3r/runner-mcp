@@ -349,7 +349,7 @@ def test_github_batch_refuses_invalid_input_before_first_asset_get(bad):
     else:
         observed = replace(observed, files=(
             *observed.files,
-            replace(observed.files[0], name="injected-1.0-py3-none-any.whl",
+            replace(observed.files[0], name="unapproved-file.txt",
                     asset_id=98777),
         ))
     calls: list[int] = []

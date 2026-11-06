@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 #937 exact ReleaseAdmission hergebruiken, zonder dubbele API-implementatie
+
+- Na bron-merge 0.1.142 generieke in-memory assetbatch: 0.1.143 kandidaat verplaatst enkel de bestaande `release_assets_readiness` interne exacte API-parser naar `_read_exact_release_admission`. De bestaande status gebruikt dezelfde getypeerde parser; geen nieuwe endpoint of auth, geen download/stage/apply, oorspronkelijke Q7 en Release foutcodes blijven intact. CI-regressies op identiteit, aantal metadata-GETs, public_dict, verboden mutatie.
+- Volgende veilige blokkade blijft onder Fab #924: onafhankelijke eigenaarssigner + release-ID/source/key-policy daadwerkelijk leveren en generiek signed roster publiceren, daarna pas exact bytes over bestaande batch naar eigenaar-private INACTIEVE custody op fysiek aangetoonde doelserver. Originele #669/#341/A6/A7/ACK moeten voor live update klaar zijn.
+
 ## 2026-11-06 — F30 #937 S2e: signed assetbytes op bestaand transport (0.1.142 kandidaat)
 
 - Voeg binnen de al bestaande `fabric_release_asset_bytes.py` een begrensde full-batch-ingang toe: eerst onafhankelijk *aangeleverde* exacte signer/bron/release-ID + gematchte Release/tag metadata, dan per file de huidige pinned downloader, na iedere GET onafhankelijke grootte/digest, en op het einde bestaande full manifest + ZIP/RECORD-verifier. Geen nieuw transport, tokenroute, storage/installer en Q7 ongewijzigd. CI synthetisch met gemockte reader, 5/33/160 items, negatieve ondertekening en verkeerde bytes.

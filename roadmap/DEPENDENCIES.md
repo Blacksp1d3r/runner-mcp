@@ -1,3 +1,8 @@
+## 2026-11-06 — #937 metadata-verzamelaar en bytebatch gedeelde bestaande onderdelen
+
+- 0.1.142 source MERGED signed 5..160 assetbatch; 0.1.143 source kandidaat `_read_exact_release_admission` maakt het reeds in `release_assets_readiness` geverifieerde exact GitHub Release/tag-rooster getypeerd herbruikbaar. Publieke status en foutcodecontract dezelfde, geen tweede API/getter/issuer, mutatie onmogelijk via deze helper. Synthetische regressies op vaste API-paden en exact aantal calls.
+- Toepassing op echte publisher blijft WAIT tot onafhankelijke Fabric-signer/eigenaar-pin, hostcustody en #669/#341, Fabric #924/A6/A7/ACK fysiek bewezen zijn. Ander Qwen/Claude spoor gescheiden.
+
 ## 2026-11-06 — F30 #937 bestaande per-asset downloader → generic in-memory signed batch 0.1.142
 
 - **BRON KANDIDAAT:** `fabric_release_asset_bytes.fetch_exact_signed_fabric_bundle_bytes` gebruikt in plaats van een tweede downloader het bestaande `fetch_pinned_asset_bytes` per asset, met exact vooraf geverifieerde Ed25519-roster/metadata (S2a), bestaande manifest/full-bundle (S2b) en ZIP/METADATA/RECORD (S2c). Volledige 5–160-assetronde slaagt of geeft zonder gedeeltelijke resultaten vaste veilige fout. Geen credentialkopie of stage.

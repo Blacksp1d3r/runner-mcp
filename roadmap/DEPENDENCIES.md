@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 S2 verified source stages vs production gates
+
+- **GREEN exact PR heads:** Runner-MCP [#939](https://github.com/Blacksp1d3r/runner-mcp/pull/939) 0.1.138 (`42209069315`/`42209069408`/`42209069415`); [#940](https://github.com/Blacksp1d3r/runner-mcp/pull/940) 0.1.139 (`42210227804`/`42210227877`/`42210228010`); [#941](https://github.com/Blacksp1d3r/runner-mcp/pull/941) 0.1.140 (`42211540637`/`42211540647`/`42211540826`). Signed inventory → exact full bundle → ZIP/RECORD, pure offline. Q7 unchanged.
+- **S2d/e dependency order:** Fabric #924 independent publisher-signature and policy-pinned source/release/host authority; existing Runner-MCP fixed asset verifier → selected complete bytes → *create-once* owner-private inactieve `local-bundles` → separate read-only `fabric_local_update_readiness`. Historic Q7 stage writes `bundle/`; `start_local` is ACTIVERING and forbidden as preparation step.
+- **S3 production remains denied:** true exact-serving host/wheel #669, bounded independent #341 restore, Fabric #924 lease + #942 actual A6 off-target + #943 autonomous A7 no-network rollback and same-original-client terminal result/ACK. Connected Runner-MCP v0.1.88 not trusted original host identity; source v0.1.140 not live installed.
+
 ## 2026-11-06 — F30 S2c wheel-inhoud is aparte admission vóór private custody
 
 - `#937`: 0.1.138 exact ondertekend rooster SOURCE MERGED, 0.1.139 complete BUNDLE/SHA256SUMS SOURCE MERGED, 0.1.140 generieke ZIP/METADATA/RECORD-controle kandidaat onder volledige CI. Oude Q7-contracten blijven hun eigen vaste signer en 33/29-grenzen behouden.

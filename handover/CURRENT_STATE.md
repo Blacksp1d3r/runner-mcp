@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #937 Runner-MCP 0.1.147 bron: complete private Release-body → bytebatch zonder tweede GET
+
+- Nieuwe interne `_read_exact_release_snapshot` brengt de bestaande vaste GitHub Release + tag-ref samen als één getypeerd `ReleaseAdmission` plus ONBETROUWBARE description; publieke `release_assets_readiness` retourneert nog exact dezelfde status. Private `_read_verified_signed_release_description_bytes` controleert het signed-roster/v1 exact tegen onafhankelijke eigenaarspins en hergebruikt de reeds aanwezige signed/pinned byte-downloader en volledige WHEEL/RECORD gate.
+- Alleen offline gesimuleerde GitHub responses (5/33/160 echte synthetische wheels), foutieve signing/releasepin/GitHub-metadata/onderbroken bytebatch; geen tweede GET, geen providercredentials naar nieuw systeem, geen eigenaar-/hostbevoegdheid, geen echte installer of rollback, geen fysieke data-aanpassing.
+- HARD WAIT: echte eigenaarssleutel + onafhankelijk vertrouwde key/source/release-ID, daadwerkelijke Fabric #924 ondertekende publicatie, oorspronkelijke Runner-MCP host #669, #341 recovery, fysieke Fabric A6 #942 en A7 #943 + oorspronkelijke client result/ACK. Fabric/Claude/Qwen/SQL niet gewijzigd.
+
 ## 2026-11-06 — F30 #937 0.1.146 generieke signed Release-description CONSUMER BRONKANDIDAAT
 
 - Private read-only `src/runner_mcp/fabric_release_body_envelope.py` accepteert uitsluitend een exact Base64 document/signature/public_key-blok achteraan een onbetrouwbare bestaande Release-beschrijving. Bounded 100 KiB body, 64 KiB signed document en 8 KiB notities; strikte canonical Base64/markers. Daarna de bestaande generieke Ed25519 + extern vertrouwde SHA-256 van public key, commit, Release-ID en typed `ReleaseAdmission` voor controle van 5..160 bestaande bestand-ID/groottes/SHA.

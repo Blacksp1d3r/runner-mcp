@@ -1,3 +1,10 @@
+"""Begrensde Runner-Fabric-updateketen en alleen-lezen Release-controle.
+
+De manager hergebruikt de bestaande Actions-, lokale custody- en vaste GitHub
+Release-routes. Release-metadata is nooit automatisch installatiebevoegdheid:
+alle activatie, herstel en hostherkomst blijven apart gekwalificeerde stappen.
+"""
+
 from __future__ import annotations
 
 import base64

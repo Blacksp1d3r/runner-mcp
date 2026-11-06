@@ -1,3 +1,9 @@
+## 2026-11-07 — F30/#341 local-custody opnieuw ZIP/RECORD controleren (bron-kandidaat 0.1.151)
+
+- Na source-only merges #958/#959 bleek de bestaande `local_readiness` alleen de lokale SHA256SUMS/BOOTSTRAP te hercontroleren. Als een wheel EN het mutable SHA256SUMS-bestand samen gewijzigd zijn na opslag, kan die beperkte hashcheck nog slagen. De reeds bestaande `fabric_release_wheelhouse._wheel_record_check` wordt daarom ook bij lokale readiness, vóór/na lokale kopie en vóór de lokale preflight gebruikt; geen tweede verifier/installer.
+- Nieuwe synthetische regressie: geldige 5-asset import, daarna op schijf ongeldige ZIP + correct herberekende SHA256SUMS; de oude digest-only check ziet gelijkheid, de nieuwe inhoudscheck moet stoppen zonder install of slot/transaction. Positieve 5/33/160 import met originele parser wordt opnieuw via CI getest. **Nog NIET als voltooid markeren vóór exacte head-CI/merge.**
+- Onveranderd: fysieke originele serving-wheel/host #669, onafhankelijk owner/CI/sourcebeleid, bestaande A6 #942 / A7 #943 autonome rollback en oorspronkelijke client result+ACK; ED sleutel pas later, geen wijziging aan Qwen/Claude/SQL.
+
 ## 2026-11-06 — F30 #341 bronketen tot en met local_readiness geverifieerd
 
 - Source-only automatische Fabric Release-publicatie werkt; Runner-MCP v0.1.149/0.1.150 verifieert keyless exact Release/asset/ZIP/SHA en bewaart in bestaande eigenaar-private flat local-bundles NOREPLACE. #958 heeft definitieve map/mode test, #959 heeft echte bestaande local_readiness + corruptie-fail-closed op synthetische 5/33/160 assets. [#959](https://github.com/Blacksp1d3r/runner-mcp/pull/959) 7/7 exact-head CI SUCCESS (4704 pytest), MERGED `d49940b8e7116b89d1b139b010c5ed72cb50a8e8`; versie 0.1.150 blijft. Local `artifact_ready` is enkel bestandscontrole, NOOIT owner-/install-/rollbackautoriteit.

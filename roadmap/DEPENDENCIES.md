@@ -1,3 +1,8 @@
+## 2026-11-06 — F30 S2c wheel-inhoud is aparte admission vóór private custody
+
+- `#937`: 0.1.138 exact ondertekend rooster SOURCE MERGED, 0.1.139 complete BUNDLE/SHA256SUMS SOURCE MERGED, 0.1.140 generieke ZIP/METADATA/RECORD-controle kandidaat onder volledige CI. Oude Q7-contracten blijven hun eigen vaste signer en 33/29-grenzen behouden.
+- Onbevoegde bronbevestiging (sleutel zelf aangeleverd, enkel GitHub SHA, oude wheelcache) is geen algemene trust. Echte producer-signer-/host-pins en owner-private root vereist vóór muterende inactieve `local-bundles/<sha>` stage. Automatisch `start_local` ≠ stage en blijft verboden zonder Fabric #924 lease, #669/#341 identiteit/recovery, fysiek #942/#943 en client-ACK.
+
 ## 2026-11-06 — F30 S2b bundel-inhoud vóór inactieve custody
 
 - `#937 S2a` versie 0.1.138 is bron gemerged: generieke zuivere Ed25519 exact-roostercontrole met onafhankelijk te kwalificeren sleutel-/source-pin. `#937 S2b` versie 0.1.139 source kandidaat: één gedeelde Q7/generieke in-memory full-bundle SHA256/BUNDLE/COMMIT/SHA256SUMS-verificatie met behoud van Q7-contract en 5..160 generieke files.

@@ -1,3 +1,9 @@
+## 2026-11-06 — F30 #341 opvolging na #957: nested custody is geen lokale activatie
+
+- Exact main f910cb0fd13fa87e03e910ad8e5a4e24409f49a9, GitHub run 42281123242 meldt 4698 pytest PASS, maar na broninspectie bleek dat de nieuwe test twee flat-file-asserties overhoudt van vóór de private nested stage. F30 testcorrectie op eigen branch; check de echte nieuwe exact-head CI alvorens source PASS te claimen.
+- Private `_store_verified_inactive_bytes_once`: `<root>/<SHA>/source/bundle/<asset>`; publieke `local_readiness` verwacht `<root>/<SHA>/BUNDLE.json` en moet deze kandidaat blijven weigeren. Geen flatten, publieke stage, `start_local`, `apply` of hostwerk voordat commit/CI/owner/host/provenance en A6/A7/ACK werkelijk gekwalificeerd zijn.
+- Qwen V3, Claude, SQL en Fabric-services ongemoeid. Volgende onafhankelijke source-stap na CI: werkelijk niet-autoriserende offline readback van de bewaarde private kandidaat of bestaande helper hergebruiken; geen tweede updater/controller.
+
 ## 2026-11-06 — F30 #341 keyless release-import naar bestaande inactieve opslag, source only
 
 - Vóór deze kandidaat is Runner-MCP PR #956 (v0.1.149) 7/7 exact-head CI SUCCESS en merged main 0ba0e39600de47f8686c14ba1712846bd019eab1: fixed GitHub Release/tag/asset bytes, manifest+WHEEL/RECORD in RAM, zonder ED key.

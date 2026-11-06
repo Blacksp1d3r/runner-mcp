@@ -773,7 +773,7 @@ def test_manager_description_denies_before_custody_and_invalid_asset_gets(
         args["expected_release_id"] += 1
     elif bad == "api_asset_id":
         def changed_id(metadata):
-            metadata["assets"][0]["id"] += 5
+            metadata["assets"][0]["id"] += 5000
             return metadata
         mutated = changed_id
     elif bad == "api_digest":

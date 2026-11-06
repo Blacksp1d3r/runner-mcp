@@ -37,6 +37,7 @@ from .fabric_release_assets import (
     FabricReleaseDigestError,
     inspect_exact_release,
 )
+from .fabric_release_private_custody import _promote_noreplace
 from .operational_safety import OperatorSafetyGuard
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
@@ -528,15 +529,13 @@ class FabricUpdateManager:
             bundle = source / "bundle"
             self._validate_local_bundle_source(bundle)
             self._validated_bootstrap(commit, root=bundle)
-            try:
-                os.replace(bundle, target)
-                directory_fd = os.open(self.local_bundles_root, os.O_RDONLY)
-                try:
-                    os.fsync(directory_fd)
-                finally:
-                    os.close(directory_fd)
-            except OSError as exc:
-                raise FabricUpdateError("fabric_bundle_storage_conflict") from exc
+            # `target.exists()` was only a momentopname. Two operators
+            # could both pass it: os.replace could then overwrite an empty
+            # destination created by the other staging operation. Use the
+            # already-existing atomic Linux NOREPLACE promotion instead.
+            _promote_inactive_bundle_noreplace(
+                self.local_bundles_root, work.name, commit
+            )
             self._validate_local_bundle_source(target)
             self._validated_bootstrap(commit, root=target)
         finally:
@@ -1228,6 +1227,73 @@ class FabricUpdateManager:
 def _require_commit(commit: str) -> None:
     if not isinstance(commit, str) or _COMMIT_RE.fullmatch(commit) is None:
         raise FabricUpdateError("fabric_update_commit_invalid")
+
+
+
+def _promote_inactive_bundle_noreplace(
+    local_bundles_root: Path,
+    incoming_name: str,
+    commit: str,
+) -> None:
+    """Promoveer één reeds gevalideerde bundel zonder een ander slot te vervangen.
+
+    Het bestaande `stage_local_bundle` bouwt eerst in
+    `local-bundles/.incoming-<uuid>/source/bundle`. Deze functie doet alleen
+    de atomaire *naamwijziging* naar `local-bundles/<commit>` en fsync; geen
+    downloads, installer, BOOTSTRAP-aanroep, service- of actieve bundle-wijziging.
+    Bij een gelijktijdig bestaande bestemming blijft die onaangeraakt.
+    """
+    _require_commit(commit)
+    if (
+        type(incoming_name) is not str
+        or re.fullmatch(r"\\.incoming-[0-9a-f]{32}", incoming_name) is None
+        or type(local_bundles_root) is not Path
+        or not local_bundles_root.is_absolute()
+    ):
+        raise FabricUpdateError("fabric_bundle_storage_conflict")
+
+    root_fd = -1
+    incoming_fd = -1
+    source_fd = -1
+    bundle_fd = -1
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    try:
+        # Root en werkboom komen uitsluitend uit de bestaande update-manager.
+        # Open elk niveau met O_NOFOLLOW en houd directory descriptors vast.
+        original = os.lstat(local_bundles_root)
+        if (
+            not stat.S_ISDIR(original.st_mode)
+            or original.st_uid != os.geteuid()
+            or stat.S_IMODE(original.st_mode) != 0o700
+        ):
+            raise FabricUpdateError("fabric_bundle_storage_conflict")
+        root_fd = os.open(local_bundles_root, flags)
+        pinned = os.fstat(root_fd)
+        if (pinned.st_dev, pinned.st_ino) != (
+            original.st_dev, original.st_ino
+        ):
+            raise FabricUpdateError("fabric_bundle_storage_conflict")
+        incoming_fd = os.open(incoming_name, flags, dir_fd=root_fd)
+        source_fd = os.open("source", flags, dir_fd=incoming_fd)
+        bundle_fd = os.open("bundle", flags, dir_fd=source_fd)
+        for fd in (incoming_fd, source_fd, bundle_fd):
+            item = os.fstat(fd)
+            if item.st_uid != os.geteuid() or stat.S_IMODE(item.st_mode) != 0o700:
+                raise FabricUpdateError("fabric_bundle_storage_conflict")
+
+        # Reuse the same renameat2(RENAME_NOREPLACE) primitive as historical
+        # Q7 custody. The source path is completely fixed below this private
+        # root; a caller can never inject a path or a different destination.
+        _promote_noreplace(
+            root_fd, incoming_name + "/source/bundle", commit
+        )
+        os.fsync(root_fd)
+    except (OSError, ValueError) as exc:
+        raise FabricUpdateError("fabric_bundle_storage_conflict") from exc
+    finally:
+        for fd in (bundle_fd, source_fd, incoming_fd, root_fd):
+            if fd >= 0:
+                os.close(fd)
 
 
 def _private_dir(path: Path, *, create: bool, parents: bool = False) -> Path:

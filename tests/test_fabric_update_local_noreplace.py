@@ -53,6 +53,16 @@ def test_private_exact_bundle_moves_atomically_only_to_inactive_custody(tmp_path
     assert not (tmp_path / "transaction.json").exists()
 
 
+def test_normal_read_only_git_checkout_directories_are_allowed(tmp_path):
+    root, work, _bundle = _fresh(tmp_path)
+    # Git schrijft source vaak met mode 0755. Privé-ouder 0700 en geen
+    # groeps-/wereldschrijf zijn de werkelijke beveiligingsvoorwaarden.
+    (work / "source").chmod(0o755)
+    (work / "source" / "bundle").chmod(0o755)
+    _promote_inactive_bundle_noreplace(root, INCOMING, COMMIT)
+    assert (root / COMMIT / "COMMIT_SHA").read_text("ascii") == COMMIT + "\n"
+
+
 def test_existing_empty_destination_cannot_be_replaced(tmp_path):
     root, _, bundle = _fresh(tmp_path)
     destination = root / COMMIT

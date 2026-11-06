@@ -25,7 +25,7 @@ from runner_mcp.fabric_release_asset_bytes import (
     AssetBytesUnqualified,
     fetch_exact_signed_fabric_bundle_bytes,
 )
-from runner_mcp.fabric_release_assets import ReleaseAsset, inspect_exact_release
+from runner_mcp.fabric_release_assets import inspect_exact_release
 
 COMMIT = "a" * 40
 RELEASE_ID = 222444

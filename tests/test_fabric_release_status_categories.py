@@ -99,7 +99,7 @@ def _manager(monkeypatch, release=None, ref=None):
     manager = object.__new__(FabricUpdateManager)
     opener = _Opener(_release() if release is None else release,
                      _tag() if ref is None else ref)
-    monkeypatch.setattr(manager, "_opener", opener)
+    monkeypatch.setattr(manager, "_opener", opener, raising=False)
     monkeypatch.setattr(manager, "_require_safe_runtime", lambda: None)
     monkeypatch.setattr(manager, "_assert_managed_launcher", lambda: None)
     monkeypatch.setattr(manager, "_github_token", lambda: SECRET)

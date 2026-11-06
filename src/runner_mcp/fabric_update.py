@@ -394,6 +394,46 @@ class FabricUpdateManager:
         # updatebevoegdheid. De private verbruiker valideert dit apart.
         return admission, release.get("body")
 
+    def _read_exact_github_release_bytes(
+        self,
+        *,
+        expected_commit: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, bytes]:
+        """Volledige GitHub Release-bytecontrole ZONDER nieuwe ED-sleutel.
+
+        Hergebruik alleen de bestaande exacte vaste repository Release/tag-
+        inspectie, huidige GitHub token en dezelfde asset-ID downloader,
+        manifest- en ZIP/RECORD-gates. Dit werkt op bestaande gewone
+        fabric-update-bundle-* releases; historische Q7 blijft afgeschermd.
+
+        De provider-SHA's bewijzen GEEN onafhankelijke eigenaarsgoedkeuring
+        en deze private ingang controleert NIET zelf de externe CI-push-gates
+        of actuele fysieke host. Daarom geen MCP-tool, geen stage, geen
+        install/start_local/apply/rollback en geen automatische activering.
+        """
+        from .fabric_release_asset_bytes import (
+            AssetBytesUnqualified,
+            fetch_exact_github_release_bundle_bytes,
+            fetch_pinned_asset_bytes,
+        )
+
+        _require_commit(expected_commit)
+        admission = self._read_exact_release_admission(expected_commit)
+        reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
+        token = self._github_token()
+        try:
+            return fetch_exact_github_release_bundle_bytes(
+                token=token,
+                expected_commit=expected_commit,
+                observed_metadata=admission,
+                asset_reader=reader,
+            )
+        except (AssetBytesUnqualified, TypeError, ValueError) as exc:
+            raise FabricUpdateError(
+                "fabric_release_asset_bytes_unqualified"
+            ) from exc
+
     def _read_verified_signed_release_bytes(
         self,
         *,

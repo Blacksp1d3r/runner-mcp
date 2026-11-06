@@ -308,6 +308,7 @@ def fetch_exact_github_release_bundle_bytes(
         or observed_metadata.release_id <= 0
         or type(observed_metadata.files) is not tuple
         or not 5 <= len(observed_metadata.files) <= 160
+        or type(observed_metadata.project_wheel) is not str
         or not callable(asset_reader)
     ):
         _fail()

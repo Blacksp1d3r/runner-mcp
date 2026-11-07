@@ -87,7 +87,9 @@ def test_transaction_publication_rejects_racing_foreign_record(
     """Een andere updater mag zijn eerder gepubliceerde herstelbewijs behouden."""
     installer = make_installer(tmp_path)
     other_transaction = (
-        b'{"job_id":"f" * 32,"target_commit":"foreign"}'
+        b'{"job_id":"' + b"f" * 32
+        + b'","target_commit":"' + b"d" * 40
+        + b'","baseline_commit":null,"rollback_capable":false}'
     )
     real_link = os.link
 

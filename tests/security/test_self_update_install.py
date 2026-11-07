@@ -79,6 +79,59 @@ def test_transaction_fsyncs_file_and_parent_directory(
     assert observed == ["file", "directory"]
 
 
+
+def test_transaction_publication_rejects_racing_foreign_record(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een andere updater mag zijn eerder gepubliceerde herstelbewijs behouden."""
+    installer = make_installer(tmp_path)
+    other_transaction = (
+        b'{"job_id":"f" * 32,"target_commit":"foreign"}'
+    )
+    real_link = os.link
+
+    def competing_publication(source, destination, *, follow_symlinks=True):
+        assert Path(destination) == installer.transaction_path
+        assert follow_symlinks is False
+        installer.transaction_path.write_bytes(other_transaction)
+        return real_link(source, destination, follow_symlinks=follow_symlinks)
+
+    monkeypatch.setattr(
+        "runner_mcp.self_update_install.os.link", competing_publication,
+    )
+    with pytest.raises(PackageInstallError, match="could not be persisted"):
+        installer.begin_transaction(
+            job_id="a" * 32,
+            target_commit="b" * 40,
+            baseline_commit="c" * 40,
+        )
+
+    assert installer.transaction_path.read_bytes() == other_transaction
+    assert not installer.transaction_path.with_suffix(".tmp").exists()
+
+
+def test_transaction_publication_without_atomic_link_fails_closed(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Geen terugval op os.replace wanneer atomair niet-overschrijven ontbreekt."""
+    installer = make_installer(tmp_path)
+
+    def no_link(*_args, **_kwargs):
+        raise OSError("atomic link unsupported")
+
+    monkeypatch.setattr("runner_mcp.self_update_install.os.link", no_link)
+    with pytest.raises(PackageInstallError, match="could not be persisted"):
+        installer.begin_transaction(
+            job_id="a" * 32,
+            target_commit="b" * 40,
+            baseline_commit="c" * 40,
+        )
+    assert not installer.transaction_path.exists()
+    assert not installer.transaction_path.with_suffix(".tmp").exists()
+
+
 def test_transaction_symlink_fails_closed(tmp_path: Path) -> None:
     installer = make_installer(tmp_path)
     target = tmp_path / "outside"

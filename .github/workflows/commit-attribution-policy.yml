@@ -13,7 +13,9 @@ permissions:
 # Keep the most recent run for each PR or protected branch; no required check is skipped.
 concurrency:
   group: runner-mcp-attribution-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
-  cancel-in-progress: true
+  # Behoud elke main-push, ook wanneer een latere docs-commit binnenkomt.
+  # Alleen verouderde PR-hercontroles mogen worden afgebroken.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   commit-attribution-policy:

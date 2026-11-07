@@ -1,3 +1,9 @@
+## 2026-11-07 — F30 #341 vervolg na 0.1.151: begrensde stage-status correctie als 0.1.152 PR-kandidaat
+
+- 0.1.151 head commit `22624dbf42c63f6b57d2161eaf88f6050128a6bd`, final docs/main `47b83a134b515e78acb72ed93715ff5ae6cc51ea`; post-merge main CI compleet SUCCESS. Nog open bronpunt: de bestaande `stage_local_bundle` kende drie `_validated_bootstrap`-aanroepen zonder `verify_wheel_records=True` en kon dus `bundleReady=True` claimen voor ZIP zonder geldige RECORD met bijpassend herpinde SHA256SUMS, anders dan `local_readiness`.
+- Op branche `fix/f30-341-stage-local-record-consistency-20261107` nu dezelfde bestaande ZIP/METADATA/RECORD-verifier op drie lokale stage-checkpoints. Oude positieve tests + negatieve bestaande/hergebouwde bundel-tests, versie 0.1.152 vier manifesten. **Nog geen PR CI, merge of originele-server-installatie claim**; eerst exacte-head Ruff/pytest/reservering/build/systemd/demo/Ubuntu/attribution, dan versie en GitHub-status bijwerken.
+- Geen parallel systeem, token, webhook, supervisor, daemon of nieuwe publicatie. First-node vereist nog original host/serving wheel #669, startbare rollback #341, off-target Fabric A6 #942, offline A7 #943 en dezelfde oorspronkelijk client result+ACK. Behandel de andere Claude/Qwen/SQL-sporen als onafhankelijk.
+
 ## 2026-11-07 — F30 #341 v0.1.151 MERGED; volgende werk = oorspronkelijke host en bewezen offline recovery
 
 - [PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) **MERGED** `22624dbf42c63f6b57d2161eaf88f6050128a6bd`; geteste head `920dcf884b0d00c8149464371f867ca5d19a122e` validation `42310895233` (Ruff, 4705 pytest, reservation, artifact, disposable systemd, demo), Clean Ubuntu `42310895135`, attribution `42310895172` **7/7 SUCCESS**. Bestaande private local-custody ZIP/METADATA/RECORD-hercontrole bij readiness, na lokale copy en vóór preflight; expliciete gemanipuleerde wheel + herpinde SHA256SUMS regressie. Bronversie 0.1.151, alle 4 metadata gelijk.

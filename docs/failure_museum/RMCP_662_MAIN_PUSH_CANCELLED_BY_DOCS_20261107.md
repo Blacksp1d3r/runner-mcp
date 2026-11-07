@@ -1,3 +1,8 @@
+## 2026-11-07 — aanvullend gevonden: de artifactjob liep vóór de einddemo (0.1.154 bronkandidaat)
+
+- V0.1.152 main `42351052147` had exact kandidaatartifact al geüpload ondanks overall CANCELLED tijdens demo. Dat onthult naast het in-progress-cancelprobleem een afzonderlijke volgordeafhankelijkheid: de bestaande `release-artifact` vroeg alleen `validate`, niet de reeds bestaande `demo-smoke` en `disposable-systemd-user`.
+- Bestaande workflowjob nu `needs: [validate, demo-smoke, disposable-systemd-user]`: dezelfde validators/artifactbron, géén nieuwe publicatiemethode of CI-systemen. Statische regressietest houdt deze drie dependencies vast. CI/merge voor deze bronkandidaat 0.1.154 nog OPEN; externe attribution/Ubuntu, pending-run-queue en fysieke host/A6/A7/ACK-bewijzen blijven los.
+
 ## 2026-11-07 — #662 eindbewijs bronpatch 0.1.153 (MERGED / PR CI PASS)
 
 - De ontbrekende actieve-main-push-retentie is in [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) gecorrigeerd met `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` in beide bestaande workflows. Exact-head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530`: 7/7 CI SUCCESS inclusief **4708 pytest** en volledige demo; merge `f79f07e27b5af1d97c7019f298e42c5275af85f9`. Nieuwe opvolgende docs main-push wordt gebruikt om echte ononderbroken main-run te controleren.

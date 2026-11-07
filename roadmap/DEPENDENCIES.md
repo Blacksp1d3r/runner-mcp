@@ -1,3 +1,8 @@
+## 2026-11-07 — F30 #341 volledige lokale bundle-state consistentie (v0.1.152 kandidaat)
+
+- Existing `stage_local_bundle` READY/ALREADY_STAGED bewees niet dezelfde ZIP/RECORD-acceptatie als `local_readiness`; de nieuwe patch hergebruikt opt-in `verify_wheel_records` op alle drie de bestaande lokale stage-checkpoints. Negatieve regressie: wheel aangepast+SHA256SUMS mee herberekend, toch weigering van stage, vóór lokale install/remote handoff. Source only; exacte-head CI/merge nog vereist.
+- **Geen updatebevoegdheid:** correcte fysieke `github-runner` serving wheel #669, owner CI/host/sourcepins, A6 #942, zelfstandige offline A7 #943/#341 en oorspronkelijke-client result+ACK blijven harde WAIT. ED signer pas wanneer automatische updates en Claude/Qwen werken.
+
 ## 2026-11-07 — #341 v0.1.151 lokale wheel-record hercontrole SOURCE/CI DONE, first-node WAIT
 
 - [PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) exact head `920dcf884b0d00c8149464371f867ca5d19a122e` **7/7 CI PASS** (4705 pytest), squash MERGED `22624dbf42c63f6b57d2161eaf88f6050128a6bd`; alle 4 distributie-/discoveryversies 0.1.151. Lokale `_validated_bootstrap(verify_wheel_records=True)` hergebruikt bestaande `_wheel_record_check` bij readiness/stage/preflight, faalt op na opslag gewijzigde wheel+herpinde SHA256SUMS, zonder installer/andere provider/hostactie.

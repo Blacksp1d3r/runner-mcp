@@ -764,9 +764,11 @@ def test_local_update_job_records_visible_source_class(
     assert status["source"] == "local-custody"
 
 
+@pytest.mark.parametrize("repin_invalid_wheel", [False, True])
 def test_stage_local_bundle_builds_exact_validated_custody(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
+    repin_invalid_wheel: bool,
 ) -> None:
     manager, _calls = _manager(tmp_path)
     _managed_launcher(manager)
@@ -799,9 +801,35 @@ def test_stage_local_bundle_builds_exact_validated_custody(
                     target = bundle / info.filename
                     target.write_bytes(archive.read(info))
                     target.chmod(0o600)
+            if repin_invalid_wheel:
+                # Simuleer een builder waarvan het wheel EN SHA256SUMS samen
+                # vervangen zijn; hash-only toelating is dan onvoldoende.
+                bad_wheel = next(bundle.glob("*.whl"))
+                bad_wheel.write_bytes(b"rehashed-corrupt-zip")
+                (bundle / "SHA256SUMS").write_text(
+                    "".join(
+                        f"{hashlib.sha256((bundle / name).read_bytes()).hexdigest()}  {name}\n"
+                        for name in ("BOOTSTRAP.py", bad_wheel.name)
+                    ),
+                    encoding="ascii",
+                )
         return subprocess.CompletedProcess(argv, 0, "", "")
 
     monkeypatch.setattr(manager, "_run_bundle_command", command)
+
+    if repin_invalid_wheel:
+        # Oude bundelhashes zouden overeenstemmen; deze bron mag toch nooit
+        # opgeslagen worden als een geborgde lokale release.
+        with pytest.raises(FabricUpdateError, match="^fabric_bundle_integrity_failed$"):
+            manager.stage_local_bundle(commit)
+        assert not (manager.local_bundles_root / commit).exists()
+        assert not any(
+            path.name.startswith(".incoming-")
+            for path in manager.local_bundles_root.iterdir()
+        )
+        assert not (manager.state_root / "transaction.json").exists()
+        assert not any(row[-1:] == ("apply",) for row in observed)
+        return
 
     result = manager.stage_local_bundle(commit)
 
@@ -816,6 +844,47 @@ def test_stage_local_bundle_builds_exact_validated_custody(
     assert manager.local_readiness(commit)["artifact_ready"] is True
     assert token not in json.dumps(result)
     assert any(row[-1] == "scripts/build_control_plane_update_bundle.py" for row in observed)
+
+
+
+def test_replayed_local_stage_rechecks_record_not_just_rehashed_checksum(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een bestaand lokaal pakket mag geen ready-status krijgen op louter hashes.
+
+    Originele create-once-directory en bestaande launcher blijven onveranderd.
+    Geen netwerk, subprocess, installatie of bestand buiten pytest tmp_path.
+    """
+    manager, calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "c" * 40
+    bundle = _local_bundle(manager, commit)
+    wheel = next(bundle.glob("*.whl"))
+    wheel.write_bytes(b"broken-wheel-but-matching-sha256sums")
+    (bundle / "SHA256SUMS").write_text(
+        "".join(
+            f"{hashlib.sha256((bundle / name).read_bytes()).hexdigest()}  {name}\n"
+            for name in ("BOOTSTRAP.py", wheel.name)
+        ),
+        encoding="ascii",
+    )
+    monkeypatch.setattr(
+        manager, "_github_token",
+        lambda: pytest.fail("existing stage should never fetch GitHub credentials"),
+    )
+    # Toon expliciet het oorspronkelijke defect: de SHA-only parser ziet
+    # overeenstemming, zonder een RECORD te kunnen bewijzen.
+    assert manager._validated_bootstrap(commit, root=bundle) == bundle / "BOOTSTRAP.py"
+
+    with pytest.raises(FabricUpdateError, match="^fabric_bundle_integrity_failed$"):
+        manager.stage_local_bundle(commit)
+
+    assert calls == []
+    assert bundle.is_dir()
+    assert not any(
+        path.name.startswith(".incoming-") for path in manager.local_bundles_root.iterdir()
+    )
+    assert not manager.transaction.exists()
 
 
 def test_stage_local_bundle_is_idempotent_after_exact_validation(

@@ -1,3 +1,9 @@
+## 2026-11-07 — F30 #341 stage_local_bundle/readiness integriteitsverschil in BRONKANDIDAAT 0.1.152 aangepakt
+
+- Bronbasis `47b83a134b515e78acb72ed93715ff5ae6cc51ea` (0.1.151 met final push CI `42311759743` validation **SUCCESS** en `42311759784` attribution **SUCCESS**). Nieuwe branch `fix/f30-341-stage-local-record-consistency-20261107` bevat de drie nog ontbrekende `verify_wheel_records=True`-aanroepen in bestaande `FabricUpdateManager.stage_local_bundle`: bij eerder opgeslagen target, na builder vóór NOREPLACE en na promotie. Zo kan de bestaande stage-status niet `bundleReady=True` melden over een rehashed corrupte wheel wanneer `local_readiness` die al zou weigeren.
+- Negatieve pytest fixtures: bestaande bundle eerst geldig, dan wheel+SHA256SUMS herpinnen; valide oude SHA-check, fout `fabric_bundle_integrity_failed` zonder netwerk of stage-mutation. Tweede builder-fail-closed op herpinde corrupte wheel. Alle vier source/discoverybestanden naar 0.1.152. **CI/merge nog NIET GETEST.**
+- Externe originele 0.1.88 runtime en doelhost #669 niet onafhankelijk geattesteerd voor geladen wheel; echte A6 #942, A7 #943 autonomoom offline restore, owner/CI-policy, oude startbare baseline #341 en echte originale-client ACK blijven fysiek GEBLOKKEERD. Geen service, SQL, Qwen, Claude, Fabric, ED key veranderd.
+
 ## 2026-11-07 — F30 #341 PR #960 v0.1.151 SOURCE/CI VOLTOOID; originele uitrol nog WAIT
 
 - **MERGED** [PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) als `22624dbf42c63f6b57d2161eaf88f6050128a6bd`, exacte PR-head `920dcf884b0d00c8149464371f867ca5d19a122e`, 7/7 CI SUCCESS: `42310895233` Ruff+4705 pytest PASS, release-reservering, gebouwde distributie, echte disposable systemd en vijfminutendemo; `42310895135` Clean Ubuntu SUCCESS; `42310895172` Attribution SUCCESS. 0.1.151 in pyproject, server.json, glama.json en `__version__`.

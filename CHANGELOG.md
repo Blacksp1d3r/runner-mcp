@@ -1,3 +1,9 @@
+## 0.1.152 — F30/#341 bestaande local-stage status ook aan ZIP/RECORD binden (BRONKANDIDAAT)
+
+- Na 0.1.151 was `local_readiness` al strikt maar `stage_local_bundle` nog niet: de route voor een reeds bestaande `local-bundles/<commit>` kon `alreadyStaged=true, bundleReady=true` teruggeven na alleen lokale SHA256SUMS. Ook de verse GitHub-clone/build controleerde vóór en na NOREPLACE nog slechts de lokale hashes. Deze drie bestaande `_validated_bootstrap`-aanroepen gebruiken nu `verify_wheel_records=True` via exact de AL BESTAANDE ZIP/METADATA/RECORD-validator, zonder nieuwe codepaden.
+- Synthetische negatieve test voor bestaande eerder opgeslagen wheel+herberekende SHA256SUMS, en geparametriseerde negatieve builder-output die eveneens herpinde checksums bevat; geen GitHub-credentials, subprocess op herhaalde check, install, nieuwe service of transactie. Bestaande positieve stage-idempotentie blijft intact.
+- Alle vier version/discoverybestanden kandidaat 0.1.152. **CI/merge nog niet bewezen.** Geen zelfstandige host-/ownertrust, A6 #942, no-NIC A7 #943, oorspronkelijke serving-wheel #669, rollback #341 of originele-client-ACK; ED sleutel uitgesteld.
+
 ## 0.1.151 — F30/#341 lokale ZIP/RECORD-hercontrole vóór update (SOURCE/CI MERGED; NIET GEÏNSTALLEERD)
 
 - [PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) gemerged als `22624dbf42c63f6b57d2161eaf88f6050128a6bd` vanaf exact geteste head `920dcf884b0d00c8149464371f867ca5d19a122e`. Alle 7/7 PR-head CI-gates SUCCESS: Validation `42310895233` met Ruff en **4705 pytest PASS**, release-reservering, gebouwd wheel/sdist, disposable systemd en vijfminutendemo; Clean Ubuntu `42310895135` en attribution `42310895172` SUCCESS.

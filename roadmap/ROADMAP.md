@@ -1,3 +1,9 @@
+## 2026-11-07 — F30 #341 bronkandidaat 0.1.152: stage en readiness hetzelfde lokale wheel-contract
+
+- **Bevestigde broninconsistentie:** v0.1.151 `local_readiness` hercontroleert reeds ZIP/METADATA/RECORD, maar `stage_local_bundle` kon `bundleReady=true` teruggeven over dezelfde op schijf herpinde corrupte wheel doordat de idempotente route en de nieuwe builder beide alleen `SHA256SUMS` herlazen.
+- **Beperkte bestaande-functiecorrectie** in `fabric_update.py`: drie `_validated_bootstrap(..., verify_wheel_records=True)` bij opnieuw aangeboden `local-bundles/<commit>`, vóór promotie van een vers gebouwde bundle en na de bestaande atomische NOREPLACE-promotie. Hergebruik bestaande wheelhouse-parser zonder aparte updater, daemon, issuer of controller. Synthetische correctheidstests bestaande+nieuwe stage; exacte PR-head CI vereist. Source versie 0.1.152.
+- **Fysieke gates ongewijzigd:** original-host `github-runner` 0.1.88 niet independently verified voor geladen wheel #669; host/CI/source-pins, A6 #942, A7 #943 zelfstandige boot/no-network rollback, vorige startbare baseline #341 en oorspronkelijk client result+ACK ontbreken. Qwen, Claude, SQL en servers ongemoeid; ED key later.
+
 ## 2026-11-07 — F30/#341 0.1.151 lokale ZIP/RECORD-hercontrole SOURCE VOLTOOID, HOST WAIT
 
 - [Runner-MCP PR #960](https://github.com/Blacksp1d3r/runner-mcp/pull/960) **MERGED** als `22624dbf42c63f6b57d2161eaf88f6050128a6bd`, exacte head `920dcf884b0d00c8149464371f867ca5d19a122e`, CI **7/7 SUCCESS** (4705 pytest, Ruff, version/reservation, schone Ubuntu, gebouwd artifact, geïsoleerde systemd, einddemo, attribution). Bestaande `_wheel_record_check` opnieuw gebruikt bij bestaande lokale readiness/stage/preflight. Negatieve test: valide 5-asset import, daarna wheel EN SHA256SUMS samen aangepast; SHA-only accepteert de bijpassende hash, ZIP/RECORD weigert het pakket.

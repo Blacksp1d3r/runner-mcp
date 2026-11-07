@@ -732,7 +732,7 @@ class FabricUpdateManager:
                 raise FabricUpdateError("fabric_bundle_storage_conflict")
             root = self._local_bundle_root(commit)
             self._validate_local_bundle_source(root)
-            self._validated_bootstrap(commit, root=root)
+            self._validated_bootstrap(commit, root=root, verify_wheel_records=True)
             return {
                 "commit": commit,
                 "staged": True,
@@ -863,7 +863,7 @@ class FabricUpdateManager:
             )
             bundle = source / "bundle"
             self._validate_local_bundle_source(bundle)
-            self._validated_bootstrap(commit, root=bundle)
+            self._validated_bootstrap(commit, root=bundle, verify_wheel_records=True)
             # `target.exists()` was only a momentopname. Two operators
             # could both pass it: os.replace could then overwrite an empty
             # destination created by the other staging operation. Use the
@@ -872,7 +872,7 @@ class FabricUpdateManager:
                 self.local_bundles_root, work.name, commit
             )
             self._validate_local_bundle_source(target)
-            self._validated_bootstrap(commit, root=target)
+            self._validated_bootstrap(commit, root=target, verify_wheel_records=True)
         finally:
             shutil.rmtree(work, ignore_errors=True)
 

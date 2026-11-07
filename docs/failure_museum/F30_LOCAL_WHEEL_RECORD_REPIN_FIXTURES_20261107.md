@@ -1,3 +1,8 @@
+## Aanvulling 2026-11-07 — volledige lokale stage-status volgde nog niet dezelfde validator (v0.1.152 kandidaat)
+
+- Na het v0.1.151-herstel van `local_readiness` bleek bij broninspectie dat `stage_local_bundle` drie status- en opslagpaden nog met default `_validated_bootstrap` (alleen hashes) controleerde. Daardoor kon een eerder geaccepteerde maar later herpinde corrupte wheel alsnog `alreadyStaged=True, bundleReady=True` opleveren; ook de nieuwe clone/build bevestigde die READY-status zonder interne RECORD-inspectie. Dit is een inconsistentie tussen twee bestaande consumenten van dezelfde private custody, geen bewezen productie-incident.
+- Correctie: op die drie plekken expliciet `verify_wheel_records=True`, en negatieve source-fixtures voor bestaande opslag en een nieuwe ongeldige builderoutput met herberekende SHA256SUMS. Geen tweede ZIP-parser, geen service of fysieke activatie. **Nog geen groene CI voor deze aanvullende bronkandidaat of merge claim.** 0.1.151-resultaten hierboven blijven afzonderlijk bewezen.
+
 # F30 — lokale Fabric-wheel wijzigt samen met SHA256SUMS; oude ongeldige fixtures (2026-11-07)
 
 ## Risico en oorzaak

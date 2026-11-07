@@ -1,3 +1,9 @@
+## 2026-11-07 — #662 kandidaat 0.1.154: geen releasecandidate vóór clean demo en isolated systemd
+
+- PR #962 bron 0.1.153 MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`, eerste onafhankelijke main-run overlaptest `42351865566` **SUCCESS** ondanks volgende docs main commit; immutable candidate artifact ID `13566306042` aanwezig. Deze fix sluit wel lopende-CI-canceling maar niet GitHub native pending-queue-vervanging uit.
+- Nieuwe beperkte patch: binnen bestaande `.github/workflows/validation.yml` `release-artifact.needs` nu `[validate, demo-smoke, disposable-systemd-user]`, zodat interne kandidaatcusto­d­y geen mislukt/afgebroken demo-/systemd-bewijs overslaat. Bestaande repo-test borgt dependency. Vier versies kandidaat 0.1.154. **Nog CI/merge af te wachten; geen nieuwe workflow/publisher**.
+- Echte remote update vereist onverminderd correcte fysieke `github-runner` active wheel #669, independent owner pins, oude startbare release #341, echte off-target A6 #942, no-NIC A7 #943 en oorspronkelijke-client terminal result+ACK. No Qwen/Claude/SQL updates of ED key.
+
 ## 2026-11-07 — #662 0.1.153 MERGED; verifieer main-source-run over opvolgende docs push
 
 - [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530`, validation `42351656313` (4708 pytest/Ruff/reservering/systemd/artifact/demo), clean Ubuntu `42351656367`, attribution `42351656262` alle 7/7 SUCCESS; MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`. Twee bestaande workflows behouden in-progress `main` runs; PR-runs blijven latest-only. Geen nieuwe updater/relay/ED.

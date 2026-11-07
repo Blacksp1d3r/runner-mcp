@@ -52,3 +52,20 @@ def test_main_release_workflows_never_cancel_previous_source_commit() -> None:
         assert "github.ref" in concurrency
         assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in concurrency
         assert "cancel-in-progress: true" not in concurrency
+
+def test_release_candidate_depends_on_demo_and_isolated_systemd() -> None:
+    """Artifact kan niet voor de echte demo en disposable hersteltest verschijnen.
+
+    De al bestaande main-validatiebron blijft leidend: geen tweede workflow,
+    geen eigen publisher en geen gegenereerde artifact- of hosttoestemming.
+    """
+    root = Path(__file__).resolve().parents[2]
+    text = (root / ".github" / "workflows" / "validation.yml").read_text(
+        encoding="utf-8"
+    )
+    assert "\n  demo-smoke:\n" in text
+    assert "\n  disposable-systemd-user:\n" in text
+    assert "\n  release-artifact:\n" in text
+    declaration = text.split("\n  release-artifact:\n", 1)[1].split("\n    steps:", 1)[0]
+    assert "needs: [validate, demo-smoke, disposable-systemd-user]" in declaration
+    assert "    needs: validate\n" not in declaration

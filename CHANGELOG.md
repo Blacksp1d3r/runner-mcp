@@ -1,3 +1,8 @@
+## 0.1.154 — #662 kandidaatartifact pas na volledige bestaande demo en systemd-test (BRONKANDIDAAT)
+
+- De reeds bestaande main-release-`release-artifact` job had alleen `needs: validate`. Bij v0.1.152 was het immutable source-artifact al geüpload terwijl de vijfminutendemo later CANCELLED werd; kandidaat ≠ volledige CI-groen. Dezelfde bestaande job krijgt nu `needs: [validate, demo-smoke, disposable-systemd-user]`. Geen nieuwe workflow, runner, uploader, cache, CI-control-plane of artifactopslag.
+- Bestaande workflow-test borgt dat echte demo en disposable systemd aan de artifactjob voorafgaan. Version/discovery kandidaat 0.1.154 in vier bestanden. **Exact-head CI en merge nog vereist.** Externe attribution/clean Ubuntu, fysieke owner/host/wheel #669 en A6/A7/ACK blijven afzonderlijke bewijspoorten; geen live update.
+
 ## 0.1.153 — #662 actieve main-release CI blijft intact bij latere docs-push (SOURCE/CI MERGED)
 
 - [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) exact head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530` **7/7 CI SUCCESS**: validation `42351656313` Ruff + **4708 pytest PASS**, reservering, disposable systemd, artifact en einddemo; clean Ubuntu `42351656367`, attribution `42351656262` beide SUCCESS. Squash MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`, PR/main readback bevestigd.

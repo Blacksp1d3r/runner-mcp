@@ -1,3 +1,9 @@
+## 2026-11-07 — #662 v0.1.154 kandidaat: artifactjob afhankelijk van bestaande demo en systemd
+
+- Bewezen #962 v0.1.153: exact-head 7/7 PASS; source main `f79f07e27b5af1d97c7019f298e42c5275af85f9` validation `42351865566` **SUCCESS** nadat docs main push `ffdf4fc9321e078341a6324f01caad77dacd9508` gestart was; kandidaat `runner-mcp-candidate-0.1.153-f79f...` artifact ID `13566306042` aanwezig, niet verlopen. Actieve main-runs worden niet meer geannuleerd.
+- Werkpunt: `release-artifact.needs: validate` kon nog een kandidaat uploaden voordat demo/systemd gedaan waren, zoals eerdere CANCELLED main run 0.1.152. Branch `fix/662-gate-candidate-on-complete-smoke-20261107` wijzigt uitsluitend `needs` voor bestaande `release-artifact` naar `[validate, demo-smoke, disposable-systemd-user]`; versie 0.1.154 vier manifesten, nieuwe statische regressietest. **PR-head CI/merge NIET bewezen.**
+- Separaat: owner-autoriteit #669, rollback #341, Fabric A6 #942/A7 #943 en echte oorspronkelijke-client result+ACK ontbreken. Verbonden 0.1.88 blijft zonder actieve wheel/host bewezen; géén install, rollback, ED key of Qwen/Claude/SQL-wijziging.
+
 ## 2026-11-07 — #662 v0.1.153 CI-cancellation-fix MERGED; fysieke 0.1.88 onveranderd
 
 - PR #962 exact head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530`, **7/7 GitHub CI SUCCESS**: validation `42351656313` Ruff+4708 pytest PASS/artifact/systemd/demo/reservering, Ubuntu `42351656367` en attribution `42351656262` PASS. Merge `f79f07e27b5af1d97c7019f298e42c5275af85f9` en main readback PASS. V0.1.153 vier release/discoverybestanden gelijk.

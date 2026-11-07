@@ -1,3 +1,8 @@
+## 2026-11-07 — #662 0.1.154 automatische artifactpublicatie na demo/isolated systemd (SOURCE KANDIDAAT)
+
+- V0.1.152 uploadde kandidaatartifact `13565557686` terwijl main validation `42351052147` later eindigde CANCELLED in de einddemo. V0.1.153 #962 beschermt lopende main-runs tegen volgende docs-commits (na echte v0.1.153 main-run `42351865566` SUCCESS bewezen). Resterend rechtstreeks bronprobleem: `release-artifact` had in bestaande `validation.yml` alleen `needs: validate`, zodat artifact eerder kon verschijnen dan de volledige demo en systemd-test groen waren.
+- Beperkte volgende fix: **dezelfde** release-artifactjob gebruikt `needs: [validate, demo-smoke, disposable-systemd-user]`. Geen extra pipeline, compiler, publicatiesysteem, security-issuer of controller. Eén workflow-test beschermt deze afhankelijkheid. Exacte-head CI/merge nog vereist. On-site #669/#341/A6 #942/A7 #943 en oorspronkelijke client ACK nog WAIT.
+
 ## 2026-11-07 — #662 0.1.153 behouden actieve main-release CI (MERGED / live-uitrol WAIT)
 
 - GitHub run `42351052147` v0.1.152 CANCELLED door volgende docs main-commit ondanks bestaande candidate ID `13565557686`; volledige CI-bronrun dus NIET GREEN. [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) verandert alleen de twee bestaande CI cancellation-instellingen; exact-head **7/7 PASS, 4708 pytest**, MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`. Actieve main-validaties worden niet meer door docs-pushes afgebroken; PR-checks mogen nog latest-only. Het aparte geval van superseded **wachtende** GitHub-main-runs is niet hiermee bewezen/uitgesloten.

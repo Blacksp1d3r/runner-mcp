@@ -146,7 +146,9 @@ jobs:
 
   release-artifact:
     name: Built release artifact
-    needs: validate
+    # Pas een publiceerbare source-kandidaat bouwen na de bestaande volledige
+    # demo én de onafhankelijke disposable-systemd-test (geen extra job).
+    needs: [validate, demo-smoke, disposable-systemd-user]
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

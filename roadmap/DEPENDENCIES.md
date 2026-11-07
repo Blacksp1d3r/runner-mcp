@@ -1,3 +1,8 @@
+## 2026-11-07 — #662 0.1.154 source candidate: releaseartifact niet voor volledige CI-demo
+
+- Bestaande main `release-artifact` werkte na `validate`, parallel met `demo-smoke`; bewijs: v0.1.152 kandidaat `13565557686` bestaat, maar main workflow `42351052147` was CANCELLED. Nieuwe bronpatch laat originele artifactjob pas starten na `validate`, `demo-smoke` én `disposable-systemd-user`. Geen second workflow of fysieke acties, CI en merge nog vereist. Attributie/Ubuntu blijven aparte workflows.
+- Main CI serialisation & GitHub pending queue, oorspronkelijke host actieve wheel #669, rollback baseline #341, owner policy, A6 #942, A7 #943 en client ACK blijven aparte formele gates.
+
 ## 2026-11-07 — #662 actieve CI-release-run beschermingsfix 0.1.153 merged; operator gates open
 
 - [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) exact-head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530` 7/7 CI PASS (4708 pytest), MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`. De originele main/PR-workflowgroepen annuleren uitsluitend PR-runs; actieve main-release validaties kunnen niet langer worden geannuleerd door volgende docs-pushes. GitHub's pending-queue semantics blijven onafhankelijke bronacceptatie-afhankelijkheid.

@@ -1,3 +1,9 @@
+## 2026-11-07 — F30 #341 0.1.152 MERGED, full CI PASS; fysieke originele host blijft NIET GETEST
+
+- [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) definitief gemerged `4155e7f7219139603a167dbaa72abb84694c749b` vanaf exact geteste head `ef54623fb6062f18b000345eb0ea68750cb4f10e`; **7/7 GitHub CI SUCCESS**, `42350814697` Ruff + **4707 pytest PASS** + release-reservation + disposable systemd + artifact + demo; `42350814668` clean Ubuntu, `42350814756` attribution SUCCESS. Alle vier versie/discovery-bestanden 0.1.152.
+- Drie `stage_local_bundle`-checks gebruiken dezelfde bestaande ZIP/METADATA/RECORD-validator als `local_readiness`; synthetische invalid wheel + repinned SHA256SUMS bestaande en nieuwe stage weigeren. Geen nieuwe updater/installer, geen productieactie.
+- Verbonden oude 0.1.88 bevestigt `reply_source_host_verified=false`, `active_artifact_digest=null`, `self_update_ready=false`; dit is GEEN originele `github-runner` live wheel attestation #669. Owner-approved bron/CI/hosttrust, A6 #942, A7 boot/no-network #943 en bestaande startbare baseline #341 plus authentieke original-client ACK nog GEBLOKKEERD. Geen Qwen/Claude/SQL/server-mutaties.
+
 ## 2026-11-07 — F30 #341 stage_local_bundle/readiness integriteitsverschil in BRONKANDIDAAT 0.1.152 aangepakt
 
 - Bronbasis `47b83a134b515e78acb72ed93715ff5ae6cc51ea` (0.1.151 met final push CI `42311759743` validation **SUCCESS** en `42311759784` attribution **SUCCESS**). Nieuwe branch `fix/f30-341-stage-local-record-consistency-20261107` bevat de drie nog ontbrekende `verify_wheel_records=True`-aanroepen in bestaande `FabricUpdateManager.stage_local_bundle`: bij eerder opgeslagen target, na builder vóór NOREPLACE en na promotie. Zo kan de bestaande stage-status niet `bundleReady=True` melden over een rehashed corrupte wheel wanneer `local_readiness` die al zou weigeren.

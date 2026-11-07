@@ -1,3 +1,9 @@
+## F30 2026-11-07 — extra stage-status regressie nu afgerond (0.1.152)
+
+- Na #960 had `stage_local_bundle` drie oude hash-only checks die na aanpassing van wheel én SHA256SUMS `bundleReady=True` konden melden, terwijl de inmiddels strengere `local_readiness` de ZIP weigerde. **Geen productie-incident aangetoond**.
+- [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) deelt nu dezelfde bestaande `verify_wheel_records=True` op de drie stage-checkpoints; twee nieuwe synthetische regressies (bestaande en vers gebouwde bundel) PASS. Exact head `ef54623fb6062f18b000345eb0ea68750cb4f10e` 7/7 CI PASS inclusief **4707 pytest**; merge `4155e7f7219139603a167dbaa72abb84694c749b`. Oude kandidaatclaims hieronder zijn historische momentopnames, niet huidige CI-status.
+- **Geen originele fysieke host-/wheel-, A6-/A7- of ACK-admissie.** Hergebruik de validator, bouw nooit een tweede updatepad.
+
 ## Aanvulling 2026-11-07 — volledige lokale stage-status volgde nog niet dezelfde validator (v0.1.152 kandidaat)
 
 - Na het v0.1.151-herstel van `local_readiness` bleek bij broninspectie dat `stage_local_bundle` drie status- en opslagpaden nog met default `_validated_bootstrap` (alleen hashes) controleerde. Daardoor kon een eerder geaccepteerde maar later herpinde corrupte wheel alsnog `alreadyStaged=True, bundleReady=True` opleveren; ook de nieuwe clone/build bevestigde die READY-status zonder interne RECORD-inspectie. Dit is een inconsistentie tussen twee bestaande consumenten van dezelfde private custody, geen bewezen productie-incident.

@@ -1,3 +1,8 @@
+## 2026-11-07 — F30 #341 0.1.152 lokale statuspoorten consistent: SOURCE/CI DONE
+
+- [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) exact-head `ef54623fb6062f18b000345eb0ea68750cb4f10e` 7/7 CI PASS met **4707 pytest** en clean Ubuntu, MERGED `4155e7f7219139603a167dbaa72abb84694c749b`. De reeds bestaande `verify_wheel_records`-controle wordt ook bij drie oorspronkelijke `stage_local_bundle`-branches gebruikt, inclusief herpinde corrupte ZIP-test. Geen parallelle validator/updater.
+- Originele host/source/wheel #669, eigenaar-policy, vorige startbare baseline #341, onafhankelijke A6 #942 en A7 #943 offline restore en originele-client ACK blijven OPEN. Geen productie-installatie.
+
 ## 2026-11-07 — F30 #341 volledige lokale bundle-state consistentie (v0.1.152 kandidaat)
 
 - Existing `stage_local_bundle` READY/ALREADY_STAGED bewees niet dezelfde ZIP/RECORD-acceptatie als `local_readiness`; de nieuwe patch hergebruikt opt-in `verify_wheel_records` op alle drie de bestaande lokale stage-checkpoints. Negatieve regressie: wheel aangepast+SHA256SUMS mee herberekend, toch weigering van stage, vóór lokale install/remote handoff. Source only; exacte-head CI/merge nog vereist.

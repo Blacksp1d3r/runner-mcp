@@ -1,3 +1,8 @@
+## 2026-11-07 — F30 #341 source 0.1.152 definitief getest en gemerged; fysieke uitrol nog WAIT
+
+- [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) 7/7 CI groen op head `ef54623fb6062f18b000345eb0ea68750cb4f10e`, **4707 tests PASS**, MERGED `4155e7f7219139603a167dbaa72abb84694c749b`. Hergebruik bestaande ZIP/METADATA/RECORD-controle bij alle lokale stage-statuspaden; een ZIP met mee herberekende SHA256SUMS krijgt niet langer `bundleReady=True`; geen nieuwe updater.
+- **Volgende werkelijke blokkades:** onafhankelijke originele `github-runner` actieve wheel/zesrollen-generatie #669, owner/CI/source/hostpolicy, behouden startbare rollback #341, Fabric A6 #942 off-target journal en A7 #943 zelfstandige boot/no-NIC herstel, authentieke client result+ACK. Geen fysieke update of nieuwe ED-sleutel vóór bruikbaar automatisch updaten, Qwen en Claude.
+
 ## 2026-11-07 — F30 #341 bronkandidaat 0.1.152: stage en readiness hetzelfde lokale wheel-contract
 
 - **Bevestigde broninconsistentie:** v0.1.151 `local_readiness` hercontroleert reeds ZIP/METADATA/RECORD, maar `stage_local_bundle` kon `bundleReady=true` teruggeven over dezelfde op schijf herpinde corrupte wheel doordat de idempotente route en de nieuwe builder beide alleen `SHA256SUMS` herlazen.

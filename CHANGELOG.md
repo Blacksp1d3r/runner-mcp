@@ -1,3 +1,9 @@
+## 0.1.152 — F30/#341 local stage ZIP/RECORD consistentie CI VOLTOOID / MERGED (7 november 2026)
+
+- [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) exacte head `ef54623fb6062f18b000345eb0ea68750cb4f10e`: 7/7 CI SUCCESS, Ruff, **4707 pytest PASS**, release-reservering, gebouwd artifact, disposable systemd en volledige demo in [validation 42350814697](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/42350814697), Clean Ubuntu 42350814668 en attribution 42350814756 SUCCESS. Squash MERGED `4155e7f7219139603a167dbaa72abb84694c749b`, GitHub main en PR readback bevestigd.
+- De drie bestaande `stage_local_bundle`-checkpoints (bestaande opgeslagen bundel, nieuwe builder vóór NOREPLACE, opgeslagen eindbundel) hergebruiken nu de al aanwezige `verify_wheel_records=True`; negatieve repinned wheel+SHA256SUMS-tests weigeren vóór READY/promotie, positieve flows slagen. Geen nieuwe updater of tool.
+- **Bron/CI voltooid; productie NIET geïnstalleerd:** originele host/serving-wheel #669, eigenaarpolicy, A6 #942, autonome A7 #943/#341 en original-client ACK blijven hard WAIT. ED productsleutel uitgesteld; Qwen/Claude/SQL ongewijzigd.
+
 ## 0.1.152 — F30/#341 bestaande local-stage status ook aan ZIP/RECORD binden (BRONKANDIDAAT)
 
 - Na 0.1.151 was `local_readiness` al strikt maar `stage_local_bundle` nog niet: de route voor een reeds bestaande `local-bundles/<commit>` kon `alreadyStaged=true, bundleReady=true` teruggeven na alleen lokale SHA256SUMS. Ook de verse GitHub-clone/build controleerde vóór en na NOREPLACE nog slechts de lokale hashes. Deze drie bestaande `_validated_bootstrap`-aanroepen gebruiken nu `verify_wheel_records=True` via exact de AL BESTAANDE ZIP/METADATA/RECORD-validator, zonder nieuwe codepaden.

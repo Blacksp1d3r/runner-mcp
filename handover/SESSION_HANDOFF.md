@@ -1,3 +1,8 @@
+## 2026-11-07 — F30 #341 0.1.152 exact gemerged; volgende stap originele actieve generatie en offline herstel
+
+- SOURCE VOLTOOID: [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961), head `ef54623fb6062f18b000345eb0ea68750cb4f10e` **7/7 CI PASS** (4707 pytest, Ruff/reservering/systemd/artifact/demo/Ubuntu/attribution), merge `4155e7f7219139603a167dbaa72abb84694c749b` teruggelezen. Reuse bestaande `verify_wheel_records` ook in drie `stage_local_bundle` checks; ongeldig wheel met mee aangepast SHA256SUMS kan niet meer READY rapporteren.
+- **LIVE STILL WAIT:** fysieke `AF-HOST-0001` `github-runner` / `gha-runner` :8000 actuele wheeldigest/geladen bron #669 ontbreekt; owner/CI/hostpolicy, oude startbare herstelrelease #341, bestaande A6 #942, A7 #943 onafhankelijke boot/no-NIC herstelproef en oorspronkelijke-client terminal result+ACK ontbreken. Verbonden 0.1.88 bevestigt niet de fysieke bron. **Geen** start/apply, restart, duplicaat controller, ED key, Qwen/Claude/SQL-wijziging. Oudere kandidaattekst hieronder is historisch; CI/merge is nu wel bewezen.
+
 ## 2026-11-07 — F30 #341 vervolg na 0.1.151: begrensde stage-status correctie als 0.1.152 PR-kandidaat
 
 - 0.1.151 head commit `22624dbf42c63f6b57d2161eaf88f6050128a6bd`, final docs/main `47b83a134b515e78acb72ed93715ff5ae6cc51ea`; post-merge main CI compleet SUCCESS. Nog open bronpunt: de bestaande `stage_local_bundle` kende drie `_validated_bootstrap`-aanroepen zonder `verify_wheel_records=True` en kon dus `bundleReady=True` claimen voor ZIP zonder geldige RECORD met bijpassend herpinde SHA256SUMS, anders dan `local_readiness`.

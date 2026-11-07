@@ -6,8 +6,6 @@ import json
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
-import pytest
-
 from runner_mcp.aifordable_relay import AIfordableRelayConfig
 from runner_mcp.command_result_capture import (
     CommandResultCapture,

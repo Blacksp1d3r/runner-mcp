@@ -1,3 +1,9 @@
+## 0.1.153 — #662 automatische main-releasecontrole behouden wanneer latere commit binnenkomt (BRONKANDIDAAT)
+
+- Bestaande `validation.yml` en `commit-attribution-policy.yml` hadden `cancel-in-progress: true` op hun main-ref concurrencygroep. Een opvolgende, louter documentatiecommit kon daardoor de vorige, werkelijk versiebepalende source-push afbreken vóór de einddemo, zelfs als een exact wheel/sdist-artifact al was opgeslagen.
+- Alleen bij `pull_request` worden nu achterhaalde runs geannuleerd; elke main-push houdt zijn eigen bestaande run/commit en blijft in de bestaande concurrencygroep ordelijk afwerken. Geen nieuwe workflow, runner, controller of artifactopslag. De bestaande normale `release-artifact`-job, versiereservering en CI blijven ongewijzigd.
+- Feitelijk gereproduceerd: v0.1.152 main push `4155e7f7219139603a167dbaa72abb84694c749b`, validation `42351052147` CANCELLED door volgende docs main push, maar artifact `runner-mcp-candidate-0.1.152-4155e7f7219139603a167dbaa72abb84694c749b` id `13565557686` is wel gepubliceerd; niet gelijkstellen aan complete main-run PASS. Nieuwe regressie beschermt beide workflows. **Exact-head CI en merge voor 0.1.153 nog vereist.**
+
 ## 0.1.152 — F30/#341 local stage ZIP/RECORD consistentie CI VOLTOOID / MERGED (7 november 2026)
 
 - [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) exacte head `ef54623fb6062f18b000345eb0ea68750cb4f10e`: 7/7 CI SUCCESS, Ruff, **4707 pytest PASS**, release-reservering, gebouwd artifact, disposable systemd en volledige demo in [validation 42350814697](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/42350814697), Clean Ubuntu 42350814668 en attribution 42350814756 SUCCESS. Squash MERGED `4155e7f7219139603a167dbaa72abb84694c749b`, GitHub main en PR readback bevestigd.

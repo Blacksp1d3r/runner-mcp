@@ -1,3 +1,9 @@
+## 2026-11-07 — #662 bescherming van autonome main-release CI (0.1.153 BRONKANDIDAAT)
+
+- **Concreet reproducerende blokkade:** Runner-MCP 0.1.152 shipping commit `4155e7f7219139603a167dbaa72abb84694c749b` produceerde artifact id `13565557686` (volgens GitHub officieel), maar main workflow `42351052147` werd CANCELLED terwijl einddemo liep na volgende documentatiepush `5220b3e7097b1ebb480a6d0c7e31461944df874d`. Dit verliest de volledige main-release-CI-acceptatie, ondanks bewezen exact-head PR-tests.
+- Bestaande CI-groepen blijven bestaan; alleen `cancel-in-progress: ${{ github.event_name == 'pull_request' }}` in validatie en commit-attributie. Hiermee kunnen PR-verversingen oude runs annuleren, main/source-pushes nooit. Bestaand release-artifact en 30-dagen candidate custody behouden; geen parallelle publisher/daemon, geen productiesleutel. Testcontrole voor beide werkstromen. **PR-head CI/merge nog af te wachten.**
+- Fysieke uitrol blijft WAIT: originele host/wheel #669, owner/CI/host-policy, vorige startbare baseline #341, Fabric A6 #942, no-NIC A7 #943, oorspronkelijke-client ACK. ED key pas na werkende auto-updates/Qwen/Claude.
+
 ## 2026-11-07 — F30 #341 source 0.1.152 definitief getest en gemerged; fysieke uitrol nog WAIT
 
 - [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) 7/7 CI groen op head `ef54623fb6062f18b000345eb0ea68750cb4f10e`, **4707 tests PASS**, MERGED `4155e7f7219139603a167dbaa72abb84694c749b`. Hergebruik bestaande ZIP/METADATA/RECORD-controle bij alle lokale stage-statuspaden; een ZIP met mee herberekende SHA256SUMS krijgt niet langer `bundleReady=True`; geen nieuwe updater.

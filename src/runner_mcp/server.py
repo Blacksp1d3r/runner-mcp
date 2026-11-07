@@ -91,6 +91,7 @@ from .ci_runner_lifecycle import (
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .coding_workspace import CodingWorkspaceProvisioner
 from .config import ProjectRegistry, load_project_registry
+from .command_result_capture import build_command_result_capture
 from .control_center_black import (
     BlackControlEvidenceError,
     confirm_black_ack_readback,
@@ -485,6 +486,8 @@ def build_mcp(
 ) -> MCPServer:
     harden_mcp_argument_validation()
     serving_epoch = ServingInstanceEpoch()
+    private_values = secret_values or os.environ
+    command_result_middleware = build_command_result_capture(private_values)
     mcp = MCPServer(
         "Runner MCP",
         token_verifier=StaticBearerVerifier(settings.bearer_token, settings.resource_url),
@@ -493,6 +496,11 @@ def build_mcp(
             resource_server_url=AnyHttpUrl(settings.resource_url),
             required_scopes=["runner:read"],
             validate_token_resource=True,
+        ),
+        middleware=(
+            [command_result_middleware]
+            if command_result_middleware is not None
+            else None
         ),
     )
     files = FileAccessService(registry)
@@ -513,7 +521,6 @@ def build_mcp(
         if settings.test_jobs_root is not None
         else None
     )
-    private_values = secret_values or os.environ
     coding_workspaces = CodingWorkspaceProvisioner(private_values)
     github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
     known_project_local_sources = private_values.get(

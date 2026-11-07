@@ -1,3 +1,9 @@
+## 0.1.155 — #341 hersteltransactie atomair zonder overschrijven (BRONKANDIDAAT)
+
+- Bestaande `SelfUpdatePackageInstaller.begin_transaction` controleerde eerst een afwezige hersteltransactie, maar publiceerde daarna via `os.replace`. Twee concurrerende installateurs konden daardoor een na die controle verschenen originele transactie vervangen en de juiste terugvalbasis verliezen.
+- De bestaande `self-update-install-transaction.json` wordt nu via `os.link(..., follow_symlinks=False)` atomair en zonder overschrijven gepubliceerd, gevolgd door verwijdering van uitsluitend de eigen tijdelijke naam en de bestaande directory-`fsync`. Bij conflict of ontbrekende hardlinkondersteuning weigert de installer; geen onveilig `os.replace`-alternatief.
+- Twee gerichte regressietests houden een door een tweede updater gepubliceerde geldige transactie byte-identiek en weigeren de publicatie bij ontbrekende atomaire ondersteuning. Alle bestaande transactiepaden en rollback-/safetycontracten behouden. Alleen bron en test; geen nieuwe updater, controller, dienst, hostinstallatie, A7-proef, Ed25519-sleutel of Claude/Qwen-wijziging. Volledige CI/merge en fysiek bewijs blijven afzonderlijke poorten.
+
 ## 0.1.154 — #662 kandidaatartifact pas na volledige bestaande demo en systemd-test (BRONKANDIDAAT)
 
 - De reeds bestaande main-release-`release-artifact` job had alleen `needs: validate`. Bij v0.1.152 was het immutable source-artifact al geüpload terwijl de vijfminutendemo later CANCELLED werd; kandidaat ≠ volledige CI-groen. Dezelfde bestaande job krijgt nu `needs: [validate, demo-smoke, disposable-systemd-user]`. Geen nieuwe workflow, runner, uploader, cache, CI-control-plane of artifactopslag.

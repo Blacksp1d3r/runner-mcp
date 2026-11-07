@@ -90,8 +90,8 @@ from .ci_runner_lifecycle import (
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
 from .coding_workspace import CodingWorkspaceProvisioner
-from .config import ProjectRegistry, load_project_registry
 from .command_result_capture import build_command_result_capture
+from .config import ProjectRegistry, load_project_registry
 from .control_center_black import (
     BlackControlEvidenceError,
     confirm_black_ack_readback,

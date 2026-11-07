@@ -34,3 +34,21 @@ def test_qualification_does_not_reuse_runner_dependency_or_publisher_cache() -> 
     assert "mcp-publisher_linux_amd64.tar.gz" in text
     assert "persist-credentials: false" in text
     assert "ref: ${{ github.sha }}" in text
+
+def test_main_release_workflows_never_cancel_previous_source_commit() -> None:
+    """Bewaar een main-releasevalidatie bij een latere documentatiecommit.
+
+    PR-branches mogen hun verouderde testgeneratie wel annuleren. De twee
+    bestaande CI-workflows op de beschermde hoofdbranch mogen hun eerdere
+    sourceversiecontrole niet als CANCELLED markeren door een opvolgende push.
+    Dit is een statische regressietest, zonder nieuwe workflow of job.
+    """
+    base = Path(__file__).resolve().parents[2] / ".github" / "workflows"
+    for name in ("validation.yml", "commit-attribution-policy.yml"):
+        text = (base / name).read_text(encoding="utf-8")
+        assert text.count("\nconcurrency:\n") == 1
+        concurrency = text.split("\nconcurrency:\n", 1)[1].split("\njobs:", 1)[0]
+        assert "  group:" in concurrency
+        assert "github.ref" in concurrency
+        assert "cancel-in-progress: ${{ github.event_name == 'pull_request' }}" in concurrency
+        assert "cancel-in-progress: true" not in concurrency

@@ -509,8 +509,12 @@ class SelfUpdatePackageInstaller:
                 handle.flush()
                 os.fsync(handle.fileno())
             os.chmod(temporary, 0o600)
-            os.replace(temporary, self.transaction_path)
-            os.chmod(self.transaction_path, 0o600)
+            # De eerdere pending-check is geen lock: een andere updater kan
+            # intussen een hersteltransactie hebben gepubliceerd. Hardlink
+            # binnen dezelfde map maakt de publicatie atomair zonder
+            # bestaande herstelbewijzen ooit te vervangen.
+            os.link(temporary, self.transaction_path, follow_symlinks=False)
+            temporary.unlink()
             directory_fd = os.open(self.transaction_path.parent, os.O_RDONLY)
             try:
                 os.fsync(directory_fd)

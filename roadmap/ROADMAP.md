@@ -1,3 +1,8 @@
+## 2026-11-07 — #662 0.1.153 behouden actieve main-release CI (MERGED / live-uitrol WAIT)
+
+- GitHub run `42351052147` v0.1.152 CANCELLED door volgende docs main-commit ondanks bestaande candidate ID `13565557686`; volledige CI-bronrun dus NIET GREEN. [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) verandert alleen de twee bestaande CI cancellation-instellingen; exact-head **7/7 PASS, 4708 pytest**, MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`. Actieve main-validaties worden niet meer door docs-pushes afgebroken; PR-checks mogen nog latest-only. Het aparte geval van superseded **wachtende** GitHub-main-runs is niet hiermee bewezen/uitgesloten.
+- **Fysieke uitrol NO:** originele serving-wheel/host #669, startbare rollback #341, owner-source/CI-hostpolicy, A6 #942, onafhankelijke offline A7 #943 en oorspronkelijke-client result+ACK. Geen nieuw releasecontroller/updater of ED key; andere sporen ongemoeid.
+
 ## 2026-11-07 — #662 bescherming van autonome main-release CI (0.1.153 BRONKANDIDAAT)
 
 - **Concreet reproducerende blokkade:** Runner-MCP 0.1.152 shipping commit `4155e7f7219139603a167dbaa72abb84694c749b` produceerde artifact id `13565557686` (volgens GitHub officieel), maar main workflow `42351052147` werd CANCELLED terwijl einddemo liep na volgende documentatiepush `5220b3e7097b1ebb480a6d0c7e31461944df874d`. Dit verliest de volledige main-release-CI-acceptatie, ondanks bewezen exact-head PR-tests.

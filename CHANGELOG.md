@@ -1,3 +1,8 @@
+## 0.1.153 — #662 actieve main-release CI blijft intact bij latere docs-push (SOURCE/CI MERGED)
+
+- [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) exact head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530` **7/7 CI SUCCESS**: validation `42351656313` Ruff + **4708 pytest PASS**, reservering, disposable systemd, artifact en einddemo; clean Ubuntu `42351656367`, attribution `42351656262` beide SUCCESS. Squash MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`, PR/main readback bevestigd.
+- De twee bestaande `validation.yml`/attribution-workflows annuleren nu alleen verouderde PR-runs, niet reeds **lopende** main-runs bij een latere main/docs-push. Geen nieuw CI-systeem/updater. **Beperking:** GitHub native concurrency kan nog verouderde *wachtende* runs vervangen; iedere source SHA fysiek afwerken is hiermee niet universeel bewezen. Echte activatie blijft #669/#341/Fabric #942/#943/ACK WAIT.
+
 ## 0.1.153 — #662 automatische main-releasecontrole behouden wanneer latere commit binnenkomt (BRONKANDIDAAT)
 
 - Bestaande `validation.yml` en `commit-attribution-policy.yml` hadden `cancel-in-progress: true` op hun main-ref concurrencygroep. Een opvolgende, louter documentatiecommit kon daardoor de vorige, werkelijk versiebepalende source-push afbreken vóór de einddemo, zelfs als een exact wheel/sdist-artifact al was opgeslagen.

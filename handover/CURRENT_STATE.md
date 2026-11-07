@@ -1,3 +1,9 @@
+## 2026-11-07 — #662 v0.1.153 CI-cancellation-fix MERGED; fysieke 0.1.88 onveranderd
+
+- PR #962 exact head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530`, **7/7 GitHub CI SUCCESS**: validation `42351656313` Ruff+4708 pytest PASS/artifact/systemd/demo/reservering, Ubuntu `42351656367` en attribution `42351656262` PASS. Merge `f79f07e27b5af1d97c7019f298e42c5275af85f9` en main readback PASS. V0.1.153 vier release/discoverybestanden gelijk.
+- Bestaande `.github/workflows/validation.yml` en `commit-attribution-policy.yml` beperken automatische cancel nu tot pull requests. Dit voorkomt de op GitHub bewezen v0.1.152 source-run CANCELED-after-artifact door docs commit. **Nog geen onafhankelijk live bewijs** van nieuw source-run-retentie-eindresultaat op main; docs-opvolgcommit dient hiervoor als concrete check. GitHub kan nog wachtende runs vervangen, dus dit is geen per-commit totaalgarantie.
+- Connected v0.1.88 `self_update_ready=false`, originele actieve wheel #669, owner CI/source/host pins, A6 #942, echte offline A7 #943, oude startbare rollback #341 en oorspronkelijke-client durable ACK nog HARD WAIT. Geen installatie of Qwen/Claude/SQL-wijziging.
+
 ## 2026-11-07 — #662 source 0.1.153: cancel-in-progress op main veroorzaakte incomplete source push
 
 - **Geverifieerde GitHub-registratie:** v0.1.152 code merge `4155e7f7219139603a167dbaa72abb84694c749b`, main validation `42351052147` = CANCELLED (Ruff/pytest en artifact job SUCCESS; vijfminutendemo CANCELLED), main artifact `runner-mcp-candidate-0.1.152-4155e7f7219139603a167dbaa72abb84694c749b` ID `13565557686` EXISTEERT/NOT EXPIRED. Volgende louter documentatiecommit `5220b3e7097b1ebb480a6d0c7e31461944df874d` main validation `42351240774` SUCCESS. Vóór correctie konden nieuwe main pushes oudere source main-CI annuleren; artifact bewaard is GEEN volledig main-run bewijs.

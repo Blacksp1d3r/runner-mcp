@@ -1,3 +1,8 @@
+## 2026-11-07 — #662 actieve CI-release-run beschermingsfix 0.1.153 merged; operator gates open
+
+- [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) exact-head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530` 7/7 CI PASS (4708 pytest), MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`. De originele main/PR-workflowgroepen annuleren uitsluitend PR-runs; actieve main-release validaties kunnen niet langer worden geannuleerd door volgende docs-pushes. GitHub's pending-queue semantics blijven onafhankelijke bronacceptatie-afhankelijkheid.
+- Geen echte host update: original-serving #669, ownerpolicy, oude rollback #341, Fabric A6 #942, A7 #943 en originele-client result+ACK nog WAIT.
+
 ## 2026-11-07 — Runner-MCP #662 source candidate 0.1.153: main-CI uitrolkandidaat niet annuleren
 
 - Main-shipping validation `42351052147` voor 0.1.152 werd geannuleerd door de volgende docs push vóór einddemo; eigen artifactjob had candidate `13565557686` wel succesvol bewaard. Main-run was NIET groen. De bestaande `validation.yml` en `commit-attribution-policy.yml` beperken cancellen voortaan tot PR-events, main-push-afwerking blijft onaangetast en geordend. Geen nieuwe release-controller, updater, GitHub-event, secrets of server.

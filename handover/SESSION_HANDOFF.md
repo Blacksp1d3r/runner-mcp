@@ -1,3 +1,9 @@
+## 2026-11-07 — #662 0.1.153 MERGED; verifieer main-source-run over opvolgende docs push
+
+- [PR #962](https://github.com/Blacksp1d3r/runner-mcp/pull/962) head `aa39aa72e65abc9e8be27d9672d5ce8c9e15e530`, validation `42351656313` (4708 pytest/Ruff/reservering/systemd/artifact/demo), clean Ubuntu `42351656367`, attribution `42351656262` alle 7/7 SUCCESS; MERGED `f79f07e27b5af1d97c7019f298e42c5275af85f9`. Twee bestaande workflows behouden in-progress `main` runs; PR-runs blijven latest-only. Geen nieuwe updater/relay/ED.
+- Gedocumenteerd incident v0.1.152: exact shipping `4155e7f7219139603a167dbaa72abb84694c749b` main validation `42351052147` CANCELLED door docs push, ondanks candidate ID `13565557686`. V0.1.153 main source-run is actief bij documentatiepush; controleer na volledige CI of hij **SUCCESS** i.p.v. CANCELLED is. Op GitHub wachten/pending kunnen nog vervallen, dus niet per-commit universele levering claimen.
+- Fysieke originele-host #669, owner/CI/sourcepolicy, baseline #341, echte off-target A6 #942, onafhankelijk offline A7 #943 en originele-client terminal result+ACK blijven open. Connected runtime 0.1.88 zonder active digest; niets installeren.
+
 ## 2026-11-07 — #662 main push retention gate in bestaande CI, kandidaat 0.1.153
 
 - Source 0.1.152 PR #961 exact-head 7/7 PASS, merged `4155e7f7219139603a167dbaa72abb84694c749b`; daarna bestaande concurrency `cancel-in-progress: true` annuleerde main validation `42351052147` na succesvolle artifact-upload (candidate ID `13565557686`, NIET verlopen) maar vóór demo. Docs-only 5220b3... later volledige main validation PASS. Dat is een echt source-CI-bewijsgat, geen ontbrekend wheel.

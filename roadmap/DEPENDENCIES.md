@@ -1,3 +1,8 @@
+## 2026-11-07 — Runner-MCP #662 source candidate 0.1.153: main-CI uitrolkandidaat niet annuleren
+
+- Main-shipping validation `42351052147` voor 0.1.152 werd geannuleerd door de volgende docs push vóór einddemo; eigen artifactjob had candidate `13565557686` wel succesvol bewaard. Main-run was NIET groen. De bestaande `validation.yml` en `commit-attribution-policy.yml` beperken cancellen voortaan tot PR-events, main-push-afwerking blijft onaangetast en geordend. Geen nieuwe release-controller, updater, GitHub-event, secrets of server.
+- CI/merge voor v0.1.153 vereist. Originele host/active wheel #669, owner source/CI pins, A6 #942, no-NIC A7 #943 en fysieke rollback/client ACK blijven aparte stopvoorwaarden; CI-artifact geeft nooit install-authority.
+
 ## 2026-11-07 — F30 #341 0.1.152 lokale statuspoorten consistent: SOURCE/CI DONE
 
 - [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) exact-head `ef54623fb6062f18b000345eb0ea68750cb4f10e` 7/7 CI PASS met **4707 pytest** en clean Ubuntu, MERGED `4155e7f7219139603a167dbaa72abb84694c749b`. De reeds bestaande `verify_wheel_records`-controle wordt ook bij drie oorspronkelijke `stage_local_bundle`-branches gebruikt, inclusief herpinde corrupte ZIP-test. Geen parallelle validator/updater.

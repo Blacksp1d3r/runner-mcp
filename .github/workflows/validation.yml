@@ -14,7 +14,9 @@ permissions:
 
 concurrency:
   group: runner-mcp-ci-${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  # Behoud elke main-push, ook wanneer een latere docs-commit binnenkomt.
+  # Alleen verouderde PR-hercontroles mogen worden afgebroken.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
 

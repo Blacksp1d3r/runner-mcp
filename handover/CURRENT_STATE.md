@@ -1,3 +1,9 @@
+## 2026-11-07 — #662 source 0.1.153: cancel-in-progress op main veroorzaakte incomplete source push
+
+- **Geverifieerde GitHub-registratie:** v0.1.152 code merge `4155e7f7219139603a167dbaa72abb84694c749b`, main validation `42351052147` = CANCELLED (Ruff/pytest en artifact job SUCCESS; vijfminutendemo CANCELLED), main artifact `runner-mcp-candidate-0.1.152-4155e7f7219139603a167dbaa72abb84694c749b` ID `13565557686` EXISTEERT/NOT EXPIRED. Volgende louter documentatiecommit `5220b3e7097b1ebb480a6d0c7e31461944df874d` main validation `42351240774` SUCCESS. Vóór correctie konden nieuwe main pushes oudere source main-CI annuleren; artifact bewaard is GEEN volledig main-run bewijs.
+- Op eigen branch `fix/662-preserve-main-release-ci-20261107`: reeds bestaande `.github/workflows/validation.yml` en `commit-attribution-policy.yml` hebben `cancel-in-progress: ${{ github.event_name == 'pull_request' }}`; PRs behouden latest-only, main-pushes worden niet voortijdig afgebroken. Test inspecteert beide bestaande groepen; bronversie kandidaat 0.1.153 alle vier metadata. **Nog geen exacte PR-head CI/merge.**
+- Live target `github-runner` 0.1.88 geen geattesteerde actieve wheel #669; autonome update/on-site rollback blijft STOP totdat A6 #942, A7 #943, owner CI/hostpins, vorige baseline en authentieke oorspronkelijke-client result+ACK bewezen zijn. Qwen/Claude/SQL ongemoeid, ED later.
+
 ## 2026-11-07 — F30 #341 0.1.152 MERGED, full CI PASS; fysieke originele host blijft NIET GETEST
 
 - [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961) definitief gemerged `4155e7f7219139603a167dbaa72abb84694c749b` vanaf exact geteste head `ef54623fb6062f18b000345eb0ea68750cb4f10e`; **7/7 GitHub CI SUCCESS**, `42350814697` Ruff + **4707 pytest PASS** + release-reservation + disposable systemd + artifact + demo; `42350814668` clean Ubuntu, `42350814756` attribution SUCCESS. Alle vier versie/discovery-bestanden 0.1.152.

@@ -1,3 +1,9 @@
+## 2026-11-07 — #662 main push retention gate in bestaande CI, kandidaat 0.1.153
+
+- Source 0.1.152 PR #961 exact-head 7/7 PASS, merged `4155e7f7219139603a167dbaa72abb84694c749b`; daarna bestaande concurrency `cancel-in-progress: true` annuleerde main validation `42351052147` na succesvolle artifact-upload (candidate ID `13565557686`, NIET verlopen) maar vóór demo. Docs-only 5220b3... later volledige main validation PASS. Dat is een echt source-CI-bewijsgat, geen ontbrekend wheel.
+- Branch `fix/662-preserve-main-release-ci-20261107`: in de **twee bestaande CI-workflows** cancellen alleen PR-runverversingen; elke push op `main` mag zijn eigen run correct beëindigen. Bestaand versiebeheer/artifactjob/custody onaangeroerd, vier versievelden kandidaat 0.1.153, statische regressietest. **Nog niet gemerged / niet exact-CI getest.**
+- Next: exacte PR-head CI + Ubuntu/attribution, merge; bewijs dat nieuwe docs-push tijdens nieuwe source-run die source-run niet annuleert. GEEN productie-updateractie totdat #669 en Fabric #942/#943 plus originele-client result/ACK echt passen. Vermijd duplicaat updatepolicy/relay/ED sleutel en verstoor Qwen/Claude/SQL niet.
+
 ## 2026-11-07 — F30 #341 0.1.152 exact gemerged; volgende stap originele actieve generatie en offline herstel
 
 - SOURCE VOLTOOID: [PR #961](https://github.com/Blacksp1d3r/runner-mcp/pull/961), head `ef54623fb6062f18b000345eb0ea68750cb4f10e` **7/7 CI PASS** (4707 pytest, Ruff/reservering/systemd/artifact/demo/Ubuntu/attribution), merge `4155e7f7219139603a167dbaa72abb84694c749b` teruggelezen. Reuse bestaande `verify_wheel_records` ook in drie `stage_local_bundle` checks; ongeldig wheel met mee aangepast SHA256SUMS kan niet meer READY rapporteren.

@@ -8,9 +8,7 @@ of fysieke onafhankelijkheid te verklaren. Geen publieke MCP-tool.
 
 from __future__ import annotations
 
-import fcntl
 import os
-import pwd
 import re
 import socket
 import stat
@@ -368,8 +366,14 @@ def _prepare_fixed_a6_private_roots_under(state_root: Path) -> dict[str, object]
     onderbreking kan een gedeeltelijk paar achterlaten; dat blijft bewust
     geblokkeerd en wordt NOOIT automatisch gewist of aangevuld.
     """
+    if os.name != "posix" or not hasattr(os, "O_NOFOLLOW"):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
     if os.geteuid() == 0 or os.getuid() != os.geteuid():
         raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+
+    # Linux-only bibliotheek pas importeren bij een echte Linux-operatoractie;
+    # de algemene Runner-MCP-module moet ook op andere hosts importeerbaar zijn.
+    import fcntl
 
     # Hergebruik de bestaande descriptor/no-follow-controle, geen tweede manager.
     from .fabric_release_private_custody import _private_root_fd
@@ -426,6 +430,11 @@ def prepare_black_a6_private_roots() -> dict[str, object]:
     onafhankelijke opslag en recovery autoriseren. De functie is niet als
     publiek MCP-gereedschap geregistreerd; geen enkele dienst start of herstart.
     """
+    if os.name != "posix" or not hasattr(os, "O_NOFOLLOW"):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    # Alleen op Linux; reguliere Windows-import van Runner-MCP blijft veilig.
+    import pwd
+
     try:
         account = pwd.getpwuid(os.geteuid())
         allowed = (

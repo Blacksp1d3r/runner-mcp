@@ -524,6 +524,8 @@ def test_doctor_a6_complete_fixed_values_still_not_physical_recovery_proof(
 
 def _a6_fixed_parent_fixture(tmp_path: Path) -> Path:
     """Maak alleen een tijdelijke private eigenaar-root voor offline tests."""
+    if os.name != "posix" or not hasattr(os, "geteuid"):
+        pytest.skip("deze owner-private functie vereist Linux")
     if os.geteuid() == 0:
         pytest.skip("positieve private-owner-tests mogen niet als root draaien")
     root = tmp_path / "runner-fabric"

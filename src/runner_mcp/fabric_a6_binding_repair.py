@@ -1,7 +1,16 @@
+"""Bestaande A6-bindingen en begrensde Black-opslagvoorbereiding.
+
+Inspectie/reparatie wijzigen geen opslagroots. De afzonderlijke, bewust
+operatorgestuurde voorbereiding maakt uitsluitend twee vaste A6-mappen aan
+onder de reeds bestaande private state-root, zonder dienstactie, geheimen
+of fysieke onafhankelijkheid te verklaren. Geen publieke MCP-tool.
+"""
+
 from __future__ import annotations
 
 import os
 import re
+import socket
 import stat
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
@@ -305,4 +314,140 @@ def _valid_secret(value: object) -> bool:
         and 32 <= len(value) <= 4096
         and value.isascii()
         and all(33 <= ord(char) < 127 for char in value)
+    )
+
+
+def _a6_prepared_child(root_fd: int, name: str) -> bool:
+    """Controleer één vaste map via een geopende parent-inode, zonder links te volgen.
+
+    Geeft False terug uitsluitend wanneer de map echt ontbreekt. Fouten of
+    gewijzigde inode/owner/modus stoppen de hele voorbereiding zonder herstel.
+    """
+    try:
+        before = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+    if (
+        not stat.S_ISDIR(before.st_mode)
+        or before.st_uid != os.geteuid()
+        or stat.S_IMODE(before.st_mode) != 0o700
+    ):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    child_fd = -1
+    try:
+        child_fd = os.open(
+            name,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=root_fd,
+        )
+        opened = os.fstat(child_fd)
+        if (
+            not stat.S_ISDIR(opened.st_mode)
+            or opened.st_uid != os.geteuid()
+            or stat.S_IMODE(opened.st_mode) != 0o700
+            or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino)
+        ):
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    except OSError as exc:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+    finally:
+        if child_fd >= 0:
+            os.close(child_fd)
+    return True
+
+
+def _prepare_fixed_a6_private_roots_under(state_root: Path) -> dict[str, object]:
+    """Bereid exact de twee A6-submappen in een reeds bestaande private root voor.
+
+    Dit is alleen de interne testbare variant: de operatorfunctie hieronder
+    kiest de echte root zelf. Elke mkdir is exclusief en wordt gefsynct. Een
+    onderbreking kan een gedeeltelijk paar achterlaten; dat blijft bewust
+    geblokkeerd en wordt NOOIT automatisch gewist of aangevuld.
+    """
+    if os.name != "posix" or not hasattr(os, "O_NOFOLLOW"):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    if os.geteuid() == 0 or os.getuid() != os.geteuid():
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+
+    # Linux-only bibliotheek pas importeren bij een echte Linux-operatoractie;
+    # de algemene Runner-MCP-module moet ook op andere hosts importeerbaar zijn.
+    import fcntl
+
+    # Hergebruik de bestaande descriptor/no-follow-controle, geen tweede manager.
+    from .fabric_release_private_custody import _private_root_fd
+
+    try:
+        root_fd = _private_root_fd(state_root)
+    except (OSError, ValueError) as exc:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+    try:
+        try:
+            fcntl.flock(root_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+        names = (_JOURNAL_DIR, _EVIDENCE_DIR)
+        observed = tuple(_a6_prepared_child(root_fd, name) for name in names)
+        if observed == (True, False) or observed == (False, True):
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_incomplete")
+        if observed == (True, True):
+            state = "already_private"
+        else:
+            # Geen exist_ok: een andere schrijver mag nooit overschreven worden.
+            # Beide namen zijn vaste compile-time constanten, geen caller-pad.
+            for name in names:
+                try:
+                    os.mkdir(name, 0o700, dir_fd=root_fd)
+                    os.fsync(root_fd)
+                except OSError as exc:
+                    raise FabricA6BindingRepairError(
+                        "fabric_a6_root_prepare_denied"
+                    ) from exc
+            state = "fixed_roots_prepared"
+        if not all(_a6_prepared_child(root_fd, name) for name in names):
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+        return {
+            "state": state,
+            "roots_private": True,
+            "physical_independence_verified": False,
+            "off_target_readback_verified": False,
+            "journal_integrity_verified": False,
+            "a6_ready": False,
+            "mutation_authorized": False,
+            "service_restarted": False,
+        }
+    finally:
+        os.close(root_fd)
+
+
+def prepare_black_a6_private_roots() -> dict[str, object]:
+    """Alleen de oorspronkelijke niet-root Black-eigenaar mag de vaste roots maken.
+
+    De eigen HOME komt uit het OS-accountregister, niet uit caller-argumenten of
+    een overschrijfbare HOME-omgeving. Hostnaam/account zijn beperkende checks,
+    GEEN zelfstandige hostauthenticatie: operator moet vooraf de echte hardware,
+    onafhankelijke opslag en recovery autoriseren. De functie is niet als
+    publiek MCP-gereedschap geregistreerd; geen enkele dienst start of herstart.
+    """
+    if os.name != "posix" or not hasattr(os, "O_NOFOLLOW"):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    # Alleen op Linux; reguliere Windows-import van Runner-MCP blijft veilig.
+    import pwd
+
+    try:
+        account = pwd.getpwuid(os.geteuid())
+        allowed = (
+            os.geteuid() != 0
+            and os.getuid() == os.geteuid()
+            and os.getgid() == os.getegid()
+            and account.pw_name == "black"
+            and socket.gethostname().split(".", 1)[0] == "black"
+        )
+    except (KeyError, OSError, ValueError):
+        allowed = False
+    if not allowed:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    return _prepare_fixed_a6_private_roots_under(
+        Path(account.pw_dir) / ".local" / "state" / "runner-fabric"
     )

@@ -6,11 +6,11 @@ import pytest
 
 from runner_mcp.fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
+    _prepare_fixed_a6_private_roots_under,
     classify_a6_bindings_for_doctor,
     inspect_a6_binding_state,
-    repair_a6_qualification_binding,
-    _prepare_fixed_a6_private_roots_under,
     prepare_black_a6_private_roots,
+    repair_a6_qualification_binding,
 )
 from runner_mcp.onboarding import load_env_file
 

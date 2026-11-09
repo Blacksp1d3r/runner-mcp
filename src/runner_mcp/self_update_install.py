@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import fcntl
 import hashlib
 import json
 import os
@@ -7,7 +8,8 @@ import re
 import shutil
 import stat
 import subprocess
-from collections.abc import Callable
+from contextlib import contextmanager
+from collections.abc import Callable, Iterator
 from pathlib import Path
 from typing import Any
 
@@ -71,6 +73,61 @@ def _wheel_failure_category(
 
 class PackageInstallError(RuntimeError):
     """Safe package-install failure without private path or process output."""
+
+@contextmanager
+def _exclusive_install_transaction_lock(path: Path) -> Iterator[None]:
+    """Serialiseer BEGIN/CLEAR van de BESTAANDE recoverytransactie op deze host.
+
+    Linux flock houdt dezelfde owner-private lock vast tot na de daadwerkelijke
+    bestandswijziging; een crash geeft de kernel-lock automatisch vrij. Het
+    lockbestand blijft bestaan, zodat twee processen nooit verschillende
+    lock-inodes krijgen door verwijderen en opnieuw creëren. Onveilige eigenaar,
+    alias, permissies of ontbrekende flock => weigeren zonder transactionele
+    fallback. Geen nieuwe updater, scheduler, relay of herstelregister.
+    """
+    lock = path.with_name(path.name + ".lock")
+    flags = os.O_RDWR | os.O_CREAT
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise PackageInstallError("Self-update install transaction locking is unsupported")
+    flags |= os.O_NOFOLLOW
+    if hasattr(os, "O_CLOEXEC"):
+        flags |= os.O_CLOEXEC
+    try:
+        fd = os.open(lock, flags, 0o600)
+    except OSError as exc:
+        raise PackageInstallError("Self-update install transaction lock is unavailable") from exc
+
+    try:
+        opened = os.fstat(fd)
+        name = lock.lstat()
+        if (
+            not stat.S_ISREG(opened.st_mode)
+            or opened.st_uid != os.geteuid()
+            or stat.S_IMODE(opened.st_mode) != 0o600
+            or opened.st_nlink != 1
+            or (opened.st_dev, opened.st_ino) != (name.st_dev, name.st_ino)
+        ):
+            raise PackageInstallError("Self-update install transaction lock is unsafe")
+        # Niet blokkeren op een vastgelopen buurproces: onbeschikbare lock
+        # betekent gecontroleerd STOP, niet 'dan maar zonder lock'.
+        fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        name = lock.lstat()
+        if (opened.st_dev, opened.st_ino) != (name.st_dev, name.st_ino):
+            raise PackageInstallError("Self-update install transaction lock changed")
+    except OSError as exc:
+        os.close(fd)
+        raise PackageInstallError("Self-update install transaction lock is unavailable") from exc
+    except BaseException:
+        os.close(fd)
+        raise
+
+    try:
+        yield
+    finally:
+        # Sluiten geeft de kernel-lock óók vrij na een abrupt procesverlies.
+        # Het lockbestand zelf wordt bewust NOOIT verwijderd.
+        os.close(fd)
+
 
 
 def _read_transaction_path(path: Path) -> dict[str, Any] | None:
@@ -485,64 +542,77 @@ class SelfUpdatePackageInstaller:
             raise PackageInstallError("Invalid self-update target commit")
         if baseline_commit is not None and not _COMMIT_RE.fullmatch(baseline_commit):
             raise PackageInstallError("Invalid self-update baseline commit")
-        if self.pending_transaction() is not None:
-            raise PackageInstallError("Self-update install recovery is already pending")
+        with _exclusive_install_transaction_lock(self.transaction_path):
+            if self.pending_transaction() is not None:
+                raise PackageInstallError("Self-update install recovery is already pending")
 
-        temporary = self.transaction_path.with_suffix(".tmp")
-        if temporary.is_symlink() or temporary.exists():
-            raise PackageInstallError("Self-update install transaction staging is unsafe")
-        payload = {
-            "job_id": job_id,
-            "target_commit": target_commit,
-            "baseline_commit": baseline_commit,
-            "rollback_capable": baseline_commit is not None,
-        }
-        # Preserve read/recovery of old pending transactions without pretending
-        # they had a cryptographic baseline wheel seal.
-        if baseline_wheel_sha256 is not None:
-            payload["baseline_wheel_sha256"] = baseline_wheel_sha256
-        try:
-            with temporary.open("x", encoding="utf-8") as handle:
-                handle.write(
-                    json.dumps(payload, sort_keys=True, separators=(",", ":"))
-                )
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.chmod(temporary, 0o600)
-            # De eerdere pending-check is geen lock: een andere updater kan
-            # intussen een hersteltransactie hebben gepubliceerd. Hardlink
-            # binnen dezelfde map maakt de publicatie atomair zonder
-            # bestaande herstelbewijzen ooit te vervangen.
-            os.link(temporary, self.transaction_path, follow_symlinks=False)
-            temporary.unlink()
-            directory_fd = os.open(self.transaction_path.parent, os.O_RDONLY)
+            temporary = self.transaction_path.with_suffix(".tmp")
+            if temporary.is_symlink() or temporary.exists():
+                raise PackageInstallError("Self-update install transaction staging is unsafe")
+            payload = {
+                "job_id": job_id,
+                "target_commit": target_commit,
+                "baseline_commit": baseline_commit,
+                "rollback_capable": baseline_commit is not None,
+            }
+            # Preserve read/recovery of old pending transactions without pretending
+            # they had a cryptographic baseline wheel seal.
+            if baseline_wheel_sha256 is not None:
+                payload["baseline_wheel_sha256"] = baseline_wheel_sha256
             try:
-                os.fsync(directory_fd)
-            finally:
-                os.close(directory_fd)
-        except OSError as exc:
-            try:
-                temporary.unlink(missing_ok=True)
-            except OSError:
-                pass
-            raise PackageInstallError(
-                "Self-update install transaction could not be persisted"
-            ) from exc
+                with temporary.open("x", encoding="utf-8") as handle:
+                    handle.write(
+                        json.dumps(payload, sort_keys=True, separators=(",", ":"))
+                    )
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                os.chmod(temporary, 0o600)
+                # De eerdere pending-check is geen lock: een andere updater kan
+                # intussen een hersteltransactie hebben gepubliceerd. Hardlink
+                # binnen dezelfde map maakt de publicatie atomair zonder
+                # bestaande herstelbewijzen ooit te vervangen.
+                os.link(temporary, self.transaction_path, follow_symlinks=False)
+                temporary.unlink()
+                directory_fd = os.open(self.transaction_path.parent, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+            except OSError as exc:
+                try:
+                    temporary.unlink(missing_ok=True)
+                except OSError:
+                    pass
+                raise PackageInstallError(
+                    "Self-update install transaction could not be persisted"
+                ) from exc
 
-    def clear_transaction(self) -> None:
-        path = self.transaction_path
-        if path.is_symlink():
-            raise PackageInstallError("Self-update install transaction is unsafe")
-        if not path.exists():
-            return
-        if not path.is_file():
-            raise PackageInstallError("Self-update install transaction is unsafe")
-        try:
-            path.unlink()
-        except OSError as exc:
-            raise PackageInstallError(
-                "Self-update install transaction could not be cleared"
-            ) from exc
+    def clear_transaction(self, *, job_id: str) -> None:
+        """Verwijder uitsluitend de eigen transactie onder dezelfde schrijflock.
+
+        Een oude afsluiter mag een inmiddels door een andere job gepubliceerde
+        hersteltransactie nooit wissen. Een ontbrekende transactie blijft
+        idempotent clear, maar een vreemde job leidt altijd tot STOP.
+        """
+        if type(job_id) is not str or _JOB_ID_RE.fullmatch(job_id) is None:
+            raise PackageInstallError("Invalid self-update install job identifier")
+        with _exclusive_install_transaction_lock(self.transaction_path):
+            transaction = _read_transaction_path(self.transaction_path)
+            if transaction is None:
+                return
+            if transaction["job_id"] != job_id:
+                raise PackageInstallError("Self-update install transaction owner mismatch")
+            try:
+                self.transaction_path.unlink()
+                directory_fd = os.open(self.transaction_path.parent, os.O_RDONLY)
+                try:
+                    os.fsync(directory_fd)
+                finally:
+                    os.close(directory_fd)
+            except OSError as exc:
+                raise PackageInstallError(
+                    "Self-update install transaction could not be cleared"
+                ) from exc
 
     def cleanup_job(self, job_id: str) -> None:
         root = self._job_root(job_id)

@@ -108,12 +108,14 @@ def test_missing_flock_primitive_must_not_fall_back_to_unlocked_write(
     tmp_path: Path,
 ) -> None:
     installer = _installer(tmp_path)
-    with patch(
-        "runner_mcp.self_update_install.fcntl.flock",
-        side_effect=OSError("synthetic missing kernel lock"),
+    with (
+        patch(
+            "runner_mcp.self_update_install.fcntl.flock",
+            side_effect=OSError("synthetic missing kernel lock"),
+        ),
+        pytest.raises(PackageInstallError, match="lock is unavailable"),
     ):
-        with pytest.raises(PackageInstallError, match="lock is unavailable"):
-            _begin(installer, FIRST)
+        _begin(installer, FIRST)
     assert installer.pending_transaction() is None
 
 

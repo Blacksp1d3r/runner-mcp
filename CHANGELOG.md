@@ -1,3 +1,10 @@
+## 0.1.157 — #341 originele hersteltransactie met gedeelde owner-lock en jobgebonden cleanup (BRONKANDIDAAT)
+
+- **Concrete oorzaak:** na de eerder gemergede atomische publicatie met `os.link` kon `clear_transaction()` nog een inmiddels door een andere job gepubliceerde hersteltransactie verwijderen. Een controle op pathname of inode gevolgd door `unlink` is geen atomaire compare-and-delete.
+- **Beperkte correctie:** de **bestaande** owner-private `self-update-install-transaction.json` blijft de enige herstelbron. BEGIN én CLEAR houden nu dezelfde Linux `flock` op een blijvend 0600-bestand naast die bestaande transactie vast. Foutieve eigenaar/permissies/symlink/hardlink, ontbrekende lock of concurrente houder = STOP zonder lockvrije fallback. Crash/procesverlies laat de kernel-lock los; geen tweede updater, scheduler, relay of controller.
+- **Job-identiteit:** CLEAR heeft een verplichte exacte 32-hex job-ID; een oude afsluiter weigert een nieuwe/andere transactie en bewaart de bytes. Drie bestaande `SelfUpdateManager`-afsluiters geven uitsluitend hun oorspronkelijke job-ID door. Nieuwe tests: vreemde job, twee afsluiters/nieuwe generatie, exclusieve BEGIN/CLEAR, alias of vreemde permissies, ontbrekende kernel-lock, ongeldige job-ID en automatische lockvrijgave na procesexit. Bestaande baseline- en herstelcontracten blijven gelden.
+- **Grenzen:** alleen bron/CI, géén automatische inzet op de oorspronkelijke `github-runner`, Black/A6/A7, Claude, Qwen of SQL. Originele live wheel #669, A6 off-target journal #942, A7 offline rollback #943 en echte updatecampagne-ACK blijven afzonderlijk open.
+
 ## 0.1.155 — #341 hersteltransactie atomair zonder overschrijven (BRONKANDIDAAT)
 
 - Bestaande `SelfUpdatePackageInstaller.begin_transaction` controleerde eerst een afwezige hersteltransactie, maar publiceerde daarna via `os.replace`. Twee concurrerende installateurs konden daardoor een na die controle verschenen originele transactie vervangen en de juiste terugvalbasis verliezen.

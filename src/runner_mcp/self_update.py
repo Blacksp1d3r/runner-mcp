@@ -1176,7 +1176,7 @@ class SelfUpdateManager:
                         job.finished_at = _utc_now()
                     self._persist_job(job)
 
-            self._package_installer.clear_transaction()
+            self._package_installer.clear_transaction(job_id=job_id)
         except (
             PackageInstallError,
             SelfUpdateError,
@@ -1447,7 +1447,7 @@ class SelfUpdateManager:
                         ) from install_exc
 
                     try:
-                        self._package_installer.clear_transaction()
+                        self._package_installer.clear_transaction(job_id=job_id)
                     except PackageInstallError as exc:
                         failure_category = "install_recovery_required"
                         raise SelfUpdateError(
@@ -1477,7 +1477,7 @@ class SelfUpdateManager:
                     preserve_artifacts = True
                 else:
                     try:
-                        self._package_installer.clear_transaction()
+                        self._package_installer.clear_transaction(job_id=job_id)
                     except PackageInstallError as exc:
                         raise SelfUpdateError(
                             "Self-update install transaction could not be finalized"

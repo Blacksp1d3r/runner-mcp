@@ -46,7 +46,7 @@ def test_transaction_is_private_and_strict(tmp_path: Path) -> None:
     }
     assert stat.S_IMODE(installer.transaction_path.stat().st_mode) == 0o600
 
-    installer.clear_transaction()
+    installer.clear_transaction(job_id=job_id)
     assert installer.pending_transaction() is None
 
 

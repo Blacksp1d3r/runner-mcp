@@ -8,8 +8,8 @@ import re
 import shutil
 import stat
 import subprocess
-from contextlib import contextmanager
 from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 

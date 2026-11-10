@@ -133,6 +133,42 @@ def test_invalid_wheel_members_fail_closed(
     assert not receipt.exists()
 
 
+
+def test_replaced_wheel_path_cannot_mint_different_wheel_receipt(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """De SHA en ZIP mogen niet van twee verschillende wheel-inodes komen."""
+    wheel, pkg, receipt = fixture(tmp_path)
+    swapped = wheel.with_name("replacement.whl")
+    with zipfile.ZipFile(swapped, "w") as other:
+        for name in ("__init__.py", "core.py"):
+            other.writestr("runner_mcp/" + name, (pkg / name).read_bytes())
+        # Python-modules blijven identiek, maar de wheelbytes verschillen.
+        other.writestr(
+            "aifordable_runner_mcp-0.1.78.dist-info/WHEEL",
+            "Wheel-Version: 1.0\\nGenerator: replacement\\n",
+        )
+    swapped.chmod(0o600)
+
+    import runner_mcp.artifact_receipt_capture as candidate_capture
+
+    actual_zip = candidate_capture.zipfile.ZipFile
+
+    class ReplaceOnZipClose(actual_zip):
+        def __exit__(self, exc_type, exc_value, traceback):
+            result = super().__exit__(exc_type, exc_value, traceback)
+            if self.mode == "r":
+                os.replace(swapped, wheel)
+            return result
+
+    monkeypatch.setattr(candidate_capture.zipfile, "ZipFile", ReplaceOnZipClose)
+    with pytest.raises(WheelReceiptCaptureError, match="changed during capture"):
+        capture(wheel, pkg, receipt)
+    assert wheel.is_file()
+    assert not swapped.exists()
+    assert not receipt.exists()
+
+
 def test_missing_package_module_fails_without_partial_receipt(
     tmp_path: Path,
 ) -> None:

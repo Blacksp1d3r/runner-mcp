@@ -1,3 +1,11 @@
+## 0.1.158 — #669 ZIP en SHA256 van originele wheel aan één inode binden (BRONKANDIDAAT)
+
+- De al bestaande private originele-wheelcapture las ZIP-leden en volledige wheel-SHA via twee aparte path-opens. Als een wheel ertussen wordt vervangen door een wheel met dezelfde Python-modulebytes maar andere metadata, kon de ontvangstkopie een verkeerde gecombineerde originele SHA/moduleverklaring bewaren.
+- De bestaande helper gebruikt nu een enkele `O_NOFOLLOW`-descriptor, controleert stat/inode/generatie vóór en na beide lezingen, en weigert vervangen/gewijzigde wheelbytes zonder receipt. Eén negatieve swap-injectie bewaart ook de oorspronkelijke create-once-, 0600- en fsync-contracten. Geen nieuwe opslag, signing of updater.
+- Dit is uitsluitend SOURCE/CI-acceptatie. Originele fysiek bewaarde 0.1.88-wheel en 3.614-file A7-runtime-restore niet herhalen; actuele live geladen wheel/source en formele A7 zesrollen/campagne-ACK blijven open.
+
+---
+
 ## 0.1.157 — #341 originele hersteltransactie met gedeelde owner-lock en jobgebonden cleanup (BRONKANDIDAAT)
 
 - **Concrete oorzaak:** na de eerder gemergede atomische publicatie met `os.link` kon `clear_transaction()` nog een inmiddels door een andere job gepubliceerde hersteltransactie verwijderen. Een controle op pathname of inode gevolgd door `unlink` is geen atomaire compare-and-delete.

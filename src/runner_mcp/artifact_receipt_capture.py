@@ -18,7 +18,6 @@ from pathlib import Path
 from .artifact_receipt_preflight import (
     _canonical_offline_input,
     _safe_regular,
-    _sha256,
     offline_artifact_receipt_preflight,
 )
 
@@ -28,6 +27,20 @@ _TOTAL_BYTES = 100 * 1024 * 1024
 _MODULE_MAX = 16 * 1024 * 1024
 _RECEIPT_LIMIT = 64 * 1024
 _SCHEMA = "runner-mcp/offline-artifact-receipt/v1"
+
+def _wheel_generation(info: os.stat_result) -> tuple[int, ...]:
+    """Bind een wheelcontrole aan dezelfde inode en bestandsversie."""
+    return (
+        info.st_dev,
+        info.st_ino,
+        info.st_mode,
+        info.st_uid,
+        info.st_nlink,
+        info.st_size,
+        info.st_mtime_ns,
+        info.st_ctime_ns,
+    )
+
 
 
 class WheelReceiptCaptureError(RuntimeError):
@@ -97,49 +110,72 @@ def capture_candidate_wheel_receipt(
 
         modules: dict[str, str] = {}
         total = 0
-        with zipfile.ZipFile(wheel, "r") as archive:
-            for member in archive.infolist():
-                name = member.filename
-                path = Path(name)
-                if (
-                    path.is_absolute()
-                    or ".." in path.parts
-                    or "\\" in name
-                    or member.is_dir()
-                ):
-                    if member.is_dir():
+        # Lees ZIP-inhoud en SHA256 op DEZELFDE descriptor. Een padwissel
+        # tussen twee aparte open()-aanroepen kan anders onjuiste bewijzen
+        # maken, ook wanneer beide wheels gelijke Python-modules bevatten.
+        if not hasattr(os, "O_NOFOLLOW"):
+            raise WheelReceiptCaptureError("original wheel inode pin unsupported")
+        wheel_flags = os.O_RDONLY | os.O_NOFOLLOW
+        if hasattr(os, "O_CLOEXEC"):
+            wheel_flags |= os.O_CLOEXEC
+        with os.fdopen(os.open(wheel, wheel_flags), "rb") as wheel_file:
+            if _wheel_generation(os.fstat(wheel_file.fileno())) != _wheel_generation(info):
+                raise WheelReceiptCaptureError("original wheel changed during capture")
+            with zipfile.ZipFile(wheel_file, "r") as archive:
+                for member in archive.infolist():
+                    name = member.filename
+                    path = Path(name)
+                    if (
+                        path.is_absolute()
+                        or ".." in path.parts
+                        or "\\" in name
+                        or member.is_dir()
+                    ):
+                        if member.is_dir():
+                            continue
+                        raise WheelReceiptCaptureError("original wheel contains unsafe paths")
+                    if member.external_attr >> 16 & stat.S_IFMT(0o170000) == stat.S_IFLNK:
+                        raise WheelReceiptCaptureError("original wheel contains a linked file")
+                    if not name.startswith("runner_mcp/") or not name.endswith(".py"):
+                        # Reject native code: a Python-only receipt cannot cover it.
+                        if name.endswith((".so", ".pyd", ".dll", ".dylib")):
+                            raise WheelReceiptCaptureError("native wheel code is not covered")
                         continue
-                    raise WheelReceiptCaptureError("original wheel contains unsafe paths")
-                if member.external_attr >> 16 & stat.S_IFMT(0o170000) == stat.S_IFLNK:
-                    raise WheelReceiptCaptureError("original wheel contains a linked file")
-                if not name.startswith("runner_mcp/") or not name.endswith(".py"):
-                    # Reject native code: a Python-only receipt cannot cover it.
-                    if name.endswith((".so", ".pyd", ".dll", ".dylib")):
-                        raise WheelReceiptCaptureError("native wheel code is not covered")
-                    continue
-                relative = name[len("runner_mcp/"):]
-                if (
-                    not relative
-                    or len(relative) > 240
-                    or relative in modules
-                    or member.file_size > _MODULE_MAX
-                    or len(modules) >= _MODULE_LIMIT
-                ):
-                    raise WheelReceiptCaptureError("original wheel module manifest invalid")
-                total += member.file_size
-                if total > _TOTAL_BYTES:
-                    raise WheelReceiptCaptureError("original wheel module bytes too large")
-                content = archive.read(member)
-                if len(content) != member.file_size:
-                    raise WheelReceiptCaptureError("original wheel module bytes incomplete")
-                modules[relative] = hashlib.sha256(content).hexdigest()
+                    relative = name[len("runner_mcp/"):]
+                    if (
+                        not relative
+                        or len(relative) > 240
+                        or relative in modules
+                        or member.file_size > _MODULE_MAX
+                        or len(modules) >= _MODULE_LIMIT
+                    ):
+                        raise WheelReceiptCaptureError("original wheel module manifest invalid")
+                    total += member.file_size
+                    if total > _TOTAL_BYTES:
+                        raise WheelReceiptCaptureError("original wheel module bytes too large")
+                    content = archive.read(member)
+                    if len(content) != member.file_size:
+                        raise WheelReceiptCaptureError("original wheel module bytes incomplete")
+                    modules[relative] = hashlib.sha256(content).hexdigest()
+            wheel_file.seek(0)
+            wheel_hash = hashlib.sha256()
+            for chunk in iter(lambda: wheel_file.read(1024 * 1024), b""):
+                wheel_hash.update(chunk)
+            # Vergelijk zowel de geopende inode als de naam op de schijf.
+            # Een vervangen wiel of wijziging in-place levert nooit een
+            # publiceerbare kandidaatreceipt op.
+            if (
+                _wheel_generation(os.fstat(wheel_file.fileno())) != _wheel_generation(info)
+                or _wheel_generation(wheel.lstat()) != _wheel_generation(info)
+            ):
+                raise WheelReceiptCaptureError("original wheel changed during capture")
         if "__init__.py" not in modules:
             raise WheelReceiptCaptureError("original wheel is not a Runner-MCP package")
 
         record = {
             "schema_version": _SCHEMA,
             "source_revision": source_revision,
-            "wheel_sha256": _sha256(wheel),
+            "wheel_sha256": wheel_hash.hexdigest(),
             "modules": dict(sorted(modules.items())),
         }
         data = (json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n").encode(

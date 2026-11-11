@@ -1,8 +1,8 @@
-## 0.1.160 — #341 herstelde baseline-wheel vergrendeld aan één inodegeneratie (SOURCE CANDIDATE)
+## 0.1.161 — #341 herstelde baseline-wheel vergrendeld aan één inodegeneratie (SOURCE CANDIDATE, WACHT OP #974)
 
 - De **bestaande** `SelfUpdatePackageInstaller.staged_wheel_sha256()` leest de bewaarde baseline-wheel via `O_NOFOLLOW` en één vaste descriptor. Inode, eigenaar, rechten, linkaantal, grootte en bestandsgeneratie moeten vóór, tijdens en na SHA256 én op de oorspronkelijke bestandsnaam gelijk blijven. De bestaande hersteltransactie en één updater blijven ongewijzigd.
 - Gerichte negatieve tests weigeren metadatawijziging tijdens hashen ondanks identieke wheelbytes en weigeren hashing zonder `O_NOFOLLOW`. De seal is **alleen lokaal herstelmateriaal**, geen geverifieerde actieve Python-wheel, signing- of A7-herstelverklaring.
-- 0.1.159 is reeds via PR #973 gemerged; deze bronkandidaat gebruikt de eerstvolgende unieke versie. Geen productie-update/ARM, service-, cron-, backup- of agentwijzigingen.
+- 0.1.159 is via PR #973 gemerged; 0.1.160 is door de reeds bestaande PR #974 gereserveerd. Deze bronkandidaat 0.1.161 blijft voorwaardelijk en mag niet vóór #974 worden gemerged. Geen productie-update/ARM, service-, cron-, backup- of agentwijzigingen.
 
 ---
 

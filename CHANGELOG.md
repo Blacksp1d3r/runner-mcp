@@ -1,3 +1,11 @@
+## 0.1.164 — #341 hercontrole van beheerde herstart vlak vóór installatie (SOURCE, LIVE WAIT)
+
+- De bestaande Runner-MCP self-update controleert de reeds gekwalificeerde cron/systemd-user server **opnieuw nadat bron-sync, lint, tests en wheelbouw klaar zijn**, onmiddellijk vóór de eerste installatietransactie. Een tussentijds verloren of onleesbare supervisor leidt tot een begrensde fout `restart_supervisor_unavailable`, zonder transactie, wheelinstallatie of herstartmarker; de reeds bestaande pre-install bronrollback blijft actief.
+- De toelatingscontrole bij opdrachtstart uit 0.1.163, de normale legacy-reexec en de onafhankelijke A7-/same-update ACK-gates blijven ongewijzigd. Dit is een beperkte race-window-reductie, **geen** bewijs dat een supervisor niet ná de hercontrole kan uitvallen.
+- Negatieve regressie voor zowel cron als systemd-user: beheerder actief bij enqueue, valt weg nadat de testen slagen, update stopt vóór de installatietransactie en de bronbaseline keert terug. Volledige CI vereist; geen live uitrol naar de oorspronkelijke 0.1.88-server.
+
+---
+
 ## 0.1.163 — #341 beheerder-preflight vóór automatische Runner-MCP-update (SOURCE, LIVE WAIT)
 
 - De **bestaande** `SelfUpdateManager` controleert vóór het enqueuen van een managed update nu of de reeds geïnstalleerde Runner-MCP-server werkelijk één actieve, ingeschakelde cron- of systemd-user-supervisor heeft. Alleen een ingestelde herstartcallback was daarvoor onvoldoende; een niet-beschikbare of dubbele supervisor kan anders pas **na installatie** aan het licht komen.

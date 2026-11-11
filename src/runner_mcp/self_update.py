@@ -1440,6 +1440,15 @@ class SelfUpdateManager:
                         raise SelfUpdateError(
                             "Self-update recovery wheel could not be sealed"
                         )
+                # The manager can change while source sync, lint, tests and
+                # wheel staging run. Recheck the existing managed supervisor
+                # immediately before the FIRST install transaction/write.
+                # This does not grant A7 commit/recovery or live build identity.
+                if not self._restart_ready():
+                    failure_category = "restart_supervisor_unavailable"
+                    raise SelfUpdateError(
+                        "Runner MCP restart supervisor unavailable before installation"
+                    )
                 try:
                     self._package_installer.begin_transaction(
                         job_id=job_id,

@@ -4,8 +4,8 @@ import hashlib
 import hmac
 import os
 import re
-import subprocess
 import stat
+import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath

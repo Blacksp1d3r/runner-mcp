@@ -395,6 +395,7 @@ class SelfUpdateManager:
         server_bind_host: str | None = None,
         server_bind_port: int | None = None,
         server_reexec: Callable[[], object] | None = None,
+        server_activation_scheduler: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
         active_revision_provider: Callable[[], str | None] | None = None,
@@ -471,12 +472,21 @@ class SelfUpdateManager:
                     self._server_host = parsed_resource.hostname
                     self._server_port = port
         self._server_reexec = server_reexec
+        if server_activation_scheduler is not None and not callable(
+            server_activation_scheduler
+        ):
+            raise SelfUpdateError("Managed activation callback is invalid")
+        self._server_activation_scheduler = server_activation_scheduler
         self._restart_components = _normalize_restart_components(restart_components)
         if active_revision_provider is not None and not callable(active_revision_provider):
             raise SelfUpdateError("Active runtime revision provider is invalid")
         self._active_revision_provider = active_revision_provider
         if type(retain_activation_baseline) is not bool:
             raise SelfUpdateError("Provisional baseline retention flag is invalid")
+        if self._server_activation_scheduler is not None and not retain_activation_baseline:
+            raise SelfUpdateError(
+                "Managed activation requires retained independent recovery baseline"
+            )
         # An independent A7 actuator must own confirmation/clearance.
         # Never discard the only local rollback wheel in a provisional window.
         self._retain_activation_baseline = retain_activation_baseline
@@ -711,7 +721,11 @@ class SelfUpdateManager:
         return all(name in names for name in SELF_TEST_PROFILES)
 
     def _restart_ready(self) -> bool:
-        return self._server_reexec is not None or self._server_port is not None
+        return (
+            self._server_activation_scheduler is not None
+            or self._server_reexec is not None
+            or self._server_port is not None
+        )
 
     def _latest_job_public(self) -> dict[str, Any] | None:
         with self._lock:
@@ -1196,6 +1210,27 @@ class SelfUpdateManager:
         }
 
     def _schedule_server_restart(self) -> None:
+        if self._server_activation_scheduler is not None:
+            # A7 is the only future authority allowed to clear/disarm.
+            # The old HTTP-startup marker MUST survive this handoff,
+            # including a failed/unauthorized HTTP request or no reconnect.
+            def managed_handoff() -> None:
+                time.sleep(self._restart_delay_seconds)
+                try:
+                    if restart_marker_commit(self.config_dir, "server") is not None:
+                        self._server_activation_scheduler()
+                except (OSError, RuntimeError, SelfUpdateError):
+                    # Retain the durable marker and baseline. Existing A7
+                    # timeout/recovery, never this thread, decides the result.
+                    return
+
+            threading.Thread(
+                target=managed_handoff,
+                name="runner-mcp-managed-activation",
+                daemon=True,
+            ).start()
+            return
+
         def restart_component() -> object:
             if self._server_reexec is not None:
                 return self._server_reexec()

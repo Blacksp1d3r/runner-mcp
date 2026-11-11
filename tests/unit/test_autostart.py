@@ -26,6 +26,7 @@ from runner_mcp.autostart import (
     plan_qualification_override_swap,
     remove_user_services,
     render_user_units,
+    restart_managed_server_unit,
     user_service_status,
 )
 from runner_mcp.autostart_activation import AutostartActivationPermit
@@ -1265,3 +1266,41 @@ def test_qualification_override_plan_denies_unpinned_or_same_release() -> None:
 def test_qualification_override_plan_requires_bounded_bytes(invalid) -> None:
     with pytest.raises(AutostartError, match="override plan is unqualified"):
         _plan_qualification_override(invalid)
+
+
+def test_restart_managed_server_unit_only_fixed_owner_file(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "units"
+    root.mkdir()
+    server_unit = root / SERVER_UNIT
+    server_unit.write_text(MANAGED_MARKER + "\n[Service]\n", encoding="utf-8")
+    server_unit.chmod(0o600)
+    runner = FakeSystemctl()
+    restart_managed_server_unit(unit_dir=root, runner=runner)
+    assert runner.calls == [["systemctl", "--user", "restart", SERVER_UNIT]]
+
+
+@pytest.mark.parametrize("foreign", ["marker", "group-writable", "symlink"])
+def test_restart_managed_server_unit_rejects_untrusted_source(
+    tmp_path: Path, foreign: str,
+) -> None:
+    root = tmp_path / "units"
+    root.mkdir()
+    server_unit = root / SERVER_UNIT
+    if foreign == "symlink":
+        other = tmp_path / "elsewhere"
+        other.write_text(MANAGED_MARKER + "\n", encoding="utf-8")
+        server_unit.symlink_to(other)
+    else:
+        server_unit.write_text(
+            "[Service]\nExecStart=/bin/false\n"
+            if foreign == "marker"
+            else MANAGED_MARKER + "\n[Service]\n",
+            encoding="utf-8",
+        )
+        server_unit.chmod(0o660 if foreign == "group-writable" else 0o600)
+    runner = FakeSystemctl()
+    with pytest.raises(AutostartError):
+        restart_managed_server_unit(unit_dir=root, runner=runner)
+    assert runner.calls == []

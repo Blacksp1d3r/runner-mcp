@@ -720,12 +720,36 @@ class SelfUpdateManager:
             return False
         return all(name in names for name in SELF_TEST_PROFILES)
 
-    def _restart_ready(self) -> bool:
-        return (
-            self._server_activation_scheduler is not None
-            or self._server_reexec is not None
-            or self._server_port is not None
+    def _restart_preflight(self) -> tuple[bool, bool | None, str | None]:
+        """Controleer vóór installatie of de gekozen herstart echt beheerd is.
+
+        Zonder beheerde scheduler blijft de bestaande lokale reexec-route
+        onveranderd. Met een A7-opt-in volstaat de callback echter niet:
+        de reeds aanwezige cron/systemd-server moet werkelijk beheerd,
+        ingeschakeld en actief zijn. Dit is alleen een read-only controle,
+        nooit het bewijs van A7-herstel of een originele client-ACK.
+        """
+        if self._server_activation_scheduler is None:
+            return (
+                self._server_reexec is not None or self._server_port is not None,
+                None,
+                None,
+            )
+        from .self_update_activation import (
+            ManagedServerActivationError,
+            managed_server_activation_status,
         )
+
+        try:
+            observed = managed_server_activation_status(self.config_dir)
+        except (ManagedServerActivationError, OSError, ValueError):
+            # Een onbereikbare/ambigue manager mag geen update starten.
+            return False, False, None
+        ready = observed.ready is True
+        return ready, ready, observed.backend.value
+
+    def _restart_ready(self) -> bool:
+        return self._restart_preflight()[0]
 
     def _latest_job_public(self) -> dict[str, Any] | None:
         with self._lock:
@@ -833,6 +857,11 @@ class SelfUpdateManager:
         except SelfUpdateError:
             project_ready = False
         pending_restarts = restart_pending_count(self.config_dir)
+        (
+            restart_ready,
+            managed_server_supervisor_ready,
+            managed_server_supervisor_backend,
+        ) = self._restart_preflight()
         source_ready = (
             last_commit is None
             or source_baseline_aligned is True
@@ -850,7 +879,7 @@ class SelfUpdateManager:
                 and source_ready
                 and activation_ready
                 and self._required_profiles_available()
-                and self._restart_ready()
+                and restart_ready
                 and pending_restarts == 0
                 and not recovery_pending
             ),
@@ -865,6 +894,9 @@ class SelfUpdateManager:
             ),
             "restart_pending": pending_restarts > 0,
             "pending_restart_count": pending_restarts,
+            # Supervisor-preflight is geen zelfstandige A7-toelating.
+            "managed_server_supervisor_ready": managed_server_supervisor_ready,
+            "managed_server_supervisor_backend": managed_server_supervisor_backend,
             "install_recovery_pending": recovery_pending,
             "provisional_activation_pending": provisional_pending,
             "provisional_baseline_wheel_present": provisional_baseline_wheel_present,

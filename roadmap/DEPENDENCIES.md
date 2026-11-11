@@ -1,3 +1,9 @@
+## 2026-11-11 — #866 systemd-migratie is onafhankelijk van automatische updateketen
+
+- [#973](https://github.com/Blacksp1d3r/runner-mcp/pull/973) 0.1.159 en [#974](https://github.com/Blacksp1d3r/runner-mcp/pull/974) 0.1.160 SOURCE/CI PASS/MERGED: alleen-berekenende één-rol cronuitsluiting en inactieve statische systemd-nevenunit zonder server-`Requires`.
+- Originele `github-runner` poort8000/PID2202/startticks7503 en oude on-disk wheel v0.1.88 reeds fysiek bewezen (#669); volledig geladen bron/issuer, A7 echte zesrollenrollback en dezelfde updatecampagne-ACK blijven open. A6 aparte disposable ACK is PASS.
+- **NIET BLOKKEREN:** M3/M4 live omschakeling WAIT, maar het onafhankelijke automatische updatewerk loopt door. Vóór exclusieve switch geen nieuwe unitfile op de originele managed systemd-user locatie: zelfs disabled unit veroorzaakt coexistentieconflict en kan cron-reconcile blokkeren. Geen nieuwe manager/relay/updater.
+
 ## 2026-11-07 — #662 0.1.154 source candidate: releaseartifact niet voor volledige CI-demo
 
 - Bestaande main `release-artifact` werkte na `validate`, parallel met `demo-smoke`; bewijs: v0.1.152 kandidaat `13565557686` bestaat, maar main workflow `42351052147` was CANCELLED. Nieuwe bronpatch laat originele artifactjob pas starten na `validate`, `demo-smoke` én `disposable-systemd-user`. Geen second workflow of fysieke acties, CI en merge nog vereist. Attributie/Ubuntu blijven aparte workflows.

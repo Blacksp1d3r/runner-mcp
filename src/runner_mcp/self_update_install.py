@@ -416,12 +416,20 @@ class SelfUpdatePackageInstaller:
         return resolved
 
     def staged_wheel_sha256(self, *, job_id: str, label: str) -> str | None:
-        """Hash the existing staged wheel; NOT independent/signed wheel provenance.
+        """Seal one retained wheel inode; never attest loaded code or A7.
 
-        Read-only, bounded, owner-local seal for a recovery transaction. Compare
-        the value again immediately before attempting to reinstall the wheel.
-        The separate A7 supervisor and original-host provenance remain required.
+        Alle controles gebruiken exact dezelfde geopende inode. Ook rechten,
+        eigenaar, linkaantal en wijzigingsgeneratie moeten voor en na het
+        hashen gelijk blijven. Bij een padwissel of ontbrekende NOFOLLOW-steun
+        levert deze lokale herstelcontrole geen goedkeurend digest op.
         """
+        def generation(info: os.stat_result) -> tuple[int, ...]:
+            return (
+                info.st_dev, info.st_ino, info.st_mode, info.st_uid,
+                info.st_gid, info.st_nlink, info.st_size, info.st_mtime_ns,
+                info.st_ctime_ns,
+            )
+
         try:
             wheel = self.staged_wheel(job_id=job_id, label=label)
             before = wheel.lstat()
@@ -431,22 +439,22 @@ class SelfUpdatePackageInstaller:
                 or before.st_nlink != 1
                 or before.st_mode & (stat.S_IWGRP | stat.S_IWOTH)
                 or not 0 < before.st_size <= 128 * 1024 * 1024
+                or not hasattr(os, "O_NOFOLLOW")
             ):
                 return None
-            with wheel.open("rb") as handle:
+            flags = os.O_RDONLY | os.O_NOFOLLOW
+            if hasattr(os, "O_CLOEXEC"):
+                flags |= os.O_CLOEXEC
+            with os.fdopen(os.open(wheel, flags), "rb") as handle:
                 opened = os.fstat(handle.fileno())
-                if (opened.st_dev, opened.st_ino, opened.st_size) != (
-                    before.st_dev, before.st_ino, before.st_size
-                ):
+                if generation(opened) != generation(before):
                     return None
                 digest = hashlib.file_digest(handle, "sha256").hexdigest()
-                after_read = os.fstat(handle.fileno())
-            after = wheel.lstat()
-            if (after.st_dev, after.st_ino, after.st_size, after.st_mtime_ns) != (
-                before.st_dev, before.st_ino, before.st_size, before.st_mtime_ns
-            ) or (after_read.st_dev, after_read.st_ino, after_read.st_size) != (
-                before.st_dev, before.st_ino, before.st_size
-            ):
+                if generation(os.fstat(handle.fileno())) != generation(before):
+                    return None
+            # Een andere kandidaat mag dezelfde bestandsnaam niet vervangen.
+            # De live pathname moet NOG naar de vastgehouden wheel-inode wijzen.
+            if generation(wheel.lstat()) != generation(before):
                 return None
             return digest
         except (OSError, PackageInstallError, ValueError):

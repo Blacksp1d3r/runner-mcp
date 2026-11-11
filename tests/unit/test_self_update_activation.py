@@ -73,6 +73,14 @@ def test_multiple_or_missing_managers_deny(
     monkeypatch.setattr(
         "runner_mcp.autostart.has_managed_user_units", lambda: systemd,
     )
+    monkeypatch.setattr(
+        "runner_mcp.cron_autostart.cron_status",
+        lambda **kwargs: [_row()],
+    )
+    monkeypatch.setattr(
+        "runner_mcp.autostart.user_service_status",
+        lambda: [_row()],
+    )
     with pytest.raises(
         ManagedServerActivationError, match="missing or multiple",
     ):
@@ -118,3 +126,36 @@ def test_cron_readback_error_does_not_kill_process(
             tmp_path, terminate_self=lambda: executed.append(True),
         )
     assert executed == []
+
+
+def test_partial_cron_to_systemd_peer_migration_is_not_duplicate_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """One cron SERVER plus an unrelated systemd peer is still one server."""
+    monkeypatch.setattr(
+        "runner_mcp.cron_autostart.has_managed_cron", lambda: True,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.autostart.has_managed_user_units", lambda: True,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cron_autostart.cron_status",
+        lambda **kwargs: [_row()],
+    )
+    monkeypatch.setattr(
+        "runner_mcp.autostart.user_service_status",
+        lambda: [
+            SimpleNamespace(
+                component="server", installed=False,
+                enabled=False, active=False,
+            ),
+            SimpleNamespace(
+                component="topology-heartbeat", installed=True,
+                enabled=True, active=True,
+            ),
+        ],
+    )
+    assert (
+        managed_server_activation_status(tmp_path).backend
+        is ManagedServerBackend.CRON
+    )

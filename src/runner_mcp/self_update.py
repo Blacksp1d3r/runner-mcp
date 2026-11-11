@@ -18,7 +18,7 @@ from typing import Any
 from urllib.parse import urlsplit
 from uuid import uuid4
 
-from .config import ProjectRegistry
+from .config import ProjectConfig, ProjectRegistry
 from .operational_safety import ActionClass, OperatorSafetyGuard
 from .self_update_install import PackageInstallError, SelfUpdatePackageInstaller
 from .source_control import SourceControlError, SourceSynchronizer, clean_head
@@ -171,44 +171,6 @@ def restart_marker_commit(config_dir: Path, component: str) -> str | None:
     if not _COMMIT_RE.fullmatch(commit):
         raise SelfUpdateError("Self-update restart marker is invalid")
     return commit
-
-
-def installed_self_update_commit(config_dir: Path) -> str | None:
-    path = config_dir.expanduser().resolve() / "self-update-state.json"
-    if path.is_symlink():
-        raise SelfUpdateError("Self-update state is unsafe")
-    if not path.exists():
-        return None
-    if not path.is_file():
-        raise SelfUpdateError("Self-update state is unsafe")
-    try:
-        raw = json.loads(path.read_text(encoding="utf-8"))
-    except (OSError, json.JSONDecodeError) as exc:
-        raise SelfUpdateError("Self-update state is unavailable") from exc
-    candidate = raw.get("commit") if isinstance(raw, dict) else None
-    if not isinstance(candidate, str) or not _COMMIT_RE.fullmatch(candidate):
-        raise SelfUpdateError("Self-update state is invalid")
-    return candidate
-
-
-def confirm_server_activation(
-    config_dir: Path,
-    *,
-    process_commit: str | None,
-) -> bool:
-    """Consume the server marker only from a process started on that exact commit."""
-
-    if process_commit is None:
-        return False
-    if not _COMMIT_RE.fullmatch(process_commit):
-        raise SelfUpdateError("Runner MCP process commit is invalid")
-    marker = restart_marker_commit(config_dir, "server")
-    if marker is None or marker != process_commit:
-        return False
-    installed = installed_self_update_commit(config_dir)
-    if installed != process_commit:
-        return False
-    return consume_restart_marker(config_dir, "server")
 
 
 def restart_pending_count(config_dir: Path) -> int:
@@ -433,9 +395,10 @@ class SelfUpdateManager:
         server_bind_host: str | None = None,
         server_bind_port: int | None = None,
         server_reexec: Callable[[], object] | None = None,
-        server_activation_scheduler: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
+        active_revision_provider: Callable[[], str | None] | None = None,
+        retain_activation_baseline: bool = False,
     ) -> None:
         root = config_dir.expanduser()
         if root.exists() and root.is_symlink():
@@ -508,8 +471,15 @@ class SelfUpdateManager:
                     self._server_host = parsed_resource.hostname
                     self._server_port = port
         self._server_reexec = server_reexec
-        self._server_activation_scheduler = server_activation_scheduler
         self._restart_components = _normalize_restart_components(restart_components)
+        if active_revision_provider is not None and not callable(active_revision_provider):
+            raise SelfUpdateError("Active runtime revision provider is invalid")
+        self._active_revision_provider = active_revision_provider
+        if type(retain_activation_baseline) is not bool:
+            raise SelfUpdateError("Provisional baseline retention flag is invalid")
+        # An independent A7 actuator must own confirmation/clearance.
+        # Never discard the only local rollback wheel in a provisional window.
+        self._retain_activation_baseline = retain_activation_baseline
         self._lock = threading.RLock()
         self._jobs: dict[str, SelfUpdateJob] = {}
         self._load_existing_jobs()
@@ -557,7 +527,21 @@ class SelfUpdateManager:
             raise SelfUpdateError("Self-update compatibility record could not be persisted") from exc
 
     def _installed_commit(self) -> str | None:
-        return installed_self_update_commit(self.config_dir)
+        path = self._state_path()
+        if path.is_symlink():
+            raise SelfUpdateError("Self-update state is unsafe")
+        if not path.exists():
+            return None
+        if not path.is_file():
+            raise SelfUpdateError("Self-update state is unsafe")
+        try:
+            raw = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise SelfUpdateError("Self-update state is unavailable") from exc
+        candidate = raw.get("commit") if isinstance(raw, dict) else None
+        if not isinstance(candidate, str) or not _COMMIT_RE.fullmatch(candidate):
+            raise SelfUpdateError("Self-update state is invalid")
+        return candidate
 
     def _pending_install_transaction(self) -> dict[str, Any] | None:
         try:
@@ -727,11 +711,7 @@ class SelfUpdateManager:
         return all(name in names for name in SELF_TEST_PROFILES)
 
     def _restart_ready(self) -> bool:
-        return (
-            self._server_activation_scheduler is not None
-            or self._server_reexec is not None
-            or self._server_port is not None
-        )
+        return self._server_reexec is not None or self._server_port is not None
 
     def _latest_job_public(self) -> dict[str, Any] | None:
         with self._lock:
@@ -743,6 +723,42 @@ class SelfUpdateManager:
             )
             return latest.public_dict()
 
+    def _active_runtime_revision(self) -> str | None:
+        if self._active_revision_provider is None:
+            return None
+        try:
+            revision = self._active_revision_provider()
+        except (OSError, RuntimeError, TypeError, ValueError, LookupError, AttributeError):
+            # Unavailable provider metadata is an unknown revision, not a tool error.
+            return None
+        if revision is None:
+            return None
+        if not isinstance(revision, str) or _COMMIT_RE.fullmatch(revision) is None:
+            return None
+        return revision
+
+    def _source_baseline_status(
+        self,
+        config: ProjectConfig,
+        installed_commit: str | None,
+    ) -> tuple[str | None, bool | None]:
+        if installed_commit is None:
+            return None, None
+        try:
+            root = config.root.resolve(strict=True)
+            source_state = clean_head(root)
+            if not isinstance(source_state, dict) or source_state.get("clean") is not True:
+                return None, False
+            source_commit = source_state.get("commit")
+            if (
+                not isinstance(source_commit, str)
+                or _COMMIT_RE.fullmatch(source_commit) is None
+            ):
+                return None, False
+        except (OSError, SourceControlError, TypeError, ValueError):
+            return None, False
+        return source_commit, source_commit == installed_commit
+
     def runtime_status(self) -> dict[str, Any]:
         try:
             package_version = version("aifordable-runner-mcp")
@@ -750,25 +766,85 @@ class SelfUpdateManager:
             package_version = "development"
 
         last_commit = self._installed_commit()
-        recovery_pending = self._pending_install_transaction() is not None
+        transaction = self._pending_install_transaction()
+        recovery_pending = transaction is not None
+        provisional_pending = (
+            self._retain_activation_baseline
+            and transaction is not None
+            and any(
+                item.job_id == transaction["job_id"]
+                and item.commit == transaction["target_commit"]
+                and item.state == SelfUpdateJobState.COMPLETED
+                for item in self._jobs.values()
+            )
+        )
+        # A retained transaction/job is not evidence that its rollback wheel
+        # still exists. This is presence-only, not byte integrity, installer
+        # custody, live serving provenance or autonomous A7 recovery proof.
+        provisional_baseline_wheel_present: bool | None = None
+        # This is strictly an owner-local SHA-256 match to the preserved
+        # transaction, NOT independently trusted wheel provenance or A7.
+        provisional_baseline_wheel_sha256_matches: bool | None = None
+        if provisional_pending:
+            try:
+                self._package_installer.staged_wheel(
+                    job_id=transaction["job_id"],
+                    label="baseline",
+                )
+                provisional_baseline_wheel_present = True
+            except (PackageInstallError, OSError):
+                provisional_baseline_wheel_present = False
+            pinned_digest = transaction.get("baseline_wheel_sha256")
+            if pinned_digest is not None:
+                observed_digest = self._package_installer.staged_wheel_sha256(
+                    job_id=transaction["job_id"], label="baseline"
+                )
+                provisional_baseline_wheel_sha256_matches = (
+                    observed_digest is not None and observed_digest == pinned_digest
+                )
+        active_revision = self._active_runtime_revision()
+        runtime_activation_aligned: bool | None = None
+        if last_commit is not None and self._active_revision_provider is not None:
+            runtime_activation_aligned = active_revision == last_commit
 
+        source_commit: str | None = None
+        source_baseline_aligned: bool | None = None
         try:
-            self._project_config()
+            config = self._project_config()
             project_ready = True
+            source_commit, source_baseline_aligned = self._source_baseline_status(
+                config,
+                last_commit,
+            )
         except SelfUpdateError:
             project_ready = False
         pending_restarts = restart_pending_count(self.config_dir)
+        source_ready = (
+            last_commit is None
+            or source_baseline_aligned is True
+        )
+        activation_ready = (
+            last_commit is None
+            or self._active_revision_provider is None
+            or runtime_activation_aligned is True
+        )
 
         return {
             "version": package_version,
             "self_update_ready": (
                 project_ready
+                and source_ready
+                and activation_ready
                 and self._required_profiles_available()
                 and self._restart_ready()
                 and pending_restarts == 0
                 and not recovery_pending
             ),
             "last_installed_commit": last_commit,
+            "source_commit": source_commit,
+            "source_baseline_aligned": source_baseline_aligned,
+            "active_runtime_revision": active_revision,
+            "runtime_activation_aligned": runtime_activation_aligned,
             "active_update": any(
                 job.state not in _TERMINAL_SELF_UPDATE_STATES
                 for job in self._jobs.values()
@@ -776,6 +852,11 @@ class SelfUpdateManager:
             "restart_pending": pending_restarts > 0,
             "pending_restart_count": pending_restarts,
             "install_recovery_pending": recovery_pending,
+            "provisional_activation_pending": provisional_pending,
+            "provisional_baseline_wheel_present": provisional_baseline_wheel_present,
+            "provisional_baseline_wheel_sha256_matches": (
+                provisional_baseline_wheel_sha256_matches
+            ),
             "latest_self_update_job": self._latest_job_public(),
         }
 
@@ -798,7 +879,28 @@ class SelfUpdateManager:
                 "Runner MCP self-update installation recovery is still pending"
             )
         installed_commit = self._installed_commit()
+        if self._retain_activation_baseline and installed_commit is None:
+            raise SelfUpdateError(
+                "Provisional self-update requires an existing recorded rollback baseline"
+            )
         if installed_commit is not None:
+            if self._active_revision_provider is not None:
+                active_revision = self._active_runtime_revision()
+                if active_revision != installed_commit:
+                    raise SelfUpdateError(
+                        "Runner MCP self-update activation is not proven"
+                    )
+            source_commit, source_baseline_aligned = self._source_baseline_status(
+                config,
+                installed_commit,
+            )
+            if source_baseline_aligned is not True:
+                detail = (
+                    "source baseline is unavailable"
+                    if source_commit is None
+                    else "source baseline drift detected"
+                )
+                raise SelfUpdateError(f"Runner MCP self-update {detail}")
             reconcile_stale_restart_markers(
                 self.config_dir,
                 self._restart_components,
@@ -1042,6 +1144,13 @@ class SelfUpdateManager:
                 job_id=job_id,
                 label="baseline",
             )
+            pinned_digest = transaction.get("baseline_wheel_sha256")
+            if pinned_digest is not None and (
+                self._package_installer.staged_wheel_sha256(
+                    job_id=job_id, label="baseline"
+                ) != pinned_digest
+            ):
+                raise SelfUpdateError("Self-update baseline wheel digest mismatch")
             self._package_installer.install_wheel(baseline_wheel)
             self._package_installer.verify_runtime()
             self.source.restore_project_main_commit_for_recovery(
@@ -1067,7 +1176,7 @@ class SelfUpdateManager:
                         job.finished_at = _utc_now()
                     self._persist_job(job)
 
-            self._package_installer.clear_transaction()
+            self._package_installer.clear_transaction(job_id=job_id)
         except (
             PackageInstallError,
             SelfUpdateError,
@@ -1088,8 +1197,6 @@ class SelfUpdateManager:
 
     def _schedule_server_restart(self) -> None:
         def restart_component() -> object:
-            if self._server_activation_scheduler is not None:
-                return self._server_activation_scheduler()
             if self._server_reexec is not None:
                 return self._server_reexec()
             if self._server_host is None or self._server_port is None:
@@ -1103,12 +1210,6 @@ class SelfUpdateManager:
 
         def restart() -> None:
             time.sleep(self._restart_delay_seconds)
-            if self._server_activation_scheduler is not None:
-                try:
-                    restart_component()
-                except (OSError, RuntimeError):
-                    return
-                return
             for retry_delay in (0.0, 2.0, 5.0):
                 if retry_delay:
                     time.sleep(retry_delay)
@@ -1184,6 +1285,7 @@ class SelfUpdateManager:
                     return
 
                 baseline_wheel: Path | None = None
+                baseline_wheel_sha256: str | None = None
                 if baseline_commit is not None:
                     self._set_job(
                         job_id,
@@ -1204,7 +1306,6 @@ class SelfUpdateManager:
                         raise SelfUpdateError(
                             "Self-update source changed while staging recovery"
                         )
-
                 self._set_job(
                     job_id,
                     state=SelfUpdateJobState.SYNCING,
@@ -1261,11 +1362,23 @@ class SelfUpdateManager:
                     ActionClass.TEST,
                     environment=config.environment,
                 )
+                # Seal the baseline at the transaction boundary, after lint,
+                # tests and source-contract checks. Pre-install failures must
+                # retain their existing independent source recovery behavior.
+                if baseline_commit is not None:
+                    baseline_wheel_sha256 = self._package_installer.staged_wheel_sha256(
+                        job_id=job_id, label="baseline"
+                    )
+                    if baseline_wheel_sha256 is None:
+                        raise SelfUpdateError(
+                            "Self-update recovery wheel could not be sealed"
+                        )
                 try:
                     self._package_installer.begin_transaction(
                         job_id=job_id,
                         target_commit=job.commit,
                         baseline_commit=baseline_commit,
+                        baseline_wheel_sha256=baseline_wheel_sha256,
                     )
                     install_transaction_started = True
                 except PackageInstallError as exc:
@@ -1306,6 +1419,12 @@ class SelfUpdateManager:
                     )
                     rollback_succeeded = True
                     try:
+                        if self._package_installer.staged_wheel_sha256(
+                            job_id=job_id, label="baseline"
+                        ) != baseline_wheel_sha256:
+                            raise PackageInstallError(
+                                "Self-update baseline wheel digest mismatch"
+                            )
                         self._package_installer.install_wheel(baseline_wheel)
                         self._package_installer.verify_runtime()
                     except PackageInstallError:
@@ -1328,7 +1447,7 @@ class SelfUpdateManager:
                         ) from install_exc
 
                     try:
-                        self._package_installer.clear_transaction()
+                        self._package_installer.clear_transaction(job_id=job_id)
                     except PackageInstallError as exc:
                         failure_category = "install_recovery_required"
                         raise SelfUpdateError(
@@ -1347,13 +1466,23 @@ class SelfUpdateManager:
                     job.commit,
                     self._restart_components,
                 )
-                try:
-                    self._package_installer.clear_transaction()
-                except PackageInstallError as exc:
-                    raise SelfUpdateError(
-                        "Self-update install transaction could not be finalized"
-                    ) from exc
-                preserve_artifacts = False
+                if self._retain_activation_baseline:
+                    if baseline_commit is None or baseline_wheel is None:
+                        raise SelfUpdateError(
+                            "Provisional rollback baseline is unavailable"
+                        )
+                    # The fixed transaction and both wheels stay in the
+                    # existing private custody through activation/reconnect.
+                    # No automatic commit or new remote clearance authority.
+                    preserve_artifacts = True
+                else:
+                    try:
+                        self._package_installer.clear_transaction(job_id=job_id)
+                    except PackageInstallError as exc:
+                        raise SelfUpdateError(
+                            "Self-update install transaction could not be finalized"
+                        ) from exc
+                    preserve_artifacts = False
                 self._set_job(
                     job_id,
                     state=SelfUpdateJobState.COMPLETED,

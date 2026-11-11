@@ -58,6 +58,22 @@ def _patch_start(
 ) -> None:
     monkeypatch.setattr(runtime.subprocess, "Popen", lambda *_args, **_kwargs: process)
     monkeypatch.setattr(runtime, "_wait_health", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(runtime, "_qualification_agent_pids", lambda: ())
+    monkeypatch.setattr(
+        runtime,
+        "_same_user_process",
+        lambda pid: pid == process.pid,
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_process_owns_listener",
+        lambda pid, _url: pid == process.pid,
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_qualification_agent_environment_additions",
+        lambda _config: {},
+    )
 
 
 def test_restart_recovers_when_pid_file_is_missing(
@@ -87,10 +103,9 @@ def test_restart_recovers_when_recorded_pid_has_disappeared(
     config = _config(tmp_path)
     home = _managed_home(tmp_path)
     (config / "fabric-qualification.pid").write_text("1234\n", encoding="ascii")
-    monkeypatch.setattr(runtime, "_same_user_process", lambda _pid: False)
-    monkeypatch.setattr(runtime, "_pid_exists", lambda _pid: False)
     process = _Process(43211)
     _patch_start(monkeypatch, process)
+    monkeypatch.setattr(runtime, "_pid_exists", lambda _pid: False)
 
     result = restart_fabric_qualification_agent(
         config_dir=config,
@@ -137,12 +152,20 @@ def test_restart_keeps_live_process_restart_semantics(
     config = _config(tmp_path)
     home = _managed_home(tmp_path)
     (config / "fabric-qualification.pid").write_text("1234\n", encoding="ascii")
-    observations = iter((True, False))
-    monkeypatch.setattr(runtime, "_same_user_process", lambda _pid: next(observations))
     killed: list[tuple[int, int]] = []
     monkeypatch.setattr(runtime.os, "kill", lambda pid, sig: killed.append((pid, sig)))
     process = _Process(43212)
     _patch_start(monkeypatch, process)
+    old_checks = 0
+
+    def same_process(pid: int) -> bool:
+        nonlocal old_checks
+        if pid == 1234:
+            old_checks += 1
+            return old_checks == 1
+        return pid == process.pid
+
+    monkeypatch.setattr(runtime, "_same_user_process", same_process)
 
     result = restart_fabric_qualification_agent(
         config_dir=config,
@@ -192,3 +215,164 @@ def test_restart_keeps_malformed_pid_fail_closed(
             bearer_token="q" * 48,
             home=home,
         )
+
+
+def test_restart_forwards_only_fixed_qualification_additions(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+    home = _managed_home(tmp_path)
+    process = _Process(43214)
+    additions = {
+        "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": "/private/journal",
+        "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": "http://127.0.0.1:8000/mcp",
+    }
+    monkeypatch.setattr(
+        runtime,
+        "_qualification_agent_environment_additions",
+        lambda _config: dict(additions),
+    )
+    monkeypatch.setattr(runtime, "_wait_health", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(runtime, "_qualification_agent_pids", lambda: ())
+    monkeypatch.setattr(
+        runtime,
+        "_same_user_process",
+        lambda pid: pid == process.pid,
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_process_owns_listener",
+        lambda pid, _url: pid == process.pid,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_popen(*args, **kwargs):
+        captured["args"] = args
+        captured["env"] = kwargs["env"]
+        return process
+
+    monkeypatch.setattr(runtime.subprocess, "Popen", fake_popen)
+
+    result = restart_fabric_qualification_agent(
+        config_dir=config,
+        resource_url="http://127.0.0.1:9020/mcp",
+        bearer_token="q" * 48,
+        home=home,
+    )
+
+    assert result["healthy"] is True
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    assert environment["RUNNER_FABRIC_UPDATE_JOURNAL_ROOT"] == "/private/journal"
+    assert environment["RUNNER_FABRIC_RUNNER_MCP_ENDPOINT"] == (
+        "http://127.0.0.1:8000/mcp"
+    )
+    assert environment["RUNNER_FABRIC_AGENT_BEARER_TOKEN"] == "q" * 48
+
+
+def test_restart_fails_closed_when_fixed_qualification_binding_is_invalid(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+    home = _managed_home(tmp_path)
+    monkeypatch.setattr(
+        runtime,
+        "_qualification_agent_environment_additions",
+        lambda _config: (_ for _ in ()).throw(
+            FabricAgentRestartError("fabric_agent_config_invalid")
+        ),
+    )
+
+    with pytest.raises(FabricAgentRestartError, match="fabric_agent_config_invalid"):
+        restart_fabric_qualification_agent(
+            config_dir=config,
+            resource_url="http://127.0.0.1:9020/mcp",
+            bearer_token="q" * 48,
+            home=home,
+        )
+
+
+def test_restart_reconciles_unrecorded_stale_qualification_agent(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+    home = _managed_home(tmp_path)
+    process = _Process(43215)
+    inventories = iter(((126604,), ()))
+    monkeypatch.setattr(runtime, "_qualification_agent_pids", lambda: next(inventories))
+    monkeypatch.setattr(
+        runtime,
+        "_same_user_process",
+        lambda pid: pid == process.pid,
+    )
+    monkeypatch.setattr(runtime, "_wait_process_exit", lambda _pid: True)
+    monkeypatch.setattr(runtime, "_wait_health", lambda *_args, **_kwargs: True)
+    monkeypatch.setattr(
+        runtime,
+        "_process_owns_listener",
+        lambda pid, _url: pid == process.pid,
+    )
+    monkeypatch.setattr(
+        runtime,
+        "_qualification_agent_environment_additions",
+        lambda _config: {},
+    )
+    monkeypatch.setattr(runtime.subprocess, "Popen", lambda *_args, **_kwargs: process)
+    killed: list[tuple[int, int]] = []
+    monkeypatch.setattr(runtime.os, "kill", lambda pid, sig: killed.append((pid, sig)))
+
+    result = restart_fabric_qualification_agent(
+        config_dir=config,
+        resource_url="http://127.0.0.1:9020/mcp",
+        bearer_token="q" * 48,
+        home=home,
+    )
+
+    assert killed == [(126604, runtime.signal.SIGTERM)]
+    assert result["healthy"] is True
+
+
+def test_restart_rejects_health_from_listener_not_owned_by_new_process(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    config = _config(tmp_path)
+    home = _managed_home(tmp_path)
+    process = _Process(43216)
+    _patch_start(monkeypatch, process)
+    monkeypatch.setattr(runtime, "_process_owns_listener", lambda *_args: False)
+
+    with pytest.raises(
+        FabricAgentRestartError,
+        match="fabric_agent_health_failed",
+    ):
+        restart_fabric_qualification_agent(
+            config_dir=config,
+            resource_url="http://127.0.0.1:9020/mcp",
+            bearer_token="q" * 48,
+            home=home,
+        )
+
+    assert process.terminated is True
+    assert not (config / "fabric-qualification.pid").exists()
+
+
+def test_process_listener_ownership_requires_shared_socket_inode(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(runtime, "_listening_socket_inodes", lambda _port: frozenset({"55"}))
+    monkeypatch.setattr(runtime, "_process_socket_inodes", lambda _pid: frozenset({"55"}))
+
+    assert runtime._process_owns_listener(
+        43217,
+        "http://127.0.0.1:9020/mcp",
+    )
+
+    monkeypatch.setattr(runtime, "_process_socket_inodes", lambda _pid: frozenset({"77"}))
+    assert not runtime._process_owns_listener(
+        43217,
+        "http://127.0.0.1:9020/mcp",
+    )

@@ -150,7 +150,137 @@ def test_private_or_unqualified_output_fails_closed(
         runner.run()
 
 
-def test_nonzero_result_is_sanitized(tmp_path: Path) -> None:
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "guest-agent-not-ready",
+        "destroy-instance-delete-nonzero",
+        "destroy-inspection-instance-after-delete",
+        "destroy-inspection-instance-before-delete-timeout",
+        "destroy-inspection-project-final-nonzero",
+        "destroy-inspection-network-final-invalid-json",
+        "destroy-inspection-version-invalid-shape",
+        "final-destroy-network-persisted",
+        "final-destroy-inspection-project-final",
+        "final-destroy-inspection-instance-final-timeout",
+        "final-destroy-inspection-network-initial-invalid-shape",
+        "isolation-management-authority",
+        "isolation-default-route",
+        "isolation-network-policy",
+        "recreate-isolation-management-authority",
+        "recreate-isolation-default-route",
+        "recreate-isolation-network-policy",
+    ],
+)
+def test_known_nonzero_result_returns_only_bounded_reason(
+    tmp_path: Path,
+    reason: str,
+) -> None:
+    home = managed_home(tmp_path)
+    config = tmp_path / "qualification.json"
+    config.write_text("{}", encoding="utf-8")
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            2,
+            stdout="",
+            stderr=(
+                "Runner Fabric disposable target qualification: "
+                f"INVALID:{reason}\n"
+            ),
+        )
+
+    runner = FabricDisposableTargetQualificationRunner(
+        safety=safety(tmp_path),
+        environment={qualification_config_environment_key(): str(config)},
+        home=home,
+        runner=fake_run,
+    )
+
+    result = runner.run()
+
+    assert result == {
+        "schemaVersion": "runner-mcp/disposable-target-qualification-status/v1",
+        "state": "invalid",
+        "reasonCode": reason,
+        "qualificationPassed": False,
+        "normalActivationEnabled": False,
+    }
+
+
+def test_unlisted_destroy_reason_is_rejected(tmp_path: Path) -> None:
+    home = managed_home(tmp_path)
+    config = tmp_path / "qualification.json"
+    config.write_text("{}", encoding="utf-8")
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            2,
+            stdout="",
+            stderr=(
+                "Runner Fabric disposable target qualification: "
+                "INVALID:destroy-arbitrary-provider-detail\n"
+            ),
+        )
+
+    runner = FabricDisposableTargetQualificationRunner(
+        safety=safety(tmp_path),
+        environment={qualification_config_environment_key(): str(config)},
+        home=home,
+        runner=fake_run,
+    )
+
+    with pytest.raises(
+        FabricDisposableTargetQualificationError,
+        match="qualification_failed",
+    ):
+        runner.run()
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "destroy-inspection-instance-before-delete-busy",
+        "destroy-inspection-caller-selected-timeout",
+        "final-destroy-inspection-instance-before-delete-private",
+    ],
+)
+def test_unlisted_inspection_phase_kind_reason_is_rejected(
+    tmp_path: Path,
+    reason: str,
+) -> None:
+    home = managed_home(tmp_path)
+    config = tmp_path / "qualification.json"
+    config.write_text("{}", encoding="utf-8")
+
+    def fake_run(command, **kwargs):
+        return subprocess.CompletedProcess(
+            command,
+            2,
+            stdout="",
+            stderr=(
+                "Runner Fabric disposable target qualification: "
+                f"INVALID:{reason}\n"
+            ),
+        )
+
+    runner = FabricDisposableTargetQualificationRunner(
+        safety=safety(tmp_path),
+        environment={qualification_config_environment_key(): str(config)},
+        home=home,
+        runner=fake_run,
+    )
+
+    with pytest.raises(
+        FabricDisposableTargetQualificationError,
+        match="qualification_failed",
+    ):
+        runner.run()
+
+
+def test_unknown_nonzero_result_is_sanitized(tmp_path: Path) -> None:
     home = managed_home(tmp_path)
     config = tmp_path / "qualification.json"
     config.write_text("{}", encoding="utf-8")

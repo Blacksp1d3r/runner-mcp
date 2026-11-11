@@ -202,3 +202,958 @@ def test_qualification_agent_start_failure_is_bounded(
 
     assert str(exc.value) == "Runner Fabric qualification agent could not start"
     assert secret not in str(exc.value)
+
+
+_A6_VALUES = {
+    "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": "/private/a6-journal",
+    "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN": "control:evidence",
+    "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN": "target:runner-mcp",
+    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": "http://127.0.0.1:8000/mcp",
+    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": "r" * 48,
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_ID": "fleet-a6",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT": "runner:aifordable-lab",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION": "f" * 40,
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS": "60",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT": "/private/a6-evidence",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION": "f" * 40,
+}
+
+
+def _append_a6(paths, values: dict[str, str] | None = None) -> None:
+    selected = _A6_VALUES if values is None else values
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in selected.items():
+            handle.write(f"{key}={value}\n")
+
+
+def test_qualification_agent_forwards_complete_fixed_a6_binding(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_a6(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _A6_VALUES.items():
+        assert environment[key] == value
+    assert "UNRELATED_PRIVATE_VALUE" not in environment
+
+
+def test_qualification_agent_rejects_partial_a6_binding(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_a6(
+        paths,
+        {"RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": "/private/a6-journal"},
+    )
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="A6 qualification configuration is incomplete",
+    ):
+        run_fabric_agent_qualification_process(
+            paths.config_dir,
+            execve=lambda *_: object(),
+        )
+
+
+_WORKER_VALUES = {
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_WORKER_ID": "aifordable-lab",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_GENERATION": "1",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_NETWORK_PROFILE": "deny-private",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_CPU_UNITS": "8",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_MEMORY_MIB": "16384",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_HARD_DISK_MIB": "65536",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_SOFT_RESERVE_CPU_UNITS": "2",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_SOFT_RESERVE_MEMORY_MIB": "2048",
+    "RUNNER_FABRIC_WORKER_QUALIFICATION_POLICY_EXPIRES_AT": (
+        "2026-10-07T00:00:00+00:00"
+    ),
+    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": "http://127.0.0.1:8000/mcp",
+    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": "w" * 48,
+}
+
+
+def _append_worker(paths, values: dict[str, str] | None = None) -> None:
+    selected = _WORKER_VALUES if values is None else values
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in selected.items():
+            handle.write(f"{key}={value}\n")
+
+
+def test_qualification_agent_forwards_complete_worker_binding_without_a6(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_worker(paths)
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _WORKER_VALUES.items():
+        assert environment[key] == value
+    assert "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT" not in environment
+
+
+def test_qualification_agent_rejects_partial_worker_binding(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_worker(
+        paths,
+        {"RUNNER_FABRIC_WORKER_QUALIFICATION_WORKER_ID": "aifordable-lab"},
+    )
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="worker qualification configuration is incomplete",
+    ):
+        run_fabric_agent_qualification_process(
+            paths.config_dir,
+            execve=lambda *_: object(),
+        )
+
+
+def test_shared_runner_mcp_binding_does_not_cross_trigger_a6_or_worker(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write(
+            "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT=http://127.0.0.1:8000/mcp\n"
+        )
+        handle.write("RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN=" + ("s" * 48) + "\n")
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    assert "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT" not in environment
+    assert "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN" not in environment
+
+
+def test_qualification_agent_forwards_a6_and_worker_bindings_together(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_a6(paths)
+    worker_only = {
+        key: value
+        for key, value in _WORKER_VALUES.items()
+        if key
+        not in {
+            "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT",
+            "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN",
+        }
+    }
+    _append_worker(paths, worker_only)
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification,
+        "_fixed_runner_fabric_executable",
+        lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir,
+        execve=fake_execve,
+    ) == 0
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _A6_VALUES.items():
+        assert environment[key] == value
+    for key, value in worker_only.items():
+        assert environment[key] == value
+
+
+_AF585_ISSUER = "af585-control-issuer.env"
+_AF585_VALUES = {
+    "RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE": "machine_control_credential",
+    "RUNNER_FABRIC_CONTROL_RELAY_ORIGIN": "https://staging.fiscero.com",
+    "RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL": "z" * 48,
+}
+
+
+def _write_af585_issuer(paths, values=None):
+    issuer = paths.config_dir / _AF585_ISSUER
+    source = _AF585_VALUES if values is None else values
+    issuer.write_text(
+        "".join(f"{key}={value}\n" for key, value in source.items()),
+        encoding="utf-8",
+    )
+    issuer.chmod(0o600)
+    return issuer
+
+
+def test_af585_private_issuer_is_forwarded_to_existing_agent_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    token = _append_bridge(paths)
+    _write_af585_issuer(paths)
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL=untrusted-main-env\n")
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification, "_fixed_runner_fabric_executable", lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir, execve=fake_execve,
+    ) == 0
+    environment = captured["env"]
+    assert isinstance(environment, dict)
+    for key, value in _AF585_VALUES.items():
+        assert environment[key] == value
+    assert environment["RUNNER_FABRIC_AGENT_BEARER_TOKEN"] == token
+    assert captured["argv"] == [str(executable), "agent-serve-qualification"]
+    assert "UNRELATED_PRIVATE_VALUE" not in environment
+    assert set(environment) == {
+        "HOME", "PATH", "LANG",
+        "RUNNER_FABRIC_AGENT_RESOURCE_URL",
+        "RUNNER_FABRIC_AGENT_BEARER_TOKEN",
+        *_AF585_VALUES,
+    }
+
+
+@pytest.mark.parametrize(
+    ("changes", "reason"),
+    [
+        ({"RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE": "operator_mfa_bearer"}, "mode"),
+        ({"RUNNER_FABRIC_CONTROL_RELAY_ORIGIN": "https://other.example"}, "origin"),
+        ({"RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL": "short"}, "credential"),
+        ({"RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL": "x" * 5000}, "length"),
+    ],
+)
+def test_af585_private_issuer_rejects_wrong_role_origin_or_secret(
+    tmp_path: Path, changes: dict[str, str], reason: str,
+) -> None:
+    del reason
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    values = {**_AF585_VALUES, **changes}
+    _write_af585_issuer(paths, values)
+
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ) as exc:
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert _AF585_VALUES["RUNNER_FABRIC_CONTROL_RELAY_CREDENTIAL"] not in str(exc.value)
+
+
+def test_af585_private_issuer_rejects_missing_key(
+    tmp_path: Path,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    values = dict(_AF585_VALUES)
+    del values["RUNNER_FABRIC_CONTROL_RELAY_ORIGIN"]
+    _write_af585_issuer(paths, values)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_af585_private_issuer_rejects_insecure_mode_and_symlink(
+    tmp_path: Path,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    issuer = _write_af585_issuer(paths)
+    issuer.chmod(0o644)
+    with pytest.raises(FabricAgentQualificationError):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+    issuer.chmod(0o600)
+    target = tmp_path / "elsewhere-private"
+    target.write_text(issuer.read_text(encoding="utf-8"), encoding="utf-8")
+    issuer.unlink()
+    issuer.symlink_to(target)
+    with pytest.raises(FabricAgentQualificationError):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def _default_original_publisher_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    """Synthetic same-owner default Runner-MCP tree, never a real host."""
+    home = tmp_path / "owner-home"
+    home.mkdir(mode=0o700)
+    home_config = home / ".config"
+    home_config.mkdir(mode=0o700)
+    monkeypatch.setattr(Path, "home", lambda: home)
+    project = tmp_path / "project"
+    project.mkdir()
+    paths = install_private_configuration(
+        config_dir=home_config / "runner-mcp",
+        answers=SetupAnswers(
+            resource_url="http://127.0.0.1:8000/mcp",
+            auth_issuer="http://127.0.0.1:8000/",
+            project_code="demo",
+            project_name="Demo",
+            repository="example/demo",
+            project_root=project,
+        ),
+    )
+    return paths, home_config / "runner-fabric"
+
+
+def _write_original_custody(issuer_dir: Path, values=None) -> Path:
+    issuer_dir.mkdir(mode=0o700)
+    file = issuer_dir / _AF585_ISSUER
+    source = _AF585_VALUES if values is None else values
+    file.write_text(
+        "".join(f"{key}={value}\n" for key, value in source.items()),
+        encoding="utf-8",
+    )
+    file.chmod(0o600)
+    return file
+
+
+def test_af585_original_owner_sibling_forwards_without_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _write_original_custody(issuer_dir)
+    assert not (paths.config_dir / _AF585_ISSUER).exists()
+
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification, "_fixed_runner_fabric_executable", lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir, execve=fake_execve,
+    ) == 0
+    env = captured["env"]
+    assert isinstance(env, dict)
+    assert all(env[key] == value for key, value in _AF585_VALUES.items())
+    assert not (paths.config_dir / _AF585_ISSUER).exists()
+    assert captured["argv"] == [str(executable), "agent-serve-qualification"]
+
+
+def test_af585_two_owner_issuer_files_fail_closed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _write_af585_issuer(paths)
+    _write_original_custody(issuer_dir)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+@pytest.mark.parametrize("invalid", ["world-readable-dir", "symlink-dir", "symlink-file", "world-readable-file"])
+def test_af585_sibling_rejects_unsafe_custody(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    if invalid == "symlink-dir":
+        outside = tmp_path / "elsewhere"
+        _write_original_custody(outside)
+        issuer_dir.symlink_to(outside, target_is_directory=True)
+    else:
+        file = _write_original_custody(issuer_dir)
+        if invalid == "world-readable-dir":
+            issuer_dir.chmod(0o755)
+        elif invalid == "symlink-file":
+            target = tmp_path / "outside-issuer"
+            target.write_text(file.read_text(encoding="utf-8"), encoding="utf-8")
+            file.unlink()
+            file.symlink_to(target)
+        else:
+            file.chmod(0o644)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_af585_unrelated_config_must_not_implicitly_adopt_sibling(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _write_original_custody(issuer_dir)
+    assert qualification._af585_private_issuer_additions(tmp_path / "other") == {}
+
+
+def test_af585_sibling_invalid_role_or_origin_rejected(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    values = {**_AF585_VALUES, "RUNNER_FABRIC_CONTROL_RELAY_ISSUER_MODE": "operator_mfa_bearer"}
+    _write_original_custody(issuer_dir, values)
+    with pytest.raises(
+        FabricAgentQualificationError,
+        match="original issuer configuration is invalid",
+    ):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_af585_no_sibling_file_preserves_disabled_mode_with_nonprivate_dir(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    issuer_dir.mkdir(mode=0o755)
+    assert qualification._af585_private_issuer_additions(paths.config_dir) == {}
+
+
+# Q7 lives in the EXISTING owner-private Runner-MCP env; this synthetic
+# fixture is not the actual Claude bearer or any LAB configuration.
+_Q7_VALUES = {
+    "RUNNER_FABRIC_CODING_Q7_PROJECT_ID": "aifordable",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_PROVIDER": "github",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_REPOSITORY": "Blacksp1d3r/AIfordable",
+    "RUNNER_FABRIC_CODING_Q7_SOURCE_CHECKOUT": "/private/q7-source",
+    "RUNNER_FABRIC_CODING_Q7_WORKSPACE_ROOT": "/private/q7-workspaces",
+    "RUNNER_FABRIC_CODING_Q7_WORKER_URL": "http://127.0.0.1:8030/mcp",
+    "RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN": "q" * 48,
+}
+_Q7_MODE = "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE"
+
+
+def _append_q7(paths, values: dict[str, str]) -> None:
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in values.items():
+            handle.write(f"{key}={value}\n")
+
+
+def _q7_captured_exec(
+    paths, tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> dict[str, object]:
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        qualification, "_fixed_runner_fabric_executable", lambda: executable,
+    )
+    captured: dict[str, object] = {}
+
+    def fake_execve(path: str, argv: list[str], env: dict[str, str]) -> object:
+        captured.update(path=path, argv=argv, env=env)
+        return object()
+
+    assert run_fabric_agent_qualification_process(
+        paths.config_dir, execve=fake_execve,
+    ) == 0
+    return captured
+
+
+def test_q7_private_complete_group_passes_to_exact_fabric_exec_only(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1"})
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("UNRELATED_PRIVATE_VALUE=must-not-leak\n")
+    captured = _q7_captured_exec(paths, tmp_path, monkeypatch)
+    env = captured["env"]
+    assert isinstance(env, dict)
+    assert captured["argv"] == [str(tmp_path / "runner-fabric"), "agent-serve-qualification"]
+    assert {key: env[key] for key in _Q7_VALUES} == _Q7_VALUES
+    assert env[_Q7_MODE] == "subscription-coding-q7-v1"
+    assert set(env) == {
+        "HOME", "PATH", "LANG", "RUNNER_FABRIC_AGENT_RESOURCE_URL",
+        "RUNNER_FABRIC_AGENT_BEARER_TOKEN", *_Q7_VALUES, _Q7_MODE,
+    }
+    assert "UNRELATED_PRIVATE_VALUE" not in env
+
+
+def test_q7_seven_without_explicit_mode_does_not_activate(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, _Q7_VALUES)
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert all(env[key] == value for key, value in _Q7_VALUES.items())
+    assert _Q7_MODE not in env
+
+
+@pytest.mark.parametrize("missing_key", tuple(_Q7_VALUES))
+def test_q7_rejects_each_missing_field_before_exec(
+    tmp_path: Path, missing_key: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, {
+        **{key: value for key, value in _Q7_VALUES.items() if key != missing_key},
+        _Q7_MODE: "subscription-coding-q7-v1",
+    })
+    called = []
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*incomplete"):
+        run_fabric_agent_qualification_process(
+            paths.config_dir, execve=lambda *args: called.append(args),
+        )
+    assert called == []
+
+
+@pytest.mark.parametrize("missing_key", tuple(_Q7_VALUES))
+def test_q7_rejects_each_present_but_empty_field(
+    tmp_path: Path, missing_key: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, {**_Q7_VALUES, missing_key: ""})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*incomplete"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+@pytest.mark.parametrize(("name", "value"), [
+    ("RUNNER_FABRIC_CODING_Q7_PROJECT_ID", "elsewhere"),
+    ("RUNNER_FABRIC_CODING_Q7_SOURCE_PROVIDER", "local"),
+    ("RUNNER_FABRIC_CODING_Q7_SOURCE_REPOSITORY", "Blacksp1d3r/other"),
+    ("RUNNER_FABRIC_CODING_Q7_WORKER_URL", "http://127.0.0.1:8031/mcp"),
+    ("RUNNER_FABRIC_CODING_Q7_SOURCE_CHECKOUT", "relative/repo"),
+    ("RUNNER_FABRIC_CODING_Q7_WORKSPACE_ROOT", "/private/../shared"),
+    ("RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN", "too-short"),
+    ("RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN", "x" * 4097),
+    (_Q7_MODE, "some-other-mode"),
+    (_Q7_MODE, ""),
+])
+def test_q7_invalid_binding_rejected_without_secrets_in_errors(
+    tmp_path: Path, name: str, value: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1", name: value})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid") as exc:
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert _Q7_VALUES["RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN"] not in str(exc.value)
+    assert "subscription-coding-q7-v1" not in str(exc.value)
+
+
+@pytest.mark.parametrize("partial", [
+    {_Q7_MODE: "subscription-coding-q7-v1"},
+    {"RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN": "q" * 48},
+    {"RUNNER_FABRIC_CODING_Q7_WORKSPACE_ROOT": "/private/q7-workspaces"},
+])
+def test_q7_mode_alone_or_partial_group_never_launches(
+    tmp_path: Path, partial: dict[str, str],
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, partial)
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*incomplete"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_q7_unknown_field_rejected_and_unrelated_host_environment_ignored(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    monkeypatch.setenv(_Q7_MODE, "subscription-coding-q7-v1")
+    monkeypatch.setenv("RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN", "ambient-do-not-use")
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in env)
+    assert _Q7_MODE not in env
+    _append_q7(paths, {**_Q7_VALUES, "RUNNER_FABRIC_CODING_Q7_UNKNOWN": "x"})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_q7_and_existing_a6_binding_are_independent_complete_groups(
+    tmp_path: Path,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_a6(paths)
+    _append_q7(paths, _Q7_VALUES)
+    values = qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert all(values[key] == value for key, value in _Q7_VALUES.items())
+    assert all(values[key] == value for key, value in _A6_VALUES.items())
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        handle.write("RUNNER_FABRIC_CODING_Q7_UNKNOWN=value\n")
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+@pytest.mark.parametrize("legacy_mode", ["synthetic-read-only-v1", "other-reserved", ""])
+def test_q7_does_not_block_or_forward_legacy_nonq7_mode_without_bindings(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, legacy_mode: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: legacy_mode})
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert _Q7_MODE not in env
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in env)
+
+
+def _staged_q7_owner_file(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    values: dict[str, str] | None = None,
+) -> tuple[object, Path]:
+    """Synthetic same-owner pre-existing stage, never a real LAB configuration."""
+    paths, _issuer_dir = _default_original_publisher_config(tmp_path, monkeypatch)
+    unit_dir = (
+        Path.home() / ".config" / "systemd" / "user"
+        / "runner-mcp-fabric-agent-qualification.service.d"
+    )
+    unit_dir.mkdir(parents=True, mode=0o700)
+    unit_dir.chmod(0o700)
+    stage = unit_dir / "q7-private.env"
+    data = {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1"}
+    if values is not None:
+        data = values
+    stage.write_text(
+        "".join(f"{key}={value}\n" for key, value in data.items()), encoding="utf-8"
+    )
+    stage.chmod(0o600)
+    return paths, stage
+
+
+def test_q7_preexisting_stage_is_inert_without_owner_config_opt_in(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    initial = stage.read_bytes()
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert _Q7_MODE not in env
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in env)
+    assert stage.read_bytes() == initial
+    assert not any(k in qualification.load_env_file(paths.env_file) for k in _Q7_VALUES)
+
+
+def test_q7_explicit_mode_consumes_existing_owner_stage_without_copy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    original = stage.read_bytes()
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert all(env[key] == value for key, value in _Q7_VALUES.items())
+    assert env[_Q7_MODE] == "subscription-coding-q7-v1"
+    assert stage.read_bytes() == original
+    assert all(key not in qualification.load_env_file(paths.env_file) for key in _Q7_VALUES)
+    assert not (paths.config_dir / "q7-private.env").exists()
+
+
+def test_q7_stage_rejects_two_credential_sources_without_exec(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1"})
+    called = []
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        run_fabric_agent_qualification_process(
+            paths.config_dir, execve=lambda *args: called.append(args),
+        )
+    assert called == []
+    assert stage.exists()
+
+
+@pytest.mark.parametrize("invalid", [
+    "file-symlink", "file-hardlink", "file-world-readable", "file-wrong-owner",
+    "dir-symlink", "dir-world-writable",
+])
+def test_q7_stage_refuses_unsafe_existing_custody(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, invalid: str,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    if invalid == "file-symlink":
+        target = tmp_path / "foreign-token"
+        target.write_bytes(stage.read_bytes())
+        stage.unlink()
+        stage.symlink_to(target)
+    elif invalid == "file-hardlink":
+        (tmp_path / "hardlink").hardlink_to(stage)
+    elif invalid == "file-world-readable":
+        stage.chmod(0o644)
+    elif invalid == "file-wrong-owner":
+        # Never invoke chown in a disposable test: replace the stat read.
+        real_lstat = type(stage).lstat
+        def lstat_foreign(self):
+            result = real_lstat(self)
+            if self == stage:
+                class Foreign:
+                    st_mode = result.st_mode
+                    st_uid = result.st_uid + 100
+                    st_nlink = result.st_nlink
+                return Foreign()
+            return result
+        monkeypatch.setattr(type(stage), "lstat", lstat_foreign)
+    elif invalid == "dir-symlink":
+        parent = stage.parent
+        sibling = tmp_path / "symlink-parent"
+        parent.rename(sibling)
+        parent.symlink_to(sibling, target_is_directory=True)
+    else:
+        stage.parent.chmod(0o777)
+    called = []
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        run_fabric_agent_qualification_process(
+            paths.config_dir, execve=lambda *args: called.append(args),
+        )
+    assert called == []
+
+
+@pytest.mark.parametrize("missing", list(_Q7_VALUES) + [_Q7_MODE])
+def test_q7_stage_requires_exact_complete_fields(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, missing: str,
+) -> None:
+    source = {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1"}
+    del source[missing]
+    paths, _stage = _staged_q7_owner_file(tmp_path, monkeypatch, source)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+@pytest.mark.parametrize(("key", "value"), [
+    ("RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN", "short"),
+    ("RUNNER_FABRIC_CODING_Q7_WORKER_URL", "http://127.0.0.1:8031/mcp"),
+    ("RUNNER_FABRIC_CODING_Q7_UNKNOWN", "untrusted"),
+    (_Q7_MODE, "synthetic-read-only-v1"),
+])
+def test_q7_stage_refuses_invalid_field_or_mode_without_token_leak(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, key: str, value: str,
+) -> None:
+    source = {**_Q7_VALUES, _Q7_MODE: "subscription-coding-q7-v1", key: value}
+    paths, _stage = _staged_q7_owner_file(tmp_path, monkeypatch, source)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: "subscription-coding-q7-v1"})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*invalid") as exc:
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert _Q7_VALUES["RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN"] not in str(exc.value)
+
+
+@pytest.mark.parametrize("mode", ["synthetic-read-only-v1", "other-reserved"])
+def test_q7_stage_does_not_autoselect_on_legacy_modes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mode: str,
+) -> None:
+    paths, stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    _append_bridge(paths)
+    _append_q7(paths, {_Q7_MODE: mode})
+    env = _q7_captured_exec(paths, tmp_path, monkeypatch)["env"]
+    assert isinstance(env, dict)
+    assert _Q7_MODE not in env
+    assert all(key not in env for key in _Q7_VALUES)
+    assert stage.exists()
+
+
+def test_q7_custom_config_does_not_adopt_default_owner_stage(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _default_paths, _stage = _staged_q7_owner_file(tmp_path, monkeypatch)
+    custom_root = tmp_path / "independent"
+    custom_root.mkdir()
+    custom = _private_config(custom_root)
+    _append_bridge(custom)
+    _append_q7(custom, {_Q7_MODE: "subscription-coding-q7-v1"})
+    with pytest.raises(FabricAgentQualificationError, match="Q7.*incomplete"):
+        qualification.qualification_agent_environment_additions(custom.config_dir)
+
+
+_QWEN_VALUES = {
+    "RUNNER_FABRIC_CODING_QWEN_PROJECT_ID": "aifordable",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_PROVIDER": "github",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_REPOSITORY": "Blacksp1d3r/AIfordable",
+    "RUNNER_FABRIC_CODING_QWEN_SOURCE_CHECKOUT": "/private/qwen/source",
+    "RUNNER_FABRIC_CODING_QWEN_WORKSPACE_ROOT": "/private/qwen/workspaces",
+    "RUNNER_FABRIC_CODING_QWEN_WORKER_URL": "http://10.253.117.2:8031/mcp",
+    "RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN": "q" * 48,
+}
+
+
+def _append_qwen(paths, data: dict[str, str]) -> None:
+    with paths.env_file.open("a", encoding="utf-8") as handle:
+        for key, value in data.items():
+            handle.write(f"{key}={value}\n")
+
+
+def test_qwen_mode_is_inert_without_private_owner_opt_in(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    values = qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_QWEN_") for key in values)
+    assert "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE" not in values
+
+
+def test_qwen_mode_forwards_only_exact_owner_private_fields(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **_QWEN_VALUES,
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+    })
+    values = qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert {key: values[key] for key in _QWEN_VALUES} == _QWEN_VALUES
+    assert values["RUNNER_FABRIC_AGENT_QUALIFICATION_MODE"] == (
+        "subscription-coding-qwen-v1"
+    )
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_Q7_") for key in values)
+
+
+@pytest.mark.parametrize("missing", tuple(_QWEN_VALUES))
+def test_qwen_mode_rejects_missing_private_binding_without_exec(
+    tmp_path: Path, missing: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **{k: v for k, v in _QWEN_VALUES.items() if k != missing},
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+    })
+    called: list[object] = []
+    with pytest.raises(FabricAgentQualificationError, match="Qwen.*incomplete"):
+        run_fabric_agent_qualification_process(
+            paths.config_dir, execve=lambda *args: called.append(args),
+        )
+    assert called == []
+
+
+@pytest.mark.parametrize(("field", "invalid"), [
+    ("RUNNER_FABRIC_CODING_QWEN_PROJECT_ID", "another"),
+    ("RUNNER_FABRIC_CODING_QWEN_SOURCE_PROVIDER", "gitlab"),
+    ("RUNNER_FABRIC_CODING_QWEN_SOURCE_REPOSITORY", "Other/Repo"),
+    ("RUNNER_FABRIC_CODING_QWEN_SOURCE_CHECKOUT", "relative/source"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKSPACE_ROOT", "/private/../escape"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_URL", "http://10.253.117.3:8031/mcp"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_URL", "http://10.253.117.2:80/mcp"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_URL", "http://guest:bad@10.253.117.2:8031/mcp"),
+    ("RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN", "short"),
+])
+def test_qwen_wrong_source_guest_or_secret_rejected(
+    tmp_path: Path, field: str, invalid: str,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **_QWEN_VALUES,
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+        field: invalid,
+    })
+    with pytest.raises(FabricAgentQualificationError, match="Qwen.*invalid"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_qwen_rejects_mixed_q7_and_unknown_source_keys(tmp_path: Path) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    _append_qwen(paths, {
+        **_QWEN_VALUES,
+        "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE": "subscription-coding-qwen-v1",
+        "RUNNER_FABRIC_CODING_Q7_WORKER_TOKEN": "c" * 48,
+    })
+    with pytest.raises(FabricAgentQualificationError, match="Q7|Qwen"):
+        qualification.qualification_agent_environment_additions(paths.config_dir)
+
+
+def test_qwen_source_does_not_autoselect_from_ambient_environment(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = _private_config(tmp_path)
+    _append_bridge(paths)
+    monkeypatch.setenv("RUNNER_FABRIC_AGENT_QUALIFICATION_MODE", "subscription-coding-qwen-v1")
+    monkeypatch.setenv("RUNNER_FABRIC_CODING_QWEN_WORKER_TOKEN", "ambient-no")
+    values = qualification.qualification_agent_environment_additions(paths.config_dir)
+    assert not any(key.startswith("RUNNER_FABRIC_CODING_QWEN_") for key in values)
+    assert "RUNNER_FABRIC_AGENT_QUALIFICATION_MODE" not in values

@@ -9,6 +9,7 @@ from runner_mcp.agent_bus_worker import (
     AgentBusWorkerError,
     agent_bus_convergence_status,
     agent_bus_worker_configured,
+    agent_bus_worker_preflight,
     run_agent_bus_worker_process,
 )
 from runner_mcp.onboarding import SetupAnswers, install_private_configuration
@@ -404,3 +405,103 @@ def test_convergence_fails_closed_on_symlinked_result(
         "state": "invalid",
         "pending_results": 0,
     }
+
+
+def test_read_only_preflight_existing_valid_private_config(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths = private_config(tmp_path)
+    append_env(paths.env_file, relay_values())
+    executable = tmp_path / "fake-fixed-launcher"
+    executable.write_text("#!/bin/sh\\nexit 0\\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        worker_module, "_fixed_runner_fabric_executable",
+        lambda: executable.resolve(),
+    )
+    before = sorted(p.name for p in paths.config_dir.iterdir())
+    assert agent_bus_worker_preflight(paths.config_dir) == {
+        "state": "ready", "reason_code": "local_static_prerequisites_ready",
+    }
+    assert sorted(p.name for p in paths.config_dir.iterdir()) == before
+    assert not (paths.config_dir / "agent-bus-state").exists()
+
+
+def test_read_only_preflight_missing_and_partial_relay(tmp_path: Path) -> None:
+    paths = private_config(tmp_path)
+    assert agent_bus_worker_preflight(paths.config_dir) == {
+        "state": "wait", "reason_code": "relay_not_configured",
+    }
+    append_env(paths.env_file, {"RUNNER_FABRIC_RELAY_ORIGIN": "https://relay.invalid"})
+    assert agent_bus_worker_preflight(paths.config_dir) == {
+        "state": "blocked", "reason_code": "relay_configuration_incomplete",
+    }
+    assert not (paths.config_dir / "agent-bus-state").exists()
+
+
+def test_read_only_preflight_invalid_relay_and_loopback(tmp_path: Path) -> None:
+    paths = private_config(tmp_path)
+    v = relay_values()
+    v["RUNNER_FABRIC_RELAY_ORIGIN"] = "http://relay.invalid"
+    append_env(paths.env_file, v)
+    assert agent_bus_worker_preflight(paths.config_dir)["reason_code"] == (
+        "relay_configuration_invalid"
+    )
+
+    second = tmp_path / "second"
+    second.mkdir()
+    other = private_config(second)
+    v = relay_values()
+    v["RUNNER_MCP_AGENT_BUS_LOCAL_ENDPOINT"] = "http://untrusted.invalid/mcp"
+    append_env(other.env_file, v)
+    assert agent_bus_worker_preflight(other.config_dir)["reason_code"] == (
+        "loopback_endpoint_invalid"
+    )
+
+
+def test_read_only_preflight_missing_fabric_is_wait(tmp_path: Path, monkeypatch) -> None:
+    paths = private_config(tmp_path)
+    append_env(paths.env_file, relay_values())
+    def missing() -> Path:
+        raise AgentBusWorkerError("Runner Fabric executable is unavailable")
+    monkeypatch.setattr(worker_module, "_fixed_runner_fabric_executable", missing)
+    assert agent_bus_worker_preflight(paths.config_dir) == {
+        "state": "wait", "reason_code": "fabric_launcher_unavailable",
+    }
+    assert not (paths.config_dir / "agent-bus-state").exists()
+
+
+def test_read_only_preflight_rejects_symlinked_durable_state(
+    tmp_path: Path, monkeypatch,
+) -> None:
+    paths = private_config(tmp_path)
+    append_env(paths.env_file, relay_values())
+    monkeypatch.setattr(
+        worker_module, "_fixed_runner_fabric_executable", lambda: tmp_path,
+    )
+    (paths.config_dir / "agent-bus-state").symlink_to(tmp_path)
+    assert agent_bus_worker_preflight(paths.config_dir) == {
+        "state": "blocked", "reason_code": "durable_state_unsafe",
+    }
+
+
+def test_read_only_preflight_cli_does_not_claim_ack_or_emit_secret(
+    tmp_path: Path, capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.cli import main
+
+    paths = private_config(tmp_path)
+    values = relay_values()
+    values["RUNNER_FABRIC_RELAY_CREDENTIAL"] = "s" * 48
+    append_env(paths.env_file, values)
+    monkeypatch.setattr(
+        worker_module, "_fixed_runner_fabric_executable", lambda: tmp_path,
+    )
+    assert main(["--config-dir", str(paths.config_dir), "agent-bus", "preflight"]) == 0
+    output = capsys.readouterr()
+    assert "state=ready" in output.out
+    assert "original_client_ack_proven=false" in output.out
+    assert "s" * 48 not in output.out + output.err
+    assert str(tmp_path) not in output.out
+    assert not (paths.config_dir / "agent-bus-state").exists()

@@ -10,6 +10,7 @@ from pathlib import Path
 from typing import Protocol
 
 from .config import ProjectRegistry, ServiceConfig
+from .host_platform import HostPlatform, detect_host_platform
 from .operational_safety import ActionClass, OperatorSafetyGuard
 
 
@@ -159,6 +160,8 @@ class ServiceManager:
 
     def _backend(self) -> ServiceBackend:
         if self.backend is None:
+            if detect_host_platform() is not HostPlatform.LINUX:
+                raise ServiceManagerError("Service backend is unavailable for this platform")
             self.backend = SystemdUserBackend()
         return self.backend
 

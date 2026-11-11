@@ -6,10 +6,12 @@ from pathlib import Path
 
 import pytest
 
+import runner_mcp.ci_runner_secret_handoff as handoff_module
 from runner_mcp.ci_runner_guest_enrollment import (
     CIRunnerRegistrationSecret,
 )
 from runner_mcp.ci_runner_secret_handoff import (
+    CIRunnerSecretHandoff,
     CIRunnerSecretHandoffError,
     CIRunnerSecretHandoffStore,
     validate_handoff_id,
@@ -149,3 +151,118 @@ def test_valid_handoff_id_is_safe_for_transport() -> None:
     value = "01" * 16
 
     assert validate_handoff_id(value) == value
+
+
+def test_reap_refuses_oversized_directory_without_deleting_records(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    (root / "ignored-one").touch()
+    (root / "ignored-two").touch()
+    monkeypatch.setattr(handoff_module, "_MAX_REAP_ENTRIES", 2)
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: 2000.0)
+    with pytest.raises(CIRunnerSecretHandoffError, match="too many entries"):
+        store.reap_expired()
+    assert expired.exists()
+
+
+def test_reap_accepts_exact_directory_entry_limit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    (root / "ignored").touch()
+    monkeypatch.setattr(handoff_module, "_MAX_REAP_ENTRIES", 2)
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: 2000.0)
+    assert store.reap_expired() == 1
+    assert not expired.exists()
+
+
+@pytest.mark.parametrize("bad", [None, 123, [], b"a" * 16])
+def test_public_handoff_record_rejects_nonstrings_without_typeerror(
+    bad: object,
+) -> None:
+    with pytest.raises(CIRunnerSecretHandoffError, match="handoff id"):
+        CIRunnerSecretHandoff(handoff_id=bad, expires_at=2000)  # type: ignore[arg-type]
+
+
+@pytest.mark.parametrize("bad", [0, -1, 1 << 53, True, "2000"])
+def test_public_handoff_record_rejects_invalid_expiry_bounds(
+    bad: object,
+) -> None:
+    with pytest.raises(CIRunnerSecretHandoffError, match="expiry"):
+        CIRunnerSecretHandoff(handoff_id="ab" * 16, expires_at=bad)  # type: ignore[arg-type]
+
+
+def test_public_handoff_record_accepts_valid_expiry_boundary() -> None:
+    record = CIRunnerSecretHandoff(handoff_id="ab" * 16, expires_at=(1 << 53) - 1)
+    assert record.to_payload()["expires_at"] == (1 << 53) - 1
+
+
+@pytest.mark.parametrize(
+    "invalid_clock",
+    [float("nan"), float("inf"), float("-inf"), -1.0, 0.0, float(1 << 54), True, "2000"],
+)
+def test_create_with_bad_clock_writes_no_secret_file(
+    tmp_path: Path, invalid_clock: object,
+) -> None:
+    root = private_root(tmp_path)
+    store = CIRunnerSecretHandoffStore(
+        root=root,
+        now=lambda: invalid_clock,
+        random_bytes=lambda _size: b"\x12" * 16,
+    )
+    with pytest.raises(CIRunnerSecretHandoffError, match="clock"):
+        store.create(CIRunnerRegistrationSecret("s" * 32))
+    assert list(root.iterdir()) == []
+
+
+def test_create_uses_one_clock_sample_for_expiry_and_file_mtime(tmp_path: Path) -> None:
+    root = private_root(tmp_path)
+    sampled = []
+
+    def clock() -> float:
+        sampled.append(1)
+        return 2000.0 + len(sampled) - 1
+
+    record = CIRunnerSecretHandoffStore(
+        root=root,
+        now=clock,
+        random_bytes=lambda _size: b"\x34" * 16,
+    ).create(CIRunnerRegistrationSecret("s" * 32))
+    assert sampled == [1]
+    assert record.expires_at == 2300
+    assert int((root / record.handoff_id).stat().st_mtime) == 2000
+
+
+@pytest.mark.parametrize("bad_time", [None, True, "2000", float("nan"), float("inf"), -1, 0])
+def test_reap_invalid_clock_fails_before_any_deletion(
+    tmp_path: Path, bad_time: object,
+) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: bad_time)  # type: ignore[arg-type]
+    with pytest.raises(CIRunnerSecretHandoffError, match="cleanup clock"):
+        store.reap_expired()
+    assert expired.exists()
+
+
+def test_reap_valid_clock_still_cleans_expired(tmp_path: Path) -> None:
+    root = private_root(tmp_path)
+    expired = root / ("ab" * 16)
+    expired.write_bytes(b"secret")
+    expired.chmod(0o600)
+    os.utime(expired, (1000, 1000))
+    store = CIRunnerSecretHandoffStore(root=root, now=lambda: 2000.0)
+    assert store.reap_expired() == 1
+    assert not expired.exists()

@@ -1,5 +1,13 @@
+"""Begrensde Runner-Fabric-updateketen en alleen-lezen Release-controle.
+
+De manager hergebruikt de bestaande Actions-, lokale custody- en vaste GitHub
+Release-routes. Release-metadata is nooit automatisch installatiebevoegdheid:
+alle activatie, herstel en hostherkomst blijven apart gekwalificeerde stappen.
+"""
+
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
 import ipaddress
@@ -24,6 +32,13 @@ from typing import Any
 from uuid import uuid4
 
 from .fabric_bootstrap import FabricBootstrapError, _private_env_value
+from .fabric_release_assets import (
+    FabricReleaseAdmissionError,
+    FabricReleaseDigestError,
+    ReleaseAdmission,
+    inspect_exact_release,
+)
+from .fabric_release_private_custody import _promote_noreplace
 from .operational_safety import OperatorSafetyGuard
 from .secure_io import PrivateAtomicWriteError, atomic_replace_private
 
@@ -39,11 +54,153 @@ _MAX_ARCHIVE = 256 * 1024 * 1024
 _MAX_UNCOMPRESSED = 256 * 1024 * 1024
 _MAX_ENTRY = 64 * 1024 * 1024
 _MAX_FILES = 160
+_RELEASE_RESOURCE_NOT_FOUND = "fabric_release_resource_not_found"
 _TERMINAL = frozenset({"completed", "error", "interrupted"})
+
+
+_LOCAL_CUSTODY_FAILURE_REASONS = frozenset(
+    {
+        "fabric_update_commit_invalid",
+        "operator_stop",
+        "runner_mcp_state_unavailable",
+        "runner_mcp_self_update_active",
+        "runner_mcp_restart_pending",
+        "runner_mcp_install_recovery_pending",
+        "fabric_launcher_unmanaged",
+        "actions_run_unavailable",
+        "fabric_bundle_storage_conflict",
+        "fabric_bundle_invalid",
+        "fabric_bundle_source_unavailable",
+        "fabric_bundle_source_invalid",
+        "fabric_bundle_secret_cleanup_failed",
+        "fabric_bundle_build_failed",
+    }
+)
 
 
 class FabricUpdateError(RuntimeError):
     """Bounded managed Runner Fabric update failure."""
+
+
+def bounded_local_custody_failure_reason(
+    error: FabricUpdateError,
+) -> str | None:
+    detail = str(error)
+    return detail if detail in _LOCAL_CUSTODY_FAILURE_REASONS else None
+
+
+_READINESS_FAILURE_REASONS = _LOCAL_CUSTODY_FAILURE_REASONS | frozenset(
+    {
+        "artifact_metadata_unavailable",
+        "artifact_download_unavailable",
+        "fabric_recovery_required",
+        "fabric_transaction_invalid",
+        "fabric_update_target_mismatch",
+        "fabric_bundle_integrity_failed",
+        "fabric_release_metadata_unavailable",
+        "fabric_release_assets_unqualified",
+        "release_not_published",
+        "release_provider_unavailable",
+        "release_digest_invalid",
+    }
+)
+
+
+def bounded_fabric_readiness_failure(
+    error: FabricUpdateError,
+    *,
+    source: str,
+) -> dict[str, object]:
+    """Expose only fixed safe reasons for an exact read-only update preflight.
+
+    An error is NOT an artifact receipt, install permission or readiness proof.
+    Do not include the requested commit, a private path or arbitrary error text.
+    """
+    if source not in {"github-actions", "local-custody", "github-release"}:
+        raise ValueError("unsupported Fabric update source")
+    reason = str(error) if type(error) is FabricUpdateError else ""
+    code = (
+        reason if reason in _READINESS_FAILURE_REASONS
+        else "fabric_update_readiness_unavailable"
+    )
+    return {
+        "state": "blocked",
+        "reasonCode": code,
+        "artifact_ready": False,
+        "source": source,
+    }
+
+
+def read_alternative_release_metadata_after_actions_failure(
+    manager: FabricUpdateManager,
+    commit: str,
+    actions_error: FabricUpdateError,
+) -> dict[str, object] | None:
+    """Explain an Actions metadata failure via existing Release inspection.
+
+    This NEVER changes the original Actions-only update contract, never stages
+    or downloads a wheel, and is not a host update readiness/approval result.
+    A Release metadata match is still unsigned and not trusted local custody.
+    """
+    if (
+        type(actions_error) is not FabricUpdateError
+        or str(actions_error) != "actions_run_unavailable"
+        or type(commit) is not str
+        or _COMMIT_RE.fullmatch(commit) is None
+    ):
+        return None
+    try:
+        release = manager.release_assets_readiness(commit)
+    except FabricUpdateError as exc:
+        refusal = bounded_fabric_readiness_failure(
+            exc, source="github-release",
+        )
+        return {
+            "source": "github-release",
+            "state": "blocked",
+            "reasonCode": refusal["reasonCode"],
+            "metadata_observed": False,
+            "install_authorized": False,
+            "download_performed": False,
+        }
+    except Exception:  # noqa: BLE001 - private provider faults must never leak
+        return {
+            "source": "github-release",
+            "state": "blocked",
+            "reasonCode": "release_metadata_probe_unavailable",
+            "metadata_observed": False,
+            "install_authorized": False,
+            "download_performed": False,
+        }
+    # A stubbed or malformed provider must not claim metadata observation.
+    if (
+        type(release) is not dict
+        or release.get("state") != "ready"
+        or release.get("source") != "github-release"
+        or release.get("commit") != commit
+        or type(release.get("asset_count")) is not int
+        or not 5 <= release["asset_count"] <= 160
+        or type(release.get("project_wheel_sha256")) is not str
+        or re.fullmatch(r"[a-f0-9]{64}", release["project_wheel_sha256"]) is None
+        or release.get("mutation_authorized") is not False
+        or release.get("download_performed") is not False
+    ):
+        return {
+            "source": "github-release",
+            "state": "blocked",
+            "reasonCode": "release_metadata_probe_invalid",
+            "metadata_observed": False,
+            "install_authorized": False,
+            "download_performed": False,
+        }
+    return {
+        "source": "github-release",
+        "state": "metadata_observed_unverified",
+        "reasonCode": "exact_release_metadata_observed_not_installed",
+        "metadata_observed": True,
+        "install_authorized": False,
+        "download_performed": False,
+    }
 
 
 class FabricUpdateState(StrEnum):
@@ -163,6 +320,391 @@ class FabricUpdateManager:
         self._resolve_exact_artifact(token, commit)
         return {"commit": commit, "artifact_ready": True}
 
+    def release_assets_readiness(self, commit: str) -> dict[str, Any]:
+        """Behoud de bestaande publieke, niet-autoriserende Release-status.
+
+        De exacte onderliggende inspectie wordt gedeeld met een toekomstige
+        ondertekende byte-import. Er wordt niets gedownload, opgeslagen,
+        geïnstalleerd, geactiveerd of met een host geassocieerd.
+        """
+        return self._read_exact_release_admission(commit).public_dict()
+
+    def _read_exact_release_admission(self, commit: str) -> ReleaseAdmission:
+        """Houd het bestaande publieke, getypeerde Release-contract ongewijzigd."""
+        admission, _ = self._read_exact_release_snapshot(commit)
+        return admission
+
+    def _read_exact_release_snapshot(
+        self, commit: str,
+    ) -> tuple[ReleaseAdmission, object]:
+        """Lees exact de bestaande GitHub Release én tag-ref als één snapshot.
+
+        Alleen een door deze bestaande manager verkregen getypeerd resultaat
+        mag de volgende signed-byte-gate ingaan. De vaste repository, exacte
+        commit/tag, beide responsen, SHA-256-inventaris en verschil tussen
+        dubbele 404, providerstoring en tegenstrijdig bestaan blijven gelijk.
+
+        Dit is uitsluitend read-only providerinformatie, NOOIT een
+        onafhankelijke signer, hostbeheerder, releasebevoegdheid of ACK.
+        """
+        _require_commit(commit)
+        self._require_safe_runtime()
+        self._assert_managed_launcher()
+        token = self._github_token()
+        prefix = (
+            "fabric-q7-bundle-"
+            if commit == "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
+            else "fabric-update-bundle-"
+        )
+        tag = prefix + commit
+        owner, repo = _REPOSITORY.split("/", 1)
+        path = f"/repos/{owner}/{repo}"
+        # Both fixed GitHub endpoints must return 404 before we may classify
+        # this as not published. One 404 plus one present object is a
+        # conflict, never proof that a new release may be created.
+        absent = []
+        records: list[dict[str, Any] | None] = []
+        for suffix in (f"/releases/tags/{tag}", f"/git/ref/tags/{tag}"):
+            try:
+                records.append(self._api_json(
+                    token,
+                    path + suffix,
+                    category="fabric_release_metadata_unavailable",
+                ))
+                absent.append(False)
+            except FabricUpdateError as exc:
+                if str(exc) != _RELEASE_RESOURCE_NOT_FOUND:
+                    raise
+                records.append(None)
+                absent.append(True)
+        if all(absent):
+            # GitHub may deliberately conceal inaccessible resources as 404.
+            # This is a diagnostic only, never publication/update authority.
+            raise FabricUpdateError("release_not_published")
+        if any(absent):
+            raise FabricUpdateError("fabric_release_assets_unqualified")
+        release, tag_ref = records
+        try:
+            admission = inspect_exact_release(commit, release, tag_ref)
+        except FabricReleaseDigestError as exc:
+            raise FabricUpdateError("release_digest_invalid") from exc
+        except FabricReleaseAdmissionError as exc:
+            raise FabricUpdateError("fabric_release_assets_unqualified") from exc
+        # Beschrijving is onbetrouwbare providerdata, geen sleutelpins of
+        # updatebevoegdheid. De private verbruiker valideert dit apart.
+        return admission, release.get("body")
+
+    def _read_exact_github_release_bytes(
+        self,
+        *,
+        expected_commit: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, bytes]:
+        """Bestaande private GitHub byte-API blijft ongewijzigd, uitsluitend RAM."""
+        _, blobs = self._read_exact_github_release_candidate(
+            expected_commit=expected_commit, asset_reader=asset_reader,
+        )
+        return blobs
+
+    def _read_exact_github_release_candidate(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int | None = None,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> tuple[ReleaseAdmission, dict[str, bytes]]:
+        """Dezelfde 2 metadata-GETs en volle bytes, met optionele exacte ID-pin.
+
+        Vóór enige asset-GET wordt een opgegeven Release-ID exact gecontroleerd.
+        De aanroeper moet nog een eigen CI/bron-/host-policy leveren; inputpins
+        of GitHub-hashes zijn op zichzelf nooit onafhankelijk eigenaarbewijs.
+        """
+        from .fabric_release_asset_bytes import (
+            AssetBytesUnqualified,
+            fetch_exact_github_release_bundle_bytes,
+            fetch_pinned_asset_bytes,
+        )
+
+        _require_commit(expected_commit)
+        if expected_release_id is not None and (
+            type(expected_release_id) is not int or expected_release_id <= 0
+        ):
+            raise FabricUpdateError("fabric_release_assets_unqualified")
+        admission = self._read_exact_release_admission(expected_commit)
+        if (
+            expected_release_id is not None
+            and admission.release_id != expected_release_id
+        ):
+            raise FabricUpdateError("fabric_release_assets_unqualified")
+        reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
+        token = self._github_token()
+        try:
+            bodies = fetch_exact_github_release_bundle_bytes(
+                token=token,
+                expected_commit=expected_commit,
+                observed_metadata=admission,
+                asset_reader=reader,
+            )
+        except (AssetBytesUnqualified, TypeError, ValueError) as exc:
+            raise FabricUpdateError(
+                "fabric_release_asset_bytes_unqualified"
+            ) from exc
+        return admission, bodies
+
+    def _stage_github_release_inactive_once(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, object]:
+        """Zet GitHub-bytebewijs alleen in bestaand INACTIEF local-bundles.
+
+        Geen ED-productiesleutel vereist. Hergebruik bestaande metadata +
+        per-asset transport en dezelfde atomic 0700/0600 NOREPLACE custody
+        van de vroegere signed-bron. Dit is PRIVATE SOURCE ONLY, geen MCP-
+        tool, geen installatie-/rollbackbevoegdheid of client-ACK. De
+        fysieke eigenaar-host + CI-sourcepolicy moeten later apart slagen.
+        """
+        from .fabric_release_inactive_custody import (
+            InactiveSignedCustodyUnqualified,
+            _stage_github_release_inactive_once,
+        )
+
+        admission, bodies = self._read_exact_github_release_candidate(
+            expected_commit=expected_commit,
+            expected_release_id=expected_release_id,
+            asset_reader=asset_reader,
+        )
+        try:
+            receipt = _stage_github_release_inactive_once(
+                local_bundles_root=self.local_bundles_root,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=admission,
+                asset_bodies=bodies,
+            )
+        except InactiveSignedCustodyUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_release_inactive_custody_unqualified"
+            ) from exc
+        return {**receipt, "download_performed": True}
+
+    def _read_verified_signed_release_bytes(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        signed_document: bytes,
+        signature: bytes,
+        public_key: bytes,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, bytes]:
+        """Koppel twee BESTAANDE verificatiestappen zonder servermutatie.
+
+        1. Weiger een ongeldige handtekening of onafhankelijke bron-/releasepin
+           nog vóór het eerste GitHub-metadataverzoek.
+        2. Hergebruik dezelfde getypeerde Release/tag-snapshot als de openbare
+           `release_assets_readiness` van deze manager (vaste repository).
+        3. Hergebruik de bestaande vastgepinde assetbyte-transport- én de
+           complete manifest/ZIP/wheelcontroles; retourneer uitsluitend bytes
+           in geheugen en nooit een gedeeltelijke release.
+
+        De aanroeper moet de signer-sleutelvingerafdruk en bron-/release-ID
+        vooraf van een onafhankelijke eigenaar/Fabric-policy ontvangen.
+        Die autoriteit wordt hier NIET aangetoond door het aanleveren van de
+        waarden. Daarom is dit een **interne bronvoorbereiding**, zonder MCP-
+        tool, schijf-custody, BOOTSTRAP, install, `apply`, worker of ACK.
+        `asset_reader` dient alleen voor offline synthetische testinjectie.
+        """
+        from .fabric_release_asset_bytes import (
+            fetch_exact_signed_fabric_bundle_bytes,
+            fetch_pinned_asset_bytes,
+        )
+        from .fabric_release_signed_roster import (
+            SignedFabricRosterUnqualified,
+            verify_signed_fabric_roster,
+        )
+
+        _require_commit(expected_commit)
+        try:
+            verify_signed_fabric_roster(
+                signed_document=signed_document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+            )
+        except SignedFabricRosterUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_signed_release_roster_unqualified"
+            ) from exc
+
+        # Het ontvangen Release-object is GitHub-metadata, nooit een nieuwe
+        # trust anchor. Gebruik exact de bestaande managercontroles/2 endpoints.
+        observed = self._read_exact_release_admission(expected_commit)
+        token = self._github_token()
+        reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
+        try:
+            return fetch_exact_signed_fabric_bundle_bytes(
+                token=token,
+                signed_document=signed_document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+                asset_reader=reader,
+            )
+        except ValueError as exc:
+            # Geen ruwe providertekst, tokens, bestandspaden of byte-inhoud
+            # opnemen in een mogelijke volgende operator-/CI-foutmelding.
+            raise FabricUpdateError(
+                "fabric_release_asset_bytes_unqualified"
+            ) from exc
+
+    def _read_verified_signed_release_description_bytes(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, bytes]:
+        """Behoud het bestaande interne broncontract: uitsluitend bytes in RAM.
+
+        De verifiërende voorbereiding levert ook bewijsmateriaal voor de
+        afzonderlijke inactieve opslag. Hier wordt NOOIT naar schijf geschreven.
+        """
+        _, _, _, _, bodies = (
+            self._read_verified_signed_release_description_candidate(
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                asset_reader=asset_reader,
+            )
+        )
+        return bodies
+
+    def _read_verified_signed_release_description_candidate(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> tuple[ReleaseAdmission, bytes, bytes, bytes, dict[str, bytes]]:
+        """Gebruik het bestaande Release/tag-GET als één getypeerde snapshot.
+
+        Fabric #924 mag het ondertekende rooster in de Release-description
+        vervoeren, maar de sleutel uit die beschrijving is nooit autoriteit.
+        Alleen vooraf extern door eigenaar/Fabric vastgelegde commit,
+        Release-ID en vertrouwde sleutelvingerafdruk komen in aanmerking.
+        De bestaande signed-byte downloader controleert bovendien ALLE assets,
+        BUNDLE/COMMIT/SHA256SUMS en de WHEEL/RECORD-inhoud. Er volgt geen
+        schijfwrite, downloadtool-exposure, BOOTSTRAP, installatie of rollback.
+        `asset_reader` is uitsluitend een synthetische testinjectie.
+        """
+        from .fabric_release_asset_bytes import (
+            fetch_exact_signed_fabric_bundle_bytes,
+            fetch_pinned_asset_bytes,
+        )
+        from .fabric_release_body_envelope import (
+            SignedBodyEnvelopeUnqualified,
+            verify_signed_release_body,
+        )
+
+        _require_commit(expected_commit)
+        observed, body = self._read_exact_release_snapshot(expected_commit)
+        try:
+            document, signature, public_key = verify_signed_release_body(
+                body=body,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+            )
+        except SignedBodyEnvelopeUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_signed_release_body_unqualified"
+            ) from exc
+
+        reader = fetch_pinned_asset_bytes if asset_reader is None else asset_reader
+        token = self._github_token()
+        try:
+            bodies = fetch_exact_signed_fabric_bundle_bytes(
+                token=token,
+                signed_document=document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+                asset_reader=reader,
+            )
+        except ValueError as exc:
+            # Negeer alle provider-/credentialdetails in eventuele fouttekst.
+            raise FabricUpdateError(
+                "fabric_release_asset_bytes_unqualified"
+            ) from exc
+        return observed, document, signature, public_key, bodies
+
+    def _stage_signed_release_description_inactive_once(
+        self,
+        *,
+        expected_commit: str,
+        expected_release_id: int,
+        independently_trusted_key_sha256: str,
+        asset_reader: Callable[..., bytes] | None = None,
+    ) -> dict[str, object]:
+        """Voltooi exact signed Release->bestaande INACTIEVE local-bundles.
+
+        Eerst twee vaste GitHub metadata-GETs, de onafhankelijke signer/
+        source/release-pins, volledige pinned assetbytes en alle wheelchecks.
+        PAS DAARNA schrijft de al aanwezige create-once/no-replace custody
+        de gecontroleerde bytes in de bestaande eigenaar-private 0700 root.
+        Dit is private, niet aan server/MCP tool gekoppelde bronvoorbereiding:
+        ontvangen aanroeperpins bewijzen geen werkelijke operatorbevoegdheid.
+        Geen actieve bundle, BOOTSTRAP, install, launcher, service of rollback.
+        """
+        from .fabric_release_inactive_custody import (
+            InactiveSignedCustodyUnqualified,
+            _stage_signed_release_inactive_once,
+        )
+
+        observed, document, signature, public_key, bodies = (
+            self._read_verified_signed_release_description_candidate(
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                asset_reader=asset_reader,
+            )
+        )
+        try:
+            receipt = _stage_signed_release_inactive_once(
+                local_bundles_root=self.local_bundles_root,
+                signed_document=document,
+                signature=signature,
+                public_key=public_key,
+                independently_trusted_key_sha256=independently_trusted_key_sha256,
+                expected_commit=expected_commit,
+                expected_release_id=expected_release_id,
+                observed_metadata=observed,
+                asset_bodies=bodies,
+            )
+        except InactiveSignedCustodyUnqualified as exc:
+            raise FabricUpdateError(
+                "fabric_signed_inactive_custody_unqualified"
+            ) from exc
+
+        # Alleen na volledig download/verify/fsync/promotie is dit waar.
+        # De echte eigenaar-/install-/rollbackbevoegdheid blijft FALSE.
+        return {**receipt, "download_performed": True}
+
     def local_readiness(self, commit: str) -> dict[str, Any]:
         """Verify one exact locally-custodied Fabric bundle without mutation."""
         _require_commit(commit)
@@ -170,12 +712,207 @@ class FabricUpdateManager:
         self._assert_managed_launcher()
         root = self._local_bundle_root(commit)
         self._validate_local_bundle_source(root)
-        self._validated_bootstrap(commit, root=root)
+        self._validated_bootstrap(commit, root=root, verify_wheel_records=True)
         return {
             "commit": commit,
             "artifact_ready": True,
             "source": "local-custody",
         }
+
+    def stage_local_bundle(self, commit: str) -> dict[str, Any]:
+        """Build and retain one exact canonical Runner Fabric update bundle."""
+
+        _require_commit(commit)
+        self._require_safe_runtime()
+        self._assert_managed_launcher()
+
+        target = self.local_bundles_root / commit
+        if target.exists() or target.is_symlink():
+            if target.is_symlink():
+                raise FabricUpdateError("fabric_bundle_storage_conflict")
+            root = self._local_bundle_root(commit)
+            self._validate_local_bundle_source(root)
+            self._validated_bootstrap(commit, root=root, verify_wheel_records=True)
+            return {
+                "commit": commit,
+                "staged": True,
+                "bundleReady": True,
+                "source": "canonical-source",
+                "localCustody": True,
+                "alreadyStaged": True,
+            }
+
+        work = self.local_bundles_root / f".incoming-{uuid4().hex}"
+        source = work / "source"
+        credential_config = work / "gitconfig"
+        try:
+            work.mkdir(mode=0o700)
+            os.chmod(work, 0o700)
+            token = self._github_token()
+            encoded = base64.b64encode(f"x-access-token:{token}".encode()).decode("ascii")
+            credential_config.write_text(
+                '[http "https://github.com/"]\n'
+                f"\textraHeader = AUTHORIZATION: basic {encoded}\n",
+                encoding="utf-8",
+            )
+            os.chmod(credential_config, 0o600)
+
+            git_env = {
+                "HOME": str(self.home),
+                "PATH": "/usr/local/bin:/usr/bin:/bin",
+                "LANG": "C.UTF-8",
+                "LC_ALL": "C.UTF-8",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_CONFIG_GLOBAL": str(credential_config),
+                "GIT_TERMINAL_PROMPT": "0",
+            }
+            self._run_bundle_command(
+                [
+                    "/usr/bin/git",
+                    "clone",
+                    "--depth=64",
+                    "--no-checkout",
+                    "https://github.com/Blacksp1d3r/Runner-Fabric.git",
+                    str(source),
+                ],
+                cwd=work,
+                env=git_env,
+                category="fabric_bundle_source_unavailable",
+                timeout=180,
+            )
+            self._run_bundle_command(
+                [
+                    "/usr/bin/git",
+                    "-C",
+                    str(source),
+                    "fetch",
+                    "--depth=1",
+                    "origin",
+                    commit,
+                ],
+                cwd=work,
+                env=git_env,
+                category="fabric_bundle_source_unavailable",
+                timeout=120,
+            )
+            self._run_bundle_command(
+                [
+                    "/usr/bin/git",
+                    "-C",
+                    str(source),
+                    "checkout",
+                    "--detach",
+                    commit,
+                ],
+                cwd=work,
+                env={
+                    **git_env,
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                },
+                category="fabric_bundle_source_invalid",
+                timeout=60,
+            )
+            observed = self._run_bundle_command(
+                ["/usr/bin/git", "-C", str(source), "rev-parse", "HEAD"],
+                cwd=work,
+                env={
+                    **git_env,
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                },
+                category="fabric_bundle_source_invalid",
+                timeout=30,
+                capture=True,
+            )
+            if observed.stdout.strip() != commit:
+                raise FabricUpdateError("fabric_bundle_source_invalid")
+            dirty = self._run_bundle_command(
+                ["/usr/bin/git", "-C", str(source), "status", "--porcelain"],
+                cwd=work,
+                env={
+                    **git_env,
+                    "GIT_CONFIG_GLOBAL": "/dev/null",
+                },
+                category="fabric_bundle_source_invalid",
+                timeout=30,
+                capture=True,
+            )
+            if dirty.stdout.strip():
+                raise FabricUpdateError("fabric_bundle_source_invalid")
+
+            try:
+                credential_config.unlink()
+            except OSError as exc:
+                raise FabricUpdateError("fabric_bundle_secret_cleanup_failed") from exc
+
+            build_env = {
+                "HOME": str(self.home),
+                "PATH": "/usr/local/bin:/usr/bin:/bin",
+                "LANG": "C.UTF-8",
+                "LC_ALL": "C.UTF-8",
+                "PIP_DISABLE_PIP_VERSION_CHECK": "1",
+                "PIP_NO_INPUT": "1",
+                "GIT_CONFIG_NOSYSTEM": "1",
+                "GIT_TERMINAL_PROMPT": "0",
+            }
+            self._run_bundle_command(
+                [sys.executable, "scripts/build_control_plane_update_bundle.py"],
+                cwd=source,
+                env=build_env,
+                category="fabric_bundle_build_failed",
+                timeout=900,
+            )
+            bundle = source / "bundle"
+            self._validate_local_bundle_source(bundle)
+            self._validated_bootstrap(commit, root=bundle, verify_wheel_records=True)
+            # `target.exists()` was only a momentopname. Two operators
+            # could both pass it: os.replace could then overwrite an empty
+            # destination created by the other staging operation. Use the
+            # already-existing atomic Linux NOREPLACE promotion instead.
+            _promote_inactive_bundle_noreplace(
+                self.local_bundles_root, work.name, commit
+            )
+            self._validate_local_bundle_source(target)
+            self._validated_bootstrap(commit, root=target, verify_wheel_records=True)
+        finally:
+            shutil.rmtree(work, ignore_errors=True)
+
+        return {
+            "commit": commit,
+            "staged": True,
+            "bundleReady": True,
+            "source": "canonical-source",
+            "localCustody": True,
+            "alreadyStaged": False,
+        }
+
+    def _run_bundle_command(
+        self,
+        argv: list[str],
+        *,
+        cwd: Path,
+        env: dict[str, str],
+        category: str,
+        timeout: int,
+        capture: bool = False,
+    ) -> subprocess.CompletedProcess[str]:
+        try:
+            completed = self._runner(
+                argv,
+                cwd=str(cwd),
+                env=env,
+                stdin=subprocess.DEVNULL,
+                stdout=subprocess.PIPE if capture else subprocess.DEVNULL,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=timeout,
+                check=False,
+                shell=False,
+            )
+        except (OSError, subprocess.SubprocessError) as exc:
+            raise FabricUpdateError(category) from exc
+        if completed.returncode != 0:
+            raise FabricUpdateError(category)
+        return completed
 
     def start(self, commit: str) -> dict[str, Any]:
         return self._start(commit, source="github-actions")
@@ -313,7 +1050,9 @@ class FabricUpdateManager:
                 staged = self._extract_bundle(archive, job)
             previous = self._activate_bundle(staged, job)
             try:
-                bootstrap = self._validated_bootstrap(job.commit)
+                bootstrap = self._validated_bootstrap(
+                    job.commit, verify_wheel_records=job.source == "local-custody",
+                )
                 self._update(job_id, state=FabricUpdateState.PREFLIGHT)
                 self._run_fixed(bootstrap, "preflight", "fabric_preflight_failed")
                 if self.safety.status().stop_active:
@@ -367,7 +1106,7 @@ class FabricUpdateManager:
     def _stage_local_bundle(self, job: FabricUpdateJob) -> Path:
         source = self._local_bundle_root(job.commit)
         self._validate_local_bundle_source(source)
-        self._validated_bootstrap(job.commit, root=source)
+        self._validated_bootstrap(job.commit, root=source, verify_wheel_records=True)
         staged = self.state_root / f".bundle-{job.job_id}"
         if staged.exists() or staged.is_symlink():
             raise FabricUpdateError("fabric_bundle_storage_conflict")
@@ -387,7 +1126,7 @@ class FabricUpdateManager:
                 target = staged / entry.name
                 shutil.copyfile(entry, target)
                 target.chmod(0o600)
-            self._validated_bootstrap(job.commit, root=staged)
+            self._validated_bootstrap(job.commit, root=staged, verify_wheel_records=True)
         except Exception:
             shutil.rmtree(staged, ignore_errors=True)
             raise
@@ -548,7 +1287,15 @@ class FabricUpdateManager:
         try:
             with self._opener.open(request, timeout=60) as response:
                 raw = response.read(max_bytes + 1)
-        except (OSError, urllib.error.URLError, urllib.error.HTTPError) as exc:
+        except urllib.error.HTTPError as exc:
+            if category == "fabric_release_metadata_unavailable":
+                if exc.code == 404:
+                    raise FabricUpdateError(_RELEASE_RESOURCE_NOT_FOUND) from exc
+                raise FabricUpdateError("release_provider_unavailable") from exc
+            raise FabricUpdateError(category) from exc
+        except (OSError, urllib.error.URLError) as exc:
+            if category == "fabric_release_metadata_unavailable":
+                raise FabricUpdateError("release_provider_unavailable") from exc
             raise FabricUpdateError(category) from exc
         if len(raw) > max_bytes:
             raise FabricUpdateError(category)
@@ -631,7 +1378,15 @@ class FabricUpdateManager:
         commit: str,
         *,
         root: Path | None = None,
+        verify_wheel_records: bool = False,
     ) -> Path:
+        """Lees het bestaande bundle-formaat en, voor local-custody, ZIP/RECORD.
+
+        De eerste SHA256SUMS-controle bewijst alleen lokale integriteit.
+        Voor de bestaande inactieve lokale updatebron hergebruiken we daarna
+        de al bestaande ZIP/METADATA/RECORD-parser op exact dezelfde bytes.
+        Dit verifieert GEEN eigenaartrust, host of terugrolbevoegdheid.
+        """
         bundle_root = self.bundle if root is None else root
         manifest = _read_json(
             bundle_root / "BUNDLE.json",
@@ -714,6 +1469,23 @@ class FabricUpdateManager:
         for name, payload in payloads.items():
             if hashlib.sha256(payload).hexdigest() != sums[name]:
                 raise FabricUpdateError("fabric_bundle_integrity_failed")
+        if verify_wheel_records:
+            from .fabric_release_wheelhouse import (
+                _MAX_EXPANDED_TOTAL,
+                WheelhouseUnqualified,
+                _wheel_record_check,
+            )
+
+            try:
+                expanded = 0
+                for wheel in wheels:
+                    expanded += _wheel_record_check(wheel.name, payloads[wheel.name])
+                    if expanded > _MAX_EXPANDED_TOTAL:
+                        raise WheelhouseUnqualified("expanded_wheelhouse_unqualified")
+            except WheelhouseUnqualified as exc:
+                # Gebruik de bestaande vaste foutcategorie, zonder ZIP-paden
+                # of mogelijk gevoelige wheel-inhoud in de API te lekken.
+                raise FabricUpdateError("fabric_bundle_integrity_failed") from exc
         return bootstrap
 
     def _run_fixed(self, bootstrap: Path, action: str, category: str) -> None:
@@ -817,6 +1589,79 @@ class FabricUpdateManager:
 def _require_commit(commit: str) -> None:
     if not isinstance(commit, str) or _COMMIT_RE.fullmatch(commit) is None:
         raise FabricUpdateError("fabric_update_commit_invalid")
+
+
+
+def _promote_inactive_bundle_noreplace(
+    local_bundles_root: Path,
+    incoming_name: str,
+    commit: str,
+) -> None:
+    """Promoveer één reeds gevalideerde bundel zonder een ander slot te vervangen.
+
+    Het bestaande `stage_local_bundle` bouwt eerst in
+    `local-bundles/.incoming-<uuid>/source/bundle`. Deze functie doet alleen
+    de atomaire *naamwijziging* naar `local-bundles/<commit>` en fsync; geen
+    downloads, installer, BOOTSTRAP-aanroep, service- of actieve bundle-wijziging.
+    Bij een gelijktijdig bestaande bestemming blijft die onaangeraakt.
+    """
+    _require_commit(commit)
+    if (
+        type(incoming_name) is not str
+        or re.fullmatch(r"\.incoming-[0-9a-f]{32}", incoming_name) is None
+        or not isinstance(local_bundles_root, Path)
+        or not local_bundles_root.is_absolute()
+    ):
+        raise FabricUpdateError("fabric_bundle_storage_conflict")
+
+    root_fd = -1
+    incoming_fd = -1
+    source_fd = -1
+    bundle_fd = -1
+    flags = os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW
+    try:
+        # Root en werkboom komen uitsluitend uit de bestaande update-manager.
+        # Open elk niveau met O_NOFOLLOW en houd directory descriptors vast.
+        original = os.lstat(local_bundles_root)
+        if (
+            not stat.S_ISDIR(original.st_mode)
+            or original.st_uid != os.geteuid()
+            or stat.S_IMODE(original.st_mode) != 0o700
+        ):
+            raise FabricUpdateError("fabric_bundle_storage_conflict")
+        root_fd = os.open(local_bundles_root, flags)
+        pinned = os.fstat(root_fd)
+        if (pinned.st_dev, pinned.st_ino) != (
+            original.st_dev, original.st_ino
+        ):
+            raise FabricUpdateError("fabric_bundle_storage_conflict")
+        incoming_fd = os.open(incoming_name, flags, dir_fd=root_fd)
+        source_fd = os.open("source", flags, dir_fd=incoming_fd)
+        bundle_fd = os.open("bundle", flags, dir_fd=source_fd)
+        # .incoming is altijd door deze manager met 0700 aangemaakt.
+        # Een gewone git clone maakt source soms met 0755 aan; dat is
+        # veilig onder de privé-ouder zolang geen andere actor mag schrijven.
+        for fd in (incoming_fd, source_fd, bundle_fd):
+            item = os.fstat(fd)
+            mode = stat.S_IMODE(item.st_mode)
+            if item.st_uid != os.geteuid() or mode & 0o022:
+                raise FabricUpdateError("fabric_bundle_storage_conflict")
+            if fd == incoming_fd and mode != 0o700:
+                raise FabricUpdateError("fabric_bundle_storage_conflict")
+
+        # Reuse the same renameat2(RENAME_NOREPLACE) primitive as historical
+        # Q7 custody. The source path is completely fixed below this private
+        # root; a caller can never inject a path or a different destination.
+        _promote_noreplace(
+            root_fd, incoming_name + "/source/bundle", commit
+        )
+        os.fsync(root_fd)
+    except (OSError, ValueError) as exc:
+        raise FabricUpdateError("fabric_bundle_storage_conflict") from exc
+    finally:
+        for fd in (bundle_fd, source_fd, incoming_fd, root_fd):
+            if fd >= 0:
+                os.close(fd)
 
 
 def _private_dir(path: Path, *, create: bool, parents: bool = False) -> Path:

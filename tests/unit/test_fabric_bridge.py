@@ -6,6 +6,9 @@ from types import SimpleNamespace
 
 import pytest
 
+from runner_mcp import fabric_bridge as fabric_bridge_module
+from runner_mcp.bridge_mcp_executor import _validate_peer_tool_surface
+from runner_mcp.bridge_processor import BridgeExecutionAdapterError
 from runner_mcp.fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
 
 BASE = "a" * 40
@@ -143,6 +146,55 @@ def bridge_with_responses(*responses: object) -> tuple[FabricBridgeClient, FakeM
     fake = FakeMCPClient(list(responses))
     bridge._local = SimpleNamespace(client=fake)
     return bridge, fake
+
+
+def test_bridge_reconnect_binds_exact_fabric_peer_and_mandatory_tools() -> None:
+    """An absent optional A6/probe capability must not block safe reconnection."""
+
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:9010/mcp",
+            bearer_token="x" * 32,
+        )
+    )
+    client = bridge._client()
+
+    assert client._expected_component_id == "runner-fabric-agent-mcp"
+    assert client._required_tools == frozenset(
+        {"host_inspect", "operational_snapshot"}
+    )
+    assert client._required_tools.issubset(client._allowed_tools)
+    assert "a6_update_qualification_prepare" in client._allowed_tools
+    assert "a6_update_qualification_prepare" not in client._required_tools
+    assert "synthetic_probe_status" not in client._required_tools
+
+    observed = {
+        "result": {
+            "tools": [
+                {
+                    "name": name,
+                    "inputSchema": {"type": "object", "properties": {}},
+                }
+                for name in (
+                    "build_identity", "host_inspect", "operational_snapshot"
+                )
+            ]
+        }
+    }
+    digest, names = _validate_peer_tool_surface(
+        observed, required_tools=client._required_tools
+    )
+    assert len(digest) == 64
+    assert names == frozenset(
+        {"build_identity", "host_inspect", "operational_snapshot"}
+    )
+
+    # Missing mandatory peer functions fail closed, even if identity exists.
+    observed["result"]["tools"] = observed["result"]["tools"][:2]
+    with pytest.raises(BridgeExecutionAdapterError, match="interface schema"):
+        _validate_peer_tool_surface(
+            observed, required_tools=client._required_tools
+        )
 
 
 def test_bridge_uses_independent_local_mcp_clients_per_thread() -> None:
@@ -811,3 +863,413 @@ def test_a6_proxy_rejects_invalid_inputs_before_transport(
             bridge.a6_update_qualification_finalize(correlation, job_id)
 
     assert fake.calls == []
+
+
+class _PreflightClient:
+    failure: str | None = None
+
+    def __init__(
+        self,
+        _config,
+        *,
+        allowed_tools,
+        client_name,
+        compatibility_preflight,
+        required_tools,
+        expected_component_id,
+    ) -> None:
+        assert allowed_tools == frozenset(
+            {"synthetic_probe_status", "a6_update_qualification_prepare"}
+        )
+        assert client_name == "runner-mcp-fabric-preflight"
+        assert compatibility_preflight is True
+        assert required_tools == frozenset()
+        assert expected_component_id == "runner-fabric-agent-mcp"
+        self.peer_identity = {
+            "protocol_version": "2025-06-18",
+            "server_name": "Runner Fabric Agent",
+            "server_version": "1",
+        }
+        self.peer_build_identity = {
+            "component_id": "runner-fabric-agent-mcp",
+            "build_version": "0.1.0",
+            "source_revision": "c" * 40,
+        }
+        self.peer_tool_names = (
+            "build_identity",
+            "synthetic_probe_status",
+            "a6_update_qualification_prepare",
+        )
+
+    def initialize(self) -> None:
+        if self.failure is not None:
+            raise BridgeExecutionAdapterError(self.failure)
+
+
+def test_bridge_preflight_returns_only_bounded_peer_facts(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    _PreflightClient.failure = None
+    monkeypatch.setattr(fabric_bridge_module, "LocalMCPClient", _PreflightClient)
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:9010/mcp",
+            bearer_token="x" * 32,
+        )
+    )
+
+    result = bridge.preflight()
+
+    assert result == {
+        "schema_version": "runner-mcp/fabric-bridge-preflight/v1",
+        "state": "ready",
+        "reason_code": "ready",
+        "protocol_version": "2025-06-18",
+        "server_name": "Runner Fabric Agent",
+        "server_version": "1",
+        "source_revision": "c" * 40,
+        "a6_prepare_available": True,
+        "synthetic_probe_status_available": True,
+        "mutation_enabled": False,
+    }
+    assert "endpoint" not in result
+    assert "token" not in result
+    assert "session_id" not in result
+
+
+@pytest.mark.parametrize(
+    ("detail", "reason"),
+    [
+        ("Runner MCP is unavailable or rejected the request", "transport_or_auth_unavailable"),
+        ("Runner MCP initialization failed", "initialization_failed"),
+        ("Runner MCP protocol version is incompatible", "protocol_incompatible"),
+        ("Runner MCP interface schema is incompatible", "interface_incompatible"),
+        ("Runner MCP build identity is incompatible", "build_identity_incompatible"),
+        ("Runner MCP server identity container is invalid", "server_identity_container_invalid"),
+        ("Runner MCP server identity name is invalid", "server_identity_name_invalid"),
+        ("Runner MCP server identity version is invalid", "server_identity_version_invalid"),
+        ("Runner MCP server identity is invalid", "server_identity_invalid"),
+        ("Runner MCP returned an invalid session identifier", "session_invalid"),
+        ("Runner MCP returned an unsupported event stream", "response_invalid"),
+        ("Runner MCP returned invalid JSON", "response_invalid"),
+        ("Runner MCP response must be a JSON object", "response_invalid"),
+        ("other bounded failure", "peer_unavailable"),
+    ],
+)
+def test_bridge_preflight_classifies_failures_without_private_detail(
+    monkeypatch: pytest.MonkeyPatch,
+    detail: str,
+    reason: str,
+) -> None:
+    _PreflightClient.failure = detail
+    monkeypatch.setattr(fabric_bridge_module, "LocalMCPClient", _PreflightClient)
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:9010/mcp",
+            bearer_token="x" * 32,
+        )
+    )
+
+    result = bridge.preflight()
+
+    assert result["state"] == "blocked"
+    assert result["reason_code"] == reason
+    assert result["mutation_enabled"] is False
+    assert result["protocol_version"] is None
+    assert result["source_revision"] is None
+    assert detail not in str(result)
+
+
+
+def worker_qualification_readiness_payload() -> dict:
+    return {
+        "schemaVersion": "runner.fabric/worker-qualification-readiness/v1",
+        "workerId": "aifordable-lab",
+        "capabilityProfile": "bewind-ocr-qualification-v1",
+        "currentGeneration": 1,
+        "capabilityAllowed": True,
+        "policyValid": True,
+        "activationReady": True,
+        "normalActivationEnabled": False,
+    }
+
+
+def test_worker_qualification_readiness_proxy_is_bounded() -> None:
+    payload = worker_qualification_readiness_payload()
+    bridge, fake = bridge_with_responses(payload)
+
+    result = bridge.worker_qualification_readiness(
+        "aifordable-lab",
+        "bewind-ocr-qualification-v1",
+    )
+
+    assert result == payload
+    assert fake.calls == [
+        (
+            "worker_qualification_readiness",
+            {
+                "worker_id": "aifordable-lab",
+                "capability_profile": "bewind-ocr-qualification-v1",
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"currentGeneration": 0}),
+        lambda payload: payload.update({"activationReady": False}),
+        lambda payload: payload.update({"normalActivationEnabled": True}),
+        lambda payload: payload.update({"workerId": "other-worker"}),
+    ],
+)
+def test_worker_qualification_readiness_rejects_invalid_payload(mutator) -> None:
+    payload = worker_qualification_readiness_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.worker_qualification_readiness(
+            "aifordable-lab",
+            "bewind-ocr-qualification-v1",
+        )
+
+
+def worker_qualification_payload(
+    *,
+    worker_id: str = "worker:aifordable-lab",
+    profile: str = "bewind-ocr-qualification-v1",
+    generation: int = 1,
+) -> dict:
+    return {
+        "schemaVersion": "runner.fabric/worker-qualification-provisioning-result/v1",
+        "workerId": worker_id,
+        "capabilityProfile": profile,
+        "state": "ready",
+        "reasonCode": "ready",
+        "observedGeneration": generation,
+        "observedFabricRevision": "c" * 40,
+        "requestFingerprint": "d" * 64,
+        "managedLauncherReady": True,
+        "qualificationStateReady": True,
+        "normalActivationEnabled": False,
+    }
+
+
+def test_worker_qualification_proxy_forwards_only_semantic_arguments() -> None:
+    payload = worker_qualification_payload()
+    bridge, fake = bridge_with_responses(payload)
+
+    result = bridge.worker_qualification_provision(
+        "worker:aifordable-lab",
+        "bewind-ocr-qualification-v1",
+        1,
+    )
+
+    assert result == payload
+    assert fake.calls == [
+        (
+            "worker_qualification_provision",
+            {
+                "worker_id": "worker:aifordable-lab",
+                "capability_profile": "bewind-ocr-qualification-v1",
+                "expected_generation": 1,
+            },
+        )
+    ]
+
+
+@pytest.mark.parametrize(
+    ("worker_id", "profile", "generation"),
+    [
+        ("../worker", "bewind-ocr-qualification-v1", 1),
+        ("worker:aifordable-lab", "arbitrary-profile", 1),
+        ("worker:aifordable-lab", "bewind-ocr-qualification-v1", 0),
+        ("worker:aifordable-lab", "bewind-ocr-qualification-v1", True),
+    ],
+)
+def test_worker_qualification_proxy_rejects_invalid_input_before_transport(
+    worker_id: str,
+    profile: str,
+    generation: int,
+) -> None:
+    bridge, fake = bridge_with_responses(worker_qualification_payload())
+
+    with pytest.raises(FabricBridgeError):
+        bridge.worker_qualification_provision(worker_id, profile, generation)
+
+    assert fake.calls == []
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda payload: payload.update({"private_path": "/secret"}),
+        lambda payload: payload.update({"workerId": "worker:other"}),
+        lambda payload: payload.update({"capabilityProfile": "other"}),
+        lambda payload: payload.update({"observedGeneration": 2}),
+        lambda payload: payload.update({"normalActivationEnabled": True}),
+        lambda payload: payload.update({"requestFingerprint": "not-a-digest"}),
+        lambda payload: payload.update({"state": "not-ready"}),
+    ],
+)
+def test_worker_qualification_proxy_rejects_private_or_mismatched_result(
+    mutator,
+) -> None:
+    payload = worker_qualification_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+
+    with pytest.raises(FabricBridgeError):
+        bridge.worker_qualification_provision(
+            "worker:aifordable-lab",
+            "bewind-ocr-qualification-v1",
+            1,
+        )
+
+
+def test_worker_process_bridge_calls_only_existing_fabric_mcp_fixed_name():
+    from runner_mcp.worker_process_readonly import bounded_worker_wait
+
+    payload = bounded_worker_wait("claude", "host_observer_not_configured")
+    bridge, fake = bridge_with_responses(payload)
+    outcome = bridge.worker_process_inspect("claude")
+    assert outcome == payload
+    assert fake.calls == [("worker_process_inspect", {"worker": "claude"})]
+
+
+def test_missing_or_unsupported_fabric_tool_returns_wait_without_retries():
+    bridge, fake = bridge_with_responses()
+    # Existing clients without a deployed Fabric agent worker tool fail closed.
+    def deny(_name, _args):
+        raise BridgeExecutionAdapterError("optional tool unavailable")
+
+    fake._call_tool = deny
+    result = bridge.worker_process_inspect("qwen")
+    assert result["reasonCode"] == "fabric_read_unavailable"
+    assert result["dispatchAuthorized"] is False
+
+
+def test_wrong_host_or_mutation_claim_denied_in_existing_bridge():
+    from runner_mcp.worker_process_readonly import bounded_worker_wait
+
+    forged = bounded_worker_wait("claude", "host_observer_not_configured")
+    forged["hostAssetId"] = "AF-VM-0003"
+    bridge, fake = bridge_with_responses(forged)
+    result = bridge.worker_process_inspect("claude")
+    assert fake.calls == [("worker_process_inspect", {"worker": "claude"})]
+    assert result["state"] == "wait"
+    assert result["reasonCode"] == "fabric_read_invalid"
+
+
+def test_unknown_worker_cannot_probe_fabric_or_supply_pid():
+    bridge, fake = bridge_with_responses()
+    with pytest.raises(FabricBridgeError, match="allowlisted"):
+        bridge.worker_process_inspect("root")
+    assert fake.calls == []
+
+
+def test_a6_readonly_bridge_uses_same_existing_fixed_fabric_peer():
+    from runner_mcp.a6_storage_readonly import a6_storage_wait
+
+    payload = a6_storage_wait("private_roots_absent")
+    bridge, fake = bridge_with_responses(payload)
+    assert bridge.a6_storage_preflight() == payload
+    assert fake.calls == [("a6_storage_preflight", {})]
+
+
+def test_absent_fabric_a6_tool_yields_sanitized_wait_not_retry():
+    def deny(_name, _args):
+        raise BridgeExecutionAdapterError("/private/token/old-fabric-tool")
+
+    bridge, fake = bridge_with_responses()
+    fake._call_tool = deny
+    result = bridge.a6_storage_preflight()
+    assert result["reasonCode"] == "fabric_read_unavailable"
+    assert result["a6Ready"] is False
+    assert result["mutationEnabled"] is False
+    assert "private" not in str(result)
+
+
+def test_fabric_a6_local_hash_is_never_off_target_readback_proof():
+    from runner_mcp.a6_storage_readonly import a6_storage_wait
+
+    payload = a6_storage_wait("local_journal_hash_chain_verified_only")
+    payload.update({
+        "journalRootObserved": True,
+        "evidenceRootObserved": True,
+        "journalIntegrityVerified": True,
+    })
+    bridge, fake = bridge_with_responses(payload)
+    result = bridge.a6_storage_preflight()
+    assert result["journalIntegrityVerified"] is True
+    assert result["physicalIndependenceVerified"] is False
+    assert result["offTargetReadbackVerified"] is False
+    assert result["a6Ready"] is False
+    assert fake.calls == [("a6_storage_preflight", {})]
+
+
+def test_a6_bridge_rejects_peer_forged_physical_pass():
+    from runner_mcp.a6_storage_readonly import a6_storage_wait
+
+    payload = a6_storage_wait("private_roots_absent")
+    payload["physicalIndependenceVerified"] = True
+    bridge, fake = bridge_with_responses(payload)
+    result = bridge.a6_storage_preflight()
+    assert result["reasonCode"] == "fabric_read_invalid"
+    assert result["physicalIndependenceVerified"] is False
+    assert fake.calls == [("a6_storage_preflight", {})]
+
+
+def test_fixed_black_control_fabric_forwarding_never_selects_target_or_url():
+    fake = FakeMCPClient([
+        {"request_id": "r-001"},
+        {"request_id": "r-001"},
+        {"request_id": "r-001"},
+    ])
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:8000/mcp",
+            bearer_token="a" * 32,
+        )
+    )
+    bridge._local.client = fake
+    bridge.control_center_black_submit()
+    bridge.control_center_black_status("r-001", "b" * 64, "operator-one")
+    bridge.control_center_black_ack(
+        "r-001", "b" * 64, "operator-one", "c" * 64,
+    )
+    assert fake.calls == [
+        ("control_center_black_submit", {}),
+        ("control_center_black_status", {
+            "request_id": "r-001",
+            "fingerprint": "b" * 64,
+            "requester_subject": "operator-one",
+        }),
+        ("control_center_black_ack", {
+            "request_id": "r-001",
+            "fingerprint": "b" * 64,
+            "requester_subject": "operator-one",
+            "result_digest": "c" * 64,
+        }),
+    ]
+    with pytest.raises(FabricBridgeError, match="unsupported"):
+        bridge._call_black_control("run_work_unit", {"target": "runner:primary"})
+    assert len(fake.calls) == 3
+
+
+def test_fixed_black_control_fabric_unavailable_fails_without_retry():
+    fake = FakeMCPClient([])
+    def denied(_name, _args):
+        raise BridgeExecutionAdapterError("synthetic missing peer")
+    fake._call_tool = denied
+    bridge = FabricBridgeClient(
+        FabricBridgeConfig(
+            endpoint="http://127.0.0.1:8000/mcp",
+            bearer_token="a" * 32,
+        )
+    )
+    bridge._local.client = fake
+    with pytest.raises(FabricBridgeError, match="unavailable"):
+        bridge.control_center_black_submit()

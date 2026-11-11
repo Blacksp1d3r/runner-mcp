@@ -2,6 +2,9 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import os
+import secrets
+import socket
 import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
@@ -12,6 +15,7 @@ import uvicorn
 
 from .agent_bus_worker import (
     agent_bus_convergence_status,
+    agent_bus_worker_preflight,
     run_agent_bus_worker_process,
 )
 from .approval_manager import ApprovalError, ApprovalManager
@@ -23,17 +27,24 @@ from .autostart import (
     default_user_unit_dir,
     has_managed_user_units,
     install_user_services,
+    plan_cron_to_systemd,
     remove_user_services,
     systemd_user_available,
     user_service_status,
 )
 from .autostart_activation import AutostartActivationPermit
+from .bewind_disposable_bootstrap import BewindDisposableBootstrapRestorer
+from .bewind_worker_qualification_policy import (
+    BewindWorkerQualificationPolicyConfigurator,
+)
 from .ci_runner_cron import (
     CIRunnerCronError,
     ci_runner_cron_status,
     install_ci_runner_cron,
     remove_ci_runner_cron,
 )
+from .ci_runner_enrollment import CIRunnerEnrollmentManager
+from .ci_runner_github import CIRunnerGitHubController
 from .ci_runner_lifecycle import (
     CIRunnerLifecycleError,
     parse_ci_runner_specs,
@@ -97,6 +108,7 @@ from .fabric_live_overview import (
     FabricLiveOverviewError,
     run_fabric_live_overview_process,
 )
+from .github_mailbox import GitHubApiSession
 from .github_runtime import (
     DEFAULT_HEARTBEAT_SECONDS,
     DEFAULT_POLL_SECONDS,
@@ -260,6 +272,7 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
         rows = cron_status(
             config_dir=config_dir,
             components=components,
+            executable=(Path(sys.executable).parent / "runner-mcp").resolve(),
         )
         tunnel = next((row for row in rows if row.component == "tunnel"), None)
         return bool(tunnel is not None and tunnel.installed and tunnel.active)
@@ -284,6 +297,54 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
 
     return False
 
+
+
+def cmd_bewind_disposable_bootstrap(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    environment = load_env_file(paths.env_file)
+    _stop_path, safety = operator_stop_status(config_dir)
+
+    result = BewindDisposableBootstrapRestorer(
+        safety=safety,
+        environment=environment,
+        config_dir=config_dir,
+    ).restore()
+
+    print(f"State: {result['state']}")
+    print(f"Worker: {result['workerId']}")
+    print(f"Capability: {result['capabilityProfile']}")
+    print(f"Generation: {result['generation']}")
+    print(f"Qualification: {result['qualificationId']}")
+    print("Normal activation enabled: no")
+    return 0
+
+
+def cmd_bewind_worker_policy(args: argparse.Namespace) -> int:
+    config_dir = _config_dir(args.config_dir)
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    environment = load_env_file(paths.env_file)
+    _stop_path, safety = operator_stop_status(config_dir)
+
+    result = BewindWorkerQualificationPolicyConfigurator(
+        safety=safety,
+        environment=environment,
+        config_dir=config_dir,
+    ).configure()
+
+    print(f"State: {result['state']}")
+    print(f"Worker: {result['workerId']}")
+    print(f"Capability: {result['capabilityProfile']}")
+    print(f"Generation: {result['generation']}")
+    print(
+        "Agent restart required: "
+        + ("yes" if result["agentRestartRequired"] else "no")
+    )
+    print(
+        "Normal activation enabled: "
+        + ("yes" if result["normalActivationEnabled"] else "no")
+    )
+    return 0
 
 def cmd_tunnel_status(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
@@ -1166,6 +1227,31 @@ def cmd_ci_runner(args: argparse.Namespace) -> int:
     if spec is None:
         raise RuntimeError("Unknown or disabled CI runner")
 
+    if args.ci_runner_action == "enroll":
+        # Runner enrollment needs elevated repository Actions administration.
+        # Never silently reuse the normal mailbox/transport token for it.
+        github_token = values.get("RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN", "").strip()
+        if not github_token:
+            raise RuntimeError("CI runner enrollment is not configured")
+        mailbox_token = values.get("RUNNER_MCP_GITHUB_TOKEN", "").strip()
+        if mailbox_token and secrets.compare_digest(github_token, mailbox_token):
+            raise RuntimeError("CI runner enrollment requires distinct credentials")
+        manager = CIRunnerEnrollmentManager(
+            github=CIRunnerGitHubController(
+                GitHubApiSession(token=github_token)
+            ),
+            environment=values,
+        )
+        result = manager.enroll(spec).to_payload()
+        print(
+            f"alias={result['alias']} "
+            f"state={result['state']} "
+            f"registered={'yes' if result['registered'] else 'no'} "
+            f"online={'yes' if result['online'] else 'no'} "
+            f"busy={'yes' if result['busy'] else 'no'}"
+        )
+        return 0
+
     supervisor = CIRunnerSupervisor(environment=values)
 
     if args.ci_runner_action == "status":
@@ -1207,6 +1293,59 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         print(f"Autostart activation: ready ({state})")
         return 0
 
+    if args.autostart_action == "plan":
+        # Refuse to probe another owner or host. These local names are only
+        # bounded consistency checks, not issuer identity or wheel attestation.
+        observed_hostname = socket.gethostname().split(".", 1)[0]
+        observed_uid = os.getuid()
+        if (
+            args.expected_hostname != observed_hostname
+            or args.expected_uid != observed_uid
+            or args.expected_uid <= 0
+        ):
+            print("migration_plan=WAIT")
+            print("reason=host_or_uid_mismatch")
+            print("cutover_authorized=no")
+            return 0
+
+        components = configured_autostart_components(config_dir)
+        cron_present = cron_available()
+        cron_managed = has_managed_cron() if cron_present else False
+        rows = (
+            tuple(
+                cron_status(
+                    config_dir=config_dir,
+                    components=components,
+                    executable=executable,
+                    port=args.expected_port,
+                )
+            )
+            if cron_managed
+            else ()
+        )
+        manager_reachable = systemd_user_available()
+        unit_rows = tuple(user_service_status())
+        plan = plan_cron_to_systemd(
+            component=args.component,
+            expected_hostname=args.expected_hostname,
+            expected_uid=args.expected_uid,
+            observed_hostname=observed_hostname,
+            observed_uid=observed_uid,
+            configured_components=components,
+            cron_managed=cron_managed,
+            cron_rows=rows,
+            systemd_rows=unit_rows,
+            systemd_manager_reachable=manager_reachable,
+        )
+        print(f"migration_plan={plan.state}")
+        print(f"component={plan.component}")
+        print(f"reason={plan.reason_code}")
+        print(f"cron_installed={'yes' if plan.cron_installed else 'no'}")
+        print(f"systemd_user_manager={'yes' if plan.systemd_manager_reachable else 'no'}")
+        print(f"systemd_units_absent={'yes' if plan.systemd_units_absent else 'no'}")
+        print("cutover_authorized=no")
+        return 0
+
     managed_cron = has_managed_cron() if cron_available() else False
     managed_systemd = has_managed_user_units()
 
@@ -1222,6 +1361,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
             return 0
@@ -1237,6 +1377,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
         else:
@@ -1512,9 +1653,30 @@ def cmd_agent_bus(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
 
     if args.agent_bus_action == "status":
-        result = agent_bus_config_status(config_dir)
-        print("configured" if result["configured"] else "not configured")
+        # _config_dir resolves symlinks for established commands. Preserve
+        # caller-supplied path components for this new deny-by-default
+        # diagnostic so a symlink to a missing/private root is not hidden.
+        raw = args.config_dir or os.getenv("RUNNER_MCP_CONFIG_DIR", "").strip()
+        status_dir = (
+            Path(raw).expanduser() if raw else Path.home() / ".config" / "runner-mcp"
+        )
+        if not status_dir.is_absolute():
+            status_dir = Path.cwd() / status_dir
+        result = agent_bus_config_status(status_dir)
+        if result.get("base_config_not_initialized"):
+            print("base_config_not_initialized")
+            print("Next: run runner-mcp setup locally with an approved real project.")
+        else:
+            print("configured" if result["configured"] else "not configured")
         return 0
+
+    if args.agent_bus_action == "preflight":
+        result = agent_bus_worker_preflight(config_dir)
+        print(
+            f"state={result['state']} reason_code={result['reason_code']} "
+            "original_client_ack_proven=false"
+        )
+        return 0 if result["state"] == "ready" else 2
 
     if args.agent_bus_action == "convergence":
         result = agent_bus_convergence_status(config_dir)
@@ -2321,6 +2483,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ci_runner_status.add_argument("alias")
     ci_runner_status.set_defaults(func=cmd_ci_runner)
+    ci_runner_enroll = ci_runner_sub.add_parser(
+        "enroll",
+        help="Register one preconfigured CI runner without exposing its token.",
+    )
+    ci_runner_enroll.add_argument("alias")
+    ci_runner_enroll.set_defaults(func=cmd_ci_runner)
     ci_runner_run = ci_runner_sub.add_parser(
         "run",
         help=argparse.SUPPRESS,
@@ -2361,6 +2529,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the local read-only autostart activation gate.",
     )
     autostart_preflight.set_defaults(func=cmd_autostart)
+    autostart_plan = autostart_sub.add_parser(
+        "plan",
+        help="Read-only per-owner cron-to-systemd plan; never permits cutover.",
+    )
+    autostart_plan.add_argument("--expected-hostname", required=True)
+    autostart_plan.add_argument("--expected-uid", required=True, type=int)
+    autostart_plan.add_argument(
+        "--expected-port", required=True, type=int,
+        choices=range(1, 65536), metavar="PORT",
+    )
+    autostart_plan.add_argument(
+        "--component",
+        required=True,
+        choices=(
+            "server",
+            "tunnel",
+            "topology-heartbeat",
+            "github-watcher",
+            "completion-watcher",
+            "agent-bus-worker",
+            "fabric-agent-qualification",
+            "fabric-live-overview",
+        ),
+    )
+    autostart_plan.set_defaults(func=cmd_autostart)
     autostart_install = autostart_sub.add_parser(
         "install",
         help="Install and start managed loopback Runner MCP user services.",
@@ -2421,6 +2614,39 @@ def build_parser() -> argparse.ArgumentParser:
         metavar="PORT",
     )
     autostart_cron_run.set_defaults(func=cmd_autostart)
+
+    bewind_disposable_bootstrap = subparsers.add_parser(
+        "bewind-disposable-bootstrap",
+        help=(
+            "Restore the fixed aifordable-lab Bewind disposable qualification "
+            "bootstrap."
+        ),
+    )
+    bewind_disposable_bootstrap_sub = bewind_disposable_bootstrap.add_subparsers(
+        dest="bewind_disposable_bootstrap_action",
+        required=True,
+    )
+    bewind_disposable_bootstrap_restore = bewind_disposable_bootstrap_sub.add_parser(
+        "restore",
+        help="Restore only the fixed private Bewind disposable-target bootstrap.",
+    )
+    bewind_disposable_bootstrap_restore.set_defaults(
+        func=cmd_bewind_disposable_bootstrap
+    )
+
+    bewind_worker_policy = subparsers.add_parser(
+        "bewind-worker-policy",
+        help="Prepare the fixed local Bewind OCR worker qualification policy.",
+    )
+    bewind_worker_policy_sub = bewind_worker_policy.add_subparsers(
+        dest="bewind_worker_policy_action",
+        required=True,
+    )
+    bewind_worker_policy_configure = bewind_worker_policy_sub.add_parser(
+        "configure",
+        help="Configure the fixed aifordable-lab Bewind worker policy.",
+    )
+    bewind_worker_policy_configure.set_defaults(func=cmd_bewind_worker_policy)
 
     topology_heartbeat = subparsers.add_parser(
         "topology-heartbeat",
@@ -2564,6 +2790,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show whether the private Agent Bus relay is configured.",
     )
     agent_bus_status.set_defaults(func=cmd_agent_bus)
+    agent_bus_preflight = agent_bus_sub.add_parser(
+        "preflight",
+        help="Check fixed local Agent Bus worker prerequisites without starting services.",
+    )
+    agent_bus_preflight.set_defaults(func=cmd_agent_bus)
     agent_bus_convergence = agent_bus_sub.add_parser(
         "convergence",
         help="Show bounded durable-result convergence without private result details.",

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import hashlib
 import io
 import json
@@ -13,7 +14,11 @@ import pytest
 
 import runner_mcp.fabric_update as fabric_update_module
 from runner_mcp.fabric_bootstrap import FabricBootstrapError
-from runner_mcp.fabric_update import FabricUpdateError, FabricUpdateManager
+from runner_mcp.fabric_update import (
+    FabricUpdateError,
+    FabricUpdateManager,
+    bounded_local_custody_failure_reason,
+)
 from runner_mcp.operational_safety import OperatorSafetyGuard, RetentionPolicy
 
 
@@ -58,10 +63,41 @@ def _managed_launcher(manager: FabricUpdateManager) -> None:
     manager.launcher.symlink_to(target)
 
 
+def _valid_fixture_wheel() -> bytes:
+    """Geef een echte, kleine ZIP-wheel met METADATA/WHEEL en gehashte RECORD.
+
+    De productieverifier laat bewust geen willekeurige 'synthetic-wheel'
+    bytes meer toe; testpaden moeten een werkelijk geldig pakket simuleren.
+    """
+    dist = "runner_fabric-0.0.1.dist-info/"
+    members = {
+        "runner_fabric/__init__.py": b"__version__ = '0.0.1'\n",
+        dist + "METADATA": (
+            b"Metadata-Version: 2.1\nName: runner-fabric\nVersion: 0.0.1\n"
+        ),
+        dist + "WHEEL": (
+            b"Wheel-Version: 1.0\nGenerator: offline-fixture\n"
+            b"Root-Is-Purelib: true\nTag: py3-none-any\n"
+        ),
+    }
+    rows = []
+    for name, data in sorted(members.items()):
+        digest = base64.urlsafe_b64encode(hashlib.sha256(data).digest()).rstrip(b"=").decode()
+        rows.append(f"{name},sha256={digest},{len(data)}\n")
+    record = dist + "RECORD"
+    rows.append(f"{record},,\n")
+    buf = io.BytesIO()
+    with zipfile.ZipFile(buf, "w", compression=zipfile.ZIP_DEFLATED) as package:
+        for name, data in members.items():
+            package.writestr(name, data)
+        package.writestr(record, "".join(rows))
+    return buf.getvalue()
+
+
 def _bundle(commit: str, *, tamper_bootstrap: bool = False) -> bytes:
     bootstrap = b"raise SystemExit(0)\n"
     wheel_name = "runner_fabric-0.0.1-py3-none-any.whl"
-    wheel = b"synthetic-wheel"
+    wheel = _valid_fixture_wheel()
     sums = {
         "BOOTSTRAP.py": hashlib.sha256(bootstrap).hexdigest(),
         wheel_name: hashlib.sha256(wheel).hexdigest(),
@@ -726,3 +762,221 @@ def test_local_update_job_records_visible_source_class(
     status = manager.status(started["job_id"])
     assert status["state"] == "completed"
     assert status["source"] == "local-custody"
+
+
+@pytest.mark.parametrize("repin_invalid_wheel", [False, True])
+def test_stage_local_bundle_builds_exact_validated_custody(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    repin_invalid_wheel: bool,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "7" * 40
+    token = "secret-" + ("x" * 40)
+    observed: list[tuple[str, ...]] = []
+
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: token,
+    )
+
+    def command(argv, *, cwd, env, category, timeout, capture=False):
+        observed.append(tuple(str(item) for item in argv))
+        assert token not in " ".join(str(item) for item in argv)
+        assert timeout > 0
+        if argv[1:3] == ["clone", "--depth=64"]:
+            source = Path(argv[-1])
+            source.mkdir(parents=True)
+        if argv[-2:] == ["rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(argv, 0, commit + "\n", "")
+        if argv[-2:] == ["status", "--porcelain"]:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if argv[-1] == "scripts/build_control_plane_update_bundle.py":
+            bundle = cwd / "bundle"
+            bundle.mkdir(mode=0o700)
+            with zipfile.ZipFile(io.BytesIO(_bundle(commit))) as archive:
+                for info in archive.infolist():
+                    target = bundle / info.filename
+                    target.write_bytes(archive.read(info))
+                    target.chmod(0o600)
+            if repin_invalid_wheel:
+                # Simuleer een builder waarvan het wheel EN SHA256SUMS samen
+                # vervangen zijn; hash-only toelating is dan onvoldoende.
+                bad_wheel = next(bundle.glob("*.whl"))
+                bad_wheel.write_bytes(b"rehashed-corrupt-zip")
+                (bundle / "SHA256SUMS").write_text(
+                    "".join(
+                        f"{hashlib.sha256((bundle / name).read_bytes()).hexdigest()}  {name}\n"
+                        for name in ("BOOTSTRAP.py", bad_wheel.name)
+                    ),
+                    encoding="ascii",
+                )
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(manager, "_run_bundle_command", command)
+
+    if repin_invalid_wheel:
+        # Oude bundelhashes zouden overeenstemmen; deze bron mag toch nooit
+        # opgeslagen worden als een geborgde lokale release.
+        with pytest.raises(FabricUpdateError, match="^fabric_bundle_integrity_failed$"):
+            manager.stage_local_bundle(commit)
+        assert not (manager.local_bundles_root / commit).exists()
+        assert not any(
+            path.name.startswith(".incoming-")
+            for path in manager.local_bundles_root.iterdir()
+        )
+        assert not (manager.state_root / "transaction.json").exists()
+        assert not any(row[-1:] == ("apply",) for row in observed)
+        return
+
+    result = manager.stage_local_bundle(commit)
+
+    assert result == {
+        "commit": commit,
+        "staged": True,
+        "bundleReady": True,
+        "source": "canonical-source",
+        "localCustody": True,
+        "alreadyStaged": False,
+    }
+    assert manager.local_readiness(commit)["artifact_ready"] is True
+    assert token not in json.dumps(result)
+    assert any(row[-1] == "scripts/build_control_plane_update_bundle.py" for row in observed)
+
+
+
+def test_replayed_local_stage_rechecks_record_not_just_rehashed_checksum(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een bestaand lokaal pakket mag geen ready-status krijgen op louter hashes.
+
+    Originele create-once-directory en bestaande launcher blijven onveranderd.
+    Geen netwerk, subprocess, installatie of bestand buiten pytest tmp_path.
+    """
+    manager, calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "c" * 40
+    bundle = _local_bundle(manager, commit)
+    wheel = next(bundle.glob("*.whl"))
+    wheel.write_bytes(b"broken-wheel-but-matching-sha256sums")
+    (bundle / "SHA256SUMS").write_text(
+        "".join(
+            f"{hashlib.sha256((bundle / name).read_bytes()).hexdigest()}  {name}\n"
+            for name in ("BOOTSTRAP.py", wheel.name)
+        ),
+        encoding="ascii",
+    )
+    monkeypatch.setattr(
+        manager, "_github_token",
+        lambda: pytest.fail("existing stage should never fetch GitHub credentials"),
+    )
+    # Toon expliciet het oorspronkelijke defect: de SHA-only parser ziet
+    # overeenstemming, zonder een RECORD te kunnen bewijzen.
+    assert manager._validated_bootstrap(commit, root=bundle) == bundle / "BOOTSTRAP.py"
+
+    with pytest.raises(FabricUpdateError, match="^fabric_bundle_integrity_failed$"):
+        manager.stage_local_bundle(commit)
+
+    assert calls == []
+    assert bundle.is_dir()
+    assert not any(
+        path.name.startswith(".incoming-") for path in manager.local_bundles_root.iterdir()
+    )
+    assert not manager.transaction.exists()
+
+
+def test_stage_local_bundle_is_idempotent_after_exact_validation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "8" * 40
+    _local_bundle(manager, commit)
+
+    monkeypatch.setattr(
+        manager,
+        "_github_token",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("idempotent replay must not read credential")
+        ),
+    )
+
+    result = manager.stage_local_bundle(commit)
+
+    assert result["alreadyStaged"] is True
+    assert result["bundleReady"] is True
+
+
+def test_stage_local_bundle_builder_failure_leaves_no_partial_custody(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _calls = _manager(tmp_path)
+    _managed_launcher(manager)
+    commit = "9" * 40
+    monkeypatch.setattr(
+        fabric_update_module,
+        "_private_env_value",
+        lambda _path, _key: "x" * 40,
+    )
+
+    def command(argv, *, cwd, env, category, timeout, capture=False):
+        if argv[1:3] == ["clone", "--depth=64"]:
+            Path(argv[-1]).mkdir(parents=True)
+        if argv[-2:] == ["rev-parse", "HEAD"]:
+            return subprocess.CompletedProcess(argv, 0, commit + "\n", "")
+        if argv[-2:] == ["status", "--porcelain"]:
+            return subprocess.CompletedProcess(argv, 0, "", "")
+        if argv[-1] == "scripts/build_control_plane_update_bundle.py":
+            raise FabricUpdateError("fabric_bundle_build_failed")
+        return subprocess.CompletedProcess(argv, 0, "", "")
+
+    monkeypatch.setattr(manager, "_run_bundle_command", command)
+
+    with pytest.raises(FabricUpdateError, match="fabric_bundle_build_failed"):
+        manager.stage_local_bundle(commit)
+
+    assert not (manager.local_bundles_root / commit).exists()
+    assert not any(
+        path.name.startswith(".incoming-")
+        for path in manager.local_bundles_root.iterdir()
+    )
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "fabric_update_commit_invalid",
+        "operator_stop",
+        "runner_mcp_state_unavailable",
+        "runner_mcp_self_update_active",
+        "runner_mcp_restart_pending",
+        "runner_mcp_install_recovery_pending",
+        "fabric_launcher_unmanaged",
+        "actions_run_unavailable",
+        "fabric_bundle_storage_conflict",
+        "fabric_bundle_invalid",
+        "fabric_bundle_source_unavailable",
+        "fabric_bundle_source_invalid",
+        "fabric_bundle_secret_cleanup_failed",
+        "fabric_bundle_build_failed",
+    ],
+)
+def test_local_custody_failure_reason_allows_only_bounded_categories(
+    reason: str,
+) -> None:
+    assert (
+        bounded_local_custody_failure_reason(FabricUpdateError(reason))
+        == reason
+    )
+
+
+def test_local_custody_failure_reason_rejects_unknown_detail() -> None:
+    assert (
+        bounded_local_custody_failure_reason(
+            FabricUpdateError("/private/path token=secret")
+        )
+        is None
+    )

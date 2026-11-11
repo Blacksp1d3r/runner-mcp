@@ -87,9 +87,33 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
                 "successful": True,
             }
 
+    class FakeMirrorActivator:
+        def __init__(self, **kwargs) -> None:
+            assert "environment" in kwargs
+            assert "safety" in kwargs
+            assert "config_dir" in kwargs
+            assert "github_token" in kwargs
+
+        def activate(self):
+            calls.append("activate")
+            return {
+                "schemaVersion": "runner-mcp/fabric-repository-mirror-activation/v1",
+                "activated": True,
+                "storageReady": True,
+                "desiredStateBound": True,
+                "credentialBindingPresent": True,
+                "serviceBindingReady": True,
+                "mutationScope": "repository-mirror-activation",
+                "reconcileTriggered": False,
+            }
+
     monkeypatch.setattr(
         "runner_mcp.server.FabricRepositoryMirrorRunner",
         FakeMirrorRunner,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricRepositoryMirrorActivator",
+        FakeMirrorActivator,
     )
 
     project_root = tmp_path / "project"
@@ -135,6 +159,7 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
             json={"jsonrpc": "2.0", "id": 2, "method": "tools/list", "params": {}},
         )
         assert "fabric_repository_mirrors_activation_readiness" in listed.text
+        assert "fabric_repository_mirrors_activate" in listed.text
         assert "fabric_repository_mirrors_preflight" in listed.text
         assert "fabric_repository_mirrors_reconcile" in listed.text
 
@@ -155,12 +180,29 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
         assert readiness_payload["ready"] is False
         assert readiness_payload["reasonCode"] == "storage-binding-unavailable"
 
-        preflight = client.post(
+        activate = client.post(
             "/mcp",
             headers=headers,
             json={
                 "jsonrpc": "2.0",
                 "id": 4,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_repository_mirrors_activate",
+                    "arguments": {},
+                },
+            },
+        )
+        activation_payload = _tool_json(activate)
+        assert activation_payload["activated"] is True
+        assert activation_payload["reconcileTriggered"] is False
+
+        preflight = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 5,
                 "method": "tools/call",
                 "params": {
                     "name": "fabric_repository_mirrors_preflight",
@@ -175,7 +217,7 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
             headers=headers,
             json={
                 "jsonrpc": "2.0",
-                "id": 5,
+                "id": 6,
                 "method": "tools/call",
                 "params": {
                     "name": "fabric_repository_mirrors_reconcile",
@@ -190,7 +232,7 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
             headers=headers,
             json={
                 "jsonrpc": "2.0",
-                "id": 6,
+                "id": 7,
                 "method": "tools/call",
                 "params": {
                     "name": "fabric_repository_mirrors_reconcile",
@@ -200,9 +242,10 @@ def test_repository_mirror_tools_are_zero_argument_and_bounded(
         )
         assert _event(rejected)["result"]["isError"] is True
 
-    assert calls == ["readiness", "preflight", "reconcile"]
+    assert calls == ["readiness", "activate", "preflight", "reconcile"]
     audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "fabric_repository_mirrors_activation_readiness" in audit
+    assert "fabric_repository_mirrors_activate" in audit
     assert "fabric_repository_mirrors_preflight" in audit
     assert "fabric_repository_mirrors_reconcile" in audit
     assert "example/private" not in audit

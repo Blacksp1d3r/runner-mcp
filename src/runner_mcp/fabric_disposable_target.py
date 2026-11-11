@@ -19,6 +19,143 @@ _MAX_STDOUT_BYTES = 16_384
 _MAX_STDERR_BYTES = 16_384
 _QUALIFICATION_ID_RE = re.compile(r"^[a-z][a-z0-9._-]{0,95}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
+_FAILURE_PREFIX = "Runner Fabric disposable target qualification: INVALID:"
+_FAILURE_REASONS = frozenset(
+    {
+        "config-unavailable",
+        "config-invalid",
+        "time-invalid",
+        "clean-start",
+        "create",
+        "guest-agent-not-ready",
+        "guest-runtime-not-ready",
+        "isolation",
+        "isolation-management-authority",
+        "isolation-default-route",
+        "isolation-network-policy",
+        "destroy",
+        "destroy-instance-delete-timeout",
+        "destroy-instance-delete-nonzero",
+        "destroy-instance-persisted",
+        "destroy-project-delete-timeout",
+        "destroy-project-delete-nonzero",
+        "destroy-project-persisted",
+        "destroy-network-delete-timeout",
+        "destroy-network-delete-nonzero",
+        "destroy-network-persisted",
+        "destroy-inspection-failed",
+        "destroy-inspection-version",
+        "destroy-inspection-project-initial",
+        "destroy-inspection-network-initial",
+        "destroy-inspection-instance-before-delete",
+        "destroy-inspection-instance-after-delete",
+        "destroy-inspection-project-after-delete",
+        "destroy-inspection-project-final",
+        "destroy-inspection-network-final",
+        "destroy-inspection-instance-final",
+        "destroy-inspection-version-timeout",
+        "destroy-inspection-version-nonzero",
+        "destroy-inspection-version-invalid-json",
+        "destroy-inspection-version-invalid-shape",
+        "destroy-inspection-project-initial-timeout",
+        "destroy-inspection-project-initial-nonzero",
+        "destroy-inspection-project-initial-invalid-json",
+        "destroy-inspection-project-initial-invalid-shape",
+        "destroy-inspection-network-initial-timeout",
+        "destroy-inspection-network-initial-nonzero",
+        "destroy-inspection-network-initial-invalid-json",
+        "destroy-inspection-network-initial-invalid-shape",
+        "destroy-inspection-instance-before-delete-timeout",
+        "destroy-inspection-instance-before-delete-nonzero",
+        "destroy-inspection-instance-before-delete-invalid-json",
+        "destroy-inspection-instance-before-delete-invalid-shape",
+        "destroy-inspection-instance-after-delete-timeout",
+        "destroy-inspection-instance-after-delete-nonzero",
+        "destroy-inspection-instance-after-delete-invalid-json",
+        "destroy-inspection-instance-after-delete-invalid-shape",
+        "destroy-inspection-project-after-delete-timeout",
+        "destroy-inspection-project-after-delete-nonzero",
+        "destroy-inspection-project-after-delete-invalid-json",
+        "destroy-inspection-project-after-delete-invalid-shape",
+        "destroy-inspection-project-final-timeout",
+        "destroy-inspection-project-final-nonzero",
+        "destroy-inspection-project-final-invalid-json",
+        "destroy-inspection-project-final-invalid-shape",
+        "destroy-inspection-network-final-timeout",
+        "destroy-inspection-network-final-nonzero",
+        "destroy-inspection-network-final-invalid-json",
+        "destroy-inspection-network-final-invalid-shape",
+        "destroy-inspection-instance-final-timeout",
+        "destroy-inspection-instance-final-nonzero",
+        "destroy-inspection-instance-final-invalid-json",
+        "destroy-inspection-instance-final-invalid-shape",
+        "destroy-verification-failed",
+        "recreate",
+        "recreate-isolation",
+        "recreate-isolation-management-authority",
+        "recreate-isolation-default-route",
+        "recreate-isolation-network-policy",
+        "final-destroy",
+        "final-destroy-instance-delete-timeout",
+        "final-destroy-instance-delete-nonzero",
+        "final-destroy-instance-persisted",
+        "final-destroy-project-delete-timeout",
+        "final-destroy-project-delete-nonzero",
+        "final-destroy-project-persisted",
+        "final-destroy-network-delete-timeout",
+        "final-destroy-network-delete-nonzero",
+        "final-destroy-network-persisted",
+        "final-destroy-inspection-failed",
+        "final-destroy-inspection-version",
+        "final-destroy-inspection-project-initial",
+        "final-destroy-inspection-network-initial",
+        "final-destroy-inspection-instance-before-delete",
+        "final-destroy-inspection-instance-after-delete",
+        "final-destroy-inspection-project-after-delete",
+        "final-destroy-inspection-project-final",
+        "final-destroy-inspection-network-final",
+        "final-destroy-inspection-instance-final",
+        "final-destroy-inspection-version-timeout",
+        "final-destroy-inspection-version-nonzero",
+        "final-destroy-inspection-version-invalid-json",
+        "final-destroy-inspection-version-invalid-shape",
+        "final-destroy-inspection-project-initial-timeout",
+        "final-destroy-inspection-project-initial-nonzero",
+        "final-destroy-inspection-project-initial-invalid-json",
+        "final-destroy-inspection-project-initial-invalid-shape",
+        "final-destroy-inspection-network-initial-timeout",
+        "final-destroy-inspection-network-initial-nonzero",
+        "final-destroy-inspection-network-initial-invalid-json",
+        "final-destroy-inspection-network-initial-invalid-shape",
+        "final-destroy-inspection-instance-before-delete-timeout",
+        "final-destroy-inspection-instance-before-delete-nonzero",
+        "final-destroy-inspection-instance-before-delete-invalid-json",
+        "final-destroy-inspection-instance-before-delete-invalid-shape",
+        "final-destroy-inspection-instance-after-delete-timeout",
+        "final-destroy-inspection-instance-after-delete-nonzero",
+        "final-destroy-inspection-instance-after-delete-invalid-json",
+        "final-destroy-inspection-instance-after-delete-invalid-shape",
+        "final-destroy-inspection-project-after-delete-timeout",
+        "final-destroy-inspection-project-after-delete-nonzero",
+        "final-destroy-inspection-project-after-delete-invalid-json",
+        "final-destroy-inspection-project-after-delete-invalid-shape",
+        "final-destroy-inspection-project-final-timeout",
+        "final-destroy-inspection-project-final-nonzero",
+        "final-destroy-inspection-project-final-invalid-json",
+        "final-destroy-inspection-project-final-invalid-shape",
+        "final-destroy-inspection-network-final-timeout",
+        "final-destroy-inspection-network-final-nonzero",
+        "final-destroy-inspection-network-final-invalid-json",
+        "final-destroy-inspection-network-final-invalid-shape",
+        "final-destroy-inspection-instance-final-timeout",
+        "final-destroy-inspection-instance-final-nonzero",
+        "final-destroy-inspection-instance-final-invalid-json",
+        "final-destroy-inspection-instance-final-invalid-shape",
+        "final-destroy-verification-failed",
+        "recovery-cleanup",
+        "runtime-unavailable",
+    }
+)
 
 
 class FabricDisposableTargetQualificationError(RuntimeError):
@@ -80,6 +217,15 @@ class FabricDisposableTargetQualificationRunner:
                 "fabric_disposable_target_qualification_output_invalid"
             )
         if completed.returncode != 0:
+            reason = _bounded_failure_reason(stderr)
+            if reason is not None:
+                return {
+                    "schemaVersion": "runner-mcp/disposable-target-qualification-status/v1",
+                    "state": "invalid",
+                    "reasonCode": reason,
+                    "qualificationPassed": False,
+                    "normalActivationEnabled": False,
+                }
             raise FabricDisposableTargetQualificationError(
                 "fabric_disposable_target_qualification_failed"
             )
@@ -142,6 +288,19 @@ class FabricDisposableTargetQualificationRunner:
                 "fabric_disposable_target_qualification_config_unavailable"
             )
         return path
+
+
+def _bounded_failure_reason(stderr: str) -> str | None:
+    lines = [line.strip() for line in stderr.splitlines() if line.strip()]
+    if len(lines) != 1:
+        return None
+    line = lines[0]
+    if not line.startswith(_FAILURE_PREFIX):
+        return None
+    reason = line.removeprefix(_FAILURE_PREFIX)
+    if reason not in _FAILURE_REASONS:
+        return None
+    return reason
 
 
 def _validate_payload(value: object) -> dict[str, Any]:

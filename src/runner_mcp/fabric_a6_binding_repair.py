@@ -1,0 +1,453 @@
+"""Bestaande A6-bindingen en begrensde Black-opslagvoorbereiding.
+
+Inspectie/reparatie wijzigen geen opslagroots. De afzonderlijke, bewust
+operatorgestuurde voorbereiding maakt uitsluitend twee vaste A6-mappen aan
+onder de reeds bestaande private state-root, zonder dienstactie, geheimen
+of fysieke onafhankelijkheid te verklaren. Geen publieke MCP-tool.
+"""
+
+from __future__ import annotations
+
+import os
+import re
+import socket
+import stat
+from collections.abc import Mapping, MutableMapping
+from pathlib import Path
+
+from .fabric_worker_qualification_provisioning import (
+    FabricWorkerQualificationProvisioningError,
+    _merge_private_env,
+    _require_private_file,
+)
+
+_COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
+_RUNNER_MCP_BEARER_ENV = "RUNNER_MCP_BEARER_TOKEN"
+_RUNNER_MCP_ENDPOINT = "http://127.0.0.1:8000/mcp"
+_PROBE_ID = "fleet-a6"
+_TARGET_SUBJECT = "runner:aifordable-lab"
+_INTERVAL_SECONDS = "60"
+_JOURNAL_DOMAIN = "control:evidence"
+_TARGET_DOMAIN = "target:runner-mcp"
+_JOURNAL_DIR = "a6-update-journal"
+_EVIDENCE_DIR = "a6-evidence"
+
+
+_A6_KEYS = (
+    "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT",
+    "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN",
+    "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN",
+    "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT",
+    "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_ID",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION",
+    "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT",
+    "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION",
+)
+
+
+class FabricA6BindingRepairError(RuntimeError):
+    """Sanitized fixed A6 private-binding repair failure."""
+
+
+def _resolve_private_a6_path(path: Path, failure: str) -> Path:
+    """Reject lexical ancestor redirects before resolving an A6 private path.
+
+    A leaf-only symlink check is insufficient: a linked grandparent can send
+    otherwise private journal and runtime configuration writes to another tree.
+    This is a fixed local path, not arbitrary filesystem authority.
+    """
+    try:
+        expanded = path.expanduser()
+        if not expanded.is_absolute() or ".." in expanded.parts:
+            raise FabricA6BindingRepairError(failure)
+        if any(ancestor.is_symlink() for ancestor in (expanded, *expanded.parents)):
+            raise FabricA6BindingRepairError(failure)
+        return expanded.resolve()
+    except (OSError, RuntimeError, TypeError, ValueError) as exc:
+        raise FabricA6BindingRepairError(failure) from exc
+
+
+def _resolve_a6_state_root(state_root: Path) -> Path:
+    """Fail closed for linked state-root ancestors with sanitized errors."""
+    return _resolve_private_a6_path(state_root, "fabric_a6_state_unsafe")
+
+
+def _resolve_a6_config_dir(config_dir: Path) -> Path:
+    """Reject linked config ancestors before reading or merging private keys."""
+    return _resolve_private_a6_path(config_dir, "fabric_a6_runtime_config_unavailable")
+
+
+def a6_state_requested(state_root: Path) -> bool:
+    """Return whether the fixed local A6 state roots signal an active A6 campaign."""
+
+    root = _resolve_a6_state_root(state_root)
+    journal = root / _JOURNAL_DIR
+    evidence = root / _EVIDENCE_DIR
+    if journal.is_symlink() or evidence.is_symlink():
+        raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
+    present = (journal.exists(), evidence.exists())
+    if any(present) and not all(present):
+        raise FabricA6BindingRepairError("fabric_a6_state_incomplete")
+    return all(present)
+
+
+def _a6_fixed_values_consistent(
+    values: Mapping[str, str], journal: Path, evidence: Path,
+) -> bool:
+    """Compare only owner-private fixed A6 values; never return the values.
+
+    A caller-controlled full set can look like 11/11 while pointing at the
+    wrong endpoint, custody root, target or old Fabric generation. This is
+    only local configuration consistency, not an off-target trust witness.
+    """
+    revision = values.get("RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION")
+    if not isinstance(revision, str) or _COMMIT_RE.fullmatch(revision) is None:
+        return False
+    if values.get("RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION") != revision:
+        return False
+    bearer = values.get("RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN")
+    if not _valid_secret(bearer):
+        return False
+    expected = {
+        "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": str(journal),
+        "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN": _JOURNAL_DOMAIN,
+        "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN": _TARGET_DOMAIN,
+        "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": _RUNNER_MCP_ENDPOINT,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_ID": _PROBE_ID,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT": _TARGET_SUBJECT,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS": _INTERVAL_SECONDS,
+        "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT": str(evidence),
+    }
+    return all(values.get(name) == expected_value for name, expected_value in expected.items())
+
+
+def _require_private_a6_env_file(path: Path) -> None:
+    """Refuse aliased private A6 config in addition to ordinary file checks.
+
+    An additional hard link can let a second pathname retain the same inode
+    and is incompatible with owner-private fixed-binding custody. This
+    check is a local source guard, not a race-free filesystem witness or A6
+    off-target storage qualification.
+    """
+    try:
+        _require_private_file(path)
+        info = path.lstat()
+    except (OSError, RuntimeError) as exc:
+        raise FabricA6BindingRepairError(
+            "fabric_a6_runtime_config_unavailable"
+        ) from exc
+    if (
+        not stat.S_ISREG(info.st_mode)
+        or stat.S_IMODE(info.st_mode) != 0o600
+        or info.st_uid != os.getuid()
+        or info.st_nlink != 1
+    ):
+        raise FabricA6BindingRepairError("fabric_a6_runtime_config_unavailable")
+
+
+def inspect_a6_binding_state(
+    *,
+    config_dir: Path,
+    state_root: Path,
+) -> dict[str, object]:
+    """Return sanitized fixed A6 persistence state without paths or values."""
+
+    from .onboarding import load_env_file
+
+    config = _resolve_a6_config_dir(config_dir)
+    env_path = config / "runner-mcp.env"
+    try:
+        _require_private_a6_env_file(env_path)
+        values = load_env_file(env_path)
+    except (OSError, RuntimeError, UnicodeError) as exc:
+        raise FabricA6BindingRepairError("fabric_a6_runtime_config_unavailable") from exc
+
+    binding_count = sum(
+        1 for key in _A6_KEYS if bool(values.get(key, "").strip())
+    )
+    root = _resolve_a6_state_root(state_root)
+    journal = root / _JOURNAL_DIR
+    evidence = root / _EVIDENCE_DIR
+    if journal.is_symlink() or evidence.is_symlink():
+        root_state = "unsafe"
+    else:
+        present = (journal.exists(), evidence.exists())
+        if not any(present):
+            root_state = "absent"
+        elif not all(present):
+            root_state = "incomplete"
+        else:
+            try:
+                _require_private_state_dir(root, _JOURNAL_DIR)
+                _require_private_state_dir(root, _EVIDENCE_DIR)
+            except FabricA6BindingRepairError:
+                root_state = "unsafe"
+            else:
+                root_state = "ready"
+
+    # A full *count* is not enough: stale or substituted fixed values must
+    # never be presented as a qualified private A6 binding. This still does
+    # NOT certify the physical off-target A6 journal, A7, or caller ACK.
+    consistent = (
+        root_state == "ready"
+        and binding_count == len(_A6_KEYS)
+        and _a6_fixed_values_consistent(values, journal, evidence)
+    )
+    return {
+        "state_roots": root_state,
+        "binding_count": binding_count,
+        "binding_total": len(_A6_KEYS),
+        "binding_complete": consistent,
+    }
+
+
+
+def classify_a6_bindings_for_doctor(inspection: Mapping[str, object]) -> tuple[str, str]:
+    """Classify safe A6 *configuration*, never certify A6 update authority.
+
+    An absent, unconfigured A6 is safe for general server operation, but it
+    cannot be treated as PASS by an update-readiness consumer. Real update
+    admission also requires off-target journal, A7 rollback and original ACK.
+    """
+    if not isinstance(inspection, Mapping):
+        return "warn", "unavailable"
+    roots = inspection.get("state_roots")
+    count = inspection.get("binding_count")
+    total = inspection.get("binding_total")
+    complete = inspection.get("binding_complete")
+    if (
+        roots not in ("ready", "absent", "incomplete", "unsafe")
+        or type(count) is not int
+        or type(total) is not int
+        or total != len(_A6_KEYS)
+        or count < 0
+        or count > total
+        or type(complete) is not bool
+        or complete != (count == total)
+    ):
+        return "warn", "unavailable"
+    if roots == "ready" and complete:
+        # PASS confirms this narrow private configuration, not off-target
+        # physical storage or protected A6/A7 update recovery.
+        return "pass", f"ready_{count}_of_{total}"
+    if roots == "absent" and count == 0:
+        return "warn", f"not_configured_0_of_{total}"
+    return "warn", f"{roots}_{count}_of_{total}"
+
+
+def repair_a6_qualification_binding(
+    *,
+    environment: MutableMapping[str, str],
+    config_dir: Path,
+    state_root: Path,
+    fabric_revision: str,
+) -> None:
+    """Restore only the fixed A6 binding when its durable state roots already exist."""
+
+    if not isinstance(fabric_revision, str) or _COMMIT_RE.fullmatch(fabric_revision) is None:
+        raise FabricA6BindingRepairError("fabric_a6_revision_invalid")
+
+    config = _resolve_a6_config_dir(config_dir)
+    env_path = config / "runner-mcp.env"
+    try:
+        _require_private_a6_env_file(env_path)
+    except (OSError, RuntimeError) as exc:
+        raise FabricA6BindingRepairError("fabric_a6_runtime_config_unavailable") from exc
+
+    root = _resolve_a6_state_root(state_root)
+    if not a6_state_requested(root):
+        return
+
+    journal = _require_private_state_dir(root, _JOURNAL_DIR)
+    evidence = _require_private_state_dir(root, _EVIDENCE_DIR)
+
+    bearer = environment.get(_RUNNER_MCP_BEARER_ENV, "")
+    if not _valid_secret(bearer):
+        raise FabricA6BindingRepairError("fabric_a6_runner_mcp_auth_unavailable")
+
+    updates = {
+        "RUNNER_FABRIC_UPDATE_JOURNAL_ROOT": str(journal),
+        "RUNNER_FABRIC_UPDATE_JOURNAL_STORAGE_DOMAIN": _JOURNAL_DOMAIN,
+        "RUNNER_FABRIC_UPDATE_TARGET_STORAGE_DOMAIN": _TARGET_DOMAIN,
+        "RUNNER_FABRIC_RUNNER_MCP_ENDPOINT": _RUNNER_MCP_ENDPOINT,
+        "RUNNER_FABRIC_RUNNER_MCP_BEARER_TOKEN": bearer,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_ID": _PROBE_ID,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_TARGET_SUBJECT": _TARGET_SUBJECT,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_EXPECTED_REVISION": fabric_revision,
+        "RUNNER_FABRIC_SYNTHETIC_PROBE_INTERVAL_SECONDS": _INTERVAL_SECONDS,
+        "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_ROOT": str(evidence),
+        "RUNNER_FABRIC_AGENT_BUS_EVIDENCE_REVISION": fabric_revision,
+    }
+    try:
+        _merge_private_env(env_path, updates)
+    except FabricWorkerQualificationProvisioningError as exc:
+        raise FabricA6BindingRepairError("fabric_a6_runtime_config_update_failed") from exc
+    environment.update(updates)
+
+
+def _require_private_state_dir(root: Path, name: str) -> Path:
+    target = root / name
+    if target.is_symlink():
+        raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
+    try:
+        resolved_root = root.resolve(strict=True)
+        resolved = target.resolve(strict=True)
+        stat = resolved.stat()
+    except (OSError, RuntimeError) as exc:
+        raise FabricA6BindingRepairError("fabric_a6_state_unavailable") from exc
+    if (
+        resolved.parent != resolved_root
+        or not resolved.is_dir()
+        or stat.st_uid != os.geteuid()
+        or stat.st_mode & 0o777 != 0o700
+    ):
+        raise FabricA6BindingRepairError("fabric_a6_state_unsafe")
+    return resolved
+
+
+def _valid_secret(value: object) -> bool:
+    return (
+        isinstance(value, str)
+        and 32 <= len(value) <= 4096
+        and value.isascii()
+        and all(33 <= ord(char) < 127 for char in value)
+    )
+
+
+def _a6_prepared_child(root_fd: int, name: str) -> bool:
+    """Controleer één vaste map via een geopende parent-inode, zonder links te volgen.
+
+    Geeft False terug uitsluitend wanneer de map echt ontbreekt. Fouten of
+    gewijzigde inode/owner/modus stoppen de hele voorbereiding zonder herstel.
+    """
+    try:
+        before = os.stat(name, dir_fd=root_fd, follow_symlinks=False)
+    except FileNotFoundError:
+        return False
+    except OSError as exc:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+    if (
+        not stat.S_ISDIR(before.st_mode)
+        or before.st_uid != os.geteuid()
+        or stat.S_IMODE(before.st_mode) != 0o700
+    ):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    child_fd = -1
+    try:
+        child_fd = os.open(
+            name,
+            os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC,
+            dir_fd=root_fd,
+        )
+        opened = os.fstat(child_fd)
+        if (
+            not stat.S_ISDIR(opened.st_mode)
+            or opened.st_uid != os.geteuid()
+            or stat.S_IMODE(opened.st_mode) != 0o700
+            or (opened.st_dev, opened.st_ino) != (before.st_dev, before.st_ino)
+        ):
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    except OSError as exc:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+    finally:
+        if child_fd >= 0:
+            os.close(child_fd)
+    return True
+
+
+def _prepare_fixed_a6_private_roots_under(state_root: Path) -> dict[str, object]:
+    """Bereid exact de twee A6-submappen in een reeds bestaande private root voor.
+
+    Dit is alleen de interne testbare variant: de operatorfunctie hieronder
+    kiest de echte root zelf. Elke mkdir is exclusief en wordt gefsynct. Een
+    onderbreking kan een gedeeltelijk paar achterlaten; dat blijft bewust
+    geblokkeerd en wordt NOOIT automatisch gewist of aangevuld.
+    """
+    if os.name != "posix" or not hasattr(os, "O_NOFOLLOW"):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    if os.geteuid() == 0 or os.getuid() != os.geteuid():
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+
+    # Linux-only bibliotheek pas importeren bij een echte Linux-operatoractie;
+    # de algemene Runner-MCP-module moet ook op andere hosts importeerbaar zijn.
+    import fcntl
+
+    # Hergebruik de bestaande descriptor/no-follow-controle, geen tweede manager.
+    from .fabric_release_private_custody import _private_root_fd
+
+    try:
+        root_fd = _private_root_fd(state_root)
+    except (OSError, ValueError) as exc:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+    try:
+        try:
+            fcntl.flock(root_fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
+        except OSError as exc:
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied") from exc
+        names = (_JOURNAL_DIR, _EVIDENCE_DIR)
+        observed = tuple(_a6_prepared_child(root_fd, name) for name in names)
+        if observed == (True, False) or observed == (False, True):
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_incomplete")
+        if observed == (True, True):
+            state = "already_private"
+        else:
+            # Geen exist_ok: een andere schrijver mag nooit overschreven worden.
+            # Beide namen zijn vaste compile-time constanten, geen caller-pad.
+            for name in names:
+                try:
+                    os.mkdir(name, 0o700, dir_fd=root_fd)
+                    os.fsync(root_fd)
+                except OSError as exc:
+                    raise FabricA6BindingRepairError(
+                        "fabric_a6_root_prepare_denied"
+                    ) from exc
+            state = "fixed_roots_prepared"
+        if not all(_a6_prepared_child(root_fd, name) for name in names):
+            raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+        return {
+            "state": state,
+            "roots_private": True,
+            "physical_independence_verified": False,
+            "off_target_readback_verified": False,
+            "journal_integrity_verified": False,
+            "a6_ready": False,
+            "mutation_authorized": False,
+            "service_restarted": False,
+        }
+    finally:
+        os.close(root_fd)
+
+
+def prepare_black_a6_private_roots() -> dict[str, object]:
+    """Alleen de oorspronkelijke niet-root Black-eigenaar mag de vaste roots maken.
+
+    De eigen HOME komt uit het OS-accountregister, niet uit caller-argumenten of
+    een overschrijfbare HOME-omgeving. Hostnaam/account zijn beperkende checks,
+    GEEN zelfstandige hostauthenticatie: operator moet vooraf de echte hardware,
+    onafhankelijke opslag en recovery autoriseren. De functie is niet als
+    publiek MCP-gereedschap geregistreerd; geen enkele dienst start of herstart.
+    """
+    if os.name != "posix" or not hasattr(os, "O_NOFOLLOW"):
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    # Alleen op Linux; reguliere Windows-import van Runner-MCP blijft veilig.
+    import pwd
+
+    try:
+        account = pwd.getpwuid(os.geteuid())
+        allowed = (
+            os.geteuid() != 0
+            and os.getuid() == os.geteuid()
+            and os.getgid() == os.getegid()
+            and account.pw_name == "black"
+            and socket.gethostname().split(".", 1)[0] == "black"
+        )
+    except (KeyError, OSError, ValueError):
+        allowed = False
+    if not allowed:
+        raise FabricA6BindingRepairError("fabric_a6_root_prepare_denied")
+    return _prepare_fixed_a6_private_roots_under(
+        Path(account.pw_dir) / ".local" / "state" / "runner-fabric"
+    )

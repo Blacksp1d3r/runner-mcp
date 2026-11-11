@@ -116,7 +116,8 @@ def make_manager(
     installer_runner=subprocess.run,
     seed_compatibility: bool = True,
     restart_components=None,
-    server_activation_scheduler=None,
+    active_revision_provider=None,
+    retain_activation_baseline=False,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -135,9 +136,10 @@ def make_manager(
         installer_runner=installer_runner,
         resource_url="http://127.0.0.1:8000/mcp",
         server_reexec=lambda: exits.append(75),
-        server_activation_scheduler=server_activation_scheduler,
         restart_delay_seconds=1,
         restart_components=restart_components,
+        active_revision_provider=active_revision_provider,
+        retain_activation_baseline=retain_activation_baseline,
     )
     pyproject = project / "pyproject.toml"
     pyproject.write_text(
@@ -1478,22 +1480,422 @@ def test_local_recovery_qualification_interrupts_after_install_and_recovers(
     assert manager.status(result["job_id"])["state"] == "interrupted"
 
 
-def test_managed_activation_scheduler_preserves_server_marker(
+def test_runtime_status_exposes_source_baseline_alignment(
     tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    calls: list[bool] = []
-    manager, _root, _exits = make_manager(
-        tmp_path,
-        server_activation_scheduler=lambda: calls.append(True),
+    manager, _project, _exits = make_manager(tmp_path)
+    installed = "a" * 40
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
     )
-    commit = "c" * 40
-    _write_restart_marker(manager.config_dir, "server", commit)
 
-    manager._schedule_server_restart()
+    status = manager.runtime_status()
 
-    deadline = time.monotonic() + 2
-    while not calls and time.monotonic() < deadline:
-        time.sleep(0.02)
+    assert status["last_installed_commit"] == installed
+    assert status["source_commit"] == installed
+    assert status["source_baseline_aligned"] is True
+    assert status["self_update_ready"] is True
 
-    assert calls == [True]
-    assert restart_marker_commit(manager.config_dir, "server") == commit
+
+def test_source_baseline_drift_blocks_before_job_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    installed = "a" * 40
+    source = "b" * 40
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": source, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["last_installed_commit"] == installed
+    assert status["source_commit"] == source
+    assert status["source_baseline_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="source baseline drift detected"):
+        manager.start("c" * 40)
+
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_source_baseline_unavailable_blocks_before_job_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    installed = "a" * 40
+    manager._record_installed_commit(installed)
+
+    def unavailable(_root: Path):
+        from runner_mcp.source_control import SourceControlError
+
+        raise SourceControlError("private source detail")
+
+    monkeypatch.setattr("runner_mcp.self_update.clean_head", unavailable)
+
+    status = manager.runtime_status()
+
+    assert status["source_commit"] is None
+    assert status["source_baseline_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="source baseline is unavailable") as captured:
+        manager.start("c" * 40)
+
+    assert "private source detail" not in str(captured.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_runtime_status_proves_active_runtime_alignment(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed = "a" * 40
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        active_revision_provider=lambda: installed,
+    )
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["active_runtime_revision"] == installed
+    assert status["runtime_activation_aligned"] is True
+    assert status["self_update_ready"] is True
+
+
+def test_old_active_runtime_blocks_next_self_update_before_queue(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed = "b" * 40
+    active = "a" * 40
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        active_revision_provider=lambda: active,
+    )
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["active_runtime_revision"] == active
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="activation is not proven"):
+        manager.start("c" * 40)
+
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_unavailable_active_runtime_identity_fails_closed_when_proof_is_required(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    installed = "a" * 40
+
+    def unavailable() -> str:
+        raise RuntimeError("private runtime detail")
+
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        active_revision_provider=unavailable,
+    )
+    manager._record_installed_commit(installed)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": installed, "clean": True},
+    )
+
+    status = manager.runtime_status()
+
+    assert status["active_runtime_revision"] is None
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="activation is not proven") as captured:
+        manager.start("c" * 40)
+
+    assert "private runtime detail" not in str(captured.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+@pytest.mark.parametrize(
+    ("candidate", "expected"),
+    [
+        (None, None),
+        ("not-a-commit", None),
+        ("A" * 40, None),
+        (0, None),
+        ("b" * 40, "b" * 40),
+    ],
+)
+def test_active_runtime_revision_provider_fails_closed_for_unproven_values(
+    tmp_path: Path, candidate: object, expected: str | None
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: candidate
+    )
+    assert manager._active_runtime_revision() == expected
+
+
+@pytest.mark.parametrize(
+    "failure",
+    [OSError, RuntimeError, TypeError, ValueError, KeyError, IndexError, AttributeError],
+)
+def test_active_runtime_revision_provider_failure_is_bounded(
+    tmp_path: Path, failure: type[Exception]
+) -> None:
+    def broken_provider() -> str:
+        raise failure("private runtime information must not escape")
+
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=broken_provider
+    )
+    assert manager._active_runtime_revision() is None
+
+
+def test_runtime_status_stale_historical_commit_must_not_be_update_ready(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: None
+    )
+    manager._record_installed_commit("a" * 40)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": "b" * 40, "clean": True},
+    )
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == "a" * 40
+    assert status["source_commit"] == "b" * 40
+    assert status["source_baseline_aligned"] is False
+    assert status["active_runtime_revision"] is None
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False
+
+
+@pytest.mark.parametrize("failure", [KeyError, IndexError, AttributeError])
+def test_revision_provider_metadata_error_does_not_enable_a_stale_update(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    failure: type[Exception],
+) -> None:
+    historical_commit = "a" * 40
+
+    def missing_metadata() -> str:
+        raise failure("private attestation metadata must not escape")
+
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=missing_metadata
+    )
+    manager._record_installed_commit(historical_commit)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": historical_commit, "clean": True},
+    )
+
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == historical_commit
+    assert status["source_baseline_aligned"] is True
+    assert status["active_runtime_revision"] is None
+    assert status["runtime_activation_aligned"] is False
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="activation is not proven") as captured:
+        manager.start("b" * 40)
+    assert "private attestation metadata" not in str(captured.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+@pytest.mark.parametrize(
+    "source_state",
+    [
+        None,
+        {},
+        {"commit": "a" * 40},
+        {"commit": "a" * 40, "clean": False},
+        {"commit": "a" * 40, "clean": 1},
+        {"commit": None, "clean": True},
+        {"commit": "A" * 40, "clean": True},
+        {"commit": "not-a-revision", "clean": True},
+        {"commit": 1234, "clean": True},
+        ["a" * 40],
+    ],
+)
+def test_malformed_source_baseline_evidence_is_never_update_ready(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    source_state: object,
+) -> None:
+    historical_commit = "a" * 40
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: historical_commit
+    )
+    manager._record_installed_commit(historical_commit)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: source_state,
+    )
+
+    status = manager.runtime_status()
+    assert status["last_installed_commit"] == historical_commit
+    assert status["source_commit"] is None
+    assert status["source_baseline_aligned"] is False
+    assert status["active_runtime_revision"] == historical_commit
+    assert status["runtime_activation_aligned"] is True
+    assert status["self_update_ready"] is False
+
+    with pytest.raises(SelfUpdateError, match="source baseline is unavailable"):
+        manager.start("b" * 40)
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_source_baseline_provider_exception_is_denied_without_leaking_details(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, active_revision_provider=lambda: "a" * 40
+    )
+    manager._record_installed_commit("a" * 40)
+
+    def bad_source(_root: Path) -> object:
+        raise ValueError("private checkout details must remain private")
+
+    monkeypatch.setattr("runner_mcp.self_update.clean_head", bad_source)
+    status = manager.runtime_status()
+    assert status["source_commit"] is None
+    assert status["source_baseline_aligned"] is False
+    assert status["self_update_ready"] is False
+    with pytest.raises(SelfUpdateError, match="source baseline is unavailable") as caught:
+        manager.start("b" * 40)
+    assert "private checkout details" not in str(caught.value)
+    assert manager.runtime_status()["latest_self_update_job"] is None
+
+
+def test_provisional_activation_keeps_baseline_transaction_through_restart(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The old wheel must survive an install and a new-process restart."""
+    baseline, target = "a" * 40, "b" * 40
+    live = {"commit": baseline}
+
+    class PinnedSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            live["commit"] = commit
+            return super().sync_project_main_tip(project, commit)
+
+        def restore_project_main_commit_for_recovery(self, project: str, commit: str):
+            live["commit"] = commit
+            return super().restore_project_main_commit_for_recovery(project, commit)
+
+    def installer(command, **kwargs):
+        command = list(command)
+        if len(command) > 3 and command[3] == "wheel":
+            stage_fake_wheel(command)
+        return subprocess.CompletedProcess(command, 0, "", "")
+
+    source = PinnedSource()
+    manager, _root, _exits = make_manager(
+        tmp_path, source=source, installer_runner=installer,
+        retain_activation_baseline=True,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": live["commit"], "clean": True},
+    )
+
+    finished = wait_terminal(manager, manager.start(target)["job_id"])
+    assert finished["state"] == "completed"
+    assert finished["restart_required"] is True
+    transaction = manager._package_installer.pending_transaction()
+    assert transaction is not None
+    assert transaction["job_id"] == finished["job_id"]
+    assert transaction["target_commit"] == target
+    assert transaction["baseline_commit"] == baseline
+    previous = manager._package_installer.staged_wheel(
+        job_id=finished["job_id"], label="baseline",
+    )
+    assert previous.exists()
+    assert manager.runtime_status()["provisional_activation_pending"] is True
+    assert manager.runtime_status()["provisional_baseline_wheel_present"] is True
+    assert manager.runtime_status()["install_recovery_pending"] is True
+
+    for component in ("server", "github-watcher", "completion-watcher"):
+        assert consume_restart_marker(manager.config_dir, component) is True
+
+    # Restarting the manager must not erase the retained wheel.
+    restarted, _root, _exits = make_manager(
+        tmp_path, source=source, installer_runner=installer,
+        retain_activation_baseline=True,
+    )
+    assert restarted.runtime_status()["provisional_activation_pending"] is True
+    assert restarted.runtime_status()["provisional_baseline_wheel_present"] is True
+    saved_wheel = restarted._package_installer.staged_wheel(
+        job_id=finished["job_id"], label="baseline",
+    )
+    assert saved_wheel.exists()
+    # A transaction and completed job alone cannot certify a retained wheel.
+    original_bytes = saved_wheel.read_bytes()
+    saved_wheel.unlink()
+    missing = restarted.runtime_status()
+    assert missing["provisional_activation_pending"] is True
+    assert missing["install_recovery_pending"] is True
+    assert missing["provisional_baseline_wheel_present"] is False
+    assert missing["self_update_ready"] is False
+    saved_wheel.write_bytes(original_bytes)
+    saved_wheel.chmod(0o600)
+    assert restarted.runtime_status()["provisional_baseline_wheel_present"] is True
+    with pytest.raises(SelfUpdateError, match="recovery is still pending"):
+        restarted.start("c" * 40)
+
+    # The existing explicitly authorized emergency-stop recovery still works.
+    restarted.safety.stop_file.touch()
+    receipt = restarted.recover_installation()
+    assert receipt["recovered"] is True
+    assert live["commit"] == baseline
+    assert restarted._package_installer.pending_transaction() is None
+    assert restarted.runtime_status()["provisional_activation_pending"] is False
+    assert restarted.runtime_status()["provisional_baseline_wheel_present"] is None
+
+
+def test_provisional_mode_refuses_first_install_without_baseline(tmp_path: Path) -> None:
+    manager, _project, _exits = make_manager(
+        tmp_path, retain_activation_baseline=True,
+    )
+    with pytest.raises(SelfUpdateError, match="requires an existing recorded rollback baseline"):
+        manager.start("f" * 40)
+    assert manager._package_installer.pending_transaction() is None
+
+
+@pytest.mark.parametrize("bad", [None, "true", 1, [], {}])
+def test_provisional_flag_must_be_an_explicit_boolean(
+    tmp_path: Path, bad: object,
+) -> None:
+    with pytest.raises(SelfUpdateError, match="retention flag is invalid"):
+        make_manager(tmp_path, retain_activation_baseline=bad)
+
+
+def test_legacy_update_keeps_current_behavior_by_default(tmp_path: Path) -> None:
+    manager, _project, _exits = make_manager(tmp_path)
+    assert manager._retain_activation_baseline is False
+    assert manager.runtime_status()["provisional_activation_pending"] is False
+    assert manager.runtime_status()["provisional_baseline_wheel_present"] is None

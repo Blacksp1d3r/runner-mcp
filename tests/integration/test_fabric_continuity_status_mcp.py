@@ -4,6 +4,7 @@ from pathlib import Path
 from starlette.testclient import TestClient
 
 from runner_mcp.config import ProjectConfig, ProjectRegistry
+from runner_mcp.fabric_continuity_status import FabricContinuityStatusError
 from runner_mcp.server import Settings, create_app
 
 
@@ -154,3 +155,87 @@ def test_fabric_continuity_status_is_zero_argument_and_read_only(
     assert "fabric_continuity_status" in audit
     assert "local-continuity" in audit
     assert "example/private" not in audit
+
+
+def test_runtime_doctor_exposes_only_bounded_continuity_failure_category(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FailingContinuityRunner:
+        def __init__(self, **kwargs) -> None:
+            assert "environment" in kwargs
+
+        def status(self):
+            raise FabricContinuityStatusError(
+                "fabric_continuity_status_configuration_unavailable"
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricContinuityStatusRunner",
+        FailingContinuityRunner,
+    )
+
+    project_root = tmp_path / "project"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token="x" * 32,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url="https://mcp.example.invalid/mcp",
+        projects_config=tmp_path / "projects.yml",
+        audit_log=tmp_path / "audit.jsonl",
+        rate_limit_per_minute=60,
+        operator_stop_file=tmp_path / "operator.stop",
+        retention_confirmed=True,
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    app = create_app(settings=settings, registry=registry)
+    headers = _headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=_initialize())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 3,
+                "method": "tools/call",
+                "params": {
+                    "name": "runtime_doctor",
+                    "arguments": {},
+                },
+            },
+        )
+
+    payload = _tool_json(response)
+    check = next(
+        item
+        for item in payload["checks"]
+        if item["name"] == "fabric_continuity_status"
+    )
+    assert check == {
+        "name": "fabric_continuity_status",
+        "state": "warn",
+        "detail": "fabric_continuity_status_configuration_unavailable",
+    }
+    rendered = json.dumps(payload)
+    assert "/private" not in rendered
+    assert "token" not in rendered

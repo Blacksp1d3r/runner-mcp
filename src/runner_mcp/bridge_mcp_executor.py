@@ -22,6 +22,28 @@ class _StaleMCPSessionError(BridgeExecutionAdapterError):
     """Internal marker for a confirmed stale downstream MCP session."""
 
 
+class _NoLocalMCPRedirects(urllib.request.HTTPRedirectHandler):
+    """Never forward the first-party loopback bearer to a redirected target."""
+
+    def redirect_request(self, req, fp, code, msg, headers, newurl):
+        return None
+
+
+def _private_loopback_opener() -> urllib.request.OpenerDirector:
+    """Ignore ambient HTTP(S) proxies and prohibit all local MCP redirects."""
+    return urllib.request.build_opener(
+        urllib.request.ProxyHandler({}),
+        _NoLocalMCPRedirects(),
+    )
+
+
+def _open_local_mcp_request(
+    request: urllib.request.Request, *, timeout: float
+):
+    """One fixed, mockable transport seam for the bearer-bound local MCP."""
+    return _private_loopback_opener().open(request, timeout=timeout)
+
+
 MAX_MCP_RESPONSE_BYTES = 1_048_576
 MAX_MCP_SESSION_ID_CHARS = 256
 MAX_MCP_JOB_ID_CHARS = 32
@@ -344,23 +366,30 @@ def _validate_initialize_peer(value: object) -> dict[str, str | None]:
     server_version: str | None = None
     server_info = value.get("serverInfo")
     if server_info is not None:
-        if not isinstance(server_info, dict) or set(server_info) != {"name", "version"}:
+        if not isinstance(server_info, dict):
             raise BridgeExecutionAdapterError(
-                "Runner MCP server identity is invalid"
+                "Runner MCP server identity container is invalid"
             )
         name = server_info.get("name")
         version = server_info.get("version")
-        if (
+        if name is not None and (
             not isinstance(name, str)
             or _PEER_INFO_RE.fullmatch(name) is None
-            or not isinstance(version, str)
-            or _PEER_INFO_RE.fullmatch(version) is None
         ):
             raise BridgeExecutionAdapterError(
-                "Runner MCP server identity is invalid"
+                "Runner MCP server identity name is invalid"
+            )
+        if version is not None and (
+            not isinstance(version, str)
+            or len(version) > 128
+            or not version.isascii()
+            or any(ord(char) < 32 or ord(char) == 127 for char in version)
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP server identity version is invalid"
             )
         server_name = name
-        server_version = version
+        server_version = version or None
 
     return {
         "protocol_version": protocol,
@@ -480,6 +509,7 @@ def _validate_peer_build_identity(
     *,
     observed_interface_digest: str,
     negotiated_protocol_version: str,
+    expected_component_id: str = "runner-mcp",
 ) -> dict[str, object]:
     if not isinstance(payload, dict):
         raise BridgeExecutionAdapterError(
@@ -494,7 +524,12 @@ def _validate_peer_build_identity(
         "protocol_max",
         "interface_schema_digest",
     }
-    if set(payload) != expected or payload.get("component_id") != "runner-mcp":
+    if (
+        not isinstance(expected_component_id, str)
+        or re.fullmatch(r"[a-z][a-z0-9._:-]{0,127}", expected_component_id) is None
+        or set(payload) != expected
+        or payload.get("component_id") != expected_component_id
+    ):
         raise BridgeExecutionAdapterError(
             "Runner MCP build identity is incompatible"
         )
@@ -635,6 +670,7 @@ _RUNNER_MCP_BRIDGE_TOOLS = frozenset(
         "runtime_status",
         "runtime_doctor",
         "fabric_operational_snapshot",
+        "fabric_continuity_status",
         "self_update",
         "self_update_status",
         "fabric_bootstrap",
@@ -653,6 +689,8 @@ class LocalMCPClient:
         allowed_tools: frozenset[str] = _RUNNER_MCP_BRIDGE_TOOLS,
         client_name: str = "runner-mcp-github-watcher",
         compatibility_preflight: bool = False,
+        required_tools: frozenset[str] | None = None,
+        expected_component_id: str = "runner-mcp",
     ) -> None:
         if not isinstance(allowed_tools, frozenset) or not allowed_tools:
             raise ValueError("MCP tool allow-list must be a non-empty frozenset")
@@ -669,10 +707,24 @@ class LocalMCPClient:
             raise ValueError("MCP client name is invalid")
         if not isinstance(compatibility_preflight, bool):
             raise TypeError("compatibility_preflight must be boolean")
+        if required_tools is not None and not isinstance(required_tools, frozenset):
+            raise TypeError("required_tools must be a frozenset or None")
+        if (
+            not isinstance(expected_component_id, str)
+            or re.fullmatch(r"[a-z][a-z0-9._:-]{0,127}", expected_component_id) is None
+        ):
+            raise ValueError("expected MCP component id is invalid")
+        effective_required_tools = (
+            allowed_tools if required_tools is None else required_tools
+        )
+        if not effective_required_tools.issubset(allowed_tools):
+            raise ValueError("required MCP tools must be allowed")
         self._config = config
         self._allowed_tools = allowed_tools
+        self._required_tools = effective_required_tools
         self._client_name = client_name
         self._compatibility_preflight = compatibility_preflight
+        self._expected_component_id = expected_component_id
         self._session_id: str | None = None
         self._next_request_id = 1
         self._initialized = False
@@ -681,6 +733,9 @@ class LocalMCPClient:
         self._peer_server_version: str | None = None
         self._peer_build_identity: dict[str, object] | None = None
         self._peer_tool_names: frozenset[str] = frozenset()
+        # A lost session must be followed by an independently verified
+        # build/catalogue before any caller-initiated next invocation.
+        self._requires_verified_reconnect = False
 
     @property
     def peer_identity(self) -> dict[str, str | None]:
@@ -741,46 +796,61 @@ class LocalMCPClient:
                 "params": {},
             }
         )
-        if self._compatibility_preflight:
-            tool_surface = self._post(
-                {
-                    "jsonrpc": "2.0",
-                    "id": self._allocate_request_id(),
-                    "method": "tools/list",
-                    "params": {},
-                }
-            )
-            observed_digest, tool_names = _validate_peer_tool_surface(
-                tool_surface,
-                required_tools=self._allowed_tools,
-            )
-            identity_response = self._post(
-                {
-                    "jsonrpc": "2.0",
-                    "id": self._allocate_request_id(),
-                    "method": "tools/call",
-                    "params": {
-                        "name": "build_identity",
-                        "arguments": {},
-                    },
-                }
-            )
-            if self._peer_protocol_version is None:
-                raise BridgeExecutionAdapterError(
-                    "Runner MCP protocol version is unavailable"
+        if self._compatibility_preflight or self._requires_verified_reconnect:
+            try:
+                tool_surface = self._post(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self._allocate_request_id(),
+                        "method": "tools/list",
+                        "params": {},
+                    }
                 )
-            self._peer_build_identity = _validate_peer_build_identity(
-                _tool_result_payload(identity_response),
-                observed_interface_digest=observed_digest,
-                negotiated_protocol_version=self._peer_protocol_version,
-            )
-            self._peer_tool_names = tool_names
-            _log_peer_identity_observed(
-                protocol_version=self._peer_protocol_version,
-                server_name=self._peer_server_name,
-                server_version=self._peer_server_version,
-                build_identity=self._peer_build_identity,
-            )
+                observed_digest, tool_names = _validate_peer_tool_surface(
+                    tool_surface,
+                    required_tools=self._required_tools,
+                )
+                identity_response = self._post(
+                    {
+                        "jsonrpc": "2.0",
+                        "id": self._allocate_request_id(),
+                        "method": "tools/call",
+                        "params": {
+                            "name": "build_identity",
+                            "arguments": {},
+                        },
+                    }
+                )
+                if self._peer_protocol_version is None:
+                    raise BridgeExecutionAdapterError(
+                        "Runner MCP protocol version is unavailable"
+                    )
+                self._peer_build_identity = _validate_peer_build_identity(
+                    _tool_result_payload(identity_response),
+                    observed_interface_digest=observed_digest,
+                    negotiated_protocol_version=self._peer_protocol_version,
+                    expected_component_id=self._expected_component_id,
+                )
+                self._peer_tool_names = tool_names
+                _log_peer_identity_observed(
+                    protocol_version=self._peer_protocol_version,
+                    server_name=self._peer_server_name,
+                    server_version=self._peer_server_version,
+                    build_identity=self._peer_build_identity,
+                )
+                self._requires_verified_reconnect = False
+            except BridgeExecutionAdapterError:
+                # A failed generation proof leaves no reusable partially
+                # established session. Repeated caller calls cannot inherit
+                # a stale/foreign authenticated identity accidentally.
+                self._session_id = None
+                self._peer_protocol_version = None
+                self._peer_server_name = None
+                self._peer_server_version = None
+                self._peer_build_identity = None
+                self._peer_tool_names = frozenset()
+                self._requires_verified_reconnect = True
+                raise
         self._initialized = True
 
     def _call_tool(self, name: str, arguments: dict[str, Any]) -> Any:
@@ -798,6 +868,10 @@ class LocalMCPClient:
         try:
             response = self._post(payload)
         except _StaleMCPSessionError:
+            # A 404 may have been synthesized by a proxy after the original
+            # request crossed an execution boundary. Reissuing tools/call is
+            # unsafe, including when the tool is usually read-only: callers
+            # must observe the uncertainty and choose any future invocation.
             self._session_id = None
             self._initialized = False
             self._peer_protocol_version = None
@@ -805,12 +879,10 @@ class LocalMCPClient:
             self._peer_server_version = None
             self._peer_build_identity = None
             self._peer_tool_names = frozenset()
-            self.initialize()
-            payload = {
-                **payload,
-                "id": self._allocate_request_id(),
-            }
-            response = self._post(payload)
+            self._requires_verified_reconnect = True
+            raise BridgeExecutionAdapterError(
+                "MCP_SESSION_STALE_EFFECT_UNKNOWN_RECONNECT_REQUIRED"
+            ) from None
         if response is None or not isinstance(response, dict):
             raise BridgeExecutionAdapterError(
                 "Runner MCP returned an empty tool response"
@@ -904,7 +976,7 @@ class LocalMCPClient:
             method="POST",
         )
         try:
-            with urllib.request.urlopen(
+            with _open_local_mcp_request(
                 request,
                 timeout=self._config.request_timeout_seconds,
             ) as response:
@@ -939,7 +1011,16 @@ class LocalMCPClient:
                 "Runner MCP is unavailable or rejected the request"
             ) from exc
 
-        return _decode_mcp_response(raw)
+        response_payload = _decode_mcp_response(raw)
+        if "id" in payload and (
+            not isinstance(response_payload, dict)
+            or type(response_payload.get("id")) is not int
+            or response_payload["id"] != payload["id"]
+        ):
+            raise BridgeExecutionAdapterError(
+                "Runner MCP returned a mismatched JSON-RPC response id"
+            )
+        return response_payload
 
 
 class LocalMCPBridgeExecutor:
@@ -970,6 +1051,9 @@ class LocalMCPBridgeExecutor:
 
     def runtime_doctor(self) -> Any:
         return self._client()._call_tool("runtime_doctor", {})
+
+    def fabric_continuity_status(self) -> Any:
+        return self._client()._call_tool("fabric_continuity_status", {})
 
     def self_update(self, commit: str) -> Any:
         if not re.fullmatch(r"[0-9a-f]{40}", commit):

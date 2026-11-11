@@ -80,10 +80,18 @@ class CIRunnerEnrollmentManager:
         marker = spec.runner_root / ".runner"
 
         remote = self._safe_remote_status(spec)
+        # A symlink to a regular file satisfies Path.is_file(), but must never
+        # be accepted as an existing runner registration.
+        if marker.is_symlink():
+            raise CIRunnerEnrollmentError("local CI runner registration marker is unsafe")
         if marker.is_file():
             if remote is None:
                 raise CIRunnerEnrollmentError(
                     "local CI runner registration is not present on GitHub"
+                )
+            if set(remote.custom_labels) != set(spec.labels):
+                raise CIRunnerEnrollmentError(
+                    "existing CI runner registration labels do not match"
                 )
             return _result("already-registered", spec, remote)
 
@@ -192,10 +200,17 @@ def _safe_runner_script(root: Path, name: str) -> Path:
         raise CIRunnerEnrollmentError("CI runner root is unavailable") from exc
     if not resolved_root.is_dir():
         raise CIRunnerEnrollmentError("CI runner root is unavailable")
+    # Enrollment passes a short-lived GitHub registration token to config.sh.
+    # A directory writable by another local user allows script replacement
+    # before token delivery, even when config.sh itself is not a symlink.
+    if resolved_root.stat().st_mode & 0o022:
+        raise CIRunnerEnrollmentError("CI runner root permissions are unsafe")
 
     script = resolved_root / name
     if script.is_symlink() or not script.is_file() or not os.access(script, os.X_OK):
         raise CIRunnerEnrollmentError("CI runner configuration script is unavailable")
+    if script.stat().st_mode & 0o022:
+        raise CIRunnerEnrollmentError("CI runner configuration script permissions are unsafe")
     return script
 
 
@@ -205,7 +220,7 @@ def _safe_work_folder(spec: CIRunnerSpec) -> str:
     except ValueError as exc:
         raise CIRunnerEnrollmentError("CI runner work root is unsafe") from exc
     value = relative.as_posix()
-    if not value or value.startswith("../") or value == ".":
+    if not relative.parts or ".." in relative.parts or value == ".":
         raise CIRunnerEnrollmentError("CI runner work folder is unsafe")
     return value
 
@@ -218,6 +233,24 @@ def _ensure_work_root(spec: CIRunnerSpec) -> None:
     except OSError as exc:
         raise CIRunnerEnrollmentError("CI runner root is unavailable") from exc
 
+    # A missing work directory can have a symlinked parent outside the
+    # runner root. Validate containment before any filesystem mutation.
+    try:
+        resolved_parent = spec.work_root.parent.resolve(strict=True)
+        resolved_parent.relative_to(resolved_root)
+    except (OSError, ValueError) as exc:
+        raise CIRunnerEnrollmentError("CI runner work root is unsafe") from exc
+    # All path components from runner_root to the work parent must resist
+    # writes from other local users while the registration token is live.
+    current = resolved_parent
+    try:
+        while current != resolved_root:
+            if current.stat().st_mode & 0o022:
+                raise CIRunnerEnrollmentError("CI runner work parent permissions are unsafe")
+            current = current.parent
+    except OSError as exc:
+        raise CIRunnerEnrollmentError("CI runner work parent is unsafe") from exc
+
     if spec.work_root.exists():
         try:
             resolved_work = spec.work_root.resolve(strict=True)
@@ -226,6 +259,8 @@ def _ensure_work_root(spec: CIRunnerSpec) -> None:
             raise CIRunnerEnrollmentError("CI runner work root is unsafe") from exc
         if not resolved_work.is_dir():
             raise CIRunnerEnrollmentError("CI runner work root is unsafe")
+        if resolved_work.stat().st_mode & 0o022:
+            raise CIRunnerEnrollmentError("CI runner work root permissions are unsafe")
         return
 
     try:

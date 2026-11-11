@@ -40,6 +40,8 @@ class BridgeExecutor(Protocol):
 
     def runtime_doctor(self) -> Any: ...
 
+    def fabric_continuity_status(self) -> Any: ...
+
     def self_update(self, commit: str) -> Any: ...
 
     def self_update_status(self, job_id: str) -> Any: ...
@@ -239,6 +241,9 @@ class BridgeProcessor:
 
         if request.action == BridgeAction.FABRIC_OPERATIONAL_SNAPSHOT:
             return self._executor.fabric_operational_snapshot()
+
+        if request.action == BridgeAction.FABRIC_CONTINUITY_STATUS:
+            return self._executor.fabric_continuity_status()
 
         if request.action == BridgeAction.SELF_UPDATE:
             assert request.commit is not None

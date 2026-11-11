@@ -1,5 +1,7 @@
 # Optional Runner Fabric bridge
 
+**Owner-confirmed placement (2026-10-20):** AIfordable is the business/operator cockpit and can surface Fabric's separately owned **technical F10/F17 Cockpit**. Fabric remains the sole scheduler/orchestrator for tasks, workers, source and result/ACK semantics. Runner-MCP is the bounded authenticated MCP/execution interface, and this optional bridge is a *transport*, not a parallel Fabric engine. The existing AIfordable-owned Agent Bus relay remains the existing transport path; not all Agent Bus packets physically pass through Runner-MCP. Avoid second relay/updater/workspace manager. [Full role contract](https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md).
+
 Runner MCP can optionally expose a narrow transport bridge to a **separately running Runner Fabric**
 instance on the same host.
 

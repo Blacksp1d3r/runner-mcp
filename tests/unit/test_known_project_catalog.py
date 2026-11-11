@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import json
+import os
 import subprocess
 from pathlib import Path
 
@@ -14,6 +16,7 @@ from runner_mcp.known_project_catalog import (
     preflight_known_project_source,
     prepare_known_project,
     register_known_project,
+    resolve_known_project_github_token,
 )
 
 
@@ -824,3 +827,217 @@ def test_runner_fabric_existing_clone_requires_exact_repository(
     )
 
     assert result["state"] == "already-prepared"
+
+
+def _make_private_local_git_source(tmp_path: Path) -> tuple[Path, str]:
+    seed = tmp_path / "seed"
+    seed.mkdir()
+    subprocess.run(["git", "init", "-q", str(seed)], check=True)
+    subprocess.run(
+        ["git", "-C", str(seed), "config", "user.email", "test@example.invalid"],
+        check=True,
+    )
+    subprocess.run(
+        ["git", "-C", str(seed), "config", "user.name", "Runner MCP Test"],
+        check=True,
+    )
+    (seed / "README.md").write_text("local source\n", encoding="utf-8")
+    subprocess.run(["git", "-C", str(seed), "add", "README.md"], check=True)
+    subprocess.run(
+        ["git", "-C", str(seed), "commit", "-q", "-m", "seed"],
+        check=True,
+    )
+    revision = subprocess.run(
+        ["git", "-C", str(seed), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    source = tmp_path / "trusted-source.git"
+    subprocess.run(
+        ["git", "clone", "-q", "--bare", str(seed), str(source)],
+        check=True,
+    )
+    os.chmod(source, 0o700)
+    return source, revision
+
+
+def _local_source_binding(
+    *,
+    project_id: str,
+    repository: str,
+    source: Path,
+    revision: str,
+) -> str:
+    return json.dumps(
+        {
+            "schemaVersion": "runner-mcp/known-project-local-sources/v1",
+            "projects": {
+                project_id: {
+                    "repository": repository,
+                    "source": str(source),
+                    "expectedRevision": revision,
+                }
+            },
+        }
+    )
+
+
+def test_known_project_source_preflight_prefers_trusted_local_source(
+    tmp_path: Path,
+) -> None:
+    source, revision = _make_private_local_git_source(tmp_path)
+    raw = _local_source_binding(
+        project_id="runner-fabric",
+        repository="Blacksp1d3r/Runner-Fabric",
+        source=source,
+        revision=revision,
+    )
+
+    result = preflight_known_project_source(
+        project_id="runner-fabric",
+        github_token=None,
+        local_source_bindings_raw=raw,
+        runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+            AssertionError("network Git must not run")
+        ),
+    )
+
+    assert result["source_reachable"] is True
+    assert result["main_ref_available"] is True
+    assert result["reason_code"] == "local-source-ready"
+    assert result["credential_configured"] is False
+
+
+def test_prepare_known_project_materializes_exact_trusted_local_revision(
+    tmp_path: Path,
+) -> None:
+    anchor = tmp_path / "runner-mcp"
+    anchor.mkdir()
+    source, revision = _make_private_local_git_source(tmp_path)
+    raw = _local_source_binding(
+        project_id="runner-fabric",
+        repository="Blacksp1d3r/Runner-Fabric",
+        source=source,
+        revision=revision,
+    )
+
+    result = prepare_known_project(
+        _registry(anchor),
+        project_id="runner-fabric",
+        github_token=None,
+        local_source_bindings_raw=raw,
+    )
+
+    assert result["state"] == "prepared-local"
+    target = tmp_path / "Runner-Fabric"
+    assert target.is_dir()
+    observed = subprocess.run(
+        ["git", "-C", str(target), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert observed == revision
+    origin = subprocess.run(
+        ["git", "-C", str(target), "config", "--get", "remote.origin.url"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    assert origin == "https://github.com/Blacksp1d3r/Runner-Fabric.git"
+
+
+def test_malformed_trusted_local_source_fails_closed_before_github(
+    tmp_path: Path,
+) -> None:
+    raw = json.dumps(
+        {
+            "schemaVersion": "runner-mcp/known-project-local-sources/v1",
+            "projects": {
+                "runner-fabric": {
+                    "repository": "Blacksp1d3r/Runner-Fabric",
+                    "source": str(tmp_path / "missing"),
+                    "expectedRevision": "a" * 40,
+                }
+            },
+        }
+    )
+
+    with pytest.raises(
+        KnownProjectRegistrationError,
+        match="configuration is invalid",
+    ):
+        preflight_known_project_source(
+            project_id="runner-fabric",
+            github_token="private-token",
+            local_source_bindings_raw=raw,
+            runner=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("GitHub fallback must not hide an invalid trusted binding")
+            ),
+        )
+
+
+
+def test_bewind_uses_dedicated_source_credential() -> None:
+    result = resolve_known_project_github_token(
+        project_id="bewind",
+        global_token="global-token",
+        private_values={"RUNNER_MCP_BEWIND_GITHUB_TOKEN": "bewind-token"},
+    )
+
+    assert result == "bewind-token"
+
+
+@pytest.mark.parametrize(
+    "project_id",
+    ["aifordable", "rasff-lens", "runner-fabric", "safety"],
+)
+def test_other_projects_never_consume_bewind_source_credential(
+    project_id: str,
+) -> None:
+    result = resolve_known_project_github_token(
+        project_id=project_id,
+        global_token="global-token",
+        private_values={"RUNNER_MCP_BEWIND_GITHUB_TOKEN": "bewind-token"},
+    )
+
+    assert result == "global-token"
+
+
+def test_bewind_without_dedicated_source_credential_preserves_global_fallback() -> None:
+    result = resolve_known_project_github_token(
+        project_id="bewind",
+        global_token="global-token",
+        private_values={},
+    )
+
+    assert result == "global-token"
+
+
+def test_invalid_bewind_dedicated_credential_fails_closed() -> None:
+    with pytest.raises(
+        KnownProjectRegistrationError,
+        match="credential",
+    ):
+        resolve_known_project_github_token(
+            project_id="bewind",
+            global_token="global-token",
+            private_values={
+                "RUNNER_MCP_BEWIND_GITHUB_TOKEN": "bad\ntoken",
+            },
+        )
+
+
+def test_unknown_project_cannot_select_private_credential() -> None:
+    with pytest.raises(
+        KnownProjectRegistrationError,
+        match="Unknown managed project",
+    ):
+        resolve_known_project_github_token(
+            project_id="other",
+            global_token="global-token",
+            private_values={
+                "RUNNER_MCP_BEWIND_GITHUB_TOKEN": "bewind-token",
+            },
+        )

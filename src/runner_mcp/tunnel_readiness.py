@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -31,6 +32,17 @@ class TunnelReadinessEvidence:
     local_mcp_ready: bool = False
     control_plane_authenticated: bool = False
     end_to_end_routable: bool = False
+
+    def __post_init__(self) -> None:
+        for field in (
+            "configured",
+            "process_running",
+            "local_mcp_ready",
+            "control_plane_authenticated",
+            "end_to_end_routable",
+        ):
+            if not isinstance(getattr(self, field), bool):
+                raise TypeError("tunnel readiness evidence must be boolean")
 
 
 @dataclass(frozen=True, slots=True)
@@ -99,3 +111,32 @@ def classify_tunnel_readiness(evidence: TunnelReadinessEvidence) -> TunnelReadin
         state=TunnelReadinessState.ROUTABLE,
         reason=TunnelReadinessReason.READY,
     )
+
+
+def bounded_doctor_tunnel_check(
+    *,
+    expected: bool,
+    evidence_provider: Callable[[], TunnelReadinessEvidence] | None = None,
+) -> tuple[str, str] | None:
+    """Summarize an explicitly expected tunnel without probing private state.
+
+    The evidence provider is supplied by a separately authorized read-only
+    collector. Exceptions and any private details are discarded. This helper
+    does not infer restartability from credentials, and does not start tunnels.
+    """
+    if not isinstance(expected, bool):
+        raise TypeError("tunnel expected marker must be boolean")
+    if not expected:
+        return None
+    if evidence_provider is None:
+        return ("warn", "evidence_unavailable")
+    try:
+        evidence = evidence_provider()
+        if not isinstance(evidence, TunnelReadinessEvidence):
+            return ("warn", "evidence_unavailable")
+        result = classify_tunnel_readiness(evidence)
+    except (TypeError, ValueError, OSError, RuntimeError, KeyError, AttributeError):
+        return ("warn", "evidence_unavailable")
+    if result.state is TunnelReadinessState.ROUTABLE:
+        return ("pass", "routable")
+    return ("warn", result.reason.value)

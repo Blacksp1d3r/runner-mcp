@@ -167,6 +167,50 @@ def test_existing_local_and_remote_registration_is_idempotent(tmp_path: Path) ->
     assert github.token_calls == 0
 
 
+def test_symlinked_existing_marker_is_rejected_before_idempotency(
+    tmp_path: Path,
+) -> None:
+    spec = setup_spec(tmp_path)
+    outside = tmp_path / "outside-marker"
+    outside.write_text("not runner-owned", encoding="utf-8")
+    (spec.runner_root / ".runner").symlink_to(outside)
+    github = FakeGitHub()
+    github.states.append(remote(online=True))
+
+    with pytest.raises(CIRunnerEnrollmentError, match="marker is unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+    assert outside.read_text(encoding="utf-8") == "not runner-owned"
+
+
+def test_existing_registration_refuses_unexpected_remote_labels(
+    tmp_path: Path,
+) -> None:
+    spec = setup_spec(tmp_path)
+    (spec.runner_root / ".runner").write_text("private", encoding="utf-8")
+    github = FakeGitHub()
+    github.states.append(
+        GitHubRunnerState(
+            runner_id=42,
+            online=True,
+            busy=False,
+            custom_labels=("unapproved-label",),
+        )
+    )
+
+    with pytest.raises(CIRunnerEnrollmentError, match="labels do not match"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+
+
 def test_remote_identity_without_local_marker_fails_closed(tmp_path: Path) -> None:
     spec = setup_spec(tmp_path)
     github = FakeGitHub()
@@ -219,6 +263,99 @@ def test_failure_does_not_expose_process_output_or_token(tmp_path: Path) -> None
     assert "r" * 40 not in rendered
 
 
+@pytest.mark.parametrize("target", ["runner-root", "config-script"])
+@pytest.mark.parametrize("unsafe_bit", [0o020, 0o002])
+def test_enrollment_refuses_writable_root_or_config_before_token(
+    tmp_path: Path,
+    target: str,
+    unsafe_bit: int,
+) -> None:
+    spec = setup_spec(tmp_path)
+    selected = (
+        spec.runner_root if target == "runner-root"
+        else spec.runner_root / "config.sh"
+    )
+    selected.chmod(0o700 | unsafe_bit)
+    github = FakeGitHub()
+
+    with pytest.raises(CIRunnerEnrollmentError, match="permissions are unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+
+
+def test_normal_nonwritable_shared_read_permissions_are_accepted(
+    tmp_path: Path,
+) -> None:
+    spec = setup_spec(tmp_path)
+    spec.runner_root.chmod(0o755)
+    (spec.runner_root / "config.sh").chmod(0o755)
+    (spec.runner_root / ".runner").write_text("private", encoding="utf-8")
+    github = FakeGitHub()
+    github.states.append(remote(online=True))
+
+    result = CIRunnerEnrollmentManager(
+        github=github,
+        uid_provider=lambda: 1000,
+    ).enroll(spec)
+
+    assert result.state == "already-registered"
+    assert github.token_calls == 0
+
+
+@pytest.mark.parametrize("unsafe_bit", [0o020, 0o002])
+def test_enrollment_refuses_writable_existing_work_root_before_token(
+    tmp_path: Path,
+    unsafe_bit: int,
+) -> None:
+    spec = setup_spec(tmp_path)
+    spec.work_root.mkdir()
+    spec.work_root.chmod(0o700 | unsafe_bit)
+    github = FakeGitHub()
+    github.states.append(None)
+
+    with pytest.raises(CIRunnerEnrollmentError, match="work root permissions are unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+
+
+@pytest.mark.parametrize("unsafe_bit", [0o020, 0o002])
+def test_enrollment_refuses_writable_work_ancestor_before_token(
+    tmp_path: Path,
+    unsafe_bit: int,
+) -> None:
+    original = setup_spec(tmp_path)
+    nested = original.runner_root / "nested"
+    nested.mkdir()
+    nested.chmod(0o700 | unsafe_bit)
+    spec = CIRunnerSpec(
+        alias=original.alias,
+        repository=original.repository,
+        runner_name=original.runner_name,
+        runner_root=original.runner_root,
+        work_root=nested / "_work",
+        labels=original.labels,
+    )
+    github = FakeGitHub()
+    github.states.append(None)
+
+    with pytest.raises(CIRunnerEnrollmentError, match="work parent permissions are unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+    assert not spec.work_root.exists()
+
+
 def test_symlink_config_script_is_rejected_before_token_fetch(tmp_path: Path) -> None:
     spec = setup_spec(tmp_path)
     real = spec.runner_root / "real-config.sh"
@@ -235,6 +372,36 @@ def test_symlink_config_script_is_rejected_before_token_fetch(tmp_path: Path) ->
         ).enroll(spec)
 
     assert github.token_calls == 0
+
+
+def test_enrollment_rejects_symlinked_work_parent_before_token(
+    tmp_path: Path,
+) -> None:
+    original = setup_spec(tmp_path)
+    outside = tmp_path / "outside"
+    outside.mkdir()
+    (original.runner_root / "link").symlink_to(
+        outside, target_is_directory=True
+    )
+    spec = CIRunnerSpec(
+        alias=original.alias,
+        repository=original.repository,
+        runner_name=original.runner_name,
+        runner_root=original.runner_root,
+        work_root=original.runner_root / "link" / "_work",
+        labels=original.labels,
+    )
+    github = FakeGitHub()
+    github.states.append(None)
+
+    with pytest.raises(CIRunnerEnrollmentError, match="work root is unsafe"):
+        CIRunnerEnrollmentManager(
+            github=github,
+            uid_provider=lambda: 1000,
+        ).enroll(spec)
+
+    assert github.token_calls == 0
+    assert not (outside / "_work").exists()
 
 
 def test_registration_must_become_visible(tmp_path: Path) -> None:

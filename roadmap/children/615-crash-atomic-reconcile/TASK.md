@@ -1,0 +1,5 @@
+# #615 — reconcile existing crash-atomic quarantine draft with noncreating inspection
+
+Existing PR #618 owns the atomic writer. Do not replace or duplicate it. Reconcile old draft commit with current Runner-MCP main, preserving stable owner-private lock inode, bounded concurrent reader/writer flock, private tempfile+fsync+atomic replace+directory fsync, and existing recovery records. Preserve merged #531 zero-side-effect inspection: missing data+lock must stay absent, missing lock while data exists is WAIT/error, and neither arbitrary path, symlink nor hardlink may be used as authoritative private state.
+
+Required regressions: synthetic absent inspection without files, first write then inspect, orphaned lock/data, symlink/hardlink refusals, interrupted tempfile fsync/rename, 20 concurrent writers and restart. Source-only test completion is NOT a power-loss test on real hardware, tamper-evident append-only historical audit, or operator-authorized rearm. Keep #531/#615/#616/#617 open until operational qualification. No host mutation or introduction of a second journal, relay or updater.

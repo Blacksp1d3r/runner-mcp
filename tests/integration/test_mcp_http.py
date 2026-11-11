@@ -3,6 +3,7 @@ import sys
 import time
 from pathlib import Path
 
+import pytest
 from mcp.types.version import HANDSHAKE_PROTOCOL_VERSIONS
 from starlette.testclient import TestClient
 
@@ -17,6 +18,7 @@ from runner_mcp.config import (
 )
 from runner_mcp.config import TestProfile as RunnerTestProfile
 from runner_mcp.fabric_bridge import FabricBridgeError
+from runner_mcp.fabric_update import FabricUpdateError
 from runner_mcp.server import Settings, create_app
 from runner_mcp.service_manager import ServiceState
 
@@ -104,6 +106,7 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
             "register_known_project",
             "safety_status",
             "runtime_status",
+            "operational_snapshot",
             "runtime_doctor",
             "build_identity",
             "tunnel_topology_refresh",
@@ -223,8 +226,44 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         runtime_payload = json.loads(runtime_event["result"]["content"][0]["text"])
         assert runtime_payload["projects"] == 1
         assert runtime_payload["retention_confirmed"] is True
+        # One existing authenticated MCP session sees the same exact
+        # server-side tool/schema digest through both legacy read tools.
+        assert runtime_payload["interface_schema_digest"] == identity_payload[
+            "interface_schema_digest"
+        ]
+        assert runtime_payload["interface_schema_digest"] is not None
+        # The server cannot inspect ChatGPT's separately cached catalogue.
+        assert runtime_payload["client_catalogue_alignment_verified"] is False
+        assert runtime_payload["reply_identity_scope"] == "this_connected_process_only"
+        assert runtime_payload["active_runtime_revision"] is None
+        assert runtime_payload["runtime_activation_aligned"] is None
         assert str(tmp_path) not in runtime.text
         assert "https://" not in runtime.text
+
+        combined = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 32,
+                "method": "tools/call",
+                "params": {"name": "operational_snapshot", "arguments": {}},
+            },
+        )
+        assert combined.status_code == 200
+        combined_payload = parse_tool_json(combined)
+        assert combined_payload["schema_version"] == "runner-mcp/operational-snapshot/v1"
+        assert combined_payload["busy"] is False
+        assert combined_payload["degraded"] is True
+        assert combined_payload["observable_layers_idle"] is False
+        assert combined_payload["end_to_end_idle_verified"] is False
+        assert combined_payload["unknown_layers"] == [
+            "local-test-queue", "fabric-bridge",
+        ]
+        assert combined_payload["mutation_enabled"] is False
+        assert combined_payload["execution_enabled"] is False
+        assert "https://" not in combined.text
+        assert str(tmp_path) not in combined.text
 
         doctor = client.post(
             "/mcp",
@@ -246,6 +285,26 @@ def test_authenticated_mcp_handshake_and_tool_listing(tmp_path: Path) -> None:
         doctor_event = json.loads(doctor_event_line.removeprefix("data: "))
         doctor_payload = json.loads(doctor_event["result"]["content"][0]["text"])
         assert doctor_payload["failed_checks"] == 0
+        baseline_check = next(
+            item
+            for item in doctor_payload["checks"]
+            if item["name"] == "self_update_source_baseline"
+        )
+        assert baseline_check == {
+            "name": "self_update_source_baseline",
+            "state": "warn",
+            "detail": "not_recorded",
+        }
+        activation_check = next(
+            item
+            for item in doctor_payload["checks"]
+            if item["name"] == "self_update_runtime_activation"
+        )
+        assert activation_check == {
+            "name": "self_update_runtime_activation",
+            "state": "warn",
+            "detail": "not_recorded",
+        }
         assert str(tmp_path) not in doctor.text
         assert "mcp.example.invalid" not in doctor.text
 
@@ -369,6 +428,58 @@ def test_topology_refresh_tool_is_zero_arg_and_secret_free(
         assert "/tmp/private" not in rejected.text
 
 
+def test_topology_refresh_known_failure_returns_bounded_reason(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    from runner_mcp.tunnel_topology_refresh import TunnelTopologyRefreshError
+
+    monkeypatch.setattr(
+        "runner_mcp.server.refresh_tunnel_topology_attestation",
+        lambda _config_dir: (_ for _ in ()).throw(
+            TunnelTopologyRefreshError(
+                "AIfordable topology authority is unavailable"
+            )
+        ),
+    )
+    app = build_test_app(tmp_path)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 83,
+                "method": "tools/call",
+                "params": {
+                    "name": "tunnel_topology_refresh",
+                    "arguments": {},
+                },
+            },
+        )
+
+    assert response.status_code == 200
+    assert parse_tool_json(response) == {
+        "state": "blocked",
+        "reason": "authority_unavailable",
+        "qualified": False,
+    }
+    assert str(tmp_path) not in response.text
+
+
 def test_topology_refresh_failure_is_sanitized(
     tmp_path: Path,
     monkeypatch,
@@ -440,6 +551,86 @@ def parse_tool_json(response) -> object:
     if isinstance(structured, dict) and "result" in structured:
         return structured["result"]
     return json.loads(result["content"][0]["text"])
+
+
+def test_local_fabric_custody_failures_are_bounded_over_mcp(
+    tmp_path: Path,
+    monkeypatch,
+) -> None:
+    class FakeFabricUpdateManager:
+        def __init__(self, **_kwargs) -> None:
+            pass
+
+        def stage_local_bundle(self, _commit: str):
+            raise FabricUpdateError("fabric_bundle_source_unavailable")
+
+        def local_readiness(self, _commit: str):
+            raise FabricUpdateError("fabric_bundle_invalid")
+
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricUpdateManager",
+        FakeFabricUpdateManager,
+    )
+    app = build_test_app(tmp_path)
+    headers = auth_headers()
+
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        )
+
+        staged = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 90,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_local_bundle_stage",
+                    "arguments": {"commit": "a" * 40},
+                },
+            },
+        )
+        assert parse_tool_json(staged) == {
+            "state": "blocked",
+            "reasonCode": "fabric_bundle_source_unavailable",
+            "staged": False,
+            "bundleReady": False,
+            "source": "canonical-source",
+            "localCustody": True,
+        }
+
+        readiness = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 91,
+                "method": "tools/call",
+                "params": {
+                    "name": "fabric_local_update_readiness",
+                    "arguments": {"commit": "a" * 40},
+                },
+            },
+        )
+        assert parse_tool_json(readiness) == {
+            "state": "blocked",
+            "reasonCode": "fabric_bundle_invalid",
+            "artifact_ready": False,
+            "source": "local-custody",
+        }
+
+    assert str(tmp_path) not in staged.text
+    assert str(tmp_path) not in readiness.text
 
 
 def test_mcp_controlled_test_job_lifecycle(tmp_path: Path) -> None:
@@ -1880,6 +2071,24 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         def __init__(self, _config) -> None:
             pass
 
+        def worker_qualification_readiness(
+            self,
+            worker_id: str,
+            capability_profile: str,
+        ):
+            assert worker_id == "aifordable-lab"
+            assert capability_profile == "bewind-ocr-qualification-v1"
+            return {
+                "schemaVersion": "runner.fabric/worker-qualification-readiness/v1",
+                "workerId": worker_id,
+                "capabilityProfile": capability_profile,
+                "currentGeneration": 1,
+                "capabilityAllowed": True,
+                "policyValid": True,
+                "activationReady": True,
+                "normalActivationEnabled": False,
+            }
+
         def external_target_preflight(self):
             calls.append(("external_target_preflight", {}))
             return {
@@ -2075,6 +2284,31 @@ def test_configured_fabric_bridge_exposes_only_coarse_work_unit_tools(
         ):
             assert tool_name in listed.text
 
+        doctor = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 33,
+                "method": "tools/call",
+                "params": {
+                    "name": "runtime_doctor",
+                    "arguments": {},
+                },
+            },
+        )
+        doctor_payload = parse_tool_json(doctor)
+        readiness_check = next(
+            item
+            for item in doctor_payload["checks"]
+            if item["name"] == "fabric_worker_qualification_readiness"
+        )
+        assert readiness_check == {
+            "name": "fabric_worker_qualification_readiness",
+            "state": "pass",
+            "detail": "ready_generation_1",
+        }
+
         inspected = client.post(
             "/mcp",
             headers=headers,
@@ -2256,3 +2490,193 @@ def test_fabric_host_inspect_failure_returns_bounded_diagnostic(
 
     audit_text = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
     assert "fabric_host_inspect" in audit_text
+
+
+def test_connector_readonly_smoke_matrix_through_authenticated_mcp(tmp_path: Path) -> None:
+    """Separates a functional local server from an unlocated remote connector error."""
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        session_id = initialized.headers.get("mcp-session-id")
+        assert session_id
+        headers["Mcp-Session-Id"] = session_id
+        assert client.post(
+            "/mcp",
+            headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        ).status_code == 202
+
+        for call_id, tool_name in enumerate(
+            ("list_projects", "runtime_status", "runtime_doctor"), start=20
+        ):
+            response = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": call_id,
+                    "method": "tools/call",
+                    "params": {"name": tool_name, "arguments": {}},
+                },
+            )
+            assert response.status_code == 200
+            assert '"isError":true' not in response.text
+            payload = parse_tool_json(response)
+            assert isinstance(payload, (dict, list))
+            assert ("x" * 32) not in response.text
+            assert str(tmp_path) not in response.text
+            assert "mcp.example.invalid" not in response.text
+            if tool_name == "list_projects":
+                assert [project["code"] for project in payload] == ["demo"]
+            elif tool_name == "runtime_status":
+                assert payload["projects"] == 1
+                # Same authenticated MCP response carries a bounded *partial*
+                # in-memory code fingerprint without any host/wheel authority.
+                assert payload["selected_loaded_code_observation_complete"] is True
+                assert len(payload["selected_loaded_code_sha256"]) == 64
+                assert payload["selected_loaded_code_module_count"] == 2
+                assert payload["selected_loaded_code_object_count"] >= 2
+                assert payload["selected_loaded_code_wheel_verified"] is False
+                assert payload["active_build_provenance_verified"] is False
+                assert payload["active_artifact_revision"] is None
+                assert payload["active_artifact_digest"] is None
+                assert payload["self_update_ready"] is False
+            else:
+                assert isinstance(payload["checks"], list)
+
+
+@pytest.mark.parametrize(
+    ("manager", "reason"),
+    [
+        ("SelfUpdateManager", "self-update-state-unavailable"),
+        ("FabricBootstrapManager", "fabric-bootstrap-state-unavailable"),
+        ("FabricUpdateManager", "fabric-update-state-unavailable"),
+    ],
+)
+def test_runtime_status_returns_bounded_degraded_result(
+    tmp_path: Path, monkeypatch, manager: str, reason: str
+) -> None:
+    """Private manager failures must not become public tool errors or false health."""
+    def private_failure(_self):
+        raise RuntimeError("/owner-private/state.json credential=NEVER_EXPOSE")
+
+    monkeypatch.setattr(
+        f"runner_mcp.server.{manager}.runtime_status", private_failure
+    )
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        assert client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        ).status_code == 202
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 61,
+                "method": "tools/call",
+                "params": {"name": "runtime_status", "arguments": {}},
+            },
+        )
+
+    assert response.status_code == 200
+    payload = parse_tool_json(response)
+    assert payload == {
+        "schemaVersion": "runner-mcp/runtime-status-degraded/v1",
+        "state": "degraded",
+        "reasonCode": reason,
+        "runtimeEvidenceComplete": False,
+    }
+    assert "/owner-private/" not in response.text
+    assert "NEVER_EXPOSE" not in response.text
+    assert str(tmp_path) not in response.text
+    audit = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert '"tool":"runtime_status"' in audit
+    assert "NEVER_EXPOSE" not in audit
+
+
+def test_runtime_status_rejects_non_object_manager_evidence(tmp_path: Path, monkeypatch):
+    """A manager returning an invalid payload must not result in partial success."""
+    monkeypatch.setattr(
+        "runner_mcp.server.FabricBootstrapManager.runtime_status",
+        lambda _self: ["/private/should-not-leak"],
+    )
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        client.post(
+            "/mcp", headers=headers,
+            json={"jsonrpc": "2.0", "method": "notifications/initialized", "params": {}},
+        )
+        response = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 62,
+                "method": "tools/call",
+                "params": {"name": "runtime_status", "arguments": {}},
+            },
+        )
+
+    assert response.status_code == 200
+    payload = parse_tool_json(response)
+    assert payload["state"] == "degraded"
+    assert payload["reasonCode"] == "fabric-bootstrap-state-unavailable"
+    assert payload["runtimeEvidenceComplete"] is False
+    assert "/private/" not in response.text
+
+def test_build_identity_unavailable_is_structured_over_mcp_http(
+    tmp_path: Path, monkeypatch
+) -> None:
+    """Corrupt private identity projection must not produce an opaque tool error."""
+    app = build_test_app(tmp_path)
+    with TestClient(app, base_url="https://mcp.example.invalid") as client:
+        headers = auth_headers()
+        initialized = client.post("/mcp", headers=headers, json=initialize_message())
+        assert initialized.status_code == 200
+        headers["Mcp-Session-Id"] = initialized.headers["mcp-session-id"]
+        assert client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "method": "notifications/initialized",
+                "params": {},
+            },
+        ).status_code == 202
+
+        def invalid_identity(_self):
+            raise OSError("/private/build-identity.json token=NEVER_EXPOSE")
+
+        with monkeypatch.context() as patch:
+            patch.setattr("runner_mcp.server.BuildIdentity.to_payload", invalid_identity)
+            response = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": 73,
+                    "method": "tools/call",
+                    "params": {"name": "build_identity", "arguments": {}},
+                },
+            )
+    assert response.status_code == 200
+    assert '"isError":true' not in response.text
+    assert parse_tool_json(response) == {
+        "schemaVersion": "runner-mcp/build-identity-unavailable/v1",
+        "state": "unavailable",
+        "reasonCode": "build-identity-unavailable",
+        "identityEvidenceComplete": False,
+    }
+    assert "NEVER_EXPOSE" not in response.text
+    assert "/private/" not in response.text

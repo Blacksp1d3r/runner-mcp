@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import math
 import os
 import re
 import secrets
@@ -7,6 +8,7 @@ import stat
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
+from itertools import islice
 from pathlib import Path
 
 from .ci_runner_guest_enrollment import CIRunnerRegistrationSecret
@@ -14,6 +16,7 @@ from .ci_runner_guest_enrollment import CIRunnerRegistrationSecret
 _HANDOFF_RE = re.compile(r"^[0-9a-f]{32}$")
 _MAX_SECRET_BYTES = 4096
 _DEFAULT_TTL_SECONDS = 300
+_MAX_REAP_ENTRIES = 4096
 
 
 class CIRunnerSecretHandoffError(RuntimeError):
@@ -26,13 +29,15 @@ class CIRunnerSecretHandoff:
     expires_at: int
 
     def __post_init__(self) -> None:
-        if _HANDOFF_RE.fullmatch(self.handoff_id) is None:
+        if not isinstance(self.handoff_id, str) or _HANDOFF_RE.fullmatch(self.handoff_id) is None:
             raise CIRunnerSecretHandoffError("handoff id is invalid")
         if isinstance(self.expires_at, bool) or not isinstance(
             self.expires_at,
             int,
         ):
             raise CIRunnerSecretHandoffError("handoff expiry is invalid")
+        if not 1 <= self.expires_at <= (1 << 53) - 1:
+            raise CIRunnerSecretHandoffError("handoff expiry is outside bounds")
 
     def to_payload(self) -> dict[str, object]:
         return {
@@ -87,6 +92,15 @@ class CIRunnerSecretHandoffStore:
                 "secret must be CIRunnerRegistrationSecret"
             )
         self._validate_root()
+        try:
+            clock_value = self._now()
+            if isinstance(clock_value, bool) or not isinstance(clock_value, (int, float)):
+                raise TypeError("invalid clock type")
+            created_at = int(clock_value)
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise CIRunnerSecretHandoffError("handoff clock is invalid") from exc
+        if not 1 <= created_at <= (1 << 53) - 1 - self._ttl_seconds:
+            raise CIRunnerSecretHandoffError("handoff clock is outside policy")
 
         raw = secret.value.encode("ascii")
         if not 16 <= len(raw) <= _MAX_SECRET_BYTES:
@@ -133,7 +147,6 @@ class CIRunnerSecretHandoffStore:
             else:
                 os.close(fd)
 
-            created_at = int(self._now())
             try:
                 os.utime(path, (created_at, created_at), follow_symlinks=False)
             except OSError as exc:
@@ -186,14 +199,29 @@ class CIRunnerSecretHandoffStore:
 
     def reap_expired(self) -> int:
         self._validate_root()
-        now = self._now()
+        try:
+            now = self._now()
+            if (
+                isinstance(now, bool)
+                or not isinstance(now, (int, float))
+                or not math.isfinite(now)
+                or not 1 <= now <= (1 << 53) - 1
+            ):
+                raise CIRunnerSecretHandoffError("handoff cleanup clock is invalid")
+        except (TypeError, ValueError, OverflowError) as exc:
+            raise CIRunnerSecretHandoffError("handoff cleanup clock is invalid") from exc
         removed = 0
         try:
-            entries = list(self._root.iterdir())
+            entries = list(islice(self._root.iterdir(), _MAX_REAP_ENTRIES + 1))
         except OSError as exc:
             raise CIRunnerSecretHandoffError(
                 "handoff root could not be inspected"
             ) from exc
+
+        if len(entries) > _MAX_REAP_ENTRIES:
+            raise CIRunnerSecretHandoffError(
+                "handoff root contains too many entries"
+            )
 
         for path in entries:
             if _HANDOFF_RE.fullmatch(path.name) is None:

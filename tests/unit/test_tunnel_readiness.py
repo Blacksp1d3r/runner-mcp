@@ -1,3 +1,5 @@
+import pytest
+
 from runner_mcp.tunnel_readiness import (
     TunnelReadinessEvidence,
     TunnelReadinessReason,
@@ -113,3 +115,26 @@ def test_inconsistent_readiness_evidence_fails_closed():
             "state": "blocked",
             "reason": "inconsistent_evidence",
         }
+
+
+@pytest.mark.parametrize("field", [
+    "configured",
+    "process_running",
+    "local_mcp_ready",
+    "control_plane_authenticated",
+    "end_to_end_routable",
+])
+@pytest.mark.parametrize("invalid", ["false", "true", 0, 1, None])
+def test_nonboolean_tunnel_evidence_cannot_be_truthy_or_falsy(
+    field: str, invalid: object,
+) -> None:
+    evidence = {
+        "configured": True,
+        "process_running": True,
+        "local_mcp_ready": True,
+        "control_plane_authenticated": True,
+        "end_to_end_routable": True,
+    }
+    evidence[field] = invalid
+    with pytest.raises(TypeError, match="boolean"):
+        TunnelReadinessEvidence(**evidence)  # type: ignore[arg-type]

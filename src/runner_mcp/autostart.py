@@ -1,10 +1,13 @@
 from __future__ import annotations
 
+import hashlib
+import hmac
 import os
+import re
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
-from pathlib import Path
+from pathlib import Path, PurePosixPath
 
 from .agent_bus_worker import agent_bus_worker_configured
 from .autostart_activation import AutostartActivationPermit, require_clear_autostart_permit
@@ -47,6 +50,109 @@ class AutostartError(RuntimeError):
 
 
 @dataclass(frozen=True, slots=True)
+class QualificationOverrideSwapPlan:
+    """Private in-memory bytes only; neither rollback nor activation authority."""
+
+    original_sha256: str
+    candidate_sha256: str
+    candidate_override: bytes
+    original_override: bytes
+    change_scope: str = "one_fixed_execstart_executable"
+    activation_authorized: bool = False
+    rollback_verified: bool = False
+
+
+def _fixed_runner_mcp_launcher(value: str) -> bool:
+    """Constrain both executable names without resolving or touching the host."""
+
+    return (
+        type(value) is str
+        and value.startswith("/")
+        and len(value) <= 1024
+        and not any(part in (".", "..") for part in value.split("/"))
+        and re.fullmatch(
+            r"/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*/bin/runner-mcp", value
+        ) is not None
+        and str(PurePosixPath(value)) == value
+    )
+
+
+def plan_qualification_override_swap(
+    *,
+    original_override: bytes,
+    expected_original_sha256: str,
+    original_launcher: str,
+    candidate_launcher: str,
+) -> QualificationOverrideSwapPlan:
+    """Plan an exact one-line change to an already-approved private override.
+
+    No filesystem access, systemctl, write, implicit release admission or
+    watchdog. A7 must independently attest real owner, paths, runtime, retained
+    original bytes, protected rollback and same-client ACK before applying.
+    """
+    invalid = "fixed qualification override plan is unqualified"
+    if (
+        type(original_override) is not bytes
+        or not 0 < len(original_override) <= 8192
+        or type(expected_original_sha256) is not str
+        or re.fullmatch(r"[0-9a-f]{64}", expected_original_sha256) is None
+        or not _fixed_runner_mcp_launcher(original_launcher)
+        or not _fixed_runner_mcp_launcher(candidate_launcher)
+        or original_launcher == candidate_launcher
+    ):
+        raise AutostartError(invalid)
+    original_digest = hashlib.sha256(original_override).hexdigest()
+    if not hmac.compare_digest(original_digest, expected_original_sha256):
+        raise AutostartError(invalid)
+    try:
+        data = original_override.decode("utf-8", "strict")
+    except UnicodeError as exc:
+        raise AutostartError(invalid) from exc
+    if not data.endswith("\n") or "\r" in data or "\x00" in data:
+        raise AutostartError(invalid)
+    lines = data.splitlines(keepends=True)
+    effective = [
+        (i, line[:-1])
+        for i, line in enumerate(lines)
+        if line.strip() and not line.lstrip().startswith(("#", ";"))
+    ]
+    if (
+        len(effective) != 3
+        or effective[0][1] != "[Service]"
+        or effective[1][1] != "ExecStart="
+    ):
+        raise AutostartError(invalid)
+    index, command = effective[2]
+    prefix = "ExecStart=" + original_launcher
+    if not command.startswith(prefix + " "):
+        raise AutostartError(invalid)
+    tail = command[len(prefix):]
+    if (
+        re.fullmatch(
+            r" --config-dir /[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*"
+            r" fabric-agent-qualification run",
+            tail,
+        ) is None
+    ):
+        raise AutostartError(invalid)
+    lines[index] = "ExecStart=" + candidate_launcher + tail + "\n"
+    candidate_override = "".join(lines).encode("utf-8")
+    if candidate_override == original_override:
+        raise AutostartError(invalid)
+    # The exact one-path transformation MUST reverse byte for byte, including
+    # harmless original comments and whitespace; the caller retains custody.
+    lines[index] = "ExecStart=" + original_launcher + tail + "\n"
+    if "".join(lines).encode("utf-8") != original_override:
+        raise AutostartError(invalid)
+    return QualificationOverrideSwapPlan(
+        original_sha256=original_digest,
+        candidate_sha256=hashlib.sha256(candidate_override).hexdigest(),
+        candidate_override=candidate_override,
+        original_override=original_override,
+    )
+
+
+@dataclass(frozen=True, slots=True)
 class AutostartStatus:
     component: str
     installed: bool
@@ -60,6 +166,89 @@ class AutostartStatus:
             "enabled": self.enabled,
             "active": self.active,
         }
+
+
+@dataclass(frozen=True, slots=True)
+class AutostartMigrationPlan:
+    """Bounded observation, never an activation permit or live provenance."""
+
+    component: str
+    state: str
+    reason_code: str
+    cron_installed: bool
+    systemd_manager_reachable: bool
+    systemd_units_absent: bool
+    cutover_authorized: bool = False
+
+
+def plan_cron_to_systemd(
+    *,
+    component: str,
+    expected_hostname: str,
+    expected_uid: int,
+    observed_hostname: str,
+    observed_uid: int,
+    configured_components: tuple[str, ...],
+    cron_managed: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[AutostartStatus, ...],
+    systemd_manager_reachable: bool,
+) -> AutostartMigrationPlan:
+    """Pure read-only decision from existing owner-local status observers.
+
+    An exact source/host schedule is necessary, never sufficient to authorize
+    cutover. Real process/wheel, boot, rollback and Fabric ACK require separate
+    original-host qualification; this function intentionally cannot grant it.
+    """
+    from .cron_autostart import CRON_COMPONENTS
+
+    if component not in CRON_COMPONENTS:
+        raise AutostartError("unknown managed autostart component")
+
+    cron_matches = [row for row in cron_rows if getattr(row, "component", None) == component]
+    cron_ok = (
+        cron_managed
+        and component in configured_components
+        and len(cron_matches) == 1
+        and cron_matches[0].installed is True
+        and cron_matches[0].enabled is True
+        and len({getattr(row, "component", None) for row in cron_rows}) == len(cron_rows)
+    )
+    unit_names = [row.component for row in systemd_rows]
+    units_absent = (
+        len(systemd_rows) == len(KNOWN_UNITS)
+        and len(set(unit_names)) == len(KNOWN_UNITS)
+        and set(unit_names) == set(CRON_COMPONENTS)
+        and all(
+            row.installed is False and row.enabled is False and row.active is False
+            for row in systemd_rows
+        )
+    )
+
+    if (
+        not expected_hostname
+        or observed_hostname != expected_hostname
+        or type(expected_uid) is not int
+        or expected_uid <= 0
+        or observed_uid != expected_uid
+    ):
+        state, reason = "WAIT", "host_or_uid_mismatch"
+    elif not cron_ok:
+        state, reason = "WAIT", "exact_owned_cron_role_unavailable"
+    elif not units_absent:
+        state, reason = "WAIT", "systemd_unit_conflict_or_unknown"
+    elif not systemd_manager_reachable:
+        state, reason = "WAIT", "systemd_user_manager_unreachable"
+    else:
+        state, reason = "PLAN_ONLY", "original_host_and_rollback_not_attested"
+    return AutostartMigrationPlan(
+        component=component,
+        state=state,
+        reason_code=reason,
+        cron_installed=bool(cron_ok),
+        systemd_manager_reachable=bool(systemd_manager_reachable),
+        systemd_units_absent=bool(units_absent),
+    )
 
 
 def default_user_unit_dir() -> Path:
@@ -202,9 +391,11 @@ def has_managed_user_units(
         raise AutostartError("systemd user unit directory is unavailable")
     for unit_name in KNOWN_UNITS:
         path = expanded / unit_name
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
         if not path.exists():
             continue
-        if path.is_symlink() or not path.is_file():
+        if not path.is_file():
             raise AutostartError("autostart unit path is unsafe")
         try:
             content = path.read_text(encoding="utf-8")
@@ -302,8 +493,62 @@ def render_user_units(
     return units
 
 
+
+def render_inactive_cron_server_peer_unit(
+    *,
+    config_dir: Path,
+    executable: Path,
+    component: str,
+    port: int = 8000,
+) -> tuple[str, str]:
+    """Maak één kandidaat-unit zonder bestaande cronserver mee te starten.
+
+    Dit is uitsluitend een niet-activerende bronrenderer voor #866. De gewone
+    installatie blijft de volledige systemd-grafiek met Requires=server eisen.
+    De kandidaat bevat bewust GEEN [Install]-sectie en kan dus niet als normale
+    automatisch ingeschakelde unit worden behandeld. De werkelijke server,
+    rolbron, cron-escrow en latere activatie/rollback blijven aparte bewijzen.
+    """
+    # Beperk het model tot bekende nevenrollen. De server zelf en de primaire
+    # tunnel behoren aan een afzonderlijke fysieke cutover-/transportpoort.
+    unit_name = f"runner-mcp-{component}.service"
+    if component in ("server", "tunnel") or unit_name not in KNOWN_UNITS:
+        raise AutostartError("unknown or control-path migration component")
+    rendered = render_user_units(
+        config_dir=config_dir, executable=executable, port=port,
+    )
+    ordinary = rendered.get(unit_name)
+    if ordinary is None:
+        raise AutostartError("requested migration component is not configured")
+
+    # _unit() produceert deze vaste combinatie. Weigeren als de normale
+    # renderer ooit verandert; niet stilzwijgend een Requires laten staan.
+    original_dependency = (
+        f"After=network-online.target {SERVER_UNIT}\n"
+        f"Requires={SERVER_UNIT}\n"
+    )
+    install_suffix = "\n[Install]\nWantedBy=default.target\n"
+    if ordinary.count(original_dependency) != 1 or not ordinary.endswith(install_suffix):
+        raise AutostartError("expected original systemd dependency graph is unavailable")
+    candidate = ordinary.replace(
+        original_dependency,
+        "After=network-online.target\nWants=network-online.target\n",
+        1,
+    ).removesuffix(install_suffix)
+    if (
+        f"Requires={SERVER_UNIT}" in candidate
+        or f"After=network-online.target {SERVER_UNIT}" in candidate
+        or "[Install]" in candidate
+        or "WantedBy=default.target" in candidate
+    ):
+        raise AutostartError("inactive migration unit still requires control service")
+    return unit_name, candidate
+
 def _safe_unit_dir(unit_dir: Path) -> Path:
     expanded = unit_dir.expanduser()
+    # Installing must not traverse a symlinked parent to another unit tree.
+    if any(parent.is_symlink() for parent in (expanded, *expanded.parents)):
+        raise AutostartError("systemd user unit directory must not be a symlink")
     if expanded.exists() and expanded.is_symlink():
         raise AutostartError("systemd user unit directory must not be a symlink")
     try:
@@ -372,6 +617,19 @@ def install_user_services(
         require_clear_autostart_permit(activation_permit)
     except PermissionError as exc:
         raise AutostartError("autostart activation is blocked") from exc
+    # Direct Python callers must not bypass the CLI's duplicate-supervisor
+    # guard. This check reads the owner's crontab without changing it.
+    from .cron_autostart import CronAutostartError, cron_available, has_managed_cron
+
+    if cron_available():
+        try:
+            if has_managed_cron():
+                raise AutostartError(
+                    "managed cron autostart exists; refuse parallel systemd activation"
+                )
+        except CronAutostartError as exc:
+            raise AutostartError("managed cron status is unavailable") from exc
+
     # Verify a user manager before touching service files.
     _run_systemctl(["show-environment"], runner=runner)
     units = render_user_units(
@@ -380,6 +638,27 @@ def install_user_services(
         port=port,
     )
     target = _safe_unit_dir(unit_dir or default_user_unit_dir())
+
+    # A foreign or unsafe obsolete unit must be discovered BEFORE replacing
+    # an existing managed server unit. Otherwise a denied installation leaves
+    # partially rewritten files despite never reaching daemon-reload.
+    for unit_name in KNOWN_UNITS:
+        path = target / unit_name
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
+        if not path.exists():
+            continue
+        if not path.is_file():
+            raise AutostartError("autostart unit path is unsafe")
+        try:
+            existing = path.read_text(encoding="utf-8")
+        except (OSError, UnicodeError) as exc:
+            raise AutostartError("autostart unit could not be inspected") from exc
+        if not existing.startswith(MANAGED_MARKER + "\n"):
+            operation = "replace" if unit_name in units else "remove"
+            raise AutostartError(
+                f"refusing to {operation} a user service not managed by Runner MCP"
+            )
 
     for unit_name, content in units.items():
         _write_managed_unit(target / unit_name, content)
@@ -410,39 +689,16 @@ def install_user_services(
     return ordered
 
 
-
-def restart_managed_server_unit(
-    *,
-    unit_dir: Path | None = None,
-    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
-) -> None:
-    """Restart only the fixed Runner-MCP server unit when it is managed."""
-
-    target = unit_dir or default_user_unit_dir()
-    expanded = target.expanduser()
-    path = expanded / SERVER_UNIT
-    if not path.exists() or path.is_symlink() or not path.is_file():
-        raise AutostartError("managed Runner MCP server unit is unavailable")
-    try:
-        content = path.read_text(encoding="utf-8")
-    except OSError as exc:
-        raise AutostartError(
-            "managed Runner MCP server unit could not be inspected"
-        ) from exc
-    if not content.startswith(MANAGED_MARKER + "\n"):
-        raise AutostartError(
-            "refusing to restart a server unit not managed by Runner MCP"
-        )
-    _run_systemctl(["restart", SERVER_UNIT], runner=runner)
-
-
-
 def user_service_status(
     *,
     unit_dir: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[AutostartStatus]:
-    target = _safe_unit_dir(unit_dir or default_user_unit_dir())
+    # A read-only status/dry-run must not create a systemd unit directory.
+    # _safe_unit_dir() is reserved for the explicit install/remove paths.
+    target = (unit_dir or default_user_unit_dir()).expanduser()
+    if target.is_symlink() or (target.exists() and not target.is_dir()):
+        raise AutostartError("systemd user unit directory is unavailable")
     results: list[AutostartStatus] = []
     names = (
         ("server", SERVER_UNIT),
@@ -454,9 +710,29 @@ def user_service_status(
         ("fabric-agent-qualification", FABRIC_AGENT_QUALIFICATION_UNIT),
         ("fabric-live-overview", FABRIC_LIVE_OVERVIEW_UNIT),
     )
+    # Installed unit files do not prove that the caller can reach the user's
+    # systemd manager. In particular, `sudo -iu <service-user>` can omit
+    # XDG_RUNTIME_DIR / the user session bus. Without this guard, a failed
+    # `systemctl --user is-active` silently becomes `active=no` for every
+    # service, even while the real systemd units are healthy.
+    if any((target / unit_name).exists() for _, unit_name in names):
+        manager = _run_systemctl(
+            ["show-environment"],
+            runner=runner,
+            check=False,
+        )
+        if manager.returncode != 0:
+            raise AutostartError(
+                "systemd user manager is unreachable from this session; "
+                "check XDG_RUNTIME_DIR and DBUS_SESSION_BUS_ADDRESS"
+            )
     for component, unit_name in names:
         path = target / unit_name
-        installed = path.exists() and path.is_file() and not path.is_symlink()
+        # A dangling symlink does not .exist(), but is still an unsafe
+        # installed unit claim for a migration plan or status observer.
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
+        installed = path.exists() and path.is_file()
         enabled = False
         active = False
         if installed:
@@ -492,14 +768,26 @@ def remove_user_services(
     unit_dir: Path | None = None,
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> list[str]:
+    # Removal is a no-op when no owner unit directory exists. Never create it.
+    target = (unit_dir or default_user_unit_dir()).expanduser()
+    # Do not follow a symlinked ancestor to an unrelated unit directory.
+    # Removal must not modify directories outside the original owner tree.
+    if any(parent.is_symlink() for parent in (target, *target.parents)):
+        raise AutostartError("systemd user unit directory is unavailable")
+    if target.exists() and not target.is_dir():
+        raise AutostartError("systemd user unit directory is unavailable")
+    if not target.exists():
+        return []
     _run_systemctl(["show-environment"], runner=runner)
-    target = _safe_unit_dir(unit_dir or default_user_unit_dir())
-    removed: list[str] = []
+    # Validate every known target before disabling or removing any unit.
+    # An unsafe later peer must not leave a partially removed service set.
     for unit_name in KNOWN_UNITS:
         path = target / unit_name
+        if path.is_symlink():
+            raise AutostartError("autostart unit path is unsafe")
         if not path.exists():
             continue
-        if path.is_symlink() or not path.is_file():
+        if not path.is_file():
             raise AutostartError("autostart unit path is unsafe")
         try:
             content = path.read_text(encoding="utf-8")
@@ -509,7 +797,12 @@ def remove_user_services(
             raise AutostartError(
                 "refusing to remove a user service not managed by Runner MCP"
             )
-        _run_systemctl(["disable", "--now", unit_name], runner=runner, check=False)
+    removed: list[str] = []
+    for unit_name in KNOWN_UNITS:
+        path = target / unit_name
+        if not path.exists():
+            continue
+        _run_systemctl(["disable", "--now", unit_name], runner=runner)
         try:
             path.unlink()
         except OSError as exc:

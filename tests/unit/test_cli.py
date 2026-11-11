@@ -2349,6 +2349,62 @@ def isolated_autostart_cli_host(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_plan_is_read_only_and_never_authorizes_cutover(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import AutostartStatus
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr("runner_mcp.cli.socket.gethostname", lambda: "example-host")
+    monkeypatch.setattr("runner_mcp.cli.os.getuid", lambda: 1001)
+    monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: True)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.cli.configured_autostart_components",
+        lambda _: ("server",),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.cron_status",
+        lambda **_: [CronComponentStatus("server", True, True, False)],
+    )
+    monkeypatch.setattr("runner_mcp.cli.systemd_user_available", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.cli.user_service_status",
+        lambda: [AutostartStatus(c, False, False, False) for c in CRON_COMPONENTS],
+    )
+    for method in ("install_user_services", "install_cron_services"):
+        monkeypatch.setattr(
+            cli, method,
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("read-only migration plan attempted activation")
+            ),
+        )
+
+    base = [
+        "--config-dir", str(paths.config_dir),
+        "autostart", "plan",
+        "--expected-uid", "1001",
+        "--expected-port", "8000",
+        "--component", "server",
+    ]
+    assert main([*base, "--expected-hostname", "example-host"]) == 0
+    output = capsys.readouterr().out
+    assert "migration_plan=PLAN_ONLY" in output
+    assert "cron_installed=yes" in output
+    assert "systemd_user_manager=yes" in output
+    assert "cutover_authorized=no" in output
+
+    assert main([*base, "--expected-hostname", "different-host"]) == 0
+    denied = capsys.readouterr().out
+    assert "migration_plan=WAIT" in denied
+    assert "reason=host_or_uid_mismatch" in denied
+    assert "cutover_authorized=no" in denied
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_install_and_status_are_path_safe(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],
@@ -3568,6 +3624,157 @@ def test_ci_runner_status_uses_private_alias_only(
     )
     assert str(root) not in captured.out
     assert "Blacksp1d3r/AIfordable" not in captured.out
+
+
+def test_ci_runner_enroll_uses_private_spec_and_token_only(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    secret = "github-token-must-not-leak"
+    values = {
+        "RUNNER_MCP_GITHUB_TOKEN": "separate-mailbox-token",
+        "RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN": secret,
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "runner-mcp-validation",
+                    "repository": "Blacksp1d3r/runner-mcp",
+                    "runner_name": "runner-mcp-validation",
+                    "runner_root": str(root),
+                    "work_root": str(work),
+                    "labels": ["runner-mcp-validation"],
+                }
+            ]
+        ),
+    }
+    seen: dict[str, object] = {}
+
+    class FakeSession:
+        def __init__(self, *, token):
+            seen["token"] = token
+
+    class FakeGitHub:
+        def __init__(self, session):
+            seen["session"] = session
+
+    class FakeResult:
+        def to_payload(self):
+            return {
+                "state": "registered",
+                "alias": "runner-mcp-validation",
+                "runner_name": "runner-mcp-validation",
+                "registered": True,
+                "online": True,
+                "busy": False,
+                "custom_labels": ["runner-mcp-validation"],
+            }
+
+    class FakeManager:
+        def __init__(self, *, github, environment):
+            seen["github"] = github
+            assert environment is values
+
+        def enroll(self, spec):
+            seen["alias"] = spec.alias
+            seen["repository"] = spec.repository
+            return FakeResult()
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+    monkeypatch.setattr(cli, "GitHubApiSession", FakeSession)
+    monkeypatch.setattr(cli, "CIRunnerGitHubController", FakeGitHub)
+    monkeypatch.setattr(cli, "CIRunnerEnrollmentManager", FakeManager)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "enroll",
+            "runner-mcp-validation",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 0
+    assert seen["token"] == secret
+    assert seen["alias"] == "runner-mcp-validation"
+    assert seen["repository"] == "Blacksp1d3r/runner-mcp"
+    assert captured.out.strip() == (
+        "alias=runner-mcp-validation state=registered "
+        "registered=yes online=yes busy=no"
+    )
+    assert secret not in captured.out
+    assert str(root) not in captured.out
+    assert "Blacksp1d3r/runner-mcp" not in captured.out
+
+
+@pytest.mark.parametrize("reuse_mailbox_token", [False, True])
+def test_ci_runner_enroll_requires_private_github_token(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+    reuse_mailbox_token: bool,
+) -> None:
+    root = tmp_path / "runner"
+    work = root / "_work"
+    root.mkdir()
+    work.mkdir()
+    paths = type("Paths", (), {"env_file": tmp_path / "runtime.env"})()
+    values = {
+        # Shared mailbox authority must not be accepted for enrollment.
+        "RUNNER_MCP_GITHUB_TOKEN": "mailbox-only-not-runner-admin",
+        "RUNNER_MCP_CI_RUNNERS_JSON": json.dumps(
+            [
+                {
+                    "alias": "runner-mcp-validation",
+                    "repository": "Blacksp1d3r/runner-mcp",
+                    "runner_name": "runner-mcp-validation",
+                    "runner_root": str(root),
+                    "work_root": str(work),
+                    "labels": ["runner-mcp-validation"],
+                }
+            ]
+        ),
+    }
+    if reuse_mailbox_token:
+        values["RUNNER_MCP_CI_RUNNER_ADMIN_TOKEN"] = values["RUNNER_MCP_GITHUB_TOKEN"]
+
+    monkeypatch.setattr(
+        cli,
+        "read_private_runtime",
+        lambda _config_dir: (paths, object(), object()),
+    )
+    monkeypatch.setattr(cli, "load_env_file", lambda _path: values)
+
+    result = main(
+        [
+            "--config-dir",
+            str(tmp_path),
+            "ci-runner",
+            "enroll",
+            "runner-mcp-validation",
+        ]
+    )
+    captured = capsys.readouterr()
+
+    assert result == 2
+    expected_error = (
+        "CI runner enrollment requires distinct credentials"
+        if reuse_mailbox_token else "CI runner enrollment is not configured"
+    )
+    assert expected_error in captured.err
+    assert str(root) not in captured.err
 
 
 def test_ci_runner_run_delegates_only_preconfigured_alias(

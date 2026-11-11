@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import urllib.error
+from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
 import pytest
@@ -12,6 +13,7 @@ from runner_mcp.tunnel_health_evidence import (
     collect_control_plane_authenticated,
     collect_local_mcp_ready,
     collect_tunnel_runtime_instance_id,
+    inspect_tunnel_runtime_instance_id,
 )
 
 
@@ -234,10 +236,84 @@ def test_control_plane_successful_poll_is_authenticated(
     assert collect_control_plane_authenticated(
         tmp_path,
         opener=opener,
+        clock=lambda: datetime(2026, 10, 5, 18, 0, 30, tzinfo=UTC),
     ) is True
     request, timeout = requests[0]
     assert request.full_url == "http://127.0.0.1:48123/health/control-plane"
     assert timeout == 2.0
+
+
+@pytest.mark.parametrize(
+    ("offset_seconds", "accepted"),
+    [
+        (0, True),
+        (-35, True),
+        (-90, True),
+        (-91, False),
+        (-300, False),
+        (5, True),
+        (6, False),
+    ],
+)
+def test_control_plane_auth_requires_bounded_freshness(
+    tmp_path: Path,
+    offset_seconds: int,
+    accepted: bool,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    current = datetime(2026, 10, 9, 16, 0, tzinfo=UTC)
+    success = current + timedelta(seconds=offset_seconds)
+    payload = {
+        "schema_version": 1,
+        "component": "control-plane",
+        "status": "ok",
+        "state": "polling",
+        "details": {
+            "last_success": success.isoformat().replace("+00:00", "Z"),
+        },
+    }
+    result = collect_control_plane_authenticated(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(
+            json.dumps(payload).encode("utf-8")
+        ),
+        clock=lambda: current,
+    )
+    assert result is accepted
+
+
+@pytest.mark.parametrize(
+    "invalid_timestamp",
+    [
+        None,
+        "",
+        "yesterday",
+        "2026-10-09 16:00:00Z",
+        "2026-99-09T16:00:00Z",
+        "2026-10-09T16:00:00",
+        "2026-10-09T16:00:00Z" + "x" * 66,
+        20261009,
+    ],
+)
+def test_control_plane_auth_rejects_invalid_timestamp(
+    tmp_path: Path,
+    invalid_timestamp: object,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = {
+        "schema_version": 1,
+        "component": "control-plane",
+        "status": "ok",
+        "state": "idle",
+        "details": {"last_success": invalid_timestamp},
+    }
+    assert collect_control_plane_authenticated(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(
+            json.dumps(payload).encode("utf-8")
+        ),
+        clock=lambda: datetime(2026, 10, 9, 16, 0, tzinfo=UTC),
+    ) is False
 
 
 @pytest.mark.parametrize(
@@ -363,4 +439,111 @@ def test_invalid_health_payload_fails_closed(
         collect_local_mcp_ready(
             tmp_path,
             opener=lambda *_args, **_kwargs: FakeResponse(payload),
+        )
+
+
+@pytest.mark.parametrize("negative_status", ["degraded", "error", "failed", "stopped"])
+@pytest.mark.parametrize("prior_probe", ["succeeded", "auth_required"])
+def test_explicit_negative_mcp_health_overrides_historical_startup(
+    tmp_path: Path, negative_status: str, prior_probe: str,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    payload = json.dumps({
+        "schema_version": 1,
+        "component": "mcp",
+        "status": negative_status,
+        "state": "not_observed",
+        "details": {
+            "transport": "http-streamable",
+            "startup_probe": {"state": prior_probe},
+        },
+    }).encode("utf-8")
+    assert collect_local_mcp_ready(
+        tmp_path,
+        opener=lambda *_args, **_kwargs: FakeResponse(payload),
+    ) is False
+
+
+@pytest.mark.parametrize(
+    ("payload", "expected"),
+    [
+        (b"{invalid", "health_payload_invalid"),
+        (b"{}", "health_schema_incompatible"),
+        (b'{"schema_version":2}', "health_schema_incompatible"),
+        (b'{"schema_version":1}', "runtime_identity_missing"),
+        (b'{"schema_version":1,"runtime":{}}', "runtime_identity_invalid"),
+        (b'{"schema_version":1,"runtime":{"instance_id":"WRONG"}}', "runtime_identity_invalid"),
+    ],
+)
+def test_tunnel_identity_diagnosis_distinguishes_bounded_evidence_failures(
+    tmp_path: Path, payload: bytes, expected: str,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    assert inspect_tunnel_runtime_instance_id(
+        tmp_path, opener=lambda *_args, **_kwargs: FakeResponse(payload),
+    ) == (None, expected)
+
+
+def test_tunnel_identity_diagnosis_missing_url_never_attempts_network(
+    tmp_path: Path,
+) -> None:
+    def forbidden(*_args, **_kwargs):
+        raise AssertionError("missing URL must not issue HTTP")
+
+    assert inspect_tunnel_runtime_instance_id(
+        tmp_path, opener=forbidden,
+    ) == (None, "health_url_missing")
+
+
+def test_tunnel_identity_diagnosis_classifies_dead_loopback_without_private_url(
+    tmp_path: Path,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+
+    def offline(*_args, **_kwargs):
+        raise urllib.error.URLError("private endpoint=NEVER_EXPOSE")
+
+    result = inspect_tunnel_runtime_instance_id(tmp_path, opener=offline)
+    assert result == (None, "health_endpoint_unreachable")
+    assert "NEVER_EXPOSE" not in str(result)
+
+
+def test_tunnel_identity_diagnosis_ready_uses_one_local_probe(
+    tmp_path: Path,
+) -> None:
+    _write_health_url(tmp_path, "http://127.0.0.1:48123")
+    calls: list[str] = []
+
+    def opener(request, *, timeout):
+        calls.append(request.full_url)
+        assert timeout == 2.0
+        return FakeResponse(
+            json.dumps({
+                "schema_version": 1,
+                "runtime": {"instance_id": "b" * 32},
+            }).encode()
+        )
+
+    assert inspect_tunnel_runtime_instance_id(
+        tmp_path, opener=opener,
+    ) == ("b" * 32, "ready")
+    assert calls == ["http://127.0.0.1:48123/health?details=true"]
+
+
+@pytest.mark.parametrize(
+    "unsafe_url",
+    ["https://127.0.0.1:48123", "http://example.invalid:48123",
+     "http://127.0.0.1:48123/redirect",
+     "http://user:pass@127.0.0.1:48123"],
+)
+def test_tunnel_identity_diagnosis_never_follows_untrusted_authority(
+    tmp_path: Path, unsafe_url: str,
+) -> None:
+    _write_health_url(tmp_path, unsafe_url)
+    with pytest.raises(TunnelHealthEvidenceError):
+        inspect_tunnel_runtime_instance_id(
+            tmp_path,
+            opener=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("unsafe URL must not be called")
+            ),
         )

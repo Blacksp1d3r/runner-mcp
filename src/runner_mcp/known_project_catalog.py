@@ -5,11 +5,17 @@ import os
 import secrets
 import shutil
 import subprocess
+from collections.abc import Mapping
 from dataclasses import dataclass
 from pathlib import Path
 from urllib.parse import urlsplit
 
 from .config import ProjectRegistry, load_project_registry
+from .known_project_local_source import (
+    KnownProjectLocalSourceError,
+    materialize_known_project_local_source,
+    resolve_known_project_local_source,
+)
 from .source_control import _git_environment
 
 
@@ -24,6 +30,9 @@ class KnownProject:
     repository: str
     directory_name: str
     adapter: str = "generic"
+
+
+BEWIND_GITHUB_TOKEN_ENV = "RUNNER_MCP_BEWIND_GITHUB_TOKEN"
 
 
 KNOWN_PROJECTS: dict[str, KnownProject] = {
@@ -257,6 +266,63 @@ def register_known_project(
 
 
 
+def resolve_known_project_github_token(
+    *,
+    project_id: str,
+    global_token: str | None,
+    private_values: Mapping[str, str],
+) -> str | None:
+    """Resolve one fixed private source credential without exposing selector authority."""
+
+    if project_id not in KNOWN_PROJECTS:
+        raise KnownProjectRegistrationError("Unknown managed project")
+    if not hasattr(private_values, "get"):
+        raise KnownProjectRegistrationError(
+            "Known project source credential configuration is invalid"
+        )
+
+    if project_id != "bewind":
+        return _validated_optional_token(global_token)
+
+    dedicated = private_values.get(BEWIND_GITHUB_TOKEN_ENV)
+    if dedicated is None or dedicated == "":
+        return _validated_optional_token(global_token)
+    if not isinstance(dedicated, str):
+        raise KnownProjectRegistrationError(
+            "Bewind source credential configuration is invalid"
+        )
+    return _validated_optional_token(dedicated, required=True)
+
+
+def _validated_optional_token(
+    value: str | None,
+    *,
+    required: bool = False,
+) -> str | None:
+    if value is None:
+        if required:
+            raise KnownProjectRegistrationError(
+                "Known project source credential is invalid"
+            )
+        return None
+    if not isinstance(value, str):
+        raise KnownProjectRegistrationError(
+            "Known project source credential is invalid"
+        )
+    token = value.strip()
+    if not token:
+        if required:
+            raise KnownProjectRegistrationError(
+                "Known project source credential is invalid"
+            )
+        return None
+    if any(char in token for char in ("\x00", "\r", "\n")):
+        raise KnownProjectRegistrationError(
+            "Known project source credential is invalid"
+        )
+    return token
+
+
 def _github_clone_environment(github_token: str | None) -> dict[str, str]:
     environment = _git_environment(network=True)
     if github_token is None:
@@ -284,6 +350,7 @@ def preflight_known_project_source(
     *,
     project_id: str,
     github_token: str | None,
+    local_source_bindings_raw: str | None = None,
     runner=subprocess.run,
 ) -> dict[str, str | bool]:
     """Return bounded source reachability for one fixed catalogued project."""
@@ -293,6 +360,28 @@ def preflight_known_project_source(
         raise KnownProjectRegistrationError("Unknown managed project")
     if not callable(runner):
         raise TypeError("runner must be callable")
+
+    try:
+        local_source = resolve_known_project_local_source(
+            raw=local_source_bindings_raw,
+            project_id=project.code,
+            expected_repository=project.repository,
+        )
+    except KnownProjectLocalSourceError as exc:
+        raise KnownProjectRegistrationError(
+            "Trusted local project source configuration is invalid"
+        ) from exc
+    if local_source is not None:
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "credential_configured": bool(
+                isinstance(github_token, str) and github_token.strip()
+            ),
+            "source_reachable": True,
+            "main_ref_available": True,
+            "reason_code": "local-source-ready",
+        }
 
     credential_configured = bool(
         isinstance(github_token, str) and github_token.strip()
@@ -359,12 +448,62 @@ def preflight_known_project_source(
         "reason_code": "ready" if main_ref_available else "main-ref-unavailable",
     }
 
+def _selected_known_project_parents(
+    registry: ProjectRegistry,
+    *,
+    anchor_project_id: str | None,
+) -> set[Path]:
+    """Resolve host-owned parent(s), never caller supplied filesystem paths."""
+
+    if anchor_project_id is None:
+        return {
+            _trusted_existing_root(configured.root).parent
+            for configured in registry.projects.values()
+        }
+    if (
+        type(anchor_project_id) is not str
+        or anchor_project_id not in registry.projects
+    ):
+        raise KnownProjectRegistrationError(
+            "Known project anchor must be an already configured project"
+        )
+    root = _trusted_existing_root(registry.projects[anchor_project_id].root)
+    return {root.parent}
+
+
+def _exact_clone_outside_parent(
+    registry: ProjectRegistry,
+    *,
+    project: KnownProject,
+    selected_parent: Path,
+    runner,
+) -> bool:
+    """Do not silently create a second matching clone under another parent."""
+
+    for configured in registry.projects.values():
+        parent = _trusted_existing_root(configured.root).parent
+        if parent == selected_parent:
+            continue
+        candidate = parent / project.directory_name
+        if candidate.is_symlink() or not candidate.is_dir():
+            continue
+        try:
+            resolved = candidate.resolve(strict=True)
+        except OSError:
+            continue
+        if _repository_for(resolved, runner=runner) == project.repository:
+            return True
+    return False
+
+
 def prepare_known_project(
     registry: ProjectRegistry,
     *,
     project_id: str,
+    anchor_project_id: str | None = None,
     runner=subprocess.run,
     github_token: str | None = None,
+    local_source_bindings_raw: str | None = None,
 ) -> dict[str, str]:
     """Prepare one catalogued clone beside an already-trusted project root."""
 
@@ -374,15 +513,34 @@ def prepare_known_project(
         raise TypeError("runner must be callable")
 
     project = KNOWN_PROJECTS[project_id]
-    parents = {
-        _trusted_existing_root(configured.root).parent
-        for configured in registry.projects.values()
-    }
+    parents = _selected_known_project_parents(
+        registry, anchor_project_id=anchor_project_id,
+    )
     if len(parents) != 1:
-        raise KnownProjectRegistrationError(
-            "Known project clone destination is ambiguous"
-        )
+        # Mixed project roots must not pick an arbitrary parent for a new
+        # clone. An already-present, uniquely verified catalogued clone,
+        # however, needs no preparation and must not be treated as missing.
+        try:
+            discovered, _root = discover_known_project_root(
+                registry, project_id=project_id, runner=runner
+            )
+        except KnownProjectRegistrationError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project clone destination is ambiguous"
+            ) from exc
+        return {
+            "code": discovered.code,
+            "name": discovered.display_name,
+            "repository": discovered.repository,
+            "state": "already-prepared",
+        }
     parent = next(iter(parents))
+    if anchor_project_id is not None and _exact_clone_outside_parent(
+        registry, project=project, selected_parent=parent, runner=runner,
+    ):
+        raise KnownProjectRegistrationError(
+            "Known project exact clone already exists under another parent"
+        )
     if not os.access(parent, os.W_OK | os.X_OK):
         raise KnownProjectRegistrationError(
             "Known project destination is not writable"
@@ -412,6 +570,55 @@ def prepare_known_project(
         )
 
     repository_url = f"https://github.com/{project.repository}.git"
+    try:
+        local_source = resolve_known_project_local_source(
+            raw=local_source_bindings_raw,
+            project_id=project.code,
+            expected_repository=project.repository,
+        )
+    except KnownProjectLocalSourceError as exc:
+        raise KnownProjectRegistrationError(
+            "Trusted local project source configuration is invalid"
+        ) from exc
+
+    if local_source is not None:
+        try:
+            materialize_known_project_local_source(
+                binding=local_source,
+                destination=temporary,
+                canonical_origin=repository_url,
+                runner=runner,
+            )
+            if not temporary.is_dir() or temporary.is_symlink():
+                raise KnownProjectRegistrationError(
+                    "Known project local materialization is invalid"
+                )
+            if (
+                _repository_for(temporary.resolve(strict=True), runner=runner)
+                != project.repository
+            ):
+                raise KnownProjectRegistrationError(
+                    "Known project local materialization verification failed"
+                )
+            temporary.replace(target)
+        except KnownProjectLocalSourceError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project local materialization failed"
+            ) from exc
+        except OSError as exc:
+            raise KnownProjectRegistrationError(
+                "Known project local materialization failed"
+            ) from exc
+        finally:
+            if temporary.exists() and temporary != target:
+                shutil.rmtree(temporary, ignore_errors=True)
+        return {
+            "code": project.code,
+            "name": project.display_name,
+            "repository": project.repository,
+            "state": "prepared-local",
+        }
+
     try:
         result = runner(
             [
@@ -500,6 +707,7 @@ def preflight_known_project(
     registry: ProjectRegistry,
     *,
     project_id: str,
+    anchor_project_id: str | None = None,
     runner=subprocess.run,
 ) -> dict[str, str]:
     """Return bounded destination state for one catalogued project."""
@@ -510,18 +718,36 @@ def preflight_known_project(
     if not callable(runner):
         raise TypeError("runner must be callable")
 
-    parents = {
-        _trusted_existing_root(configured.root).parent
-        for configured in registry.projects.values()
-    }
+    parents = _selected_known_project_parents(
+        registry, anchor_project_id=anchor_project_id,
+    )
     if len(parents) != 1:
+        # Read-only discovery already supports several trusted parents.
+        # Accept only ONE existing clone with the exact catalogued GitHub
+        # origin; never choose a location for a missing clone here.
+        try:
+            discover_known_project_root(registry, project_id=project_id, runner=runner)
+        except KnownProjectRegistrationError:
+            return {
+                "code": project.code,
+                "repository": project.repository,
+                "state": "ambiguous-parent",
+            }
         return {
             "code": project.code,
             "repository": project.repository,
-            "state": "ambiguous-parent",
+            "state": "already-prepared",
         }
 
     parent = next(iter(parents))
+    if anchor_project_id is not None and _exact_clone_outside_parent(
+        registry, project=project, selected_parent=parent, runner=runner,
+    ):
+        return {
+            "code": project.code,
+            "repository": project.repository,
+            "state": "exact-clone-elsewhere",
+        }
     if not os.access(parent, os.W_OK | os.X_OK):
         return {
             "code": project.code,

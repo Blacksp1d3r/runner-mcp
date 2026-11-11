@@ -143,6 +143,8 @@ def test_historical_stale_tool_catalog_is_an_interface_schema_break(
 
     assert STALE_CLIENT_REQUIRED_TOOL not in cached_tools
     assert STALE_CLIENT_REQUIRED_TOOL in current_tools
+    assert "fabric_worker_qualification_readiness" not in cached_tools
+    assert "fabric_worker_qualification_readiness" in current_tools
 
     failure_layer = (
         "interface_schema"

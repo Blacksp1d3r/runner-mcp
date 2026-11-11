@@ -149,6 +149,12 @@ The next **code/test** deliverable before any real canary is an owner-bound, **s
 
 Migration planning and source tests **do not block unrelated automatic updates or existing services**. Equally, an ongoing update is not permission to switch supervisors: coordinate its safe window through the existing Fabric fleet authority, and defer only the affected original-host role if active update/rollback state or fresh execution evidence is unknown. Keep cron as the active owner throughout source development, and record the eventual one-role canary and rollback under the existing #866 / CURRENT_STATE / SESSION_HANDOFF authorities. Never create another updater, scheduler, relay, inventory or control plane.
 
+### Read-only, non-installable per-role candidates (source 0.1.159–0.1.160)
+
+Source-only `plan_single_role_cron_exclusion` calculates the exact original managed cron block minus one fixed scheduled role and retains all original bytes. `render_inactive_cron_server_peer_unit` calculates one **static** unit for a configured peer, omitting both `Requires=runner-mcp.service` and `[Install]`/`WantedBy`. Neither helper writes, enables, starts or attests anything.
+
+**A disabled managed unit file is NOT harmless live staging:** `has_managed_user_units()` treats its marked file as installed and the current cron side will reject it during reconciliation. Keep candidate bytes strictly outside the original live user-unit directory. The regular install/remove/reconcile CLI still acts on the full managed role set and is not a one-role cutover. Exact exclusive cutover, original source/PID/lock attestation, functional ACK, boot/reboot, external monitor and rollback proof remain #866 M3–M6. Continue unrelated automatic updates independently.
+
 ## Headless hosts
 
 Some Linux installations do not expose a usable systemd user manager to the Runner MCP account. In `auto` mode Runner MCP now falls back to a managed user crontab instead of requiring a system-level policy change.

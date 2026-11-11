@@ -1,3 +1,13 @@
+## 0.1.162 — #253 managed self-update handoff naar bestaande cron/systemd (SOURCE ONLY)
+
+- Oude PR #438 doelgericht overgezet op nieuwe hoofdbron, met behoud van de bestaande updater: optionele `server_activation_scheduler` mag alléén worden doorgegeven in de modus die de originele herstelwheel/transactie vasthoudt. Zonder expliciet ingestelde callback verandert de actieve restart-route niet.
+- De bestaande owner-managed `runner-mcp.service` wordt alleen als exact, privé en ongewijzigd unitbestand opnieuw gestart; cron accepteert uitsluitend één bestaande actieve managed server en geeft de lopende eigen PID over. De server- en cron-rollen worden niet automatisch gemigreerd.
+- Een succesvolle of mislukte HTTP-aanvraag wist **NOOIT** de herstartmarkering. De eerdere PR-versie deed dat vóór een echte handlerrespons en was onvoldoende voor een geldige oorspronkelijke cliënt-ACK; dat onveilige middlewarepad is doelbewust **niet overgenomen**. Alleen de bestaande onafhankelijke A7-actor/issuer met juiste campagne kan later na een echt resultaat + duurzame ACK de oorspronkelijke rollback vrijgeven.
+- Nieuwe negatieve tests voor ontbrekende/meerdere/inactieve supervisors, onveilige systemd-unit, onleesbare cron, ontbreken van de bewaarde rollbackbaseline en een bewaard restart-marker na de overdracht. **CI/brontest is geen bewezen originele update/rollback**, de actuele `github-runner` 0.1.88/4-4 escrows en geladen-wheelidentiteit blijven apart NO-GO.
+- Geen nieuw updateproces, scheduler, watchdog, systemd-unit, secrets, cryptografische sleutels of productieactie.
+
+---
+
 ## 0.1.161 — #341 herstelde baseline-wheel vergrendeld aan één inodegeneratie (SOURCE CANDIDATE NA #974)
 
 - De **bestaande** `SelfUpdatePackageInstaller.staged_wheel_sha256()` leest de bewaarde baseline-wheel via `O_NOFOLLOW` en één vaste descriptor. Inode, eigenaar, rechten, linkaantal, grootte en bestandsgeneratie moeten vóór, tijdens en na SHA256 én op de oorspronkelijke bestandsnaam gelijk blijven. De bestaande hersteltransactie en één updater blijven ongewijzigd.

@@ -40,6 +40,7 @@ def test_retained_wheel_digest_refuses_metadata_change_during_read(
     installer, wheel = _staged(tmp_path)
     wheel.chmod(0o644)
     original_file_digest = hashlib.file_digest
+    original_wheel_digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
 
     def change_mode_after_hash(handle, algorithm):
         result = original_file_digest(handle, algorithm)
@@ -53,7 +54,7 @@ def test_retained_wheel_digest_refuses_metadata_change_during_read(
     )
     assert installer.staged_wheel_sha256(job_id=JOB, label="baseline") is None
     # De echte bytes zijn nog intact; de wijziging was enkel in mode/ctime.
-    assert hashlib.sha256(wheel.read_bytes()).hexdigest() is not None
+    assert hashlib.sha256(wheel.read_bytes()).hexdigest() == original_wheel_digest
 
 
 def test_retained_wheel_digest_refuses_missing_nofollow(

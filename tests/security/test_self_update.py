@@ -1934,3 +1934,89 @@ def test_managed_handoff_requires_retained_baseline(
             retain_activation_baseline=False,
             server_activation_scheduler=lambda: None,
         )
+
+
+
+def test_managed_update_denies_missing_supervisor_before_any_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een ingestelde callback is geen bewijs van een werkende supervisor."""
+    from runner_mcp.self_update_activation import ManagedServerActivationError
+
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: None,
+    )
+
+    def unavailable(_config_dir: Path):
+        raise ManagedServerActivationError("no original managed server")
+
+    monkeypatch.setattr(
+        "runner_mcp.self_update_activation.managed_server_activation_status",
+        unavailable,
+    )
+    observed = manager.runtime_status()
+    assert observed["managed_server_supervisor_ready"] is False
+    assert observed["managed_server_supervisor_backend"] is None
+    assert observed["self_update_ready"] is False
+    with pytest.raises(SelfUpdateError, match="safe loopback restart runtime"):
+        manager.start("a" * 40)
+    assert manager._jobs == {}
+    assert manager._package_installer.pending_transaction() is None
+    assert restart_pending_count(manager.config_dir) == 0
+
+
+@pytest.mark.parametrize(
+    "backend,enabled,active",
+    [
+        ("cron", True, True),
+        ("systemd-user", True, True),
+        ("cron", False, True),
+        ("systemd-user", True, False),
+    ],
+)
+def test_managed_update_preflight_uses_real_supervisor_ready_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    backend: str, enabled: bool, active: bool,
+) -> None:
+    """Een andere rol of alleen een ingeplande callback opent de gate niet."""
+    from runner_mcp.self_update_activation import (
+        ManagedServerActivationStatus,
+        ManagedServerBackend,
+    )
+
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: None,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update_activation.managed_server_activation_status",
+        lambda _config_dir: ManagedServerActivationStatus(
+            backend=ManagedServerBackend(backend),
+            installed=True,
+            enabled=enabled,
+            active=active,
+        ),
+    )
+    observed = manager.runtime_status()
+    expected = enabled and active
+    assert observed["managed_server_supervisor_ready"] is expected
+    assert observed["managed_server_supervisor_backend"] == backend
+    assert manager._restart_ready() is expected
+    if not expected:
+        with pytest.raises(SelfUpdateError, match="safe loopback restart runtime"):
+            manager.start("a" * 40)
+        assert manager._jobs == {}
+
+
+def test_legacy_restart_readiness_does_not_claim_managed_supervisor(
+    tmp_path: Path,
+) -> None:
+    """De bestaande expliciete lokale reexec wordt niet uitgeschakeld."""
+    manager, _project, _exits = make_manager(tmp_path)
+    observed = manager.runtime_status()
+    assert manager._restart_ready() is True
+    assert observed["managed_server_supervisor_ready"] is None
+    assert observed["managed_server_supervisor_backend"] is None

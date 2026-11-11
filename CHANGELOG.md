@@ -1,3 +1,12 @@
+## 0.1.163 — #341 beheerder-preflight vóór automatische Runner-MCP-update (SOURCE, LIVE WAIT)
+
+- De **bestaande** `SelfUpdateManager` controleert vóór het enqueuen van een managed update nu of de reeds geïnstalleerde Runner-MCP-server werkelijk één actieve, ingeschakelde cron- of systemd-user-supervisor heeft. Alleen een ingestelde herstartcallback was daarvoor onvoldoende; een niet-beschikbare of dubbele supervisor kan anders pas **na installatie** aan het licht komen.
+- De bestaande `managed_server_activation_status()` van #253/0.1.162 wordt **hergebruikt**: geen nieuwe controller, service, relay of tweede watchdog. Een onbeschikbare/onzekere manager faalt gesloten **zonder job, wheelinstallatie, restart-marker of A6-event**. De huidige niet-beheerde legacy-reexec blijft ongewijzigd.
+- `runtime_status()` meldt `managed_server_supervisor_ready` en `managed_server_supervisor_backend`; beide zijn `null` wanneer er geen managed scheduler is. Deze velden attesteren **geen** onafhankelijk A7-herstel, echt geladen wheel of originele cliënt-ACK.
+- Negatieve/positieve regressies dekken afwezige, uitgeschakelde en actieve cron/systemd-beheerder, geen mutaties bij afwijzing en legacy-compatibiliteit. GitHub CI vereist; originele `github-runner` blijft op geteste eigen 0.1.88-generatie, **geen productie-update toegestaan**.
+
+---
+
 ## 0.1.162 — #253 managed self-update handoff naar bestaande cron/systemd (SOURCE ONLY)
 
 - Oude PR #438 doelgericht overgezet op nieuwe hoofdbron, met behoud van de bestaande updater: optionele `server_activation_scheduler` mag alléén worden doorgegeven in de modus die de originele herstelwheel/transactie vasthoudt. Zonder expliciet ingestelde callback verandert de actieve restart-route niet.

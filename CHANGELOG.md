@@ -1,3 +1,11 @@
+## 0.1.160 — #341 behoud originele rollback-wheel met strikte inodegeneratie (BRONKANDIDAAT, wacht op #973/0.1.159)
+
+- De **bestaande** lokale `SelfUpdatePackageInstaller.staged_wheel_sha256()` gebruikt één `O_NOFOLLOW`-bestandsdescriptor en vergelijkt exact dezelfde inode én volledige bestandsgeneratie vóór hashing, na hashing en op het oorspronkelijke pad. Gelijke SHA256 is onvoldoende bij wijzigende rechten, eigenaar, hardlinks, grootte, mtime of ctime. Geen shell, tweede updater, service, watchdog of nieuwe opslag.
+- Negatieve regressies: gewijzigde bestandsmetadata tijdens hashen ondanks identieke wheelbytes; ontbrekende kernel-`O_NOFOLLOW` faalt gesloten. De functie blijft alleen owner-local baselineseal: **geen** authentiek geladen Python-wheel/bronherkomst, originele issuer-ACK of onafhankelijke A7-rollback.
+- Deze kandidaatversie mag NIET vóór onafhankelijke acceptatie/merge van reeds door #973 gereserveerde 0.1.159 worden gemerged of op een originele host uitgerold. Original `github-runner` blijft ongewijzigd onder 0.1.88 PID2202/ticks7503 en productie-update blijft geblokkeerd.
+
+---
+
 ## 0.1.158 — #669 ZIP en SHA256 van originele wheel aan één inode binden (SOURCE MERGED/CI PASS, LIVE WAIT)
 
 - De al bestaande private originele-wheelcapture las ZIP-leden en volledige wheel-SHA via twee aparte path-opens. Als een wheel ertussen wordt vervangen door een wheel met dezelfde Python-modulebytes maar andere metadata, kon de ontvangstkopie een verkeerde gecombineerde originele SHA/moduleverklaring bewaren.

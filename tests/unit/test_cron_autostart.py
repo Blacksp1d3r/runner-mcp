@@ -118,6 +118,75 @@ def test_render_cron_block_adds_fixed_tunnel_port(tmp_path: Path) -> None:
     assert "autostart cron-run tunnel --port 8123" in block[3]
 
 
+
+def test_single_role_exclusion_keeps_other_five_roles_and_foreign_job(
+    tmp_path: Path,
+) -> None:
+    from runner_mcp.cron_autostart import plan_single_role_cron_exclusion
+
+    executable, config = tmp_path / "runner-mcp", tmp_path / "private"
+    roles = ("server", "topology-heartbeat", "github-watcher",
+             "fabric-agent-qualification", "agent-bus-worker", "completion-watcher")
+    foreign = "17 * * * * /usr/bin/true # unrelated reviewer"
+    original = foreign + "\n\n" + "\n".join(render_cron_block(
+        executable=executable, config_dir=config, components=roles, port=8000,
+    )) + "\n"
+    plan = plan_single_role_cron_exclusion(
+        original_crontab=original, executable=executable,
+        config_dir=config, components=roles, component="github-watcher",
+    )
+    assert plan.original_crontab == original
+    assert plan.component == "github-watcher"
+    assert plan.candidate_crontab.startswith(foreign + "\n\n")
+    assert plan.candidate_crontab.count("autostart cron-run github-watcher") == 0
+    for role in set(roles) - {"github-watcher"}:
+        assert plan.candidate_crontab.count("autostart cron-run " + role) == 1
+    assert plan.candidate_crontab.count(CRON_BEGIN) == 1
+    assert plan.candidate_crontab.count(CRON_END) == 1
+
+
+@pytest.mark.parametrize(
+    "variant",
+    ("wrong-port", "missing", "foreign-duplicate", "duplicate-block",
+     "invalid-extra", "crlf", "no-newline", "bad-role", "only-role"),
+)
+def test_single_role_exclusion_denies_uncertain_or_nonreversible_cron(
+    tmp_path: Path, variant: str,
+) -> None:
+    from runner_mcp.cron_autostart import plan_single_role_cron_exclusion
+
+    executable, config = tmp_path / "runner-mcp", tmp_path / "private"
+    roles = ("server", "github-watcher")
+    block = render_cron_block(
+        executable=executable, config_dir=config, components=roles, port=8000,
+    )
+    original = "\n".join(block) + "\n"
+    selected = "github-watcher"
+    if variant == "wrong-port":
+        original = original.replace("--port 8000", "--port 8123")
+    elif variant == "missing":
+        original = original.replace(next(s + "\n" for s in block if "cron-run github-watcher" in s), "")
+    elif variant == "foreign-duplicate":
+        original += "* * * * * runner-mcp autostart cron-run server\n"
+    elif variant == "duplicate-block":
+        original += original
+    elif variant == "invalid-extra":
+        original = original.replace(CRON_END, "* * * * * /usr/bin/true\n" + CRON_END)
+    elif variant == "crlf":
+        original = original.replace("\n", "\r\n")
+    elif variant == "no-newline":
+        original = original[:-1]
+    elif variant == "bad-role":
+        selected = "not-a-role"
+    elif variant == "only-role":
+        roles, selected = ("server",), "server"
+    with pytest.raises(CronAutostartError):
+        plan_single_role_cron_exclusion(
+            original_crontab=original, executable=executable,
+            config_dir=config, components=roles, component=selected,
+        )
+
+
 def test_direct_cron_install_refuses_existing_systemd_units_without_crontab_write(
     tmp_path: Path,
     fake_crontab_executable: None,

@@ -118,6 +118,7 @@ def make_manager(
     restart_components=None,
     active_revision_provider=None,
     retain_activation_baseline=False,
+    server_activation_scheduler=None,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -136,6 +137,7 @@ def make_manager(
         installer_runner=installer_runner,
         resource_url="http://127.0.0.1:8000/mcp",
         server_reexec=lambda: exits.append(75),
+        server_activation_scheduler=server_activation_scheduler,
         restart_delay_seconds=1,
         restart_components=restart_components,
         active_revision_provider=active_revision_provider,
@@ -1899,3 +1901,36 @@ def test_legacy_update_keeps_current_behavior_by_default(tmp_path: Path) -> None
     assert manager._retain_activation_baseline is False
     assert manager.runtime_status()["provisional_activation_pending"] is False
     assert manager.runtime_status()["provisional_baseline_wheel_present"] is None
+
+
+def test_managed_handoff_retains_restart_marker_for_independent_a7_ack(
+    tmp_path: Path,
+) -> None:
+    """Process handoff is not a same-client result or durable ACK."""
+    calls: list[bool] = []
+    manager, _project, exits = make_manager(
+        tmp_path,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: calls.append(True),
+    )
+    commit = "a" * 40
+    _write_restart_marker(manager.config_dir, "server", commit)
+    manager._schedule_server_restart()
+    deadline = time.monotonic() + 2.5
+    while not calls and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert calls == [True]
+    assert exits == []
+    assert restart_marker_commit(manager.config_dir, "server") == commit
+    assert restart_pending_count(manager.config_dir) >= 1
+
+
+def test_managed_handoff_requires_retained_baseline(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SelfUpdateError, match="retained independent recovery"):
+        make_manager(
+            tmp_path,
+            retain_activation_baseline=False,
+            server_activation_scheduler=lambda: None,
+        )

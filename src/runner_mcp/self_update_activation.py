@@ -38,7 +38,11 @@ class ManagedServerActivationStatus:
 def managed_server_activation_status(
     config_dir: Path,
 ) -> ManagedServerActivationStatus:
-    """Require one already active and managed server, never select a new unit."""
+    """Identify exactly the managed SERVER, not unrelated peer-role units.
+
+    Partial cron->systemd migrations may already have other managed systemd
+    roles. That must not be misclassified as two running server supervisors.
+    """
     from .autostart import (
         AutostartError,
         has_managed_user_units,
@@ -51,37 +55,39 @@ def managed_server_activation_status(
     )
 
     try:
-        cron = has_managed_cron()
-        systemd = has_managed_user_units()
+        cron_present = has_managed_cron()
+        units_present = has_managed_user_units()
+        cron_rows = (
+            cron_status(config_dir=config_dir, components=("server",))
+            if cron_present
+            else ()
+        )
+        unit_rows = user_service_status() if units_present else ()
     except (CronAutostartError, AutostartError) as exc:
         raise ManagedServerActivationError(
             "managed server supervisor state unavailable"
         ) from exc
-    if cron == systemd:
+    cron_server = [
+        row for row in cron_rows
+        if row.component == "server" and row.installed
+    ]
+    unit_server = [
+        row for row in unit_rows
+        if row.component == "server" and row.installed
+    ]
+    if len(cron_server) + len(unit_server) != 1:
         raise ManagedServerActivationError(
             "missing or multiple managed supervisor generations"
         )
-    try:
-        rows = (
-            cron_status(config_dir=config_dir, components=("server",))
-            if cron
-            else user_service_status()
-        )
-    except (CronAutostartError, AutostartError) as exc:
-        raise ManagedServerActivationError(
-            "managed server supervisor state unreadable"
-        ) from exc
-    found = [row for row in rows if row.component == "server"]
-    if len(found) != 1:
-        raise ManagedServerActivationError(
-            "managed server service identity ambiguous"
-        )
-    row = found[0]
+    if cron_server:
+        backend = ManagedServerBackend.CRON
+        row = cron_server[0]
+    else:
+        backend = ManagedServerBackend.SYSTEMD_USER
+        row = unit_server[0]
     return ManagedServerActivationStatus(
-        backend=ManagedServerBackend.CRON if cron else ManagedServerBackend.SYSTEMD_USER,
-        installed=row.installed,
-        enabled=row.enabled,
-        active=row.active,
+        backend=backend, installed=row.installed,
+        enabled=row.enabled, active=row.active,
     )
 
 

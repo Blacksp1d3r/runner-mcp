@@ -1,3 +1,11 @@
+## 0.1.161 — #341 herstelde baseline-wheel vergrendeld aan één inodegeneratie (SOURCE CANDIDATE NA #974)
+
+- De **bestaande** `SelfUpdatePackageInstaller.staged_wheel_sha256()` leest de bewaarde baseline-wheel via `O_NOFOLLOW` en één vaste descriptor. Inode, eigenaar, rechten, linkaantal, grootte en bestandsgeneratie moeten vóór, tijdens en na SHA256 én op de oorspronkelijke bestandsnaam gelijk blijven. De bestaande hersteltransactie en één updater blijven ongewijzigd.
+- Gerichte negatieve tests weigeren metadatawijziging tijdens hashen ondanks identieke wheelbytes en weigeren hashing zonder `O_NOFOLLOW`. De seal is **alleen lokaal herstelmateriaal**, geen geverifieerde actieve Python-wheel, signing- of A7-herstelverklaring.
+- 0.1.159 is via PR #973 gemerged; 0.1.160 is inmiddels via de bestaande PR #974 gemerged. Deze bronkandidaat 0.1.161 blijft voorwaardelijk en mag niet vóór #974 worden gemerged. Geen productie-update/ARM, service-, cron-, backup- of agentwijzigingen.
+
+---
+
 ## 0.1.160 — #866 inactieve systemd-peer-unit bij bestaande cronserver (STACKED SOURCE; NIET LIVE)
 
 - Pure renderer hergebruikt de **bestaande** normale systemd-user rollen/vaste commando's, maar verwijdert enkel voor één gekozen nevenrol de Requires=runner-mcp.service afhankelijkheid die anders een tweede server zou opstarten naast cron.

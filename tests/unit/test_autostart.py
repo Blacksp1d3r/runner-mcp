@@ -193,6 +193,76 @@ def test_migration_plan_refuses_existing_foreign_or_duplicate_units() -> None:
     assert plan.cutover_authorized is False
 
 
+
+def test_inactive_cron_server_peer_unit_never_starts_second_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import render_inactive_cron_server_peer_unit
+
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components",
+        lambda _path: ("server", "github-watcher", "completion-watcher"),
+    )
+    original = render_user_units(config_dir=paths.config_dir, executable=executable)
+    assert f"Requires={SERVER_UNIT}" in original[GITHUB_WATCHER_UNIT]
+    assert "WantedBy=default.target" in original[GITHUB_WATCHER_UNIT]
+    name, candidate = render_inactive_cron_server_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    assert name == GITHUB_WATCHER_UNIT
+    assert candidate.startswith(MANAGED_MARKER)
+    assert "github-watcher" in candidate
+    assert "Requires=runner-mcp.service" not in candidate
+    assert "After=network-online.target runner-mcp.service" not in candidate
+    assert "[Install]" not in candidate
+    assert "WantedBy=default.target" not in candidate
+    assert "ExecStart=" in candidate
+    assert f"Requires={SERVER_UNIT}" in original[GITHUB_WATCHER_UNIT]
+    # Alleen de aangevraagde nevenunit, nooit een tweede serverunit teruggeven.
+    assert name != SERVER_UNIT
+
+
+@pytest.mark.parametrize("component", ("server", "tunnel", "evil", "agent-bus-worker"))
+def test_inactive_cron_server_peer_denies_control_or_unconfigured_role(
+    tmp_path: Path, component: str,
+) -> None:
+    from runner_mcp.autostart import render_inactive_cron_server_peer_unit
+
+    paths, executable = _private_config(tmp_path)
+    with pytest.raises(AutostartError):
+        render_inactive_cron_server_peer_unit(
+            config_dir=paths.config_dir, executable=executable, component=component,
+        )
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd parser qualification")
+def test_inactive_cron_server_peer_is_real_static_systemd_unit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import render_inactive_cron_server_peer_unit
+
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components",
+        lambda _path: ("server", "github-watcher"),
+    )
+    name, contents = render_inactive_cron_server_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    path = tmp_path / name
+    path.write_text(contents, encoding="utf-8")
+    result = subprocess.run(
+        [analyze, "verify", str(path)], text=True, capture_output=True,
+        timeout=20, check=False,
+    )
+    assert result.returncode == 0, result.stderr[-1200:]
+    assert {p.name for p in tmp_path.iterdir() if p.suffix == ".service"} == {name}
+
 def test_render_server_unit_contains_no_credentials(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
 

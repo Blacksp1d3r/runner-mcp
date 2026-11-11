@@ -1,3 +1,11 @@
+## 0.1.160 — #866 inactieve systemd-peer-unit bij bestaande cronserver (STACKED SOURCE; NIET LIVE)
+
+- Pure renderer hergebruikt de **bestaande** normale systemd-user rollen/vaste commando's, maar verwijdert enkel voor één gekozen nevenrol de Requires=runner-mcp.service afhankelijkheid die anders een tweede server zou opstarten naast cron.
+- De kandidaat heeft bewust geen [Install]/WantedBy en is dus niet geschikt als automatisch geactiveerde volledige supervisor. De normale systemd-installatiemethode en zijn Requires-contract blijven onveranderd.
+- Bron- en Linux systemd-parserregressies voor een exacte niet-startende kandidaat en afwijzing van onbekende, control-path of niet-geconfigureerde rollen. Live bron-/procesattestatie, rol-lock, herstel, systemd manager start/reboot en ACK nog NIET GETEST. Geen cron/host/updates gewijzigd.
+
+---
+
 ## 0.1.159 — #866 pure cron-uitsluitingsplan voor één rol (SOURCE CANDIDATE, GEEN LIVE SWITCH)
 
 - In de bestaande cronmodule berekent een nieuwe pure helper één exact gebonden rolverwijdering uit een volledig gevalideerd cronblok. De oorspronkelijke crontab en vijf overige rollen blijven byte-identiek; vreemde taken blijven bestaan. Geen cronwrite, systemd-activatie of extra updater.

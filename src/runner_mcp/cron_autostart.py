@@ -254,6 +254,75 @@ def render_cron_block(
     ]
 
 
+
+@dataclass(frozen=True, slots=True)
+class CronSingleRoleExclusionPlan:
+    """Lokaal voorstel, geen cron-write, procesbewijs of omschakelbevoegdheid."""
+
+    component: str
+    original_crontab: str
+    candidate_crontab: str
+
+
+def plan_single_role_cron_exclusion(
+    *,
+    original_crontab: str,
+    executable: Path,
+    config_dir: Path,
+    components: tuple[str, ...],
+    component: str,
+    port: int = 8000,
+) -> CronSingleRoleExclusionPlan:
+    """Verwijder in een VOORSTEL uitsluitend één exact herkende cronrol.
+
+    De volledige originele cronconfiguratie blijft byte-identiek in dit
+    plan. Behoud alle andere rollen en niet-beheerde taken. Deze pure helper
+    voert nooit een opdracht uit en bewijst geen veilige live systemd-cutover.
+    """
+    if (
+        not isinstance(original_crontab, str)
+        or not original_crontab.endswith("\n")
+        or "\r" in original_crontab
+        or "\x00" in original_crontab
+        or len(original_crontab) > 131072
+    ):
+        raise CronAutostartError("original crontab bytes are not safely bounded")
+    if (
+        component not in CRON_COMPONENTS
+        or len(components) < 2
+        or len(set(components)) != len(components)
+        or component not in components
+    ):
+        raise CronAutostartError("single-role exclusion requires distinct managed peers")
+    expected = render_cron_block(
+        executable=executable, config_dir=config_dir,
+        components=components, port=port,
+    )
+    lines = original_crontab.splitlines(keepends=True)
+    values = [line[:-1] for line in lines]
+    bounds = _managed_block_bounds(values)
+    if bounds is None:
+        raise CronAutostartError("exact managed Runner MCP cron block is unavailable")
+    start, end = bounds
+    if values[start : end + 1] != expected:
+        raise CronAutostartError("original managed cron block differs from pinned roles")
+    if _has_unmanaged_runner_mcp_entries(values):
+        raise CronAutostartError("unmanaged Runner MCP cron supervisor conflicts")
+    index = start + 2 + components.index(component)
+    selected = _cron_command(
+        executable=executable, config_dir=config_dir,
+        component=component, port=port,
+    )
+    if values[index] != selected:
+        raise CronAutostartError("exact selected cron role is unavailable")
+    # Geen mutatie: behoud exact de overige cronregels en hun regelafbrekingen.
+    candidate = "".join((*lines[:index], *lines[index + 1 :]))
+    return CronSingleRoleExclusionPlan(
+        component=component, original_crontab=original_crontab,
+        candidate_crontab=candidate,
+    )
+
+
 def install_cron_services(
     *,
     executable: Path,

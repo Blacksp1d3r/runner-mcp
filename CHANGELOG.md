@@ -1,3 +1,10 @@
+## 0.1.159 — #866 pure cron-uitsluitingsplan voor één rol (SOURCE CANDIDATE, GEEN LIVE SWITCH)
+
+- In de bestaande cronmodule berekent een nieuwe pure helper één exact gebonden rolverwijdering uit een volledig gevalideerd cronblok. De oorspronkelijke crontab en vijf overige rollen blijven byte-identiek; vreemde taken blijven bestaan. Geen cronwrite, systemd-activatie of extra updater.
+- Positieve herstelbyte- en negatieve verkeerde-poort, ontbrekende/extra rol, dubbele supervisor, CRLF en onbegrensde invoertests. Originele host, launcher, processource, uitval/boot, functionele ACK en echte per-rolrollback blijven uitdrukkelijk NIET GETEST.
+
+---
+
 ## 0.1.158 — #669 ZIP en SHA256 van originele wheel aan één inode binden (SOURCE MERGED/CI PASS, LIVE WAIT)
 
 - De al bestaande private originele-wheelcapture las ZIP-leden en volledige wheel-SHA via twee aparte path-opens. Als een wheel ertussen wordt vervangen door een wheel met dezelfde Python-modulebytes maar andere metadata, kon de ontvangstkopie een verkeerde gecombineerde originele SHA/moduleverklaring bewaren.

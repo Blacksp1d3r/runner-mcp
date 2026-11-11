@@ -121,7 +121,7 @@ def test_cron_readback_error_does_not_kill_process(
 
     monkeypatch.setattr("runner_mcp.cron_autostart.cron_status", reject)
     executed: list[bool] = []
-    with pytest.raises(ManagedServerActivationError, match="unreadable"):
+    with pytest.raises(ManagedServerActivationError, match="unavailable"):
         activate_managed_server(
             tmp_path, terminate_self=lambda: executed.append(True),
         )

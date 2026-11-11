@@ -2020,3 +2020,97 @@ def test_legacy_restart_readiness_does_not_claim_managed_supervisor(
     assert manager._restart_ready() is True
     assert observed["managed_server_supervisor_ready"] is None
     assert observed["managed_server_supervisor_backend"] is None
+
+
+@pytest.mark.parametrize("backend", ["cron", "systemd-user"])
+def test_managed_supervisor_loss_after_tests_blocks_before_install(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, backend: str,
+) -> None:
+    """Supervisor loss during long tests must not start an install transaction."""
+    from runner_mcp.self_update_activation import (
+        ManagedServerActivationStatus,
+        ManagedServerBackend,
+    )
+
+    baseline, target = "1" * 40, "2" * 40
+    current = {"commit": baseline}
+    supervisor = {"active": True}
+
+    class StatefulSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            current["commit"] = commit
+            return super().sync_project_main_tip(project, commit)
+
+        def sync_project_main_commit(self, project: str, commit: str):
+            current["commit"] = commit
+            return super().sync_project_main_commit(project, commit)
+
+    source = StatefulSource()
+    tests = FakeTests()
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        source=source,
+        tests=tests,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: None,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": current["commit"], "clean": True},
+    )
+
+    observations: list[bool] = []
+
+    def observe(_config_dir: Path) -> ManagedServerActivationStatus:
+        observations.append(supervisor["active"])
+        return ManagedServerActivationStatus(
+            backend=ManagedServerBackend(backend),
+            installed=True,
+            enabled=True,
+            active=supervisor["active"],
+        )
+
+    monkeypatch.setattr(
+        "runner_mcp.self_update_activation.managed_server_activation_status",
+        observe,
+    )
+    original_wait = manager._wait_for_profile
+
+    def wait_and_lose_supervisor(profile: str) -> None:
+        original_wait(profile)
+        if profile == "unit":
+            supervisor["active"] = False
+
+    monkeypatch.setattr(manager, "_wait_for_profile", wait_and_lose_supervisor)
+    monkeypatch.setattr(
+        manager._package_installer, "build_wheel",
+        lambda **kwargs: tmp_path / f"{kwargs['label']}.whl",
+    )
+    monkeypatch.setattr(
+        manager._package_installer, "staged_wheel_sha256",
+        lambda **kwargs: "a" * 64,
+    )
+    attempted: list[str] = []
+    monkeypatch.setattr(
+        manager._package_installer, "begin_transaction",
+        lambda **kwargs: attempted.append("transaction"),
+    )
+    monkeypatch.setattr(
+        manager._package_installer, "install_wheel",
+        lambda *args, **kwargs: attempted.append("install"),
+    )
+
+    finished = wait_terminal(manager, manager.start(target)["job_id"])
+    assert finished["state"] == "failed"
+    assert finished["error_category"] == "restart_supervisor_unavailable"
+    assert observations == [True, False]
+    assert tests.started == ["lint", "unit"]
+    assert attempted == []
+    assert current["commit"] == baseline
+    assert source.calls == [
+        ("runner-mcp", target),
+        ("runner-mcp", baseline),
+    ]
+    assert manager._package_installer.pending_transaction() is None
+    assert restart_pending_count(manager.config_dir) == 0

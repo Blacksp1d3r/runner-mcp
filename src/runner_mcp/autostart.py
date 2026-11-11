@@ -5,6 +5,7 @@ import hmac
 import os
 import re
 import subprocess
+import stat
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path, PurePosixPath
@@ -687,6 +688,59 @@ def install_user_services(
     ordered = [name for name in KNOWN_UNITS if name in units]
     _run_systemctl(["enable", "--now", *ordered], runner=runner)
     return ordered
+
+
+
+def restart_managed_server_unit(
+    *,
+    unit_dir: Path | None = None,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> None:
+    """Handoff ONLY to the already installed, uniquely pinned server unit.
+
+    The A7 supervisor must independently qualify recovery and own the
+    restart marker; this helper never clears a marker or approves rollout.
+    """
+    root = (unit_dir or default_user_unit_dir()).expanduser()
+    if any(parent.is_symlink() for parent in (root, *root.parents)):
+        raise AutostartError("managed server unit directory is unsafe")
+    path = root / SERVER_UNIT
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise AutostartError("managed server unit nofollow support unavailable")
+    try:
+        before = path.lstat()
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or before.st_nlink != 1
+            or before.st_mode & 0o022
+            or not 0 < before.st_size <= 16_384
+        ):
+            raise AutostartError("managed server unit identity unavailable")
+        with os.fdopen(
+            os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb",
+        ) as stream:
+            opened = os.fstat(stream.fileno())
+            data = stream.read(16_385)
+            after = os.fstat(stream.fileno())
+        path_after = path.lstat()
+    except OSError as exc:
+        raise AutostartError("managed server unit readback unavailable") from exc
+    def identity(meta: os.stat_result) -> tuple[int, ...]:
+        return (
+            meta.st_dev, meta.st_ino, meta.st_mode, meta.st_uid,
+            meta.st_gid, meta.st_nlink, meta.st_size,
+            meta.st_mtime_ns, meta.st_ctime_ns,
+        )
+    if (
+        identity(before) != identity(opened)
+        or identity(before) != identity(after)
+        or identity(before) != identity(path_after)
+        or len(data) != before.st_size
+        or not data.startswith((MANAGED_MARKER + "\n").encode("utf-8"))
+    ):
+        raise AutostartError("managed server unit changed or foreign")
+    _run_systemctl(["restart", SERVER_UNIT], runner=runner)
 
 
 def user_service_status(

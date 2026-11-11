@@ -493,6 +493,57 @@ def render_user_units(
     return units
 
 
+
+def render_inactive_cron_server_peer_unit(
+    *,
+    config_dir: Path,
+    executable: Path,
+    component: str,
+    port: int = 8000,
+) -> tuple[str, str]:
+    """Maak één kandidaat-unit zonder bestaande cronserver mee te starten.
+
+    Dit is uitsluitend een niet-activerende bronrenderer voor #866. De gewone
+    installatie blijft de volledige systemd-grafiek met Requires=server eisen.
+    De kandidaat bevat bewust GEEN [Install]-sectie en kan dus niet als normale
+    automatisch ingeschakelde unit worden behandeld. De werkelijke server,
+    rolbron, cron-escrow en latere activatie/rollback blijven aparte bewijzen.
+    """
+    # Beperk het model tot bekende nevenrollen. De server zelf en de primaire
+    # tunnel behoren aan een afzonderlijke fysieke cutover-/transportpoort.
+    unit_name = f"runner-mcp-{component}.service"
+    if component in ("server", "tunnel") or unit_name not in KNOWN_UNITS:
+        raise AutostartError("unknown or control-path migration component")
+    rendered = render_user_units(
+        config_dir=config_dir, executable=executable, port=port,
+    )
+    ordinary = rendered.get(unit_name)
+    if ordinary is None:
+        raise AutostartError("requested migration component is not configured")
+
+    # _unit() produceert deze vaste combinatie. Weigeren als de normale
+    # renderer ooit verandert; niet stilzwijgend een Requires laten staan.
+    original_dependency = (
+        f"After=network-online.target {SERVER_UNIT}\n"
+        f"Requires={SERVER_UNIT}\n"
+    )
+    install_suffix = "\n[Install]\nWantedBy=default.target\n"
+    if ordinary.count(original_dependency) != 1 or not ordinary.endswith(install_suffix):
+        raise AutostartError("expected original systemd dependency graph is unavailable")
+    candidate = ordinary.replace(
+        original_dependency,
+        "After=network-online.target\nWants=network-online.target\n",
+        1,
+    ).removesuffix(install_suffix)
+    if (
+        f"Requires={SERVER_UNIT}" in candidate
+        or f"After=network-online.target {SERVER_UNIT}" in candidate
+        or "[Install]" in candidate
+        or "WantedBy=default.target" in candidate
+    ):
+        raise AutostartError("inactive migration unit still requires control service")
+    return unit_name, candidate
+
 def _safe_unit_dir(unit_dir: Path) -> Path:
     expanded = unit_dir.expanduser()
     # Installing must not traverse a symlinked parent to another unit tree.

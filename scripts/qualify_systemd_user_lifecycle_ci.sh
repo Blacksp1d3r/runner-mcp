@@ -723,10 +723,14 @@ if mode == "recover_failed_peer":
         or identity.st_nlink != 1
     ):
         raise RuntimeError("STOP: unit inode or owner is not qualified")
-    assert unit.read_text(encoding="utf-8") == plan.boot_unit_contents
-    assert read_crontab() == plan.candidate_crontab
-    assert enabled and not active and pid == 0 and not lock_active
-    assert len(records) == 5
+    if unit.read_text(encoding="utf-8") != plan.boot_unit_contents:
+        raise RuntimeError("STOP: installed unit source mismatch")
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: foreign or managed cron drift")
+    if not enabled or active or pid != 0 or lock_active:
+        raise RuntimeError("STOP: selected worker is not quiescent and enabled")
+    if len(records) != 5:
+        raise RuntimeError("STOP: synthetic work receipt count drift")
     before = autostart.propose_single_peer_reconciliation(
         preview=plan, phase="peer_failed_idle",
         observed_crontab=read_crontab(),
@@ -757,19 +761,30 @@ if mode == "recover_failed_peer":
     # geverifieerde volle cronbytes en afwezige PID/lock/ACK. De planner
     # blijft in het echte product NIET-geautoriseerd.
     required_command("systemctl", "--user", "disable", "--now", unit.name)
-    assert show("is-enabled", unit.name) == "disabled"
-    assert show("is-active", unit.name) != "active"
-    assert show("show", unit.name, "--property=MainPID", "--value") == "0"
-    assert read_crontab() == plan.candidate_crontab
-    assert not component_active(config, role)
-    assert unit.read_text(encoding="utf-8") == plan.boot_unit_contents
-    assert unit.stat().st_ino == identity.st_ino
+    if show("is-enabled", unit.name) != "disabled":
+        raise RuntimeError("STOP: selected unit remained enabled")
+    if show("is-active", unit.name) == "active":
+        raise RuntimeError("STOP: selected unit remained active")
+    if show("show", unit.name, "--property=MainPID", "--value") != "0":
+        raise RuntimeError("STOP: selected unit MainPID did not reach zero")
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: foreign or managed cron drift")
+    if component_active(config, role):
+        raise RuntimeError("STOP: selected role lock is still occupied")
+    if unit.read_text(encoding="utf-8") != plan.boot_unit_contents:
+        raise RuntimeError("STOP: installed unit source mismatch")
+    if unit.stat().st_ino != identity.st_ino:
+        raise RuntimeError("STOP: unit inode changed before unlink")
     unit.unlink()
     required_command("systemctl", "--user", "daemon-reload")
-    assert not unit.exists() and not unit.is_symlink()
-    assert read_crontab() == plan.candidate_crontab
-    assert show("is-active", unit.name) != "active"
-    assert not component_active(config, role)
+    if unit.exists() or unit.is_symlink():
+        raise RuntimeError("STOP: selected unit was not removed")
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: foreign or managed cron drift")
+    if show("is-active", unit.name) == "active":
+        raise RuntimeError("STOP: selected unit remained active")
+    if component_active(config, role):
+        raise RuntimeError("STOP: selected role lock is still occupied")
     ready = autostart.propose_single_peer_reconciliation(
         preview=plan, phase="rollback_ready",
         observed_crontab=read_crontab(),
@@ -788,8 +803,10 @@ if mode == "recover_failed_peer":
     ):
         raise RuntimeError("STOP: one-role cron restore is unqualified")
     required_command("crontab", "-", input_text=plan.original_crontab)
-    assert read_crontab() == plan.original_crontab
-    assert not component_active(config, role)
+    if read_crontab() != plan.original_crontab:
+        raise RuntimeError("STOP: full original cron bytes not restored")
+    if component_active(config, role):
+        raise RuntimeError("STOP: selected role lock is still occupied")
     complete = autostart.propose_single_peer_reconciliation(
         preview=plan, phase="rollback_confirmed",
         observed_crontab=read_crontab(),
@@ -801,11 +818,16 @@ if mode == "recover_failed_peer":
         )),
         systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
     )
-    assert complete.consistent and complete.proposed_step == "NO_ACTION_ALREADY_RESTORED"
-    assert not complete.action_authorized
-    assert plan.original_crontab.count("autostart cron-run") == 6
-    assert read_crontab().count("17 * * * * /usr/bin/true # test-foreign-job") == 1
-    assert len(records) == 5
+    if not complete.consistent or complete.proposed_step != "NO_ACTION_ALREADY_RESTORED":
+        raise RuntimeError("STOP: rollback checkpoint not confirmed")
+    if complete.action_authorized:
+        raise RuntimeError("STOP: unplanned activation authority")
+    if plan.original_crontab.count("autostart cron-run") != 6:
+        raise RuntimeError("STOP: original cron role count changed")
+    if read_crontab().count("17 * * * * /usr/bin/true # test-foreign-job") != 1:
+        raise RuntimeError("STOP: unrelated cron entry changed")
+    if len(records) != 5:
+        raise RuntimeError("STOP: synthetic work receipt count drift")
     print("M3_DISPOSABLE_BOUNDED_SINGLE_ROLE_EXECUTOR_EXACT_ROLLBACK=PASS")
     raise SystemExit(0)
 
@@ -912,6 +934,21 @@ done
 [[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
 [[ "$(grep -c '^' "$peer_log")" == 5 ]]
 "$peer_venv/bin/python" "$phase_script" peer_failed_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Wijzig op de disposable CI-host één vreemde cronregel: de rolgebonden
+# herstelactuator MOET vóór iedere mutatie stoppen en niets verwijderen.
+sed 's/# test-foreign-job/# deliberately-drifted-foreign-job/' \
+  "$peer_work/source-candidate.cron" >"$peer_work/source-candidate-foreign-drift.cron"
+crontab "$peer_work/source-candidate-foreign-drift.cron"
+if "$peer_venv/bin/python" "$phase_script" recover_failed_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: foreign-cron drift was incorrectly accepted" >&2
+  exit 1
+fi
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate-foreign-drift.cron")" ]]
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+crontab "$peer_work/source-candidate.cron"
+"$peer_venv/bin/python" "$phase_script" peer_failed_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 # Hergebruik exact één bron- en hostgekwalificeerde, TEST-ONLY herstelactuator.
 # Daarin wordt na elke stap live opnieuw geverifieerd. Geen generieke CLI.
 "$peer_venv/bin/python" "$phase_script" recover_failed_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
@@ -925,6 +962,7 @@ test_crontab_owned=false
 echo "M2_DISPOSABLE_SOURCE_RENDERED_SIX_ROLE_PHASE_CHECKPOINT_ROUNDTRIP=PASS"
 echo "M3_DISPOSABLE_ROLE_RECONCILE_PROPOSALS_SOURCE_READBACK=PASS"
 echo "M3_DISPOSABLE_FAILED_PEER_RECOVERY_PROPOSAL_AND_EXACT_CRON_ROLLBACK=PASS"
+echo "M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

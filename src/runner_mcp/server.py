@@ -486,10 +486,10 @@ def build_mcp(
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
-    active_build_provenance_provider: Callable[[], QualifiedActiveBuild | None] | None = None,
-    serving_epoch: ServingInstanceEpoch | None = None,
     tunnel_expected: bool = False,
     tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
+    active_build_provenance_provider: Callable[[], QualifiedActiveBuild | None] | None = None,
+    serving_epoch: ServingInstanceEpoch | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
     serving_epoch = serving_epoch if serving_epoch is not None else ServingInstanceEpoch()

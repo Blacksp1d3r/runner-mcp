@@ -14,11 +14,14 @@ import base64
 import csv
 import hashlib
 import io
+import json
 import marshal
 import os
+import reprlib
 import re
 import stat
 import sys
+import time
 import zipfile
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
@@ -26,6 +29,7 @@ from pathlib import Path
 from types import CodeType, FunctionType, ModuleType
 
 from .artifact_receipt_preflight import offline_artifact_receipt_preflight
+from .offline_installed_record_preflight import offline_installed_record_preflight
 from .serving_process_readonly import (
     _module_code_items,
     _normalized_code,
@@ -59,6 +63,9 @@ class ActiveBuildOwnerChallenge:
     pid: int
     start_ticks: int
     selected_loaded_code_sha256: str
+    self_update_job_id: str | None = None
+    rollback_baseline_revision: str | None = None
+    rollback_baseline_wheel_sha256: str | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -73,6 +80,9 @@ class ActiveBuildOwnerInputs:
     wheel: Path
     installed_package: Path
     independent_owner_verifier: Callable[[ActiveBuildOwnerChallenge], bool]
+    # Optional immutable lineage from EXISTING SelfUpdatePackageInstaller.
+    # Manual wheel installs may instead be attested directly by the owner.
+    lineage: Path | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -90,21 +100,78 @@ def _valid(value: object, regex: re.Pattern[str]) -> bool:
     return type(value) is str and regex.fullmatch(value) is not None
 
 
+def _validated_self_update_lineage(
+    lineage: Path, wheel: Path, receipt: Path, revision: str, digest: str,
+) -> tuple[str, str | None, str | None] | None:
+    """Read existing owner-private job lineage, never infer signing authority.
+
+    The exact job-ID and rollback relationship remain available after the
+    temporary SelfUpdateManager transaction is cleared. An absent, changed,
+    foreign, group-writable or symlinked lineage always fails closed.
+    """
+    try:
+        if (
+            not isinstance(lineage, Path) or not lineage.is_absolute()
+            or lineage.parent != wheel.parent or receipt.parent != wheel.parent
+            or not _valid(digest, _SHA) or lineage.is_symlink()
+        ):
+            return None
+        info = lineage.lstat()
+        if (
+            not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+            or info.st_nlink != 1 or info.st_mode & 0o077
+            or not 0 < info.st_size <= 2048
+        ):
+            return None
+        raw = lineage.read_bytes()
+        if len(raw) != info.st_size or not raw.endswith(b"\n"):
+            return None
+        data = json.loads(raw)
+        if not isinstance(data, dict) or set(data) != {
+            "schema_version", "job_id", "source_revision", "artifact_digest",
+            "receipt_sha256", "baseline_revision", "baseline_wheel_sha256",
+        } or data["schema_version"] != "runner-mcp/self-update-wheel-lineage/v1":
+            return None
+        job = data["job_id"]
+        baseline = data["baseline_revision"]
+        baseline_digest = data["baseline_wheel_sha256"]
+        if (
+            not _valid(job, re.compile(r"[0-9a-f]{32}\Z"))
+            or lineage.name != digest + "." + job + ".lineage.json"
+            or data["source_revision"] != revision
+            or data["artifact_digest"] != digest
+            or not _valid(data["receipt_sha256"], _SHA)
+            or hashlib.sha256(receipt.read_bytes()).hexdigest() != data["receipt_sha256"]
+            or (baseline is None) != (baseline_digest is None)
+            or (baseline is not None and (
+                not _valid(baseline, _REV)
+                or not _valid(baseline_digest, _SHA)
+            ))
+        ):
+            return None
+        return job, baseline, baseline_digest
+    except (OSError, ValueError, TypeError, UnicodeError, KeyError):
+        return None
+
+
 def _process_generation() -> tuple[int, int] | None:
-    """Current Linux PID start ticks and conservative wall-time from procfs."""
+    """Current Linux PID start ticks and conservative high-resolution start time.
+
+    /proc/stat btime only has SECOND resolution: freshly restarted servers
+    could be rejected despite an already-complete pip install. CLOCK_BOOTTIME
+    and wall-time are sampled together and the earlier wall sample is used
+    as the conservative lower bound. Missing clock => fail closed.
+    """
     try:
         raw = Path("/proc/self/stat").read_text(encoding="ascii")
         tail = raw.rsplit(")", 1)[1].split()
         ticks = int(tail[19])  # field 22; tail begins at field 3
         hz = os.sysconf("SC_CLK_TCK")
-        btime = next(
-            int(line.split()[1]) for line in Path("/proc/stat").read_text(
-                encoding="ascii"
-            ).splitlines() if line.startswith("btime ")
-        )
-        started_ns = btime * 1_000_000_000 + ticks * 1_000_000_000 // hz
+        before_wall_ns = time.time_ns()
+        uptime_ns = time.clock_gettime_ns(time.CLOCK_BOOTTIME)
+        started_ns = before_wall_ns - uptime_ns + ticks * 1_000_000_000 // hz
         return (ticks, started_ns) if ticks > 0 and started_ns > 0 else None
-    except (OSError, IndexError, ValueError, StopIteration, ZeroDivisionError):
+    except (OSError, IndexError, ValueError, AttributeError, ZeroDivisionError):
         return None
 
 
@@ -279,7 +346,9 @@ def _loaded_code_matches_installed_sources(
                 return False
             path = Path(module.__file__)
             source = path.read_bytes()
-            compiled = compile(source, str(path), "exec")
+            # Do NOT inherit this verifier module's future flags; reproduce the
+            # installed module's own import compilation bytecode exactly.
+            compiled = compile(source, str(path), "exec", dont_inherit=True)
             expected: dict[str, CodeType] = {}
 
             def collect(code: CodeType, *, depth: int = 0) -> bool:
@@ -288,9 +357,12 @@ def _loaded_code_matches_installed_sources(
                 for nested in code.co_consts:
                     if type(nested) is not CodeType:
                         continue
-                    if nested.co_qualname in expected:
-                        return False
-                    expected[nested.co_qualname] = nested
+                    # Nested comprehensions may share a qualname. The
+                    # enclosing source CodeType already hashes their bytes;
+                    # only named top-level functions/class members need a
+                    # direct symbol lookup below.
+                    if nested.co_qualname not in expected:
+                        expected[nested.co_qualname] = nested
                     if not collect(nested, depth=depth + 1):
                         return False
                 return True
@@ -317,7 +389,16 @@ def _loaded_code_matches_installed_sources(
                             "__setattr__", "__delattr__", "__lt__", "__le__",
                             "__gt__", "__ge__",
                         }
-                        and actual.co_filename == "<string>"
+                        and (
+                            actual.co_filename == "<string>"
+                            or (
+                                member == "__repr__"
+                                and marshal.dumps(_normalized_code(actual))
+                                == marshal.dumps(_normalized_code(
+                                    reprlib.recursive_repr()(lambda _self: "").__code__
+                                ))
+                            )
+                        )
                     ):
                         return False
                     continue
@@ -361,6 +442,8 @@ def qualify_serving_build(
     serving_epoch: str,
     independent_owner_verifier: Callable[[ActiveBuildOwnerChallenge], bool] | None,
     modules: Mapping[str, object] | None = None,
+    lineage: Path | None = None,
+    installed_record_required: bool = False,
 ) -> QualifiedActiveBuild | None:
     """Read existing bytes and live code, then demand an independent owner.
 
@@ -394,6 +477,20 @@ def qualify_serving_build(
             return None
         if not _wheel_record_matches(wheel, wheel_sha):
             return None
+        # In the real MCP owner route the pip-installed RECORD must match the
+        # exact, owner-pinned wheel. Legacy synthetic unit fixtures that only
+        # model .py files use the direct non-authorizing helper without this.
+        if installed_record_required and offline_installed_record_preflight(
+            wheel, installed_package, wheel_sha,
+        ).get("state") != "offline_installed_record_match":
+            return None
+        bound_lineage: tuple[str, str | None, str | None] | None = None
+        if lineage is not None:
+            bound_lineage = _validated_self_update_lineage(
+                lineage, wheel, receipt, source_revision, wheel_sha,
+            )
+            if bound_lineage is None:
+                return None
         if not _installed_files_predate_process(installed_package, process_started_ns):
             return None
         current = sys.modules if modules is None else modules
@@ -419,6 +516,9 @@ def qualify_serving_build(
             artifact_digest=wheel_sha, loaded_version=loaded_version,
             serving_epoch=serving_epoch, pid=os.getpid(), start_ticks=ticks,
             selected_loaded_code_sha256=digest,
+            self_update_job_id=(bound_lineage[0] if bound_lineage else None),
+            rollback_baseline_revision=(bound_lineage[1] if bound_lineage else None),
+            rollback_baseline_wheel_sha256=(bound_lineage[2] if bound_lineage else None),
         )
         if independent_owner_verifier(challenge) is not True:
             return None
@@ -427,7 +527,13 @@ def qualify_serving_build(
         if (offline_artifact_receipt_preflight(receipt, wheel, installed_package).get("state")
                 != "offline_bytes_match"
                 or not _installed_files_predate_process(installed_package, process_started_ns)
-                or not _loaded_code_matches_installed_sources(installed_package, current)):
+                or not _loaded_code_matches_installed_sources(installed_package, current)
+                or (lineage is not None and _validated_self_update_lineage(
+                    lineage, wheel, receipt, source_revision, wheel_sha,
+                ) != bound_lineage)
+                or (installed_record_required and offline_installed_record_preflight(
+                    wheel, installed_package, wheel_sha,
+                ).get("state") != "offline_installed_record_match")):
             return None
         return QualifiedActiveBuild(
             source_revision=source_revision, artifact_digest=wheel_sha,
@@ -455,4 +561,6 @@ def observe_owner_qualified_serving_build(
         loaded_version=loaded_version, installed_version=installed_version,
         serving_epoch=serving_epoch,
         independent_owner_verifier=owner.independent_owner_verifier,
+        lineage=owner.lineage,
+        installed_record_required=True,
     )

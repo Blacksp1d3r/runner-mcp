@@ -221,6 +221,33 @@ ze niet om een gemengde configuratie te maken, te herstellen of te activeren.
 Een betrouwbare bron-/hostgebonden rolreconciler en echte geïsoleerde
 fout-/hersteltests zijn de afzonderlijke volgende M3-implementatiestap.
 
+### Omkeerbare rolreconciliatie als zuiver bronvoorstel (draft 0.1.175)
+
+De nieuwe `propose_single_peer_reconciliation` combineert de bestaande
+`assess_single_peer_migration_checkpoint` met de volledige cron-/unitrolstatus.
+Er zijn vijf herkenbare toestanden: `staged_inactive` (inactieve peer verwijderen
+vóór herstel), `new_worker_ack` (gezonde peer ongemoeid laten),
+`peer_failed_idle` (wel enabled, geen worker-PID/lock/ACK: uitschakelen en
+opnieuw meten), `rollback_ready` (unit afwezig; exact oorspronkelijke
+cronbytes terugzetten ná afzonderlijke bevoegdheid) en `rollback_confirmed`
+(het originele cronblok is exact terug). Een bron-, status-, dubbele-roldrifts
+of mislukte ACK geeft `STOP_UNQUALIFIED`. Zelfs een volledige bron-PASS levert
+**nooit** een uitvoeringsvergunning: `action_authorized=False` voor elke
+uitkomst. De functie bevat geen crontab-write, systemctl-call of andere I/O.
+
+De bestaande CI op disposable Linux leest nu bij vier van die fasen werkelijk
+`crontab` en de bestaande `systemctl --user`-status vóór het zuivere
+herstelvoorstel. Het live herstel wordt nog steeds uitsluitend door de al
+bestaande testharnas uitgevoerd; de extra statusplanner voert niets uit. De
+uitgevallen-workerfase wordt daarnaast in de unit-testmatrix beoordeeld;
+geen claim van automatische productie-rollback, reboot of echte Agent Bus-ACK.
+
+Het voorstel is bewust **niet** aangesloten op de algemene `autostart
+reconcile/install/remove`-CLI of A7. Eerst is externe host-/eigenaar-/wheel-/PID-
+attestatie, de echte functieresultaat-ACK, actieve A7-herstelacceptatie en een
+bevoegde, voor exact één rol begrensde actuator nodig. De oorspronkelijke
+`github-runner` en vijf andere cronrollen blijven onaangeroerd.
+
 ## Original-host cron to systemd-user migration (#866)
 
 This section documents the **migration boundary**, not an activation procedure. The original physical `github-runner` has six historically cron-supervised Runner MCP/Fabric roles. Blacky has a separate hourly F35 reviewer task and is **not** a substitute for Black or `github-runner`. Their existing schedulers must continue operating until the individual original-host gates in [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) are satisfied.

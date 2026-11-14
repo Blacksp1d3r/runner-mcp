@@ -2082,3 +2082,76 @@ def test_m3_disabled_peer_resume_denies_stale_or_ambiguous_observation(
     assert result.proposed_step == "STOP_UNQUALIFIED"
     assert result.action_authorized is False
     assert list(tmp_path.rglob("*.service")) == []
+
+
+
+@pytest.mark.parametrize("extra_line", [
+    "PATH=/tmp/foreign-executable-directory",
+    "SHELL=/bin/bash",
+    "*/5 * * * * /bin/true # hidden-extra-job",
+    "# hidden-runner-mcp-note",
+])
+def test_m3_mixed_status_rejects_undocumented_managed_cron_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, extra_line: str,
+) -> None:
+    """Ook een intern 'consistent' maar vervalst cronblok is nooit M3-PASS."""
+    import hashlib
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_mixed_backend_status,
+        assess_single_peer_migration_checkpoint,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    plan = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    anchor = 'MAILTO=""\n'
+    inserted = anchor + extra_line + "\n"
+    original = plan.original_crontab.replace(anchor, inserted, 1)
+    candidate = plan.candidate_crontab.replace(anchor, inserted, 1)
+    assert original != plan.original_crontab
+    assert candidate != plan.candidate_crontab
+    poisoned = replace(
+        plan,
+        original_crontab=original,
+        candidate_crontab=candidate,
+        rollback_crontab_sha256=hashlib.sha256(
+            original.encode("utf-8")
+        ).hexdigest(),
+    )
+    # De lagere delta-check ziet slechts één verwijderde rol en kan dus
+    # geen aanvullende croninstellingen claimen als normaal renderercontract.
+    checkpoint = assess_single_peer_migration_checkpoint(
+        preview=poisoned, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=poisoned.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+    )
+    assert checkpoint.consistent
+
+    remaining = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    status = assess_single_peer_mixed_backend_status(
+        preview=poisoned, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=poisoned.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(
+            CronComponentStatus(role, role in remaining, role in remaining, False)
+            for role in CRON_COMPONENTS
+        ),
+        systemd_rows=tuple(
+            AutostartStatus(role, role == poisoned.component, False, False)
+            for role in CRON_COMPONENTS
+        ),
+    )
+    assert status.consistent is False
+    assert status.reason_code == "original_managed_block_unqualified"
+    assert status.generic_reconcile_authorized is False
+    assert status.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []

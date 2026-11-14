@@ -872,6 +872,9 @@ def assess_single_peer_migration_checkpoint(
         # Na een crash kan de unit enabled zijn zonder actieve PID, lock of ACK.
         # Het faseoordeel laat nooit automatisch herstellen of activeren.
         "peer_failed_idle": ("candidate", "boot", True, False, False, False, False),
+        # Crash/onderbreking ná succesvolle disable maar vóór unlink.
+        # De unit bestaat exact, maar mag geen herstart, PID of lock hebben.
+        "peer_disabled_idle": ("candidate", "boot", False, False, False, False, False),
         "rollback_ready": ("candidate", "absent", False, False, False, False, False),
         "rollback_confirmed": ("original", "absent", False, False, False, False, False),
     }
@@ -952,7 +955,7 @@ def assess_single_peer_mixed_backend_status(
 
     if phase not in (
         "staged_inactive", "new_worker_ack", "peer_failed_idle",
-        "rollback_ready", "rollback_confirmed",
+        "peer_disabled_idle", "rollback_ready", "rollback_confirmed",
     ):
         return wait("mixed_phase_not_observed")
     checkpoint = assess_single_peer_migration_checkpoint(
@@ -1020,7 +1023,10 @@ def assess_single_peer_mixed_backend_status(
         return wait("backend_role_claims_unqualified")
 
     restored = phase == "rollback_confirmed"
-    peer_installed = phase in ("staged_inactive", "new_worker_ack", "peer_failed_idle")
+    peer_installed = phase in (
+        "staged_inactive", "new_worker_ack", "peer_failed_idle",
+        "peer_disabled_idle",
+    )
     remaining = tuple(role for role in roles if restored or role != preview.component)
     for role in CRON_COMPONENTS:
         cron = cron_by_role[role]
@@ -1109,6 +1115,7 @@ def propose_single_peer_reconciliation(
         "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
         "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
         "peer_failed_idle": "DISABLE_FAILED_PEER_THEN_RECHECK",
+        "peer_disabled_idle": "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK",
         "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
         "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
     }

@@ -1462,5 +1462,3 @@ def test_single_peer_systemd_preview_rejects_unsafe_scope(
     with pytest.raises(AutostartError):
         plan_single_peer_systemd_migration(**kwargs)
     assert list(tmp_path.rglob("*.service")) == []
-
-

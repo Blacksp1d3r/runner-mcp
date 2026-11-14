@@ -201,6 +201,26 @@ The CLI requires the explicit local confirmation phrase shown on screen. Foreign
 
 On the systemd backend, removal disables and stops the managed units. On the cron backend, removal deletes the managed schedule so no future restart occurs; it deliberately does not send a blind process-kill signal to a currently running component. Stop or reboot that local account explicitly when immediate termination is required. This conservative behavior avoids killing a process whose identity cannot be proven from cron state alone.
 
+## Broncontract voor één gemengde cron/systemd-rol (M3, nog niet live)
+
+De zuivere functie `assess_single_peer_mixed_backend_status` vergelijkt een eerder
+vastgelegd éénrols-migratievoorstel met de bestaande zesfasenbroncontrole en
+volledige rolstatus van beide supervisors. Bij de zesrolvariant moeten precies
+vijf cronrollen en één geselecteerde managed systemd-unit overeenkomen met het
+bronvoorstel; de twee overige optionele rolposities blijven onbeheerd. Een
+ontbrekende cronrol, tweede unit, dubbelrol, gewijzigde vreemde cronregel,
+verkeerde actieve toestand of ontbrekende functionele ACK levert geen PASS.
+
+Dit is uitsluitend **consistentie van aangeleverde observaties**: geen bewijs
+van actuele host-, proces-, wheel-, A7- of ACK-herkomst. De functie voert geen
+proces- of bestands-I/O uit. Ook een consistent resultaat heeft altijd
+`generic_reconcile_authorized=False` en `cutover_authorized=False`.
+De bestaande CLI `autostart status/reconcile/install/remove` en de twee
+all-role-installers zijn hiermee **nog niet mixed-mode-compatibel**. Gebruik
+ze niet om een gemengde configuratie te maken, te herstellen of te activeren.
+Een betrouwbare bron-/hostgebonden rolreconciler en echte geïsoleerde
+fout-/hersteltests zijn de afzonderlijke volgende M3-implementatiestap.
+
 ## Original-host cron to systemd-user migration (#866)
 
 This section documents the **migration boundary**, not an activation procedure. The original physical `github-runner` has six historically cron-supervised Runner MCP/Fabric roles. Blacky has a separate hourly F35 reviewer task and is **not** a substitute for Black or `github-runner`. Their existing schedulers must continue operating until the individual original-host gates in [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) are satisfied.

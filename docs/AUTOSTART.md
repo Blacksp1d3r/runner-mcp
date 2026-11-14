@@ -6,6 +6,12 @@ The preferred backend is a systemd user manager. When a host has no usable user 
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
+## Negatieve test ná succesvolle managerherstart (source 0.1.172; alleen disposable)
+
+[PR #996](https://github.com/Blacksp1d3r/runner-mcp/pull/996) test de **daadwerkelijk gerenderde bootbare, met cron-lock gedeelde test-unit** na een succesvolle één-rols-migratie en **eerste user-manager-herstart**. Alleen de nep-executable wordt onuitvoerbaar gemaakt en uitsluitend zijn huidige test-MainPID wordt gedood. De echte systemd-restart faalt met `Result=exit-code`, `MainPID=0`; de vier bestaande werkrecords blijven vier, de vijf andere cronrollen en vreemde regel behouden hun exacte bytes. De test schakelt de unit uit, verifieert lockvrijgave, verwijdert de testunit, herstelt de volledige zes-plus-vreemde crontab, en **herstart de user-manager nogmaals**. De test bevestigt dat de verwijderde unit niet terugkomt en cron onaangetast blijft. Marker: `M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS` naast de zeven eerdere PASS-markers. Officiële source-0.1.172 validation, Clean Ubuntu en attribution SUCCESS; Ruff, 4.795 pytest en release-artifact PASS.
+
+Dit is **testgestuurde rollback** op wegwerp-Linux, niet een automatische productietransactie of fysieke reboot. De oorspronkelijke `github-runner` is ongewijzigd; M3–M6 fysiek en A7/functie+ACK blijven OPEN.
+
 ## Herstartbestendige één-rol-bootkandidaat (bron 0.1.171; uitsluitend disposable bewezen)
 
 [PR #994](https://github.com/Blacksp1d3r/runner-mcp/pull/994) introduceert `render_boot_candidate_cron_peer_unit`: een niet-activerende renderer die exact de statische, met cron lock-delende één-rol-kandidaat hergebruikt en alleen `[Install] WantedBy=default.target` toevoegt. `autostart cron-run` blijft de overgeërfde `flock` vasthouden, de unit blijft onafhankelijk van `runner-mcp.service`, en geen nieuwe activeringsbevoegdheid of servicebeheer wordt toegevoegd.

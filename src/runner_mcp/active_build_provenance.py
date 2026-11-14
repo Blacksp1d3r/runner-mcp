@@ -12,6 +12,7 @@ from __future__ import annotations
 
 import base64
 import csv
+import dataclasses
 import hashlib
 import io
 import json
@@ -396,6 +397,19 @@ def _loaded_code_matches_installed_sources(
                                 and marshal.dumps(_normalized_code(actual))
                                 == marshal.dumps(_normalized_code(
                                     reprlib.recursive_repr()(lambda _self: "").__code__
+                                ))
+                            )
+                            or (
+                                # Python 3.12 generates the same dataclass
+                                # recursion wrapper inside dataclasses.py,
+                                # not reprlib.py. Match exact stdlib code and
+                                # provenance; never exempt arbitrary wrappers.
+                                member == "__repr__"
+                                and actual.co_filename == dataclasses.__file__
+                                and type(getattr(dataclasses, "_recursive_repr", None)) is FunctionType
+                                and marshal.dumps(_normalized_code(actual))
+                                == marshal.dumps(_normalized_code(
+                                    dataclasses._recursive_repr(lambda _self: "").__code__
                                 ))
                             )
                         )

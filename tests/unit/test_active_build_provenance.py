@@ -60,8 +60,9 @@ def fake_module(name: str, source_path: Path, content: bytes):
     obj = types.ModuleType(name)
     obj.__file__ = str(source_path)
     obj.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, origin=str(source_path))
-    # Trusted fixed-source synthetic module execution tests in-memory tampering.
-    exec(compile(content, str(source_path), "exec"), obj.__dict__)  # noqa: S102
+    # Reproduce Python's fresh import compilation, not inherited test flags.
+    # Trusted fixed-source execution tests in-memory tampering only.
+    exec(compile(content, str(source_path), "exec", dont_inherit=True), obj.__dict__)  # noqa: S102
     return obj
 
 
@@ -77,6 +78,15 @@ def prepared(tmp_path: Path, monkeypatch):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(data)
     wheel, wheel_sha = make_wheel(root, SOURCE)
+    # The owner-injected path requires the pip-installed RECORD, not just the
+    # synthetic wheel's source files. Mirror the trusted fixture wheel entries.
+    with zipfile.ZipFile(wheel) as archive:
+        for name in archive.namelist():
+            installed = root / name
+            if not installed.exists():
+                installed.parent.mkdir(parents=True, exist_ok=True)
+                installed.write_bytes(archive.read(name))
+                installed.chmod(0o600)
     receipt = root / "receipt.json"
     receipt.write_text(json.dumps({
         "schema_version": "runner-mcp/offline-artifact-receipt/v1",

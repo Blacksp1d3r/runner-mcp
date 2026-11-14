@@ -303,6 +303,13 @@ systemctl --user daemon-reload
 [[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
 [[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
 
+# Zet nu OOK de zes onschuldige cronregels werkelijk terug: de integratieproef
+# combineert exact crontab-behoud met de werkelijk gegenereerde lockende peer.
+# Geen van deze zes testrollen voert software of netwerkverzoeken uit.
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+
 # Oude cron-wrapper simuleren met dezelfde echte flock/execv-broncode.
 "$peer_exe" --config-dir "$peer_private" autostart cron-run github-watcher &
 peer_old_pid=$!
@@ -331,10 +338,16 @@ done
 [[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
 [[ "$(grep -c '^' "$peer_log")" == 1 ]]
 kill -0 "$peer_old_pid"
+[[ "$(crontab -l)" == "$original_six_cron" ]]
 
 # Na bewezen einde van de oorspronkelijke process/lock-generatie mag de
 # exacte statische test-unit wel één nieuwe rol starten.
 systemctl --user stop "$peer_unit"
+# Exact één cronregel wordt verwijderd; alle andere vijf en de vreemde
+# cronregel blijven bestaan, voordat de oude worker wordt vrijgegeven.
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 5 ]]
 kill "$peer_old_pid"
 wait "$peer_old_pid" >/dev/null 2>&1 || true
 peer_old_pid=""
@@ -369,7 +382,23 @@ PY_FINAL
 [[ "$(grep -c '^' "$peer_log")" == 2 ]]
 [[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
 [[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+
+# Bij afwijzing van de functionele canary: eerst de rol stoppen, dan het
+# test-owned unitbestand en de managercache verwijderen, dan exact het oude
+# crontab herstellen. Zo kan een managed-marker de cron-reconciler niet hinderen.
+rm -- "$peer_target"
+systemctl --user daemon-reload
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+crontab -r
+test_crontab_owned=false
 [[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+echo "M2_DISPOSABLE_SIX_ROLE_RENDERED_PEER_EXCLUSIVE_SWITCH_AND_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_REAL_RENDERED_PEER_AND_SHARED_CRON_LOCK=PASS"
 echo "M2_DISPOSABLE_ONE_OF_SIX_CRON_TO_SYSTEMD_AND_FULL_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_CRON_TO_SYSTEMD_TO_CRON_ROUNDTRIP=PASS"

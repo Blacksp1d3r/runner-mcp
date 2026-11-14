@@ -689,7 +689,7 @@ assert result.next_action_authorized is False
 
 # Dezelfde ECHTE disposable crontab- en systemd-status zijn invoer van het
 # nieuwe rolgebonden herstelvoorstel. De functie mag niets uitvoeren.
-if mode in ("staged_inactive", "new_worker_ack",
+if mode in ("staged_inactive", "new_worker_ack", "peer_failed_idle",
             "rollback_ready", "rollback_confirmed"):
     cron_rows = tuple(cron_status(
         config_dir=config, components=roles, executable=executable,
@@ -705,6 +705,7 @@ if mode in ("staged_inactive", "new_worker_ack",
     expected_step = {
         "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
         "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
+        "peer_failed_idle": "DISABLE_FAILED_PEER_THEN_RECHECK",
         "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
         "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
     }[mode]
@@ -748,7 +749,32 @@ done
 [[ "$(grep -c '^' "$peer_log")" == 5 ]]
 "$peer_venv/bin/python" "$phase_script" new_worker_ack "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 
+# Foutinjectie ALLEEN op eigen disposable nep-worker: het reeds gemeten
+# MainPID is precies de laatste geregistreerde teststart. Na exec-failure
+# blijft de unit enabled, maar de worker kan geen werkrecord/ACK toevoegen.
+# De nieuwe herstelplanner moet nu stop/disable voorstellen, nooit activeren.
+test_failed_old_pid="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+[[ "$test_failed_old_pid" =~ ^[1-9][0-9]*$ ]]
+[[ "$test_failed_old_pid" == "$(tail -n 1 "$peer_log")" ]]
+chmod 000 -- "$peer_exe"
+kill -KILL "$test_failed_old_pid"
+failed_peer_observed=false
+for _ in {1..120}; do
+  test_failed_pid="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+  test_failed_result="$(systemctl --user show "$peer_unit" --property=Result --value)"
+  if [[ "$test_failed_result" == exit-code && "$test_failed_pid" == 0 ]]; then
+    failed_peer_observed=true
+    break
+  fi
+  sleep 0.1
+done
+[[ "$failed_peer_observed" == true ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
+"$peer_venv/bin/python" "$phase_script" peer_failed_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+
 systemctl --user disable --now "$peer_unit"
+chmod 0700 -- "$peer_exe"
 [[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
 rm -- "$peer_target"
 systemctl --user daemon-reload
@@ -762,6 +788,7 @@ test_crontab_owned=false
 [[ "$(crontab -l 2>/dev/null || :)" == "" ]]
 echo "M2_DISPOSABLE_SOURCE_RENDERED_SIX_ROLE_PHASE_CHECKPOINT_ROUNDTRIP=PASS"
 echo "M3_DISPOSABLE_ROLE_RECONCILE_PROPOSALS_SOURCE_READBACK=PASS"
+echo "M3_DISPOSABLE_FAILED_PEER_RECOVERY_PROPOSAL_AND_EXACT_CRON_ROLLBACK=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

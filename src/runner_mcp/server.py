@@ -482,6 +482,7 @@ def build_mcp(
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
     self_update_retain_activation_baseline: bool = False,
+    self_update_retain_installed_provenance: bool = False,
     self_update_server_activation_scheduler: Callable[[], object] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
@@ -644,6 +645,7 @@ def build_mcp(
             else None
         ),
         retain_activation_baseline=self_update_retain_activation_baseline,
+        retain_installed_provenance=self_update_retain_installed_provenance,
     )
     fabric_bootstrap_manager = FabricBootstrapManager(
         config_dir=settings.projects_config.parent,
@@ -4293,6 +4295,9 @@ def create_app(
         secret_values=secret_values,
         self_update_restart_components=self_update_restart_components,
         self_update_retain_activation_baseline=self_update_retain_activation_baseline,
+        self_update_retain_installed_provenance=(
+            type(active_build_owner) is ActiveBuildOwnerInputs
+        ),
         self_update_server_activation_scheduler=self_update_server_activation_scheduler,
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,

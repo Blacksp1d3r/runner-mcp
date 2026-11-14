@@ -1560,10 +1560,25 @@ def test_single_peer_checkpoint_rejects_mutated_preview(
     from runner_mcp.autostart import assess_single_peer_migration_checkpoint
 
     preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    foreign_cron_change = preview.candidate_crontab.replace(
+        "17 * * * * /usr/bin/true # unrelated",
+        "17 * * * * /usr/bin/true # altered",
+    )
+    # Een kwaad of per ongeluk gewijzigd voorstel kan anders de waarneming
+    # zelf laten aansluiten op een foutieve 5-rollen-crontab.
+    alternate_role = next(
+        line + "\n" for line in preview.original_crontab.splitlines()
+        if "autostart cron-run completion-watcher" in line
+    )
+    changed_role = preview.original_crontab.replace(alternate_role, "")
+    assert changed_role != preview.candidate_crontab
     for candidate in (
         replace(preview, boot_unit_contents=preview.boot_unit_contents + "x"),
         replace(preview, rollback_crontab_sha256="0" * 64),
         replace(preview, cutover_authorized=True),
+        replace(preview, candidate_crontab=foreign_cron_change),
+        replace(preview, candidate_crontab=changed_role),
+        replace(preview, candidate_crontab=preview.original_crontab + "x"),
     ):
         result = assess_single_peer_migration_checkpoint(
             preview=candidate, phase="before_exclusion",

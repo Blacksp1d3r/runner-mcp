@@ -1359,7 +1359,7 @@ def test_single_peer_systemd_preview_preserves_other_five_and_rollback(
     assert type(plan) is SinglePeerSystemdMigrationPreview
     assert plan.component == component
     assert plan.original_crontab == original
-    assert plan.candidate_crontab.startswith("17 * * * * /usr/bin/true\n\n")
+    assert plan.candidate_crontab.startswith("17 * * * * /usr/bin/true # unrelated\n\n")
     assert "autostart cron-run " + component not in plan.candidate_crontab
     assert sum(
         plan.candidate_crontab.count("autostart cron-run " + role)

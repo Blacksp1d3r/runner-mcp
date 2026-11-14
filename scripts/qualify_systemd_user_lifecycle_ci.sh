@@ -299,6 +299,10 @@ assert "[Install]" not in candidate
 assert candidate.count("ExecStart=") == 1
 target.write_text(candidate, encoding="utf-8")
 PY_GENERATE
+# Houd exact de gegenereerde kandidaatbytes uitsluitend op de testhost vast.
+# Na de positieve herstelproef gebruiken we ze voor een tweede negatieve
+# omschakeling, zonder een nieuw unittemplate of productiemanager te maken.
+cp -- "$peer_target" "$peer_work/peer-unit.template"
 systemctl --user daemon-reload
 [[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
 [[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
@@ -398,6 +402,49 @@ printf '%s\n' "$original_six_cron" | crontab -
 crontab -r
 test_crontab_owned=false
 [[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+
+# NEGATIEVE M3-bronproef: na de eenrols-cronuitsluiting faalt de werkelijk
+# gerenderde systemd-kandidaat omdat uitsluitend de TEST-launcher niet meer
+# uitvoerbaar is. We mogen dan geen lopende nieuwe rol of fictieve ACK zien.
+# De rollback verwijdert eerst de test-unit en herstelt daarna de volledige
+# oorspronkelijke crontab, inclusief de vreemde regel. Geen live hostactie.
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+install -m 0600 -- "$peer_work/peer-unit.template" "$peer_target"
+cmp -s "$peer_work/peer-unit.template" "$peer_target"
+systemctl --user daemon-reload
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 5 ]]
+chmod 000 "$peer_exe"
+systemctl --user start "$peer_unit" >/dev/null 2>&1 || true
+for _ in {1..60}; do
+  if [[ "$(systemctl --user show "$peer_unit" --property=Result --value)" == "exit-code" ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(systemctl --user show "$peer_unit" --property=Result --value)" == "exit-code" ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+systemctl --user stop "$peer_unit"
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+rm -- "$peer_target"
+systemctl --user daemon-reload
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+chmod 0700 "$peer_exe"
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+crontab -r
+test_crontab_owned=false
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+echo "M2_DISPOSABLE_FAILED_EXEC_START_EXACT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_SIX_ROLE_RENDERED_PEER_EXCLUSIVE_SWITCH_AND_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_REAL_RENDERED_PEER_AND_SHARED_CRON_LOCK=PASS"
 echo "M2_DISPOSABLE_ONE_OF_SIX_CRON_TO_SYSTEMD_AND_FULL_ROLLBACK=PASS"

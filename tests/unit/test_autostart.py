@@ -1428,7 +1428,8 @@ def _single_peer_phase_fixture(
 ):
     """Zes onschuldige cronrollen plus vreemde regel; geen subprocess."""
     from runner_mcp.autostart import (
-        AutostartMigrationPlan, plan_single_peer_systemd_migration,
+        AutostartMigrationPlan,
+        plan_single_peer_systemd_migration,
     )
     from runner_mcp.cron_autostart import render_cron_block
 
@@ -1555,6 +1556,7 @@ def test_single_peer_checkpoint_rejects_mutated_preview(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     from dataclasses import replace
+
     from runner_mcp.autostart import assess_single_peer_migration_checkpoint
 
     preview = _single_peer_phase_fixture(tmp_path, monkeypatch)

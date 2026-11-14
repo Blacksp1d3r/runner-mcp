@@ -303,3 +303,49 @@ def test_owner_mutates_inmemory_code_after_first_observation(prepared):
         return True
     prepared["independent_owner_verifier"] = mutate
     assert qualify_serving_build(**prepared) is None
+
+
+def test_owner_inputs_default_none_never_qualifies(prepared):
+    from runner_mcp.active_build_provenance import observe_owner_qualified_serving_build
+    assert observe_owner_qualified_serving_build(
+        None, loaded_version=VERSION, installed_version=VERSION, serving_epoch=EPOCH
+    ) is None
+
+
+def test_injected_existing_owner_inputs_return_current_loaded_wheel(prepared, monkeypatch):
+    from runner_mcp.active_build_provenance import (
+        ActiveBuildOwnerInputs, observe_owner_qualified_serving_build,
+    )
+    # Wrapper normally observes real sys.modules; synthetically bind only
+    # our isolated process fixture to avoid touching a physical server.
+    import runner_mcp.active_build_provenance as p
+    monkeypatch.setattr(p, "sys", types.SimpleNamespace(modules=prepared["modules"]))
+    owner = ActiveBuildOwnerInputs(
+        receipt=prepared["receipt"], wheel=prepared["wheel"],
+        installed_package=prepared["installed_package"],
+        independent_owner_verifier=prepared["independent_owner_verifier"],
+    )
+    result = observe_owner_qualified_serving_build(
+        owner, loaded_version=VERSION, installed_version=VERSION,
+        serving_epoch=EPOCH,
+    )
+    assert result is not None and result.source_revision == REV
+    from runner_mcp.build_identity import BuildIdentity
+    identity = BuildIdentity(
+        component_id="runner-mcp", build_version=result.build_version,
+        source_revision=result.source_revision, artifact_digest=result.artifact_digest,
+    )
+    assert identity.to_payload()["artifact_digest"] == result.artifact_digest
+    assert identity.to_payload()["source_revision"] == REV
+
+
+def test_existing_epoch_rejects_parent_to_child_fork_identity():
+    from runner_mcp.serving_instance_epoch import ServingInstanceEpoch
+    epoch = ServingInstanceEpoch()
+    first = epoch.value()
+    assert len(first) == 32 and epoch.value() == first
+
+
+def test_malformed_owner_receipt_cannot_qualify_after_rollback(prepared):
+    prepared["receipt"].write_text('{"commit":"' + OLD + '"}')
+    assert qualify_serving_build(**prepared) is None

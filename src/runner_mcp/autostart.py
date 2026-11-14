@@ -545,6 +545,102 @@ def render_inactive_cron_server_peer_unit(
         raise AutostartError("inactive migration unit still requires control service")
     return unit_name, candidate
 
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerSystemdMigrationPreview:
+    """Herstelbaar bronvoorstel, nooit een vergunning of transactiescript."""
+
+    component: str
+    original_crontab: str
+    candidate_crontab: str
+    rollback_crontab_sha256: str
+    inactive_unit_name: str
+    inactive_unit_contents: str
+    cutover_authorized: bool = False
+
+
+def plan_single_peer_systemd_migration(
+    *,
+    preflight: AutostartMigrationPlan,
+    original_crontab: str,
+    executable: Path,
+    config_dir: Path,
+    components: tuple[str, ...],
+    component: str,
+    port: int = 8000,
+) -> SinglePeerSystemdMigrationPreview:
+    """Koppel één cronuitsluiting aan één inactieve systemd-nevenunit.
+
+    Deze samenstelling berekent uitsluitend bytes. De oorspronkelijke volledige
+    crontab blijft het exacte rollbackobject. Zowel de bestaande read-only
+    host/UID/manager-preflight als de oude cronrol en de nieuwe unit moeten
+    eenduidig passen. Er is geen systemctl, crontab-write of procesactie.
+    Tijdens de echte omschakeling zijn aparte PID/lock-, boot- en A7-proeven
+    vereist; ook een perfect voorstel geeft nooit activeringsbevoegdheid.
+    """
+    from .cron_autostart import (
+        CronAutostartError,
+        plan_single_role_cron_exclusion,
+    )
+
+    expected = AutostartMigrationPlan(
+        component=component,
+        state="PLAN_ONLY",
+        reason_code="original_host_and_rollback_not_attested",
+        cron_installed=True,
+        systemd_manager_reachable=True,
+        systemd_units_absent=True,
+    )
+    if (
+        type(preflight) is not AutostartMigrationPlan
+        or preflight != expected
+        or type(component) is not str
+        or component in ("server", "tunnel")
+    ):
+        raise AutostartError("single-peer systemd preflight is not qualified")
+    try:
+        cron_plan = plan_single_role_cron_exclusion(
+            original_crontab=original_crontab,
+            executable=executable,
+            config_dir=config_dir,
+            components=components,
+            component=component,
+            port=port,
+        )
+    except CronAutostartError as exc:
+        raise AutostartError("single-peer cron rollback is not qualified") from exc
+
+    unit_name, unit_contents = render_inactive_cron_server_peer_unit(
+        config_dir=config_dir,
+        executable=executable,
+        component=component,
+        port=port,
+    )
+    if (
+        unit_name != f"runner-mcp-{component}.service"
+        or not unit_contents.startswith(MANAGED_MARKER + "\n")
+        or "Requires=" + SERVER_UNIT in unit_contents
+        or "[Install]" in unit_contents
+        or cron_plan.original_crontab == cron_plan.candidate_crontab
+        or cron_plan.component != component
+    ):
+        raise AutostartError("single-peer systemd candidate is not isolated")
+    # Enkel geheugenbytes: de unit mag zelfs uitgeschakeld NIET op de
+    # bestaande managed systemd-user locatie worden geplaatst. Een beheerd
+    # bestand daar kan de nog actieve cron-reconciler blokkeren.
+    return SinglePeerSystemdMigrationPreview(
+        component=component,
+        original_crontab=cron_plan.original_crontab,
+        candidate_crontab=cron_plan.candidate_crontab,
+        rollback_crontab_sha256=hashlib.sha256(
+            cron_plan.original_crontab.encode("utf-8")
+        ).hexdigest(),
+        inactive_unit_name=unit_name,
+        inactive_unit_contents=unit_contents,
+    )
+
+
+
 def _safe_unit_dir(unit_dir: Path) -> Path:
     expanded = unit_dir.expanduser()
     # Installing must not traverse a symlinked parent to another unit tree.

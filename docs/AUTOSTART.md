@@ -12,6 +12,12 @@ De reeds bestaande `plan_single_role_cron_exclusion` en `render_inactive_cron_se
 
 Ook een inactieve unit met de managed marker onder `~/.config/systemd/user` kan `has_managed_user_units()` laten omslaan en de nog actieve cron-reconciler verstoren. Daarom de gegenereerde unit uitsluitend in geheugen of geïsoleerd testbed beoordelen; **nooit** naar de originele managed unitmap schrijven of bestaande auto-install/reconcile gebruiken bij gedeeltelijke migratie. De exclusieve rol-voor-rol-switch, daadwerkelijke rollback en host-/reboot-/A7-acceptatie zijn nog niet geïmplementeerd of live bewezen. Zie [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) en de canonieke roadmap. Dit traject vormt geen extra blokkade voor de afzonderlijke automatische updates.
 
+## Eén-rol migratiepreview deelt de cron-vergrendeling (source 0.1.166)
+
+Voor de [systemd-migratie #866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) voert de pure, inactieve `render_inactive_cron_server_peer_unit` nu de **bestaande `autostart cron-run <role>`** uit in plaats van de directe `<role> run`-opdracht. Daardoor neemt zowel de oorspronkelijke cronworker als deze niet-geïnstalleerde systemd-kandidaat dezelfde per-rol-`flock`, erfbaar over `execv`. De gecombineerde `plan_single_peer_systemd_migration` weigert een kandidaat zonder deze gedeelde lockroute en blijft `cutover_authorized=False`. De gewone volledige systemd-installatie en originele crontab worden hiermee niet aangepast.
+
+**Geen live cutoverbewijs:** een bezette lock laat `cron-run` zonder dubbele uitvoering terugkeren; de statische service kan dan `inactive` zijn zonder automatische retry. Controleer vóór elke toekomstige fysieke switch de echte oude proces- en childgeneratie, cron-uitsluiting, dezelfde lock, de werkelijk uitgevoerde nieuwe functie en het exacte herstel. Ook een **inactief** managed-marker unitbestand in de bestaande `~/.config/systemd/user`-map kan cron-reconcile blokkeren: genereer uitsluitend in geheugen of op een disposable Linux testhost. Een echte rolgebonden switch en reboot-rollback zijn niet geïmplementeerd of op `github-runner` uitgevoerd; onafhankelijke automatische updates gaan voor en zijn niet gewijzigd.
+
 ## What gets installed
 
 The command:

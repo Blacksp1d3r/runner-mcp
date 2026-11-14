@@ -4,6 +4,7 @@ import hashlib
 import hmac
 import os
 import re
+import shlex
 import stat
 import subprocess
 from collections.abc import Callable
@@ -718,6 +719,73 @@ def plan_single_peer_systemd_migration(
     )
 
 
+def _exact_single_role_cron_delta(
+    preview: SinglePeerSystemdMigrationPreview,
+) -> bool:
+    """Controleer de ENIGE toegestane wijziging tussen beide cronbytes.
+
+    Dit controleert de afleiding opnieuw uit het volledige originele blok:
+    slechts één exact herkenbare, geselecteerde cron-run-regel mag verdwijnen.
+    Alle andere regels, zelfs buiten het beheerde blok, zijn byte-identiek.
+    De executable en config-directory van die regel moeten ook identiek zijn
+    aan de ExecStart van de eerder gegenereerde lockende systemd-nevenunit.
+    De validatie verricht geen host-I/O en is géén uitvoeringsbevoegdheid.
+    """
+    from .cron_autostart import CRON_BEGIN, CRON_COMPONENTS, CRON_END
+
+    original = preview.original_crontab
+    candidate = preview.candidate_crontab
+    if (
+        preview.component not in CRON_COMPONENTS
+        or preview.component in ("server", "tunnel")
+        or not original.endswith("\n")
+        or not candidate.endswith("\n")
+        or len(original) > 131072
+        or "\r" in original + candidate
+        or "\x00" in original + candidate
+    ):
+        return False
+    lines = original.splitlines(keepends=True)
+    begin, end = f"{CRON_BEGIN}\n", f"{CRON_END}\n"
+    if lines.count(begin) != 1 or lines.count(end) != 1:
+        return False
+    first, last = lines.index(begin), lines.index(end)
+    if first >= last:
+        return False
+    claims: list[tuple[int, list[str]]] = []
+    for index in range(first + 1, last):
+        line = lines[index]
+        if not line.startswith("* * * * * "):
+            continue
+        try:
+            tokens = shlex.split(line.rstrip("\n"))
+        except ValueError:
+            return False
+        if len(tokens) >= 11 and tokens[8:11] == [
+            "autostart", "cron-run", preview.component,
+        ]:
+            claims.append((index, tokens))
+    if len(claims) != 1:
+        return False
+    index, tokens = claims[0]
+    if (
+        len(tokens) != 13
+        or tokens[:5] != ["*"] * 5
+        or not tokens[5].startswith("/")
+        or tokens[6] != "--config-dir"
+        or not tokens[7].startswith("/")
+        or tokens[11:] != [">/dev/null", "2>&1"]
+        or candidate != "".join((*lines[:index], *lines[index + 1 :]))
+    ):
+        return False
+    expected_exec = (
+        f"ExecStart={_systemd_quote(tokens[5])} --config-dir "
+        f'{_systemd_quote(tokens[7])} "autostart" "cron-run" '
+        f'{_systemd_quote(preview.component)}\n'
+    )
+    return expected_exec in preview.inactive_unit_contents
+
+
 @dataclass(frozen=True, slots=True)
 class SinglePeerMigrationCheckpoint:
     """Alleen-lezen oordeel over één M3-fase, NOOIT activeringsbevoegdheid."""
@@ -777,6 +845,7 @@ def assess_single_peer_migration_checkpoint(
         or hashlib.sha256(preview.original_crontab.encode("utf-8")).hexdigest()
         != preview.rollback_crontab_sha256
         or preview.original_crontab == preview.candidate_crontab
+        or not _exact_single_role_cron_delta(preview)
     ):
         return wait("preview_untrusted_or_drifted")
 

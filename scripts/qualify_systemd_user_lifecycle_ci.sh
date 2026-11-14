@@ -587,6 +587,143 @@ done
 crontab -r
 test_crontab_owned=false
 [[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+# M3 brongekoppelde proef: beoordeel voor het eerst de ECHTE door de
+# Runner-MCP-renderers geproduceerde ZES cronregels (niet de eerdere inert
+# gelabelde fixtures), de bootbare unit én ALLE fase-checkpoints tegen de
+# werkelijke disposable crontab/systemd-manager. Ook bij mislukking ruimt de
+# bestaande EXIT-trap uitsluitend zelfgemaakte testassets op.
+# Dit is geen fysieke origineel-hostactuatie en geen echte Fabric-ACK.
+phase_script="$peer_work/phase-checkpoint-disposable.py"
+cat >"$phase_script" <<'PY_PHASE_CHECKPOINT'
+"""Exact source-bound M3 phase checks on this guarded disposable CI user."""
+from __future__ import annotations
+
+import subprocess
+import sys
+from pathlib import Path
+
+from runner_mcp import autostart
+from runner_mcp.cron_autostart import (
+    component_active,
+    read_crontab,
+    render_cron_block,
+)
+
+mode = sys.argv[1]
+scratch, executable, config, unit = map(Path, sys.argv[2:6])
+role = "github-watcher"
+roles = (
+    "server", "topology-heartbeat", "github-watcher",
+    "completion-watcher", "agent-bus-worker",
+    "fabric-agent-qualification",
+)
+autostart.configured_autostart_components = lambda _path: roles
+original_file = scratch / "source-original.cron"
+candidate_file = scratch / "source-candidate.cron"
+boot_file = scratch / "source-boot-unit.txt"
+if mode == "prepare":
+    original = "17 * * * * /usr/bin/true # test-foreign-job\n\n" + "\n".join(
+        render_cron_block(
+            executable=executable, config_dir=config,
+            components=roles, port=8000,
+        )
+    ) + "\n"
+    original_file.write_text(original, encoding="utf-8")
+else:
+    original = original_file.read_text(encoding="utf-8")
+preflight = autostart.AutostartMigrationPlan(
+    component=role, state="PLAN_ONLY",
+    reason_code="original_host_and_rollback_not_attested",
+    cron_installed=True, systemd_manager_reachable=True,
+    systemd_units_absent=True,
+)
+plan = autostart.plan_single_peer_systemd_migration(
+    preflight=preflight, original_crontab=original,
+    executable=executable, config_dir=config,
+    components=roles, component=role,
+)
+assert plan.cutover_authorized is False
+assert plan.inactive_unit_name == unit.name
+if mode == "prepare":
+    assert not unit.exists() and not unit.is_symlink()
+    candidate_file.write_text(plan.candidate_crontab, encoding="utf-8")
+    boot_file.write_text(plan.boot_unit_contents, encoding="utf-8")
+    assert plan.original_crontab.count("autostart cron-run") == 6
+    assert plan.candidate_crontab.count("autostart cron-run") == 5
+    raise SystemExit(0)
+
+assert plan.candidate_crontab == candidate_file.read_text(encoding="utf-8")
+assert plan.boot_unit_contents == boot_file.read_text(encoding="utf-8")
+observed_unit = unit.read_text(encoding="utf-8") if unit.is_file() else None
+if observed_unit is None:
+    enabled = active = False
+    pid = 0
+else:
+    def show(*args: str) -> str:
+        return subprocess.run(
+            ["systemctl", "--user", *args],
+            capture_output=True, text=True, timeout=10, check=False,
+        ).stdout.strip()
+    enabled = show("is-enabled", unit.name) == "enabled"
+    active = show("is-active", unit.name) == "active"
+    raw_pid = show("show", unit.name, "--property=MainPID", "--value")
+    assert raw_pid.isdecimal()
+    pid = int(raw_pid)
+lock_active = component_active(config, role)
+log = executable.parent / "starts.log"
+records = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+new_ack = False
+if mode == "new_worker_ack":
+    # Synthetic durable job receipt, NOT a real Fabric app ACK.
+    assert len(records) == 5 and pid == int(records[-1])
+    new_ack = True
+result = autostart.assess_single_peer_migration_checkpoint(
+    preview=plan, phase=mode, observed_crontab=read_crontab(),
+    observed_unit_contents=observed_unit,
+    unit_enabled=enabled, unit_active=active, main_pid=pid,
+    role_lock_active=lock_active, new_function_ack=new_ack,
+)
+assert result.consistent is True, result.reason_code
+assert result.next_action_authorized is False
+PY_PHASE_CHECKPOINT
+
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+"$peer_venv/bin/python" "$phase_script" prepare "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+crontab "$peer_work/source-original.cron"
+test_crontab_owned=true
+"$peer_venv/bin/python" "$phase_script" before_exclusion "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+crontab "$peer_work/source-candidate.cron"
+"$peer_venv/bin/python" "$phase_script" ready_to_stage "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+
+# Stage alleen exact de berekende testunit NA de brongecontroleerde
+# cronuitsluiting. De vijf overige echte test-cronregels blijven aanwezig.
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+install -m 0600 -- "$peer_work/source-boot-unit.txt" "$peer_target"
+systemctl --user daemon-reload
+"$peer_venv/bin/python" "$phase_script" staged_inactive "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+systemctl --user enable --now "$peer_unit"
+for _ in {1..80}; do
+  if [[ -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 5 ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
+"$peer_venv/bin/python" "$phase_script" new_worker_ack "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+
+systemctl --user disable --now "$peer_unit"
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+rm -- "$peer_target"
+systemctl --user daemon-reload
+"$peer_venv/bin/python" "$phase_script" rollback_ready "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+crontab "$peer_work/source-original.cron"
+"$peer_venv/bin/python" "$phase_script" rollback_confirmed "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-original.cron")" ]]
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
+crontab -r
+test_crontab_owned=false
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+echo "M2_DISPOSABLE_SOURCE_RENDERED_SIX_ROLE_PHASE_CHECKPOINT_ROUNDTRIP=PASS"
+
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_FAILED_EXEC_START_EXACT_CRON_ROLLBACK=PASS"

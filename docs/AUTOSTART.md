@@ -6,6 +6,12 @@ The preferred backend is a systemd user manager. When a host has no usable user 
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
+## Geïntegreerde zesrollen- en echte peerproef (source 0.1.169)
+
+De op [PR #990](https://github.com/Blacksp1d3r/runner-mcp/pull/990) gemergede bestaande disposable CI-test combineert nu in één echte Linux `systemd --user`/crontab-proef de zes onschuldige cron-fixturerollen met de **daadwerkelijk gegenereerde** statische `runner-mcp-github-watcher.service` en de werkelijk gedeelde `run_cron_component`-flock. Met oude lock bezet geeft `systemctl start` **geen nieuwe taak**. Pas na het exact uitsluiten van één cronrol, draineren van de oude worker en aantoonbaar vrijgeven van de lock start een nieuwe `MainPID`. De terugweg stopt deze nieuwe generatie, verwijdert het test-owned unitbestand en herlaadt de user-manager voordat de oorspronkelijke zes cronregels plus vreemde cronregel exact worden teruggezet. Marker: `M2_DISPOSABLE_SIX_ROLE_RENDERED_PEER_EXCLUSIVE_SWITCH_AND_ROLLBACK=PASS`.
+
+Dit is **uitsluitend** geïsoleerd testbewijs. De fysieke `github-runner` is niet omgeschakeld; M3 vereist juiste geïmporteerde wheel/source, owner UID, originele cron/proces/lock/children, functioneel resultaat+duurzame ACK, originele A7-/boot-/offline-herstelproef en externe monitorcompatibiliteit. Niet een managed unit zelfs disabled stagen op het origineel zolang cron reconcilet. De automatische updates worden door dit testwerk niet gewijzigd.
+
 ## Beperkte één-rol systemd-preview (v0.1.165, GEEN CLI of activering)
 
 De reeds bestaande `plan_single_role_cron_exclusion` en `render_inactive_cron_server_peer_unit` zijn nu samen in `plan_single_peer_systemd_migration` te gebruiken. De functie vereist een exact `AutostartMigrationPlan` met toestand `PLAN_ONLY`, behoudt de volledige oorspronkelijke crontab en SHA256 voor toekomstige rollback en berekent één statische nevenunit zonder `Requires=runner-mcp.service` of `[Install]`. Zij voert **geen** crontab-/systemd-/procesactie uit; haar resultaat `cutover_authorized=False` is onveranderlijk. Dit is een Python bron-API voor begrensde testvoorstellen, geen nieuw `autostart install` of live migratiecommando.

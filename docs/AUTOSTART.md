@@ -24,6 +24,12 @@ De reeds bestaande GitHub-hosted Linux-`scripts/qualify_systemd_user_lifecycle_c
 
 De aparte pure bronrenderer van v0.1.166 blijft de bestaande `autostart cron-run <role>` lock delen, zonder te installeren of activeren. Een originele fysieke rol-voor-rol overdracht, juiste actieve source/UID/PID, externe monitorconsumenten, echte functionele verwerking en A7/offline reboot-/ACK-herstel zijn nog niet gekwalificeerd; er is **geen** productie-cutoverbevoegdheid en de automatische updates blijven onafhankelijk. Zie [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866).
 
+## Werkelijke kandidaat-unit met bestaande lock getest (v0.1.168)
+
+De bestaande disposable GitHub-hosted Linux-test draait nu ook de **letterlijke systemd-unit uit `render_inactive_cron_server_peer_unit`**, niet alleen een algemene test-`sleep`-unit. Een tijdelijke, onschadelijke fake CLI roept de **werkelijke** `runner_mcp.cron_autostart.run_cron_component`-bron aan, neemt dezelfde private per-rol-`flock` en erft die via `execv` over. De proef bewijst dat de kandidaat bij een nog bezette cronlock geen tweede rol start, na gecontroleerd einde van de oude worker exact één nieuwe systemd-`MainPID` kan starten, en na stop de lock teruggeeft. De unit blijft static, met geen tweede server-`Requires` of `[Install]`; er zijn geen productiehostacties uitgevoerd. Jobmarker: `M2_DISPOSABLE_REAL_RENDERED_PEER_AND_SHARED_CRON_LOCK=PASS`.
+
+**Belangrijke grens:** een startpoging bij lockconflict kan `systemctl start` succesvol beantwoorden maar de unit `inactive` laten. De operator mag dit nooit als functionele rol-ACK beschouwen. De oorspronkelijke host, zes echte cronrollen, geladen executable en owner/UID, echte functie/nieuwe task ACK, A7 herstel en reboot-rollback blijven ongekwalificeerd. Uitsluitend source/read-only voorbereiding voor fysieke #866; niet de originele user-units plaatsen of cron omzetten, automatische updates onafhankelijk laten functioneren.
+
 ## What gets installed
 
 The command:

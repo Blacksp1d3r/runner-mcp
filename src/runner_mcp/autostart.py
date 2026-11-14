@@ -507,8 +507,11 @@ def render_inactive_cron_server_peer_unit(
     Dit is uitsluitend een niet-activerende bronrenderer voor #866. De gewone
     installatie blijft de volledige systemd-grafiek met Requires=server eisen.
     De kandidaat bevat bewust GEEN [Install]-sectie en kan dus niet als normale
-    automatisch ingeschakelde unit worden behandeld. De werkelijke server,
-    rolbron, cron-escrow en latere activatie/rollback blijven aparte bewijzen.
+    automatisch ingeschakelde unit worden behandeld. In tegenstelling tot de
+    gewone systemd-nevenunit voert deze kandidaat dezelfde 'autostart cron-run'
+    uit als cron: de bestaande per-rol-flock blijft na execv overgeërfd.
+    Bij lockbezetting eindigt de service zonder rolwerk of automatisch retry;
+    de fysieke rolstatus, managerwissel en latere rollback blijven apart bewijs.
     """
     # Beperk het model tot bekende nevenrollen. De server zelf en de primaire
     # tunnel behoren aan een afzonderlijke fysieke cutover-/transportpoort.
@@ -531,11 +534,29 @@ def render_inactive_cron_server_peer_unit(
     install_suffix = "\n[Install]\nWantedBy=default.target\n"
     if ordinary.count(original_dependency) != 1 or not ordinary.endswith(install_suffix):
         raise AutostartError("expected original systemd dependency graph is unavailable")
+    # Een gewone systemd-nevenunit omzeilt de flock van 'cron-run'. Gebruik
+    # voor de INACTIEVE migratiekandidaat alleen het oorspronkelijke, vaste
+    # argv-pad. Controleer eerst de volledige ExecStart-vorm; bij bronwijziging
+    # stoppen we in plaats van stilzwijgend onbeschermde rollen te starten.
+    direct_tail = f' {_systemd_quote(component)} {_systemd_quote("run")}\n'
+    exec_lines = [
+        line for line in ordinary.splitlines(keepends=True)
+        if line.startswith("ExecStart=")
+    ]
+    if len(exec_lines) != 1 or not exec_lines[0].endswith(direct_tail):
+        raise AutostartError("original peer launcher is not exact")
+    guarded_exec = (
+        exec_lines[0][:-len(direct_tail)]
+        + f' {_systemd_quote("autostart")} {_systemd_quote("cron-run")}'
+        + f' {_systemd_quote(component)}\n'
+    )
     candidate = ordinary.replace(
         original_dependency,
         "After=network-online.target\nWants=network-online.target\n",
         1,
-    ).removesuffix(install_suffix)
+    ).removesuffix(install_suffix).replace(exec_lines[0], guarded_exec, 1)
+    if candidate.count(guarded_exec) != 1:
+        raise AutostartError("shared cron lock launcher is unavailable")
     if (
         f"Requires={SERVER_UNIT}" in candidate
         or f"After=network-online.target {SERVER_UNIT}" in candidate
@@ -621,6 +642,16 @@ def plan_single_peer_systemd_migration(
         or not unit_contents.startswith(MANAGED_MARKER + "\n")
         or "Requires=" + SERVER_UNIT in unit_contents
         or "[Install]" in unit_contents
+        or len([line for line in unit_contents.splitlines()
+                if line.startswith("ExecStart=")]) != 1
+        or not any(
+            line.endswith(
+                f' {_systemd_quote("autostart")} {_systemd_quote("cron-run")}'
+                f' {_systemd_quote(component)}'
+            )
+            for line in unit_contents.splitlines()
+            if line.startswith("ExecStart=")
+        )
         or cron_plan.original_crontab == cron_plan.candidate_crontab
         or cron_plan.component != component
     ):

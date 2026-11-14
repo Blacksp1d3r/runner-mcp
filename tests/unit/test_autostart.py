@@ -219,7 +219,9 @@ def test_inactive_cron_server_peer_unit_never_starts_second_server(
     assert "After=network-online.target runner-mcp.service" not in candidate
     assert "[Install]" not in candidate
     assert "WantedBy=default.target" not in candidate
-    assert "ExecStart=" in candidate
+    assert ' "autostart" "cron-run" "github-watcher"' in candidate
+    assert ' "github-watcher" "run"' not in candidate
+    assert ' "github-watcher" "run"' in original[GITHUB_WATCHER_UNIT]
     assert f"Requires={SERVER_UNIT}" in original[GITHUB_WATCHER_UNIT]
     # Alleen de aangevraagde nevenunit, nooit een tweede serverunit teruggeven.
     assert name != SERVER_UNIT
@@ -1372,6 +1374,11 @@ def test_single_peer_systemd_preview_preserves_other_five_and_rollback(
     assert plan.inactive_unit_contents.startswith(MANAGED_MARKER + "\n")
     assert "Requires=runner-mcp.service" not in plan.inactive_unit_contents
     assert "[Install]" not in plan.inactive_unit_contents
+    assert (
+        f' "autostart" "cron-run" "{component}"'
+        in plan.inactive_unit_contents
+    )
+    assert f' "{component}" "run"' not in plan.inactive_unit_contents
     assert plan.cutover_authorized is False
     assert list(tmp_path.rglob("*.service")) == []
 
@@ -1380,7 +1387,7 @@ def test_single_peer_systemd_preview_preserves_other_five_and_rollback(
     "variant",
     ("wait", "wrong-role", "unknown-role", "server", "tunnel",
      "missing-cron", "foreign-duplicate", "wrong-exe", "unit-missing",
-     "manager-unavailable", "changed-port"),
+     "manager-unavailable", "changed-port", "unlocked-exec"),
 )
 def test_single_peer_systemd_preview_rejects_unsafe_scope(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, variant: str,
@@ -1459,6 +1466,71 @@ def test_single_peer_systemd_preview_rejects_unsafe_scope(
         )
     elif variant == "changed-port":
         kwargs["port"] = 8123
+    elif variant == "unlocked-exec":
+        original_renderer = autostart_module.render_inactive_cron_server_peer_unit
+
+        def unlocked_peer(**options):
+            name, contents = original_renderer(**options)
+            return name, contents.replace(
+                ' "autostart" "cron-run" "github-watcher"',
+                ' "github-watcher" "run"',
+            )
+
+        monkeypatch.setattr(
+            autostart_module, "render_inactive_cron_server_peer_unit",
+            unlocked_peer,
+        )
     with pytest.raises(AutostartError):
         plan_single_peer_systemd_migration(**kwargs)
     assert list(tmp_path.rglob("*.service")) == []
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux cross-exec flock proof")
+@pytest.mark.parametrize(
+    "component", ("github-watcher", "agent-bus-worker", "fabric-agent-qualification"),
+)
+def test_migration_peer_reuses_real_cron_lock_across_exec(
+    tmp_path: Path, component: str,
+) -> None:
+    """Bewijs echte flock-erfenis door execv zonder een rol te dupliceren.
+
+    Alleen een tijdelijke Linux subprocess met een onschuldige sleep; geen
+    systemd-installatie, echte cron, owner-config of andere externe dienst.
+    """
+    import time
+
+    from runner_mcp.cron_autostart import component_active, run_cron_component
+
+    private = tmp_path / "private"
+    private.mkdir(mode=0o700)
+    executable = tmp_path / "runner-mcp"
+    executable.write_text("#!/bin/sh\nexec sleep 8\n", encoding="utf-8")
+    executable.chmod(0o700)
+    child_code = (
+        "import sys; from pathlib import Path; "
+        "from runner_mcp.cron_autostart import run_cron_component; "
+        "run_cron_component(config_dir=Path(sys.argv[1]), "
+        "executable=Path(sys.argv[2]), component=sys.argv[3])"
+    )
+    child = subprocess.Popen(
+        [sys.executable, "-c", child_code, str(private), str(executable), component],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        deadline = time.monotonic() + 3
+        while not component_active(private, component) and time.monotonic() < deadline:
+            assert child.poll() is None, "locked worker exited early"
+            time.sleep(0.02)
+        assert component_active(private, component), "execv dropped the shared flock"
+        calls = []
+        assert run_cron_component(
+            config_dir=private, executable=executable, component=component,
+            exec_fn=lambda *_args: calls.append(True),
+        ) == 0
+        assert calls == [], "second launcher executed despite existing worker lock"
+        assert child.poll() is None
+    finally:
+        if child.poll() is None:
+            child.terminate()
+        child.wait(timeout=3)
+    assert component_active(private, component) is False

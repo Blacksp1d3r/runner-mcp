@@ -248,6 +248,12 @@ attestatie, de echte functieresultaat-ACK, actieve A7-herstelacceptatie en een
 bevoegde, voor exact één rol begrensde actuator nodig. De oorspronkelijke
 `github-runner` en vijf andere cronrollen blijven onaangeroerd.
 
+### Exact herstel uitvoeren op een weggegooide Linux-testhost (draft 0.1.175)
+
+De **enige** nieuwe uitvoerende herstelroute staat in het **bestaande** script `scripts/qualify_systemd_user_lifecycle_ci.sh`. Dat script weigert rechtstreeks gebruik buiten de GitHub-hosted, non-root wegwerp-runner. Het hergebruikt pinned bron-/cronbytes en de bestaande systemd/cronbeheerders; de productiefunctie `propose_single_peer_reconciliation` blijft read-only. Alleen de test-unit `runner-mcp-github-watcher.service` wordt uitgeschakeld en verwijderd, na een eigen geïnduceerde executiefout met bewezen `MainPID=0` en vrijgegeven flock. Het hele zesrollen- plus vreemde cronblok wordt daarna byte-identiek teruggezet. Gecontroleerde positieve markers: `M3_DISPOSABLE_BOUNDED_SINGLE_ROLE_EXECUTOR_EXACT_ROLLBACK=PASS` en `M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS`; gezonde unit of tussentijdse vreemde-cronwijziging geeft STOP zonder een wijziging.
+
+**Beperking:** deze testuitvoerder is nadrukkelijk niet uitvoerbaar verklaard voor de oorspronkelijke `github-runner`, vormt geen herbruikbare productiebevoegdheid en bewijst geen automatische crash-/rebootrollback op fysieke hosts. De algemene CLI blijft mixed-mode weigeren. Eerst de bestaande A7-bevoegde uitvoeringsroute en originele host-/workresultaatattestaties, zonder automatische updates te verstoren.
+
 ## Original-host cron to systemd-user migration (#866)
 
 This section documents the **migration boundary**, not an activation procedure. The original physical `github-runner` has six historically cron-supervised Runner MCP/Fabric roles. Blacky has a separate hourly F35 reviewer task and is **not** a substitute for Black or `github-runner`. Their existing schedulers must continue operating until the individual original-host gates in [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) are satisfied.

@@ -976,6 +976,22 @@ crontab "$peer_work/source-candidate.cron"
 [[ -f "$peer_target" && ! -L "$peer_target" ]]
 [[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
 "$peer_venv/bin/python" "$phase_script" peer_disabled_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Negatieve eigendomstest op het UITSLUITEND eigen disposable unitbestand:
+# een symlinkwissel tijdens de onderbreking mag niet worden gevolgd of verwijderd.
+mv -- "$peer_target" "$peer_work/pinned-disabled-unit.tmp"
+ln -s -- "$peer_work/pinned-disabled-unit.tmp" "$peer_target"
+if "$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: resumed recovery followed a swapped symlink" >&2
+  exit 1
+fi
+[[ -L "$peer_target" && -f "$peer_work/pinned-disabled-unit.tmp" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
+rm -- "$peer_target"
+mv -- "$peer_work/pinned-disabled-unit.tmp" "$peer_target"
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+cmp -s -- "$peer_work/source-boot-unit.txt" "$peer_target"
+"$peer_venv/bin/python" "$phase_script" peer_disabled_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 # Een vreemde cronwijziging TIJDENS de onderbreking verbiedt ook het hervatten.
 # Geen unlink of cronwrite bij de geweigerde nieuwe procesgeneratie.
 crontab "$peer_work/source-candidate-foreign-drift.cron"
@@ -1001,6 +1017,7 @@ echo "M3_DISPOSABLE_FAILED_PEER_RECOVERY_PROPOSAL_AND_EXACT_CRON_ROLLBACK=PASS"
 echo "M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS"
 echo "M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS"
 echo "M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS"
+echo "M3_DISPOSABLE_DISABLED_PEER_SYMLINK_DRIFT_DENIED=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

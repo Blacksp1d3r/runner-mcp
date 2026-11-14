@@ -1304,3 +1304,161 @@ def test_restart_managed_server_unit_rejects_untrusted_source(
     with pytest.raises(AutostartError):
         restart_managed_server_unit(unit_dir=root, runner=runner)
     assert runner.calls == []
+
+
+# Source-only compositie voor #866: één cronrol, één statische unit, oude cron als herstel.
+@pytest.mark.parametrize(
+    "component",
+    ("topology-heartbeat", "github-watcher", "completion-watcher",
+     "agent-bus-worker", "fabric-agent-qualification"),
+)
+def test_single_peer_systemd_preview_preserves_other_five_and_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, component: str,
+) -> None:
+    from runner_mcp.autostart import (
+        AutostartMigrationPlan,
+        SinglePeerSystemdMigrationPreview,
+        plan_single_peer_systemd_migration,
+    )
+    from runner_mcp.cron_autostart import render_cron_block
+
+    executable = tmp_path / "bin" / "runner-mcp"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config_dir = tmp_path / "private"
+    config_dir.mkdir()
+    roles = ("server", "topology-heartbeat", "github-watcher",
+             "completion-watcher", "agent-bus-worker",
+             "fabric-agent-qualification")
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components", lambda _p: roles,
+    )
+    preflight = AutostartMigrationPlan(
+        component=component, state="PLAN_ONLY",
+        reason_code="original_host_and_rollback_not_attested",
+        cron_installed=True, systemd_manager_reachable=True,
+        systemd_units_absent=True,
+    )
+    original = "17 * * * * /usr/bin/true # unrelated\n\n" + "\n".join(
+        render_cron_block(
+            executable=executable, config_dir=config_dir,
+            components=roles, port=8000,
+        )
+    ) + "\n"
+
+    def no_process(*_args, **_kwargs):
+        pytest.fail("source-only proposal must not invoke systemctl/crontab")
+    monkeypatch.setattr(subprocess, "run", no_process)
+
+    plan = plan_single_peer_systemd_migration(
+        preflight=preflight, original_crontab=original,
+        executable=executable, config_dir=config_dir,
+        components=roles, component=component,
+    )
+    assert type(plan) is SinglePeerSystemdMigrationPreview
+    assert plan.component == component
+    assert plan.original_crontab == original
+    assert plan.candidate_crontab.startswith("17 * * * * /usr/bin/true # unrelated\n\n")
+    assert "autostart cron-run " + component not in plan.candidate_crontab
+    assert sum(
+        plan.candidate_crontab.count("autostart cron-run " + role)
+        for role in roles
+    ) == len(roles) - 1
+    assert plan.rollback_crontab_sha256 == hashlib.sha256(
+        original.encode("utf-8")
+    ).hexdigest()
+    assert plan.inactive_unit_name == f"runner-mcp-{component}.service"
+    assert plan.inactive_unit_contents.startswith(MANAGED_MARKER + "\n")
+    assert "Requires=runner-mcp.service" not in plan.inactive_unit_contents
+    assert "[Install]" not in plan.inactive_unit_contents
+    assert plan.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    "variant",
+    ("wait", "wrong-role", "unknown-role", "server", "tunnel",
+     "missing-cron", "foreign-duplicate", "wrong-exe", "unit-missing",
+     "manager-unavailable", "changed-port"),
+)
+def test_single_peer_systemd_preview_rejects_unsafe_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, variant: str,
+) -> None:
+    from runner_mcp.autostart import (
+        AutostartError,
+        AutostartMigrationPlan,
+        plan_single_peer_systemd_migration,
+    )
+    from runner_mcp.cron_autostart import render_cron_block
+
+    executable = tmp_path / "bin" / "runner-mcp"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config_dir = tmp_path / "private"
+    config_dir.mkdir()
+    roles = ("server", "github-watcher", "completion-watcher")
+    selected = "github-watcher"
+    managed = "\n".join(render_cron_block(
+        executable=executable, config_dir=config_dir,
+        components=roles, port=8000,
+    )) + "\n"
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components", lambda _p: roles,
+    )
+    kwargs = {
+        "preflight": AutostartMigrationPlan(
+            component=selected, state="PLAN_ONLY",
+            reason_code="original_host_and_rollback_not_attested",
+            cron_installed=True, systemd_manager_reachable=True,
+            systemd_units_absent=True,
+        ),
+        "original_crontab": managed,
+        "executable": executable,
+        "config_dir": config_dir,
+        "components": roles,
+        "component": selected,
+        "port": 8000,
+    }
+    if variant in ("wait", "manager-unavailable"):
+        kwargs["preflight"] = AutostartMigrationPlan(
+            component=selected, state="WAIT",
+            reason_code="systemd_user_manager_unreachable",
+            cron_installed=True, systemd_manager_reachable=False,
+            systemd_units_absent=True,
+        )
+    elif variant == "wrong-role":
+        kwargs["preflight"] = AutostartMigrationPlan(
+            component="completion-watcher", state="PLAN_ONLY",
+            reason_code="original_host_and_rollback_not_attested",
+            cron_installed=True, systemd_manager_reachable=True,
+            systemd_units_absent=True,
+        )
+    elif variant == "unknown-role":
+        kwargs["component"] = "invented"
+    elif variant == "server":
+        kwargs["component"] = "server"
+    elif variant == "tunnel":
+        kwargs["component"] = "tunnel"
+    elif variant == "missing-cron":
+        kwargs["original_crontab"] = managed.replace(
+            next(line + "\n" for line in managed.splitlines()
+                 if "cron-run github-watcher" in line), "",
+        )
+    elif variant == "foreign-duplicate":
+        kwargs["original_crontab"] += (
+            "* * * * * runner-mcp autostart cron-run github-watcher\n"
+        )
+    elif variant == "wrong-exe":
+        kwargs["executable"] = tmp_path / "missing-runner-mcp"
+    elif variant == "unit-missing":
+        monkeypatch.setattr(
+            autostart_module, "configured_autostart_components",
+            lambda _p: ("server", "completion-watcher"),
+        )
+    elif variant == "changed-port":
+        kwargs["port"] = 8123
+    with pytest.raises(AutostartError):
+        plan_single_peer_systemd_migration(**kwargs)
+    assert list(tmp_path.rglob("*.service")) == []

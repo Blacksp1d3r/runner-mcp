@@ -598,6 +598,7 @@ cat >"$phase_script" <<'PY_PHASE_CHECKPOINT'
 """Exact source-bound M3 phase checks on this guarded disposable CI user."""
 from __future__ import annotations
 
+import hashlib
 import subprocess
 import sys
 from pathlib import Path
@@ -638,11 +639,28 @@ preflight = autostart.AutostartMigrationPlan(
     cron_installed=True, systemd_manager_reachable=True,
     systemd_units_absent=True,
 )
-plan = autostart.plan_single_peer_systemd_migration(
-    preflight=preflight, original_crontab=original,
-    executable=executable, config_dir=config,
-    components=roles, component=role,
-)
+if mode == "peer_failed_idle":
+    # De test-executable is met opzet stuk. Herstel mag nooit opnieuw
+    # afhankelijk zijn van het kunnen uitvoeren van die kapotte kandidaat.
+    # Gebruik uitsluitend de eerder door de bronrenderer vastgelegde
+    # rollback-, kandidaat- en unitbytes uit deze disposable testfixture.
+    pinned_boot = boot_file.read_text(encoding="utf-8")
+    suffix = "\n[Install]\nWantedBy=default.target\n"
+    assert pinned_boot.endswith(suffix)
+    plan = autostart.SinglePeerSystemdMigrationPreview(
+        component=role, original_crontab=original,
+        candidate_crontab=candidate_file.read_text(encoding="utf-8"),
+        rollback_crontab_sha256=hashlib.sha256(original.encode("utf-8")).hexdigest(),
+        inactive_unit_name=unit.name,
+        inactive_unit_contents=pinned_boot.removesuffix(suffix),
+        boot_unit_contents=pinned_boot,
+    )
+else:
+    plan = autostart.plan_single_peer_systemd_migration(
+        preflight=preflight, original_crontab=original,
+        executable=executable, config_dir=config,
+        components=roles, component=role,
+    )
 assert plan.cutover_authorized is False
 assert plan.inactive_unit_name == unit.name
 if mode == "prepare":

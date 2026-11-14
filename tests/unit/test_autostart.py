@@ -1410,12 +1410,171 @@ def test_single_peer_systemd_preview_preserves_other_five_and_rollback(
     assert "Requires=runner-mcp.service" not in plan.inactive_unit_contents
     assert "[Install]" not in plan.inactive_unit_contents
     assert (
+        plan.boot_unit_contents
+        == plan.inactive_unit_contents + "\n[Install]\nWantedBy=default.target\n"
+    )
+    assert (
         f' "autostart" "cron-run" "{component}"'
         in plan.inactive_unit_contents
     )
     assert f' "{component}" "run"' not in plan.inactive_unit_contents
     assert plan.cutover_authorized is False
     assert list(tmp_path.rglob("*.service")) == []
+
+
+
+def _single_peer_phase_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    """Zes onschuldige cronrollen plus vreemde regel; geen subprocess."""
+    from runner_mcp.autostart import (
+        AutostartMigrationPlan,
+        plan_single_peer_systemd_migration,
+    )
+    from runner_mcp.cron_autostart import render_cron_block
+
+    executable = tmp_path / "bin" / "runner-mcp"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config_dir = tmp_path / "private"
+    config_dir.mkdir()
+    roles = ("server", "topology-heartbeat", "github-watcher",
+             "completion-watcher", "agent-bus-worker",
+             "fabric-agent-qualification")
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components", lambda _p: roles,
+    )
+
+    def no_process(*_args, **_kwargs):
+        pytest.fail("M3 checkpoint must not call any external process")
+    monkeypatch.setattr(subprocess, "run", no_process)
+    original = "17 * * * * /usr/bin/true # unrelated\n\n" + "\n".join(
+        render_cron_block(
+            executable=executable, config_dir=config_dir,
+            components=roles, port=8000,
+        )
+    ) + "\n"
+    preflight = AutostartMigrationPlan(
+        component="github-watcher", state="PLAN_ONLY",
+        reason_code="original_host_and_rollback_not_attested",
+        cron_installed=True, systemd_manager_reachable=True,
+        systemd_units_absent=True,
+    )
+    preview = plan_single_peer_systemd_migration(
+        preflight=preflight, original_crontab=original,
+        executable=executable, config_dir=config_dir,
+        components=roles, component="github-watcher",
+    )
+    assert list(tmp_path.rglob("*.service")) == []
+    return preview
+
+
+@pytest.mark.parametrize(
+    ("phase", "cron_state", "unit_state", "enabled", "active",
+     "pid", "lock", "ack"),
+    (
+        ("before_exclusion", "original", None, False, False, 0, False, False),
+        ("ready_to_stage", "candidate", None, False, False, 0, False, False),
+        ("staged_inactive", "candidate", "boot", False, False, 0, False, False),
+        ("new_worker_ack", "candidate", "boot", True, True, 82731, True, True),
+        ("rollback_ready", "candidate", None, False, False, 0, False, False),
+        ("rollback_confirmed", "original", None, False, False, 0, False, False),
+    ),
+)
+def test_single_peer_checkpoint_is_pure_and_never_authorizes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    phase: str, cron_state: str, unit_state: str | None,
+    enabled: bool, active: bool, pid: int, lock: bool, ack: bool,
+) -> None:
+    from runner_mcp.autostart import assess_single_peer_migration_checkpoint
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    crontab = (
+        preview.original_crontab if cron_state == "original"
+        else preview.candidate_crontab
+    )
+    observed_unit = preview.boot_unit_contents if unit_state == "boot" else None
+    result = assess_single_peer_migration_checkpoint(
+        preview=preview, phase=phase, observed_crontab=crontab,
+        observed_unit_contents=observed_unit,
+        unit_enabled=enabled, unit_active=active, main_pid=pid,
+        role_lock_active=lock, new_function_ack=ack,
+    )
+    assert result.consistent is True
+    assert result.reason_code == "checkpoint_consistent_not_authorized"
+    assert result.next_action_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    ("changed", "replacement", "reason"),
+    (
+        ("observed_crontab", "foreign cron changed", "full_crontab_drift"),
+        ("observed_unit_contents", "tampered", "unit_source_drift"),
+        ("unit_enabled", False, "supervisor_state_drift"),
+        ("unit_active", False, "supervisor_state_drift"),
+        ("main_pid", 0, "worker_or_lock_drift"),
+        ("role_lock_active", False, "worker_or_lock_drift"),
+        ("new_function_ack", False, "functional_ack_unqualified"),
+        ("unit_enabled", "true", "observation_type_unqualified"),
+        ("main_pid", True, "observation_type_unqualified"),
+        ("phase", "unknown", "unknown_checkpoint_phase"),
+    ),
+)
+def test_single_peer_checkpoint_fails_closed_on_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    changed: str, replacement: object, reason: str,
+) -> None:
+    from runner_mcp.autostart import assess_single_peer_migration_checkpoint
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    values: dict[str, object] = {
+        "preview": preview,
+        "phase": "new_worker_ack",
+        "observed_crontab": preview.candidate_crontab,
+        "observed_unit_contents": preview.boot_unit_contents,
+        "unit_enabled": True,
+        "unit_active": True,
+        "main_pid": 82731,
+        "role_lock_active": True,
+        "new_function_ack": True,
+    }
+    if changed == "observed_crontab":
+        replacement = preview.candidate_crontab.replace(
+            "17 * * * * /usr/bin/true # unrelated",
+            "17 * * * * /usr/bin/true # changed-by-other-owner",
+        )
+    values[changed] = replacement
+    result = assess_single_peer_migration_checkpoint(**values)
+    assert result.consistent is False
+    assert result.reason_code == reason
+    assert result.next_action_authorized is False
+
+
+def test_single_peer_checkpoint_rejects_mutated_preview(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    from runner_mcp.autostart import assess_single_peer_migration_checkpoint
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    for candidate in (
+        replace(preview, boot_unit_contents=preview.boot_unit_contents + "x"),
+        replace(preview, rollback_crontab_sha256="0" * 64),
+        replace(preview, cutover_authorized=True),
+    ):
+        result = assess_single_peer_migration_checkpoint(
+            preview=candidate, phase="before_exclusion",
+            observed_crontab=preview.original_crontab,
+            observed_unit_contents=None,
+            unit_enabled=False, unit_active=False, main_pid=0,
+            role_lock_active=False, new_function_ack=False,
+        )
+        assert result.reason_code == "preview_untrusted_or_drifted"
+        assert result.consistent is False
+        assert result.next_action_authorized is False
 
 
 @pytest.mark.parametrize(

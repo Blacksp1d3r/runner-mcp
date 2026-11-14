@@ -611,6 +611,8 @@ class SinglePeerSystemdMigrationPreview:
     rollback_crontab_sha256: str
     inactive_unit_name: str
     inactive_unit_contents: str
+    # Exact dezelfde cron-flock-bron, met enkel de enablebare Install-haak.
+    boot_unit_contents: str = ""
     cutover_authorized: bool = False
 
 
@@ -671,8 +673,18 @@ def plan_single_peer_systemd_migration(
         component=component,
         port=port,
     )
+    # Bereken ook de reeds bewezen bootkandidaat; BEIDE blijven uitsluitend
+    # geheugenbytes, zodat een installatie niet bij het plannen ontstaat.
+    boot_name, boot_contents = render_boot_candidate_cron_peer_unit(
+        config_dir=config_dir,
+        executable=executable,
+        component=component,
+        port=port,
+    )
     if (
-        unit_name != f"runner-mcp-{component}.service"
+        boot_name != unit_name
+        or boot_contents != unit_contents + "\n[Install]\nWantedBy=default.target\n"
+        or unit_name != f"runner-mcp-{component}.service"
         or not unit_contents.startswith(MANAGED_MARKER + "\n")
         or "Requires=" + SERVER_UNIT in unit_contents
         or "[Install]" in unit_contents
@@ -702,8 +714,118 @@ def plan_single_peer_systemd_migration(
         ).hexdigest(),
         inactive_unit_name=unit_name,
         inactive_unit_contents=unit_contents,
+        boot_unit_contents=boot_contents,
     )
 
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerMigrationCheckpoint:
+    """Alleen-lezen oordeel over één M3-fase, NOOIT activeringsbevoegdheid."""
+
+    phase: str
+    consistent: bool
+    reason_code: str
+    next_action_authorized: bool = False
+
+
+def assess_single_peer_migration_checkpoint(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+) -> SinglePeerMigrationCheckpoint:
+    """Wijs een onjuiste stap vóór nieuwe cron-/systemd-mutaties af.
+
+    Het oordeel gebruikt uitsluitend door de aanroeper verkregen observaties.
+    Het voert GEEN crontab, systemctl, lock-/procesinspectie of bestandstoegang
+    uit. Een PASS is alleen interne consistentie, niet een originele host-,
+    wheel-/PID-, monitor-, ACK-custody- of A7-herstelattestatie. Een apart
+    bevoegd operatorproces moet elke fysieke fase opnieuw bewijzen.
+    """
+    def wait(reason: str) -> SinglePeerMigrationCheckpoint:
+        return SinglePeerMigrationCheckpoint(
+            phase=phase if type(phase) is str else "UNKNOWN",
+            consistent=False,
+            reason_code=reason,
+        )
+
+    # Bescherm tegen een willekeurig verzonnen preview, ongeldige types en
+    # unitbron die de verplichte cron-lock of Install-haak niet meer deelt.
+    if (
+        type(preview) is not SinglePeerSystemdMigrationPreview
+        or preview.cutover_authorized is not False
+        or type(preview.component) is not str
+        or preview.component in ("server", "tunnel")
+        or preview.inactive_unit_name != f"runner-mcp-{preview.component}.service"
+        or type(preview.original_crontab) is not str
+        or type(preview.candidate_crontab) is not str
+        or type(preview.inactive_unit_contents) is not str
+        or type(preview.boot_unit_contents) is not str
+        or preview.boot_unit_contents != (
+            preview.inactive_unit_contents + "\n[Install]\nWantedBy=default.target\n"
+        )
+        or not preview.inactive_unit_contents.startswith(MANAGED_MARKER + "\n")
+        or preview.inactive_unit_contents.count("ExecStart=") != 1
+        or f' "autostart" "cron-run" "{preview.component}"'
+        not in preview.inactive_unit_contents
+        or hashlib.sha256(preview.original_crontab.encode("utf-8")).hexdigest()
+        != preview.rollback_crontab_sha256
+        or preview.original_crontab == preview.candidate_crontab
+    ):
+        return wait("preview_untrusted_or_drifted")
+
+    if (
+        type(observed_crontab) is not str
+        or (observed_unit_contents is not None and type(observed_unit_contents) is not str)
+        or type(unit_enabled) is not bool
+        or type(unit_active) is not bool
+        or type(main_pid) is not int
+        or main_pid < 0
+        or type(role_lock_active) is not bool
+        or type(new_function_ack) is not bool
+    ):
+        return wait("observation_type_unqualified")
+
+    # Alle versies van de preflight én de terugweg moeten hetzelfde volledige
+    # crontabobject behouden: ook vreemde regels, spaties en lege regels.
+    phase_states = {
+        # phase: (cronvorm, unitvorm, enabled, active, positieve PID, lock, ACK)
+        "before_exclusion": ("original", "absent", False, False, False, False, False),
+        "ready_to_stage": ("candidate", "absent", False, False, False, False, False),
+        "staged_inactive": ("candidate", "boot", False, False, False, False, False),
+        "new_worker_ack": ("candidate", "boot", True, True, True, True, True),
+        "rollback_ready": ("candidate", "absent", False, False, False, False, False),
+        "rollback_confirmed": ("original", "absent", False, False, False, False, False),
+    }
+    if type(phase) is not str or phase not in phase_states:
+        return wait("unknown_checkpoint_phase")
+    cron_state, unit_state, enabled, active, has_pid, lock, ack = phase_states[phase]
+    expected_cron = (
+        preview.original_crontab if cron_state == "original"
+        else preview.candidate_crontab
+    )
+    if observed_crontab != expected_cron:
+        return wait("full_crontab_drift")
+    expected_unit = preview.boot_unit_contents if unit_state == "boot" else None
+    if observed_unit_contents != expected_unit:
+        return wait("unit_source_drift")
+    if unit_enabled != enabled or unit_active != active:
+        return wait("supervisor_state_drift")
+    if (main_pid > 0) != has_pid or role_lock_active != lock:
+        return wait("worker_or_lock_drift")
+    if new_function_ack != ack:
+        return wait("functional_ack_unqualified")
+    return SinglePeerMigrationCheckpoint(
+        phase=phase,
+        consistent=True,
+        reason_code="checkpoint_consistent_not_authorized",
+    )
 
 
 def _safe_unit_dir(unit_dir: Path) -> Path:

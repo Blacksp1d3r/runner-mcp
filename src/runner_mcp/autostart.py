@@ -869,6 +869,9 @@ def assess_single_peer_migration_checkpoint(
         "ready_to_stage": ("candidate", "absent", False, False, False, False, False),
         "staged_inactive": ("candidate", "boot", False, False, False, False, False),
         "new_worker_ack": ("candidate", "boot", True, True, True, True, True),
+        # Na een crash kan de unit enabled zijn zonder actieve PID, lock of ACK.
+        # Het faseoordeel laat nooit automatisch herstellen of activeren.
+        "peer_failed_idle": ("candidate", "boot", True, False, False, False, False),
         "rollback_ready": ("candidate", "absent", False, False, False, False, False),
         "rollback_confirmed": ("original", "absent", False, False, False, False, False),
     }
@@ -894,6 +897,227 @@ def assess_single_peer_migration_checkpoint(
         phase=phase,
         consistent=True,
         reason_code="checkpoint_consistent_not_authorized",
+    )
+
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerMixedBackendStatus:
+    """Alleen-lezen M3-eigenaarschap; nooit een installer-/reconcilevergunning.
+
+    Consistentie betekent uitsluitend dat de aangeleverde cron-/unitinventaris
+    strookt met een eerder vastgelegd éénrolsbronvoorstel en fasecheckpoint.
+    Het bewijst geen originele host, werkende taak, herstart of A7-herstel.
+    """
+
+    consistent: bool
+    reason_code: str
+    selected_systemd_role: str | None = None
+    remaining_cron_roles: tuple[str, ...] = ()
+    generic_reconcile_authorized: bool = False
+    cutover_authorized: bool = False
+
+
+def assess_single_peer_mixed_backend_status(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[object, ...],
+) -> SinglePeerMixedBackendStatus:
+    """Controleer één systemd-peer naast de overige exact beheerde cronrollen.
+
+    Hergebruik de bestaande volledige cron-/unitbron- en flockcheckpointcheck.
+    Controleer aanvullend alle vaste rolclaims, niet alleen de geselecteerde
+    rol. Deze functie leest geen host, crontab of filesystem en schrijft niets.
+    De algemene install/reconcile/remove-actuatoren blijven expliciet verboden
+    in mixed mode, ook na een intern consistent oordeel.
+    """
+    from .cron_autostart import (
+        CRON_BEGIN,
+        CRON_COMPONENTS,
+        CRON_END,
+        CronComponentStatus,
+    )
+
+    def wait(reason: str) -> SinglePeerMixedBackendStatus:
+        return SinglePeerMixedBackendStatus(consistent=False, reason_code=reason)
+
+    if phase not in (
+        "staged_inactive", "new_worker_ack", "peer_failed_idle",
+        "rollback_ready", "rollback_confirmed",
+    ):
+        return wait("mixed_phase_not_observed")
+    checkpoint = assess_single_peer_migration_checkpoint(
+        preview=preview,
+        phase=phase,
+        observed_crontab=observed_crontab,
+        observed_unit_contents=observed_unit_contents,
+        unit_enabled=unit_enabled,
+        unit_active=unit_active,
+        main_pid=main_pid,
+        role_lock_active=role_lock_active,
+        new_function_ack=new_function_ack,
+    )
+    if not checkpoint.consistent:
+        return wait(checkpoint.reason_code)
+
+    # Het originele volledige cronblok is de enige rol-authority in dit
+    # broncontract. Een los meegegeven rollenlijst zou vervalst kunnen zijn.
+    original = preview.original_crontab.splitlines()
+    if original.count(CRON_BEGIN) != 1 or original.count(CRON_END) != 1:
+        return wait("original_managed_block_unqualified")
+    first, last = original.index(CRON_BEGIN), original.index(CRON_END)
+    if first >= last:
+        return wait("original_managed_block_unqualified")
+    roles: list[str] = []
+    for line in original[first + 1:last]:
+        if not line.startswith("* * * * * "):
+            continue
+        try:
+            tokens = shlex.split(line)
+        except ValueError:
+            return wait("original_cron_role_unqualified")
+        if (
+            len(tokens) not in (13, 15)
+            or tokens[:5] != ["*"] * 5
+            or tokens[8:10] != ["autostart", "cron-run"]
+            or tokens[10] not in CRON_COMPONENTS
+            or tokens[-2:] != [">/dev/null", "2>&1"]
+        ):
+            return wait("original_cron_role_unqualified")
+        roles.append(tokens[10])
+    if (
+        len(roles) < 2
+        or len(roles) != len(set(roles))
+        or preview.component not in roles
+    ):
+        return wait("original_cron_roles_unqualified")
+
+    # Beide inventarissen zijn volledig: elke vaste rol moet exact één keer
+    # voorkomen. Extra units, dubbele rolclaims of een verdwenen cronpeer
+    # mogen niet worden verdoezeld door alleen positieve regels te filteren.
+    expected = set(CRON_COMPONENTS)
+    if type(cron_rows) is not tuple or type(systemd_rows) is not tuple:
+        return wait("backend_inventory_type_unqualified")
+    if (
+        len(cron_rows) != len(expected)
+        or len(systemd_rows) != len(expected)
+        or any(type(row) is not CronComponentStatus for row in cron_rows)
+        or any(type(row) is not AutostartStatus for row in systemd_rows)
+    ):
+        return wait("backend_inventory_unqualified")
+    cron_by_role = {row.component: row for row in cron_rows}
+    systemd_by_role = {row.component: row for row in systemd_rows}
+    if set(cron_by_role) != expected or set(systemd_by_role) != expected:
+        return wait("backend_role_claims_unqualified")
+
+    restored = phase == "rollback_confirmed"
+    peer_installed = phase in ("staged_inactive", "new_worker_ack", "peer_failed_idle")
+    remaining = tuple(role for role in roles if restored or role != preview.component)
+    for role in CRON_COMPONENTS:
+        cron = cron_by_role[role]
+        systemd = systemd_by_role[role]
+        cron_expected = role in remaining
+        systemd_expected = peer_installed and role == preview.component
+        if (
+            cron.installed is not cron_expected
+            or cron.enabled is not cron_expected
+            or (not cron_expected and cron.active is not False)
+            or systemd.installed is not systemd_expected
+            or (not systemd_expected and (systemd.enabled or systemd.active))
+        ):
+            return wait("mixed_supervisor_claims_conflict")
+        if systemd_expected and (
+            systemd.enabled is not unit_enabled
+            or systemd.active is not unit_active
+        ):
+            return wait("mixed_peer_state_drift")
+
+    return SinglePeerMixedBackendStatus(
+        consistent=True,
+        reason_code="mixed_source_consistent_not_authorized",
+        selected_systemd_role=preview.component if peer_installed else None,
+        remaining_cron_roles=remaining,
+    )
+
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerReconcileProposal:
+    """Inerte volgende stap voor één rol, met herstelanker en zonder bevoegdheid."""
+
+    phase: str
+    consistent: bool
+    reason_code: str
+    proposed_step: str
+    rollback_sha256: str | None = None
+    action_authorized: bool = False
+
+
+def propose_single_peer_reconciliation(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[object, ...],
+) -> SinglePeerReconcileProposal:
+    """Plan uitsluitend de volgende revalidatiestap zonder de host te wijzigen.
+
+    Dit is geen installer, recovery-actuator of toestemming voor de A7-owner.
+    Een externe geautoriseerde executor moet apart de echte crontabbytes,
+    unit, PID, lock en ACK op dezelfde host attesteren, vóór ELKE wijziging.
+    Herhaal na een stap de exacte fasecontrole en herleid het rollbackobject
+    opnieuw; de generieke all-role reconcile mag nooit worden gebruikt.
+    """
+    check = assess_single_peer_mixed_backend_status(
+        preview=preview,
+        phase=phase,
+        observed_crontab=observed_crontab,
+        observed_unit_contents=observed_unit_contents,
+        unit_enabled=unit_enabled,
+        unit_active=unit_active,
+        main_pid=main_pid,
+        role_lock_active=role_lock_active,
+        new_function_ack=new_function_ack,
+        cron_rows=cron_rows,
+        systemd_rows=systemd_rows,
+    )
+    if not check.consistent:
+        return SinglePeerReconcileProposal(
+            phase=phase if type(phase) is str else "UNKNOWN",
+            consistent=False,
+            reason_code=check.reason_code,
+            proposed_step="STOP_UNQUALIFIED",
+        )
+
+    next_steps = {
+        "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
+        "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
+        "peer_failed_idle": "DISABLE_FAILED_PEER_THEN_RECHECK",
+        "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
+        "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
+    }
+    return SinglePeerReconcileProposal(
+        phase=phase,
+        consistent=True,
+        reason_code="source_plan_only_no_host_authority",
+        proposed_step=next_steps[phase],
+        rollback_sha256=preview.rollback_crontab_sha256,
     )
 
 

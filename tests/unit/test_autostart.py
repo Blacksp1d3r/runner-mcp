@@ -1743,3 +1743,284 @@ def test_migration_peer_reuses_real_cron_lock_across_exec(
             child.terminate()
         child.wait(timeout=3)
     assert component_active(private, component) is False
+
+
+
+@pytest.mark.parametrize(
+    ("phase", "enabled", "active", "pid", "lock", "ack"),
+    [
+        ("staged_inactive", False, False, 0, False, False),
+        ("new_worker_ack", True, True, 45678, True, True),
+    ],
+)
+def test_m3_mixed_backend_status_never_enables_generic_reconcile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    phase: str, enabled: bool, active: bool, pid: int, lock: bool, ack: bool,
+) -> None:
+    """De echte bronpreview behoudt vijf cronrollen en één lockende systemd-peer."""
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    selected = preview.component
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    cron_rows = tuple(
+        CronComponentStatus(
+            role, role in managed and role != selected,
+            role in managed and role != selected, False,
+        ) for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(role, role == selected,
+                        enabled if role == selected else False,
+                        active if role == selected else False)
+        for role in CRON_COMPONENTS
+    )
+    outcome = assess_single_peer_mixed_backend_status(
+        preview=preview, phase=phase,
+        observed_crontab=preview.candidate_crontab,
+        observed_unit_contents=preview.boot_unit_contents,
+        unit_enabled=enabled, unit_active=active, main_pid=pid,
+        role_lock_active=lock, new_function_ack=ack,
+        cron_rows=cron_rows, systemd_rows=systemd_rows,
+    )
+    assert outcome.consistent is True
+    assert outcome.selected_systemd_role == selected
+    assert len(outcome.remaining_cron_roles) == 5
+    assert set(outcome.remaining_cron_roles) == managed - {selected}
+    assert outcome.generic_reconcile_authorized is False
+    assert outcome.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    "drift",
+    [
+        "selected_cron_still_installed", "other_cron_missing",
+        "extra_systemd_unit", "systemd_state_drift",
+        "duplicate_role", "foreign_cron_modified", "ack_missing",
+        "untrusted_list_type", "wrong_phase",
+    ],
+)
+def test_m3_mixed_backend_status_fails_closed_on_conflicting_roles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, drift: str,
+) -> None:
+    """Een tweede uitvoerder of onbekende toestand levert nooit een vrijgave."""
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    selected = preview.component
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    cron_rows = tuple(
+        CronComponentStatus(role, role in managed and role != selected,
+                            role in managed and role != selected, False)
+        for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(role, role == selected,
+                        role == selected, role == selected)
+        for role in CRON_COMPONENTS
+    )
+    values = {
+        "preview": preview, "phase": "new_worker_ack",
+        "observed_crontab": preview.candidate_crontab,
+        "observed_unit_contents": preview.boot_unit_contents,
+        "unit_enabled": True, "unit_active": True, "main_pid": 789,
+        "role_lock_active": True, "new_function_ack": True,
+        "cron_rows": cron_rows, "systemd_rows": systemd_rows,
+    }
+    if drift == "selected_cron_still_installed":
+        values["cron_rows"] = tuple(
+            replace(row, installed=True, enabled=True) if row.component == selected else row
+            for row in cron_rows
+        )
+    elif drift == "other_cron_missing":
+        values["cron_rows"] = tuple(
+            replace(row, installed=False, enabled=False)
+            if row.component == "agent-bus-worker" else row for row in cron_rows
+        )
+    elif drift == "extra_systemd_unit":
+        values["systemd_rows"] = tuple(
+            replace(row, installed=True, enabled=True, active=True)
+            if row.component == "agent-bus-worker" else row for row in systemd_rows
+        )
+    elif drift == "systemd_state_drift":
+        values["systemd_rows"] = tuple(
+            replace(row, active=False) if row.component == selected else row
+            for row in systemd_rows
+        )
+    elif drift == "duplicate_role":
+        values["cron_rows"] = cron_rows[:-1] + (cron_rows[0],)
+    elif drift == "foreign_cron_modified":
+        values["observed_crontab"] = preview.candidate_crontab.replace(
+            "17 * * * * /usr/bin/true # unrelated",
+            "17 * * * * /usr/bin/true # changed",
+        )
+    elif drift == "ack_missing":
+        values["new_function_ack"] = False
+    elif drift == "untrusted_list_type":
+        values["cron_rows"] = list(cron_rows)
+    elif drift == "wrong_phase":
+        values["phase"] = "before_exclusion"
+
+    outcome = assess_single_peer_mixed_backend_status(**values)
+    assert outcome.consistent is False
+    assert outcome.generic_reconcile_authorized is False
+    assert outcome.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+
+@pytest.mark.parametrize(
+    ("phase", "unit_installed", "unit_enabled", "unit_active",
+     "pid", "lock", "ack", "expected", "remaining"),
+    [
+        ("staged_inactive", True, False, False, 0, False, False,
+         "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK", 5),
+        ("new_worker_ack", True, True, True, 2468, True, True,
+         "KEEP_PEER_NO_GENERIC_RECONCILE", 5),
+        ("peer_failed_idle", True, True, False, 0, False, False,
+         "DISABLE_FAILED_PEER_THEN_RECHECK", 5),
+        ("rollback_ready", False, False, False, 0, False, False,
+         "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK", 5),
+        ("rollback_confirmed", False, False, False, 0, False, False,
+         "NO_ACTION_ALREADY_RESTORED", 6),
+    ],
+)
+def test_m3_reconcile_proposal_never_mutates_or_authorizes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    phase: str, unit_installed: bool, unit_enabled: bool, unit_active: bool,
+    pid: int, lock: bool, ack: bool, expected: str, remaining: int,
+) -> None:
+    """Beoordeel een volledige cyclus incl. inactieve failure en exact herstel."""
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        propose_single_peer_reconciliation,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    cron_claims = managed if phase == "rollback_confirmed" else managed - {preview.component}
+    cron_rows = tuple(
+        CronComponentStatus(role, role in cron_claims, role in cron_claims, False)
+        for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(
+            role, unit_installed and role == preview.component,
+            unit_enabled and role == preview.component,
+            unit_active and role == preview.component,
+        ) for role in CRON_COMPONENTS
+    )
+    outcome = propose_single_peer_reconciliation(
+        preview=preview, phase=phase,
+        observed_crontab=(
+            preview.original_crontab if phase == "rollback_confirmed"
+            else preview.candidate_crontab
+        ),
+        observed_unit_contents=preview.boot_unit_contents if unit_installed else None,
+        unit_enabled=unit_enabled, unit_active=unit_active,
+        main_pid=pid, role_lock_active=lock, new_function_ack=ack,
+        cron_rows=cron_rows, systemd_rows=systemd_rows,
+    )
+    assert outcome.consistent is True, outcome.reason_code
+    assert outcome.proposed_step == expected
+    assert outcome.rollback_sha256 == preview.rollback_crontab_sha256
+    assert outcome.action_authorized is False
+    assert len([row for row in cron_rows if row.installed]) == remaining
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize("drift", [
+    "role_overlap", "unit_missing", "peer_still_running", "failed_peer_has_ack",
+    "cron_modified", "second_unit", "wrong_snapshot_type",
+    "early_cron_restore", "wrong_failure_phase",
+])
+def test_m3_reconcile_proposal_rejects_partial_or_duplicate_restore(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, drift: str,
+) -> None:
+    """Bij bron-/PID-/ACK-/backenddrift moet de hele herstelstap STOP zijn."""
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        propose_single_peer_reconciliation,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    rows = tuple(
+        CronComponentStatus(role, role in managed and role != preview.component,
+                            role in managed and role != preview.component, False)
+        for role in CRON_COMPONENTS
+    )
+    units = tuple(
+        AutostartStatus(role, role == preview.component,
+                        role == preview.component, False)
+        for role in CRON_COMPONENTS
+    )
+    values = {
+        "preview": preview, "phase": "peer_failed_idle",
+        "observed_crontab": preview.candidate_crontab,
+        "observed_unit_contents": preview.boot_unit_contents,
+        "unit_enabled": True, "unit_active": False, "main_pid": 0,
+        "role_lock_active": False, "new_function_ack": False,
+        "cron_rows": rows, "systemd_rows": units,
+    }
+    if drift == "role_overlap":
+        values["cron_rows"] = tuple(
+            replace(row, installed=True, enabled=True)
+            if row.component == preview.component else row for row in rows
+        )
+    elif drift == "unit_missing":
+        values["observed_unit_contents"] = None
+    elif drift == "peer_still_running":
+        values["main_pid"] = 2001
+    elif drift == "failed_peer_has_ack":
+        values["new_function_ack"] = True
+    elif drift == "cron_modified":
+        values["observed_crontab"] += "17 * * * * /usr/bin/true # unexpected\n"
+    elif drift == "second_unit":
+        values["systemd_rows"] = tuple(
+            replace(row, installed=True, enabled=True, active=True)
+            if row.component == "agent-bus-worker" else row for row in units
+        )
+    elif drift == "wrong_snapshot_type":
+        values["cron_rows"] = list(rows)
+    elif drift == "early_cron_restore":
+        values["observed_crontab"] = preview.original_crontab
+    elif drift == "wrong_failure_phase":
+        values["phase"] = "new_worker_ack"
+
+    outcome = propose_single_peer_reconciliation(**values)
+    assert outcome.consistent is False
+    assert outcome.proposed_step == "STOP_UNQUALIFIED"
+    assert outcome.action_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []

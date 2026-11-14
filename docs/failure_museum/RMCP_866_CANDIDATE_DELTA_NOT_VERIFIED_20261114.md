@@ -60,3 +60,32 @@ hetzelfde betekent als 'absent'; observeer beide fasen afzonderlijk en
 herkwalificeer de terugweg. Valideer het héle beheerde cronblok, niet alleen
 de geselecteerde regel en interne gelijkheid van twee aangeleverde snapshots.
 Ook deze uitbreiding autoriseert geen A7/prod-migratie.
+
+## Aanvulling 2026-11-14 — tijdelijke symlink in testharnas: is-enabled-check te vroeg
+
+In de extra negatieve disposable test werd het **eigen** uitgeschakelde
+systemd-unitbestand tijdelijk vervangen door een symbolische link.
+De eerste scriptvariant controleerde `systemctl --user is-enabled` juist
+terwijl het unitpad opzettelijk was verwisseld. Dat is geen stabiele meting
+van het oorspronkelijke unitbestand; de CI stopte na
+`M3_DISPOSABLE_INTERRUPTED_AFTER_DISABLE_CHECKPOINT=PASS`, zonder
+duidelijke volgende fase. Geen productieactie; de EXIT-trap ruimde
+testassets op.
+
+De verwachte veiligheidsbeslissing blijft ongewijzigd: de herstelactuator
+moet de onbetrouwbare symlink afwijzen nog vóór unit-unlink of cronwrite.
+De correctie brengt de bronstatus- en `is-enabled=disabled`-controle
+uitsluitend **ná terugplaatsing van de eerder gepinde test-inode**, niet
+tijdens de bewust vervalste unitpadfase. Nieuwe exacte-head [PR-checkruns](https://github.com/Blacksp1d3r/runner-mcp/pull/1003/checks)
+is niet nodig als bron van waarheid; gebruik de PR-checkruns van de
+daadwerkelijke commit. Op code-head
+`cdd5df7427b8f49ba42a10fcb9b8a8d73d694bbb`:
+`M3_DISPOSABLE_DISABLED_PEER_SYMLINK_DRIFT_DENIED=PASS`,
+`M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS`,
+Ruff en 4.851 pytest PASS.
+
+**No-repeat:** bij bewuste sabotage van een unitpad nooit de managerstatus
+van die gesaboteerde naam behandelen als betrouwbaar bewijs van de
+oorspronkelijke unit. Verifieer eerst dat de bronidentiteit terug is,
+meet daarna opnieuw; de test-only actor blijft fail-closed. Geen
+aantoonbare originele-hostfout, geen automatische A7- of productiemigratie.

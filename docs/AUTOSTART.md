@@ -280,6 +280,25 @@ gevolgd door uitsluitend gekende per-rol-`cron-run`-regels. Een preview met
 een extra regel is nooit autorisatiebewijs, zelfs wanneer de kandidaat exact
 dezelfde vervalsing bevat. De gewone all-role beheerders blijven intact.
 
+### Laatste negatieve herstartproeven op disposable Linux
+
+Ook tijdens `peer_disabled_idle` kan een terugkerende testuitvoerder
+een gewijzigde vreemde cronregel of een gewijzigde unitpad-identiteit
+aantreffen. De bestaande GitHub-hosted test vervangt uitsluitend het eigen
+uitgeschakelde test-unitbestand tijdelijk door een symlink; de herstartende
+uitvoerder moet dan STOP geven **vóór** verwijderen of cronherstel. Pas na
+herstel van de originele inode en exact de kandidaat-cronbytes mag de
+tweede uitvoerder hervatten.
+
+Op [exacte broncommit cdd5df7](https://github.com/Blacksp1d3r/runner-mcp/commit/cdd5df7427b8f49ba42a10fcb9b8a8d73d694bbb)
+zijn `M3_DISPOSABLE_DISABLED_PEER_SYMLINK_DRIFT_DENIED=PASS`,
+`M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS`,
+`M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS`,
+Ruff en **4.851 Python-tests** geslaagd, op een wegwerp-Linux-host.
+De vijfminutendemo is een afzonderlijke check. Dit is geen bewijs voor
+atoomvaste bescherming tegen concurrente veranderingen op productie en
+geeft geen activeringsbevoegdheid.
+
 ## Original-host cron to systemd-user migration (#866)
 
 This section documents the **migration boundary**, not an activation procedure. The original physical `github-runner` has six historically cron-supervised Runner MCP/Fabric roles. Blacky has a separate hourly F35 reviewer task and is **not** a substitute for Black or `github-runner`. Their existing schedulers must continue operating until the individual original-host gates in [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) are satisfied.

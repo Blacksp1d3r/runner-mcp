@@ -980,10 +980,19 @@ def assess_single_peer_mixed_backend_status(
     first, last = original.index(CRON_BEGIN), original.index(CRON_END)
     if first >= last:
         return wait("original_managed_block_unqualified")
+    # Het renderercontract laat alleen MAILTO="" gevolgd door exacte
+    # cron-run-regels toe. Een extra PATH-/SHELL-/MAILTO-toewijzing of een
+    # verborgen tweede job in het beheerde blok mag niet worden genegeerd,
+    # zelfs niet wanneer bron en kandidaat dezelfde vervalsing bevatten.
+    body = original[first + 1:last]
+    if (
+        len(body) < 3
+        or body[0] != 'MAILTO=""'
+        or any(not line.startswith("* * * * * ") for line in body[1:])
+    ):
+        return wait("original_managed_block_unqualified")
     roles: list[str] = []
-    for line in original[first + 1:last]:
-        if not line.startswith("* * * * * "):
-            continue
+    for line in body[1:]:
         try:
             tokens = shlex.split(line)
         except ValueError:

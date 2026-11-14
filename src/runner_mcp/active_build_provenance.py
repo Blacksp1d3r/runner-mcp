@@ -17,8 +17,8 @@ import io
 import json
 import marshal
 import os
-import reprlib
 import re
+import reprlib
 import stat
 import sys
 import time
@@ -351,7 +351,7 @@ def _loaded_code_matches_installed_sources(
             compiled = compile(source, str(path), "exec", dont_inherit=True)
             expected: dict[str, CodeType] = {}
 
-            def collect(code: CodeType, *, depth: int = 0) -> bool:
+            def collect(code: CodeType, *, expected: dict[str, CodeType], depth: int = 0) -> bool:
                 if depth > 48:
                     return False
                 for nested in code.co_consts:
@@ -363,11 +363,11 @@ def _loaded_code_matches_installed_sources(
                     # direct symbol lookup below.
                     if nested.co_qualname not in expected:
                         expected[nested.co_qualname] = nested
-                    if not collect(nested, depth=depth + 1):
+                    if not collect(nested, expected=expected, depth=depth + 1):
                         return False
                 return True
 
-            if not collect(compiled):
+            if not collect(compiled, expected=expected):
                 return False
             seen: set[str] = set()
             for symbol, actual in _module_code_items(name, module):

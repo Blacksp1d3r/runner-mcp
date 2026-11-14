@@ -330,10 +330,10 @@ def test_existing_manager_default_retention_off_and_explicit_owner_optin(tmp_pat
     """Existing no-owner callers cannot unexpectedly acquire custody writes."""
     from runner_mcp.self_update import SelfUpdateError, SelfUpdateManager
 
-    kwargs = dict(
-        config_dir=tmp_path / "default", registry=None, safety=None,
-        tests=None, source=None, resource_url="http://127.0.0.1:8000/mcp",
-    )
+    kwargs = {
+        "config_dir": tmp_path / "default", "registry": None, "safety": None,
+        "tests": None, "source": None, "resource_url": "http://127.0.0.1:8000/mcp",
+    }
     manager = SelfUpdateManager(**kwargs)
     assert manager._retain_installed_provenance is False
     explicit = SelfUpdateManager(
@@ -352,8 +352,8 @@ def test_replayed_identical_custody_is_idempotent_but_foreign_commit_denied(inst
     root, installer, _python, package = installation
     wheel = _wheel(root, "0.1.175")
     _install(installer, wheel, job=JOB)
-    args = dict(job_id=JOB, target_commit=REV, baseline_commit=None,
-                baseline_wheel_sha256=None, installed_package=package)
+    args = {"job_id": JOB, "target_commit": REV, "baseline_commit": None,
+                "baseline_wheel_sha256": None, "installed_package": package}
     one = installer.retain_installed_wheel_provenance(**args)
     two = installer.retain_installed_wheel_provenance(**args)
     assert one == two

@@ -60,7 +60,8 @@ def fake_module(name: str, source_path: Path, content: bytes):
     obj = types.ModuleType(name)
     obj.__file__ = str(source_path)
     obj.__spec__ = importlib.machinery.ModuleSpec(name, loader=None, origin=str(source_path))
-    exec(compile(content, str(source_path), "exec"), obj.__dict__)
+    # Trusted fixed-source synthetic module execution tests in-memory tampering.
+    exec(compile(content, str(source_path), "exec"), obj.__dict__)  # noqa: S102
     return obj
 
 
@@ -92,14 +93,14 @@ def prepared(tmp_path: Path, monkeypatch):
     # Synthetic launch occurs AFTER fixture installation; never physical PID spoof.
     import runner_mcp.active_build_provenance as p
     monkeypatch.setattr(p, "_process_generation", lambda: (123, 10**30))
-    kwargs = dict(receipt=receipt, wheel=wheel, installed_package=package,
-                  loaded_version=VERSION, installed_version=VERSION,
-                  serving_epoch=EPOCH, modules=modules,
-                  independent_owner_verifier=lambda c: (
+    kwargs = {"receipt": receipt, "wheel": wheel, "installed_package": package,
+                  "loaded_version": VERSION, "installed_version": VERSION,
+                  "serving_epoch": EPOCH, "modules": modules,
+                  "independent_owner_verifier": lambda c: (
                       c.source_revision == REV and c.artifact_digest == wheel_sha
                       and c.serving_epoch == EPOCH and c.start_ticks == 123
                       and c.selected_loaded_code_sha256 is not None
-                  ))
+                  )}
     return kwargs
 
 
@@ -217,7 +218,7 @@ def test_missing_live_function_code_denied(prepared):
 def test_changed_live_function_code_owner_denied(prepared):
     from runner_mcp.serving_process_readonly import observe_current_process_modules
     before = observe_current_process_modules(imported_version=VERSION, installed_distribution_version=VERSION, modules=prepared["modules"])
-    exec('def active_response():\n    return "injected"\n', prepared["modules"]["runner_mcp.server"].__dict__)
+    exec('def active_response():\n    return "injected"\n', prepared["modules"]["runner_mcp.server"].__dict__)  # noqa: S102
     original = prepared["independent_owner_verifier"]
     prepared["independent_owner_verifier"] = lambda c: (
         original(c) and c.selected_loaded_code_sha256 == before["loadedCodeObjectDigest"]
@@ -262,7 +263,7 @@ def test_post_owner_installed_package_mutation_fails_closed(prepared):
 
 def test_modified_inmemory_function_without_file_change_is_rejected(prepared):
     # Even a lying owner cannot turn different live bytes into wheel bytes.
-    exec('def active_response():\n    return "old-memory"\n',
+    exec('def active_response():\n    return "old-memory"\n',  # noqa: S102
          prepared["modules"]["runner_mcp.server"].__dict__)
     prepared["independent_owner_verifier"] = lambda _c: True
     assert qualify_serving_build(**prepared) is None
@@ -296,7 +297,7 @@ def test_exception_from_owner_never_yields_verified_identity(prepared):
 
 def test_owner_mutates_inmemory_code_after_first_observation(prepared):
     def mutate(_challenge):
-        exec('def runtime_identity():\n    return "injected"\n',
+        exec('def runtime_identity():\n    return "injected"\n',  # noqa: S102
              prepared["modules"]["runner_mcp.build_identity"].__dict__)
         return True
     prepared["independent_owner_verifier"] = mutate
@@ -311,12 +312,13 @@ def test_owner_inputs_default_none_never_qualifies(prepared):
 
 
 def test_injected_existing_owner_inputs_return_current_loaded_wheel(prepared, monkeypatch):
-    from runner_mcp.active_build_provenance import (
-        ActiveBuildOwnerInputs, observe_owner_qualified_serving_build,
-    )
     # Wrapper normally observes real sys.modules; synthetically bind only
     # our isolated process fixture to avoid touching a physical server.
     import runner_mcp.active_build_provenance as p
+    from runner_mcp.active_build_provenance import (
+        ActiveBuildOwnerInputs,
+        observe_owner_qualified_serving_build,
+    )
     monkeypatch.setattr(p, "sys", types.SimpleNamespace(modules=prepared["modules"]))
     owner = ActiveBuildOwnerInputs(
         receipt=prepared["receipt"], wheel=prepared["wheel"],

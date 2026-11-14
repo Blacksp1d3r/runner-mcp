@@ -2100,8 +2100,8 @@ def test_m3_mixed_status_rejects_undocumented_managed_cron_lines(
 
     from runner_mcp.autostart import (
         AutostartStatus,
-        assess_single_peer_mixed_backend_status,
         assess_single_peer_migration_checkpoint,
+        assess_single_peer_mixed_backend_status,
     )
     from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
 

@@ -26,7 +26,24 @@ done
 systemctl --user show-environment >/dev/null
 mkdir -p "$unit_dir"
 test_crontab_owned=false
+peer_unit=""
+peer_target=""
+peer_old_pid=""
+peer_work=""
 cleanup() {
+  # Ook bij een afgebroken test uitsluitend de zelfgemaakte peer-unit,
+  # oude nep-cronworker en wegwerpbestanden opruimen.
+  if [[ -n "$peer_unit" ]]; then
+    systemctl --user stop "$peer_unit" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$peer_old_pid" ]]; then
+    kill "$peer_old_pid" >/dev/null 2>&1 || true
+    wait "$peer_old_pid" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$peer_target" ]]; then rm -f -- "$peer_target"; fi
+  if [[ -n "$peer_work" && "$peer_work" == "${RUNNER_TEMP:?}"/runner-mcp-866-peer.* ]]; then
+    rm -rf -- "$peer_work"
+  fi
   if [[ "$test_crontab_owned" == true ]]; then crontab -r >/dev/null 2>&1 || true; fi
   systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
   rm -f -- "$target"
@@ -206,6 +223,154 @@ printf '%s\n' "$original_six_cron" | crontab -
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
 crontab -r
 test_crontab_owned=false
+
+# M3 bronproef op dezelfde disposable host. Deze keer is de unit GEEN
+# algemene sleep-dienst: hij is exact met de echte Runner-MCP-bronrenderer
+# gegenereerd en gebruikt de bestaande cron_autostart.run_cron_component.
+# De tijdelijke neprol mag geen netwerk, credentials of productiecode draaien.
+peer_work="$(mktemp -d "${RUNNER_TEMP:?}/runner-mcp-866-peer.XXXXXX")"
+peer_private="$peer_work/private"
+peer_exe="$peer_work/fake-runner-mcp"
+peer_log="$peer_work/starts.log"
+peer_venv="$peer_work/venv"
+mkdir -m 0700 "$peer_private"
+python3 -m venv "$peer_venv"
+PIP_DISABLE_PIP_VERSION_CHECK=1 "$peer_venv/bin/python" -m pip install -q -e .
+
+# Een test-only binair met dezelfde vaste Runner-MCP argumenten; de lock,
+# fstat-controle, flock en execv zijn WEL de echte geïnstalleerde broncode.
+printf '#!%s\n' "$peer_venv/bin/python" > "$peer_exe"
+cat >> "$peer_exe" <<'FAKE_RUNNER_MCP'
+from __future__ import annotations
+import os
+import sys
+import time
+from pathlib import Path
+from runner_mcp.cron_autostart import run_cron_component
+
+if len(sys.argv) not in (5, 6) or sys.argv[1] != "--config-dir":
+    raise SystemExit(21)
+config = Path(sys.argv[2])
+args = sys.argv[3:]
+if args == ["autostart", "cron-run", "github-watcher"]:
+    run_cron_component(
+        config_dir=config,
+        executable=Path(__file__),
+        component="github-watcher",
+    )
+elif args == ["github-watcher", "run"]:
+    # Simulatie van een langlopende watcher, geen netwerk of mailbox.
+    os.umask(0o077)
+    with (Path(__file__).resolve().parent / "starts.log").open("a") as evidence:
+        evidence.write(f"{os.getpid()}\n")
+        evidence.flush()
+        os.fsync(evidence.fileno())
+    time.sleep(45)
+else:
+    raise SystemExit(22)
+FAKE_RUNNER_MCP
+chmod 0700 "$peer_exe"
+
+# Geen bestaande, mogelijk vreemde unit overnemen of verwijderen. De
+# dynamisch gegenereerde service blijft static en uitsluitend test-owned.
+candidate_target="$unit_dir/runner-mcp-github-watcher.service"
+if [[ -e "$candidate_target" || -L "$candidate_target" ]]; then
+  echo "STOP: disposable peer target already belongs to another owner" >&2
+  exit 1
+fi
+peer_unit="runner-mcp-github-watcher.service"
+peer_target="$candidate_target"
+"$peer_venv/bin/python" - "$peer_exe" "$peer_private" "$peer_target" <<'PY_GENERATE'
+from pathlib import Path
+import sys
+from runner_mcp import autostart
+
+executable, config, target = map(Path, sys.argv[1:])
+autostart.configured_autostart_components = lambda _path: (
+    "server", "github-watcher",
+)
+name, candidate = autostart.render_inactive_cron_server_peer_unit(
+    config_dir=config, executable=executable, component="github-watcher",
+)
+assert name == target.name
+assert '"autostart" "cron-run" "github-watcher"' in candidate
+assert "Requires=runner-mcp.service" not in candidate
+assert "[Install]" not in candidate
+assert candidate.count("ExecStart=") == 1
+target.write_text(candidate, encoding="utf-8")
+PY_GENERATE
+systemctl --user daemon-reload
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+
+# Oude cron-wrapper simuleren met dezelfde echte flock/execv-broncode.
+"$peer_exe" --config-dir "$peer_private" autostart cron-run github-watcher &
+peer_old_pid=$!
+for _ in {1..60}; do
+  [[ -f "$peer_log" ]] && break
+  kill -0 "$peer_old_pid"
+  sleep 0.1
+done
+[[ -f "$peer_log" ]]
+[[ "$(grep -c '^' "$peer_log")" == 1 ]]
+"$peer_venv/bin/python" - "$peer_private" <<'PY_LOCKED'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert component_active(Path(sys.argv[1]), "github-watcher")
+PY_LOCKED
+
+# De daadwerkelijke kandidaat kan met bezette oude lock GEEN tweede worker
+# aanmaken. Een status 'inactive' is GEEN geslaagde cutover.
+systemctl --user start "$peer_unit"
+for _ in {1..60}; do
+  [[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]] && break
+  sleep 0.1
+done
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ "$(grep -c '^' "$peer_log")" == 1 ]]
+kill -0 "$peer_old_pid"
+
+# Na bewezen einde van de oorspronkelijke process/lock-generatie mag de
+# exacte statische test-unit wel één nieuwe rol starten.
+systemctl --user stop "$peer_unit"
+kill "$peer_old_pid"
+wait "$peer_old_pid" >/dev/null 2>&1 || true
+peer_old_pid=""
+"$peer_venv/bin/python" - "$peer_private" <<'PY_UNLOCKED'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert not component_active(Path(sys.argv[1]), "github-watcher")
+PY_UNLOCKED
+systemctl --user start "$peer_unit"
+for _ in {1..60}; do
+  if [[ -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 2 ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+[[ "$(systemctl --user is-active "$peer_unit")" == "active" ]]
+peer_new_pid="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+[[ "$peer_new_pid" =~ ^[1-9][0-9]*$ ]]
+[[ "$peer_new_pid" == "$(tail -n 1 "$peer_log")" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+
+# Stop en controleer het werkelijk vrijgeven van de oude, hergebruikte lock;
+# laat de bestaande originele zes-cronregelsproef en output onaangeroerd.
+systemctl --user stop "$peer_unit"
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+"$peer_venv/bin/python" - "$peer_private" <<'PY_FINAL'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert not component_active(Path(sys.argv[1]), "github-watcher")
+PY_FINAL
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+echo "M2_DISPOSABLE_REAL_RENDERED_PEER_AND_SHARED_CRON_LOCK=PASS"
 echo "M2_DISPOSABLE_ONE_OF_SIX_CRON_TO_SYSTEMD_AND_FULL_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_CRON_TO_SYSTEMD_TO_CRON_ROUNDTRIP=PASS"
 echo "M2_DISPOSABLE_ACTUAL_SYSTEMD_RESTART_AND_UNIT_ROLLBACK=PASS"

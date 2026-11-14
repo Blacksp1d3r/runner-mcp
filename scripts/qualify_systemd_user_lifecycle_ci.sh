@@ -34,7 +34,7 @@ cleanup() {
   # Ook bij een afgebroken test uitsluitend de zelfgemaakte peer-unit,
   # oude nep-cronworker en wegwerpbestanden opruimen.
   if [[ -n "$peer_unit" ]]; then
-    systemctl --user stop "$peer_unit" >/dev/null 2>&1 || true
+    systemctl --user disable --now "$peer_unit" >/dev/null 2>&1 || true
   fi
   if [[ -n "$peer_old_pid" ]]; then
     kill "$peer_old_pid" >/dev/null 2>&1 || true
@@ -444,6 +444,99 @@ printf '%s\n' "$original_six_cron" | crontab -
 crontab -r
 test_crontab_owned=false
 [[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+# M3 opstartbestendigheid, ook met precies één overgezette rol:
+# de bronrenderer is DEZELFDE cron-geflockte eenrolsunit, nu alleen met de
+# enablebare installhaak. Op de disposable host wordt na exclusieve
+# cronuitsluiting één service gestart, de user-manager echt herstart, en
+# pas daarna de originele crontab exact hersteld. Geen fysieke hostreboot.
+"$peer_venv/bin/python" - "$peer_exe" "$peer_private" "$peer_target" <<'PY_BOOT'
+from pathlib import Path
+import sys
+from runner_mcp import autostart
+
+executable, config, target = map(Path, sys.argv[1:])
+autostart.configured_autostart_components = lambda _path: (
+    "server", "github-watcher",
+)
+static_name, static = autostart.render_inactive_cron_server_peer_unit(
+    config_dir=config, executable=executable, component="github-watcher",
+)
+boot_name, candidate = autostart.render_boot_candidate_cron_peer_unit(
+    config_dir=config, executable=executable, component="github-watcher",
+)
+assert boot_name == static_name == target.name
+assert candidate == static + "\n[Install]\nWantedBy=default.target\n"
+assert ' "autostart" "cron-run" "github-watcher"' in candidate
+assert "Requires=runner-mcp.service" not in candidate
+target.write_text(candidate, encoding="utf-8")
+PY_BOOT
+systemctl --user daemon-reload
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "disabled" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 5 ]]
+systemctl --user enable --now "$peer_unit"
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "enabled" ]]
+boot_link="$unit_dir/default.target.wants/$peer_unit"
+[[ -L "$boot_link" ]]
+[[ "$(readlink "$boot_link")" == "$peer_target" ]]
+for _ in {1..60}; do
+  if [[ -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 3 ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(grep -c '^' "$peer_log")" == 3 ]]
+[[ "$(systemctl --user is-active "$peer_unit")" == "active" ]]
+boot_pid_before="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+[[ "$boot_pid_before" == "$(tail -n 1 "$peer_log")" ]]
+manager_before="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+[[ "$manager_before" =~ ^[1-9][0-9]*$ ]]
+# De testhost herstart alleen haar EIGEN user-manager, nooit PID1 of de
+# originele github-runner. De enable-link moet opnieuw een werkende rol starten.
+sudo systemctl restart "user@${uid}.service"
+boot_recovered=false
+for _ in {1..30}; do
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    manager_after="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+    boot_pid_after="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+    if [[ "$manager_after" =~ ^[1-9][0-9]*$ && "$manager_after" != "$manager_before" && "$boot_pid_after" =~ ^[1-9][0-9]*$ && "$boot_pid_after" != "$boot_pid_before" && "$(systemctl --user is-active "$peer_unit")" == "active" && -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 4 ]]; then
+      boot_recovered=true
+      break
+    fi
+  fi
+  sleep 1
+done
+[[ "$boot_recovered" == true ]]
+[[ "$(tail -n 1 "$peer_log")" == "$boot_pid_after" ]]
+[[ -L "$boot_link" && "$(readlink "$boot_link")" == "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "enabled" ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+# In omgekeerde richting eerst de enable-link en actieve nieuwe rol
+# verwijderen; pas als de oude cronlock vrij is, de zes regels terugzetten.
+systemctl --user disable --now "$peer_unit"
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ "$(systemctl --user is-enabled "$peer_unit" 2>/dev/null || :)" != "enabled" ]]
+[[ ! -L "$boot_link" ]]
+"$peer_venv/bin/python" - "$peer_private" <<'PY_BOOT_UNLOCKED'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert not component_active(Path(sys.argv[1]), "github-watcher")
+PY_BOOT_UNLOCKED
+rm -- "$peer_target"
+systemctl --user daemon-reload
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(grep -c '^' "$peer_log")" == 4 ]]
+crontab -r
+test_crontab_owned=false
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_FAILED_EXEC_START_EXACT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_SIX_ROLE_RENDERED_PEER_EXCLUSIVE_SWITCH_AND_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_REAL_RENDERED_PEER_AND_SHARED_CRON_LOCK=PASS"

@@ -240,6 +240,41 @@ def test_inactive_cron_server_peer_denies_control_or_unconfigured_role(
         )
 
 
+def test_boot_candidate_is_only_the_locked_static_peer_plus_install_hook(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import (
+        render_boot_candidate_cron_peer_unit,
+        render_inactive_cron_server_peer_unit,
+    )
+
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components",
+        lambda _path: ("server", "github-watcher", "completion-watcher"),
+    )
+    static_name, static = render_inactive_cron_server_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    boot_name, boot = render_boot_candidate_cron_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    assert boot_name == static_name == GITHUB_WATCHER_UNIT
+    assert boot == static + "\n[Install]\nWantedBy=default.target\n"
+    assert "Requires=runner-mcp.service" not in boot
+    assert boot.count("ExecStart=") == 1
+    assert ' "autostart" "cron-run" "github-watcher"' in boot
+    assert "[Install]" not in static
+    assert list(tmp_path.rglob("*.service")) == []
+    with pytest.raises(AutostartError):
+        render_boot_candidate_cron_peer_unit(
+            config_dir=paths.config_dir, executable=executable,
+            component="server",
+        )
+
+
 @pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd parser qualification")
 def test_inactive_cron_server_peer_is_real_static_systemd_unit(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch,

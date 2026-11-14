@@ -599,6 +599,8 @@ cat >"$phase_script" <<'PY_PHASE_CHECKPOINT'
 from __future__ import annotations
 
 import hashlib
+import os
+import stat
 import subprocess
 import sys
 from pathlib import Path
@@ -639,7 +641,7 @@ preflight = autostart.AutostartMigrationPlan(
     cron_installed=True, systemd_manager_reachable=True,
     systemd_units_absent=True,
 )
-if mode == "peer_failed_idle":
+if mode in ("peer_failed_idle", "recover_failed_peer"):
     # De test-executable is met opzet stuk. Herstel mag nooit opnieuw
     # afhankelijk zijn van het kunnen uitvoeren van die kapotte kandidaat.
     # Gebruik uitsluitend de eerder door de bronrenderer vastgelegde
@@ -696,6 +698,117 @@ if mode == "new_worker_ack":
     # Synthetic durable job receipt, NOT a real Fabric app ACK.
     assert len(records) == 5 and pid == int(records[-1])
     new_ack = True
+# Echte, begrensde herstelacties blijven test-only binnen de bestaande
+# GitHub-hosted disposable CI-gate. Geen nieuw productiemechanisme/CLI.
+if mode == "recover_failed_peer":
+    root = os.environ.get("RUNNER_TEMP")
+    expected_unit = Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service"
+    if (
+        os.environ.get("GITHUB_ACTIONS") != "true"
+        or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+        or os.geteuid() == 0
+        or not root
+        or not scratch.resolve().is_relative_to(Path(root).resolve())
+        or unit != expected_unit
+        or unit.parent.is_symlink()
+        or unit.is_symlink()
+        or not unit.is_file()
+    ):
+        raise RuntimeError("STOP: original-host or unit identity not disposable")
+    identity = unit.stat()
+    if (
+        identity.st_uid != os.getuid()
+        or not stat.S_ISREG(identity.st_mode)
+        or stat.S_IMODE(identity.st_mode) != 0o600
+        or identity.st_nlink != 1
+    ):
+        raise RuntimeError("STOP: unit inode or owner is not qualified")
+    assert unit.read_text(encoding="utf-8") == plan.boot_unit_contents
+    assert read_crontab() == plan.candidate_crontab
+    assert enabled and not active and pid == 0 and not lock_active
+    assert len(records) == 5
+    before = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="peer_failed_idle",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=observed_unit,
+        unit_enabled=enabled, unit_active=active, main_pid=pid,
+        role_lock_active=lock_active, new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not before.consistent
+        or before.proposed_step != "DISABLE_FAILED_PEER_THEN_RECHECK"
+        or before.action_authorized
+    ):
+        raise RuntimeError("STOP: mixed-mode failure checkpoint unqualified")
+
+    def required_command(*argv: str, input_text: str | None = None) -> None:
+        completed = subprocess.run(
+            list(argv), input=input_text, text=True,
+            capture_output=True, timeout=30, check=False,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError("STOP: disposable recovery command failed")
+
+    # Testuitvoerder handelt alléén na expliciete test-only identiteit,
+    # geverifieerde volle cronbytes en afwezige PID/lock/ACK. De planner
+    # blijft in het echte product NIET-geautoriseerd.
+    required_command("systemctl", "--user", "disable", "--now", unit.name)
+    assert show("is-enabled", unit.name) == "disabled"
+    assert show("is-active", unit.name) != "active"
+    assert show("show", unit.name, "--property=MainPID", "--value") == "0"
+    assert read_crontab() == plan.candidate_crontab
+    assert not component_active(config, role)
+    assert unit.read_text(encoding="utf-8") == plan.boot_unit_contents
+    assert unit.stat().st_ino == identity.st_ino
+    unit.unlink()
+    required_command("systemctl", "--user", "daemon-reload")
+    assert not unit.exists() and not unit.is_symlink()
+    assert read_crontab() == plan.candidate_crontab
+    assert show("is-active", unit.name) != "active"
+    assert not component_active(config, role)
+    ready = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_ready",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None, unit_enabled=False,
+        unit_active=False, main_pid=0, role_lock_active=False,
+        new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not ready.consistent
+        or ready.proposed_step != "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK"
+        or ready.action_authorized
+    ):
+        raise RuntimeError("STOP: one-role cron restore is unqualified")
+    required_command("crontab", "-", input_text=plan.original_crontab)
+    assert read_crontab() == plan.original_crontab
+    assert not component_active(config, role)
+    complete = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_confirmed",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None, unit_enabled=False,
+        unit_active=False, main_pid=0, role_lock_active=False,
+        new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    assert complete.consistent and complete.proposed_step == "NO_ACTION_ALREADY_RESTORED"
+    assert not complete.action_authorized
+    assert plan.original_crontab.count("autostart cron-run") == 6
+    assert read_crontab().count("17 * * * * /usr/bin/true # test-foreign-job") == 1
+    assert len(records) == 5
+    print("M3_DISPOSABLE_BOUNDED_SINGLE_ROLE_EXECUTOR_EXACT_ROLLBACK=PASS")
+    raise SystemExit(0)
+
 result = autostart.assess_single_peer_migration_checkpoint(
     preview=plan, phase=mode, observed_crontab=read_crontab(),
     observed_unit_contents=observed_unit,
@@ -766,6 +879,15 @@ for _ in {1..80}; do
 done
 [[ "$(grep -c '^' "$peer_log")" == 5 ]]
 "$peer_venv/bin/python" "$phase_script" new_worker_ack "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Een gezonde peer mag NOOIT door de test-herstelactuator worden gestopt.
+if "$peer_venv/bin/python" "$phase_script" recover_failed_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: healthy peer was incorrectly eligible for rollback" >&2
+  exit 1
+fi
+[[ "$(systemctl --user is-active "$peer_unit")" == "active" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
 
 # Foutinjectie ALLEEN op eigen disposable nep-worker: het reeds gemeten
 # MainPID is precies de laatste geregistreerde teststart. Na exec-failure
@@ -790,14 +912,10 @@ done
 [[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
 [[ "$(grep -c '^' "$peer_log")" == 5 ]]
 "$peer_venv/bin/python" "$phase_script" peer_failed_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
-
-systemctl --user disable --now "$peer_unit"
+# Hergebruik exact één bron- en hostgekwalificeerde, TEST-ONLY herstelactuator.
+# Daarin wordt na elke stap live opnieuw geverifieerd. Geen generieke CLI.
+"$peer_venv/bin/python" "$phase_script" recover_failed_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 chmod 0700 -- "$peer_exe"
-[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
-rm -- "$peer_target"
-systemctl --user daemon-reload
-"$peer_venv/bin/python" "$phase_script" rollback_ready "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
-crontab "$peer_work/source-original.cron"
 "$peer_venv/bin/python" "$phase_script" rollback_confirmed "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 [[ "$(crontab -l)" == "$(cat "$peer_work/source-original.cron")" ]]
 [[ "$(grep -c '^' "$peer_log")" == 5 ]]

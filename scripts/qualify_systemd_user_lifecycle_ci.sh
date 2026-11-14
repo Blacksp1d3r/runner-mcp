@@ -641,7 +641,10 @@ preflight = autostart.AutostartMigrationPlan(
     cron_installed=True, systemd_manager_reachable=True,
     systemd_units_absent=True,
 )
-if mode in ("peer_failed_idle", "recover_failed_peer"):
+if mode in (
+    "peer_failed_idle", "peer_disabled_idle", "recover_failed_peer",
+    "recover_failed_peer_pause", "recover_disabled_peer",
+):
     # De test-executable is met opzet stuk. Herstel mag nooit opnieuw
     # afhankelijk zijn van het kunnen uitvoeren van die kapotte kandidaat.
     # Gebruik uitsluitend de eerder door de bronrenderer vastgelegde
@@ -700,7 +703,15 @@ if mode == "new_worker_ack":
     new_ack = True
 # Echte, begrensde herstelacties blijven test-only binnen de bestaande
 # GitHub-hosted disposable CI-gate. Geen nieuw productiemechanisme/CLI.
-if mode == "recover_failed_peer":
+if mode in ("recover_failed_peer", "recover_failed_peer_pause", "recover_disabled_peer"):
+    # Ook na een onverwachte onderbreking na disable blijft deze route
+    # test-only en bindt zij opnieuw het vastgepinde unit-/cron-/hostbewijs.
+    resuming_after_disable = mode == "recover_disabled_peer"
+    observed_phase = "peer_disabled_idle" if resuming_after_disable else "peer_failed_idle"
+    expected_step = (
+        "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK" if resuming_after_disable
+        else "DISABLE_FAILED_PEER_THEN_RECHECK"
+    )
     root = os.environ.get("RUNNER_TEMP")
     expected_unit = Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service"
     if (
@@ -727,12 +738,12 @@ if mode == "recover_failed_peer":
         raise RuntimeError("STOP: installed unit source mismatch")
     if read_crontab() != plan.candidate_crontab:
         raise RuntimeError("STOP: foreign or managed cron drift")
-    if not enabled or active or pid != 0 or lock_active:
-        raise RuntimeError("STOP: selected worker is not quiescent and enabled")
+    if enabled == resuming_after_disable or active or pid != 0 or lock_active:
+        raise RuntimeError("STOP: selected worker state is not the pinned recovery phase")
     if len(records) != 5:
         raise RuntimeError("STOP: synthetic work receipt count drift")
     before = autostart.propose_single_peer_reconciliation(
-        preview=plan, phase="peer_failed_idle",
+        preview=plan, phase=observed_phase,
         observed_crontab=read_crontab(),
         observed_unit_contents=observed_unit,
         unit_enabled=enabled, unit_active=active, main_pid=pid,
@@ -744,7 +755,7 @@ if mode == "recover_failed_peer":
     )
     if (
         not before.consistent
-        or before.proposed_step != "DISABLE_FAILED_PEER_THEN_RECHECK"
+        or before.proposed_step != expected_step
         or before.action_authorized
     ):
         raise RuntimeError("STOP: mixed-mode failure checkpoint unqualified")
@@ -760,7 +771,8 @@ if mode == "recover_failed_peer":
     # Testuitvoerder handelt alléén na expliciete test-only identiteit,
     # geverifieerde volle cronbytes en afwezige PID/lock/ACK. De planner
     # blijft in het echte product NIET-geautoriseerd.
-    required_command("systemctl", "--user", "disable", "--now", unit.name)
+    if not resuming_after_disable:
+        required_command("systemctl", "--user", "disable", "--now", unit.name)
     if show("is-enabled", unit.name) != "disabled":
         raise RuntimeError("STOP: selected unit remained enabled")
     if show("is-active", unit.name) == "active":
@@ -775,6 +787,11 @@ if mode == "recover_failed_peer":
         raise RuntimeError("STOP: installed unit source mismatch")
     if unit.stat().st_ino != identity.st_ino:
         raise RuntimeError("STOP: unit inode changed before unlink")
+    if mode == "recover_failed_peer_pause":
+        # Simuleer procesverlies precies na de geïsoleerde disable: unit en
+        # vijfrollen-cron blijven bestaan. Herstart in aparte Python-aanroep.
+        print("M3_DISPOSABLE_INTERRUPTED_AFTER_DISABLE_CHECKPOINT=PASS")
+        raise SystemExit(0)
     unit.unlink()
     required_command("systemctl", "--user", "daemon-reload")
     if unit.exists() or unit.is_symlink():
@@ -843,7 +860,7 @@ assert result.next_action_authorized is False
 # Dezelfde ECHTE disposable crontab- en systemd-status zijn invoer van het
 # nieuwe rolgebonden herstelvoorstel. De functie mag niets uitvoeren.
 if mode in ("staged_inactive", "new_worker_ack", "peer_failed_idle",
-            "rollback_ready", "rollback_confirmed"):
+            "peer_disabled_idle", "rollback_ready", "rollback_confirmed"):
     cron_rows = tuple(cron_status(
         config_dir=config, components=roles, executable=executable,
     ))
@@ -859,6 +876,7 @@ if mode in ("staged_inactive", "new_worker_ack", "peer_failed_idle",
         "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
         "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
         "peer_failed_idle": "DISABLE_FAILED_PEER_THEN_RECHECK",
+        "peer_disabled_idle": "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK",
         "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
         "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
     }[mode]
@@ -949,9 +967,16 @@ fi
 [[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
 crontab "$peer_work/source-candidate.cron"
 "$peer_venv/bin/python" "$phase_script" peer_failed_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
-# Hergebruik exact één bron- en hostgekwalificeerde, TEST-ONLY herstelactuator.
-# Daarin wordt na elke stap live opnieuw geverifieerd. Geen generieke CLI.
-"$peer_venv/bin/python" "$phase_script" recover_failed_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Simuleer een abrupte onderbreking na succesvolle disable, maar vóór het
+# verwijderen van de unit. Start een volledig NIEUW herstelproces met
+# opnieuw ingelezen crontab, unitbytes, PID, lock en user-managerstatus.
+"$peer_venv/bin/python" "$phase_script" recover_failed_peer_pause "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+"$peer_venv/bin/python" "$phase_script" peer_disabled_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+"$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 chmod 0700 -- "$peer_exe"
 "$peer_venv/bin/python" "$phase_script" rollback_confirmed "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 [[ "$(crontab -l)" == "$(cat "$peer_work/source-original.cron")" ]]
@@ -963,6 +988,7 @@ echo "M2_DISPOSABLE_SOURCE_RENDERED_SIX_ROLE_PHASE_CHECKPOINT_ROUNDTRIP=PASS"
 echo "M3_DISPOSABLE_ROLE_RECONCILE_PROPOSALS_SOURCE_READBACK=PASS"
 echo "M3_DISPOSABLE_FAILED_PEER_RECOVERY_PROPOSAL_AND_EXACT_CRON_ROLLBACK=PASS"
 echo "M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS"
+echo "M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

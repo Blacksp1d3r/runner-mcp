@@ -986,11 +986,13 @@ if "$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$
 fi
 [[ -L "$peer_target" && -f "$peer_work/pinned-disabled-unit.tmp" ]]
 [[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
-[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
+# Tijdens opzettelijke symlinkvervanging is systemctl is-enabled geen
+# stabiele bron voor de oorspronkelijke unit; toets pas na exact herstel.
 rm -- "$peer_target"
 mv -- "$peer_work/pinned-disabled-unit.tmp" "$peer_target"
 [[ -f "$peer_target" && ! -L "$peer_target" ]]
 cmp -s -- "$peer_work/source-boot-unit.txt" "$peer_target"
+[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
 "$peer_venv/bin/python" "$phase_script" peer_disabled_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 # Een vreemde cronwijziging TIJDENS de onderbreking verbiedt ook het hervatten.
 # Geen unlink of cronwrite bij de geweigerde nieuwe procesgeneratie.

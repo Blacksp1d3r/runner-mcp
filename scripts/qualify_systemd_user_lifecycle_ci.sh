@@ -513,9 +513,34 @@ done
 [[ -L "$boot_link" && "$(readlink "$boot_link")" == "$peer_target" ]]
 [[ "$(systemctl --user is-enabled "$peer_unit")" == "enabled" ]]
 [[ "$(crontab -l)" == "$candidate_five_cron" ]]
+
+# M3 NEGATIEF: na de BEWEZEN managerherstart gaat juist de enabled
+# testrol stuk. Maak uitsluitend de tijdelijke nep-CLI onuitvoerbaar en
+# dood enkel de exact uit systemd afgeleide test-MainPID. De echte unit
+# probeert dan de bestaande Restart=on-failure-route, maar mag nooit
+# een tweede taakrecord produceren of cron ongemerkt veranderen.
+chmod 000 "$peer_exe"
+kill -KILL "$boot_pid_after"
+boot_restart_failed=false
+for _ in {1..120}; do
+  if [[ "$(systemctl --user show "$peer_unit" --property=Result --value)" == "exit-code" && "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]; then
+    boot_restart_failed=true
+    break
+  fi
+  sleep 0.1
+done
+[[ "$boot_restart_failed" == true ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(grep -c '^' "$peer_log")" == 4 ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ -L "$boot_link" && "$(readlink "$boot_link")" == "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "enabled" ]]
+
 # In omgekeerde richting eerst de enable-link en actieve nieuwe rol
 # verwijderen; pas als de oude cronlock vrij is, de zes regels terugzetten.
 systemctl --user disable --now "$peer_unit"
+# Ook bij een voortdurend mislukte auto-restart mag geen unit herstarten.
+chmod 0700 "$peer_exe"
 [[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
 [[ "$(systemctl --user is-enabled "$peer_unit" 2>/dev/null || :)" != "enabled" ]]
 [[ ! -L "$boot_link" ]]
@@ -533,9 +558,36 @@ printf '%s\n' "$original_six_cron" | crontab -
 [[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
 [[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
 [[ "$(grep -c '^' "$peer_log")" == 4 ]]
+
+# Rollback moet ook EEN TWEEDE user-manager-herstart overleven. Na stop,
+# disable, lockvrijgave, delete en exact cronherstel is een later start-
+# signaal van de oude enabled-unit verboden. Alleen op de disposable host.
+rollback_manager_before="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+[[ "$rollback_manager_before" =~ ^[1-9][0-9]*$ ]]
+sudo systemctl restart "user@${uid}.service"
+rollback_manager_recovered=false
+for _ in {1..30}; do
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    rollback_manager_after="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+    if [[ "$rollback_manager_after" =~ ^[1-9][0-9]*$ && "$rollback_manager_after" != "$rollback_manager_before" ]]; then
+      rollback_manager_recovered=true
+      break
+    fi
+  fi
+  sleep 1
+done
+[[ "$rollback_manager_recovered" == true ]]
+[[ ! -e "$peer_target" && ! -L "$peer_target" && ! -L "$boot_link" ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit" 2>/dev/null || :)" != "enabled" ]]
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(grep -c '^' "$peer_log")" == 4 ]]
 crontab -r
 test_crontab_owned=false
 [[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_FAILED_EXEC_START_EXACT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_SIX_ROLE_RENDERED_PEER_EXCLUSIVE_SWITCH_AND_ROLLBACK=PASS"

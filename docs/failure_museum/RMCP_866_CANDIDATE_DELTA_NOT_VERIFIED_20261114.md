@@ -24,3 +24,39 @@ De officiële exact-head CI van PR #1000: [validation 43586169404](https://githu
 Tijdens draft [PR #1003](https://github.com/Blacksp1d3r/runner-mcp/pull/1003) faalde de eerste **alleen GitHub-hosted disposable** negatieve proef doordat het testharnas na `chmod 000` van de eigen nep-executable opnieuw `plan_single_peer_systemd_migration` aanriep. De bestaande veilige `_validate_executable` weigerde terecht: `AutostartError: Runner MCP executable is unavailable`. Geen productie-incident, geen A7-actie.
 
 **Correctie/no-repeat:** leg volledige originele crontab, byte-exacte kandidaat, bron-gerenderde unit en SHA256 vast **vóór** foutinjectie. Na de fout mag het herstelharnas nooit de kapotte uitvoerder opnieuw als bruikbare bron interpreteren; herleid het read-only fasestadium uit de vooraf vastgelegde testbron en verifieer actuele cron, unit, PID, flock en ACK apart. Een aparte, slechts in de bestaande disposable GitHub Actions-runner toegelaten `recover_failed_peer`-testroute voert exact éénrollen-disable, unitverwijdering en cronherstel met fase-readback uit. Een nog gezonde worker en zelfs een aangepaste vreemde cronregel leiden vóór wijziging tot STOP. Exact source commit `4d10d538a92a8327b4f9b1409e822e258487f4cf`, marker `M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS`. **Geen** productie-uitvoerder of nieuwe bevoegdheid en originele automatische updates bleven buiten scope.
+
+## Aanvulling 2026-11-14 — onderbreking na disable en vervalste cronblokregels
+
+Bij de voorbereiding van een éénrolsherstel was de toestand 'unit bestaat,
+maar is na succesvolle disable niet meer enabled en nog niet verwijderd'
+niet als afzonderlijk herstelcheckpoint vastgelegd. Een herstartte executor
+zou daardoor mogelijk een anders geobserveerde fase aantreffen en veilig
+STOP moeten geven, maar niet kunnen aantonen wat de volgende stap is.
+
+**Fix op draft PR #1003:** `peer_disabled_idle` is nu een expliciete alleen-lezen
+fase, met ongewijzigde bron-/cron-/unit-/PID-/lock-/ACK-controles. De test-only
+GitHub-hosted actor onderbreekt de werkelijke proef na `disable --now`,
+start een nieuw proces en kwalificeert exact de resterende bronstatus vóór
+unitverwijdering en byte-identiek cronherstel. CI-markers van de eerdere
+integraaltest: `M3_DISPOSABLE_INTERRUPTED_AFTER_DISABLE_CHECKPOINT=PASS` en
+`M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS`.
+Een extra negatieve CI-proef weigert gewijzigde vreemde cronregels na
+onderbreking, zonder een tweede supervisor of gevaarlijke systeemwijziging.
+
+Een onafhankelijke broncontrole vond eveneens dat de eerdere
+mixed-backend-parser regels zonder `* * * * *`-prefix binnen het managed
+cronblok oversloeg. Een verzonnen `PATH`-/`SHELL`-regel kon zo binnen een
+intern gelijklopende bron/candidate-snapshot verborgen blijven. Dat is
+een **broncontractfout**, geen waargenomen exploit of wijziging op de
+oorspronkelijke server. De parser vereist daarom exact de door de renderer
+toegekende `MAILTO=""`-regel gevolgd door herkenbare per-rol-jobregels.
+Regressies met extra PATH/SHELL, andere cronuitvoering en commentaar
+moeten voortaan STOP opleveren; deze negatieve tests zijn op de draft
+toegevoegd. Laatste head-CI apart verifiëren voordat het bewijs 'voltooid'
+mag worden genoemd.
+
+**No-repeat:** nooit herstellen vanaf de veronderstelling dat 'disabled'
+hetzelfde betekent als 'absent'; observeer beide fasen afzonderlijk en
+herkwalificeer de terugweg. Valideer het héle beheerde cronblok, niet alleen
+de geselecteerde regel en interne gelijkheid van twee aangeleverde snapshots.
+Ook deze uitbreiding autoriseert geen A7/prod-migratie.

@@ -225,10 +225,11 @@ fout-/hersteltests zijn de afzonderlijke volgende M3-implementatiestap.
 
 De nieuwe `propose_single_peer_reconciliation` combineert de bestaande
 `assess_single_peer_migration_checkpoint` met de volledige cron-/unitrolstatus.
-Er zijn vijf herkenbare toestanden: `staged_inactive` (inactieve peer verwijderen
+Er zijn zes herkenbare toestanden: `staged_inactive` (inactieve peer verwijderen
 vóór herstel), `new_worker_ack` (gezonde peer ongemoeid laten),
 `peer_failed_idle` (wel enabled, geen worker-PID/lock/ACK: uitschakelen en
-opnieuw meten), `rollback_ready` (unit afwezig; exact oorspronkelijke
+opnieuw meten), `peer_disabled_idle` (unit bestaat disabled en zonder worker:
+alleen die unit verwijderen en opnieuw meten), `rollback_ready` (unit afwezig; exact oorspronkelijke
 cronbytes terugzetten ná afzonderlijke bevoegdheid) en `rollback_confirmed`
 (het originele cronblok is exact terug). Een bron-, status-, dubbele-roldrifts
 of mislukte ACK geeft `STOP_UNQUALIFIED`. Zelfs een volledige bron-PASS levert
@@ -253,6 +254,31 @@ bevoegde, voor exact één rol begrensde actuator nodig. De oorspronkelijke
 De **enige** nieuwe uitvoerende herstelroute staat in het **bestaande** script `scripts/qualify_systemd_user_lifecycle_ci.sh`. Dat script weigert rechtstreeks gebruik buiten de GitHub-hosted, non-root wegwerp-runner. Het hergebruikt pinned bron-/cronbytes en de bestaande systemd/cronbeheerders; de productiefunctie `propose_single_peer_reconciliation` blijft read-only. Alleen de test-unit `runner-mcp-github-watcher.service` wordt uitgeschakeld en verwijderd, na een eigen geïnduceerde executiefout met bewezen `MainPID=0` en vrijgegeven flock. Het hele zesrollen- plus vreemde cronblok wordt daarna byte-identiek teruggezet. Gecontroleerde positieve markers: `M3_DISPOSABLE_BOUNDED_SINGLE_ROLE_EXECUTOR_EXACT_ROLLBACK=PASS` en `M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS`; gezonde unit of tussentijdse vreemde-cronwijziging geeft STOP zonder een wijziging.
 
 **Beperking:** deze testuitvoerder is nadrukkelijk niet uitvoerbaar verklaard voor de oorspronkelijke `github-runner`, vormt geen herbruikbare productiebevoegdheid en bewijst geen automatische crash-/rebootrollback op fysieke hosts. De algemene CLI blijft mixed-mode weigeren. Eerst de bestaande A7-bevoegde uitvoeringsroute en originele host-/workresultaatattestaties, zonder automatische updates te verstoren.
+
+### Hervatten na onderbroken disable (draft 0.1.175)
+
+De extra **puur interpreterende** fase `peer_disabled_idle` modelleert een precies
+onderbroken herstel: de cronrol blijft uitgesloten, het eigen bron-gerenderde
+systemd-unitbestand bestaat nog, maar is disabled én inactive; MainPID, lock
+en nieuwe functionele ACK zijn afwezig. De volgende voorgestelde stap is
+`REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK`. De read-only planner blijft altijd
+`action_authorized=False`. Geen productieresume, geen automatische herstart
+en geen eigenaarswissel.
+
+De bestaande GitHub-hosted wegwerpproef voert een werkelijke onderbreking na
+`disable --now` na, stopt het eerste Python-testproces en verifieert in een
+tweede proces opnieuw de volledige cronbytes, bron-unit, eigenaarschap/inode,
+PID en lock. Bij een wijziging van een vreemde cronregel tijdens deze
+onderbreking wordt het hervatten afgewezen **vóór unitverwijdering**. Alleen de
+onveranderde testfixture mag verdergaan tot exact zesrollen-cronherstel.
+Deze route is niet beschikbaar als productie-CLI.
+
+Het mixed-backend broncontract weigert ook alle extra `PATH`, `SHELL`,
+ongekende `MAILTO`, commentaar- en jobregels **binnen het managed cronblok**.
+Het normale rendererformaat vereist exact één `MAILTO=""` als eerste regel,
+gevolgd door uitsluitend gekende per-rol-`cron-run`-regels. Een preview met
+een extra regel is nooit autorisatiebewijs, zelfs wanneer de kandidaat exact
+dezelfde vervalsing bevat. De gewone all-role beheerders blijven intact.
 
 ## Original-host cron to systemd-user migration (#866)
 

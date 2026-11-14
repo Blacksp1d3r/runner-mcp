@@ -27,6 +27,11 @@ from . import __version__ as _loaded_package_version
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .artifact_custody import ContentAddressedArtifactCustody
+from .active_build_provenance import (
+    ActiveBuildOwnerInputs,
+    QualifiedActiveBuild,
+    observe_owner_qualified_serving_build,
+)
 from .audit import AuditEvent, AuditLogger, utc_timestamp
 from .bewind_disposable_bootstrap import (
     BewindDisposableBootstrapError,
@@ -481,11 +486,13 @@ def build_mcp(
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
+    active_build_provenance_provider: Callable[[], QualifiedActiveBuild | None] | None = None,
+    serving_epoch: ServingInstanceEpoch | None = None,
     tunnel_expected: bool = False,
     tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
-    serving_epoch = ServingInstanceEpoch()
+    serving_epoch = serving_epoch if serving_epoch is not None else ServingInstanceEpoch()
     mcp = MCPServer(
         "Runner MCP",
         token_verifier=StaticBearerVerifier(settings.bearer_token, settings.resource_url),
@@ -916,6 +923,32 @@ def build_mcp(
                 "selected_loaded_code_wheel_verified": False,
             }
         )
+        # #669: reuse the independently qualified owner binding and the SAME
+        # serving epoch as build_identity. A random build identity provider,
+        # manager state, last self-update commit or version equality is not
+        # sufficient for this verified bit. Absent owner keeps historical DENY.
+        qualified = None
+        if active_build_provenance_provider is not None:
+            try:
+                qualified = active_build_provenance_provider()
+            except (OSError, RuntimeError, TypeError, ValueError, KeyError):
+                qualified = None
+        if (
+            type(qualified) is QualifiedActiveBuild
+            and measured
+            and local.get("loadedCodeObjectDigest") == qualified.selected_loaded_code_sha256
+            and qualified.serving_epoch == serving_epoch.value()
+            and qualified.build_version == _loaded_package_version == package
+        ):
+            safe.update({
+                "active_build_provenance_verified": True,
+                "active_artifact_revision": qualified.source_revision,
+                "active_artifact_digest": qualified.artifact_digest,
+                "loaded_module_wheel_identity_verified": True,
+                "selected_loaded_code_wheel_verified": True,
+                "serving_instance_epoch_authenticated": True,
+                "reply_source_host_verified": True,
+            })
         return safe
 
     @mcp.tool()
@@ -4184,6 +4217,7 @@ def create_app(
     server_bind_port: int | None = None,
     tunnel_expected: bool = False,
     tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
+    active_build_owner: ActiveBuildOwnerInputs | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
@@ -4193,14 +4227,41 @@ def create_app(
     identity: BuildIdentity | None = None
     # Historical self-update state is NOT an active wheel/source attestation.
     source_revision = installed_source_revision(settings.projects_config.parent)
+    # One shared epoch, bound to the actually serving MCP instance. The owner
+    # must be installed through the existing trusted application construction,
+    # never inferred from environment, historical state or caller-supplied SHA.
+    serving_epoch = ServingInstanceEpoch()
+
+    def qualified_active_build() -> QualifiedActiveBuild | None:
+        if identity is None:
+            return None
+        try:
+            installed = version("aifordable-runner-mcp")
+        except PackageNotFoundError:
+            return None
+        return observe_owner_qualified_serving_build(
+            active_build_owner, loaded_version=package_version,
+            installed_version=installed, serving_epoch=serving_epoch.value(),
+        )
 
     def current_build_identity() -> BuildIdentity:
-        if identity is None:
-            return runner_mcp_mcp_build_identity(
-                package_version,
-                source_revision=source_revision,
-            )
-        return identity
+        basic = identity if identity is not None else runner_mcp_mcp_build_identity(
+            package_version, source_revision=source_revision,
+        )
+        qualified = qualified_active_build()
+        if qualified is None:
+            return basic
+        # Preserve existing MCP protocol/interface fields verbatim; only a
+        # completely qualified CURRENT serving build receives these two IDs.
+        return BuildIdentity(
+            component_id=basic.component_id,
+            build_version=basic.build_version,
+            source_revision=qualified.source_revision,
+            artifact_digest=qualified.artifact_digest,
+            protocol_min=basic.protocol_min,
+            protocol_max=basic.protocol_max,
+            interface_schema_digest=basic.interface_schema_digest,
+        )
 
     audit = AuditLogger(
         settings.audit_log,
@@ -4236,6 +4297,8 @@ def create_app(
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
         build_identity_provider=current_build_identity,
+        active_build_provenance_provider=qualified_active_build,
+        serving_epoch=serving_epoch,
         tunnel_expected=tunnel_expected,
         tunnel_readiness_provider=tunnel_readiness_provider,
     )

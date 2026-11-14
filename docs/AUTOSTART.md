@@ -6,6 +6,12 @@ The preferred backend is a systemd user manager. When a host has no usable user 
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
+## Beperkte één-rol systemd-preview (v0.1.165, GEEN CLI of activering)
+
+De reeds bestaande `plan_single_role_cron_exclusion` en `render_inactive_cron_server_peer_unit` zijn nu samen in `plan_single_peer_systemd_migration` te gebruiken. De functie vereist een exact `AutostartMigrationPlan` met toestand `PLAN_ONLY`, behoudt de volledige oorspronkelijke crontab en SHA256 voor toekomstige rollback en berekent één statische nevenunit zonder `Requires=runner-mcp.service` of `[Install]`. Zij voert **geen** crontab-/systemd-/procesactie uit; haar resultaat `cutover_authorized=False` is onveranderlijk. Dit is een Python bron-API voor begrensde testvoorstellen, geen nieuw `autostart install` of live migratiecommando.
+
+Ook een inactieve unit met de managed marker onder `~/.config/systemd/user` kan `has_managed_user_units()` laten omslaan en de nog actieve cron-reconciler verstoren. Daarom de gegenereerde unit uitsluitend in geheugen of geïsoleerd testbed beoordelen; **nooit** naar de originele managed unitmap schrijven of bestaande auto-install/reconcile gebruiken bij gedeeltelijke migratie. De exclusieve rol-voor-rol-switch, daadwerkelijke rollback en host-/reboot-/A7-acceptatie zijn nog niet geïmplementeerd of live bewezen. Zie [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) en de canonieke roadmap. Dit traject vormt geen extra blokkade voor de afzonderlijke automatische updates.
+
 ## What gets installed
 
 The command:

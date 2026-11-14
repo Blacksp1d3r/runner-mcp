@@ -18,6 +18,12 @@ Voor de [systemd-migratie #866](https://github.com/Blacksp1d3r/runner-mcp/issues
 
 **Geen live cutoverbewijs:** een bezette lock laat `cron-run` zonder dubbele uitvoering terugkeren; de statische service kan dan `inactive` zijn zonder automatische retry. Controleer vóór elke toekomstige fysieke switch de echte oude proces- en childgeneratie, cron-uitsluiting, dezelfde lock, de werkelijk uitgevoerde nieuwe functie en het exacte herstel. Ook een **inactief** managed-marker unitbestand in de bestaande `~/.config/systemd/user`-map kan cron-reconcile blokkeren: genereer uitsluitend in geheugen of op een disposable Linux testhost. Een echte rolgebonden switch en reboot-rollback zijn niet geïmplementeerd of op `github-runner` uitgevoerd; onafhankelijke automatische updates gaan voor en zijn niet gewijzigd.
 
+## Test met één systemd-rol naast vijf cronrollen (disposable CI, v0.1.167)
+
+De reeds bestaande GitHub-hosted Linux-`scripts/qualify_systemd_user_lifecycle_ci.sh` verifieert nu naast de algemene cron/systemd-terugval ook een echte **zesrollen-crontab** van onschuldige `/usr/bin/true`-commando's, één externe cronregel, uitsluitend verwijdering van de gesimuleerde `github-watcher`-regel, behoud van de overige vijf, start van de bestaande test-owned (niet-enabled) systemd-user-`sleep`-unit met werkelijke PID-readback en **volledig exact herstel van alle zes oorspronkelijke cronregels nadat die unit is gestopt**. De test draait alleen op een non-root disposable GitHub-hosted Ubuntu met systemd PID1 en een vooraf lege gebruikerscrontab. CI marker: `M2_DISPOSABLE_ONE_OF_SIX_CRON_TO_SYSTEMD_AND_FULL_ROLLBACK=PASS`. Dit bewijst scheduler/rollback-gedrag, **niet** de operationele originele rollen of hun client-ACK.
+
+De aparte pure bronrenderer van v0.1.166 blijft de bestaande `autostart cron-run <role>` lock delen, zonder te installeren of activeren. Een originele fysieke rol-voor-rol overdracht, juiste actieve source/UID/PID, externe monitorconsumenten, echte functionele verwerking en A7/offline reboot-/ACK-herstel zijn nog niet gekwalificeerd; er is **geen** productie-cutoverbevoegdheid en de automatische updates blijven onafhankelijk. Zie [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866).
+
 ## What gets installed
 
 The command:

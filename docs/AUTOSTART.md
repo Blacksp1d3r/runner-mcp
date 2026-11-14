@@ -6,6 +6,12 @@ The preferred backend is a systemd user manager. When a host has no usable user 
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
+## Negatieve echte Linux-test: niet-uitvoerbare systemd-kandidaat en cronherstel (source 0.1.170)
+
+De bestaande GitHub-hosted disposable proef [PR #992](https://github.com/Blacksp1d3r/runner-mcp/pull/992) hergebruikt de letterlijk door `render_inactive_cron_server_peer_unit` geproduceerde static-unit. Na exact uitsluiten van één van zes onschuldige cronrollen maakt de TEST zichzelf opzettelijk onstartbaar met `chmod 000` op zijn eigen nep-CLI. De echte user-manager rapporteert `Result=exit-code` en `MainPID=0`; een extra werkrecord ontbreekt. De test ruimt de mislukte unit op vóór hij alle zes oorspronkelijke cronregels plus de vreemde regel byte-identiek herstelt. Marker: `M2_DISPOSABLE_FAILED_EXEC_START_EXACT_CRON_ROLLBACK=PASS`, naast de vijf eerdere geslaagde M2-markers.
+
+Dit is **uitsluitend testgestuurd herstel**, geen geïmplementeerde productie-automatische rollback of originele M3-bevoegdheid. De zes echte `github-runner`-cronrollen, de A7-herstelketen en automatische updates blijven onaangeroerd. Live M3–M6 blijven op WAIT tot alle afzonderlijke host- en functie/ACK-bewijzen aanwezig zijn.
+
 ## Geïntegreerde zesrollen- en echte peerproef (source 0.1.169)
 
 De op [PR #990](https://github.com/Blacksp1d3r/runner-mcp/pull/990) gemergede bestaande disposable CI-test combineert nu in één echte Linux `systemd --user`/crontab-proef de zes onschuldige cron-fixturerollen met de **daadwerkelijk gegenereerde** statische `runner-mcp-github-watcher.service` en de werkelijk gedeelde `run_cron_component`-flock. Met oude lock bezet geeft `systemctl start` **geen nieuwe taak**. Pas na het exact uitsluiten van één cronrol, draineren van de oude worker en aantoonbaar vrijgeven van de lock start een nieuwe `MainPID`. De terugweg stopt deze nieuwe generatie, verwijdert het test-owned unitbestand en herlaadt de user-manager voordat de oorspronkelijke zes cronregels plus vreemde cronregel exact worden teruggezet. Marker: `M2_DISPOSABLE_SIX_ROLE_RENDERED_PEER_EXCLUSIVE_SWITCH_AND_ROLLBACK=PASS`.

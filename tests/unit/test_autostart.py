@@ -1316,7 +1316,8 @@ def test_single_peer_systemd_preview_preserves_other_five_and_rollback(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, component: str,
 ) -> None:
     from runner_mcp.autostart import (
-        AutostartMigrationPlan, SinglePeerSystemdMigrationPreview,
+        AutostartMigrationPlan,
+        SinglePeerSystemdMigrationPreview,
         plan_single_peer_systemd_migration,
     )
     from runner_mcp.cron_autostart import render_cron_block
@@ -1385,7 +1386,8 @@ def test_single_peer_systemd_preview_rejects_unsafe_scope(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch, variant: str,
 ) -> None:
     from runner_mcp.autostart import (
-        AutostartMigrationPlan, AutostartError,
+        AutostartError,
+        AutostartMigrationPlan,
         plan_single_peer_systemd_migration,
     )
     from runner_mcp.cron_autostart import render_cron_block

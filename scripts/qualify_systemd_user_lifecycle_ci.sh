@@ -607,6 +607,7 @@ from runner_mcp.cron_autostart import (
     component_active,
     read_crontab,
     render_cron_block,
+    cron_status,
 )
 
 mode = sys.argv[1]
@@ -685,6 +686,43 @@ result = autostart.assess_single_peer_migration_checkpoint(
 )
 assert result.consistent is True, result.reason_code
 assert result.next_action_authorized is False
+
+# Dezelfde ECHTE disposable crontab- en systemd-status zijn invoer van het
+# nieuwe rolgebonden herstelvoorstel. De functie mag niets uitvoeren.
+if mode in ("staged_inactive", "new_worker_ack",
+            "rollback_ready", "rollback_confirmed"):
+    cron_rows = tuple(cron_status(
+        config_dir=config, components=roles, executable=executable,
+    ))
+    systemd_rows = tuple(autostart.user_service_status(unit_dir=unit.parent))
+    advice = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase=mode, observed_crontab=read_crontab(),
+        observed_unit_contents=observed_unit, unit_enabled=enabled,
+        unit_active=active, main_pid=pid, role_lock_active=lock_active,
+        new_function_ack=new_ack,
+        cron_rows=cron_rows, systemd_rows=systemd_rows,
+    )
+    expected_step = {
+        "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
+        "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
+        "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
+        "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
+    }[mode]
+    assert advice.consistent is True, advice.reason_code
+    assert advice.proposed_step == expected_step
+    assert advice.action_authorized is False
+    assert advice.rollback_sha256 == plan.rollback_crontab_sha256
+    if mode == "new_worker_ack":
+        # Een actief unitproces zonder actueel functioneel ACK is geen PASS.
+        rejected = autostart.propose_single_peer_reconciliation(
+            preview=plan, phase=mode, observed_crontab=read_crontab(),
+            observed_unit_contents=observed_unit, unit_enabled=enabled,
+            unit_active=active, main_pid=pid, role_lock_active=lock_active,
+            new_function_ack=False,
+            cron_rows=cron_rows, systemd_rows=systemd_rows,
+        )
+        assert rejected.consistent is False
+        assert rejected.proposed_step == "STOP_UNQUALIFIED"
 PY_PHASE_CHECKPOINT
 
 [[ ! -e "$peer_target" && ! -L "$peer_target" ]]
@@ -723,6 +761,7 @@ crontab -r
 test_crontab_owned=false
 [[ "$(crontab -l 2>/dev/null || :)" == "" ]]
 echo "M2_DISPOSABLE_SOURCE_RENDERED_SIX_ROLE_PHASE_CHECKPOINT_ROUNDTRIP=PASS"
+echo "M3_DISPOSABLE_ROLE_RECONCILE_PROPOSALS_SOURCE_READBACK=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

@@ -148,5 +148,64 @@ printf '%s\n' "$cron_line" | crontab -
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
 crontab -r
 test_crontab_owned=false
+
+# Een echte maar VOLLEDIG DISPOSABLE test van een zesrollen-crontab: laat
+# vijf onschuldige rollen en een niet-beheerde externe cronregel ongemoeid
+# terwijl alleen github-watcher naar de BESTAANDE test-eigen systemd-unit gaat.
+# Dit bewijst scheduler/rollback-bytes, niet de productie-executables of ACK.
+original_six_cron="$(cat <<'SIX_CRON'
+17 * * * * /usr/bin/true # test-foreign-job
+# BEGIN RUNNER MCP AUTOSTART v1
+MAILTO=""
+* * * * * /usr/bin/true # testrole:server
+* * * * * /usr/bin/true # testrole:topology-heartbeat
+* * * * * /usr/bin/true # testrole:github-watcher
+* * * * * /usr/bin/true # testrole:completion-watcher
+* * * * * /usr/bin/true # testrole:agent-bus-worker
+* * * * * /usr/bin/true # testrole:fabric-agent-qualification
+# END RUNNER MCP AUTOSTART v1
+SIX_CRON
+)"
+selected_test_role='* * * * * /usr/bin/true # testrole:github-watcher'
+[[ "$(printf '%s\n' "$original_six_cron" | grep -Fxc "$selected_test_role")" == 1 ]]
+candidate_five_cron="$(printf '%s\n' "$original_six_cron" | grep -Fvx "$selected_test_role")"
+[[ "$candidate_five_cron" != "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -c '# testrole:')" == 5 ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -Fxc '# BEGIN RUNNER MCP AUTOSTART v1')" == 1 ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -Fxc '# END RUNNER MCP AUTOSTART v1')" == 1 ]]
+
+# De echte Linux-crontab blijft het exact bewaarde herstelobject. Geen
+# upload, config, Agent Bus of original-host-pad wordt hier geraakt.
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(systemctl --user is-enabled "$unit" 2>/dev/null || :)" != "enabled" ]]
+
+# Precies één, reeds bestaande disposable systemd-nevenunit starten. De
+# vijf ongeroerde cronrollen blijven exact aanwezig. Unit wordt NIET
+# enabled, zodat de nieuwe dienst geen niet-gekwalificeerde bootclaim krijgt.
+systemctl --user start "$unit"
+[[ "$(systemctl --user is-active "$unit")" == "active" ]]
+migrated_pid="$(systemctl --user show "$unit" --property=MainPID --value)"
+[[ "$migrated_pid" =~ ^[1-9][0-9]*$ ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(systemctl --user is-enabled "$unit" 2>/dev/null || :)" != "enabled" ]]
+
+# Simuleer mislukte functionele toelating: stop EERST alleen de test-unit,
+# controleer werkelijk einde, herstel DAARNA alle originele cronbytes.
+systemctl --user stop "$unit"
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user show "$unit" --property=MainPID --value)" == 0 ]]
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+crontab -r
+test_crontab_owned=false
+echo "M2_DISPOSABLE_ONE_OF_SIX_CRON_TO_SYSTEMD_AND_FULL_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_CRON_TO_SYSTEMD_TO_CRON_ROUNDTRIP=PASS"
 echo "M2_DISPOSABLE_ACTUAL_SYSTEMD_RESTART_AND_UNIT_ROLLBACK=PASS"

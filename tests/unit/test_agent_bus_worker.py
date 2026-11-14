@@ -505,3 +505,92 @@ def test_read_only_preflight_cli_does_not_claim_ack_or_emit_secret(
     assert "s" * 48 not in output.out + output.err
     assert str(tmp_path) not in output.out
     assert not (paths.config_dir / "agent-bus-state").exists()
+
+
+def test_a7_original_worker_uses_new_private_credential_only_after_supervisor_reexec_and_restores_on_failure(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A7: real existing worker execve reads its PRIVATE config each launch.
+
+    This is a disposable source-level worker boundary test, not an original
+    host rotation, SQL provider transaction or service/cron activation proof.
+    """
+    paths = private_config(tmp_path)
+    original_credential = "r" * 48
+    replacement_credential = "n" * 48
+    append_env(
+        paths.env_file,
+        {
+            **relay_values(),
+            "RUNNER_MCP_GITHUB_TOKEN": "g" * 48,
+        },
+    )
+    original_bytes = paths.env_file.read_bytes()
+    before_mode = paths.env_file.stat().st_mode & 0o777
+    original_line = (
+        "RUNNER_FABRIC_RELAY_CREDENTIAL=" + original_credential + "\n"
+    ).encode("ascii")
+    next_line = (
+        "RUNNER_FABRIC_RELAY_CREDENTIAL=" + replacement_credential + "\n"
+    ).encode("ascii")
+    assert original_bytes.count(original_line) == 1
+    executable = tmp_path / "runner-fabric"
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    monkeypatch.setattr(
+        worker_module,
+        "_fixed_runner_fabric_executable",
+        lambda: executable.resolve(),
+    )
+
+    captured: list[dict[str, str]] = []
+
+    def observe_execve(
+        _path: str, _argv: list[str], environment: dict[str, str],
+    ) -> object:
+        captured.append(dict(environment))
+        return object()
+
+    assert run_agent_bus_worker_process(
+        paths.config_dir, execve=observe_execve,
+    ) == 0
+    assert captured[-1]["RUNNER_FABRIC_RELAY_CREDENTIAL"] == original_credential
+    assert "RUNNER_MCP_GITHUB_TOKEN" not in captured[-1]
+
+    # Represents the already owner-qualified, private atomic-file replacement.
+    # No serving process or cron task is touched by this synthetic fixture.
+    next_bytes = original_bytes.replace(original_line, next_line)
+    assert next_bytes != original_bytes
+    paths.env_file.write_bytes(next_bytes)
+    assert paths.env_file.stat().st_mode & 0o777 == before_mode
+
+    assert run_agent_bus_worker_process(
+        paths.config_dir, execve=observe_execve,
+    ) == 0
+    assert captured[-1]["RUNNER_FABRIC_RELAY_CREDENTIAL"] == replacement_credential
+    assert captured[-1]["RUNNER_FABRIC_RELAY_SUBJECT"] == "runner:one"
+    assert "RUNNER_MCP_GITHUB_TOKEN" not in captured[-1]
+
+    def fail_new_exec(
+        _path: str, _argv: list[str], environment: dict[str, str],
+    ) -> object:
+        assert environment["RUNNER_FABRIC_RELAY_CREDENTIAL"] == replacement_credential
+        raise OSError("synthetic private start failure")
+
+    with pytest.raises(
+        AgentBusWorkerError, match="Agent Bus worker could not start",
+    ) as error:
+        run_agent_bus_worker_process(paths.config_dir, execve=fail_new_exec)
+    assert replacement_credential not in str(error.value)
+
+    # Independent operator rollback restores the original exact config.
+    paths.env_file.write_bytes(original_bytes)
+    assert paths.env_file.read_bytes() == original_bytes
+    assert paths.env_file.stat().st_mode & 0o777 == before_mode
+    assert run_agent_bus_worker_process(
+        paths.config_dir, execve=observe_execve,
+    ) == 0
+    assert captured[-1]["RUNNER_FABRIC_RELAY_CREDENTIAL"] == original_credential
+    assert captured[-1]["RUNNER_FABRIC_RELAY_SUBJECT"] == "runner:one"
+    assert "RUNNER_MCP_GITHUB_TOKEN" not in captured[-1]

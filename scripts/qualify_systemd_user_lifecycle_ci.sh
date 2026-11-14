@@ -976,6 +976,17 @@ crontab "$peer_work/source-candidate.cron"
 [[ -f "$peer_target" && ! -L "$peer_target" ]]
 [[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
 "$peer_venv/bin/python" "$phase_script" peer_disabled_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Een vreemde cronwijziging TIJDENS de onderbreking verbiedt ook het hervatten.
+# Geen unlink of cronwrite bij de geweigerde nieuwe procesgeneratie.
+crontab "$peer_work/source-candidate-foreign-drift.cron"
+if "$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: disabled-peer resume accepted foreign cron drift" >&2
+  exit 1
+fi
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate-foreign-drift.cron")" ]]
+crontab "$peer_work/source-candidate.cron"
 "$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 chmod 0700 -- "$peer_exe"
 "$peer_venv/bin/python" "$phase_script" rollback_confirmed "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
@@ -989,6 +1000,7 @@ echo "M3_DISPOSABLE_ROLE_RECONCILE_PROPOSALS_SOURCE_READBACK=PASS"
 echo "M3_DISPOSABLE_FAILED_PEER_RECOVERY_PROPOSAL_AND_EXACT_CRON_ROLLBACK=PASS"
 echo "M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS"
 echo "M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS"
+echo "M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

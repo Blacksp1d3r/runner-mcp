@@ -567,6 +567,40 @@ def render_inactive_cron_server_peer_unit(
     return unit_name, candidate
 
 
+
+def render_boot_candidate_cron_peer_unit(
+    *,
+    config_dir: Path,
+    executable: Path,
+    component: str,
+    port: int = 8000,
+) -> tuple[str, str]:
+    """Bereken een herstartbestendige nevenunit, zonder installatie of start.
+
+    Alleen een apart bewezen M3-proces mag na cron-exclusiviteit, functionele
+    ACK en onafhankelijke rollback deze bronbytes ooit activeren. De unit
+    behoudt exact de bestaande cron-run/execv/flock-bescherming en verwijst
+    niet naar de primaire Runner-MCP-server. Het enige verschil met de
+    reeds geteste static-unit is een standaard default.target-installhaak.
+    Dit is uitdrukkelijk GEEN productievergunning of geschreven unitbestand.
+    """
+    name, inactive = render_inactive_cron_server_peer_unit(
+        config_dir=config_dir, executable=executable,
+        component=component, port=port,
+    )
+    # De static renderer is de enige bron voor ExecStart en alle hardening.
+    # Stop bij bronafwijking in plaats van een onbekende unit enablebaar te maken.
+    if (
+        not inactive.endswith("PrivateTmp=true\n")
+        or "\n[Install]\n" in inactive
+        or "WantedBy=default.target" in inactive
+        or f"Requires={SERVER_UNIT}" in inactive
+    ):
+        raise AutostartError("boot candidate is not the exact locked static peer")
+    candidate = inactive + "\n[Install]\nWantedBy=default.target\n"
+    return name, candidate
+
+
 @dataclass(frozen=True, slots=True)
 class SinglePeerSystemdMigrationPreview:
     """Herstelbaar bronvoorstel, nooit een vergunning of transactiescript."""

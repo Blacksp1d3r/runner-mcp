@@ -6,6 +6,14 @@ The preferred backend is a systemd user manager. When a host has no usable user 
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
+## Herstartbestendige één-rol-bootkandidaat (bron 0.1.171; uitsluitend disposable bewezen)
+
+[PR #994](https://github.com/Blacksp1d3r/runner-mcp/pull/994) introduceert `render_boot_candidate_cron_peer_unit`: een niet-activerende renderer die exact de statische, met cron lock-delende één-rol-kandidaat hergebruikt en alleen `[Install] WantedBy=default.target` toevoegt. `autostart cron-run` blijft de overgeërfde `flock` vasthouden, de unit blijft onafhankelijk van `runner-mcp.service`, en geen nieuwe activeringsbevoegdheid of servicebeheer wordt toegevoegd.
+
+In dezelfde bestaande GitHub-hosted echte Linux `systemd --user`-test, met zes onschuldige cronrollen en een vreemde regel, is alleen één testwatcher exact uitgesloten, de bootkandidaat `enable --now` gestart, de daadwerkelijke enabled-link en het werkrecord bewezen, en vervolgens alleen de **disposable user-manager** herstart. Het nieuwe user-manager-PID en worker-PID, het nieuwe werkrecord, de vijf behouden cronrollen en dezelfde slotbron zijn gecontroleerd. Vervolgens `disable --now`, lockrelease, testunit verwijderen en volledige zes-plus-vreemde crontab exact herstel. CI-marker `M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS` (ook alle voorgaande zes M2-markers PASS). Officiële validation/clean Ubuntu/attribution SUCCESS; Ruff en 4.795 pytest PASS; source 0.1.171.
+
+**Beperking:** user-manager-restart is geen hostreboot, geen productieinstallatie en geen automatische rollback. Op de fysieke `github-runner` is geen unit geïnstalleerd of enabled, geen cronregel gewijzigd en geen A7/update-/Agent Bus-pad aangeraakt. Echte M3–M6 blijven WAIT tot live rolidentiteit/source, exclusiviteit, externe monitoring, functie+ACK, A7/offline-herstel en rebootproef fysiek aanvaard zijn.
+
 ## Negatieve echte Linux-test: niet-uitvoerbare systemd-kandidaat en cronherstel (source 0.1.170)
 
 De bestaande GitHub-hosted disposable proef [PR #992](https://github.com/Blacksp1d3r/runner-mcp/pull/992) hergebruikt de letterlijk door `render_inactive_cron_server_peer_unit` geproduceerde static-unit. Na exact uitsluiten van één van zes onschuldige cronrollen maakt de TEST zichzelf opzettelijk onstartbaar met `chmod 000` op zijn eigen nep-CLI. De echte user-manager rapporteert `Result=exit-code` en `MainPID=0`; een extra werkrecord ontbreekt. De test ruimt de mislukte unit op vóór hij alle zes oorspronkelijke cronregels plus de vreemde regel byte-identiek herstelt. Marker: `M2_DISPOSABLE_FAILED_EXEC_START_EXACT_CRON_ROLLBACK=PASS`, naast de vijf eerdere geslaagde M2-markers.

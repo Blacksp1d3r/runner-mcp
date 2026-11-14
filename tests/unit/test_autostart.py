@@ -1898,6 +1898,8 @@ def test_m3_mixed_backend_status_fails_closed_on_conflicting_roles(
          "KEEP_PEER_NO_GENERIC_RECONCILE", 5),
         ("peer_failed_idle", True, True, False, 0, False, False,
          "DISABLE_FAILED_PEER_THEN_RECHECK", 5),
+        ("peer_disabled_idle", True, False, False, 0, False, False,
+         "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK", 5),
         ("rollback_ready", False, False, False, 0, False, False,
          "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK", 5),
         ("rollback_confirmed", False, False, False, 0, False, False,
@@ -2023,4 +2025,60 @@ def test_m3_reconcile_proposal_rejects_partial_or_duplicate_restore(
     assert outcome.consistent is False
     assert outcome.proposed_step == "STOP_UNQUALIFIED"
     assert outcome.action_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    ("changed", "replacement"),
+    [
+        ("unit_enabled", True),
+        ("unit_active", True),
+        ("main_pid", 1387),
+        ("role_lock_active", True),
+        ("new_function_ack", True),
+        ("observed_unit_contents", None),
+        ("observed_crontab", "other cron entries\n"),
+        ("phase", "peer_failed_idle"),
+    ],
+)
+def test_m3_disabled_peer_resume_denies_stale_or_ambiguous_observation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    changed: str, replacement: object,
+) -> None:
+    """Crash na disable is herstelbaar, maar niet bij PID/ACK-/cron-/unitdrift."""
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        propose_single_peer_reconciliation,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    plan = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    installed = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    values: dict[str, object] = {
+        "preview": plan,
+        "phase": "peer_disabled_idle",
+        "observed_crontab": plan.candidate_crontab,
+        "observed_unit_contents": plan.boot_unit_contents,
+        "unit_enabled": False,
+        "unit_active": False,
+        "main_pid": 0,
+        "role_lock_active": False,
+        "new_function_ack": False,
+        "cron_rows": tuple(
+            CronComponentStatus(role, role in installed, role in installed, False)
+            for role in CRON_COMPONENTS
+        ),
+        "systemd_rows": tuple(
+            AutostartStatus(role, role == plan.component, False, False)
+            for role in CRON_COMPONENTS
+        ),
+    }
+    values[changed] = replacement
+    result = propose_single_peer_reconciliation(**values)
+    assert result.consistent is False
+    assert result.proposed_step == "STOP_UNQUALIFIED"
+    assert result.action_authorized is False
     assert list(tmp_path.rglob("*.service")) == []

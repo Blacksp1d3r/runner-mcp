@@ -79,6 +79,7 @@ INFRA_PATTERNS = {
     ),
     "lan_hostname": re.compile(r"\b[a-z0-9-]+\.(?:lan|local|internal|home\.arpa)\b", re.IGNORECASE),
     "private_key": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
+    "windows_hostname": re.compile(r"\bDESKTOP-[A-Z0-9]{5,}\b"),
 }
 
 

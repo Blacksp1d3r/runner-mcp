@@ -644,6 +644,8 @@ preflight = autostart.AutostartMigrationPlan(
 if mode in (
     "peer_failed_idle", "peer_disabled_idle", "recover_failed_peer",
     "recover_failed_peer_pause", "recover_disabled_peer",
+    "recover_disabled_peer_pause_unlinked", "recover_ready_to_restore",
+    "recover_ready_to_restore_injected_drift",
 ):
     # De test-executable is met opzet stuk. Herstel mag nooit opnieuw
     # afhankelijk zijn van het kunnen uitvoeren van die kapotte kandidaat.
@@ -703,10 +705,15 @@ if mode == "new_worker_ack":
     new_ack = True
 # Echte, begrensde herstelacties blijven test-only binnen de bestaande
 # GitHub-hosted disposable CI-gate. Geen nieuw productiemechanisme/CLI.
-if mode in ("recover_failed_peer", "recover_failed_peer_pause", "recover_disabled_peer"):
+if mode in (
+    "recover_failed_peer", "recover_failed_peer_pause",
+    "recover_disabled_peer", "recover_disabled_peer_pause_unlinked",
+):
     # Ook na een onverwachte onderbreking na disable blijft deze route
     # test-only en bindt zij opnieuw het vastgepinde unit-/cron-/hostbewijs.
-    resuming_after_disable = mode == "recover_disabled_peer"
+    resuming_after_disable = mode in (
+        "recover_disabled_peer", "recover_disabled_peer_pause_unlinked",
+    )
     observed_phase = "peer_disabled_idle" if resuming_after_disable else "peer_failed_idle"
     expected_step = (
         "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK" if resuming_after_disable
@@ -819,6 +826,13 @@ if mode in ("recover_failed_peer", "recover_failed_peer_pause", "recover_disable
         or ready.action_authorized
     ):
         raise RuntimeError("STOP: one-role cron restore is unqualified")
+    if mode == "recover_disabled_peer_pause_unlinked":
+        # Een ECHTE andere procesaanroep neemt het herstel later over
+        # nadat de eigen test-unit verwijderd is, maar vóór crontab -.
+        print("M3_DISPOSABLE_INTERRUPTED_AFTER_UNIT_REMOVAL=PASS")
+        raise SystemExit(0)
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: cron changed after rollback-ready inspection")
     required_command("crontab", "-", input_text=plan.original_crontab)
     if read_crontab() != plan.original_crontab:
         raise RuntimeError("STOP: full original cron bytes not restored")
@@ -846,6 +860,99 @@ if mode in ("recover_failed_peer", "recover_failed_peer_pause", "recover_disable
     if len(records) != 5:
         raise RuntimeError("STOP: synthetic work receipt count drift")
     print("M3_DISPOSABLE_BOUNDED_SINGLE_ROLE_EXECUTOR_EXACT_ROLLBACK=PASS")
+    raise SystemExit(0)
+
+# Test-only herstel na een TWEEDE mogelijke onderbreking: unit is al
+# verwijderd, de vijfrollen-cron bestaat nog en de eerste herstelactuator
+# heeft géén crontab - geschreven. Geen productie-CLI of automatische
+# overschrijving bij een onverwachte vreemde cronmutatie.
+if mode in ("recover_ready_to_restore", "recover_ready_to_restore_injected_drift"):
+    root = os.environ.get("RUNNER_TEMP")
+    expected_unit = Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service"
+    if (
+        os.environ.get("GITHUB_ACTIONS") != "true"
+        or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+        or os.geteuid() == 0
+        or not root
+        or not scratch.resolve().is_relative_to(Path(root).resolve())
+        or unit != expected_unit
+        or unit.parent.is_symlink()
+        or unit.exists()
+        or unit.is_symlink()
+        or observed_unit is not None
+        or enabled or active or pid != 0
+        or lock_active or new_ack
+        or len(records) != 5
+        or read_crontab() != plan.candidate_crontab
+    ):
+        raise RuntimeError("STOP: disposable rollback-ready state is unqualified")
+    advice = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_ready",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not advice.consistent
+        or advice.proposed_step != "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK"
+        or advice.action_authorized
+        or advice.rollback_sha256 != plan.rollback_crontab_sha256
+    ):
+        raise RuntimeError("STOP: rollback-ready readback and exact source disagree")
+
+    if mode == "recover_ready_to_restore_injected_drift":
+        # Bewuste CI-interleaving NADAT de planner de originele bron zag:
+        # een andere actor wijzigt één niet-beheerde cronregel. De laatste
+        # readback moet dit afwijzen vóór de oude crontab wordt geschreven.
+        drift = (scratch / "source-candidate-foreign-drift.cron").read_text(
+            encoding="utf-8",
+        )
+        if drift == plan.candidate_crontab or "deliberately-drifted-foreign-job" not in drift:
+            raise RuntimeError("STOP: synthetic third-party cron drift is not pinned")
+        changed = subprocess.run(
+            ["crontab", "-"], input=drift, text=True,
+            capture_output=True, timeout=30, check=False,
+        )
+        if changed.returncode != 0:
+            raise RuntimeError("STOP: synthetic third-party cron edit failed")
+
+    # Deze tweede readback sluit de EXPLICIET geteste pauze af. Het is
+    # géén atomair compare-and-swap: concurrente echte writers tussen
+    # readback en crontab - blijven een fysieke M3 STOP-voorwaarde.
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: stale rollback-ready snapshot, preserve foreign edit")
+    if unit.exists() or unit.is_symlink() or component_active(config, role):
+        raise RuntimeError("STOP: selected peer returned before cron restore")
+    restored = subprocess.run(
+        ["crontab", "-"], input=plan.original_crontab,
+        text=True, capture_output=True, timeout=30, check=False,
+    )
+    if restored.returncode != 0 or read_crontab() != plan.original_crontab:
+        raise RuntimeError("STOP: restarted exact full crontab restore failed")
+    complete = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_confirmed",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not complete.consistent
+        or complete.proposed_step != "NO_ACTION_ALREADY_RESTORED"
+        or complete.action_authorized
+        or len(records) != 5
+    ):
+        raise RuntimeError("STOP: resumed rollback was not independently confirmed")
+    print("M3_DISPOSABLE_UNLINKED_UNIT_RESTARTED_EXACT_CRON_ROLLBACK=PASS")
     raise SystemExit(0)
 
 result = autostart.assess_single_peer_migration_checkpoint(
@@ -1005,7 +1112,22 @@ fi
 [[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
 [[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate-foreign-drift.cron")" ]]
 crontab "$peer_work/source-candidate.cron"
-"$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Simuleer een nieuwe procescrash NA unit-unlink maar VÓÓR herstel van
+# alle cronrollen. Herneem in een onafhankelijk derde proces, waarbij
+# vreemde cronwijzigingen tussen planner en laatste pre-write readback
+# absoluut NIET met de oudere rollbackbytes mogen worden overschreven.
+"$peer_venv/bin/python" "$phase_script" recover_disabled_peer_pause_unlinked "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+"$peer_venv/bin/python" "$phase_script" rollback_ready "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+if "$peer_venv/bin/python" "$phase_script" recover_ready_to_restore_injected_drift "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: stale rollback-ready readback overwrote a later foreign cron edit" >&2
+  exit 1
+fi
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate-foreign-drift.cron")" ]]
+crontab "$peer_work/source-candidate.cron"
+"$peer_venv/bin/python" "$phase_script" recover_ready_to_restore "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 chmod 0700 -- "$peer_exe"
 "$peer_venv/bin/python" "$phase_script" rollback_confirmed "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
 [[ "$(crontab -l)" == "$(cat "$peer_work/source-original.cron")" ]]
@@ -1020,6 +1142,8 @@ echo "M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS"
 echo "M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS"
 echo "M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS"
 echo "M3_DISPOSABLE_DISABLED_PEER_SYMLINK_DRIFT_DENIED=PASS"
+echo "M3_DISPOSABLE_INTERRUPTED_AFTER_UNIT_REMOVAL_AND_RESUMED=PASS"
+echo "M3_DISPOSABLE_ROLLBACK_READY_INTERLEAVED_FOREIGN_CRON_EDIT_DENIED=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

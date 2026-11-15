@@ -314,6 +314,27 @@ Deze broncontrole blijft in-memory, is geen hostattestatie en geeft nooit
 `cutover_authorized=True`. A7-gebruikers of de normale crontabinstaller zijn
 niet gewijzigd.
 
+### Tweede onderbreking van éénrolsherstel: unit verwijderd, cron nog vijf rollen
+
+De bestaande GitHub-hosted disposable Linux-proef gebruikt nu ook het al
+bestaande `rollback_ready`-checkpoint na een **echte onderbreking** tussen
+unitverwijdering en `crontab -`. Een nieuw niet-root Python-testproces
+herleest eigen unit-afwezigheid, vijfrollen-cron inclusief vreemde taak,
+PID, lock, de gepinde snapshot-SHA en de volledige backendinventaris.
+Het harnas onderbreekt vervolgens ook tussen de planner en de laatste
+cron-readback met een expliciet gemuteerde vreemde cronregel; die
+testwijziging moet behouden blijven en de hervatte executor mag dan
+**niet** de oudere zesrollen-backup schrijven. Pas nadat de test zijn
+kandidaat-crontab terugplaatst, hervat een nieuw proces het exacte
+zesrollenherstel. Geen extra productieherstelpad of tweede updater.
+
+Deze afbakening verhelpt uitsluitend geteste onderbrekingen **vóór**
+de laatste readback. Er is **geen** voor alle writers gedeelde
+exclusieve crontab-lock of atomair compare-and-swap: een echte writer
+kan nog tussen laatste readback en `crontab -` wijzigingen maken.
+Daarom blijven originele M3-productieactuatie, reboot en A7-coupling
+**GEBLOKKEERD**; een geslaagde CI-test is geen vrijgave.
+
 ## Original-host cron to systemd-user migration (#866)
 
 This section documents the **migration boundary**, not an activation procedure. The original physical `github-runner` has six historically cron-supervised Runner MCP/Fabric roles. Blacky has a separate hourly F35 reviewer task and is **not** a substitute for Black or `github-runner`. Their existing schedulers must continue operating until the individual original-host gates in [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) are satisfied.

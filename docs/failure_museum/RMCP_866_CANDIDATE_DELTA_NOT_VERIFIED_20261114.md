@@ -120,3 +120,26 @@ fail-close-gate. Verifieer bij elke negatieve CI-test zowel de
 verwachte STOP als de specifieke foutcode en actualiseer de testcase
 niet door de doelvalidatie kunstmatig te versoepelen. Dit werk verandert
 geen live cron, geen unit, geen A7-bevoegdheden en geen release-reservering.
+
+## 2026-11-15 — tweede éénrolsherstelonderbreking na unit-unlink, voor crontab
+
+De bestaande bronstatus `rollback_ready` was al leesbaar/planbaar,
+maar op de wegwerp-Linux-host werd nog niet getest of een **nieuw proces**
+het herstel na het verwijderen van de unit kon hervatten zonder een
+eerder gemuteerde vreemde cronregel te overschrijven.
+
+Nieuwe afgebakende CI-proef in het **bestaande** script: pauzeer na
+eigen unit-unlink en `daemon-reload` met vijfrollen-cron intact.
+Verifieer de oude read-only `rollback_ready`-planner, laat een
+testmatige vreemde cronregel ná die planner wijzigen, eis STOP vóór
+de oude `crontab -`, en controleer dat de vreemde regel behouden
+blijft. Herstel daarna uitsluitend de fixture-kandidaat en herneem
+met een **derde** onafhankelijke procesaanroep tot exact origineel
+zesrollen-cronherstel en `rollback_confirmed`.
+
+Deze test laat nadrukkelijk de fysieke race tussen de allerlaatste
+`crontab -l` en een erop volgende `crontab -` open: Linux crontab
+biedt geen bewezen gedeelde CAS met onbekende andere schrijvers.
+De test bewijst **niet** dat parallelle cronacties atomair kunnen
+worden teruggedraaid. M3/live en A7 blijven onbevoegd/ongewijzigd.
+Registreer werkelijke PASS-markers pas na officiële CI-terminatie.

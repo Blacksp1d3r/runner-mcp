@@ -36,9 +36,7 @@ SAMPLE = (
 )
 
 
-def _repo(
-    tmp_path: Path, mode: str = "advisory", target: int = 10
-) -> tuple[Path, Path]:
+def _repo(tmp_path: Path, mode: str = "advisory", target: int = 10) -> tuple[Path, Path]:
     (tmp_path / "handover").mkdir(parents=True)
     (tmp_path / "docs").mkdir()
     (tmp_path / "docs" / "x.md").write_text("x\n", encoding="utf-8")
@@ -90,9 +88,7 @@ def test_split_is_lossless_and_keeps_undated_sections(tmp_path: Path) -> None:
     original.write_text(SAMPLE, encoding="utf-8")
     assert _split(root, cfg) == 0
     active = (root / "handover" / "CURRENT_STATE.md").read_text(encoding="utf-8")
-    assert (
-        "nieuw werk" in active and "Vaste fase" in active and "ouder werk" not in active
-    )
+    assert "nieuw werk" in active and "Vaste fase" in active and "ouder werk" not in active
     assert (root / "handover" / "CURRENT_STATE.archive-2026-11.md").exists()
     assert (root / "handover" / "CURRENT_STATE.archive-2026-10.md").exists()
     manifest = root / "handover" / "CURRENT_STATE.split-2026-11-10.doc-memory.json"
@@ -112,9 +108,7 @@ def test_check_detects_modified_archive(tmp_path: Path) -> None:
     root, cfg = _repo(tmp_path, target=10**9)
     assert _split(root, cfg) == 0
     archive = root / "handover" / "CURRENT_STATE.archive-2026-10.md"
-    archive.write_text(
-        archive.read_text(encoding="utf-8").replace("Oude", "Gewijzigde")
-    )
+    archive.write_text(archive.read_text(encoding="utf-8").replace("Oude", "Gewijzigde"))
     assert dm.main(["--root", str(root), "--config", str(cfg), "check"]) == 1
 
 
@@ -127,9 +121,7 @@ def test_verify_detects_broken_relative_link(tmp_path: Path) -> None:
     original = tmp_path / "original.md"
     original.write_text(text, encoding="utf-8")
     assert _split(root, cfg, "--archive-dir", "handover/archive") == 0
-    manifest = (
-        root / "handover" / "archive" / "CURRENT_STATE.split-2026-11-10.doc-memory.json"
-    )
+    manifest = root / "handover" / "archive" / "CURRENT_STATE.split-2026-11-10.doc-memory.json"
     args = ["--root", str(root), "verify-split", "--manifest", str(manifest)]
     assert dm.main([*args, "--original", str(original)]) == 1
 
@@ -155,9 +147,7 @@ def test_repository_check_passes_in_default_mode() -> None:
 def test_split_refuses_to_archive_infrastructure_data(tmp_path: Path) -> None:
     root, cfg = _repo(tmp_path)
     path = root / "handover" / "CURRENT_STATE.md"
-    path.write_text(
-        SAMPLE.replace("Oude tekst.", "Oude tekst op 10.1.2.3."), encoding="utf-8"
-    )
+    path.write_text(SAMPLE.replace("Oude tekst.", "Oude tekst op 10.1.2.3."), encoding="utf-8")
     assert _split(root, cfg) == 1
     assert not (root / "handover" / "CURRENT_STATE.archive-2026-10.md").exists()
 
@@ -173,9 +163,7 @@ def test_open_work_stays_visible_and_resplit_is_lossless(tmp_path: Path) -> None
     root, cfg = _repo(tmp_path)
     open_items = tmp_path / "open.json"
     open_items.write_text(
-        json.dumps(
-            [{"number": 77, "title": "ouder open werk"}, {"number": 101, "title": "x"}]
-        ),
+        json.dumps([{"number": 77, "title": "ouder open werk"}, {"number": 101, "title": "x"}]),
         encoding="utf-8",
     )
     assert _split(root, cfg, "--open-items", str(open_items)) == 0
@@ -194,10 +182,7 @@ def test_open_work_stays_visible_and_resplit_is_lossless(tmp_path: Path) -> None
         "split",
         "handover/CURRENT_STATE.md",
     ]
-    assert (
-        dm.main([*args, "--keep-since", "2026-11-20", "--open-items", str(open_items)])
-        == 0
-    )
+    assert dm.main([*args, "--keep-since", "2026-11-20", "--open-items", str(open_items)]) == 0
     assert active_path.read_text(encoding="utf-8").count(dm.POINTER_START) == 1
     manifest = root / "handover" / "CURRENT_STATE.split-2026-11-20.doc-memory.json"
     verify = ["--root", str(root), "verify-split", "--manifest", str(manifest)]
@@ -219,3 +204,18 @@ def test_frozen_copy_must_stay_byte_identical(tmp_path: Path) -> None:
     assert dm.main(["--root", str(root), "--config", str(cfg), "check"]) == 0
     frozen.write_text("gewijzigd\n", encoding="utf-8")
     assert dm.main(["--root", str(root), "--config", str(cfg), "check"]) == 1
+
+
+def test_insert_and_archive_undated_stay_lossless(tmp_path: Path) -> None:
+    root, cfg = _repo(tmp_path)
+    original = tmp_path / "original.md"
+    original.write_text(SAMPLE, encoding="utf-8")
+    lanes = tmp_path / "lanes.md"
+    lanes.write_text("## Actuele toestand per lane\n\n- A7: WAIT\n", encoding="utf-8")
+    assert _split(root, cfg, "--insert", str(lanes), "--archive-undated", "^## Vaste fase") == 0
+    active = (root / "handover" / "CURRENT_STATE.md").read_text(encoding="utf-8")
+    assert "Actuele toestand per lane" in active and "Vaste fase" not in active
+    assert (root / "handover" / "CURRENT_STATE.archive-undated.md").exists()
+    manifest = root / "handover" / "CURRENT_STATE.split-2026-11-10.doc-memory.json"
+    args = ["--root", str(root), "verify-split", "--manifest", str(manifest)]
+    assert dm.main([*args, "--original", str(original)]) == 0

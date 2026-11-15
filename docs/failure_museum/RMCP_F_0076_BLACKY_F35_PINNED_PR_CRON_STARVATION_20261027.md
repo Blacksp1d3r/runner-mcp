@@ -38,7 +38,7 @@ step **from the same existing crontab line**, preserving the hourly cadence
 at minute 17 and all unrelated crontab entries:
 
 ```text
-17 * * * * /usr/bin/python3 /home/blacky/f35-reviewer/review-public-open-prs.py
+17 * * * * /usr/bin/python3 <blacky-operator-home>/f35-reviewer/review-public-open-prs.py
 ```
 
 This is a local existing reviewer invocation, **not** a new scheduler or

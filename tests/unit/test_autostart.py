@@ -2206,8 +2206,8 @@ def test_m3_mixed_peers_require_canonical_shared_cron_renderer(
     else:
         raise AssertionError("unknown test case")
     altered = (
-        " ".join(shlex.quote(item) for item in tokens[:5])
-        + " " + " ".join(shlex.quote(item) for item in tokens[5:-2])
+        "* * * * * "
+        + " ".join(shlex.quote(item) for item in tokens[5:-2])
         + " >/dev/null 2>&1\n"
     )
     original_lines[original_lines.index(selected_line)] = altered

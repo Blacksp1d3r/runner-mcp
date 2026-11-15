@@ -947,7 +947,9 @@ def assess_single_peer_mixed_backend_status(
         CRON_BEGIN,
         CRON_COMPONENTS,
         CRON_END,
+        CronAutostartError,
         CronComponentStatus,
+        render_cron_block,
     )
 
     def wait(reason: str) -> SinglePeerMixedBackendStatus:
@@ -992,6 +994,9 @@ def assess_single_peer_mixed_backend_status(
     ):
         return wait("original_managed_block_unqualified")
     roles: list[str] = []
+    executable: str | None = None
+    config_dir: str | None = None
+    port: int | None = None
     for line in body[1:]:
         try:
             tokens = shlex.split(line)
@@ -1000,18 +1005,58 @@ def assess_single_peer_mixed_backend_status(
         if (
             len(tokens) not in (13, 15)
             or tokens[:5] != ["*"] * 5
+            or not tokens[5].startswith("/")
+            or tokens[6] != "--config-dir"
+            or not tokens[7].startswith("/")
             or tokens[8:10] != ["autostart", "cron-run"]
             or tokens[10] not in CRON_COMPONENTS
             or tokens[-2:] != [">/dev/null", "2>&1"]
         ):
             return wait("original_cron_role_unqualified")
-        roles.append(tokens[10])
+        role = tokens[10]
+        port_role = role in ("server", "tunnel")
+        if port_role:
+            if (
+                len(tokens) != 15
+                or tokens[11] != "--port"
+                or not tokens[12].isdecimal()
+            ):
+                return wait("original_cron_role_unqualified")
+            role_port = int(tokens[12])
+            if port is not None and role_port != port:
+                return wait("original_cron_role_unqualified")
+            port = role_port
+        elif len(tokens) != 13:
+            return wait("original_cron_role_unqualified")
+        if executable is None:
+            executable, config_dir = tokens[5], tokens[7]
+        elif tokens[5] != executable or tokens[7] != config_dir:
+            return wait("original_cron_role_unqualified")
+        roles.append(role)
     if (
         len(roles) < 2
         or len(roles) != len(set(roles))
         or preview.component not in roles
+        or executable is None
+        or config_dir is None
     ):
         return wait("original_cron_roles_unqualified")
+
+    # Hergebruik de enige bestaande canonieke renderer. Alleen de gekozen
+    # rol verwijderen is onvoldoende bewijs: ook alle vijf cronpeers moeten
+    # exact dezelfde bron, config, vaste flags en geldige poort behouden.
+    # Deze herberekening leest geen bestand of proces en start geen worker.
+    try:
+        rendered = render_cron_block(
+            executable=Path(executable),
+            config_dir=Path(config_dir),
+            components=tuple(roles),
+            port=port if port is not None else 8000,
+        )
+    except CronAutostartError:
+        return wait("original_cron_role_unqualified")
+    if original[first:last + 1] != rendered:
+        return wait("original_cron_role_unqualified")
 
     # Beide inventarissen zijn volledig: elke vaste rol moet exact één keer
     # voorkomen. Extra units, dubbele rolclaims of een verdwenen cronpeer

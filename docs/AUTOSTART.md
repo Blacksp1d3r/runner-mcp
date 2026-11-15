@@ -299,6 +299,21 @@ De vijfminutendemo is een afzonderlijke check. Dit is geen bewijs voor
 atoomvaste bescherming tegen concurrente veranderingen op productie en
 geeft geen activeringsbevoegdheid.
 
+### Canonieke vijfrollen-broncontrole (draft 0.1.175)
+
+Naast het vastgepinde verwijderde croncommando eist de read-only
+`assess_single_peer_mixed_backend_status` nu dat ook elke overige
+beheerste cronrol **exact** overeenkomt met `render_cron_block`, de bestaande
+canonieke cronrenderer. Alle rollen gebruiken dezelfde executable en
+configuratiemap; alleen de twee bekende poortrollen mogen `--port` gebruiken,
+met een geldige, consistent opgemaakte poort. Verborgen extra argumenten,
+afwijkende uitvoerbare bestanden, andere configuratiepaden en ongeldige
+poortwaarden geven `original_cron_role_unqualified`; ook wanneer een
+vervalst origineel/kandidaatpaar en de eigen SHA256 onderling gelijk zijn.
+Deze broncontrole blijft in-memory, is geen hostattestatie en geeft nooit
+`cutover_authorized=True`. A7-gebruikers of de normale crontabinstaller zijn
+niet gewijzigd.
+
 ## Original-host cron to systemd-user migration (#866)
 
 This section documents the **migration boundary**, not an activation procedure. The original physical `github-runner` has six historically cron-supervised Runner MCP/Fabric roles. Blacky has a separate hourly F35 reviewer task and is **not** a substitute for Black or `github-runner`. Their existing schedulers must continue operating until the individual original-host gates in [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866) are satisfied.

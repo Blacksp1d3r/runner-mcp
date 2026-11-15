@@ -2155,3 +2155,105 @@ def test_m3_mixed_status_rejects_undocumented_managed_cron_lines(
     assert status.generic_reconcile_authorized is False
     assert status.cutover_authorized is False
     assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    ("role", "tamper"),
+    [
+        ("topology-heartbeat", "foreign_executable"),
+        ("topology-heartbeat", "foreign_config_dir"),
+        ("completion-watcher", "extra_argument"),
+        ("server", "invalid_port"),
+        ("server", "noncanonical_port"),
+    ],
+)
+def test_m3_mixed_peers_require_canonical_shared_cron_renderer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    role: str, tamper: str,
+) -> None:
+    """Weiger een vervalste *andere* rol, ook bij interne bron/hash-gelijkheid."""
+    import hashlib
+    import shlex
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_migration_checkpoint,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    original_lines = preview.original_crontab.splitlines(keepends=True)
+    candidate_lines = preview.candidate_crontab.splitlines(keepends=True)
+    selected_line = next(
+        line for line in original_lines
+        if f"autostart cron-run {role}" in line
+    )
+    tokens = shlex.split(selected_line)
+    if tamper == "foreign_executable":
+        tokens[5] = "/bin/false"
+    elif tamper == "foreign_config_dir":
+        tokens[7] = "/tmp/foreign-config"
+    elif tamper == "extra_argument":
+        tokens.insert(-2, "--wrong-extra")
+    elif tamper == "invalid_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "65536"
+    elif tamper == "noncanonical_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "08000"
+    else:
+        raise AssertionError("unknown test case")
+    altered = (
+        " ".join(shlex.quote(item) for item in tokens[:5])
+        + " " + " ".join(shlex.quote(item) for item in tokens[5:-2])
+        + " >/dev/null 2>&1\n"
+    )
+    original_lines[original_lines.index(selected_line)] = altered
+    candidate_lines[candidate_lines.index(selected_line)] = altered
+    original = "".join(original_lines)
+    candidate = "".join(candidate_lines)
+    forged = replace(
+        preview,
+        original_crontab=original,
+        candidate_crontab=candidate,
+        rollback_crontab_sha256=hashlib.sha256(
+            original.encode("utf-8")
+        ).hexdigest(),
+    )
+    # Het lagere geselecteerde-rol/rollbackcontract ziet dit nog als een
+    # interne consistente mutatie. De volledige cronbroncontrole MOET STOP.
+    checkpoint = assess_single_peer_migration_checkpoint(
+        preview=forged, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=forged.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+    )
+    assert checkpoint.consistent, checkpoint.reason_code
+
+    remaining = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    status = assess_single_peer_mixed_backend_status(
+        preview=forged, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=forged.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(
+            CronComponentStatus(item, item in remaining, item in remaining, False)
+            for item in CRON_COMPONENTS
+        ),
+        systemd_rows=tuple(
+            AutostartStatus(item, item == forged.component, False, False)
+            for item in CRON_COMPONENTS
+        ),
+    )
+    assert status.consistent is False
+    assert status.reason_code == "original_cron_role_unqualified"
+    assert status.generic_reconcile_authorized is False
+    assert status.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []

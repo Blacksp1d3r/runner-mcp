@@ -644,8 +644,8 @@ preflight = autostart.AutostartMigrationPlan(
 if mode in (
     "peer_failed_idle", "peer_disabled_idle", "recover_failed_peer",
     "recover_failed_peer_pause", "recover_disabled_peer",
-    "recover_disabled_peer_pause_unlinked", "recover_ready_to_restore",
-    "recover_ready_to_restore_injected_drift",
+    "recover_disabled_peer_pause_unlinked", "rollback_ready",
+    "recover_ready_to_restore", "recover_ready_to_restore_injected_drift",
 ):
     # De test-executable is met opzet stuk. Herstel mag nooit opnieuw
     # afhankelijk zijn van het kunnen uitvoeren van die kapotte kandidaat.

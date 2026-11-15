@@ -89,3 +89,34 @@ van die gesaboteerde naam behandelen als betrouwbaar bewijs van de
 oorspronkelijke unit. Verifieer eerst dat de bronidentiteit terug is,
 meet daarna opnieuw; de test-only actor blijft fail-closed. Geen
 aantoonbare originele-hostfout, geen automatische A7- of productiemigratie.
+
+## 2026-11-15 — false-negative negatieve cronbronproef door gequote tijdsvelden
+
+Bij aanvulling van de zuivere M3 `assess_single_peer_mixed_backend_status` met
+canonieke validatie van **alle** behouden cronrollen (niet alleen de
+uitgesloten peer) genereerde de eerste nieuwe testfixture de vijf
+letterlijke `*`-veldnamen via `shlex.quote`. Die functie voegde
+onbedoeld quotes aan de cron-tijdvelden toe. De al bestaande
+managed-block-validator wees vervolgens terecht die niet-canonieke
+tijdvelden af met `original_managed_block_unqualified`, **vóór** het
+beoogde nieuwe controlepunt `original_cron_role_unqualified`. Vijf
+parametrische regressies op de eerste code-HEAD `a1d7804d4ec4a1a023f6c2a3bfea7939c75f0981`
+faalden daarom uitsluitend op de verwachte foutcode. De overige
+**4.851** tests slaagden. Dit was geen productie-/hostincident en
+bewijst geen veiligheidsprobleem in de nieuwe parser.
+
+**Correctie:** het testschema vormt nu de vijf cron-tijdsvelden letterlijk
+als `* * * * * ` en shell-escapet uitsluitend de argv-argumenten ná
+die velden. De bestaande rolbroncontrole, productierenderer,
+installer en A7-code blijven onaangeroerd. De nieuwe exacte code-HEAD
+`79e0c578548273310982e1c65758c4212e1ec6f0` bereikte in
+officiële Ruff+pytest **4.856 PASS** en de echte disposable Linux
+systemd-proef **SUCCESS**. Overige workflows kunnen pas als PASS
+worden gemeld wanneer hun eigen jobs terminal zijn.
+
+**No-repeat:** een negatieve bronproef moet de overige geldige
+syntax **byte-identiek** behouden, anders test ze een oudere/andere
+fail-close-gate. Verifieer bij elke negatieve CI-test zowel de
+verwachte STOP als de specifieke foutcode en actualiseer de testcase
+niet door de doelvalidatie kunstmatig te versoepelen. Dit werk verandert
+geen live cron, geen unit, geen A7-bevoegdheden en geen release-reservering.

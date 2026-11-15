@@ -7,8 +7,8 @@ new Runner-MCP daemon, Fabric work-unit executor, GPU reviewer or remote ACK.
 
 ## Failure and verified impact
 
-On the correctly targeted original device `blacky`, Ubuntu 24.04, local
-`blacky` UID 1000, the **one existing** hourly user crontab entry at minute
+On the correctly targeted original device `<blacky-reviewer-device>`, Ubuntu 24.04, local
+`<blacky-reviewer-device>` UID 1000, the **one existing** hourly user crontab entry at minute
 17 ran a fixed `run-pr661-review.sh` and the generic
 `review-public-open-prs.py` joined by shell `&&`. A failure in the fixed
 PR #661 review therefore prevented all unrelated generic open-PR reviews.
@@ -142,7 +142,7 @@ promoted into a fabricated repository release.
 The first **genuinely unattended** tick after removing the PR #661
 starvation condition and fixing empty-batch manifest persistence is now
 **PROVEN**, not inferred from a manual command. On original Blacky
-(`hostname=blacky`, user `blacky` UID1000), `cron` was active and the
+(`hostname=<blacky-reviewer-device>`, user `<blacky-reviewer-device>` UID1000), `cron` was active and the
 single existing `:17` crontab row was still unchanged. At original
 host UTC `21:17:17`, its **systemd cron journal** contained exactly one
 matching invocation of the bounded `review-public-open-prs.py` command

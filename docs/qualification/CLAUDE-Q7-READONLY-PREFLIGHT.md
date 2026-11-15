@@ -12,7 +12,7 @@ This distinguishes handler-known failures **on the installed matching release** 
 # Claude Pro coding worker — bounded Q7 bridge preflight
 
 The Claude Pro coding worker is already implemented on AIfordable behind a
-dedicated `aifordable-coder` rootless identity, fixed first-party Agent Bus/
+dedicated `<AF-VM-0001-coder-user>` rootless identity, fixed first-party Agent Bus/
 Runner-MCP lifecycle (#381), and Fabric Q7 subscription availability mapping
 (#972). The operator wants **actual Claude use**, not a second worker daemon,
 a second scheduler or pay-as-you-go Anthropic API charges.
@@ -76,7 +76,7 @@ redacted response/audit and each preflight blocking state.
    journal and independent A7 rollback supervisor must actually be able to
    restore a broken server without the tunnel (Fabric #942/#943).
 2. On the correct dedicated host, independently verify exact
-   `aifordable-coder` identity, Claude Pro subscription-only auth, no API key,
+   `<AF-VM-0001-coder-user>` identity, Claude Pro subscription-only auth, no API key,
    fixed rootless worker service and local endpoint + process ownership
    (AIfordable #370; Runner-MCP #381). Never print tokens or run broad sudo.
 3. Run this read-only preflight on the **matching live build**, then run all

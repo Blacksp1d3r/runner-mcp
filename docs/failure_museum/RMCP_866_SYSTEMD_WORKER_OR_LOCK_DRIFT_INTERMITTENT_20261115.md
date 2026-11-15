@@ -26,7 +26,7 @@ Deze uitspraak is de **oorspronkelijke beschikbare melding**, niet een door deze
 
 **Mogelijke hypotheses — niet als oorzaak vastgesteld:** overgang tussen procesgeneraties of systemd-state, asynchrone worker-PID/lock-observatie, timing rond stop/restart, of een werkelijk gewijzigd lock-/workercontract. Zonder originele bewijsregel mag dit niet als “alleen flakiness” worden weggezet.
 
-**Impact:** mogelijk onbetrouwbare CI-acceptatie of een werkelijke regressie die door nieuwe starts onzichtbaar wordt. **Niet aangetoond:** dubbele uitvoering, verloren cronregels, mislukte rollback of productiefout. De oorspronkelijke `github-runner`-cutover blijft onafhankelijk van dit onderzoek geblokkeerd op zijn bestaande #866/A7-poorten.
+**Impact:** mogelijk onbetrouwbare CI-acceptatie of een werkelijke regressie die door nieuwe starts onzichtbaar wordt. **Niet aangetoond:** dubbele uitvoering, verloren cronregels, mislukte rollback of productiefout. De oorspronkelijke `AF-HOST-0001`-cutover blijft onafhankelijk van dit onderzoek geblokkeerd op zijn bestaande #866/A7-poorten.
 
 ## Volgende gerichte controle bij een nieuwe waarneming
 

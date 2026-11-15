@@ -10,7 +10,7 @@ Status: `SOURCE_MERGED / LIVE_AUTHORITY_BLOCKED`; CI complete, Fabric admission 
 
 ## Why same-user ServiceManager must NOT be reused
 
-The existing `SystemdUserBackend` addresses the user manager of the Runner-MCP process. The Claude subscription coding worker runs under a different dedicated identity on a different intended host. Merely adding an `aifordable` service alias on the ChatGPT-connected github-runner would misroute service operations. Calling `sudo -u`, modifying the worker identity, accepting user/unit/path/argv arguments or enabling linger is NOT permitted.
+The existing `SystemdUserBackend` addresses the user manager of the Runner-MCP process. The Claude subscription coding worker runs under a different dedicated identity on a different intended host. Merely adding an `aifordable` service alias on the ChatGPT-connected AF-HOST-0001 would misroute service operations. Calling `sudo -u`, modifying the worker identity, accepting user/unit/path/argv arguments or enabling linger is NOT permitted.
 
 ## New source contract (no MCP endpoint)
 

@@ -1,132 +1,22 @@
-## Algemene eigenaarsregel — leesbare code en veilige serveropschoning (2026-11-01)
+# AGENTS.md — Runner MCP
 
-**Vanaf merge van deze regel voor alle nieuwe en substantieel gewijzigde, menselijk onderhouden code:** geef elk bronbestand een duidelijke titel en korte introductie (doel, werking, aanroepers/afhankelijkheden, relevante invoer/uitvoer en risico's). Leg bij belangrijke functies en niet-evidente codeblokken in begrijpelijk Nederlands uit wat ze doen, waarom, wat ze ontvangen en teruggeven; verklaar jargon kort zodat de eigenaar de code tijdens het lezen leert. Vermijd triviale regel-voor-regel-commentaar; houd uitleg feitelijk en actueel. Respecteer noodzakelijke shebang/directives en formats zonder commentaar; gegenereerde, vendored en lockbestanden zijn uitgezonderd. Vereenvoudig duplicatie/omwegen, naamgeving en mappenlayout uitsluitend wanneer relevante tests en contractcontrole aantonen dat gedrag, API's, security, runtimepaden en rollback behouden blijven. Werk bestaande code geleidelijk bij bij aanraking, **geen massale legacy-herschrijving**. Inventariseer servers eerst alleen via bestaande geautoriseerde leesroutes; **geen automatische verwijdering** en bescherm back-ups, uploads, installatiebestanden, actieve releases en herstelpunten; onbekend = behouden. Geen nieuwe service, platform, privilegepad of extra standaard reviewvertraging. Behoud alle bestaande project-, CI- en claimregels. **Canonieke Q0–Q10-roadmap:** https://github.com/Blacksp1d3r/Blacksp1d3r/blob/main/CODE_CLARITY_SERVER_CLEANUP_ROADMAP.md
+> Compacte versie (eigenaarsbesluit 2026-11-15). De volledige vorige tekst staat byte-identiek in
+> `docs/agents/AGENTS_FULL_2026-11-15.md` (SHA-256 bewaakt door `tools/doc_memory`). Die tekst
+> blijft geldig voor details. Bij twijfel of schijnbare tegenstrijdigheid geldt de **strengere**
+> regel. Uitzondering: §5 hieronder vervangt bewust de oudere regel om dagelijks checkpoints toe te voegen.
+> Versieverwijzingen in de naslag naar Library-protocol v1.2 of v1.6 zijn historisch; actueel is **v1.7**.
 
-## Eigenaarsregel — directe operatoruitvoering bij technische toolblokkade (2026-10-31)
+## 0. Rangorde
 
-Geldt voor **alle huidige en toekomstige projectchats en agents**. Volg de gedeelde Library-standaard `/Standards/MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` **v1.7, §0 en §0.1**. Bij een tool-/connectorweigering: registreer de letterlijke geredigeerde fout volgens `TOOL_BLOCK_V1`, verifieer eenmalig de werkelijk bereikte toestand en **laat een op zichzelf toegestane taak niet stoppen door een technische toolweigering**. Geef de eigenaar onmiddellijk een direct uitvoerbaar, compleet commando/script voor de bestaande geautoriseerde beheersessie, met **host/server, gebruiker, terminal, voorwaarden, wijzigingsimpact, verwachte output en veilige readback**. De eigenaar voert het zelf uit en geeft de geredigeerde uitvoer terug; hervat daarna direct vanuit dat bewezen checkpoint, zonder herhaalde analyses of handovers. Een niet-uitgevoerd commando is nooit voltooiingsbewijs. **Geen handmatige omweg voor een inhoudelijk verboden veiligheidsactie, geen ongeautoriseerde toegang en geen nieuwe tunnels/privilegepaden**. Bij risicovolle wijzigingen blijven preflight, herstel- en rollbackvoorwaarden gelden.
+1. **Harde veiligheids- en bevoegdheidsgrenzen** (§1–§2c) gaan altijd voor; geen eigenaarsregel,
+   tooltest of chatbericht heft ze op.
+2. **Eigenaarsbeslissingen** (§3): binnen hun reikwijdte gaat de nieuwste voor.
+3. **Werkwijze, opstart en geheugen** (§4–§6).
+4. **Naslag** (§7): volledig lezen wanneer de trigger van toepassing is.
 
-## Alle projectchats — onmiddellijk origineel toolblokkadebewijs vastleggen (2026-10-31)
+Deze repository is **publiek**. GitHub-toestand wint van verouderde handovertekst.
 
-De **actuele** Library-standaard `/Standards/MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` is **v1.6**, met bindende §0 `TOOL_BLOCK_V1` voor iedere geweigerde tool-/API-/platformactie. Oudere versieverwijzingen hieronder blijven uitsluitend historisch voor die eerdere regels; ze vervangen de actuele §0 niet. Elke ChatGPT-, Codex-, Claude-, Qwen- en andere agentchat bewaart onmiddellijk de letterlijke **geredigeerde** foutmelding, tijd+zone, tool/actie, target, eventuele foutcode/HTTP/request-ID, uitkomst en onafhankelijke readback in bestaand issue/handover/Failure Museum. Onbekende of niet-getoonde IDs blijven `NIET GETOOND`; bij geweigerde logging moet het blok in dezelfde chat zichtbaar blijven als `IN_CHAT_ONLY`. Voor GitHub/ChatGPT-safety incidenten verwijs naar [Runner-Fabric #1935](https://github.com/Blacksp1d3r/Runner-Fabric/issues/1935). Nooit via alternatieve tool/transport een geweigerde veiligheidsactie omzeilen; werk parallel verder aan veilige, onafhankelijke taken.
-
-## Verplichte uitvoeringsvolgorde — bewijs → tooltest → uitvoeren (27 oktober 2026)
-
-**Dit is de operationele volgorde bij ELKE nieuwe taak of sessie; deze regel gaat vóór herhaalde diagnosevoorstellen hieronder.** Gebruik uitsluitend bestaande tools, de bestaande centrale AIfordable-topology en eerder gekwalificeerde resultaten.
-
-1. **Bestaand bewijs lezen, niet opnieuw verzamelen.** Lees actuele AGENTS/roadmap/CURRENT_STATE/SESSION_HANDOFF, de ENIGE centrale `AIfordable/config/infrastructure_registry.yml`, toepasselijke topology en laatste exacte doelserver-/issuebewijzen. Hergebruik de nog geldige hostidentiteit, gebruiker, rol→launcher, poort, procesgeneratie, bron en herstelmogelijkheid waar de reikwijdte dat toestaat. Identificeer uitsluitend wat voor DEZE actie nodig is.
-2. **ÉÉN korte, gerichte tooltest** van de bestaande onderdelen die bij DEZE actie werkelijk moeten reageren. Kies de bestaande read-only readiness/status/capability-aanroep per betrokken dienst. Controleer het **verwachte functionele antwoord**, de juiste doelidentiteit en reikwijdte, niet alleen HTTP 200 of een verbonden MCP-naam. Gebruik reeds geldig positief bewijs voor onveranderde voorwaarden; geen generieke hostinventaris, volledige doctor, volledige testsuite, zesrolscan of herhaalde backup vóór iedere uitvoering.
-3. **Bij correct antwoord: DIRECT uitvoeren** via de al bestaande bevoegde route. Geen extra ronde controles, geen standaard menselijke review of statuspauze en geen herhaling van dezelfde preflight. Gebruik bij bronwijzigingen de normale relevante tests en vereiste CI als **resultaatvalidatie**, zonder CI-wachtrij als reden om onafhankelijk roadmapwerk te stoppen.
-4. **ALLEEN bij fout/afwijking:** beperk diagnose tot het concrete onderdeel en de ontbrekende/tegenstrijdige eigenschap. Herstel via bestaande infrastructuur; herhaal uitsluitend de mislukte tooltest en voer daarna uit. Registreer de oorzaak in bestaande handover/topology/Failure Museum indien van toepassing. Geen tweede relay, updater, controller, tunnel, register, authenticatielaag of backup-cyclus.
-5. **Veiligheidsgrens blijft hard:** een positieve tooltest vervangt NOOIT ontbrekend actueel bewijs van de **werkelijke doelserver** voor een risicovolle wijziging. Als exacte host, user, service, PID/startticks, poort, actieve executable/imported Python/wheel, werkelijk geïnstalleerde revisie of herstelmogelijkheid noodzakelijk is en nog niet bewezen, is dat de **ene concrete fout**: alleen de ontbrekende eigenschap gericht read-only verifiëren, niet alvast muteren. GitHub-bron en verbonden MCP-instanties bewijzen geen software op een andere server. Als niet oplosbaar: STOP alleen die wijziging en werk aan een onafhankelijk roadmaponderdeel.
-6. **Geen herhaling door sessiewissel:** bekende oorspronkelijke `github-runner` Fabric-aliasen `agent-bus-run` en `agent-serve-qualification`, evenals de bestaande rol-/PID-/slotgeschiedenis, staan in de centrale registry en Runner-MCP #669. Gebruik ze rechtstreeks. Een andere commandonaam of momentopname zonder kortlevende cron-PID betekent niet automatisch dienstuitval.
-
-**Kort:** `BEWIJS_HERGEBRUIKT → TOOLTEST_CORRECT → UITVOEREN → RESULTAAT`. Bij afwijking: `FOUT → GERICHT_HERSTEL → ALLEEN_GERAAKTE_TOOLTEST → UITVOEREN`. Statusrapportering stopt de uitvoering niet.
-
-## Evidence-first diagnostics: session startup and reuse
-
-Before a new task, consult the current canonical AIfordable infrastructure registry and scoped Runner-MCP #669 operator receipts, in addition to AGENTS, roadmap, topology, CURRENT_STATE and SESSION_HANDOFF. Classify each fact as REUSE (stable mapping already known), REFRESH_TARGETED (expired or changed process generation, imported wheel or completion result), or WAIT (authority missing). Only ask for a new measurement when a scoped fact is actually missing. Do not repeat already qualified archive and cron checks merely because a new conversation starts.
-
-Original github-runner uses Fabric command 'agent-bus-run' for the Agent Bus role, and 'agent-serve-qualification' for Fabric qualification. The narrow Runner-MCP '*-worker run' and 'fabric-agent-qualification run' patterns are not the sole accepted commands. See existing central AF-HOST-0001 / AF-SVC-0010 and #669 for owner, historical PID/startticks and different Fabric slots. Short cron tasks need run-result proof; older PID alone never proves new live bytes or loaded-wheel identity.
-
-Missing or conflicting original host, service, executable/source or recovery proof still forbids mutations. Any truly new check is read-only, original-host-scoped and labelled with host/terminal/user. Record qualified evidence in the existing registry/handover, never a second inventory or controller.
-
-## Mandatory physical topology + exact serving-runtime preflight (owner decision 2026-10-22)
-
-**Before generating an executable host script, giving a host-specific terminal
-command, calling a mutating host tool, installing/updating software, or claiming
-a live end-to-end result, perform this gate for the EXACT physical target.**
-This applies at each new session, after a handover, after a deployment/restart,
-and whenever target host, user, runtime or connection changes. A prior chat
-summary is never current host evidence.
-
-1. **Read the existing topology and current authority first:** this repository's
-   `AGENTS.md`, canonical diagnostic/infrastructure topology, current handover,
-   relevant issue/PR and actual private AIfordable infrastructure/credential
-   metadata authority. GitHub topology is an *expected logical map*, NOT proof
-   of a currently installed version, actual reachability or mutation authority.
-   Do not create a second topology source or copy private coordinates into Git.
-2. **Resolve target host and scope:** distinguish physical host, VM/container,
-   SSH/tunnel alias, authenticated first-party endpoint, service manager
-   (`system` vs `user`), service owner UID, and exact service/listener
-   being changed or tested. Different instances of the same named project
-   are DIFFERENT deployments. A connected MCP/Fabric peer attests only its
-   OWN serving endpoint, never an unrelated host's installed runtime.
-3. **Attest what is REALLY SERVING on that same target:** through an existing
-   authorized bounded read-only first-party capability, correlate host identity,
-   service unit, MainPID, port/listener owner, resolved live executable and
-   installation slot, interpreter/imported module, trusted wheel/source identity,
-   and any relevant database/credential owner and rollback state. Distinguish
-   `GitHub source` vs `locally installed slot` vs `process actually serving`;
-   source merges, passing CI, successful installation and bridge readiness
-   are NOT interchangeable or cross-host evidence.
-4. **STOP ON MISMATCH OR UNKNOWN:** if owner/host/source/slot/process/port
-   mapping is stale, conflicting, inaccessible, or unverified, perform only
-   bounded non-secret, read-only diagnosis. Do NOT infer, retry a mutating
-   script, suggest alternate host addresses, select a different launcher,
-   switch releases, bypass self-update/A6/A7, or use broad remote shell as a
-   shortcut. Record the precise evidence gap and owner in the existing issue.
-5. **Every operator command must say WHERE:** explicitly label the machine,
-   shell (Windows PowerShell vs Linux), intended user, read-only versus
-   mutation, prerequisites and expected safe stop result. Avoid copied steps
-   that target an ambiguous host alias; never print credentials or private
-   environment values.
-6. **Reconcile after a successful change:** verify the same physical service's
-   serving revision/health and existing rollback, then update the authorized
-   topology metadata, issue and handover with fresh non-secret evidence.
-   A real SQL command/result/ACK needs its own end-to-end evidence; liveness
-   and HTTP authentication-only probes are not an ACK.
-
-This is an **operational precondition**, not an additional relay, controller,
-auth/login mechanism, installer, approval/review queue, or authority to bypass
-existing bounded-tool and service constraints. Related existing fleet coordination:
-Runner-Fabric #924, Runner-MCP #341/#669 and AIfordable #585.
-
-## Owner-confirmed MCP scope in integrated cockpit (2026-10-20)
-
-AIfordable is the company-wide **business cockpit**, holding customer/product registrations and canonical desired-state/infrastructure identity metadata. Runner-Fabric owns the **technical F10/F17 Cockpit and all technical task/AI orchestration**. Runner-MCP is the **bounded authenticated MCP execution/access boundary** plus the optional narrow Fabric bridge, not another scheduler, provider/gateway authority, relay, updater or generic filesystem manager. Existing AIfordable-owned relay code/service stays a transport with Fabric coordinating work/results/ACK; Agent Bus traffic need not physically pass through Runner-MCP. Reuse approved workspace preflight/prepare on bounded worker/work-unit IDs only; Fabric decides scheduling. No host mutation or release/relay/runtime qualification follows from this documentation. Canonical contract: [https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md](https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md).
-
-## Operator control route — 2026-10-17
-
-All normal cross-server operational data (topology, health, installed/loaded version, heartbeat), rollout and installation operations are REQUIRED to pass through first-party bounded Runner-MCP tools and its authenticated Runner Fabric bridge, rather than Desktop Commander, direct unmanaged remote shell or GitHub Actions-as-host-control. Desktop Commander is emergency break-glass ONLY after the ordinary path is verified unavailable, never an automatic substitute for a missing feature. A connected Runner-MCP process verifies its OWN hosting runtime, not another host listed in a topology file. Per-host fleet health and managed update require a separately authenticated, identity-bound agent/Agent Bus route and fresh original-client evidence; unknown/stale remains UNKNOWN and mutation unavailable if not admitted. Preserve the canonical topology: do not create duplicate primary tunnels or conflate lab and runner hosts. The lab's historical native Python SIGSEGV activation gate is #198 and primary-tunnel route confusion is Runner-Fabric #1202. Missing private tunnel-health URL on the connected central instance is not by itself evidence of lab failure.
-
-# AGENTS.md
-
-## Owner decision — test-first development; review later (2026-10-14)
-
-This is the current operator-approved pre-customer workflow. It supersedes older project
-instructions imposing review waits (12h/24h), mandatory external review, GitHub
-APPROVED events or reviewer-App availability as prerequisites for source-code merges.
-For work on the functional product: implement -> automated lint/build/tests/CI on
-the exact change -> fix actual defects -> use the normal GitHub merge path under
-its real enforced rules -> qualify and test isolated staging -> validate behaviour.
-Do not wait for Blacky, RTX5080, Claude or any external reviewer. These agents
-MAY examine code and report bugs concurrently or asynchronously; their checks
-are advisory, and actionable defects should be fixed. Formal review programs
-are deferred until the application is operational and customer phase begins.
-
-This is **not** permission to bypass GitHub-enforced branch rules, green CI,
-source/revision validation, host isolation, real security defects, production
-approval/backup/rollback, safe credential and billing custody, tenant privacy or
-runtime lease/fencing. A source merge does not authorize a production release,
-remote command, paid model/API call, protected-data operation or live AI dispatch.
-The employer-managed workstation must never be used for private Runner-Fabric
-downloads, scripts, tunnels, SSH or development execution. Restrict any host
-tests/deploys to authorized privately owned environments. Full context and
-status: Blacksp1d3r/Runner-Fabric issue #972 (2026-10-14 owner override).
-
-
-## Mission
-
-Build Runner MCP as a small, auditable, deny-by-default operations interface. Prefer narrow capabilities over generic remote execution.
-
-## Canonical cross-project standards
-
-For every session follow Library `/Standards/MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` v1.2; for repository/bootstrap design follow Library `/Standards/AI_REPOSITORY_BLUEPRINT_STANDARD.md` v1.0. These standards complement, rather than replace, the stricter Runner-MCP security and ownership rules below. The Library master never grants host, filesystem, Git or production privileges.
-
-Runner-MCP predates the blueprint. Apply its `COMPATIBLE/PARTIAL/NEEDS_REVIEW/BLOCKED` migration mapping in `docs/standards/REPOSITORY_BLUEPRINT_COMPATIBILITY.md`: preserve current `roadmap/children`, handover, diagnostic topology and live agent ownership. **Do not** mass-rename existing children or infer qualified local Git/storage authority. New bounded child tasks should use `TASK.md` + `STATE.md`, with a reference to legacy issue documents when relevant. Any Fabric automatic scaffold plan/apply is a separately authorized future capability, not an available Runner-MCP execution surface.
-
-## Non-negotiable security rules
+## 1. Non-negotiable security rules (letterlijk)
 
 1. Never commit real server or infrastructure details to this public repository.
 2. Never commit secrets, tokens, credentials, private keys, database dumps, or environment files.
@@ -139,7 +29,80 @@ Runner-MCP predates the blueprint. Apply its `COMPATIBLE/PARTIAL/NEEDS_REVIEW/BL
 9. All operational actions must be auditable.
 10. Security tests are part of the definition of done.
 
-## First-party control path — hard rule
+## 1a. Public examples en CI safety (letterlijk)
+
+Use environment-variable placeholders and reserved example domains. Do not publish actual paths, ports, service names, database names, usernames, hostnames, or network addresses.
+
+This repository is public. Never run untrusted fork or public pull-request code on a privileged persistent self-hosted runner. Use trusted/manual gates or an isolated disposable runner.
+
+## 2. Harde grenzen voor host-, bedienings- en bronwerk
+
+**Exacte doelserver vóór elke hostactie** (eigenaar 2026-10-22). Vóór een hostscript, een
+hostspecifiek commando, een muterende hosttool, installatie/update of een live end-to-end-claim:
+- Lees eerst de bestaande topologie en autoriteit. GitHub-topologie is een verwachte logische kaart,
+  geen bewijs van geïnstalleerde versie, bereikbaarheid of mutatiebevoegdheid. Maak geen tweede
+  topologiebron en kopieer geen privécoördinaten naar Git.
+- Onderscheid fysieke host, VM/container, SSH/tunnelalias, endpoint, servicebeheer (`system`/`user`)
+  en service-eigenaar. Verschillende instanties van hetzelfde project zijn verschillende deployments.
+  Een verbonden Runner-MCP-proces of Fabric-peer bewijst alleen zijn eigen runtime/endpoint.
+- Toon op díe doelserver aan wat echt draait: host, unit, MainPID/startticks, poort-eigenaar,
+  executable en installatieslot, interpreter/geïmporteerde module, wheel/bronidentiteit, relevante
+  database-/credential-eigenaar en rollbacktoestand. `GitHub source`, `locally installed slot` en
+  `process actually serving` zijn niet uitwisselbaar; merge, groene CI, installatie en bridge-readiness
+  zijn geen bewijs voor een andere host.
+- **STOP bij mismatch of onbekend:** alleen begrensde, niet-geheime read-only diagnose. Niet afleiden,
+  geen muterend script herhalen, geen alternatieve hostadressen voorstellen, geen andere launcher
+  kiezen, niet van release wisselen, self-update/A6/A7 niet omzeilen en geen brede remote shell als
+  shortcut. Leg de concrete bewijslacune vast in het bestaande issue.
+- Elk operatorcommando vermeldt machine, shell (PowerShell/Linux), user, read-only of mutatie,
+  voorwaarden en veilig stopresultaat; nooit credentials of private omgevingswaarden tonen.
+- Na een geslaagde wijziging: dezelfde service opnieuw verifiëren (revisie, health, rollback) en
+  topologie, issue en handover bijwerken. Een echt SQL-commando/resultaat/ACK vraagt eigen
+  end-to-end-bewijs; liveness- of HTTP-authenticatieprobes zijn geen ACK.
+
+**Bedieningsroute** (2026-10-17). Operationele data (topologie, health, geïnstalleerde/geladen
+versie, heartbeat), rollouts en installaties lopen via first-party begrensde Runner-MCP-tools en de
+geauthenticeerde Fabric-bridge, niet via Desktop Commander, onbeheerde remote shell of GitHub
+Actions als hostbesturing. Per-host fleet-health en managed update vragen een apart
+geauthenticeerde, identiteitsgebonden agent/Agent Bus-route en vers bewijs; onbekend of verouderd =
+UNKNOWN, mutatie dan niet beschikbaar. Geen dubbele primaire tunnels; lab- en runnerhosts niet
+verwarren (#198, Runner-Fabric #1202).
+
+**Geen duplicaten.** Geen tweede relay, updater, scheduler, controller, tunnel, register, topologie,
+authenticatielaag of backupcyclus; één centrale `AIfordable/config/infrastructure_registry.yml`.
+
+**Test-first** (2026-10-14) is géén toestemming om GitHub-branchregels, groene CI,
+bron-/revisievalidatie, hostisolatie, echte securitydefecten, productie-approval/backup/rollback,
+credential- en billing-custody, tenantprivacy of runtime-lease/fencing te omzeilen. Een merge
+autoriseert geen productie-release, remote command, betaalde model-/API-call, operatie op beschermde
+data of live AI-dispatch. Host-tests/deploys alleen in geautoriseerde privéomgevingen; de
+werkgeverswerkplek nooit gebruiken (Runner-Fabric #972).
+
+**Toolblokkade** (2026-10-31; Library `/Standards/MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md`
+**v1.7**, actueel sinds 31 oktober 2026, §0/§0.1). Bewaar onmiddellijk de letterlijke **geredigeerde**
+foutmelding volgens `TOOL_BLOCK_V1`: tijd+zone, tool/actie, target, foutcode/HTTP/request-ID (anders
+`NIET GETOOND`), uitkomst en onafhankelijke readback, in het bestaande issue/handover/Failure Museum;
+bij geweigerde logging zichtbaar in de chat als `IN_CHAT_ONLY` (GitHub/ChatGPT-incidenten:
+Runner-Fabric #1935). Verifieer de toestand eenmaal en geef de eigenaar meteen een volledig
+uitvoerbaar commando (host, user, terminal, voorwaarden, impact, verwachte output, veilige readback).
+Een niet-uitgevoerd commando is geen bewijs. Nooit een geweigerde veiligheidsactie via een ander
+tool/transport omzeilen; geen ongeautoriseerde toegang, tunnels of privilegepaden. Werk parallel
+verder aan veilige, onafhankelijke taken.
+
+**Library-standaarden verlenen nooit host-, bestandssysteem-, Git- of productiebevoegdheden.** Een
+Fabric-scaffold plan/apply is een apart te autoriseren toekomstige capability, geen beschikbare
+Runner-MCP-uitvoering.
+
+**Serveropschoning** (2026-11-01): servers eerst alleen via bestaande geautoriseerde leesroutes
+inventariseren; **geen automatische verwijdering**; back-ups, uploads, installatiebestanden,
+actieve releases en herstelpunten beschermen; onbekend = behouden. Geen nieuwe service, platform,
+privilegepad of extra standaard reviewvertraging.
+
+**Nul extra softwarekosten** tot er omzet is: geen betaalde SaaS, Enterprise-tooling, betaalde tiers
+of commerciële gateways als runtime-, build- of control-plane-afhankelijkheid zonder later expliciet
+eigenaarsbesluit.
+
+## 2a. First-party control path — hard rule (letterlijk)
 
 Routine AI-assisted operations must prefer AIfordable-owned bounded control surfaces over broad
 remote-control tooling.
@@ -160,13 +123,7 @@ Do not consume broad remote-tool quota for normal repository inspection, code ch
 reconciliation, runner scheduling, Agent Bus operations or Fabric work that can be expressed through
 the first-party path.
 
-## Zero incremental software-cost rule
-
-Until AIfordable has revenue, new project software/service dependencies must have **zero incremental licence or subscription cost**. Prefer existing first-party code, permissively licensed/open-source software, and capabilities already available at no additional software cost. Hardware, electricity and connectivity are owner infrastructure costs and are a separate optimisation concern.
-
-Paid SaaS, Enterprise-only tooling, paid deployment/update tiers, commercial gateways and similar services may be studied as references but must not become runtime/build/control-plane dependencies without a later explicit owner decision after revenue exists. Time spent building/maintaining free software is an accepted current cost; do not trade this rule away merely for convenience.
-
-## External discovery and independence — hard rule
+## 2b. External discovery and independence — hard rule (letterlijk)
 
 Runner MCP must remain installable, operable, updateable and supportable without any secondary MCP directory, marketplace, gateway or hosted catalog.
 
@@ -182,71 +139,7 @@ Do not add a public hosted endpoint, third-party gateway, alternate package iden
 
 A future first-party AIfordable discovery page may mirror canonical metadata, releases, hashes, install instructions and supported clients, but it must also point back to the canonical sources above and must not become required for runtime operation.
 
-## Public examples
-
-Use environment-variable placeholders and reserved example domains. Do not publish actual paths, ports, service names, database names, usernames, hostnames, or network addresses.
-
-## Epic decomposition and bounded-child rule
-
-Large roadmap items, epics and cross-cutting features must be decomposed into bounded executable child work before substantial implementation.
-
-Use one umbrella for end-to-end intent and dependencies, then split implementation into small child issues with one coherent responsibility and explicit acceptance criteria. Each child should be small enough to inspect, implement, test, review and hand off within a bounded tool/model context. Large Markdown plans are architectural references, not the executable unit of work. When context/tool output becomes truncated or hard to reconcile, split further rather than compressing away constraints. Parent completion is derived from child evidence.
-
-## Git workflow
-
-Use small branches and pull requests. Update `handover/CURRENT_STATE.md` after meaningful milestones. Keep core code project-agnostic; project-specific behavior belongs in adapters/configuration.
-
-## CI safety
-
-This repository is public. Never run untrusted fork or public pull-request code on a privileged persistent self-hosted runner. Use trusted/manual gates or an isolated disposable runner.
-
-## Mandatory session bootstrap and handoff
-
-Before material work, every ChatGPT/Claude/other-agent session must read and reconcile in this order:
-
-1. `AGENTS.md`
-2. `roadmap/ROADMAP.md`
-3. `roadmap/DEPENDENCIES.md` when present
-4. `handover/CURRENT_STATE.md`
-5. `handover/SESSION_HANDOFF.md`
-6. `handover/AGENT_EXCHANGE.md`
-7. `decisions/DECISIONS.md`
-8. current GitHub PRs, issues and CI/workflow state
-
-GitHub current state wins if a handoff file is stale. Reconcile first; do not continue from stale assumptions.
-
-## Diagnostic topology — mandatory troubleshooting rule
-
-For non-trivial troubleshooting, regression analysis, new bounded components or changes to source/state/evidence flow, read `docs/diagnostics/README.md` and resolve the owning component in `docs/diagnostics/component_registry.yml` before changing behavior.
-
-Then inspect that component's `ROADMAP.md`, `SOURCES.md`, `DATA_LINEAGE.md` and `FAILURES.md`, plus `FIELD_LINEAGE.md` for public tool/result fields. Diagnose from the visible symptom upstream to the earliest proven expected/observed divergence. Do not patch a downstream status/result merely because it is where the error became visible.
-
-The diagnostic structure must remain public-safe: no real hostnames, ports, paths, usernames, service names, endpoints, credential values or customer payloads. Infrastructure/credential facts reference the canonical AIfordable/Runner-Fabric authorities instead of being copied here. Existing `.github/ISSUE_TEMPLATE/failure-record.md` and `docs/SAFE_DIAGNOSTICS.md` remain canonical detailed failure/runtime-diagnostic contracts.
-
-Project-wide agent reviews, blockers, assignments and handoffs belong in `handover/AGENT_EXCHANGE.md`; code-specific review comments stay on the PR. Newest exchange entries go first and must not contain secrets, customer data or full test logs.
-
-Feature/code work remains branch -> PR -> review/tests. Handoff/coordination files may be updated on the agreed documentation/coordination surface without a separate feature PR for every message.
-
-An AI assignment is complete only when relevant tests/evidence are terminal and green or the blocker is explicitly recorded, and the next agent has a clear handoff. “Claude says done” or “ChatGPT says done” is not acceptance by itself.
-
-Before closing a chat after material state changed, update `handover/SESSION_HANDOFF.md`, `handover/CURRENT_STATE.md` and, when agent coordination changed, `handover/AGENT_EXCHANGE.md`.
-
-## Multi-agent availability and task takeover
-
-Claude/other-agent availability is a parallel accelerator, not a project dependency. A rate/usage limit is not by itself a blocker.
-
-When a persistent agent queue exists at `claude_feedback/CURRENT_ASSIGNMENT.md`:
-- the agent starting a task records a claim/status plus branch/PR when known;
-- before taking over another agent's task, reconcile GitHub branches, PRs and CI and inspect any work already pushed;
-- if the user confirms the previous agent is unavailable or the task is otherwise blocking progress, ChatGPT may take over rather than wait;
-- never duplicate an active conflicting branch/PR; continue/review existing useful work when safe;
-- a resumed agent must re-read the queue and skip tasks already claimed by another agent or completed.
-
-This takeover rule does not weaken branch/PR/review/test requirements.
-
-If `claude_feedback/CURRENT_ASSIGNMENT.md` exists, read it after GitHub reconciliation before claiming parallel work; its task claim/takeover status prevents duplicate agent work.
-
-## AI source-control identity — hard rule
+## 2c. AI source-control identity — hard rule (letterlijk)
 
 AI assistants may edit files, run tests, review changes, and prepare branches or pull requests, but an AI provider identity must never be recorded as source-control authorship or repository branding.
 
@@ -261,3 +154,82 @@ The following are prohibited:
 AI tools must not change Git author/committer configuration to an AI/provider identity. In owner-operated environments, commits prepared by an AI must be committed under the repository owner's configured maintainer identity; other human/service identities require explicit repository-owner approval.
 
 Before every push, remove prohibited attribution metadata. Do not bypass, weaken, skip, rename, or disable the repository commit-attribution policy check. If an AI tool attempts to add prohibited attribution automatically, strip it before committing or pushing.
+
+## 3. Eigenaarsbeslissingen (kern; volledige tekst in de naslag)
+
+| Datum | Beslissing | Kern |
+|---|---|---|
+| 2026-11-15 | Compact projectgeheugen | Dit bestand; §4–§6; archivering met `tools/doc_memory`. |
+| 2026-11-01 | Leesbare code en veilige serveropschoning | Nieuwe en substantieel gewijzigde, menselijk onderhouden code: elk bronbestand een titel en korte introductie (doel, werking, aanroepers/afhankelijkheden, invoer/uitvoer, risico's); belangrijke functies en niet-evidente blokken in begrijpelijk Nederlands uitgelegd, jargon kort verklaard; geen triviaal regel-voor-regelcommentaar. Gegenereerde, vendored en lockbestanden uitgezonderd. Vereenvoudigen alleen als tests en contractcontrole aantonen dat gedrag, API's, security, runtimepaden en rollback behouden blijven; geleidelijk bij aanraking, geen massale herschrijving. Opschoning: zie §2. Roadmap Q0–Q10: `Blacksp1d3r/Blacksp1d3r` `CODE_CLARITY_SERVER_CLEANUP_ROADMAP.md`. |
+| 2026-10-31 | Toolblokkade en `TOOL_BLOCK_V1` | zie §2 |
+| 2026-10-27 | Bewijs → tooltest → uitvoeren | Elke taak: registry, #669-receipts, AGENTS, roadmap, topologie, CURRENT_STATE en SESSION_HANDOFF lezen; per feit REUSE (stabiele mapping bekend), REFRESH_TARGETED (verlopen of gewijzigde procesgeneratie, geladen wheel of resultaat) of WAIT (bevoegdheid ontbreekt). Eén korte gerichte tooltest die het verwachte functionele antwoord, doelidentiteit en scope controleert. Correct → direct uitvoeren via de bestaande route; afwijking → alleen het geraakte onderdeel diagnosticeren en herstellen. Een positieve tooltest vervangt nooit ontbrekend doelserverbewijs. Ontbrekend of tegenstrijdig host-, service-, executable-/bron- of herstelbewijs verbiedt mutaties; een echt nieuwe check is read-only, op de oorspronkelijke host en gelabeld met host/terminal/user. De oorspronkelijke `github-runner` gebruikt Fabric `agent-bus-run` en `agent-serve-qualification` (niet alleen de `*-worker run`-patronen); zie AF-HOST-0001 / AF-SVC-0010 en #669. Korte cron-taken vragen resultaatbewijs; een oude PID bewijst nooit nieuwe geladen bytes. Kort: `BEWIJS_HERGEBRUIKT → TOOLTEST_CORRECT → UITVOEREN → RESULTAAT`; bij afwijking `FOUT → GERICHT_HERSTEL → ALLEEN_GERAAKTE_TOOLTEST → UITVOEREN`. Statusrapportering stopt de uitvoering niet. |
+| 2026-10-22 | Fysieke topologie-preflight | zie §2 |
+| 2026-10-20 | MCP-scope in cockpit | AIfordable = business-cockpit en metadata-autoriteit; Fabric = technische cockpit en alle taak-/AI-orchestratie; Runner-MCP = begrensde geauthenticeerde MCP-uitvoerings-/toegangsgrens + optionele smalle Fabric-bridge, geen scheduler, provider-/gateway-autoriteit, relay, updater of generieke bestandsbeheerder. Workspace preflight/prepare alleen op begrensde worker-/work-unit-ID's; Fabric beslist de planning. Geen hostmutatie of release-/relay-/runtimekwalificatie op basis hiervan. Contract: AIfordable `docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md`. |
+| 2026-10-17 | Bedieningsroute | zie §2 |
+| 2026-10-14 | Test-first, review later | Implementeren → lint/build/tests/CI → echte defecten herstellen → normale merge → staging. Niet wachten op Blacky, RTX5080, Claude of externe reviewers; hun bevindingen zijn adviserend maar echte defecten worden hersteld. Grenzen: zie §2. |
+
+## 4. Opstart (bootstrap) — kort lezen, gericht ophalen
+
+1. Dit bestand.
+2. `roadmap/ROADMAP.md` en `roadmap/DEPENDENCIES.md`.
+3. `handover/CURRENT_STATE.md` — het actieve deel, inclusief het blok met open werk bovenaan.
+4. `handover/SESSION_HANDOFF.md` — de recentste overdracht.
+5. `handover/AGENT_EXCHANGE.md` (open claims en blockers), daarna
+   `claude_feedback/CURRENT_ASSIGNMENT.md` indien aanwezig.
+6. `decisions/DECISIONS.md`.
+7. Actuele GitHub-PR's, issues en CI. GitHub wint als een handoverbestand verouderd is.
+
+Archieven (`*.archive-JJJJ-MM.md`) **niet** standaard lezen; zoek gericht op nummer, SHA of datum.
+
+## 5. Werkwijze en schrijfregels voor het projectgeheugen
+
+- **Vervangt de oudere regel om telkens nieuwe checkpoints toe te voegen:** `CURRENT_STATE.md` =
+  wat nu waar is (de sectie van de lane bijwerken, geen dagboek). `SESSION_HANDOFF.md` = alleen de
+  recentste overdracht. `ROADMAP.md` = open en lopend werk.
+- Vóór het sluiten van een chat waarin de toestand materieel veranderde: `SESSION_HANDOFF.md`,
+  `CURRENT_STATE.md` en, bij gewijzigde coördinatie, `AGENT_EXCHANGE.md` bijwerken.
+- Dezelfde tekst niet in meerdere bestanden; verwijs met issue-/PR-nummer of SHA.
+- Historisch bewijs nooit verwijderen; archiveren met `tools/doc_memory/doc_memory.py split` +
+  `verify-split`. Gearchiveerde secties zijn alleen-aanvullen (pytest controleert dit). Archieven
+  mogen geen vertrouwelijke infrastructuurgegevens bevatten.
+- Kleine branches en PR's; kerncode projectagnostisch, projectspecifiek gedrag in adapters/config.
+  Feature-/codewerk via branch → PR → tests; handover-/coördinatiebestanden mogen op het afgesproken
+  coördinatievlak zonder aparte feature-PR per bericht.
+- **Agents en claims**: projectbrede reviews, blockers, toewijzingen en overdrachten in
+  `handover/AGENT_EXCHANGE.md` (nieuwste eerst, geen secrets, klantdata of volledige testlogs);
+  codereview op de PR. Wie een taak start, registreert claim + branch/PR. Vóór overname branches,
+  PR's en CI reconciliëren; nooit een actieve conflicterende branch/PR dupliceren; een hervatte agent
+  slaat geclaimde of afgeronde taken over. Beschikbaarheid van een agent is versnelling, geen
+  afhankelijkheid; overname verzwakt geen branch-, PR-, review- of testvereisten.
+- **Epics** vóór substantiële implementatie opsplitsen in begrensde child-issues; nieuwe children
+  gebruiken `TASK.md` + `STATE.md`; bestaande `roadmap/children` niet massaal hernoemen (zie
+  `docs/standards/REPOSITORY_BLUEPRINT_COMPATIBILITY.md`). Een umbrella is pas klaar op child-bewijs.
+- **Troubleshooting**: eerst `docs/diagnostics/README.md` en `component_registry.yml`; diagnose naar
+  de vroegst bewezen divergentie, niet de downstreamstatus patchen. Diagnosedocumenten blijven
+  public-safe; `.github/ISSUE_TEMPLATE/failure-record.md` en `docs/SAFE_DIAGNOSTICS.md` blijven canoniek.
+- Een AI-opdracht is pas klaar als tests/bewijs terminaal en groen zijn of de blocker expliciet is,
+  met een duidelijke handover. "Agent zegt klaar" is geen acceptatie.
+
+## 6. Geldigheid van informatie
+
+| Type | Voorbeeld | Geldigheid | Vóór risicovolle wijziging |
+|---|---|---|---|
+| Stabiel | rol→launcher, aliassen, beslissing | tot gewijzigde beslissing | hergebruiken |
+| Semi-stabiel | geïnstalleerde revisie/wheel, cron/systemd-beheer | tot deploy/herstart/update | gericht herverifiëren |
+| Dynamisch | PID/startticks, poort-eigenaar, online-status | momentopname | altijd actueel op exacte doelserver |
+| Bewijs | CI-run, ACK, receipt | gebonden aan exacte SHA/run-ID | nooit voor andere revisie |
+
+Publieke repository: **geen** echte hostnamen, IP's, poorten, paden, users, servicenamen, device-ID's
+of credentials; verwijs met register-ID uit de private AIfordable/Runner-Fabric-autoriteit, bv.
+`<AF-VM-0004-tester-home>`.
+
+## 7. Naslag — `docs/agents/AGENTS_FULL_2026-11-15.md`
+
+| Onderwerp | Lees volledig wanneer |
+|---|---|
+| Missie en canonieke cross-project standards | scope of repositorystructuur wijzigt |
+| Epic-decompositie en bounded children | een epic start |
+| Diagnostische topologie (public-safe) | niet-triviale troubleshooting |
+| Multi-agent beschikbaarheid en overname | een taak van een andere agent wordt overgenomen |
+| Externe discovery en onafhankelijkheid | een directory- of registry-listing wijzigt |
+| Volledige eigenaarsbeslissingen (§3) | een beslissing in detail moet worden toegepast |

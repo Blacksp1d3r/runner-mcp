@@ -1,6 +1,15 @@
 # Doc-memory migratievoorstel — Runner-MCP
 
-Status: **voorstel**. In deze PR worden geen actieve projectbestanden gewijzigd.
+Status: **goedgekeurd door de eigenaar op 2026-11-15**, gefaseerd in uitvoering.
+
+## 0. Eigenaarsbesluiten 2026-11-15
+
+1. Archiefgrenzen goedgekeurd: `SESSION_HANDOFF` vóór 2026-11-13; `CURRENT_STATE`, `ROADMAP`, `DEPENDENCIES` (en Runner-MCP `NEXT_ACTION`) vóór 2026-11-08. Voorwaarde: actieve taken, blokkades, afhankelijkheden en claims blijven zichtbaar, en alle historie blijft terugvindbaar. Daarom zet `split --open-items` elk nog open issue/PR dat alleen in gearchiveerde secties voorkomt in een vast blok bovenaan het actieve bestand. `AGENT_EXCHANGE` en `CURRENT_ASSIGNMENT` worden niet op datum gearchiveerd.
+2. Compacte `AGENTS.md` goedgekeurd en in deze PR geactiveerd. Het origineel is byte-identiek bewaard (`docs/agents/AGENTS_FULL_2026-11-15.md`, SHA-256 bewaakt in CI). De dekkingscontrole staat in `docs/agents/AGENTS_COVERAGE_2026-11-15.md`.
+3. Library-protocol v1.7 (31 oktober 2026) is actueel. Verouderde vermeldingen als "actueel" zijn bijgewerkt; historische vermeldingen zijn behouden.
+4. Geen herschrijving van de Git-geschiedenis. Vertrouwelijke infrastructuurwaarden zijn in de actuele documentatie vervangen door veilige verwijzingen naar register-ID's (bv. `<AF-HOST-0003-lan-ip>`). `split` weigert secties met zulke gegevens te archiveren, en CI faalt als een archiefbestand ze bevat. Er zijn geen echte wachtwoorden, tokens of privésleutels gevonden: alle treffers waren testfixtures of detectiecode.
+
+Uitvoering stap 1 (mechanisch archiveren) volgt in een aparte PR per repository, zodra de betrokken bestanden niet meer door open A7-/systemd-/agent-PR's worden gewijzigd.
 
 Doel: het bestaande GitHub-geheugen kleiner, actueler en efficiënter maken, zonder informatieverlies, zonder tweede beheersysteem en zonder nieuwe infrastructuur.
 
@@ -80,7 +89,7 @@ Tokens zijn geschat als tekens/4. De simulatie draaide op een kopie, met `split`
 
 Zie §6 van het compacte `AGENTS.md`-voorstel. Kort: stabiel = hergebruiken; semi-stabiel (geïnstalleerde revisie/wheel, cron/systemd) = gericht herverifiëren na deploy/herstart; dynamisch (PID, poort-eigenaar, online-status, lease) = altijd actueel op de exacte doelserver vóór een risicovolle wijziging; bewijs (CI-run, ACK) = gebonden aan de exacte SHA. Vertrouwelijke infrastructuurgegevens blijven in de private AIfordable-autoriteit en worden alleen met hun register-ID vermeld.
 
-## 8. Open beslissingen voor de eigenaar
+## 8. Open beslissingen voor de eigenaar (beslist op 2026-11-15, zie §0)
 
 1. Akkoord met de archiefgrenzen uit stap 1?
 2. Akkoord met het compacte `AGENTS.md`-voorstel (rangorde, letterlijk overgenomen veiligheidsregels)?

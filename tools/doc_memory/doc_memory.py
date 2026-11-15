@@ -77,9 +77,7 @@ INFRA_PATTERNS = {
     "home_path": re.compile(
         r"(?<![\w/.-])(?:/home/|/Users/)[A-Za-z0-9._-]+|[A-Za-z]:\\Users\\[A-Za-z0-9._-]+"
     ),
-    "lan_hostname": re.compile(
-        r"\b[a-z0-9-]+\.(?:lan|local|internal|home\.arpa)\b", re.IGNORECASE
-    ),
+    "lan_hostname": re.compile(r"\b[a-z0-9-]+\.(?:lan|local|internal|home\.arpa)\b", re.IGNORECASE),
     "private_key": re.compile(r"-----BEGIN [A-Z ]*PRIVATE KEY-----"),
 }
 
@@ -186,9 +184,7 @@ def duplicate_sections(root: Path, paths: list[str]) -> dict:
                 continue
             seen.setdefault(sha256_text(body), []).append((rel, len(section.text)))
     shared = {digest: hits for digest, hits in seen.items() if len(hits) > 1}
-    duplicated_chars = sum(
-        sum(size for _, size in hits[1:]) for hits in shared.values()
-    )
+    duplicated_chars = sum(sum(size for _, size in hits[1:]) for hits in shared.values())
     return {"shared_sections": len(shared), "duplicated_chars": duplicated_chars}
 
 
@@ -197,9 +193,7 @@ def command_measure(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     config = load_config(Path(args.config))
     files = {rel: file_stats(root / rel) for rel in config["files"]}
-    bootstrap = {
-        rel: file_stats(root / rel) for rel in config.get("bootstrap_read_set", [])
-    }
+    bootstrap = {rel: file_stats(root / rel) for rel in config.get("bootstrap_read_set", [])}
     boot_chars = sum(s.get("chars", 0) for s in bootstrap.values())
     report = {
         "root": str(root),
@@ -222,9 +216,7 @@ def command_measure(args: argparse.Namespace) -> int:
             f"{rel:<42} {stats['chars']:>10,} {target:>8,} "
             f"{stats['sections']:>8} {stats['est_tokens']:>9,}"
         )
-    print(
-        f"\nBootstrap-leesset: {boot_chars:,} tekens ≈ {estimate_tokens(boot_chars):,} tokens"
-    )
+    print(f"\nBootstrap-leesset: {boot_chars:,} tekens ≈ {estimate_tokens(boot_chars):,} tokens")
     dup = report["duplicates"]
     print(
         f"Letterlijk gedeelde secties: {dup['shared_sections']} "
@@ -235,17 +227,13 @@ def command_measure(args: argparse.Namespace) -> int:
 
 def git_show(rev: str, rel: str) -> str | None:
     """Lees een bestand op een git-revisie; ``None`` als het daar niet bestaat."""
-    proc = subprocess.run(
-        ["git", "show", f"{rev}:{rel}"], capture_output=True, check=False
-    )
+    proc = subprocess.run(["git", "show", f"{rev}:{rel}"], capture_output=True, check=False)
     if proc.returncode:
         return None
     return proc.stdout.decode("utf-8")
 
 
-def check_budgets(
-    root: Path, config: dict, base: str | None
-) -> tuple[list[str], list[str]]:
+def check_budgets(root: Path, config: dict, base: str | None) -> tuple[list[str], list[str]]:
     """Vergelijk bestandsgroottes met de streefwaarden.
 
     Modi per bestand:
@@ -287,9 +275,7 @@ def check_archives(root: Path, config: dict) -> list[str]:
     gewijzigd of verwijderd. Elke afwijking is een fout (historisch bewijs).
     """
     errors: list[str] = []
-    for manifest_path in sorted(
-        root.glob(config.get("manifest_glob", "**/*.doc-memory.json"))
-    ):
+    for manifest_path in sorted(root.glob(config.get("manifest_glob", "**/*.doc-memory.json"))):
         manifest = json.loads(read_text(manifest_path))
         if manifest.get("schema") != MANIFEST_SCHEMA:
             errors.append(f"{manifest_path}: onbekend manifestschema")
@@ -347,9 +333,7 @@ def scan_infra(root: Path, config: dict) -> tuple[list[str], list[str]]:
     patterns = list(config.get("infra_scan_globs", []))
     patterns.append(config.get("archive_glob", "**/*.archive-*.md"))
     allow = [re.compile(p) for p in config.get("infra_allow_patterns", [])]
-    paths = sorted(
-        {p for pattern in patterns for p in root.glob(pattern) if p.is_file()}
-    )
+    paths = sorted({p for pattern in patterns for p in root.glob(pattern) if p.is_file()})
     for path in paths:
         counts = infra_counts(read_text(path), allow)
         if not counts:
@@ -384,11 +368,7 @@ def command_check(args: argparse.Namespace) -> int:
     errors += infra_errors
     annotate = args.github
     for message in warnings:
-        print(
-            f"::warning title=doc-memory::{message}"
-            if annotate
-            else f"WAARSCHUWING {message}"
-        )
+        print(f"::warning title=doc-memory::{message}" if annotate else f"WAARSCHUWING {message}")
     for message in errors:
         print(f"::error title=doc-memory::{message}" if annotate else f"FOUT {message}")
     print(f"doc-memory check: {len(warnings)} waarschuwing(en), {len(errors)} fout(en)")
@@ -487,17 +467,23 @@ def command_split(args: argparse.Namespace) -> int:
     archive_dir = Path(args.archive_dir) if args.archive_dir else Path(rel).parent
     stem = Path(rel).stem
 
-    def archive_rel(date: str) -> str:
-        return (archive_dir / f"{stem}.archive-{date[:7]}.md").as_posix()
+    archive_undated = re.compile(args.archive_undated) if args.archive_undated else None
+
+    def archive_rel(date: str | None) -> str:
+        period = date[:7] if date else "undated"
+        return (archive_dir / f"{stem}.archive-{period}.md").as_posix()
 
     keep: list[Section] = []
     moved: dict[str, list[Section]] = {}
     entries = []
     for section in sections:
-        is_old = (
-            section.index > 0
-            and section.date is not None
-            and section.date < args.keep_since
+        is_old = section.index > 0 and (
+            (section.date is not None and section.date < args.keep_since)
+            or (
+                section.date is None
+                and archive_undated is not None
+                and archive_undated.search(section.heading) is not None
+            )
         )
         dest = archive_rel(section.date) if is_old else rel
         (moved.setdefault(dest, []) if is_old else keep).append(section)
@@ -519,13 +505,13 @@ def command_split(args: argparse.Namespace) -> int:
     open_lines = _open_work_lines(args, keep, moved, foreign)
     hint = (archive_dir / f"{stem}.archive-*.md").as_posix()
     block = generated_block(hint, open_lines)
-    active_text = keep[0].text + block + "".join(s.text for s in keep[1:])
+    inserted = read_text(Path(args.insert)) if args.insert else ""
+    if inserted and not inserted.endswith("\n\n"):
+        inserted = inserted.rstrip("\n") + "\n\n"
+    active_text = keep[0].text + block + inserted + "".join(s.text for s in keep[1:])
     allow = [re.compile(p) for p in config.get("infra_allow_patterns", [])]
     leaks = [
-        s.heading[:60]
-        for items in moved.values()
-        for s in items
-        if infra_counts(s.text, allow)
+        s.heading[:60] for items in moved.values() for s in items if infra_counts(s.text, allow)
     ]
     if leaks:
         print(
@@ -551,13 +537,12 @@ def command_split(args: argparse.Namespace) -> int:
         "removed_generated": removed_generated,
         "removed_offset": removed_offset,
         "open_work_listed": len(open_lines),
+        "inserted_sha256": sha256_text(inserted) if inserted else None,
         "keep_since": args.keep_since,
         "sections": entries,
         "outputs": {path: sha256_text(text) for path, text in outputs.items()},
     }
-    manifest_rel = (
-        archive_dir / f"{stem}.split-{args.keep_since}.doc-memory.json"
-    ).as_posix()
+    manifest_rel = (archive_dir / f"{stem}.split-{args.keep_since}.doc-memory.json").as_posix()
     print(f"Actief: {rel} {len(original):,} -> {len(active_text):,} tekens")
     for dest, items in moved.items():
         print(f"Archief: {dest} (+{len(items)} secties)")
@@ -593,19 +578,22 @@ def _open_work_lines(
     for section in keep:
         kept_refs |= local_issue_refs(section.text, foreign)
     archived: dict[int, tuple[str, str]] = {}
-    for dest, items in moved.items():
-        for section in items:
-            for number in local_issue_refs(section.text, foreign):
-                previous = archived.get(number)
-                if previous is None or (section.date or "") > previous[1]:
-                    archived[number] = (dest, section.date or "")
+    sources = [(dest, section) for dest, items in moved.items() for section in items]
+    root = Path(args.root).resolve()
+    for pattern in args.open_scan or []:
+        for path in sorted(root.glob(pattern)):
+            rel = path.relative_to(root).as_posix()
+            sources += [(rel, s) for s in parse_sections(read_text(path))[1:]]
+    for dest, section in sources:
+        for number in local_issue_refs(section.text, foreign):
+            previous = archived.get(number)
+            if previous is None or (section.date or "") > previous[1]:
+                archived[number] = (dest, section.date or "")
     lines = []
     for number in sorted(set(archived) - kept_refs, reverse=True):
         if number in open_items:
             dest, date = archived[number]
-            lines.append(
-                f"- #{number} {open_items[number]} — laatst {date} in `{dest}`"
-            )
+            lines.append(f"- #{number} {open_items[number]} — laatst {date} in `{dest}`")
     return lines
 
 
@@ -656,9 +644,7 @@ def command_verify_split(args: argparse.Namespace) -> int:
         found = None
         start = 0
         while found is None:
-            pos = (
-                haystack.find(entry["first_line"], start) if entry["first_line"] else 0
-            )
+            pos = haystack.find(entry["first_line"], start) if entry["first_line"] else 0
             if pos < 0:
                 break
             candidate = haystack[pos : pos + entry["chars"]]
@@ -668,30 +654,23 @@ def command_verify_split(args: argparse.Namespace) -> int:
             if not entry["first_line"]:
                 break
         if found is None:
-            errors.append(
-                f"sectie {entry['index']} niet byte-identiek gevonden in {dest}"
-            )
+            errors.append(f"sectie {entry['index']} niet byte-identiek gevonden in {dest}")
             continue
         rebuilt_parts.append(found)
     rebuilt = "".join(rebuilt_parts)
     expected = manifest.get("base_sha256", manifest["source_sha256"])
     offset = manifest.get("removed_offset", -1)
     if offset >= 0:
-        rebuilt_full = (
-            rebuilt[:offset] + manifest["removed_generated"] + rebuilt[offset:]
-        )
+        rebuilt_full = rebuilt[:offset] + manifest["removed_generated"] + rebuilt[offset:]
     else:
         rebuilt_full = rebuilt
-    if (
-        sha256_text(rebuilt) != expected
-        or sha256_text(rebuilt_full) != manifest["source_sha256"]
-    ):
-        errors.append(
-            "reconstructie uit actief bestand + archieven is niet gelijk aan origineel"
-        )
+    if sha256_text(rebuilt) != expected or sha256_text(rebuilt_full) != manifest["source_sha256"]:
+        errors.append("reconstructie uit actief bestand + archieven is niet gelijk aan origineel")
 
     union = "".join(texts.values())
-    before = collect_references(original)
+    # Het gegenereerde verwijzingsblok is afgeleide data (in het manifest bewaard);
+    # alleen echte inhoud moet zijn verwijzingen behouden.
+    before = collect_references(original.replace(manifest.get("removed_generated", ""), "", 1))
     after = collect_references(union)
     for name, refs in before.items():
         missing = refs - after[name]
@@ -699,9 +678,7 @@ def command_verify_split(args: argparse.Namespace) -> int:
             errors.append(f"{len(missing)} verwijzing(en) van type {name} verdwenen")
 
     source_dir = (root / manifest["source_path"]).parent
-    moved_entries = [
-        e for e in manifest["sections"] if e["dest"] != manifest["active_path"]
-    ]
+    moved_entries = [e for e in manifest["sections"] if e["dest"] != manifest["active_path"]]
     for entry in moved_entries:
         text = texts.get(entry["dest"], "")
         pos = text.find(entry["first_line"])
@@ -724,9 +701,7 @@ def command_verify_split(args: argparse.Namespace) -> int:
             if match.group(1) in moved_slugs:
                 inbound += 1
     if inbound:
-        warnings.append(
-            f"{inbound} inkomende ankerlink(s) wijzen naar nu gearchiveerde koppen"
-        )
+        warnings.append(f"{inbound} inkomende ankerlink(s) wijzen naar nu gearchiveerde koppen")
 
     for message in warnings:
         print(f"WAARSCHUWING {message}")
@@ -743,9 +718,7 @@ def command_verify_split(args: argparse.Namespace) -> int:
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", default=".", help="repository-root (standaard: .)")
-    parser.add_argument(
-        "--config", default=str(DEFAULT_CONFIG), help="pad naar budget.json"
-    )
+    parser.add_argument("--config", default=str(DEFAULT_CONFIG), help="pad naar budget.json")
     sub = parser.add_subparsers(dest="command", required=True)
 
     measure = sub.add_parser("measure", help="meet omvang en bootstrap-context")
@@ -759,13 +732,22 @@ def build_parser() -> argparse.ArgumentParser:
 
     split = sub.add_parser("split", help="archiveer oude gedateerde secties")
     split.add_argument("file", help="pad t.o.v. root, bv. handover/CURRENT_STATE.md")
-    split.add_argument(
-        "--keep-since", required=True, help="JJJJ-MM-DD; ouder gaat naar archief"
-    )
-    split.add_argument(
-        "--archive-dir", help="map voor archieven (standaard: map van het bestand)"
-    )
+    split.add_argument("--keep-since", required=True, help="JJJJ-MM-DD; ouder gaat naar archief")
+    split.add_argument("--archive-dir", help="map voor archieven (standaard: map van het bestand)")
     split.add_argument("--dry-run", action="store_true")
+    split.add_argument(
+        "--archive-undated",
+        help="regex: ongedateerde secties met overeenkomende kop ook archiveren",
+    )
+    split.add_argument(
+        "--insert",
+        help="bestand met nieuwe (geconsolideerde) tekst, ingevoegd na het verwijzingsblok",
+    )
+    split.add_argument(
+        "--open-scan",
+        action="append",
+        help="glob van bestaande archieven waarvan open verwijzingen ook vermeld worden",
+    )
     split.add_argument(
         "--open-items",
         help="JSON-lijst [{number, title}] van open issues/PR's (export uit GitHub)",

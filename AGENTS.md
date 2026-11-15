@@ -189,6 +189,9 @@ Archieven (`*.archive-JJJJ-MM.md`) **niet** standaard lezen; zoek gericht op num
 - Vóór het sluiten van een chat waarin de toestand materieel veranderde: `SESSION_HANDOFF.md`,
   `CURRENT_STATE.md` en, bij gewijzigde coördinatie, `AGENT_EXCHANGE.md` bijwerken.
 - Dezelfde tekst niet in meerdere bestanden; verwijs met issue-/PR-nummer of SHA.
+- **Lokaal controleren vóór schrijven naar GitHub:** bundel geheugenupdates per sessie in één commit en
+  draai eerst `python3 tools/doc_memory/doc_memory.py precommit` (of eenmalig `install-hook`). Het
+  SHA-gebonden ontvangstbewijs is adviserend; verplichte GitHub-controles blijven gelden.
 - Historisch bewijs nooit verwijderen; archiveren met `tools/doc_memory/doc_memory.py split` +
   `verify-split`. Gearchiveerde secties zijn alleen-aanvullen (pytest controleert dit). Archieven
   mogen geen vertrouwelijke infrastructuurgegevens bevatten.

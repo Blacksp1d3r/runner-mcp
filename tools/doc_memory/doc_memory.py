@@ -19,6 +19,9 @@ Werking (subcommando's)
                   naar maandarchieven en schrijft een manifest met hashes.
     verify-split  Reconstrueert het originele bestand uit actief bestand +
                   archieven en vergelijkt de SHA-256 met het origineel.
+    precommit     CI-light: lokale controle van gewijzigde documentatie vóór commit
+                  of PR, met een ontvangstbewijs gebonden aan de exacte tree-SHA.
+    install-hook  Installeert die controle als lokale git pre-commit-hook.
 
 Aanroepers / afhankelijkheden
     Alleen de Python-standaardbibliotheek (3.12+). Wordt aangeroepen vanuit de
@@ -716,6 +719,119 @@ def command_verify_split(args: argparse.Namespace) -> int:
     return 1 if errors else 0
 
 
+def _git(*args: str) -> str:
+    return subprocess.run(["git", *args], capture_output=True, text=True, check=True).stdout
+
+
+def _added_lines(rel: str, staged: bool) -> list[str]:
+    """Regels die in deze wijziging zijn toegevoegd (alleen die worden op lekken gecontroleerd)."""
+    diff = _git("diff", *(["--cached"] if staged else []), "-U0", "--", rel)
+    return [ln[1:] for ln in diff.splitlines() if ln.startswith("+") and not ln.startswith("+++")]
+
+
+def command_precommit(args: argparse.Namespace) -> int:
+    """CI-light: lokale documentatiecontrole vóór commit of PR, met ontvangstbewijs.
+
+    Controleert de gewijzigde Markdown-bestanden (staged, of t.o.v. ``--base``):
+      - groottegrenzen, archiefintegriteit en bevroren kopieën (zoals ``check``);
+      - vertrouwelijke infrastructuurdata in **toegevoegde** regels: fout, zodat
+        verwijderde waarden niet opnieuw binnenkomen;
+      - relatieve links in gewijzigde bestanden moeten bestaan;
+      - secties die letterlijk al in een ander actief geheugenbestand staan (waarschuwing).
+    Het ontvangstbewijs bindt het resultaat aan de exacte inhoud: de git-tree-SHA
+    van de gecontroleerde index (``git write-tree``) of van ``HEAD``, plus de
+    SHA-256 van dit script en van de configuratie. Het bewijs is lokaal en
+    adviserend: het vervangt geen verplichte GitHub-controles.
+    """
+    root = Path(args.root).resolve()
+    config = load_config(Path(args.config))
+    staged = args.base is None
+    if staged:
+        changed = _git("diff", "--cached", "--name-only", "--diff-filter=ACMR").split()
+        tree = _git("write-tree").strip()
+    else:
+        changed = _git("diff", "--name-only", "--diff-filter=ACMR", f"{args.base}...HEAD").split()
+        tree = _git("rev-parse", "HEAD^{tree}").strip()
+    md = [f for f in changed if f.endswith(".md")]
+    warnings, errors = check_budgets(root, config, None)
+    errors += check_archives(root, config)
+    errors += check_frozen(root, config)
+    allow = [re.compile(p) for p in config.get("infra_allow_patterns", [])]
+    for rel in md:
+        added = (
+            _added_lines(rel, staged)
+            if staged
+            else [
+                ln[1:]
+                for ln in _git("diff", "-U0", f"{args.base}...HEAD", "--", rel).splitlines()
+                if ln.startswith("+") and not ln.startswith("+++")
+            ]
+        )
+        counts = infra_counts("\n".join(added), allow)
+        if counts:
+            summary = ", ".join(f"{k}={v}" for k, v in sorted(counts.items()))
+            errors.append(f"{rel}: toegevoegde regels bevatten infrastructuurdata ({summary})")
+        path = root / rel
+        if not path.exists():
+            continue
+        text = read_text(path)
+        for link, _anchor in REFERENCE_PATTERNS["relative_link"].findall(text):
+            if not (path.parent / link).exists():
+                warnings.append(f"{rel}: relatieve link {link!r} bestaat niet")
+    dup = duplicate_sections(root, list(config.get("duplicate_scan", [])))
+    if dup["shared_sections"]:
+        warnings.append(
+            f"{dup['shared_sections']} sectie(s) staan letterlijk in meerdere actieve "
+            f"geheugenbestanden ({dup['duplicated_chars']:,} tekens); verwijs i.p.v. kopiëren"
+        )
+    receipt = {
+        "schema": "doc-memory-precommit/v1",
+        "tree_sha": tree,
+        "head_sha": _git("rev-parse", "HEAD").strip(),
+        "mode": "staged" if staged else f"range:{args.base}...HEAD",
+        "changed_markdown": md,
+        "tool_sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
+        "config_sha256": hashlib.sha256(Path(args.config).read_bytes()).hexdigest(),
+        "warnings": warnings,
+        "errors": errors,
+        "result": "FAIL" if errors else "PASS",
+        "advisory": "lokaal bewijs; vervangt geen verplichte GitHub-controles",
+    }
+    git_dir = Path(_git("rev-parse", "--git-dir").strip())
+    out = (root / git_dir if not git_dir.is_absolute() else git_dir) / "doc-memory" / "receipts"
+    out.mkdir(parents=True, exist_ok=True)
+    (out / f"{tree}.json").write_text(json.dumps(receipt, indent=2, ensure_ascii=False) + "\n")
+    for message in warnings:
+        print(f"WAARSCHUWING {message}")
+    for message in errors:
+        print(f"FOUT {message}")
+    print(f"doc-memory precommit {receipt['result']} tree={tree[:12]} ({len(md)} md-bestanden)")
+    return 1 if errors else 0
+
+
+HOOK = """#!/bin/sh
+# doc-memory CI-light: lokale documentatiecontrole vóór commit (adviserend t.o.v. GitHub-CI).
+# Alleen actief als er Markdown gewijzigd is. Overslaan kan bewust met: git commit --no-verify
+if git diff --cached --name-only | grep -q '\\.md$'; then
+  python3 tools/doc_memory/doc_memory.py precommit || exit 1
+fi
+"""
+
+
+def command_install_hook(args: argparse.Namespace) -> int:
+    """Installeer de pre-commit-hook in deze lokale clone (niets in de repository zelf)."""
+    hooks = Path(_git("rev-parse", "--git-path", "hooks").strip())
+    target = hooks / "pre-commit"
+    if target.exists() and "doc-memory" not in target.read_text(errors="ignore"):
+        print(f"Bestaande {target} niet overschreven; voeg de doc-memory-aanroep zelf toe.")
+        return 1
+    hooks.mkdir(parents=True, exist_ok=True)
+    target.write_text(HOOK)
+    target.chmod(0o755)
+    print(f"pre-commit-hook geïnstalleerd: {target}")
+    return 0
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--root", default=".", help="repository-root (standaard: .)")
@@ -754,6 +870,13 @@ def build_parser() -> argparse.ArgumentParser:
         help="JSON-lijst [{number, title}] van open issues/PR's (export uit GitHub)",
     )
     split.set_defaults(func=command_split)
+
+    pre = sub.add_parser("precommit", help="CI-light: lokale controle met SHA-gebonden bewijs")
+    pre.add_argument("--base", help="controleer HEAD t.o.v. deze revisie i.p.v. de staged index")
+    pre.set_defaults(func=command_precommit)
+
+    hook = sub.add_parser("install-hook", help="lokale pre-commit-hook installeren")
+    hook.set_defaults(func=command_install_hook)
 
     verify = sub.add_parser("verify-split", help="bewijs dat een split verliesvrij is")
     verify.add_argument("--manifest", required=True)

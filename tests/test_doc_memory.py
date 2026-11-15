@@ -219,3 +219,48 @@ def test_insert_and_archive_undated_stay_lossless(tmp_path: Path) -> None:
     manifest = root / "handover" / "CURRENT_STATE.split-2026-11-10.doc-memory.json"
     args = ["--root", str(root), "verify-split", "--manifest", str(manifest)]
     assert dm.main([*args, "--original", str(original)]) == 0
+
+
+def _git_repo(tmp_path: Path) -> tuple[Path, Path]:
+    import subprocess
+
+    root, cfg = _repo(tmp_path, target=10**9)
+    for cmd in (
+        ["git", "init", "-q"],
+        ["git", "config", "user.email", "t@example.invalid"],
+        ["git", "config", "user.name", "t"],
+        ["git", "add", "-A"],
+        ["git", "commit", "-qm", "basis"],
+    ):
+        subprocess.run(cmd, cwd=root, check=True)
+    return root, cfg
+
+
+def test_precommit_blocks_new_infrastructure_data_and_writes_receipt(
+    tmp_path: Path, monkeypatch
+) -> None:
+    import subprocess
+
+    root, cfg = _git_repo(tmp_path)
+    monkeypatch.chdir(root)
+    note = root / "handover" / "NOTE.md"
+    note.write_text("## Notitie\n\nalles schoon\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    args = ["--root", str(root), "--config", str(cfg), "precommit"]
+    assert dm.main(args) == 0
+    tree = subprocess.run(
+        ["git", "write-tree"], cwd=root, capture_output=True, text=True, check=True
+    ).stdout.strip()
+    receipt = json.loads((root / ".git" / "doc-memory" / "receipts" / f"{tree}.json").read_text())
+    assert receipt["result"] == "PASS" and receipt["tree_sha"] == tree
+    note.write_text("## Notitie\n\nhost 192.168.7.7\n", encoding="utf-8")
+    subprocess.run(["git", "add", "-A"], cwd=root, check=True)
+    assert dm.main(args) == 1
+
+
+def test_install_hook_targets_markdown_only(tmp_path: Path, monkeypatch) -> None:
+    root, _cfg = _git_repo(tmp_path)
+    monkeypatch.chdir(root)
+    assert dm.main(["--root", str(root), "install-hook"]) == 0
+    hook = (root / ".git" / "hooks" / "pre-commit").read_text()
+    assert "grep -q '\\.md$'" in hook and "precommit" in hook

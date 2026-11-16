@@ -280,9 +280,10 @@ else:
 FAKE_RUNNER_MCP
 chmod 0700 "$peer_exe"
 
-# Eénmalige 2026-11-16 cronminuutdiagnose, na bewijs standaard uitzetten.
-# Geen sleeps, retries of permanente extra CI-kosten.
-if [[ "${RUNNER_MCP_866_MINUTE_PROBE:-true}" == "true" ]]; then
+# Gerichte 2026-11-16 cronminuutdiagnose; standaard uit na echte SUCCESS.
+# Alleen opt-in op de strikt bewaakte disposable GitHub-runner.
+# Geen extra sleeps, retries, productiegates of permanente CI-minuutkosten.
+if [[ "${RUNNER_MCP_866_MINUTE_PROBE:-false}" == "true" ]]; then
   [[ "$(crontab -l 2>/dev/null || :)" == "" && ! -e "$peer_log" ]]
   test_crontab_owned=true
   "$peer_venv/bin/python" - "$peer_exe" "$peer_private" "$peer_work" <<'PY_MINUTE_OWNER'

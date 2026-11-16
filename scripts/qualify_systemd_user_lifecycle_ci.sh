@@ -265,11 +265,167 @@ elif args == ["github-watcher", "run"]:
         evidence.write(f"{os.getpid()}\n")
         evidence.flush()
         os.fsync(evidence.fileno())
+    # Eenmalige test-only cronherkomstproef: laat de echte cron-daemon
+    # de PID en startseconde via een eigen FIFO melden.
+    probe = Path(__file__).resolve().parent / "minute-probe.fifo"
+    if probe.is_fifo():
+        fd = os.open(probe, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        try:
+            os.write(fd, f"{os.getpid()} {time.time_ns()}\n".encode())
+        finally:
+            os.close(fd)
     time.sleep(45)
 else:
     raise SystemExit(22)
 FAKE_RUNNER_MCP
 chmod 0700 "$peer_exe"
+
+# Eénmalige 2026-11-16 cronminuutdiagnose, na bewijs standaard uitzetten.
+# Geen sleeps, retries of permanente extra CI-kosten.
+if [[ "${RUNNER_MCP_866_MINUTE_PROBE:-true}" == "true" ]]; then
+  [[ "$(crontab -l 2>/dev/null || :)" == "" && ! -e "$peer_log" ]]
+  test_crontab_owned=true
+  "$peer_venv/bin/python" - "$peer_exe" "$peer_private" "$peer_work" <<'PY_MINUTE_OWNER'
+"""Test-only real cron-minute PID, flock and fail-closed M3 pre-exclusion."""
+from __future__ import annotations
+
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+from runner_mcp import autostart
+from runner_mcp.cron_autostart import component_active, read_crontab, render_cron_block
+
+exe, private, scratch = map(Path, sys.argv[1:])
+if (os.environ.get("GITHUB_ACTIONS") != "true"
+    or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+    or os.geteuid() == 0
+    or not scratch.resolve().is_relative_to(Path(os.environ["RUNNER_TEMP"]).resolve())
+    or read_crontab() != ""):
+    raise RuntimeError("STOP: minute probe is not disposable and empty")
+if (Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service").exists():
+    raise RuntimeError("STOP: real cron probe cannot coexist with peer unit")
+roles = ("server", "topology-heartbeat", "github-watcher",
+         "completion-watcher", "agent-bus-worker", "fabric-agent-qualification")
+autostart.configured_autostart_components = lambda _: roles
+original = "17 * * * * /usr/bin/true # test-foreign-job\n\n" + "\n".join(
+    render_cron_block(executable=exe, config_dir=private, components=roles, port=8000),
+) + "\n"
+preflight = autostart.AutostartMigrationPlan(
+    component="github-watcher", state="PLAN_ONLY",
+    reason_code="original_host_and_rollback_not_attested", cron_installed=True,
+    systemd_manager_reachable=True, systemd_units_absent=True,
+)
+plan = autostart.plan_single_peer_systemd_migration(
+    preflight=preflight, original_crontab=original, executable=exe,
+    config_dir=private, components=roles, component="github-watcher",
+)
+assert plan.cutover_authorized is False
+fifo = scratch / "minute-probe.fifo"
+os.mkfifo(fifo, 0o600)
+fd = os.open(fifo, os.O_RDWR | os.O_NONBLOCK | os.O_NOFOLLOW)
+scheduled_pid = None
+owned_pid = None
+
+def cron_command(*args: str, input_text: str | None = None) -> None:
+    result = subprocess.run(["crontab", *args], input=input_text,
+                            capture_output=True, text=True, timeout=30, check=False)
+    if result.returncode:
+        raise RuntimeError("STOP: disposable cron operation failed")
+
+try:
+    cron_command("-", input_text=original)
+    if read_crontab() != original:
+        raise RuntimeError("STOP: exact cron source missing")
+    readable, _, _ = select.select([fd], [], [], 76)
+    if not readable:
+        raise RuntimeError("STOP: actual cron-minute worker did not start")
+    payload = os.read(fd, 128).decode("ascii").strip().splitlines()
+    if len(payload) != 1 or len(payload[0].split()) != 2:
+        raise RuntimeError("STOP: ambiguous cron worker evidence")
+    pid_raw, stamp_raw = payload[0].split()
+    if not pid_raw.isdecimal() or not stamp_raw.isdecimal():
+        raise RuntimeError("STOP: cron worker timestamp or PID invalid")
+    scheduled_pid, stamp_ns = int(pid_raw), int(stamp_raw)
+    second = (stamp_ns // 1_000_000_000) % 60
+    if second > 15:
+        raise RuntimeError("STOP: worker did not start near minute boundary")
+    proc = Path("/proc") / str(scheduled_pid)
+    argv = proc.joinpath("cmdline").read_bytes().split(b"\0")
+    if str(exe).encode() not in argv or b"github-watcher" not in argv or b"run" not in argv:
+        raise RuntimeError("STOP: process identity differs from source-bound watcher")
+    parent = scheduled_pid
+    cron_parent = False
+    for _ in range(8):
+        line = Path("/proc", str(parent), "stat").read_text()
+        ppid = int(line.rsplit(")", 1)[-1].strip().split()[1])
+        if ppid <= 1:
+            break
+        comm = Path("/proc", str(ppid), "comm").read_text().strip().lower()
+        if comm in ("cron", "crond"):
+            cron_parent = True
+            break
+        parent = ppid
+    if not cron_parent:
+        raise RuntimeError("STOP: worker does not descend from real cron daemon")
+    owned_pid = scheduled_pid
+    if not component_active(private, "github-watcher"):
+        raise RuntimeError("STOP: scheduled worker did not own role flock")
+    inode = (private / "autostart-github-watcher.lock").stat().st_ino
+    owners = [line.split() for line in Path("/proc/locks").read_text().splitlines()]
+    matching = [fields for fields in owners if
+                len(fields) >= 6
+                and fields[1:4] == ["FLOCK", "ADVISORY", "WRITE"]
+                and fields[4] == str(owned_pid)
+                and fields[5].split(":")[-1] == str(inode)]
+    if len(matching) != 1 or scratch.joinpath("starts.log").read_text().splitlines() != [str(owned_pid)]:
+        raise RuntimeError("STOP: kernel flock and actual worker PID disagree")
+    checkpoint = autostart.assess_single_peer_migration_checkpoint(
+        preview=plan, phase="before_exclusion", observed_crontab=read_crontab(),
+        observed_unit_contents=None, unit_enabled=False, unit_active=False,
+        main_pid=0, role_lock_active=True, new_function_ack=False,
+    )
+    if checkpoint.consistent or checkpoint.reason_code != "worker_or_lock_drift":
+        raise RuntimeError("STOP: live old cron worker did not block migration")
+    double = subprocess.run(
+        [str(exe), "--config-dir", str(private), "autostart", "cron-run", "github-watcher"],
+        capture_output=True, text=True, timeout=10, check=False,
+    )
+    if double.returncode or scratch.joinpath("starts.log").read_text().splitlines() != [str(owned_pid)]:
+        raise RuntimeError("STOP: duplicate runner bypassed flock")
+    print(f"M3_REAL_CRON_MINUTE_OWNER=PASS pid={owned_pid} second={second}", flush=True)
+    print("M3_REAL_CRON_LOCK_WAIT_AND_SECOND_EXEC_DENIED=PASS", flush=True)
+finally:
+    if read_crontab() == original:
+        cron_command("-r")
+    if owned_pid is not None:
+        try:
+            process_fd = os.pidfd_open(owned_pid)
+        except ProcessLookupError:
+            process_fd = None
+        try:
+            os.kill(owned_pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        if process_fd is not None:
+            try:
+                if not select.select([process_fd], [], [], 12)[0]:
+                    raise RuntimeError("STOP: exact synthetic worker did not stop")
+            finally:
+                os.close(process_fd)
+    os.close(fd)
+    fifo.unlink(missing_ok=True)
+    if component_active(private, "github-watcher"):
+        raise RuntimeError("STOP: cron lock still owned after exact test cleanup")
+    scratch.joinpath("starts.log").unlink(missing_ok=True)
+PY_MINUTE_OWNER
+  [[ "$(crontab -l 2>/dev/null || :)" == "" && ! -e "$peer_log" ]]
+  test_crontab_owned=false
+fi
 
 # Geen bestaande, mogelijk vreemde unit overnemen of verwijderen. De
 # dynamisch gegenereerde service blijft static en uitsluitend test-owned.

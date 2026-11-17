@@ -22,7 +22,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-          fetch-depth: 1
+          fetch-depth: 0
 
       - name: Prove fixed clean-image bootstrap
         shell: bash
@@ -60,3 +60,16 @@ jobs:
               test -x "$RUNNER_MCP_INSTALL_ROOT/venv/bin/runner-mcp"
               "$RUNNER_MCP_BIN_DIR/runner-mcp" --help >/dev/null
             '
+
+      # Echte distributie-upgrade + rollback; geen daemon en geen A7.
+      # Alleen de bestaande niet-bevoorrechte GitHub-hosted PR-runner.
+      - name: Set up Python 3.12 for disposable manual upgrade proof
+        if: github.event_name == 'pull_request'
+        uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
+        with:
+          python-version: "3.12"
+
+      - name: Prove actual 0.1.174 to 0.1.175 distribution upgrade and rollback
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: bash scripts/qualify_manual_distribution_roundtrip_ci.sh

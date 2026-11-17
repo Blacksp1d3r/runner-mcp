@@ -255,6 +255,73 @@ def render_cron_block(
 
 
 
+def _require_canonical_managed_cron_block(
+    lines: list[str],
+    bounds: tuple[int, int],
+) -> None:
+    """Verifieer alle cronrollen vóór het vervangen of wissen van een blok.
+
+    Een vreemde job tussen de managed markers is niet onze eigendom.
+    Gebruik de bestaande renderer; deze zuivere check doet geen I/O.
+    """
+    start, end = bounds
+    block = lines[start : end + 1]
+    if len(block) < 4 or block[1] != 'MAILTO=""':
+        raise CronAutostartError("managed cron block is not canonical")
+    roles: list[str] = []
+    executable: str | None = None
+    config_dir: str | None = None
+    port: int | None = None
+    for line in block[2:-1]:
+        try:
+            tokens = shlex.split(line)
+        except ValueError as exc:
+            raise CronAutostartError("managed cron block is not canonical") from exc
+        if (
+            len(tokens) not in (13, 15)
+            or tokens[:5] != ["*"] * 5
+            or tokens[6] != "--config-dir"
+            or tokens[8:10] != ["autostart", "cron-run"]
+            or tokens[10] not in CRON_COMPONENTS
+            or tokens[-2:] != [">/dev/null", "2>&1"]
+            or not Path(tokens[5]).is_absolute()
+            or not Path(tokens[7]).is_absolute()
+        ):
+            raise CronAutostartError("managed cron block is not canonical")
+        role = tokens[10]
+        if role in ("server", "tunnel"):
+            if (
+                len(tokens) != 15
+                or tokens[11] != "--port"
+                or not tokens[12].isdecimal()
+            ):
+                raise CronAutostartError("managed cron block is not canonical")
+            role_port = int(tokens[12])
+            if port is not None and role_port != port:
+                raise CronAutostartError("managed cron block is not canonical")
+            port = role_port
+        elif len(tokens) != 13:
+            raise CronAutostartError("managed cron block is not canonical")
+        if executable is None:
+            executable, config_dir = tokens[5], tokens[7]
+        elif (tokens[5], tokens[7]) != (executable, config_dir):
+            raise CronAutostartError("managed cron block is not canonical")
+        roles.append(role)
+    if executable is None or config_dir is None:
+        raise CronAutostartError("managed cron block is not canonical")
+    try:
+        canonical = render_cron_block(
+            executable=Path(executable),
+            config_dir=Path(config_dir),
+            components=tuple(roles),
+            port=port if port is not None else 8000,
+        )
+    except CronAutostartError as exc:
+        raise CronAutostartError("managed cron block is not canonical") from exc
+    if block != canonical:
+        raise CronAutostartError("managed cron block is not canonical")
+
+
 @dataclass(frozen=True, slots=True)
 class CronSingleRoleExclusionPlan:
     """Lokaal voorstel, geen cron-write, procesbewijs of omschakelbevoegdheid."""
@@ -360,6 +427,8 @@ def install_cron_services(
     # aan Runner MCP toebehoort.
     bounds = _managed_block_bounds(lines)
     if bounds is not None:
+        # Geen onherkenbare cronjob tussen de markers vervangen.
+        _require_canonical_managed_cron_block(lines, bounds)
         start, end = bounds
         source_lines = existing.splitlines(keepends=True)
         remaining = "".join((*source_lines[:start], *source_lines[end + 1 :]))
@@ -405,6 +474,7 @@ def remove_cron_services(
             )
     except AutostartError as exc:
         raise CronAutostartError("managed systemd status is unavailable") from exc
+    _require_canonical_managed_cron_block(existing.splitlines(), bounds)
     start, end = bounds
     # Een historische installerseparator is niet te onderscheiden van een
     # vreemde, al aanwezige lege regel. Verwijder daarom uitsluitend de

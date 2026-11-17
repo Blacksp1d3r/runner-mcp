@@ -376,11 +376,12 @@ def test_cron_remove_retains_ambiguous_legacy_separator(
     from runner_mcp import autostart
 
     prefix = "# unrelated line\n\n"
-    managed = (
-        f"{CRON_BEGIN}\n"
-        'MAILTO=""\n'
-        f"{CRON_END}\n"
-    )
+    managed = "\n".join(render_cron_block(
+        executable=Path("/usr/bin/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
     fake = FakeCrontab(prefix + managed)
     monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
 
@@ -495,16 +496,67 @@ def test_malformed_managed_block_fails_closed(
         )
 
 
+@pytest.mark.parametrize(
+    "foreign_line",
+    [
+        "* * * * * /usr/bin/true # foreign scheduled job",
+        "MAILTO=unexpected@example.invalid",
+        "# foreign comment inside managed block",
+        "* * * * * /bin/echo 'autostart cron-run server'",
+        "* * * * * /usr/bin/runner-mcp --config-dir /fixture/private "
+        "autostart cron-run github-watcher >/dev/null 2>&1",
+    ],
+)
+def test_cron_mutators_deny_foreign_entry_inside_managed_block(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+    foreign_line: str,
+) -> None:
+    """Ook bij geldige markers blijft de crontab van andere eigenaars veilig."""
+    from runner_mcp import autostart
+
+    block = render_cron_block(
+        executable=tmp_path / "runner-mcp",
+        config_dir=tmp_path / "private",
+        components=("server",),
+        port=8000,
+    )
+    original = (
+        "17 2 * * * /usr/bin/backup\n"
+        + "\n".join([*block[:-1], foreign_line, block[-1]])
+        + "\n"
+    )
+    fake = FakeCrontab(original)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    with pytest.raises(CronAutostartError, match="managed cron block is not canonical"):
+        remove_cron_services(runner=fake)
+    with pytest.raises(CronAutostartError, match="managed cron block is not canonical"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=fake,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert fake.content == original
+    assert all(command[-1] != "-" for command, _ in fake.calls)
+
+
 def test_remove_deletes_only_managed_block(
     fake_crontab_executable: None,
 ) -> None:
+    block = "\n".join(render_cron_block(
+        executable=Path("/x/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
     crontab = FakeCrontab(
         "5 1 * * * /usr/bin/backup\n"
-        f"{CRON_BEGIN}\n"
-        'MAILTO=""\n'
-        "* * * * * /x/runner-mcp autostart cron-run server >/dev/null 2>&1\n"
-        f"{CRON_END}\n"
-        "9 1 * * * /usr/bin/other\n"
+        + block
+        + "9 1 * * * /usr/bin/other\n"
     )
 
     assert remove_cron_services(runner=crontab) is True
@@ -523,12 +575,12 @@ def test_remove_preserves_all_foreign_crontab_bytes(
 
     prefix = "# foreign comment with trailing spaces  \n\n17 2 * * * /usr/bin/true\n"
     suffix = "\n# unrelated trailing comment  \n\n\n"
-    managed = (
-        f"{CRON_BEGIN}\n"
-        'MAILTO=""\n'
-        "* * * * * /usr/bin/runner-mcp autostart cron-run server >/dev/null 2>&1\n"
-        f"{CRON_END}\n"
-    )
+    managed = "\n".join(render_cron_block(
+        executable=Path("/usr/bin/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
     fake = FakeCrontab(prefix + managed + suffix)
     monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
 
@@ -545,11 +597,12 @@ def test_remove_retains_multiple_foreign_blank_lines_before_end_block(
     from runner_mcp import autostart
 
     prefix = "# user-maintained comment\n\n\n"
-    managed = (
-        f"{CRON_BEGIN}\n"
-        'MAILTO=""\n'
-        f"{CRON_END}\n"
-    )
+    managed = "\n".join(render_cron_block(
+        executable=Path("/usr/bin/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
     fake = FakeCrontab(prefix + managed)
     monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
 

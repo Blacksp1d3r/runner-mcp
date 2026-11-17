@@ -503,8 +503,10 @@ def test_malformed_managed_block_fails_closed(
         "MAILTO=unexpected@example.invalid",
         "# foreign comment inside managed block",
         "* * * * * /bin/echo 'autostart cron-run server'",
-        "* * * * * /usr/bin/runner-mcp --config-dir /fixture/private "
-        "autostart cron-run github-watcher >/dev/null 2>&1",
+        (
+            "* * * * * /usr/bin/runner-mcp --config-dir /fixture/private "
+            "autostart cron-run github-watcher >/dev/null 2>&1"
+        ),
     ],
 )
 def test_cron_mutators_deny_foreign_entry_inside_managed_block(

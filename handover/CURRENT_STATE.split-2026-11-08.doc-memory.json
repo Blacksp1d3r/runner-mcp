@@ -1,0 +1,2982 @@
+{
+  "schema": "doc-memory-split/v1",
+  "source_path": "handover/CURRENT_STATE.md",
+  "active_path": "handover/CURRENT_STATE.md",
+  "source_sha256": "bba624e188acce5c97631440f407338e7e76fcb60b187f6d7f3dc98422f00842",
+  "source_chars": 594690,
+  "base_sha256": "bba624e188acce5c97631440f407338e7e76fcb60b187f6d7f3dc98422f00842",
+  "removed_generated": "",
+  "removed_offset": -1,
+  "open_work_listed": 36,
+  "inserted_sha256": null,
+  "keep_since": "2026-11-08",
+  "sections": [
+    {
+      "index": 0,
+      "heading": "",
+      "date": null,
+      "chars": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "first_line": "",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 1,
+      "heading": "## 2026-11-14 — #866 v0.1.174: bronauthentieke zesrollen-cron ↔ systemd-fases ↔ exact rollback op echte disposable Linux PASS",
+      "date": "2026-11-14",
+      "chars": 3250,
+      "sha256": "0818dd1d84fecc64c52935498a92ff7b9ea3ca19700c12b1636b0e359f9633f8",
+      "first_line": "## 2026-11-14 — #866 v0.1.174: bronauthentieke zesrollen-cron ↔ systemd-fases ↔ exact rollback op echte disposable Linux PASS\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 2,
+      "heading": "## 2026-11-14 — #866 v0.1.173: alleen-lezen M3-fasecontrole weigert volledige cron-/unit-/procesdrift (CI PASS)",
+      "date": "2026-11-14",
+      "chars": 2729,
+      "sha256": "ab795284fc83f7fbd4689b1fa994417829c1e67531e9d566f6921328e382fcf7",
+      "first_line": "## 2026-11-14 — #866 v0.1.173: alleen-lezen M3-fasecontrole weigert volledige cron-/unit-/procesdrift (CI PASS)\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 3,
+      "heading": "## 2026-11-14 — #866 v0.1.172: enabled peer crasht na user-manager-herstart; blijvend exact cronherstel PASS (disposable)",
+      "date": "2026-11-14",
+      "chars": 2543,
+      "sha256": "82d25eaf51e070393c648f02c9c93f5588996bdfcbc13e409508e0d6dec8c49d",
+      "first_line": "## 2026-11-14 — #866 v0.1.172: enabled peer crasht na user-manager-herstart; blijvend exact cronherstel PASS (disposable)\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 4,
+      "heading": "## 2026-11-14 — #866 v0.1.171: echt gegenereerde lockbehoudende boot-peer, disposable user-manager-herstart en exact cronherstel PASS",
+      "date": "2026-11-14",
+      "chars": 2718,
+      "sha256": "7897f24878bb2cf62ff3fa2f5b52e2b10d5c796b006cc66296fde35f7579604b",
+      "first_line": "## 2026-11-14 — #866 v0.1.171: echt gegenereerde lockbehoudende boot-peer, disposable user-manager-herstart en exact cronherstel PASS\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 5,
+      "heading": "## 2026-11-14 — #866 v0.1.170: mislukte systemd ExecStart met exact zesrollen-cronherstel op disposable Linux PASS",
+      "date": "2026-11-14",
+      "chars": 2579,
+      "sha256": "985c921488bf7508c52d1e5a337bfa775be81b7c05739b0383cbdcb0eaeb5b6b",
+      "first_line": "## 2026-11-14 — #866 v0.1.170: mislukte systemd ExecStart met exact zesrollen-cronherstel op disposable Linux PASS\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 6,
+      "heading": "## 2026-11-14 — #866 v0.1.169 geïntegreerde zesrollen-cron + echt gegenereerde systemd-peer: disposable PASS",
+      "date": "2026-11-14",
+      "chars": 2903,
+      "sha256": "88e96b9e06c16a82e05535bba6ebc7608e6f23af75265b879cb03beb9e56639c",
+      "first_line": "## 2026-11-14 — #866 v0.1.169 geïntegreerde zesrollen-cron + echt gegenereerde systemd-peer: disposable PASS\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 7,
+      "heading": "## 2026-11-14 — #866 ECHT gegenereerde systemd-peer vs overerfde cron-flock: real disposable PASS; source 0.1.168 MERGED",
+      "date": "2026-11-14",
+      "chars": 3055,
+      "sha256": "9cc6ce2c484f3fdb0632e8f584ec21b6e12007a91ee80d7eb28e410deb6cdd01",
+      "first_line": "## 2026-11-14 — #866 ECHT gegenereerde systemd-peer vs overerfde cron-flock: real disposable PASS; source 0.1.168 MERGED\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 8,
+      "heading": "## 2026-11-14 — #866 zes cronrollen → vijf cron + één systemd → exact herstel REAL DISPOSABLE PASS, v0.1.167",
+      "date": "2026-11-14",
+      "chars": 3072,
+      "sha256": "041d9914fda974bed4731d3b2b3a41da1fd2764981d70278ae3e6046a435f698",
+      "first_line": "## 2026-11-14 — #866 zes cronrollen → vijf cron + één systemd → exact herstel REAL DISPOSABLE PASS, v0.1.167\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 9,
+      "heading": "## 2026-11-14 — #866 v0.1.166 lockgedeelde inactieve systemd-nevenunit SOURCE MERGED; fysieke M3–M6 WAIT",
+      "date": "2026-11-14",
+      "chars": 2868,
+      "sha256": "69b3b87c99164aa0d91a51599376caeb2b81d985b5ef85f8de669c92ca066364",
+      "first_line": "## 2026-11-14 — #866 v0.1.166 lockgedeelde inactieve systemd-nevenunit SOURCE MERGED; fysieke M3–M6 WAIT\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 10,
+      "heading": "## 2026-11-14 — #866 beperkte cron→systemd herstel-preview 0.1.165 SOURCE/CI GEMERGED, originele M3–M6 OPEN",
+      "date": "2026-11-14",
+      "chars": 2959,
+      "sha256": "4c2e02b93e95509852bfbaf6af9f5b228448cd8aea6646e985712cd0166dbf57",
+      "first_line": "## 2026-11-14 — #866 beperkte cron→systemd herstel-preview 0.1.165 SOURCE/CI GEMERGED, originele M3–M6 OPEN\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 11,
+      "heading": "## 2026-11-11 — #341 Runner-MCP 0.1.164 dubbele managed-supervisor preflight SOURCE MERGED; originele productie WAIT",
+      "date": "2026-11-11",
+      "chars": 3076,
+      "sha256": "ead4fbd7fa4064671d6279d1b36bda10f392eddf6f6e94c415c175bb10dc843a",
+      "first_line": "## 2026-11-11 — #341 Runner-MCP 0.1.164 dubbele managed-supervisor preflight SOURCE MERGED; originele productie WAIT\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 12,
+      "heading": "## 2026-11-11 — #341 managed update supervisor-preflight 0.1.163 MERGED; #866 systemd-user is doel, cron faseert uit",
+      "date": "2026-11-11",
+      "chars": 2697,
+      "sha256": "c517e0760739bc0989ecc8e336e4cda1019e46cf56cb00572c108c36c1c4a2d9",
+      "first_line": "## 2026-11-11 — #341 managed update supervisor-preflight 0.1.163 MERGED; #866 systemd-user is doel, cron faseert uit\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 13,
+      "heading": "## 2026-11-11 — #341 retained rollback-wheel SOURCE 0.1.161 MERGED/CI PASS; fysieke originele UPDATE WAIT",
+      "date": "2026-11-11",
+      "chars": 3129,
+      "sha256": "fc3a7fb3887b7488b5255c73b4e31380f8bc998ff695f891f746820966905f6b",
+      "first_line": "## 2026-11-11 — #341 retained rollback-wheel SOURCE 0.1.161 MERGED/CI PASS; fysieke originele UPDATE WAIT\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 14,
+      "heading": "## 2026-11-11 — #866 één-rol cron→systemd BRON 0.1.159/0.1.160 MERGED; LIVE NIET GETEST",
+      "date": "2026-11-11",
+      "chars": 2383,
+      "sha256": "4045a25fa0c265d2949140f75ed5a236b4739a54be521149367d09023a968d9a",
+      "first_line": "## 2026-11-11 — #866 één-rol cron→systemd BRON 0.1.159/0.1.160 MERGED; LIVE NIET GETEST\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 15,
+      "heading": "## 2026-11-11 — #669 originele AF-HOST-0001 :8000 PID2202/startticks7503 ONGEWIJZIGD PASS; volledig geladen wheel WAIT",
+      "date": "2026-11-11",
+      "chars": 3624,
+      "sha256": "59b1ac012c8ef63dadce1daa05e4a64f8cd757a88f24e3460b9e55134e29ef55",
+      "first_line": "## 2026-11-11 — #669 originele AF-HOST-0001 :8000 PID2202/startticks7503 ONGEWIJZIGD PASS; volledig geladen wheel WAIT\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 16,
+      "heading": "## 2026-11-10 — #669 originele wielcapturereceipt per inode: v0.1.158 SOURCE MERGED/CI PASS, LIVE WAIT",
+      "date": "2026-11-10",
+      "chars": 2963,
+      "sha256": "a4a10cb0498c84227a8d10da9db2ece68b885e1b846152ab86f4525f0cac1bde",
+      "first_line": "## 2026-11-10 — #669 originele wielcapturereceipt per inode: v0.1.158 SOURCE MERGED/CI PASS, LIVE WAIT\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 17,
+      "heading": "## 2026-11-09 — #341 v0.1.157 jobgebonden hersteltransactie, eigen kernel-lock: SOURCE/CI MERGED",
+      "date": "2026-11-09",
+      "chars": 2773,
+      "sha256": "156c8d392ab39462973fb95223b5f83a89f777ac529d61ac2108af5365845c42",
+      "first_line": "## 2026-11-09 — #341 v0.1.157 jobgebonden hersteltransactie, eigen kernel-lock: SOURCE/CI MERGED\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 18,
+      "heading": "## 2026-11-07 — #341 hersteltransactie kan andere updater niet meer overschrijven: v0.1.155 SOURCE/CI MERGED",
+      "date": "2026-11-07",
+      "chars": 2639,
+      "sha256": "0e1c7f26b3753bd6033ea7f4c21c564095cdae1ab33fee74459530f3c6eec050",
+      "first_line": "## 2026-11-07 — #341 hersteltransactie kan andere updater niet meer overschrijven: v0.1.155 SOURCE/CI MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 19,
+      "heading": "## 2026-11-07 — #662 v0.1.154 exact-head CI PASS, MERGED; original host-update blijft STOP",
+      "date": "2026-11-07",
+      "chars": 1358,
+      "sha256": "10582f16ea927dd242f359d419fa712970220a74f5731c4cd40725cec71b21c1",
+      "first_line": "## 2026-11-07 — #662 v0.1.154 exact-head CI PASS, MERGED; original host-update blijft STOP\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 20,
+      "heading": "## 2026-11-07 — #662 v0.1.154 kandidaat: artifactjob afhankelijk van bestaande demo en systemd",
+      "date": "2026-11-07",
+      "chars": 1138,
+      "sha256": "d374f6a161c54f6020965f86343d995a2d852f2f8d8b22203287418411bfc481",
+      "first_line": "## 2026-11-07 — #662 v0.1.154 kandidaat: artifactjob afhankelijk van bestaande demo en systemd\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 21,
+      "heading": "## 2026-11-07 — #662 v0.1.153 CI-cancellation-fix MERGED; fysieke 0.1.88 onveranderd",
+      "date": "2026-11-07",
+      "chars": 1161,
+      "sha256": "8e53068f5406c8aa4c5ecb02cc205fa684546c4d26f26ffd18a44af04c4bc4ee",
+      "first_line": "## 2026-11-07 — #662 v0.1.153 CI-cancellation-fix MERGED; fysieke 0.1.88 onveranderd\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 22,
+      "heading": "## 2026-11-07 — #662 source 0.1.153: cancel-in-progress op main veroorzaakte incomplete source push",
+      "date": "2026-11-07",
+      "chars": 1386,
+      "sha256": "9ba2bd1799a42620fb90eb9319052b010638e39dde6a849f9ba168fa85af0dae",
+      "first_line": "## 2026-11-07 — #662 source 0.1.153: cancel-in-progress op main veroorzaakte incomplete source push\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 23,
+      "heading": "## 2026-11-07 — F30 #341 0.1.152 MERGED, full CI PASS; fysieke originele host blijft NIET GETEST",
+      "date": "2026-11-07",
+      "chars": 1179,
+      "sha256": "9b7d37ed8a281d7a20dcda48a22e5fbd5cbf55b164397211063c67edfec890cf",
+      "first_line": "## 2026-11-07 — F30 #341 0.1.152 MERGED, full CI PASS; fysieke originele host blijft NIET GETEST\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 24,
+      "heading": "## 2026-11-07 — F30 #341 stage_local_bundle/readiness integriteitsverschil in BRONKANDIDAAT 0.1.152 aangepakt",
+      "date": "2026-11-07",
+      "chars": 1321,
+      "sha256": "1cb946256dc9e6f7f244901ffc0f62b5a4130971e3eb516e8d1fc7cffddccfcd",
+      "first_line": "## 2026-11-07 — F30 #341 stage_local_bundle/readiness integriteitsverschil in BRONKANDIDAAT 0.1.152 aangepakt\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 25,
+      "heading": "## 2026-11-07 — F30 #341 PR #960 v0.1.151 SOURCE/CI VOLTOOID; originele uitrol nog WAIT",
+      "date": "2026-11-07",
+      "chars": 1482,
+      "sha256": "e88a665833860d133893d8bd7f28d58cae0ef2a24b90d269d3f7cee87ba0c262",
+      "first_line": "## 2026-11-07 — F30 #341 PR #960 v0.1.151 SOURCE/CI VOLTOOID; originele uitrol nog WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 26,
+      "heading": "## 2026-11-06 — F30 #341 #959 werkelijke local-readiness keten SOURCE/CI VOLTOOID",
+      "date": "2026-11-06",
+      "chars": 1335,
+      "sha256": "a5fc8b1f63853ccc63c84faa09bd54ee756236bc7706100e2a4cb5b2527c6706",
+      "first_line": "## 2026-11-06 — F30 #341 #959 werkelijke local-readiness keten SOURCE/CI VOLTOOID\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 27,
+      "heading": "## 2026-11-06 — F30 #341 ketentest read-only lokale releaseadmissie gestart",
+      "date": "2026-11-06",
+      "chars": 942,
+      "sha256": "04e8f35f2629d34bbde887eb70c192d013e5ee75e5dab3f2bb8bb9128779782c",
+      "first_line": "## 2026-11-06 — F30 #341 ketentest read-only lokale releaseadmissie gestart\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 28,
+      "heading": "## 2026-11-06 — F30 #341 broncode/CI-mislezing opgelost: tijdelijke versus finale opslag",
+      "date": "2026-11-06",
+      "chars": 1238,
+      "sha256": "348085fdb633d4ec9ba5c197214a58bee01414437d651430a8bc6e61b6831e9a",
+      "first_line": "## 2026-11-06 — F30 #341 broncode/CI-mislezing opgelost: tijdelijke versus finale opslag\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 29,
+      "heading": "## 2026-11-06 — F30/#341 keyless GitHub-release INACTIEVE storage (v0.1.150 bronkandidaat)",
+      "date": "2026-11-06",
+      "chars": 1188,
+      "sha256": "74932df3fe9ee68f0b1891fa2124253c312b0c2419dbb7a1937c2cc6e0b22f5d",
+      "first_line": "## 2026-11-06 — F30/#341 keyless GitHub-release INACTIEVE storage (v0.1.150 bronkandidaat)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 30,
+      "heading": "## 2026-11-06 — F30/#341 Runner-MCP 0.1.149 GitHub SHA full-byte source route; NO ED key",
+      "date": "2026-11-06",
+      "chars": 1053,
+      "sha256": "84afb297bd0ab0fd617fd7475b0cb03e7cb0431cdabdeb80043df37436af3ae1",
+      "first_line": "## 2026-11-06 — F30/#341 Runner-MCP 0.1.149 GitHub SHA full-byte source route; NO ED key\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 31,
+      "heading": "## 2026-11-06 — F30 #937 Runner-MCP 0.1.148 bron: verified signed release → INACTIEVE owner-private NOREPLACE stage",
+      "date": "2026-11-06",
+      "chars": 1288,
+      "sha256": "fff90a49f583e84cd81c6756cdff1fc0adabe2aa4f431fbd3abca3397a9b2437",
+      "first_line": "## 2026-11-06 — F30 #937 Runner-MCP 0.1.148 bron: verified signed release → INACTIEVE owner-private NOREPLACE stage\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 32,
+      "heading": "## 2026-11-06 — F30 #937 Runner-MCP 0.1.147 bron: complete private Release-body → bytebatch zonder tweede GET",
+      "date": "2026-11-06",
+      "chars": 1200,
+      "sha256": "89e55971bc7866cc1b36293334797eaa708deab758d5858b202e7053ae08f718",
+      "first_line": "## 2026-11-06 — F30 #937 Runner-MCP 0.1.147 bron: complete private Release-body → bytebatch zonder tweede GET\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 33,
+      "heading": "## 2026-11-06 — F30 #937 0.1.146 generieke signed Release-description CONSUMER BRONKANDIDAAT",
+      "date": "2026-11-06",
+      "chars": 940,
+      "sha256": "e70e299cf3ce1d9d5694a138dfd0affc771f170b275ad278118d760a1781fcda",
+      "first_line": "## 2026-11-06 — F30 #937 0.1.146 generieke signed Release-description CONSUMER BRONKANDIDAAT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 34,
+      "heading": "## 2026-11-06 — F30 #937 0.1.145 bronkandidaat: signed bytes → inactieve NOREPLACE custody",
+      "date": "2026-11-06",
+      "chars": 894,
+      "sha256": "390f5d4554d70bebfc86e9e86d9b97e86da1f44a670f7edbadc8754606384e16",
+      "first_line": "## 2026-11-06 — F30 #937 0.1.145 bronkandidaat: signed bytes → inactieve NOREPLACE custody\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 35,
+      "heading": "## 2026-11-06 — F30 #937 bron 0.1.144 exact signed metadata→byteketen MERGED, echte signer/host WAIT",
+      "date": "2026-11-06",
+      "chars": 1702,
+      "sha256": "e72031bfbd9a822cb296d9dbbca8c3bc08a467a09a73e1608caae676c39563a6",
+      "first_line": "## 2026-11-06 — F30 #937 bron 0.1.144 exact signed metadata→byteketen MERGED, echte signer/host WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 36,
+      "heading": "## 2026-11-06 — F30 #937 0.1.144 kandidaat: bestaande exacte metadata en signed bytebatch in één intern codepad",
+      "date": "2026-11-06",
+      "chars": 1416,
+      "sha256": "7b0e70ea410ca774ead7464b21b3c801e4152d09321ff1dfda1759cb3f0255ac",
+      "first_line": "## 2026-11-06 — F30 #937 0.1.144 kandidaat: bestaande exacte metadata en signed bytebatch in één intern codepad\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 37,
+      "heading": "## 2026-11-06 — F30 #937 source milestones 0.1.142 / 0.1.143 GEMERGED, echte signer en fysiek deploy WAIT",
+      "date": "2026-11-06",
+      "chars": 2095,
+      "sha256": "c01a516805d552ef499b6e8f8501bd741b1a1bee76216359916945cf4411ca87",
+      "first_line": "## 2026-11-06 — F30 #937 source milestones 0.1.142 / 0.1.143 GEMERGED, echte signer en fysiek deploy WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 38,
+      "heading": "## 2026-11-06 — F30 #937 0.1.143 kandidaat: bestaande getypeerde exact Release-admission delen",
+      "date": "2026-11-06",
+      "chars": 1146,
+      "sha256": "ae241f8c0621c63b08c925214db1d690d9a98a01d253b3d1382608bec09a8d6d",
+      "first_line": "## 2026-11-06 — F30 #937 0.1.143 kandidaat: bestaande getypeerde exact Release-admission delen\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 39,
+      "heading": "## 2026-11-06 — F30 #937 bron kandidaat 0.1.142: generieke signed assetbatch, volledig gescheiden van Claude/Qwen",
+      "date": "2026-11-06",
+      "chars": 1373,
+      "sha256": "3b06a603082d1c98126e89e40f2d1f2b38e20f82354b85c3909ef584a7faf083",
+      "first_line": "## 2026-11-06 — F30 #937 bron kandidaat 0.1.142: generieke signed assetbatch, volledig gescheiden van Claude/Qwen\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 40,
+      "heading": "## 2026-11-06 — F30 #937 S2e bestaande inactieve stage NOREPLACE BRON VOLTOOID 0.1.141",
+      "date": "2026-11-06",
+      "chars": 1965,
+      "sha256": "e440db9f4ad37a7e5a1837b5f4c1b3dc1a56bcfa84cf23d532b1806b7188896e",
+      "first_line": "## 2026-11-06 — F30 #937 S2e bestaande inactieve stage NOREPLACE BRON VOLTOOID 0.1.141\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 41,
+      "heading": "## 2026-11-06 — F30 #937 bestaande inactieve custody-race: bron kandidaat 0.1.141, Claude/Qwen onaangeraakt",
+      "date": "2026-11-06",
+      "chars": 1429,
+      "sha256": "58dbd4731b982f0437b4c26f17f3056bf592b5f05d3fa1ef9d0e5e7312efaddb",
+      "first_line": "## 2026-11-06 — F30 #937 bestaande inactieve custody-race: bron kandidaat 0.1.141, Claude/Qwen onaangeraakt\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 42,
+      "heading": "## 2026-11-06 — F30 #937 S2a/S2b/S2c SOURCE MERGED 0.1.140, echte inactieve custody en A6/A7 WAIT",
+      "date": "2026-11-06",
+      "chars": 1951,
+      "sha256": "7bc46c45dcac5fbc90e5b175a819c82efa3f8ba831625634194af24dd7cd1ccd",
+      "first_line": "## 2026-11-06 — F30 #937 S2a/S2b/S2c SOURCE MERGED 0.1.140, echte inactieve custody en A6/A7 WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 43,
+      "heading": "## 2026-11-06 — #937 S2c generieke ZIP/RECORD bron kandidaat 0.1.140",
+      "date": "2026-11-06",
+      "chars": 953,
+      "sha256": "53f3a4e76fc75830a722837f457e8b54c06411d2d093f634bd6feed6634b3842",
+      "first_line": "## 2026-11-06 — #937 S2c generieke ZIP/RECORD bron kandidaat 0.1.140\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 44,
+      "heading": "## 2026-11-06 — #937 S2b offline volledige bundelcontrole kandidaat 0.1.139",
+      "date": "2026-11-06",
+      "chars": 1449,
+      "sha256": "c3038bf78dc6aaf02ba649c8bc8484d4553d5401131bc5fe3f8b3f65ce83e7c1",
+      "first_line": "## 2026-11-06 — #937 S2b offline volledige bundelcontrole kandidaat 0.1.139\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 45,
+      "heading": "## 2026-11-06 — #937 offline signed Fabric Release-roster source 0.1.138 KANDIDAAT",
+      "date": "2026-11-06",
+      "chars": 1469,
+      "sha256": "4b9848569957940a3c8aa81a51cb932bbd9462a60e2fe5d9157699116734d1bd",
+      "first_line": "## 2026-11-06 — #937 offline signed Fabric Release-roster source 0.1.138 KANDIDAAT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 46,
+      "heading": "## 2026-11-06 — #936 releaseverificatie met exacte foutcodes SOURCE 0.1.137 MERGED",
+      "date": "2026-11-06",
+      "chars": 2480,
+      "sha256": "ac443aceb3032117e37845f658a0dc2044cfc3a0ab6707edb167a636ae85fccd",
+      "first_line": "## 2026-11-06 — #936 releaseverificatie met exacte foutcodes SOURCE 0.1.137 MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 47,
+      "heading": "## 2026-11-06 — F30 PR #934 SOURCE MERGED (0.1.136); connected runtime remains older",
+      "date": "2026-11-06",
+      "chars": 2267,
+      "sha256": "337e9c43828b304851a381e79d9fcaef60ac813ba53ece426eca0d6231687454",
+      "first_line": "## 2026-11-06 — F30 PR #934 SOURCE MERGED (0.1.136); connected runtime remains older\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-11.md"
+    },
+    {
+      "index": 48,
+      "heading": "## 2026-10-29 — #381 begrensde één-unit overrideplanner, SOURCE ONLY",
+      "date": "2026-10-29",
+      "chars": 975,
+      "sha256": "4901eadeaded66b1e398c12ac5434f1e231a02d809619b517bca6e4b87fbc212",
+      "first_line": "## 2026-10-29 — #381 begrensde één-unit overrideplanner, SOURCE ONLY\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 49,
+      "heading": "## 2026-10-29 — Original A6 VM first-host non-serving Runner-MCP 0.1.133 stage PASS; listener/enrollment WAIT",
+      "date": "2026-10-29",
+      "chars": 2643,
+      "sha256": "ca39abda38f5e80afa04b7e2b1d3b37f9872684a760d5df60d036889908e6082",
+      "first_line": "## 2026-10-29 — Original A6 VM first-host non-serving Runner-MCP 0.1.133 stage PASS; listener/enrollment WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 50,
+      "heading": "## 2026-10-29 — #713/#1617 isolated first-host offline wheelhouse via existing bootstrap (SOURCE 0.1.133 MERGED; target WAIT)",
+      "date": "2026-10-29",
+      "chars": 2811,
+      "sha256": "b1d286cff96c41292d685d92ba690d25fdc2da65bbfbde9119fa824908ad5411",
+      "first_line": "## 2026-10-29 — #713/#1617 isolated first-host offline wheelhouse via existing bootstrap (SOURCE 0.1.133 MERGED; target WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 51,
+      "heading": "## 2026-10-29 — #713/#1617 local non-serving first-host bootstrap admits VM assets (SOURCE 0.1.132 MERGED; A6 VM LIVE WAIT)",
+      "date": "2026-10-29",
+      "chars": 2460,
+      "sha256": "24794bf63ed233176239bc75e8589aef60e77b75576c01a566af37aadc288963",
+      "first_line": "## 2026-10-29 — #713/#1617 local non-serving first-host bootstrap admits VM assets (SOURCE 0.1.132 MERGED; A6 VM LIVE WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 52,
+      "heading": "## 2026-10-28 — #381 hergebruik bestaande LAB Q7-private stage zonder tokenkopie (SOURCE 0.1.131 MERGED; LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 3010,
+      "sha256": "27d735807986aaf2c57ff8354b1d940221a1bcb659b06a30be77722128ec6970",
+      "first_line": "## 2026-10-28 — #381 hergebruik bestaande LAB Q7-private stage zonder tokenkopie (SOURCE 0.1.131 MERGED; LIVE WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 53,
+      "heading": "## 2026-10-28 — #381 Q7 forwarding legacy-mode compatibility (SOURCE 0.1.130 MERGED; LAB WAIT)",
+      "date": "2026-10-28",
+      "chars": 1766,
+      "sha256": "d73ef12b4e172ad146f87594ab18490c0ba18e797630de122d6d2c2a3e47f082",
+      "first_line": "## 2026-10-28 — #381 Q7 forwarding legacy-mode compatibility (SOURCE 0.1.130 MERGED; LAB WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 54,
+      "heading": "## 2026-10-28 — #381 correctie Q7 private configuratiedoorgifte (SOURCE 0.1.129 MERGED; LAB LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 2412,
+      "sha256": "482e509897c66fa5b87fd5f442d7a75345bbc9b1b33cc9292a54bb76f67c8cc8",
+      "first_line": "## 2026-10-28 — #381 correctie Q7 private configuratiedoorgifte (SOURCE 0.1.129 MERGED; LAB LIVE WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 55,
+      "heading": "## 2026-10-28 — #669 geselecteerde werkelijk geladen code-objecten zichtbaar op bestaande MCP runtime_status (SOURCE 0.1.128 MERGED, ORIGINEEL LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 3502,
+      "sha256": "12dac6d4be09b93d363686699584482f0320db17920efbcf0674fa5abae4dd43",
+      "first_line": "## 2026-10-28 — #669 geselecteerde werkelijk geladen code-objecten zichtbaar op bestaande MCP runtime_status (SOURCE 0.1.128 MERGED, ORIGINEEL LIVE WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 56,
+      "heading": "## 2026-10-28 — #341 bestaande updater: SHA-256 van provisional baseline wheel (SOURCE MERGED, LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 2064,
+      "sha256": "f5643ab0ba3e30f9bec1c3420f6d70f43813898411298f7442e4a1245098a62d",
+      "first_line": "## 2026-10-28 — #341 bestaande updater: SHA-256 van provisional baseline wheel (SOURCE MERGED, LIVE WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 57,
+      "heading": "## 2026-10-28 — #866 veilige symlink-voorouders bij systemd-installatie en -verwijdering (bron 0.1.125)",
+      "date": "2026-10-28",
+      "chars": 1803,
+      "sha256": "dda2fe3a5970238342f0d7c92941483bcfcbdaba55459611a5223cfead54b746",
+      "first_line": "## 2026-10-28 — #866 veilige symlink-voorouders bij systemd-installatie en -verwijdering (bron 0.1.125)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 58,
+      "heading": "## 2026-10-28 — #866 M2 echte wegwerpmanager, geladen rollback en exclusieve cron↔systemd-test PASS (0.1.121–0.1.123)",
+      "date": "2026-10-28",
+      "chars": 2302,
+      "sha256": "0c2d6589d8e96d53d090a47ffaddd4f9dc83286fe3a6bd5ba09bb3e38869d273",
+      "first_line": "## 2026-10-28 — #866 M2 echte wegwerpmanager, geladen rollback en exclusieve cron↔systemd-test PASS (0.1.121–0.1.123)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 59,
+      "heading": "## 2026-10-28 — #866 echte disposable user-manager restart PASS, source 0.1.120",
+      "date": "2026-10-28",
+      "chars": 1396,
+      "sha256": "7cc155e3e69e3a60589803069270e5d25a4d3f2d5c78b0e996466b2724c58968",
+      "first_line": "## 2026-10-28 — #866 echte disposable user-manager restart PASS, source 0.1.120\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 60,
+      "heading": "## 2026-10-28 — #866 echte geïsoleerde systemd-user herstart en unitrollback: CI PASS (0.1.119)",
+      "date": "2026-10-28",
+      "chars": 1515,
+      "sha256": "a2d2e7d21a11a94ea055b9d198c2fa3560bf4cf25811a13e72a35d565e41583e",
+      "first_line": "## 2026-10-28 — #866 echte geïsoleerde systemd-user herstart en unitrollback: CI PASS (0.1.119)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 61,
+      "heading": "## 2026-10-28 — #866 no-op removal does not create systemd tree; SOURCE 0.1.118 MERGED",
+      "date": "2026-10-28",
+      "chars": 1407,
+      "sha256": "536e7d53a01604cd130b66184685468e677bfdab61480f8d17197db9f0f23615",
+      "first_line": "## 2026-10-28 — #866 no-op removal does not create systemd tree; SOURCE 0.1.118 MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 62,
+      "heading": "## 2026-10-28 — #866 M2 verwijderen faalt veilig; source 0.1.117 MERGED",
+      "date": "2026-10-28",
+      "chars": 1152,
+      "sha256": "c241a43ac3226e06430f4b4dfb830c2b575ad58f7407e80149ca07120c7e9fca",
+      "first_line": "## 2026-10-28 — #866 M2 verwijderen faalt veilig; source 0.1.117 MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 63,
+      "heading": "## 2026-10-28 — #866 M0 cron-leesfout fail-closed; source 0.1.116 MERGED",
+      "date": "2026-10-28",
+      "chars": 1272,
+      "sha256": "31451ccdd5fddc98be82f2be22ebc8d029f9b8ed9cf22fd8fd3dcfb7f6b10b6f",
+      "first_line": "## 2026-10-28 — #866 M0 cron-leesfout fail-closed; source 0.1.116 MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 64,
+      "heading": "## 2026-10-28 — #866 C: bescherming cron/systemd en onafhankelijke F35-job (source-only)",
+      "date": "2026-10-28",
+      "chars": 1808,
+      "sha256": "69d768f6499e92966d84e7acc4127ee9a8c516172397051a86b1770009089d48",
+      "first_line": "## 2026-10-28 — #866 C: bescherming cron/systemd en onafhankelijke F35-job (source-only)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 65,
+      "heading": "## 2026-10-28 — #616 tweede request-headcontrole vóór cursor-CAS; SOURCE 0.1.113 MERGED",
+      "date": "2026-10-28",
+      "chars": 2141,
+      "sha256": "690f370e47d32ec087c9f2c461afce9c9eea6903369032c1697aa3d0d4ffd609",
+      "first_line": "## 2026-10-28 — #616 tweede request-headcontrole vóór cursor-CAS; SOURCE 0.1.113 MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 66,
+      "heading": "## 2026-10-28 — #866 systemd M2 gedeeltelijk: parser/geïsoleerde preflight PASS, SOURCE 0.1.111",
+      "date": "2026-10-28",
+      "chars": 2064,
+      "sha256": "c8c5f4610697788e57253dbff80f18aff5908cd66f541decdfefd89ca4151f81",
+      "first_line": "## 2026-10-28 — #866 systemd M2 gedeeltelijk: parser/geïsoleerde preflight PASS, SOURCE 0.1.111\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 67,
+      "heading": "## 2026-10-28 — #269 lokale tests + bestaande Fabric-status in één read-only snapshot; SOURCE 0.1.110 MERGED",
+      "date": "2026-10-28",
+      "chars": 2639,
+      "sha256": "e3f096d209c58d2e9bdd10bc5c3105992ffa65cc41b6b5550a635913538764a7",
+      "first_line": "## 2026-10-28 — #269 lokale tests + bestaande Fabric-status in één read-only snapshot; SOURCE 0.1.110 MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 68,
+      "heading": "## 2026-10-28 — #866 M1 read-only migratieplan MERGED; SOURCE 0.1.109, geen hostcutover",
+      "date": "2026-10-28",
+      "chars": 1794,
+      "sha256": "8a1fa650995a9d2fc1f13c99e58ebd16417b0c221a8e61c9992735b188033b48",
+      "first_line": "## 2026-10-28 — #866 M1 read-only migratieplan MERGED; SOURCE 0.1.109, geen hostcutover\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 69,
+      "heading": "## 2026-10-28 — #616 watcher-cursorstatus echt alleen-lezen; SOURCE 0.1.108 MERGED, live herstel open",
+      "date": "2026-10-28",
+      "chars": 1648,
+      "sha256": "633f5497f91fd30aa684d6118dbfc4bc9509da0e0351430c9048a3438da480e2",
+      "first_line": "## 2026-10-28 — #616 watcher-cursorstatus echt alleen-lezen; SOURCE 0.1.108 MERGED, live herstel open\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 70,
+      "heading": "## 2026-10-28 — #297 server-toolcatalogus zichtbaar via bestaande runtime_status; SOURCE 0.1.107, LIVE blijft OPEN",
+      "date": "2026-10-28",
+      "chars": 1796,
+      "sha256": "d4a062f5c2070c5387451252d8d8ee88a924ea03c00d9257951b296988e5ad46",
+      "first_line": "## 2026-10-28 — #297 server-toolcatalogus zichtbaar via bestaande runtime_status; SOURCE 0.1.107, LIVE blijft OPEN\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 71,
+      "heading": "## 2026-10-28 — #866 systemd code-first: M1 twee bronfixes MERGED; fysieke cron blijft live",
+      "date": "2026-10-28",
+      "chars": 1854,
+      "sha256": "0301f5a756339350386326f0dacc9353c218dea9a708ba80ba8f8e285a4724ea",
+      "first_line": "## 2026-10-28 — #866 systemd code-first: M1 twee bronfixes MERGED; fysieke cron blijft live\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 72,
+      "heading": "## 2026-10-28 — RUNNER-MCP A #669 v0.1.104 SOURCE MERGED; original 0.1.88 source equality PASS / imported serving bytes WAIT",
+      "date": "2026-10-28",
+      "chars": 2659,
+      "sha256": "6cd1fb8ee60b4cb796251d2a440e9a580c46118b4e9d40d5c2e9570176664abf",
+      "first_line": "## 2026-10-28 — RUNNER-MCP A #669 v0.1.104 SOURCE MERGED; original 0.1.88 source equality PASS / imported serving bytes WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 73,
+      "heading": "## 2026-10-28 — Runner-MCP-B #381 Q7 launcher-cycle defect merged; live Claude admission remains WAIT",
+      "date": "2026-10-28",
+      "chars": 1960,
+      "sha256": "fe799c65e4f2c204af75dc3b6b0582dededa717aa5214e6f348cbbd648e4a225",
+      "first_line": "## 2026-10-28 — Runner-MCP-B #381 Q7 launcher-cycle defect merged; live Claude admission remains WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 74,
+      "heading": "## 2026-10-27 — #669 v0.1.103 SOURCE MERGED; #662 exact wheel candidate bytes verified",
+      "date": "2026-10-27",
+      "chars": 2087,
+      "sha256": "6500fbef48525cbd51526b75df992016eebc28d1ae3c37169d14f47ad8303b78",
+      "first_line": "## 2026-10-27 — #669 v0.1.103 SOURCE MERGED; #662 exact wheel candidate bytes verified\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 75,
+      "heading": "## 2026-10-27 — #341 v0.1.101 SOURCE MERGED; #662 candidate bytes verified",
+      "date": "2026-10-27",
+      "chars": 1646,
+      "sha256": "032430ea96bb91c2bdffcb846925e5e52f8d03ab52bc5afd7a0ccb0563574f2f",
+      "first_line": "## 2026-10-27 — #341 v0.1.101 SOURCE MERGED; #662 candidate bytes verified\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 76,
+      "heading": "## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered",
+      "date": "2026-10-27",
+      "chars": 1677,
+      "sha256": "ab3c479ce8a6623477fae04f5a7d5e954a19c1140f818b021856ad53a822a79a",
+      "first_line": "## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 77,
+      "heading": "## 2026-10-27 — #341 source 0.1.96 provisional baseline retention MERGED / live qualification WAIT",
+      "date": "2026-10-27",
+      "chars": 1917,
+      "sha256": "3622c6c07db2c81689da762217581274675a5a31f091bae69ac780398134b806",
+      "first_line": "## 2026-10-27 — #341 source 0.1.96 provisional baseline retention MERGED / live qualification WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 78,
+      "heading": "## 2026-10-27 — #669/#341 bounded status/Doctor classification SOURCE MERGED (0.1.94)",
+      "date": "2026-10-27",
+      "chars": 1366,
+      "sha256": "354275233cf6ecfae5d8d4891e5c2592c942969d622bf93bacf3e76321dc28df",
+      "first_line": "## 2026-10-27 — #669/#341 bounded status/Doctor classification SOURCE MERGED (0.1.94)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 79,
+      "heading": "## 2026-10-27 — Runner-MCP-B (#381/#747) reikwijdte en bewijs (SOURCE, niet LIVE-ACK)",
+      "date": "2026-10-27",
+      "chars": 3071,
+      "sha256": "af083d4d7afb40ec37c10f8656d5ffe548c9b441309d71c3c6150dbd62eca1a9",
+      "first_line": "## 2026-10-27 — Runner-MCP-B (#381/#747) reikwijdte en bewijs (SOURCE, niet LIVE-ACK)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 80,
+      "heading": "## 2026-10-27 — #669 unmanaged six-role cron conflict denial (v0.1.93 SOURCE / CI gate)",
+      "date": "2026-10-27",
+      "chars": 1400,
+      "sha256": "cfa5e045a7b3b9e6e41c00899d7389cafe58c081454d80e904c4f9cc03948d02",
+      "first_line": "## 2026-10-27 — #669 unmanaged six-role cron conflict denial (v0.1.93 SOURCE / CI gate)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 81,
+      "heading": "## 2026-10-27 — #669 private cron lock writer inode safety (v0.1.92 SOURCE, PR #840)",
+      "date": "2026-10-27",
+      "chars": 1235,
+      "sha256": "bcea43c2de9c4877ef8714c7035655cc0ebed4ef3c58f71c6b23dea2ae930e5b",
+      "first_line": "## 2026-10-27 — #669 private cron lock writer inode safety (v0.1.92 SOURCE, PR #840)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 82,
+      "heading": "## 2026-10-27 — #590 external-target read failures retain bounded status (SOURCE ONLY)",
+      "date": "2026-10-27",
+      "chars": 1346,
+      "sha256": "834b4c737460c5a691c504070029690ed136bbed65b04d88851d8530f7fac712",
+      "first_line": "## 2026-10-27 — #590 external-target read failures retain bounded status (SOURCE ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 83,
+      "heading": "## 2026-10-27 — #669 cron source-role observation bound to exact local release/config (0.1.90 SOURCE)",
+      "date": "2026-10-27",
+      "chars": 1217,
+      "sha256": "0724ea4361e6520852d10b83f4709676e9f4dc4989115c2121f9b3a9de4e6f42",
+      "first_line": "## 2026-10-27 — #669 cron source-role observation bound to exact local release/config (0.1.90 SOURCE)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 84,
+      "heading": "## 2026-10-27 — #669 cron status no longer writes lock files (source v0.1.89, CI gate)",
+      "date": "2026-10-27",
+      "chars": 1236,
+      "sha256": "dfec4124da47b761c4c8fc35a1f97b039c008fdf72d24c9e7f6490af5828a5f3",
+      "first_line": "## 2026-10-27 — #669 cron status no longer writes lock files (source v0.1.89, CI gate)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 85,
+      "heading": "## 2026-10-26 — ORIGINAL AF-HOST-0001 Runner-MCP :8000 v0.1.88 LIVE (operator-performed activation)",
+      "date": "2026-10-26",
+      "chars": 1605,
+      "sha256": "3f6aa533bb0c7c272de480efbd795d7630589fe381f8894def7647a2259f6b7d",
+      "first_line": "## 2026-10-26 — ORIGINAL AF-HOST-0001 Runner-MCP :8000 v0.1.88 LIVE (operator-performed activation)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 86,
+      "heading": "## 2026-10-25 — #669 signed serving witness source v0.1.88 merged; active wheel provenance WAIT",
+      "date": "2026-10-25",
+      "chars": 1724,
+      "sha256": "8fa0158e76cbfaa9936d491e329bfa1884ba8b968bd9ed4cf5790dd007c9a387",
+      "first_line": "## 2026-10-25 — #669 signed serving witness source v0.1.88 merged; active wheel provenance WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 87,
+      "heading": "## 2026-10-24 — #587 original-host bounded protected archive BACKUP SOURCE merged 0.1.87; physical/live WAIT",
+      "date": "2026-10-24",
+      "chars": 2369,
+      "sha256": "24d08951119d410fc12b6472206324e5dc2b92d3089ab53d281f71b425551e26",
+      "first_line": "## 2026-10-24 — #587 original-host bounded protected archive BACKUP SOURCE merged 0.1.87; physical/live WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 88,
+      "heading": "## 2026-10-24 — #588 ORIGINAL physical 2/2 OFFLINE Fabric recovery drill PASS (NOT live restore)",
+      "date": "2026-10-24",
+      "chars": 3474,
+      "sha256": "2f4c90b2d0bbc108cc4a254f900c5a80aba3b02b0e569cf9ba3ea109f1f41f0e",
+      "first_line": "## 2026-10-24 — #588 ORIGINAL physical 2/2 OFFLINE Fabric recovery drill PASS (NOT live restore)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 89,
+      "heading": "## 2026-10-24 — #588 real Runner-MCP local reader exercised in disposable CI; original-host offline restore WAIT",
+      "date": "2026-10-24",
+      "chars": 2223,
+      "sha256": "4a5a432feb72bb255e6940e17db477299016f89775a8c4650226a032545cfb0c",
+      "first_line": "## 2026-10-24 — #588 real Runner-MCP local reader exercised in disposable CI; original-host offline restore WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 90,
+      "heading": "## 2026-10-24 — ORIGINAL physical #587 independent second-disk protected release archives 2/2 PASS; managed MCP path and #588 restore still pending",
+      "date": "2026-10-24",
+      "chars": 2549,
+      "sha256": "77ca74f45819aac4190f51f5d7a644101eedf72ccb2196f5dc8c68cbeda7dd6b",
+      "first_line": "## 2026-10-24 — ORIGINAL physical #587 independent second-disk protected release archives 2/2 PASS; managed MCP path and #588 restore still pending\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 91,
+      "heading": "## 2026-10-24 — #587 original physical mirror TOOL installed, but live #586 private bindings not yet configured",
+      "date": "2026-10-24",
+      "chars": 2265,
+      "sha256": "de9a9bbeeb971cb99c4fcda5397b8cf70a0adfa8511a09eb322895668b601a88",
+      "first_line": "## 2026-10-24 — #587 original physical mirror TOOL installed, but live #586 private bindings not yet configured\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 92,
+      "heading": "## 2026-10-24 — #587 physical archive namespace accepted; LIVE Runner-MCP #586 configuration still UNCONFIGURED",
+      "date": "2026-10-24",
+      "chars": 2757,
+      "sha256": "73311b4ccb0eba034bdd100ef0c0b395584a195cfa2068e231517cbeaa41e744",
+      "first_line": "## 2026-10-24 — #587 physical archive namespace accepted; LIVE Runner-MCP #586 configuration still UNCONFIGURED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 93,
+      "heading": "## 2026-10-24 — GitHub Release metadata recognition surfaced via existing Fabric manager; live install WAIT",
+      "date": "2026-10-24",
+      "chars": 1615,
+      "sha256": "89b2c718e3331936596089acebda46f4ac794f528b245ff902cb403a74a8f2ef",
+      "first_line": "## 2026-10-24 — GitHub Release metadata recognition surfaced via existing Fabric manager; live install WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 94,
+      "heading": "## 2026-10-23 — #669 original v0.1.38 GitHub wheel ↔ physical installed Python bytes MATCH (NOT loaded generation)",
+      "date": "2026-10-23",
+      "chars": 3427,
+      "sha256": "e05c87dee7c1cd6b2aa0e438a8eecf7208999cd1e7d748c0de5fb45c4c786d1f",
+      "first_line": "## 2026-10-23 — #669 original v0.1.38 GitHub wheel ↔ physical installed Python bytes MATCH (NOT loaded generation)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 95,
+      "heading": "## 2026-10-23 — #669 HISTORICAL 0.1.38 WHEEL CANDIDATE FOUND; SAME-HOST BYTE MATCH AND OFFLINE RESTORE STILL WAIT",
+      "date": "2026-10-23",
+      "chars": 3354,
+      "sha256": "e75be1c96e4491bb75066db4f4d2e45e81458f26bad7bf012c4201d36dc75c78",
+      "first_line": "## 2026-10-23 — #669 HISTORICAL 0.1.38 WHEEL CANDIDATE FOUND; SAME-HOST BYTE MATCH AND OFFLINE RESTORE STILL WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 96,
+      "heading": "## 2026-10-23 — #669 original 0.1.38 rollback wheel custody NEGATIVE (bounded original-host scope), recovery still WAIT",
+      "date": "2026-10-23",
+      "chars": 4096,
+      "sha256": "3f11cee710e538f4c9aed9471f1a2c66d654c69a9e92d5df1541ef6e2145f180",
+      "first_line": "## 2026-10-23 — #669 original 0.1.38 rollback wheel custody NEGATIVE (bounded original-host scope), recovery still WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 97,
+      "heading": "## 2026-10-23 — #669 original Agent Bus command PID PROVEN; six declared cron roles now attributable, imported code WAIT",
+      "date": "2026-10-23",
+      "chars": 3023,
+      "sha256": "c1dc94cf9379d83e8e055091c6cd31b91c9b36af9cccc8ee715bc2fcb22e8dc1",
+      "first_line": "## 2026-10-23 — #669 original Agent Bus command PID PROVEN; six declared cron roles now attributable, imported code WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 98,
+      "heading": "## 2026-10-23 — #669 original AF-HOST-0001 cron roster PARTIALLY VERIFIED; loaded generation WAIT",
+      "date": "2026-10-23",
+      "chars": 4124,
+      "sha256": "0e476539440095f865ede131c74ac756416f19f61f391154826768e850cfd24e",
+      "first_line": "## 2026-10-23 — #669 original AF-HOST-0001 cron roster PARTIALLY VERIFIED; loaded generation WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 99,
+      "heading": "## 2026-10-23 — #341 exact original publisher config-root mismatch, guarded sibling source correction",
+      "date": "2026-10-23",
+      "chars": 2794,
+      "sha256": "8a64b02ecc6f561c8fe054e95118e04e2c52031ca7c8bc98838e4f1430a25412",
+      "first_line": "## 2026-10-23 — #341 exact original publisher config-root mismatch, guarded sibling source correction\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 100,
+      "heading": "## 2026-10-23 — #341 exact original-parent issuer-location mismatch VERIFIED (read-only, not fixed)",
+      "date": "2026-10-23",
+      "chars": 3602,
+      "sha256": "ac4e94aba681ed2214ce8ef80ef0ac887c621827419aa09fab8c971d8f2f560e",
+      "first_line": "## 2026-10-23 — #341 exact original-parent issuer-location mismatch VERIFIED (read-only, not fixed)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 101,
+      "heading": "## 2026-10-23 — #341 ORIGINAL machine issuer AUTH GET PASS; Fabric rollback fix SOURCE MERGED, not installed",
+      "date": "2026-10-23",
+      "chars": 3657,
+      "sha256": "1f311ef3b11a7e186cdf03b1b3e2387c8ba949ca024b808d0f2f65a6981cb3f0",
+      "first_line": "## 2026-10-23 — #341 ORIGINAL machine issuer AUTH GET PASS; Fabric rollback fix SOURCE MERGED, not installed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 102,
+      "heading": "## 2026-10-23 — #341 original-control-host previous-slot doctor PASS (READ-ONLY ONLY)",
+      "date": "2026-10-23",
+      "chars": 2610,
+      "sha256": "67fdf9ad6a05572a70d813800c584950a850aa31d7953bb6154729a46a78b98d",
+      "first_line": "## 2026-10-23 — #341 original-control-host previous-slot doctor PASS (READ-ONLY ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 103,
+      "heading": "## 2026-10-23 — RESUME FIRST: #341 correct original control-plane target vs Black ACK",
+      "date": "2026-10-23",
+      "chars": 4126,
+      "sha256": "1731c8655592c7feed800c5e760ae1c5fb4478e9e3d94fc2f0f1352f7f7f01ae",
+      "first_line": "## 2026-10-23 — RESUME FIRST: #341 correct original control-plane target vs Black ACK\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 104,
+      "heading": "## 2026-10-22 — #341 v0.1.83 ACK readback MERGED; physical machine chain still WAIT",
+      "date": "2026-10-22",
+      "chars": 3340,
+      "sha256": "8a9c1311e3ebb5791186f815bcc970725d76d2d302ef53c5c5165af9fe86f64c",
+      "first_line": "## 2026-10-22 — #341 v0.1.83 ACK readback MERGED; physical machine chain still WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 105,
+      "heading": "## 2026-10-22 — #341 machine issuer ACK guard v0.1.82 SOURCE candidate",
+      "date": "2026-10-22",
+      "chars": 1470,
+      "sha256": "e53dbc83d5902bd22730edbd58f89b63afde7e99686463c10b40d5bac95a09ea",
+      "first_line": "## 2026-10-22 — #341 machine issuer ACK guard v0.1.82 SOURCE candidate\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 106,
+      "heading": "## 2026-10-22 — OPERATORBESLUIT: basis vóór menselijke MFA/login (uitgesteld)",
+      "date": "2026-10-22",
+      "chars": 1613,
+      "sha256": "cc87c4baacb9468f70c2e2df7017bee727ab4c5c3580f66ac7461426f2e54051",
+      "first_line": "## 2026-10-22 — OPERATORBESLUIT: basis vóór menselijke MFA/login (uitgesteld)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 107,
+      "heading": "## 2026-10-22 — #341 Black Control Center v0.1.81 SOURCE MERGED; isolated physical ACK WAIT",
+      "date": "2026-10-22",
+      "chars": 2168,
+      "sha256": "a6695e71b09062238a05c2457309c6d7c5321314a72aa20c0226a2ffa9001753",
+      "first_line": "## 2026-10-22 — #341 Black Control Center v0.1.81 SOURCE MERGED; isolated physical ACK WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 108,
+      "heading": "## 2026-10-22 — #341 Black original issuer: Fabric source connected, physical ACK WAIT; v0.1.81 guard candidate",
+      "date": "2026-10-22",
+      "chars": 2119,
+      "sha256": "2b7f81bdf4daf49f6037ec51440cb7ee0bbda96679561c69416f784bb9edc486",
+      "first_line": "## 2026-10-22 — #341 Black original issuer: Fabric source connected, physical ACK WAIT; v0.1.81 guard candidate\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 109,
+      "heading": "## 2026-10-22 — #341 Control Center Black fixed issuer proxy SOURCE MERGED; live ACK WAIT",
+      "date": "2026-10-22",
+      "chars": 1653,
+      "sha256": "e706e6ced792c8fa5284f516a43a3ac26003b71a62b30abb7fb0b84a94754ce2",
+      "first_line": "## 2026-10-22 — #341 Control Center Black fixed issuer proxy SOURCE MERGED; live ACK WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 110,
+      "heading": "## 2026-10-22 — #341 fixed Black Control Center issuer proxy SOURCE CANDIDATE (live ACK WAIT)",
+      "date": "2026-10-22",
+      "chars": 1565,
+      "sha256": "a36a4bd4129ba98e23c3ae7907c9b73c7f12c5e91db7123bf49cd3b928127340",
+      "first_line": "## 2026-10-22 — #341 fixed Black Control Center issuer proxy SOURCE CANDIDATE (live ACK WAIT)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 111,
+      "heading": "## 2026-10-22 — #669 correct-host dependency update: isolated node LOCAL_STABLE_PASS, original-client ACK WAIT",
+      "date": "2026-10-22",
+      "chars": 2859,
+      "sha256": "6a103de20380963e7f21e309208cfd7e1dc328a25601caf9600b7a9a47829786",
+      "first_line": "## 2026-10-22 — #669 correct-host dependency update: isolated node LOCAL_STABLE_PASS, original-client ACK WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 112,
+      "heading": "## 2026-10-22 — #669 v0.1.79 receipt publication safety SOURCE MERGED, live evidence WAIT",
+      "date": "2026-10-22",
+      "chars": 1394,
+      "sha256": "830269d9b906dae2fe78d3b79f663ec19cb09de802aa03985303e8691edef820",
+      "first_line": "## 2026-10-22 — #669 v0.1.79 receipt publication safety SOURCE MERGED, live evidence WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 113,
+      "heading": "## 2026-10-22 — #669 original-wheel receipt fsync boundary v0.1.79 SOURCE CANDIDATE",
+      "date": "2026-10-22",
+      "chars": 839,
+      "sha256": "fda1528f02765c9127e60ccdd0d168553560e6d421be93125b0f7874bb8588e2",
+      "first_line": "## 2026-10-22 — #669 original-wheel receipt fsync boundary v0.1.79 SOURCE CANDIDATE\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 114,
+      "heading": "## 2026-10-22 — #669 v0.1.78 SOURCE MERGED; independent live wheel/route still WAIT",
+      "date": "2026-10-22",
+      "chars": 2817,
+      "sha256": "d22e54bbb28acc592762b79a95d2f474ea7ad46cca6039c943960ad6c6e42200",
+      "first_line": "## 2026-10-22 — #669 v0.1.78 SOURCE MERGED; independent live wheel/route still WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 115,
+      "heading": "## 2026-10-21 — Runner-MCP #669 next bounded original-wheel receipt stage in v0.1.78 candidate",
+      "date": "2026-10-21",
+      "chars": 1534,
+      "sha256": "f7a9afc3a677a6f637f47d7b2da8eb372eaf417029183433ee5c6139e93bc5ad",
+      "first_line": "## 2026-10-21 — Runner-MCP #669 next bounded original-wheel receipt stage in v0.1.78 candidate\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 116,
+      "heading": "## 2026-10-21 — #669 v0.1.77 source MERGED; active 0.1.38 still UNVERIFIED",
+      "date": "2026-10-21",
+      "chars": 1547,
+      "sha256": "9b8b9474f7a276e4fb3ccbb04b664766593de9ee313a8724984917b6cf4c063f",
+      "first_line": "## 2026-10-21 — #669 v0.1.77 source MERGED; active 0.1.38 still UNVERIFIED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 117,
+      "heading": "## 2026-10-21 — v0.1.72 source PR #791 also closes first-host zipapp handoff artifact gap",
+      "date": "2026-10-21",
+      "chars": 1279,
+      "sha256": "bb79d5b86f9383924a8f9af99a283c150be2909422d2416cafca0648ede64222",
+      "first_line": "## 2026-10-21 — v0.1.72 source PR #791 also closes first-host zipapp handoff artifact gap\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 118,
+      "heading": "## 2026-10-21 — #739 keyless Q7 lab retained bytes: offline post-import readback source candidate",
+      "date": "2026-10-21",
+      "chars": 1543,
+      "sha256": "889f33da4841c5c7ded50431999b97089bcf9db01048c3ea50349a7078d2053f",
+      "first_line": "## 2026-10-21 — #739 keyless Q7 lab retained bytes: offline post-import readback source candidate\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 119,
+      "heading": "## 2026-10-21 — keyless Black lab cannot contaminate signed release custody (v0.1.71)",
+      "date": "2026-10-21",
+      "chars": 1140,
+      "sha256": "4e217fed72b177a0b55d0a66b974590534030e0a6f16065f329b6b14f479f018",
+      "first_line": "## 2026-10-21 — keyless Black lab cannot contaminate signed release custody (v0.1.71)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 120,
+      "heading": "## 2026-10-21 — owner chooses KEYLESS DISPOSABLE LAB first; Q7 signed publisher key deferred",
+      "date": "2026-10-21",
+      "chars": 1568,
+      "sha256": "e3689669c56b65655fa8962cd6068d3ae030076654f7b4c4e149a8e4dc8bcb4e",
+      "first_line": "## 2026-10-21 — owner chooses KEYLESS DISPOSABLE LAB first; Q7 signed publisher key deferred\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 121,
+      "heading": "## 2026-10-21 — signed Q7 private metadata probe v0.1.69 source candidate",
+      "date": "2026-10-21",
+      "chars": 1119,
+      "sha256": "6c321d63f0a351d79da1df5d7aa274e02b7c9f169d30964391a75b4753a9304c",
+      "first_line": "## 2026-10-21 — signed Q7 private metadata probe v0.1.69 source candidate\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 122,
+      "heading": "## 2026-10-21 — #739 no-installed-updater zipapp source and root gap",
+      "date": "2026-10-21",
+      "chars": 747,
+      "sha256": "1b35eb1b58fbf3365b6ff7b060100f5360b19cc0ccad57b6adf913bbbc644b6f",
+      "first_line": "## 2026-10-21 — #739 no-installed-updater zipapp source and root gap\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 123,
+      "heading": "## 2026-10-21 — F30 Black signed Q7 bundle import source stage (no host installer)",
+      "date": "2026-10-21",
+      "chars": 735,
+      "sha256": "da13666c37654972d1ff1ccc32e17945355439bbb1288eb68c26b001ee815c06",
+      "first_line": "## 2026-10-21 — F30 Black signed Q7 bundle import source stage (no host installer)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 124,
+      "heading": "## 2026-10-21 — Black #739 signed importer source candidate, production held",
+      "date": "2026-10-21",
+      "chars": 1153,
+      "sha256": "ee4f071f42d3a4c597ef3ebe84eb21aceb1e410b7aadabce919e80b5641a91cf",
+      "first_line": "## 2026-10-21 — Black #739 signed importer source candidate, production held\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 125,
+      "heading": "## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT",
+      "date": "2026-10-20",
+      "chars": 2206,
+      "sha256": "5f5fcdd0d201d883f5ff894d0e921547d5cb036b991eff0588ee1eb0b0971297",
+      "first_line": "## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 126,
+      "heading": "## 2026-10-20 20:30 Europe/Brussels — #669 live identity WAIT / #509 CLOSED source but live A6 0/11",
+      "date": "2026-10-20",
+      "chars": 1719,
+      "sha256": "611250540aa7ea62f0072205cb2baf6265bd6f340a887df5ddf26c366cc08063",
+      "first_line": "## 2026-10-20 20:30 Europe/Brussels — #669 live identity WAIT / #509 CLOSED source but live A6 0/11\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 127,
+      "heading": "## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT",
+      "date": "2026-10-20",
+      "chars": 1480,
+      "sha256": "7fbce51c07362ef4d501aa572e990c63d9782e3d86c0d2e1e39a561836fb3796",
+      "first_line": "## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 128,
+      "heading": "## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT",
+      "date": "2026-10-20",
+      "chars": 854,
+      "sha256": "6dae9cee1519b86943914cccc56872f8cda0862f6c1a7c9cefbfd098141624ad",
+      "first_line": "## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 129,
+      "heading": "## 2026-10-20 — #664/#665 SOURCE MERGED 0.1.60, original central 0.1.38 unchanged",
+      "date": "2026-10-20",
+      "chars": 954,
+      "sha256": "dfa4b1bf6b8f46c8a892e0883eedfb791249e0bb28e9d5255e6bf9ba31c5aae1",
+      "first_line": "## 2026-10-20 — #664/#665 SOURCE MERGED 0.1.60, original central 0.1.38 unchanged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 130,
+      "heading": "## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT",
+      "date": "2026-10-20",
+      "chars": 2810,
+      "sha256": "2133315b178a53e5c9d22ad049ed885b23f2886ed0a99584443dd1cbfa73721e",
+      "first_line": "## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 131,
+      "heading": "## 2026-10-20 — owner-confirmed three-product responsibility contract (docs-only)",
+      "date": "2026-10-20",
+      "chars": 883,
+      "sha256": "cd0f35b2d2709f5fd8ef79796c0fc892cd6e688547bb4afc5420e800e6c8dd74",
+      "first_line": "## 2026-10-20 — owner-confirmed three-product responsibility contract (docs-only)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 132,
+      "heading": "## 2026-10-20 — #725 520+ stateless-token regressions SOURCE MERGED; live remains WAIT",
+      "date": "2026-10-20",
+      "chars": 1523,
+      "sha256": "ab7b38fa7ff79da139141c7aec257d80d059f591350d8063cac64cf5bc1a9dec",
+      "first_line": "## 2026-10-20 — #725 520+ stateless-token regressions SOURCE MERGED; live remains WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 133,
+      "heading": "## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT",
+      "date": "2026-10-20",
+      "chars": 1971,
+      "sha256": "9ab52ef9b6533bbb2bf74727c4e3a3dd8ff41738a5e34a27b2f34135008afb42",
+      "first_line": "## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 134,
+      "heading": "## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT",
+      "date": "2026-10-20",
+      "chars": 2587,
+      "sha256": "ad52121ddb9202d156eeb8a581e697e9e76ff8eee21c302bbadda210ad5aa0ef",
+      "first_line": "## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 135,
+      "heading": "## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 952,
+      "sha256": "b259aafa4308b65c88ee195f509f072872c5034225016d52e514f309ec6918ac",
+      "first_line": "## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 136,
+      "heading": "## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY",
+      "date": "2026-10-20",
+      "chars": 1216,
+      "sha256": "c71993e1d38749956122968c11af0d68074dbe2d469735f4a37b3b54892d6886",
+      "first_line": "## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 137,
+      "heading": "## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT",
+      "date": "2026-10-20",
+      "chars": 1773,
+      "sha256": "f1d5406e33ac0484414ff626a8d3392d9100ec007fbc5d45ed4f2d2ed53d5218",
+      "first_line": "## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 138,
+      "heading": "## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 859,
+      "sha256": "09c182b1927ee269f110955dbbac1d98233774d6e59a3fd422d1ab169fe94f1a",
+      "first_line": "## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 139,
+      "heading": "## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 881,
+      "sha256": "5ba5f55a2a3877a67c713aaed7f6a07b5ca63623c5fd6cf87d9fa9f017c074ab",
+      "first_line": "## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 140,
+      "heading": "## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT",
+      "date": "2026-10-20",
+      "chars": 1156,
+      "sha256": "8b76fa85503c3f8f75aa06e1eb31053f70bdc143da658e499b6c829dbe48cdf0",
+      "first_line": "## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 141,
+      "heading": "## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 1257,
+      "sha256": "374572a2e0f8e2bda46a878bdcc4b1cd06b1c0f8e11eb9bb536c1e75d672d305",
+      "first_line": "## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 142,
+      "heading": "## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 1225,
+      "sha256": "d05bfccf77b14055ec38e6969bb5088906f2639c4ab1a8f0b556c4550903ae91",
+      "first_line": "## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 143,
+      "heading": "## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT",
+      "date": "2026-10-20",
+      "chars": 2125,
+      "sha256": "bf31ae13b16eb82ead93bc62dd968505587f85b0ff38be18b23964c5f3f7daf1",
+      "first_line": "## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 144,
+      "heading": "## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)",
+      "date": "2026-10-20",
+      "chars": 964,
+      "sha256": "ed55b90b3c2a66e017997b0dd01daa5fad15bc35d1a0a874d54789dd4b3e8a7f",
+      "first_line": "## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 145,
+      "heading": "## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47",
+      "date": "2026-10-20",
+      "chars": 936,
+      "sha256": "093ee66626f3debdba2873ce68232aedb14cf09e029aa6c1bee5d1d5038f3195",
+      "first_line": "## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 146,
+      "heading": "## 2026-10-20 — first-node blocking gate reconciled, no service mutation",
+      "date": "2026-10-20",
+      "chars": 1037,
+      "sha256": "f1587ba9852771ecace438bf546d5401ad5cbc32c355863206be27f16be9b823",
+      "first_line": "## 2026-10-20 — first-node blocking gate reconciled, no service mutation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 147,
+      "heading": "## 2026-10-19 — F30 fixed Claude/Qwen worker process source read route merged / live WAIT",
+      "date": "2026-10-19",
+      "chars": 2226,
+      "sha256": "0078e1d42f73836a2064f55d33eed0d6c57e36041446cdd5ad3a445c6d4770c5",
+      "first_line": "## 2026-10-19 — F30 fixed Claude/Qwen worker process source read route merged / live WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 148,
+      "heading": "## 2026-10-19 — RELEASE ADMISSION MERGED, main 0.1.45; live operation remains WAIT",
+      "date": "2026-10-19",
+      "chars": 1894,
+      "sha256": "8c002e1ef5bb455c10b16d0e73c7352e68ea5c67dd6dd5c9d7811c2317e32b76",
+      "first_line": "## 2026-10-19 — RELEASE ADMISSION MERGED, main 0.1.45; live operation remains WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 149,
+      "heading": "## 2026-10-19 — #662 release collision READY-admission receipt; enforcement and live rollout separate",
+      "date": "2026-10-19",
+      "chars": 1562,
+      "sha256": "321da1546c7af0e07a3fc6a03ec11828d8fa8ad51d8b5a30ded3de00b75412eb",
+      "first_line": "## 2026-10-19 — #662 release collision READY-admission receipt; enforcement and live rollout separate\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 150,
+      "heading": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases",
+      "date": "2026-10-19",
+      "chars": 851,
+      "sha256": "c8f3a363f492bc4d559cc059da14316cd31d3b096e891b1b219f18c1e00920d0",
+      "first_line": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 151,
+      "heading": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge",
+      "date": "2026-10-19",
+      "chars": 939,
+      "sha256": "e181309642576f348dec5aae56768e551afe423c8fb83370fa9806b9a8c6ba26",
+      "first_line": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 152,
+      "heading": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42",
+      "date": "2026-10-19",
+      "chars": 890,
+      "sha256": "faddfc524c85f719d68a019183ead98a7cf452786ec085218e81550ecc01debc",
+      "first_line": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 153,
+      "heading": "## 2026-10-19 — Source release conflict and new draft source gates (operator handover)",
+      "date": "2026-10-19",
+      "chars": 1354,
+      "sha256": "543e33a97bad5aa1c0a6e34e997614043d5f3ffd2943978f99669b5d3b52d793",
+      "first_line": "## 2026-10-19 — Source release conflict and new draft source gates (operator handover)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 154,
+      "heading": "## 2026-10-19 — #669 release collision and host/ACK authority split",
+      "date": "2026-10-19",
+      "chars": 1092,
+      "sha256": "c7603b9c4753841dadafbd806a0db0991607d080060b6ee3cc8582ef388ce14f",
+      "first_line": "## 2026-10-19 — #669 release collision and host/ACK authority split\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 155,
+      "heading": "## 2026-10-19 — Runner-MCP PR #742 CI evidence and isolated wheel-record source path",
+      "date": "2026-10-19",
+      "chars": 1003,
+      "sha256": "a688163c19c40b5d6babffaf33dae1325d2dbe1eb0784667afb14d96b11c48d2",
+      "first_line": "## 2026-10-19 — Runner-MCP PR #742 CI evidence and isolated wheel-record source path\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 156,
+      "heading": "## 2026-10-19 — RMCP-F-0046 checkout baseline read-only safety fix",
+      "date": "2026-10-19",
+      "chars": 759,
+      "sha256": "1bf78218bc87e664bab1ee790019fa3951096b353e3a412c247608088df7a932",
+      "first_line": "## 2026-10-19 — RMCP-F-0046 checkout baseline read-only safety fix\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 157,
+      "heading": "## 2026-10-19 — Release version guard corrected / exact-head CI pending",
+      "date": "2026-10-19",
+      "chars": 958,
+      "sha256": "5ff7859b62e7103b79aaabb7c38300df4f006ea19637d0535901a7e0cf76f6d1",
+      "first_line": "## 2026-10-19 — Release version guard corrected / exact-head CI pending\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 158,
+      "heading": "## 2026-10-19 — PR #742 current provenance Doctor lane; SOURCE CI PENDING",
+      "date": "2026-10-19",
+      "chars": 1070,
+      "sha256": "15cb41c5a7593cf914d5110aa5dd342d9ea28e51d7237c9cdbedb5de57892890",
+      "first_line": "## 2026-10-19 — PR #742 current provenance Doctor lane; SOURCE CI PENDING\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 159,
+      "heading": "## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT",
+      "date": "2026-10-17",
+      "chars": 1611,
+      "sha256": "b3f6ddbbf48ddb6bfa40b9da9ba876d572f6c57d568bdc9a665388f9bd6a002a",
+      "first_line": "## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 160,
+      "heading": "## 2026-10-17 — LIVE RECONCILIATION: Black stage COMPLETE (non-serving); A2 enrollment WAIT",
+      "date": "2026-10-17",
+      "chars": 1750,
+      "sha256": "9b03ed90c42bb07ba906689bfd2c1fa55763a8bfd9b05a4b8ca1c28f927ab0f2",
+      "first_line": "## 2026-10-17 — LIVE RECONCILIATION: Black stage COMPLETE (non-serving); A2 enrollment WAIT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 161,
+      "heading": "## 2026-10-17 — RMCP-F-0030 safe failed-stage diagnosis SOURCE MERGED; Black PHYSICAL STILL BLOCKED",
+      "date": "2026-10-17",
+      "chars": 1848,
+      "sha256": "f6e692e4aa9a8d2084b2ba042469ccfa41579277aa9ce1f74133e35aec0a7268",
+      "first_line": "## 2026-10-17 — RMCP-F-0030 safe failed-stage diagnosis SOURCE MERGED; Black PHYSICAL STILL BLOCKED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 162,
+      "heading": "## 2026-10-17 — Real Black first-stage failure / RMCP-F-0030 / source diagnosis #718",
+      "date": "2026-10-17",
+      "chars": 1526,
+      "sha256": "d8c8ea237e8366bbb9a493ee57cacd0cbfb8ea170eb4bf2d479f20b6b3ce60d0",
+      "first_line": "## 2026-10-17 — Real Black first-stage failure / RMCP-F-0030 / source diagnosis #718\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 163,
+      "heading": "## 2026-10-17 — Black physical first-host source bootstrap #713 DONE, operator-local stage NEXT",
+      "date": "2026-10-17",
+      "chars": 1648,
+      "sha256": "ef8190591b83eae90a1ab9000165cbec91cb0c48d4083b5af06ca9eeffcf054c",
+      "first_line": "## 2026-10-17 — Black physical first-host source bootstrap #713 DONE, operator-local stage NEXT\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 164,
+      "heading": "## 2026-10-17 — New Black first-party bootstrap: LOCAL NON-SERVING STAGE PR #714",
+      "date": "2026-10-17",
+      "chars": 2423,
+      "sha256": "9878b405203a2f71bbff115bc370e1f59fa6cec0a1741aa6102dd3218f7d19fa",
+      "first_line": "## 2026-10-17 — New Black first-party bootstrap: LOCAL NON-SERVING STAGE PR #714\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 165,
+      "heading": "## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled",
+      "date": "2026-10-17",
+      "chars": 2691,
+      "sha256": "06cdce78fe2b7cc14e8fd4482a0cca2124bedea5dce982b928cb4a7ad03014e8",
+      "first_line": "## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 166,
+      "heading": "## 2026-10-17 — Fresh original-client A6/F30 read-only verification (NO host mutation)",
+      "date": "2026-10-17",
+      "chars": 2369,
+      "sha256": "0db2b264323e898d9adbc51b6edf12af95ab07c6104c5b758ec2a795541fdfb7",
+      "first_line": "## 2026-10-17 — Fresh original-client A6/F30 read-only verification (NO host mutation)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 167,
+      "heading": "## 2026-10-16 — OPERATOR PRIORITY: real Fleet upgrade; source-version development frozen",
+      "date": "2026-10-16",
+      "chars": 2914,
+      "sha256": "ad096115101e57172012de564920a74d372fb1f4c808367411ed90cb2c471424",
+      "first_line": "## 2026-10-16 — OPERATOR PRIORITY: real Fleet upgrade; source-version development frozen\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 168,
+      "heading": "## 2026-10-16 — Fleet read-only diagnostics verified through actual MCP protocol; A6 symlink security restack running",
+      "date": "2026-10-16",
+      "chars": 2607,
+      "sha256": "e39cab289f81b3088fb9a85f522c6b4bc766b27ac979371a80a49d3b597d6cd1",
+      "first_line": "## 2026-10-16 — Fleet read-only diagnostics verified through actual MCP protocol; A6 symlink security restack running\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 169,
+      "heading": "## 2026-10-16 — #664 complete source-name baseline and #333 optional tunnel doctor both integrated",
+      "date": "2026-10-16",
+      "chars": 2422,
+      "sha256": "2bea7930c8558bbafae396700e1aa1b39c851f81346239a9c6e91d5739bdcdad",
+      "first_line": "## 2026-10-16 — #664 complete source-name baseline and #333 optional tunnel doctor both integrated\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 170,
+      "heading": "## 2026-10-16 — #333 opt-in tunnel doctor source merged; #664 full tool-name guard CI",
+      "date": "2026-10-16",
+      "chars": 1676,
+      "sha256": "9f8be69c4d87fb884c52e970c8f73eef0491acf9f74a3a12d63e4f6c975024fc",
+      "first_line": "## 2026-10-16 — #333 opt-in tunnel doctor source merged; #664 full tool-name guard CI\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 171,
+      "heading": "## 2026-10-16 — #333 actual runtime_doctor tunnel evidence opt-in source child",
+      "date": "2026-10-16",
+      "chars": 1185,
+      "sha256": "4d5b35abb214673d9a44f370a36b3381d9c72e2431fbb2e38df9e534c01bf6df",
+      "first_line": "## 2026-10-16 — #333 actual runtime_doctor tunnel evidence opt-in source child\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 172,
+      "heading": "## 2026-10-16 — #664 sampled existing MCP signatures safeguarded by CI, tests-only",
+      "date": "2026-10-16",
+      "chars": 1774,
+      "sha256": "1825b29b219b04c500f8570ac3d0c01cfb83e2cc5cb277297655be3d06a4ec5b",
+      "first_line": "## 2026-10-16 — #664 sampled existing MCP signatures safeguarded by CI, tests-only\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 173,
+      "heading": "## 2026-10-16 — #664 legacy callable signature CI regression guard, source-only",
+      "date": "2026-10-16",
+      "chars": 879,
+      "sha256": "089799c2c53ef1ed3a77c7bd9f9be5100093edd847d8cce168dcf0f65e4f8bd9",
+      "first_line": "## 2026-10-16 — #664 legacy callable signature CI regression guard, source-only\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 174,
+      "heading": "## 2026-10-16 — #665 three source-only children through v0.1.23 merged; operational fleet proof still open",
+      "date": "2026-10-16",
+      "chars": 2293,
+      "sha256": "8c339b15f28b79366b6273e969b5ec0625b08fd65f4ec41fcfdbd21092eb26c6",
+      "first_line": "## 2026-10-16 — #665 three source-only children through v0.1.23 merged; operational fleet proof still open\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 175,
+      "heading": "## 2026-10-16 — #665 typed alert digest source candidate 0.1.23",
+      "date": "2026-10-16",
+      "chars": 915,
+      "sha256": "b94d41646e0f284a1dcc6a117add97135e22683c74968c07e0a9b3935e8b52a6",
+      "first_line": "## 2026-10-16 — #665 typed alert digest source candidate 0.1.23\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 176,
+      "heading": "## 2026-10-16 — #665 source children through 0.1.22 merged; actual live identity remains unqualified",
+      "date": "2026-10-16",
+      "chars": 1835,
+      "sha256": "823ec8ba20f4ddcbb18d5187e6e5b2a29315f87e53e1262df84afd56eb6606bc",
+      "first_line": "## 2026-10-16 — #665 source children through 0.1.22 merged; actual live identity remains unqualified\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 177,
+      "heading": "## 2026-10-16 — #665 stable identity first child source merged, inventory collision child underway",
+      "date": "2026-10-16",
+      "chars": 1167,
+      "sha256": "62c2e6cb4b9e8730e426d0fe68f12cdd3a7489760e2a852c997638a96e7e4187",
+      "first_line": "## 2026-10-16 — #665 stable identity first child source merged, inventory collision child underway\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 178,
+      "heading": "## 2026-10-16 — #665 tool identity comparator source child started",
+      "date": "2026-10-16",
+      "chars": 949,
+      "sha256": "3d6582b04ec68cc3589b961bc1a22235e0e1e7be8c37884ed8deb2f545bb7040",
+      "first_line": "## 2026-10-16 — #665 tool identity comparator source child started\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 179,
+      "heading": "## 2026-10-16 — functional source #681 and FASTER-13 #383 phase 1a landed",
+      "date": "2026-10-16",
+      "chars": 1896,
+      "sha256": "cbf3a8c0caf4d76b96839d6ac51efdc2a90975aee459b4ae62cc0dd643295a68",
+      "first_line": "## 2026-10-16 — functional source #681 and FASTER-13 #383 phase 1a landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 180,
+      "heading": "## 2026-10-16 — functional #681 source complete; FASTER-13 #383 benchmark child underway",
+      "date": "2026-10-16",
+      "chars": 1216,
+      "sha256": "e53d0ce60a6c58bbb2c00c20ada69ff201a4da37664b4a1e168b0653f40d6cc7",
+      "first_line": "## 2026-10-16 — functional #681 source complete; FASTER-13 #383 benchmark child underway\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 181,
+      "heading": "## 2026-10-16 — functional #681 no-followup host-inspection child",
+      "date": "2026-10-16",
+      "chars": 857,
+      "sha256": "f61920d5df055c00b229a727e4098be68033eeaede4cdcef5987bc6ca5ae4e96",
+      "first_line": "## 2026-10-16 — functional #681 no-followup host-inspection child\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 182,
+      "heading": "## 2026-10-16 — functional #681 source progress through snapshot failure classification",
+      "date": "2026-10-16",
+      "chars": 1036,
+      "sha256": "9c4bc5595a03db8e1c2781a7341f248b8a48b956064a78e8dca2f9c2dfa17add",
+      "first_line": "## 2026-10-16 — functional #681 source progress through snapshot failure classification\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 183,
+      "heading": "## 2026-10-16 — functional roadmap resumed: #681 continuity failure observability",
+      "date": "2026-10-16",
+      "chars": 948,
+      "sha256": "de0d0c0329d2f8faac98cc9d2bad8e136e86e9bbe5246c6fe844f2314295d29f",
+      "first_line": "## 2026-10-16 — functional roadmap resumed: #681 continuity failure observability\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 184,
+      "heading": "## 2026-10-16 — OPERATOR CORRECTION: rollback timer deferred until customers",
+      "date": "2026-10-16",
+      "chars": 1058,
+      "sha256": "4fa9f3f2991de33faa0e5fa625c3a1afb16c0a590ad9a2d456246f4ef2926ded",
+      "first_line": "## 2026-10-16 — OPERATOR CORRECTION: rollback timer deferred until customers\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 185,
+      "heading": "## 2026-10-16 — #669 offline signed provenance source children through v0.1.16 merged; LIVE UNQUALIFIED",
+      "date": "2026-10-16",
+      "chars": 2180,
+      "sha256": "d24be70ffe836a786719d3fdaf5832b0888ef5de1f7c71ca2c23e7b5b6c8125e",
+      "first_line": "## 2026-10-16 — #669 offline signed provenance source children through v0.1.16 merged; LIVE UNQUALIFIED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 186,
+      "heading": "## 2026-10-16 — signed evidence chain source child 0.1.16 in progress",
+      "date": "2026-10-16",
+      "chars": 885,
+      "sha256": "667aab916387454d5582ccebb7a29b515b7e366ceeb43e70463d776e4b10b2fc",
+      "first_line": "## 2026-10-16 — signed evidence chain source child 0.1.16 in progress\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 187,
+      "heading": "## 2026-10-16 — #669 detached signer preflight source qualification, PR #693",
+      "date": "2026-10-16",
+      "chars": 800,
+      "sha256": "d83319465a2fe2a388c070f18553af1c64ba862717d8288d9d50a89ff1f325da",
+      "first_line": "## 2026-10-16 — #669 detached signer preflight source qualification, PR #693\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 188,
+      "heading": "## 2026-10-16 — #669 detached Ed25519 builder proof source child",
+      "date": "2026-10-16",
+      "chars": 840,
+      "sha256": "777a66c6302d3c2a2cfa07583e007dfb149952042be57f90c906adbe73b29014",
+      "first_line": "## 2026-10-16 — #669 detached Ed25519 builder proof source child\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 189,
+      "heading": "## 2026-10-16 — #669 offline source children #689/#690/#691/#692 merged; live 0.1.9 remains UNATTESTED",
+      "date": "2026-10-16",
+      "chars": 1834,
+      "sha256": "bcba661b9b7389954e55746dec04017fc29976b1dea02cdb8380bec685fc5e76",
+      "first_line": "## 2026-10-16 — #669 offline source children #689/#690/#691/#692 merged; live 0.1.9 remains UNATTESTED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 190,
+      "heading": "## 2026-10-16 — #669 offline evidence consistency chain, source-only",
+      "date": "2026-10-16",
+      "chars": 808,
+      "sha256": "d0e75b66d9f4a05af124930d663a70ccae81004aeedf0b4fdff80abacdd96571",
+      "first_line": "## 2026-10-16 — #669 offline evidence consistency chain, source-only\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 191,
+      "heading": "## 2026-10-16 — #669 source progress through generation layout PR #691",
+      "date": "2026-10-16",
+      "chars": 865,
+      "sha256": "9697a3cd044806a7386abff9824434a930f8d4273d6456280dd625d6a118b934",
+      "first_line": "## 2026-10-16 — #669 source progress through generation layout PR #691\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 192,
+      "heading": "## 2026-10-16 — #669 builder-manifest source child in progress (PR #690)",
+      "date": "2026-10-16",
+      "chars": 996,
+      "sha256": "831985b951ffc0f7e0f525b70f021491e52118a56b1e29cbdf2e6a0ac2489ad4",
+      "first_line": "## 2026-10-16 — #669 builder-manifest source child in progress (PR #690)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 193,
+      "heading": "## 2026-10-16 — #669 offline receipt source child merged; serving runtime NOT attested",
+      "date": "2026-10-16",
+      "chars": 1316,
+      "sha256": "82f49d4464928697d810ee7ea7437092a8cfa928ebbfade1d5f5da053bebdde9",
+      "first_line": "## 2026-10-16 — #669 offline receipt source child merged; serving runtime NOT attested\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 194,
+      "heading": "## 2026-10-16 — #669 offline receipts, 0.1.11 source-only DRAFT PR #689",
+      "date": "2026-10-16",
+      "chars": 1760,
+      "sha256": "565a77e991ffc5e8a584f72c9339d210ac27bb62073c7ef7916aa61ffdecb83b",
+      "first_line": "## 2026-10-16 — #669 offline receipts, 0.1.11 source-only DRAFT PR #689\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 195,
+      "heading": "## 2026-10-15 — live 0.1.9 confirmed; tunnel runtime identity remains unqualified",
+      "date": "2026-10-15",
+      "chars": 1810,
+      "sha256": "2e7d1ec8d97529792df3f96b01eca6019b90ab149b7ee42f07f690e2ead3b826",
+      "first_line": "## 2026-10-15 — live 0.1.9 confirmed; tunnel runtime identity remains unqualified\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 196,
+      "heading": "## 2026-10-15 — 0.1.9 code merged, active 0.1.8 unchanged; manual stage BLOCKED_EXTERNAL",
+      "date": "2026-10-15",
+      "chars": 2652,
+      "sha256": "86ca6ebd5e029ebff8e4f598bd059a952ea362c3332f38fd1f06e4f6ae9eca01",
+      "first_line": "## 2026-10-15 — 0.1.9 code merged, active 0.1.8 unchanged; manual stage BLOCKED_EXTERNAL\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 197,
+      "heading": "## 2026-10-14 — Runner-MCP 0.1.8 cutover plus Fabric bridge regression",
+      "date": "2026-10-14",
+      "chars": 1833,
+      "sha256": "db15143722074c72718866cd8bc9e23ef81ae71782ba8d7a7c1858805c6c7885",
+      "first_line": "## 2026-10-14 — Runner-MCP 0.1.8 cutover plus Fabric bridge regression\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 198,
+      "heading": "## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN",
+      "date": "2026-10-10",
+      "chars": 1127,
+      "sha256": "95d714ed34f8db4d621433449b2b1b8a4be09f50b08f6e2f5ff4352a9938a29a",
+      "first_line": "## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 199,
+      "heading": "## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged",
+      "date": "2026-10-10",
+      "chars": 1915,
+      "sha256": "4a9e3ad8c01d87f1f43d8c4722cf1dce87d4064b397fb8c341bde91afded8252",
+      "first_line": "## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 200,
+      "heading": "## 2026-10-10 end-of-session egress source audit — RMCP-F-0024 OPEN",
+      "date": "2026-10-10",
+      "chars": 1143,
+      "sha256": "7e91ab604fafeb37cd91186bb8e1e51595aac656027bfbc090ca2b0bb1310648",
+      "first_line": "## 2026-10-10 end-of-session egress source audit — RMCP-F-0024 OPEN\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 201,
+      "heading": "## 2026-10-10 late — #540 fixed unsafe stale MCP tool replay (PR #650 MERGED); live #590 still blocked",
+      "date": "2026-10-10",
+      "chars": 3054,
+      "sha256": "0b6c02518e3bbed807a397836a8b9adcbb623837fec45444adab67eed1e9fb89",
+      "first_line": "## 2026-10-10 late — #540 fixed unsafe stale MCP tool replay (PR #650 MERGED); live #590 still blocked\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 202,
+      "heading": "## 2026-10-10 late evening — #590/#540 in-process MCP transport and catalogue proofs DONE; production unknown",
+      "date": "2026-10-10",
+      "chars": 2485,
+      "sha256": "b48bb3e154f4ba87e2a69e1dad28ae1e7b5c80498ead098f0c4f68634e97b89c",
+      "first_line": "## 2026-10-10 late evening — #590/#540 in-process MCP transport and catalogue proofs DONE; production unknown\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 203,
+      "heading": "## 2026-10-10 evening — #590 exact-request response/audit SOURCE proof #648 MERGED, live tunnel still OPEN",
+      "date": "2026-10-10",
+      "chars": 1989,
+      "sha256": "dcd3e653bb16a787f98003c873ff1ec0b6160a85e9f96f7e9ecb99541bf94a32",
+      "first_line": "## 2026-10-10 evening — #590 exact-request response/audit SOURCE proof #648 MERGED, live tunnel still OPEN\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 204,
+      "heading": "## 2026-10-10 late — Runner-MCP Q7 communication source repairs FINISHED; live rollout BLOCKED",
+      "date": "2026-10-10",
+      "chars": 2134,
+      "sha256": "831cb08ee32b485b4d033979098c28b228210abcbbe8e1a17707ba6c42501ba0",
+      "first_line": "## 2026-10-10 late — Runner-MCP Q7 communication source repairs FINISHED; live rollout BLOCKED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 205,
+      "heading": "## 2026-10-10 evening — Q7 communication fixes (#381); Fabric lease/fencing stays with other chat",
+      "date": "2026-10-10",
+      "chars": 2579,
+      "sha256": "7e6b3d1f5cd663b9f5500ea8980fb72330714c7c944a3dc1e74f5c30caf8c929",
+      "first_line": "## 2026-10-10 evening — Q7 communication fixes (#381); Fabric lease/fencing stays with other chat\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 206,
+      "heading": "## 2026-10-10 evening — Claude #381 fixed listener provenance PR #645 MERGED; trusted Fabric authority still blocks operational closure",
+      "date": "2026-10-10",
+      "chars": 2840,
+      "sha256": "c5feff31866af62386a30d7270e508ef45d3044e9f7604bc35b72cb67e7974f0",
+      "first_line": "## 2026-10-10 evening — Claude #381 fixed listener provenance PR #645 MERGED; trusted Fabric authority still blocks operational closure\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 207,
+      "heading": "## 2026-10-10 evening — Claude Q7 diagnostics source landed; execution still NO_DISPATCH",
+      "date": "2026-10-10",
+      "chars": 3855,
+      "sha256": "8051570f8cb8598eca3ae62f991cac5d14c62795140cd82acf878e11b0da4140",
+      "first_line": "## 2026-10-10 evening — Claude Q7 diagnostics source landed; execution still NO_DISPATCH\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 208,
+      "heading": "## 2026-10-10 — F30 common security code / host tool admission (SOURCE ONLY; live fleet still divergent)",
+      "date": "2026-10-10",
+      "chars": 2728,
+      "sha256": "0402237194297e9d69427516100897adb367889f7ed9f8f4878952bf728c7ef1",
+      "first_line": "## 2026-10-10 — F30 common security code / host tool admission (SOURCE ONLY; live fleet still divergent)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 209,
+      "heading": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged",
+      "date": "2026-10-10",
+      "chars": 1869,
+      "sha256": "94c1bdbacdce3d0f715b07377ba083d6cca79f42ba8b7b2c4014e695fdc618fb",
+      "first_line": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 210,
+      "heading": "## 2026-10-10 — #381 operator-priority Claude source security PR #637 MERGED; live trust chain still BLOCKED",
+      "date": "2026-10-10",
+      "chars": 2472,
+      "sha256": "7f801e737a3e423e83bf6f5265b9930de49aa3b2a5baa397f67b78b29c002413",
+      "first_line": "## 2026-10-10 — #381 operator-priority Claude source security PR #637 MERGED; live trust chain still BLOCKED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 211,
+      "heading": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)",
+      "date": "2026-10-10",
+      "chars": 2387,
+      "sha256": "d76dcc39745f40e33d75d838cbfa7773c6d078ff3d3eff18987b0ad85410ce17",
+      "first_line": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 212,
+      "heading": "## 2026-10-10 — Final #630 issue closure reconciliation",
+      "date": "2026-10-10",
+      "chars": 803,
+      "sha256": "fcd45d5363097663f9b59309a43d32ae44098b68bc520d543912c13d78634d6a",
+      "first_line": "## 2026-10-10 — Final #630 issue closure reconciliation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 213,
+      "heading": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)",
+      "date": "2026-10-10",
+      "chars": 2413,
+      "sha256": "4d18be6649d45175f4246d2dcaa9c551801e378341cee1b5e28c5fde465ef6d6",
+      "first_line": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 214,
+      "heading": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled",
+      "date": "2026-10-10",
+      "chars": 2587,
+      "sha256": "f50ec00e7dd9e1d7670eda14b22ffda599fc8942e1ca0e5d85b4eeb9fc72f109",
+      "first_line": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 215,
+      "heading": "## 2026-10-10 12:52 CEST — user-requested #381 recheck; authoritative issue scope corrected",
+      "date": "2026-10-10",
+      "chars": 2849,
+      "sha256": "dc6edd0c48ada70da8866727d386d3ab3435e7ff86ab63b501dd61af0ec4d990",
+      "first_line": "## 2026-10-10 12:52 CEST — user-requested #381 recheck; authoritative issue scope corrected\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 216,
+      "heading": "## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated",
+      "date": "2026-10-10",
+      "chars": 1548,
+      "sha256": "6d297b39e2bfa843c51c40b4fc1ef3d29e5055b5567ace87aea94fc30a3e2016",
+      "first_line": "## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 217,
+      "heading": "## 2026-10-10 — Claude priority #381: fixed host-local rootless source slice #628 MERGED; live worker STILL BLOCKED",
+      "date": "2026-10-10",
+      "chars": 3270,
+      "sha256": "0235ade5e86a8d9d924955fe779ede0e1ccb8eb0d77dd0e4955465b9f8e8f042",
+      "first_line": "## 2026-10-10 — Claude priority #381: fixed host-local rootless source slice #628 MERGED; live worker STILL BLOCKED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 218,
+      "heading": "## 2026-10-10 — #629 build identity fail-closed source MERGED; #590 LIVE UNQUALIFIED",
+      "date": "2026-10-10",
+      "chars": 1745,
+      "sha256": "f65da42dfa94dc41c7c486cd7d06ba2c73e1bcfbfce37cd59b6ac6f2684c400a",
+      "first_line": "## 2026-10-10 — #629 build identity fail-closed source MERGED; #590 LIVE UNQUALIFIED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 219,
+      "heading": "## 2026-10-10 — #590 second source-only identity diagnostic PR #629 (draft, exact CI pending)",
+      "date": "2026-10-10",
+      "chars": 2049,
+      "sha256": "361bd3b6367d27b0d0c718ed22bf48130a2470775f846b0fde7953b63eecc09f",
+      "first_line": "## 2026-10-10 — #590 second source-only identity diagnostic PR #629 (draft, exact CI pending)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 220,
+      "heading": "## 2026-10-10 — User priority changed to #381 Claude worker bridge; source implementation PR #628",
+      "date": "2026-10-10",
+      "chars": 3536,
+      "sha256": "33affaa9ed9c04dbef28194083c2113d67f687cc3745510a6cb9addd834bc760",
+      "first_line": "## 2026-10-10 — User priority changed to #381 Claude worker bridge; source implementation PR #628\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 221,
+      "heading": "## 2026-10-10 — Read-only connector split evidence and #618 CI reclassified",
+      "date": "2026-10-10",
+      "chars": 1870,
+      "sha256": "13140ae5938a06180670d18b34401d5b6cce3374ef065955108eafb85cc722c7",
+      "first_line": "## 2026-10-10 — Read-only connector split evidence and #618 CI reclassified\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 222,
+      "heading": "## 2026-10-10 — #627 bounded status source security MERGED; connected runtime still unqualified",
+      "date": "2026-10-10",
+      "chars": 3044,
+      "sha256": "a204d9c66a49e55c54deb971c8acf24c12db393613253c05a5a4782def9c6bac",
+      "first_line": "## 2026-10-10 — #627 bounded status source security MERGED; connected runtime still unqualified\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 223,
+      "heading": "## 2026-10-10 — #590 bounded runtime-status diagnostics; AIfordable #553 source dependency MERGED",
+      "date": "2026-10-10",
+      "chars": 3182,
+      "sha256": "3305fce31207863518a834e2e19f0f45434241c6f37d09c6f386559c10492be1",
+      "first_line": "## 2026-10-10 — #590 bounded runtime-status diagnostics; AIfordable #553 source dependency MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 224,
+      "heading": "## 2026-10-10 — Runner-MCP main after PR #626",
+      "date": "2026-10-10",
+      "chars": 1232,
+      "sha256": "a30ab9f046cc18009d34661d1ff870363b20fa33041379241a3094a926dff719",
+      "first_line": "## 2026-10-10 — Runner-MCP main after PR #626\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 225,
+      "heading": "## 2026-10-10 — Actual current Runner-MCP state after chat rollback",
+      "date": "2026-10-10",
+      "chars": 1731,
+      "sha256": "7106d08cfc03986655b9fe22ccd8ddf35cb011d5880f748d29bb622269a0abb7",
+      "first_line": "## 2026-10-10 — Actual current Runner-MCP state after chat rollback\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 226,
+      "heading": "## 2026-10-10 — latest protected-storage prerequisites and CI",
+      "date": "2026-10-10",
+      "chars": 1215,
+      "sha256": "3d60a0cf3bcdec1d0cd262c6451edcf050caf5a59ea2e1048742bd60b75f0515",
+      "first_line": "## 2026-10-10 — latest protected-storage prerequisites and CI\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 227,
+      "heading": "## 2026-10-10 — #623 full storage re-admission MERGED (supersedes prior WAITING_CI)",
+      "date": "2026-10-10",
+      "chars": 800,
+      "sha256": "8748e5239f86831102028a657e2878ef2ca05f8e5ed1ddb03b07d7ed7d307ea3",
+      "first_line": "## 2026-10-10 — #623 full storage re-admission MERGED (supersedes prior WAITING_CI)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 228,
+      "heading": "## 2026-10-10 — HIGH PRIORITY backup safety gates integrated; PHYSICAL BACKUP STILL BLOCKED",
+      "date": "2026-10-10",
+      "chars": 3120,
+      "sha256": "61fbcfffd14f4347da57bb15c25838a13ea2ed9af2f3b8efc0e36d4a076dd638",
+      "first_line": "## 2026-10-10 — HIGH PRIORITY backup safety gates integrated; PHYSICAL BACKUP STILL BLOCKED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 229,
+      "heading": "## 2026-10-09 — Final landing: A6 doctor #518 and F36 read-only relay #412 exact green MERGED",
+      "date": "2026-10-09",
+      "chars": 2316,
+      "sha256": "c0f44172f51a70877dfd1db14bd2ec6a3a5dd18dccfd8000eeed5f19937cd52b",
+      "first_line": "## 2026-10-09 — Final landing: A6 doctor #518 and F36 read-only relay #412 exact green MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 230,
+      "heading": "## 2026-10-09 — Final autonomous checkpoint: #620/#526 merged, #511 superseded",
+      "date": "2026-10-09",
+      "chars": 2160,
+      "sha256": "02d881dadf6da60c55d83f202e4568291cbada81e8a5da51741bd6daa4f7e3e8",
+      "first_line": "## 2026-10-09 — Final autonomous checkpoint: #620/#526 merged, #511 superseded\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 231,
+      "heading": "## 2026-10-09 — Latest continuation: #620 and #526 exact green MERGED",
+      "date": "2026-10-09",
+      "chars": 1454,
+      "sha256": "14a3cfc26804e793f8c3d34dd4beaac5ac74c559cfcdb5b60660247550c74f9a",
+      "first_line": "## 2026-10-09 — Latest continuation: #620 and #526 exact green MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 232,
+      "heading": "## 2026-10-09 — #619 exact-head GREEN and MERGED (supersedes WAITING_CI)",
+      "date": "2026-10-09",
+      "chars": 1401,
+      "sha256": "cbd7d4f8a24145745121fc23da934798067101b77f83cc99d2561db554dbd8e9",
+      "first_line": "## 2026-10-09 — #619 exact-head GREEN and MERGED (supersedes WAITING_CI)\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 233,
+      "heading": "## 2026-10-09 — Faster-13 eventfd shadow + Windows host contract",
+      "date": "2026-10-09",
+      "chars": 1410,
+      "sha256": "549946551c3f65dbeb49ee46fd756df041f67547fb7d69b082456139c0d88425",
+      "first_line": "## 2026-10-09 — Faster-13 eventfd shadow + Windows host contract\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 234,
+      "heading": "## 2026-10-09 — Final landing: #456 fully GREEN and MERGED",
+      "date": "2026-10-09",
+      "chars": 1151,
+      "sha256": "d34c0c756cd0a151803799360753a616c9d3f41787c17fd6d4199fbef2edf575",
+      "first_line": "## 2026-10-09 — Final landing: #456 fully GREEN and MERGED\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 235,
+      "heading": "## 2026-10-09 — Faster-13 shadow merges #467 and #465; #456 awaiting clean demo",
+      "date": "2026-10-09",
+      "chars": 1157,
+      "sha256": "253f6d859ae923691c9f5296bf1088c6b6feb076b12ac3e0139fc38973b30a4e",
+      "first_line": "## 2026-10-09 — Faster-13 shadow merges #467 and #465; #456 awaiting clean demo\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 236,
+      "heading": "## 2026-10-09 — Local MCP reply-ID guard merged; three Faster shadow PRs in validation",
+      "date": "2026-10-09",
+      "chars": 1214,
+      "sha256": "91355463691d9923c584a49d7a075dc115c468021c4622abbf5589c50d5b8d4c",
+      "first_line": "## 2026-10-09 — Local MCP reply-ID guard merged; three Faster shadow PRs in validation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 237,
+      "heading": "## 2026-10-09 — Faster-13 synthetic benchmark integrated",
+      "date": "2026-10-09",
+      "chars": 615,
+      "sha256": "6e0a88fdea431c8a1d0a9ed4d752129b69bc79517e51a37c32eae5f35b46b177",
+      "first_line": "## 2026-10-09 — Faster-13 synthetic benchmark integrated\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 238,
+      "heading": "## 2026-10-09 — MCP connector response identity and Faster-13 benchmark",
+      "date": "2026-10-09",
+      "chars": 1176,
+      "sha256": "0361d47be00c63bf3892d73a43596f4aeaca99d8588533523b6f491faa73ef3d",
+      "first_line": "## 2026-10-09 — MCP connector response identity and Faster-13 benchmark\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 239,
+      "heading": "## 2026-10-08 — Diagnostic topology adoption in review",
+      "date": "2026-10-08",
+      "chars": 700,
+      "sha256": "981c8d5eae70b61c5b8e931fc99535bf9eddf31048f70ee86422590c66667f0d",
+      "first_line": "## 2026-10-08 — Diagnostic topology adoption in review\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 240,
+      "heading": "## 2026-10-08 — Bewind OCR source custody + scalable artifact cache merged; client refresh remains",
+      "date": "2026-10-08",
+      "chars": 2607,
+      "sha256": "be6edf47d37966d90d2af5649bb638c2e8e3a0a44972632fe1e5bff416259b35",
+      "first_line": "## 2026-10-08 — Bewind OCR source custody + scalable artifact cache merged; client refresh remains\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 241,
+      "heading": "## 2026-10-08 — Bewind OCR qualification staging + execution live; client schema refresh next",
+      "date": "2026-10-08",
+      "chars": 3092,
+      "sha256": "dc9a0e117c4c4278fb684d6ce48c67b8e659fff210626fb9a77314d29369c2a2",
+      "first_line": "## 2026-10-08 — Bewind OCR qualification staging + execution live; client schema refresh next\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 242,
+      "heading": "## 2026-10-06 — Cross-project authority binding",
+      "date": "2026-10-06",
+      "chars": 314,
+      "sha256": "b4e4c3358a3ec7063682ae2cf76c22557c11d73510d57415211070beb5921615",
+      "first_line": "## 2026-10-06 — Cross-project authority binding\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 243,
+      "heading": "## 2026-10-06 — Mandatory topology preflight",
+      "date": "2026-10-06",
+      "chars": 526,
+      "sha256": "2e8c4a3d085c7ca40300f437365902bbf9a9ecdd190fa5c55984915137de1b4c",
+      "first_line": "## 2026-10-06 — Mandatory topology preflight\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 244,
+      "heading": "## 2026-10-06 — #451 dedicated Bewind source credential in validation",
+      "date": "2026-10-06",
+      "chars": 975,
+      "sha256": "7270f985be449a1be93f1a215ff6ae9ca1a0b70119544e36d4e1f6a3746c9e8a",
+      "first_line": "## 2026-10-06 — #451 dedicated Bewind source credential in validation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 245,
+      "heading": "## 2026-10-06 — #445 fixed worker-qualification provisioner in validation",
+      "date": "2026-10-06",
+      "chars": 1357,
+      "sha256": "fad6e5a0c477aa0d786462f274f122b7f89de556c07671e4fe924d65dd4a65c8",
+      "first_line": "## 2026-10-06 — #445 fixed worker-qualification provisioner in validation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 246,
+      "heading": "## 2026-10-06 — Known projects can materialize from trusted local source",
+      "date": "2026-10-06",
+      "chars": 1126,
+      "sha256": "070ee507f92f5d29a3a4f8578cd94d19ce016539dce46c851532870c86e5c759",
+      "first_line": "## 2026-10-06 — Known projects can materialize from trusted local source\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 247,
+      "heading": "## 2026-10-06 — Local Fabric update custody is self-staging",
+      "date": "2026-10-06",
+      "chars": 1095,
+      "sha256": "a9abeef058d192b89e363a5afd39dc48bcf0e60bf5be8a8e8c97f68597ce6a40",
+      "first_line": "## 2026-10-06 — Local Fabric update custody is self-staging\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 248,
+      "heading": "## 2026-10-06 — F34 bounded mirror activation",
+      "date": "2026-10-06",
+      "chars": 926,
+      "sha256": "7fae77bf6844f1eb923111d60792ce5b3f75c9329bf2fafbb2e8001e4507ea42",
+      "first_line": "## 2026-10-06 — F34 bounded mirror activation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 249,
+      "heading": "## 2026-10-06 — A6 now blocked by stale Fabric runtime plus private Runner-Fabric authorization",
+      "date": "2026-10-06",
+      "chars": 1667,
+      "sha256": "f723c9dada196a4f9777953c6976ea32d2789d1e1fb7d606258a18ac0817e6dc",
+      "first_line": "## 2026-10-06 — A6 now blocked by stale Fabric runtime plus private Runner-Fabric authorization\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 250,
+      "heading": "## 2026-10-06 — Fleet A6 blocked only on client schema; access warning split to #417",
+      "date": "2026-10-06",
+      "chars": 585,
+      "sha256": "179aceb7e9e58353f3e33072ef740e3abcfe19e3092224607b0dd0ccf76624af",
+      "first_line": "## 2026-10-06 — Fleet A6 blocked only on client schema; access warning split to #417\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 251,
+      "heading": "## 2026-10-06 — customer update readiness counterpart planned",
+      "date": "2026-10-06",
+      "chars": 472,
+      "sha256": "d25557079557a07977d03c628a60c034f63f445d626cb5cb24c57819bb49c5b8",
+      "first_line": "## 2026-10-06 — customer update readiness counterpart planned\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 252,
+      "heading": "## 2026-10-06 — A6 qualification proxy merged and live",
+      "date": "2026-10-06",
+      "chars": 1001,
+      "sha256": "afb52414cb5b523d8571b6f67643d19a128fab2fffed379fd8c385dbd37540d6",
+      "first_line": "## 2026-10-06 — A6 qualification proxy merged and live\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 253,
+      "heading": "## 2026-10-05 — Tunnel readiness proven through control-plane authentication; end-to-end gate remains",
+      "date": "2026-10-05",
+      "chars": 1599,
+      "sha256": "a4ea4fc963a75837f58823adc4b489da19ba950c087501fd556adde2cbc066c7",
+      "first_line": "## 2026-10-05 — Tunnel readiness proven through control-plane authentication; end-to-end gate remains\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 254,
+      "heading": "## 2026-10-05 — Tunnel readiness runtime boundary merged; managed autostart next",
+      "date": "2026-10-05",
+      "chars": 2265,
+      "sha256": "0c6d48df8f227043e2783b0aeb721c63bf3f86dbb95adabf239f62f78f7cb380",
+      "first_line": "## 2026-10-05 — Tunnel readiness runtime boundary merged; managed autostart next\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 255,
+      "heading": "## 2026-10-05 — Fleet Update A2 Runner-MCP audit identity hardening merged",
+      "date": "2026-10-05",
+      "chars": 1182,
+      "sha256": "f1e59f5842a18c31253241a9e15f990bd5baa8a5fb3d44fcffa3f9c6c7bb63ac",
+      "first_line": "## 2026-10-05 — Fleet Update A2 Runner-MCP audit identity hardening merged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 256,
+      "heading": "## 2026-10-05 — Fleet Update A2 Runner-MCP build identity merged",
+      "date": "2026-10-05",
+      "chars": 519,
+      "sha256": "bf9c143fe2b5ea4fbde64148229764f27f118b7223add23078b8baafb8daf464",
+      "first_line": "## 2026-10-05 — Fleet Update A2 Runner-MCP build identity merged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 257,
+      "heading": "## 2026-10-05 — Fleet Update A1 characterization merged",
+      "date": "2026-10-05",
+      "chars": 501,
+      "sha256": "6cc613f12a5ff2844ad611491720aa6ac0cd109ed34c1cffc8ca44201e12fa4d",
+      "first_line": "## 2026-10-05 — Fleet Update A1 characterization merged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 258,
+      "heading": "## 2026-10-05 — Fleet Update Track A added; A1 first",
+      "date": "2026-10-05",
+      "chars": 592,
+      "sha256": "a7b0fca9188e84ac2b69029bb2e06b0d7d0f7a13d90ca917f5bd442e2a265c5a",
+      "first_line": "## 2026-10-05 — Fleet Update Track A added; A1 first\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 259,
+      "heading": "## 2026-10-04 — bounded Fabric operational snapshot proxy merged",
+      "date": "2026-10-04",
+      "chars": 741,
+      "sha256": "091a67a1b08bd05493b0a75a723b13652df059ccdb3f3b8e62ddc28c1348ece5",
+      "first_line": "## 2026-10-04 — bounded Fabric operational snapshot proxy merged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 260,
+      "heading": "## 2026-10-04 — operational snapshot proxy implementation in validation",
+      "date": "2026-10-04",
+      "chars": 757,
+      "sha256": "605b7b337215160a37d6aa50f41e4787dbb65400f02d9977a96c1df6f6a56881",
+      "first_line": "## 2026-10-04 — operational snapshot proxy implementation in validation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 261,
+      "heading": "## 2026-10-04 — operational snapshot gap promoted to maintenance priority",
+      "date": "2026-10-04",
+      "chars": 838,
+      "sha256": "55b54a74154b6965e0fcc5cd2462bb7dd96317ac2b89e42f508f09b765f2116a",
+      "first_line": "## 2026-10-04 — operational snapshot gap promoted to maintenance priority\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 262,
+      "heading": "## 2026-10-04 — alpha core complete; maintenance mode",
+      "date": "2026-10-04",
+      "chars": 1583,
+      "sha256": "404cb8a66118002cfdae432626f3007c134ade5ac697859686ae2c7990f60491",
+      "first_line": "## 2026-10-04 — alpha core complete; maintenance mode\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 263,
+      "heading": "## 2026-10-04 — local self-update recovery qualification harness live-ready",
+      "date": "2026-10-04",
+      "chars": 1682,
+      "sha256": "ad583529aec2fcf71544c530dbaae559753c3a4bb1ec8ce6246dd740298c0407",
+      "first_line": "## 2026-10-04 — local self-update recovery qualification harness live-ready\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 264,
+      "heading": "## 2026-10-04 — exact-main self-update guard is live",
+      "date": "2026-10-04",
+      "chars": 1896,
+      "sha256": "e4ba31efea6b94e8173a565322b80a7910aca320fdb4c98207e9284d7a4c5ec5",
+      "first_line": "## 2026-10-04 — exact-main self-update guard is live\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 265,
+      "heading": "## 2026-10-04 — managed Fabric update path landed and Runner MCP live runtime converged",
+      "date": "2026-10-04",
+      "chars": 1979,
+      "sha256": "190714728d6ccb0e6fd5ec65c6343b40661558cb8a5990519b4f1d3f2d141a69",
+      "first_line": "## 2026-10-04 — managed Fabric update path landed and Runner MCP live runtime converged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 266,
+      "heading": "## 2026-10-04 — bounded Runner Fabric host inspection bridge",
+      "date": "2026-10-04",
+      "chars": 1254,
+      "sha256": "6849d14bf4c9e70296cd746019eee31a816ac83a28363aae127716876b4240f5",
+      "first_line": "## 2026-10-04 — bounded Runner Fabric host inspection bridge\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 267,
+      "heading": "## 2026-10-03 — First-party client path replaces routine broad remote control",
+      "date": "2026-10-03",
+      "chars": 2203,
+      "sha256": "ac256a7d797adc0f9d9e213cd330a9eea308e5e6ff58685de218be5e0a45965b",
+      "first_line": "## 2026-10-03 — First-party client path replaces routine broad remote control\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 268,
+      "heading": "## 2026-10-03 — Canonical service-user Agent Bus restart/replay acceptance completed",
+      "date": "2026-10-03",
+      "chars": 1858,
+      "sha256": "1c441fa69e1e4f044d1161db2cc3cd98cc84bfc5e64f940bcb3b6dfdb2a6a969",
+      "first_line": "## 2026-10-03 — Canonical service-user Agent Bus restart/replay acceptance completed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 269,
+      "heading": "## 2026-10-03 — Self-update succeeded; watcher restart activation is the only immediate Runner MCP gate",
+      "date": "2026-10-03",
+      "chars": 2265,
+      "sha256": "bbf6a7e7a8f05f3cf08211b4f52a07346e78605f1f7dc46a63b9e9511816b874",
+      "first_line": "## 2026-10-03 — Self-update succeeded; watcher restart activation is the only immediate Runner MCP gate\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 270,
+      "heading": "## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint",
+      "date": "2026-10-03",
+      "chars": 3345,
+      "sha256": "483f0ceb9cc7f33f4f49615fbbefd061934bba867fcc734a5aa038eaa3a4c072",
+      "first_line": "## 2026-10-03 — Replacement-host Runner MCP live qualification checkpoint\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 271,
+      "heading": "## 2026-10-02 — Agent Bus live proof + replacement-host reconciliation",
+      "date": "2026-10-02",
+      "chars": 3696,
+      "sha256": "4d4fad4b0deb90b2d14c31fc8b1652888cecd631bd4f2feeb54e1244da2f6453",
+      "first_line": "## 2026-10-02 — Agent Bus live proof + replacement-host reconciliation\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 272,
+      "heading": "## 2026-10-02 — Live update paths proven; remaining gates narrowed",
+      "date": "2026-10-02",
+      "chars": 2084,
+      "sha256": "50c5b95f4d32c1211e0c06a0f173f3b7303905f2fb010bb40ad3df445715b239",
+      "first_line": "## 2026-10-02 — Live update paths proven; remaining gates narrowed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 273,
+      "heading": "## 2026-10-02 — Live runner readiness narrowed to controlled runtime update",
+      "date": "2026-10-02",
+      "chars": 1659,
+      "sha256": "17a6776469e9f131138afc21b31a140b944227950a3ac419a3b085b34ec12cbd",
+      "first_line": "## 2026-10-02 — Live runner readiness narrowed to controlled runtime update\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 274,
+      "heading": "## 2026-10-02 — Secondary-directory independence policy",
+      "date": "2026-10-02",
+      "chars": 790,
+      "sha256": "8a0ebb0accbb3dcd4f0b181608bc34da1fa674e729d9f3c3949a150a7d9aa79a",
+      "first_line": "## 2026-10-02 — Secondary-directory independence policy\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 275,
+      "heading": "## 2026-10-02 — Task 69 self-update hardening integrated",
+      "date": "2026-10-02",
+      "chars": 1268,
+      "sha256": "fb56a2af04ed3fbb1f7f0486b8d7a2e8f850ff348e955d53153891b9e5e8e807",
+      "first_line": "## 2026-10-02 — Task 69 self-update hardening integrated\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 276,
+      "heading": "## 2026-10-02 — Fabric live-cutover dependency reconciled",
+      "date": "2026-10-02",
+      "chars": 1105,
+      "sha256": "80eec86597a80dde531d6a08937e613fc0f77616ed8a8da636a081cefc1d5d15",
+      "first_line": "## 2026-10-02 — Fabric live-cutover dependency reconciled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 277,
+      "heading": "## 2026-10-02 — Runner MCP 0.1.3 published",
+      "date": "2026-10-02",
+      "chars": 861,
+      "sha256": "076452ebdf8f3b651ec9d1d9772c1266ae9f8c78ef51052cbc8fa490d29758c2",
+      "first_line": "## 2026-10-02 — Runner MCP 0.1.3 published\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 278,
+      "heading": "## 2026-10-01 — Runner MCP 0.1.3 release candidate integrated",
+      "date": "2026-10-01",
+      "chars": 1195,
+      "sha256": "cbf5cb2ed08d2e0560490c33eefd4a5524f96cba7034ff6376647cede0c4aaf0",
+      "first_line": "## 2026-10-01 — Runner MCP 0.1.3 release candidate integrated\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 279,
+      "heading": "## 2026-10-01 — Task 64 integrated; Fabric activation blocker narrowed",
+      "date": "2026-10-01",
+      "chars": 1418,
+      "sha256": "5c6a9d7282b6675c4f306d8ac0e43a9edd8adb2fd2f1beb265edd9735b64d526",
+      "first_line": "## 2026-10-01 — Task 64 integrated; Fabric activation blocker narrowed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-10.md"
+    },
+    {
+      "index": 280,
+      "heading": "## 2026-09-30 — Tasks 50–52 reconciled",
+      "date": "2026-09-30",
+      "chars": 1414,
+      "sha256": "c600302b5012cd6d98f4d54775db41b1eb6057e9f869d7040852d5e664d1cc56",
+      "first_line": "## 2026-09-30 — Tasks 50–52 reconciled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 281,
+      "heading": "## 2026-09-29 — Tasks 47 and 49 integrated; bounded queue refilled",
+      "date": "2026-09-29",
+      "chars": 2519,
+      "sha256": "840db4f35ab0305e5cee7deac2ee34a2595a21fa15fb0f63d1870b3d091b9e1e",
+      "first_line": "## 2026-09-29 — Tasks 47 and 49 integrated; bounded queue refilled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 282,
+      "heading": "## 2026-09-28 — Task 44 integrated; Task 45 async migration boundary decided",
+      "date": "2026-09-28",
+      "chars": 2857,
+      "sha256": "326bcef736d8ead55e19d2df5834afb8ae319963496ac2d7d8776507afb34a46",
+      "first_line": "## 2026-09-28 — Task 44 integrated; Task 45 async migration boundary decided\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 283,
+      "heading": "## 2026-09-28 — Tasks 48 and 43 complete; migration-job substrate next",
+      "date": "2026-09-28",
+      "chars": 2346,
+      "sha256": "9bb710f2ba4888afadb2a8f0f05cb4b9436e68b4fb3b850ccebe55fd1c2e44de",
+      "first_line": "## 2026-09-28 — Tasks 48 and 43 complete; migration-job substrate next\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 284,
+      "heading": "## 2026-09-27 — Task 46 reconciled; Task 48 release-lock prerequisite queued",
+      "date": "2026-09-27",
+      "chars": 2186,
+      "sha256": "1904ae7e0bcfe679ca5923613ac56a985e4ba990c56e3cd109f25d9973fe93df",
+      "first_line": "## 2026-09-27 — Task 46 reconciled; Task 48 release-lock prerequisite queued\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 285,
+      "heading": "## 2026-09-27 — Runner Fabric coarse bridge transport merged",
+      "date": "2026-09-27",
+      "chars": 2648,
+      "sha256": "1fd51158b0fbbb3647609df1291a3f72cffd9d5e41bafd31d178c841c134983e",
+      "first_line": "## 2026-09-27 — Runner Fabric coarse bridge transport merged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 286,
+      "heading": "## 2026-09-27 — AI fault-containment regression proof merged",
+      "date": "2026-09-27",
+      "chars": 1095,
+      "sha256": "fe004bc6f63ff792ca5b644ec03196934aff9115dda7bbc0cd22dbb5947d43b0",
+      "first_line": "## 2026-09-27 — AI fault-containment regression proof merged\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 287,
+      "heading": "## 2026-09-27 — AI fault containment roadmap rule prepared",
+      "date": "2026-09-27",
+      "chars": 560,
+      "sha256": "066cdfc4b5907824918f3e2888d0bed5305748fc71f33f84e3dd986b26ba8f47",
+      "first_line": "## 2026-09-27 — AI fault containment roadmap rule prepared\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 288,
+      "heading": "## 2026-09-27 — v0.1.2 canonical distribution published",
+      "date": "2026-09-27",
+      "chars": 1248,
+      "sha256": "f444eab51788a5c76e1240580306fae560a99aa6f8d6891d81b69f69c9514c9b",
+      "first_line": "## 2026-09-27 — v0.1.2 canonical distribution published\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 289,
+      "heading": "## 2026-09-26 — v0.1.1 AIfordable PyPI identity integrated",
+      "date": "2026-09-26",
+      "chars": 1089,
+      "sha256": "4cb06610678ab6962288e07b2eb648718b6621303199a92c078e13bad92c6f9a",
+      "first_line": "## 2026-09-26 — v0.1.1 AIfordable PyPI identity integrated\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 290,
+      "heading": "## 2026-09-26 — v0.1.1 PyPI identity reconciled",
+      "date": "2026-09-26",
+      "chars": 1124,
+      "sha256": "9518d03e1e5603efaa84e88c3b5c7e1456c3ec2f322aeed498760e463ac168b1",
+      "first_line": "## 2026-09-26 — v0.1.1 PyPI identity reconciled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 291,
+      "heading": "## 2026-09-26 — v0.1.1 distribution/discovery release prepared",
+      "date": "2026-09-26",
+      "chars": 1135,
+      "sha256": "50e458194413f210993e696afc2b2ecfeeb3c6d945d7f3fe84e14ca7de29af69",
+      "first_line": "## 2026-09-26 — v0.1.1 distribution/discovery release prepared\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 292,
+      "heading": "## 2026-09-24 — v0.1.0 alpha released and public docs reconciled",
+      "date": "2026-09-24",
+      "chars": 1475,
+      "sha256": "14c4f6b9090db72fe83702ed416f810df8ab58b659b82c4d3d1bb2eb4b55ebeb",
+      "first_line": "## 2026-09-24 — v0.1.0 alpha released and public docs reconciled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 293,
+      "heading": "## 2026-09-24 — release-track reconciliation after Task 41 integration",
+      "date": "2026-09-24",
+      "chars": 1149,
+      "sha256": "6002cf750599eb0a6b3d054857c129d4581cab4357a232d9364e0469901f6aab",
+      "first_line": "## 2026-09-24 — release-track reconciliation after Task 41 integration\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 294,
+      "heading": "## 2026-09-24 — Task 41 bounded redaction complete; Task 43 lock prerequisite found",
+      "date": "2026-09-24",
+      "chars": 1171,
+      "sha256": "fc3146aa56cb65353ed1f13c4d5a5a98f58cf2698e7366727ce831fbff28a6e7",
+      "first_line": "## 2026-09-24 — Task 41 bounded redaction complete; Task 43 lock prerequisite found\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 295,
+      "heading": "## 2026-09-24 — Task 42 durable migration-job substrate review complete",
+      "date": "2026-09-24",
+      "chars": 1095,
+      "sha256": "af7d47a86c5ac626ae5b923109086e8769df0c9b0097f813a91f7d732e2aa5a3",
+      "first_line": "## 2026-09-24 — Task 42 durable migration-job substrate review complete\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 296,
+      "heading": "## 2026-09-24 — Task 39 adapter preset boundary refactor complete on PR #94",
+      "date": "2026-09-24",
+      "chars": 1067,
+      "sha256": "47c9352595aa3647a43376324fe0ad9082faf13b7e9792beb897891ad9123857",
+      "first_line": "## 2026-09-24 — Task 39 adapter preset boundary refactor complete on PR #94\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 297,
+      "heading": "## 2026-09-24 — Task 40 retention pruning execute-boundary review complete",
+      "date": "2026-09-24",
+      "chars": 989,
+      "sha256": "361f76afdeeeb058b8facab8ae61107d685852fdb0c5e3a4211d786e3ef63e94",
+      "first_line": "## 2026-09-24 — Task 40 retention pruning execute-boundary review complete\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 298,
+      "heading": "## 2026-09-24 — Task 34 read-only retention preview implementation complete on PR #92",
+      "date": "2026-09-24",
+      "chars": 1567,
+      "sha256": "820b31a70d9dcff10a728138f31967a0f3afa907dcb3e58c44cb2159584fad4c",
+      "first_line": "## 2026-09-24 — Task 34 read-only retention preview implementation complete on PR #92\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 299,
+      "heading": "## 2026-09-24 — Tasks 32 and 36 alpha-readiness work landed",
+      "date": "2026-09-24",
+      "chars": 1348,
+      "sha256": "3e3a558be3f32037b4820a73eea9f6365942d157e350fec62395fad9d4152478",
+      "first_line": "## 2026-09-24 — Tasks 32 and 36 alpha-readiness work landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 300,
+      "heading": "## 2026-09-24 — Task 31 local read-only restore preflight landed",
+      "date": "2026-09-24",
+      "chars": 1256,
+      "sha256": "6d05f19394dd630fd8df6c5e7ba8175565c7684bc274399db8d7d251898936f9",
+      "first_line": "## 2026-09-24 — Task 31 local read-only restore preflight landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 301,
+      "heading": "## 2026-09-24 — Task 30 retention-pruning boundary review landed",
+      "date": "2026-09-24",
+      "chars": 897,
+      "sha256": "934ef0ce9c83c310970b419c65349fb862ae121f27cdf10c2480b73098fd7c4e",
+      "first_line": "## 2026-09-24 — Task 30 retention-pruning boundary review landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 302,
+      "heading": "## 2026-09-24 — Task 29 privacy-safe connectivity guidance landed",
+      "date": "2026-09-24",
+      "chars": 1002,
+      "sha256": "ff41fb920d2b4d80417ad5e3ee2ef6fa6af76f100966e9766ec68ef2109c8f25",
+      "first_line": "## 2026-09-24 — Task 29 privacy-safe connectivity guidance landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 303,
+      "heading": "## 2026-09-24 — Task 28 deployment/rollback completion delivery landed",
+      "date": "2026-09-24",
+      "chars": 1381,
+      "sha256": "c6c0538c419449c174a4741dbcecabbaaf2b91cbe5ae448c42030317afd68ebc",
+      "first_line": "## 2026-09-24 — Task 28 deployment/rollback completion delivery landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 304,
+      "heading": "## 2026-09-24 — Task 27 database restore/recovery review landed",
+      "date": "2026-09-24",
+      "chars": 950,
+      "sha256": "84f161e67d7d150c292879ec55f11cf436e0771b698ac551dac212d412325bc2",
+      "first_line": "## 2026-09-24 — Task 27 database restore/recovery review landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 305,
+      "heading": "## 2026-09-24 — Task 26 bounded service-journal review landed",
+      "date": "2026-09-24",
+      "chars": 912,
+      "sha256": "8a80b4133b4e6d7cac496985297f1a908fc0cd61afc4e63d493fd28de6182ced",
+      "first_line": "## 2026-09-24 — Task 26 bounded service-journal review landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 306,
+      "heading": "## 2026-09-24 — Task 25 private connectivity/TLS onboarding review landed",
+      "date": "2026-09-24",
+      "chars": 1151,
+      "sha256": "a1f2d273a181abad84ae9e151c77e173887d493dfa24f1458b65520eed736475",
+      "first_line": "## 2026-09-24 — Task 25 private connectivity/TLS onboarding review landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 307,
+      "heading": "## 2026-09-24 — Task 24 completion-delivery expansion review landed",
+      "date": "2026-09-24",
+      "chars": 804,
+      "sha256": "e46c7f5e8915349ee071dce99c37792dc9e2e2f54954d3a92ce2084e89d22cc9",
+      "first_line": "## 2026-09-24 — Task 24 completion-delivery expansion review landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 308,
+      "heading": "## 2026-09-23 — Task 23 completion watcher diagnostics landed",
+      "date": "2026-09-23",
+      "chars": 808,
+      "sha256": "6bb39f30ed92e984fe9b0a09c6fa6f7a2632a5933707ed9da16917e2bb721e15",
+      "first_line": "## 2026-09-23 — Task 23 completion watcher diagnostics landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 309,
+      "heading": "## 2026-09-23 — Task 22 cron supervisor diagnostics landed",
+      "date": "2026-09-23",
+      "chars": 928,
+      "sha256": "683d726d57b2db15f8b02983cccc8cdff4070ae1cc277a574e0419558787ecc0",
+      "first_line": "## 2026-09-23 — Task 22 cron supervisor diagnostics landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 310,
+      "heading": "## 2026-09-23 — Task 21 managed autostart secure I/O landed",
+      "date": "2026-09-23",
+      "chars": 1154,
+      "sha256": "3f209fe165aac430d03b097120ff3a99926f12a5b3d37a3d188ecb40ac27375b",
+      "first_line": "## 2026-09-23 — Task 21 managed autostart secure I/O landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 311,
+      "heading": "## 2026-09-23 — Task 20 bridge adversarial matrix landed",
+      "date": "2026-09-23",
+      "chars": 1137,
+      "sha256": "ba58742bb14764525f60a202300a3e07f4a1847f0e46fde6cb5ee59a7f62f730",
+      "first_line": "## 2026-09-23 — Task 20 bridge adversarial matrix landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 312,
+      "heading": "## 2026-09-23 — Task 18 private atomic-replace hardening landed",
+      "date": "2026-09-23",
+      "chars": 1227,
+      "sha256": "e39ce98f0657f141b05b0221225c8eca8dc37566fb861caf6aa95bf7ce32390b",
+      "first_line": "## 2026-09-23 — Task 18 private atomic-replace hardening landed\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 313,
+      "heading": "## 2026-09-23 — Tasks 16/17 landed and session reconciled",
+      "date": "2026-09-23",
+      "chars": 814,
+      "sha256": "ede7f3c4f6f229718ffd4923639ffbca112b1d4229e1579d52887359b150bbee",
+      "first_line": "## 2026-09-23 — Tasks 16/17 landed and session reconciled\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 314,
+      "heading": "## 2026-09-23 — v0.1.0 public release docs prepared",
+      "date": "2026-09-23",
+      "chars": 835,
+      "sha256": "ed5ac5c77c3cab2903284bc6b66de0b4ad8dc05db75ba771c8b538f8df669287",
+      "first_line": "## 2026-09-23 — v0.1.0 public release docs prepared\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 315,
+      "heading": "## 2026-09-23 — Tasks 2–9 queue complete",
+      "date": "2026-09-23",
+      "chars": 1383,
+      "sha256": "08dd9e9c524dcfd65dbd247a9791018db7624b5d84f866a563089b3b234d6fed",
+      "first_line": "## 2026-09-23 — Tasks 2–9 queue complete\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 316,
+      "heading": "## 2026-09-22 — Task 8 checkpoint",
+      "date": "2026-09-22",
+      "chars": 776,
+      "sha256": "69cc8f5a50d7abd90789f9f356917bcbbb6142cef86c1ae11ecfbd545d53929f",
+      "first_line": "## 2026-09-22 — Task 8 checkpoint\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 317,
+      "heading": "## 2026-09-22 — current reconciliation checkpoint",
+      "date": "2026-09-22",
+      "chars": 1817,
+      "sha256": "fb28f04c11a186eda61825145e01d5f021bbff699ab919a2f48ea93f44d3e03d",
+      "first_line": "## 2026-09-22 — current reconciliation checkpoint\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 318,
+      "heading": "## Controlled multi-project concurrency — 2026-09-21",
+      "date": "2026-09-21",
+      "chars": 692,
+      "sha256": "3a9e213061941ac58d926afaf7c9e948dafb43d00241d298ba5ed02318e6003f",
+      "first_line": "## Controlled multi-project concurrency — 2026-09-21\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 319,
+      "heading": "## Shared watcher migration proof — 2026-09-21",
+      "date": "2026-09-21",
+      "chars": 1202,
+      "sha256": "b69822459ba8f4c5d4f9a71708e921f29d77ba446b399e92d3c9d4a62232e534",
+      "first_line": "## Shared watcher migration proof — 2026-09-21\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 320,
+      "heading": "## Status",
+      "date": null,
+      "chars": 22184,
+      "sha256": "935873d3eb6c92f3fa0761bc7f40aefc967a3595a7b20c8d2a72d325276e7e11",
+      "first_line": "## Status\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 321,
+      "heading": "## Validation",
+      "date": null,
+      "chars": 3103,
+      "sha256": "b4266264414c0a975bc9b4aa336e04410d98e59c38ee8aa8a70f972d56528f47",
+      "first_line": "## Validation\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 322,
+      "heading": "## Deliberately not implemented yet",
+      "date": null,
+      "chars": 341,
+      "sha256": "9d5eb2390935f1726a444ce4299ef8a13ba72adf449ff5ea20cc98f4db59fcd2",
+      "first_line": "## Deliberately not implemented yet\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 323,
+      "heading": "## Next steps",
+      "date": null,
+      "chars": 656,
+      "sha256": "d3cf8e1054d78e56e1860ec956c905df304ba8148ebf3b62f48c78d2cabb64e3",
+      "first_line": "## Next steps\n",
+      "dest": "handover/CURRENT_STATE.md"
+    },
+    {
+      "index": 324,
+      "heading": "## Safe project sync and adapter test presets — 2026-09-21",
+      "date": "2026-09-21",
+      "chars": 6293,
+      "sha256": "f2c841f3f6d92ede8785a9beb4cd053d77fabdcf95433e0921c8184f07ed1885",
+      "first_line": "## Safe project sync and adapter test presets — 2026-09-21\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 325,
+      "heading": "## 2026-09-22 — external review triage and low-risk cleanup",
+      "date": "2026-09-22",
+      "chars": 5119,
+      "sha256": "65a4c17bd261c08b99cd160400a4caecc738377716483d4fdfd6fdc6b9e7ea97",
+      "first_line": "## 2026-09-22 — external review triage and low-risk cleanup\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 326,
+      "heading": "## 2026-09-22 — bounded local self-update install recovery",
+      "date": "2026-09-22",
+      "chars": 1990,
+      "sha256": "902f6a51376e73e48a36900210ac10dc03811d6b77b554a6f8d563ece1d5610b",
+      "first_line": "## 2026-09-22 — bounded local self-update install recovery\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 327,
+      "heading": "## Coordination checkpoint — 2026-09-22",
+      "date": "2026-09-22",
+      "chars": 717,
+      "sha256": "1d962fddb2194b13471317ed172b0b0de11678fc911cf4a36775c9d45a382919",
+      "first_line": "## Coordination checkpoint — 2026-09-22\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    },
+    {
+      "index": 328,
+      "heading": "## Agent Bus architecture correction — 2026-09-29",
+      "date": "2026-09-29",
+      "chars": 433,
+      "sha256": "8e04b6dda313a6c40ecba752d75b075e63dfdea9c343b4377b92fd7a86147c69",
+      "first_line": "## Agent Bus architecture correction — 2026-09-29\n",
+      "dest": "handover/CURRENT_STATE.archive-2026-09.md"
+    }
+  ],
+  "outputs": {
+    "handover/CURRENT_STATE.md": "58dad434582c9a6cd333bee1503e4a0e333bcd55120ef24c9d7ec5e59e072fb1",
+    "handover/CURRENT_STATE.archive-2026-11.md": "ec9558a86546f41e8fc53315d80357a763b9b87dd6048ee18585af4123472110",
+    "handover/CURRENT_STATE.archive-2026-10.md": "ba63af22a843e771a80538b5ddef9ebe23ffac950be42075e52bef426d20be4c",
+    "handover/CURRENT_STATE.archive-2026-09.md": "9ecbd204c67a63a879442417c14d0f18fd299dcfef51572b818abd25fd3a2ec1"
+  }
+}

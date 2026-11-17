@@ -1,0 +1,361 @@
+{
+  "schema": "doc-memory-split/v1",
+  "source_path": "handover/NEXT_ACTION.md",
+  "active_path": "handover/NEXT_ACTION.md",
+  "source_sha256": "6b32ee3c910c0e2e73ddbd76d1d0027f2abc81831470534a757d70409afd1dee",
+  "source_chars": 53110,
+  "base_sha256": "6b32ee3c910c0e2e73ddbd76d1d0027f2abc81831470534a757d70409afd1dee",
+  "removed_generated": "",
+  "removed_offset": -1,
+  "open_work_listed": 10,
+  "inserted_sha256": null,
+  "keep_since": "2026-11-08",
+  "sections": [
+    {
+      "index": 0,
+      "heading": "",
+      "date": null,
+      "chars": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "first_line": "",
+      "dest": "handover/NEXT_ACTION.md"
+    },
+    {
+      "index": 1,
+      "heading": "## 2026-10-23 — #341 NEXT: correct-host custody/rollback before ONE original Black SQL request",
+      "date": "2026-10-23",
+      "chars": 1971,
+      "sha256": "5c59b38dec7d4496d90145c34ea53202c07d95258b670537547f119df9278ed4",
+      "first_line": "## 2026-10-23 — #341 NEXT: correct-host custody/rollback before ONE original Black SQL request\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 2,
+      "heading": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases",
+      "date": "2026-10-19",
+      "chars": 851,
+      "sha256": "c8f3a363f492bc4d559cc059da14316cd31d3b096e891b1b219f18c1e00920d0",
+      "first_line": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 3,
+      "heading": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge",
+      "date": "2026-10-19",
+      "chars": 939,
+      "sha256": "e181309642576f348dec5aae56768e551afe423c8fb83370fa9806b9a8c6ba26",
+      "first_line": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 4,
+      "heading": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42",
+      "date": "2026-10-19",
+      "chars": 890,
+      "sha256": "faddfc524c85f719d68a019183ead98a7cf452786ec085218e81550ecc01debc",
+      "first_line": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 5,
+      "heading": "## 2026-10-19 — Complete exact-head source qualification before merge",
+      "date": "2026-10-19",
+      "chars": 751,
+      "sha256": "fb5ca4b76520c03930479e8324467953e85478ad723e727203d4565cd2c67bf9",
+      "first_line": "## 2026-10-19 — Complete exact-head source qualification before merge\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 6,
+      "heading": "## 2026-10-19 — PR #742 validation steps after RMCP-F-0046",
+      "date": "2026-10-19",
+      "chars": 860,
+      "sha256": "52b674f51a95422dfd9cfacaf1cb1b8440fdb44ebd35a5accd7e7fb9310cfa45",
+      "first_line": "## 2026-10-19 — PR #742 validation steps after RMCP-F-0046\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 7,
+      "heading": "## 2026-10-19 — Release version guard corrected / exact-head CI pending",
+      "date": "2026-10-19",
+      "chars": 890,
+      "sha256": "fade8be2f3465c74221e292e9defe070cbc0386f303c8fbd2fa8be9dd9adb86f",
+      "first_line": "## 2026-10-19 — Release version guard corrected / exact-head CI pending\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 8,
+      "heading": "## 2026-10-19 — First actionable source and physical gates for PR #742",
+      "date": "2026-10-19",
+      "chars": 1246,
+      "sha256": "56c51ea4826b93b2fb4a6d220f075c6c056da3a50e605a05b3fc0766de462661",
+      "first_line": "## 2026-10-19 — First actionable source and physical gates for PR #742\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 9,
+      "heading": "## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT",
+      "date": "2026-10-17",
+      "chars": 1611,
+      "sha256": "b3f6ddbbf48ddb6bfa40b9da9ba876d572f6c57d568bdc9a665388f9bd6a002a",
+      "first_line": "## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 10,
+      "heading": "## 2026-10-17 — CURRENT next actions (supersedes 2026-10-11 history below)",
+      "date": "2026-10-17",
+      "chars": 1088,
+      "sha256": "d4a8245204f29f92341783dc1e94bc67eb712ea889cfaed01af9d6207a8ca803",
+      "first_line": "## 2026-10-17 — CURRENT next actions (supersedes 2026-10-11 history below)\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 11,
+      "heading": "## 2026-10-11 — old Runner-MCP fleet update: read-only BLOCKED_A6/A7 (no mutation)",
+      "date": "2026-10-11",
+      "chars": 2730,
+      "sha256": "911ab1394dbba07294783a6d5bff402c480b3d057c35f4b464f2558364145e98",
+      "first_line": "## 2026-10-11 — old Runner-MCP fleet update: read-only BLOCKED_A6/A7 (no mutation)\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 12,
+      "heading": "## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN",
+      "date": "2026-10-10",
+      "chars": 1128,
+      "sha256": "24b5055ebdbe23fe1ee240b54c980892ec0163578d80a25947bb29fd3ec0084b",
+      "first_line": "## 2026-10-10 late reconciliatie — issue #540 extern CLOSED, live #590 blijft OPEN\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 13,
+      "heading": "## 2026-10-10 evening — #651 exact-green SOURCE fix landed; first remaining #590 LIVE blocker",
+      "date": "2026-10-10",
+      "chars": 1341,
+      "sha256": "98377c8490e6a3564643d501d22e1fc0715344a376043018086943712d9cb3c0",
+      "first_line": "## 2026-10-10 evening — #651 exact-green SOURCE fix landed; first remaining #590 LIVE blocker\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 14,
+      "heading": "## 2026-10-10 late — #540 no-replay fix MERGED; next connector lane",
+      "date": "2026-10-10",
+      "chars": 1862,
+      "sha256": "6ac365e5b03311455d7ec9660517d18f60f7b6e68d50ccb295d8022ce250f29c",
+      "first_line": "## 2026-10-10 late — #540 no-replay fix MERGED; next connector lane\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 15,
+      "heading": "## 2026-10-10 late evening — first live blocker now isolated after #648/#649",
+      "date": "2026-10-10",
+      "chars": 1828,
+      "sha256": "56168519055129ba847f3b27165ae797b5164ceead8428e969c0cca75aa0acdf",
+      "first_line": "## 2026-10-10 late evening — first live blocker now isolated after #648/#649\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 16,
+      "heading": "## 2026-10-10 evening — #590 live request-delivery edge is NOW first blocker",
+      "date": "2026-10-10",
+      "chars": 1914,
+      "sha256": "65237d8b785dd6f098ac17ff1c1944b7221d6da197f973edeb238f22e293b1a1",
+      "first_line": "## 2026-10-10 evening — #590 live request-delivery edge is NOW first blocker\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 17,
+      "heading": "## 2026-10-10 late — After Q7 communication #646/#647 source merge",
+      "date": "2026-10-10",
+      "chars": 1497,
+      "sha256": "1380e1370daebd06c7eb92bf5f7b699de593875c2ff65c0aa5efbaef4b2973be",
+      "first_line": "## 2026-10-10 late — After Q7 communication #646/#647 source merge\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 18,
+      "heading": "## 2026-10-10 evening — Q7 communication / #381 next safe steps",
+      "date": "2026-10-10",
+      "chars": 1494,
+      "sha256": "4e5cc1627ae0e0f048048569d084f4ca84cd763fc80ba272bcaea3115b61dff7",
+      "first_line": "## 2026-10-10 evening — Q7 communication / #381 next safe steps\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 19,
+      "heading": "## 2026-10-10 evening — #381 immediate action after exact-green PR #645 merge",
+      "date": "2026-10-10",
+      "chars": 1504,
+      "sha256": "67022280ee0c3f0f477413d3ab10a68674ae0c98f96117267c5804f36a34dbcc",
+      "first_line": "## 2026-10-10 evening — #381 immediate action after exact-green PR #645 merge\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 20,
+      "heading": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged",
+      "date": "2026-10-10",
+      "chars": 1870,
+      "sha256": "930b78ba0314381efa3ae3912ab48de0c44e908784e40643542d643795e087c9",
+      "first_line": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 21,
+      "heading": "## 2026-10-10 — NEXT #381 Claude lifecycle: source guard #637 merged, real Fabric authority still first blocker",
+      "date": "2026-10-10",
+      "chars": 1933,
+      "sha256": "7323b0b7afbc89060fddb8d381fab82b063470ebe277f621b7f15cf7958d132a",
+      "first_line": "## 2026-10-10 — NEXT #381 Claude lifecycle: source guard #637 merged, real Fabric authority still first blocker\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 22,
+      "heading": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)",
+      "date": "2026-10-10",
+      "chars": 2388,
+      "sha256": "70553414edab2530f76febeabb06d9b2eba546f5c97348ea3204e26d78db801b",
+      "first_line": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 23,
+      "heading": "## 2026-10-10 — Final #630 issue closure reconciliation",
+      "date": "2026-10-10",
+      "chars": 804,
+      "sha256": "8d5f328fc996f8bf82bc2751075cc02f40eb2362bcb96e954f5be586c66eb2be",
+      "first_line": "## 2026-10-10 — Final #630 issue closure reconciliation\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 24,
+      "heading": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)",
+      "date": "2026-10-10",
+      "chars": 2414,
+      "sha256": "80cef77d3e3faa8b4a0f63dac252b5c0e53be5f506cc023953b0392a25b38878",
+      "first_line": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 25,
+      "heading": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled",
+      "date": "2026-10-10",
+      "chars": 2588,
+      "sha256": "8440f7c3b36bd91dfdc40ba03d2cce32e52bda03718f1f9b910f30023eb206cc",
+      "first_line": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 26,
+      "heading": "## 2026-10-10 12:52 CEST — #381 verified priority and precise remaining authority gap",
+      "date": "2026-10-10",
+      "chars": 1806,
+      "sha256": "52e6f303462b908a668800e8f7f65c3938bd2c768744fc878016837a24b63e56",
+      "first_line": "## 2026-10-10 12:52 CEST — #381 verified priority and precise remaining authority gap\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 27,
+      "heading": "## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated",
+      "date": "2026-10-10",
+      "chars": 1549,
+      "sha256": "f96fdecfe5d8315dcc98d9a496a47a8ce6fc5f1b7f8ec129c122202d0c9fb177",
+      "first_line": "## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 28,
+      "heading": "## NEXT CRITICAL: 2026-10-10 — Claude #381 source landed, live qualification is the blocker",
+      "date": "2026-10-10",
+      "chars": 1782,
+      "sha256": "ac9f55df6c0afe4d3fb8c997782ebb7e6fab0c839578e96445062b1e5a319b0c",
+      "first_line": "## NEXT CRITICAL: 2026-10-10 — Claude #381 source landed, live qualification is the blocker\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 29,
+      "heading": "## HIGH PRIORITY 2026-10-10 — #381 Claude fixed host-local lifecycle (user requested)",
+      "date": "2026-10-10",
+      "chars": 1416,
+      "sha256": "2b3b6c6ddd52ec8e2e90a0c277d5a86112a85f0104703868381f81836552eeb9",
+      "first_line": "## HIGH PRIORITY 2026-10-10 — #381 Claude fixed host-local lifecycle (user requested)\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 30,
+      "heading": "## Independent Runner-MCP #590 lane — SOURCE COMPLETE, LIVE BLOCKED (10 October 2026)\\n\\nPR #629 exact head `53614092bafac8e528b4905fc962da72ffde4621`, attribution `38045401691` and full CI `38045401730` all SUCCESS, source MERGED `7deb63cd8d623a74389c9f582d6e2d1ec688b2eb`. `build_identity` returns fixed unavailable status rather than provider exception when no trustworthy identity exists. Issue #590 remains OPEN: 12-check client doctor and failed `runtime_status` are still unexplained at the actual installed generation, with no private request/response correlation. **Do not deploy/restart/reset tunnel** based on this merge. Next legitimate step is approved, safe, private read-only installed-build/schema/catalog and ingress/response lineage verification. \\n\\n## Latest coordination: 2026-10-10 — Fabric #1428 remains OWNER_IN_PROGRESS, WAITING_CI_FIX",
+      "date": "2026-10-10",
+      "chars": 1474,
+      "sha256": "3c28bae5aebface8998c02873ba5888e0a0f627957691c0334e156bd1fd53f6a",
+      "first_line": "## Independent Runner-MCP #590 lane — SOURCE COMPLETE, LIVE BLOCKED (10 October 2026)\\n\\nPR #629 exact head `53614092bafac8e528b4905fc962da72ffde4621`, attribution `38045401691` and full CI `38045401730` all SUCCESS, source MERGED `7deb63cd8d623a74389c9f582d6e2d1ec688b2eb`. `build_identity` returns fixed unavailable status rather than provider exception when no trustworthy identity exists. Issue #590 remains OPEN: 12-check client doctor and failed `runtime_status` are still unexplained at the actual installed generation, with no private request/response correlation. **Do not deploy/restart/reset tunnel** based on this merge. Next legitimate step is approved, safe, private read-only installed-build/schema/catalog and ingress/response lineage verification. \\n\\n## Latest coordination: 2026-10-10 — Fabric #1428 remains OWNER_IN_PROGRESS, WAITING_CI_FIX\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 31,
+      "heading": "## Latest: 2026-10-10 — #627 merged, live connector and real backup evidence remain BLOCKED",
+      "date": "2026-10-10",
+      "chars": 1533,
+      "sha256": "61cfa814e9c624c03254761a40a86fb36f9295adbee0faedb9b38e0f43085cdd",
+      "first_line": "## Latest: 2026-10-10 — #627 merged, live connector and real backup evidence remain BLOCKED\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 32,
+      "heading": "## Latest: 2026-10-10 — #627 source-only diagnostic CI / storage authority model merged",
+      "date": "2026-10-10",
+      "chars": 1297,
+      "sha256": "eac63d921390a81bf42c4a4dde83d31a7d578ac3146a7c9ab1b827804d3c7f5c",
+      "first_line": "## Latest: 2026-10-10 — #627 source-only diagnostic CI / storage authority model merged\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 33,
+      "heading": "## Latest: 2026-10-10 — supersedes the 2026-10-03 live-restart notes below",
+      "date": "2026-10-10",
+      "chars": 1828,
+      "sha256": "54d55043067565221668738e2bafbf50724fc882cff8d8398b4f4d4e9fbcccc2",
+      "first_line": "## Latest: 2026-10-10 — supersedes the 2026-10-03 live-restart notes below\n",
+      "dest": "handover/NEXT_ACTION.archive-2026-10.md"
+    },
+    {
+      "index": 34,
+      "heading": "## Goal",
+      "date": null,
+      "chars": 157,
+      "sha256": "6c0214d53d647f1fdec5fa9ef524e260eaa84bd0d0a346851854ce4a7d0971ff",
+      "first_line": "## Goal\n",
+      "dest": "handover/NEXT_ACTION.md"
+    },
+    {
+      "index": 35,
+      "heading": "## Current invariant state",
+      "date": null,
+      "chars": 797,
+      "sha256": "86025f4af7b8af2d1b5a75197b604892b74a066ca17b796cbdd78dfceab38728",
+      "first_line": "## Current invariant state\n",
+      "dest": "handover/NEXT_ACTION.md"
+    },
+    {
+      "index": 36,
+      "heading": "## Next engineering action",
+      "date": null,
+      "chars": 754,
+      "sha256": "6dca586d09de63f842ded053ebf6481ff86f95d0101b36c25ba6d394e62b1013",
+      "first_line": "## Next engineering action\n",
+      "dest": "handover/NEXT_ACTION.md"
+    },
+    {
+      "index": 37,
+      "heading": "## Do not repeat",
+      "date": null,
+      "chars": 325,
+      "sha256": "f61822de923a2c2e9dd5b0a8f5191b1d0dc8e0bea4e5ecb2e493c9a27f28c4bc",
+      "first_line": "## Do not repeat\n",
+      "dest": "handover/NEXT_ACTION.md"
+    }
+  ],
+  "outputs": {
+    "handover/NEXT_ACTION.md": "f6202156a01ac1b5dba6661a3ecc6a9ce6723b86c07d0ba44ca77a18e9c05c7d",
+    "handover/NEXT_ACTION.archive-2026-10.md": "1f76a8b676fa6047d2b3f9e21cc015acebcf7c09abe4bbbe11a0a7c24e63deef"
+  }
+}

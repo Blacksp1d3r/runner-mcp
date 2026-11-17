@@ -2,7 +2,7 @@
 
 ## Observed, no speculation
 
-On `aifordable-lab`, the `aifordable-runner` interactive `runner-mcp --version` returned `0.1.3`; an independent operator check of the already-running `runner-mcp.service` MainPID executable returned `runner-mcp 0.1.38`, with no service restart. These are different installed entrypoints and **may legitimately differ**. Meanwhile the ChatGPT-connected primary Runner-MCP on `github-runner` independently returned its own 0.1.38, with neither live source revision nor wheel digest verified. A matching package version on two hosts does NOT establish the answer route.
+On `AF-VM-0001`, the `<AF-VM-0001-runner-user>` interactive `runner-mcp --version` returned `0.1.3`; an independent operator check of the already-running `runner-mcp.service` MainPID executable returned `runner-mcp 0.1.38`, with no service restart. These are different installed entrypoints and **may legitimately differ**. Meanwhile the ChatGPT-connected primary Runner-MCP on `AF-HOST-0001` independently returned its own 0.1.38, with neither live source revision nor wheel digest verified. A matching package version on two hosts does NOT establish the answer route.
 
 ## Root cause and prevention
 

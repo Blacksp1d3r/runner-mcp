@@ -11,7 +11,7 @@
 - De **bestaande** `SelfUpdateManager` controleert vóór het enqueuen van een managed update nu of de reeds geïnstalleerde Runner-MCP-server werkelijk één actieve, ingeschakelde cron- of systemd-user-supervisor heeft. Alleen een ingestelde herstartcallback was daarvoor onvoldoende; een niet-beschikbare of dubbele supervisor kan anders pas **na installatie** aan het licht komen.
 - De bestaande `managed_server_activation_status()` van #253/0.1.162 wordt **hergebruikt**: geen nieuwe controller, service, relay of tweede watchdog. Een onbeschikbare/onzekere manager faalt gesloten **zonder job, wheelinstallatie, restart-marker of A6-event**. De huidige niet-beheerde legacy-reexec blijft ongewijzigd.
 - `runtime_status()` meldt `managed_server_supervisor_ready` en `managed_server_supervisor_backend`; beide zijn `null` wanneer er geen managed scheduler is. Deze velden attesteren **geen** onafhankelijk A7-herstel, echt geladen wheel of originele cliënt-ACK.
-- Negatieve/positieve regressies dekken afwezige, uitgeschakelde en actieve cron/systemd-beheerder, geen mutaties bij afwijzing en legacy-compatibiliteit. GitHub CI vereist; originele `github-runner` blijft op geteste eigen 0.1.88-generatie, **geen productie-update toegestaan**.
+- Negatieve/positieve regressies dekken afwezige, uitgeschakelde en actieve cron/systemd-beheerder, geen mutaties bij afwijzing en legacy-compatibiliteit. GitHub CI vereist; originele `AF-HOST-0001` blijft op geteste eigen 0.1.88-generatie, **geen productie-update toegestaan**.
 
 ---
 
@@ -20,7 +20,7 @@
 - Oude PR #438 doelgericht overgezet op nieuwe hoofdbron, met behoud van de bestaande updater: optionele `server_activation_scheduler` mag alléén worden doorgegeven in de modus die de originele herstelwheel/transactie vasthoudt. Zonder expliciet ingestelde callback verandert de actieve restart-route niet.
 - De bestaande owner-managed `runner-mcp.service` wordt alleen als exact, privé en ongewijzigd unitbestand opnieuw gestart; cron accepteert uitsluitend één bestaande actieve managed server en geeft de lopende eigen PID over. De server- en cron-rollen worden niet automatisch gemigreerd.
 - Een succesvolle of mislukte HTTP-aanvraag wist **NOOIT** de herstartmarkering. De eerdere PR-versie deed dat vóór een echte handlerrespons en was onvoldoende voor een geldige oorspronkelijke cliënt-ACK; dat onveilige middlewarepad is doelbewust **niet overgenomen**. Alleen de bestaande onafhankelijke A7-actor/issuer met juiste campagne kan later na een echt resultaat + duurzame ACK de oorspronkelijke rollback vrijgeven.
-- Nieuwe negatieve tests voor ontbrekende/meerdere/inactieve supervisors, onveilige systemd-unit, onleesbare cron, ontbreken van de bewaarde rollbackbaseline en een bewaard restart-marker na de overdracht. **CI/brontest is geen bewezen originele update/rollback**, de actuele `github-runner` 0.1.88/4-4 escrows en geladen-wheelidentiteit blijven apart NO-GO.
+- Nieuwe negatieve tests voor ontbrekende/meerdere/inactieve supervisors, onveilige systemd-unit, onleesbare cron, ontbreken van de bewaarde rollbackbaseline en een bewaard restart-marker na de overdracht. **CI/brontest is geen bewezen originele update/rollback**, de actuele `AF-HOST-0001` 0.1.88/4-4 escrows en geladen-wheelidentiteit blijven apart NO-GO.
 - Geen nieuw updateproces, scheduler, watchdog, systemd-unit, secrets, cryptografische sleutels of productieactie.
 
 ---
@@ -61,7 +61,7 @@
 - **Concrete oorzaak:** na de eerder gemergede atomische publicatie met `os.link` kon `clear_transaction()` nog een inmiddels door een andere job gepubliceerde hersteltransactie verwijderen. Een controle op pathname of inode gevolgd door `unlink` is geen atomaire compare-and-delete.
 - **Beperkte correctie:** de **bestaande** owner-private `self-update-install-transaction.json` blijft de enige herstelbron. BEGIN én CLEAR houden nu dezelfde Linux `flock` op een blijvend 0600-bestand naast die bestaande transactie vast. Foutieve eigenaar/permissies/symlink/hardlink, ontbrekende lock of concurrente houder = STOP zonder lockvrije fallback. Crash/procesverlies laat de kernel-lock los; geen tweede updater, scheduler, relay of controller.
 - **Job-identiteit:** CLEAR heeft een verplichte exacte 32-hex job-ID; een oude afsluiter weigert een nieuwe/andere transactie en bewaart de bytes. Drie bestaande `SelfUpdateManager`-afsluiters geven uitsluitend hun oorspronkelijke job-ID door. Nieuwe tests: vreemde job, twee afsluiters/nieuwe generatie, exclusieve BEGIN/CLEAR, alias of vreemde permissies, ontbrekende kernel-lock, ongeldige job-ID en automatische lockvrijgave na procesexit. Bestaande baseline- en herstelcontracten blijven gelden.
-- **Grenzen:** alleen bron/CI, géén automatische inzet op de oorspronkelijke `github-runner`, Black/A6/A7, Claude, Qwen of SQL. Originele live wheel #669, A6 off-target journal #942, A7 offline rollback #943 en echte updatecampagne-ACK blijven afzonderlijk open.
+- **Grenzen:** alleen bron/CI, géén automatische inzet op de oorspronkelijke `AF-HOST-0001`, Black/A6/A7, Claude, Qwen of SQL. Originele live wheel #669, A6 off-target journal #942, A7 offline rollback #943 en echte updatecampagne-ACK blijven afzonderlijk open.
 
 ## 0.1.155 — #341 hersteltransactie atomair zonder overschrijven (BRONKANDIDAAT)
 
@@ -198,14 +198,14 @@
 
 ## 0.1.85 (#341/#585 single original owner-private publisher sibling; SOURCE ONLY)
 
-- On physical original `github-runner`/`gha-runner`, the separately held original machine credential already passed exact authenticated SQL issuer GET as `runner:control`, but its active Runner-MCP parent uses a different CLI-selected private config directory and reports `ISSUER_IN_PARENT_CONFIG=MISSING`. No copy or new issuer identity is appropriate.
+- On physical original `AF-HOST-0001`/`<AF-SVC-0001-service-user>`, the separately held original machine credential already passed exact authenticated SQL issuer GET as `runner:control`, but its active Runner-MCP parent uses a different CLI-selected private config directory and reports `ISSUER_IN_PARENT_CONFIG=MISSING`. No copy or new issuer identity is appropriate.
 - The existing optional Fabric qualification loader now admits exactly one original credential file from the default owner-private Runner-MCP directory OR the same owner's separately custodied Runner-Fabric sibling. Fail closed on dual issuers, symlinks, unsafe owner/directory/file permissions, non-machine issuer mode, invalid origin/secret; a custom config root never auto-selects the sibling. If no publisher file is present, the optional publisher remains disabled. Synthetic tests enforce no credential copy and negative cases.
 - **Not deployed.** Active connected original MCP remains 0.1.38 with source/wheel provenance unverified and `self_update_ready=false`; previously installed Fabric issuer environment/tools absent; Fabric #1730 rollback reliability fix source-only. Do not infer completed SQL Black submit/claim/result/digest/ACK or Claude/Qwen dispatch from CI. No server mutation, rotation, second tunnel/relay/controller, login/MFA, or blanket restart.
 
 ## 0.1.84 (#341/#585 privately custodied original Control Center issuer forwarding; SOURCE ONLY)
 
 - The existing Runner-MCP qualification Agent may now load the **already owner-custodied** `af585-control-issuer.env` private file and forward only its exact fixed machine issuer identity, HTTPS origin, and credential to the same pre-existing Fabric Agent process. Reject world-readable files, symlinks, other origins, role substitution, wrong key sets, or invalid credential values. A missing optional file retains previous behavior. Existing untrusted main configuration cannot promote a worker to a publisher.
-- This is **source-only**; the physical `aifordable-lab` managed Fabric launcher is still exact revision `927c15392e1caae74463b1322296d367811e116c`, and the new `build_black_original_issuer_service` does not yet exist in its active slot. Current central Runner-MCP 0.1.38 also remains without qualified upgrade. Physical original one-shot Black SQL command/result/ACK is NOT claimed.
+- This is **source-only**; the physical `AF-VM-0001` managed Fabric launcher is still exact revision `927c15392e1caae74463b1322296d367811e116c`, and the new `build_black_original_issuer_service` does not yet exist in its active slot. Current central Runner-MCP 0.1.38 also remains without qualified upgrade. Physical original one-shot Black SQL command/result/ACK is NOT claimed.
 
 ## 0.1.83 (#341 fixed Black post-ACK payload readback; SOURCE ONLY)
 

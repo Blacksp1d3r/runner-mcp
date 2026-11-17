@@ -7,7 +7,7 @@ Fix: [PR #916](https://github.com/Blacksp1d3r/runner-mcp/pull/916), tested head 
 
 ## Observed failure and cause
 
-On original `aifordable-lab`, owner-attested new Fabric qualification source `2d4b7ae...` served :9020 as PID9265. The effective process environment had zero of seven `RUNNER_FABRIC_CODING_Q7_*` keys even though the private Q7 mapping had been staged separately. Investigation of the EXISTING Runner-MCP `run_fabric_agent_qualification_process` revealed an explicit sanitized `execve` environment assembled by `qualification_agent_environment_additions`, which forwarded A6 and worker qualification groups but not Q7. A systemd Environment directive alone is insufficient: the wrapper discards keys it has not explicitly admitted. Prepared private files are distinct from effective process bindings, and the shared user private .env is not automatically the same as the staged systemd-side `q7-private.env`.
+On original `AF-VM-0001`, owner-attested new Fabric qualification source `2d4b7ae...` served :9020 as PID9265. The effective process environment had zero of seven `RUNNER_FABRIC_CODING_Q7_*` keys even though the private Q7 mapping had been staged separately. Investigation of the EXISTING Runner-MCP `run_fabric_agent_qualification_process` revealed an explicit sanitized `execve` environment assembled by `qualification_agent_environment_additions`, which forwarded A6 and worker qualification groups but not Q7. A systemd Environment directive alone is insufficient: the wrapper discards keys it has not explicitly admitted. Prepared private files are distinct from effective process bindings, and the shared user private .env is not automatically the same as the staged systemd-side `q7-private.env`.
 
 ## Corrective change and evidence
 

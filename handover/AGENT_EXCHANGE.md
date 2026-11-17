@@ -1,3 +1,9 @@
+## 2026-11-17 — #866 systemd-eigenaar: bron/CI claim; handmatige update heeft voorrang
+
+- Bestaande #866 bron-claim is uitsluitend [Runner-MCP draft PR #1003](https://github.com/Blacksp1d3r/runner-mcp/pull/1003), head `0b8baad100b4238b58d3b96a24311e9eadc37e6d`: mixed backend read-only CLI en nieuwe echte disposable no-mutation-proef **CI PASS**. Geen live-claim, geen merge; achterblijvende A7-automatisering is **uitgesteld**.
+- De andere bron-/manual-service-eigenaar behoudt [#669 / draft PR #1004](https://github.com/Blacksp1d3r/runner-mcp/pull/1004) en zijn afzonderlijke wheel-/systemd-runtimebewijzen; geen dubbele update-implementatie, credentialpad of A7-callback-werk. De beide 0.1.175-kandidaatbranches moeten na de gekozen handmatige release via de bestaande versie-/releaseprocedure worden opgelost.
+- Volgende owner-afhankelijke M3-acceptatie: originele host/UID/proces/loaded wheel, exacte cron- en systemd-claims, onafhankelijke writer-exclusiviteit, functioneel resultaat+ACK en offline/rebootrollback; zonder dat bewijs uitsluitend source/read-only diagnose. Zie actuele [#866](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-6957999711).
+
 ## 2026-11-06 — F30 #937 source children cleared; S2d/e ownership en veiligheidsgrens
 
 - Runner-MCP #937 S2a [#939](https://github.com/Blacksp1d3r/runner-mcp/pull/939) v0.1.138, S2b [#940](https://github.com/Blacksp1d3r/runner-mcp/pull/940) v0.1.139 en S2c [#941](https://github.com/Blacksp1d3r/runner-mcp/pull/941) v0.1.140 **MERGED**, finale exacte-head tests/Ubuntu/attribution groen. Single reuse van historische Q7 metadata/manifest/wheel validators; signatures/bytes alleen in-memory en niet-authorizing.

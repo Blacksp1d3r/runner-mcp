@@ -1139,3 +1139,44 @@ def test_cron_status_ignores_commented_legacy_entry_outside_managed_block(
     assert server.installed is True
     assert server.active is False
     assert not list(config.glob("autostart-*.lock"))
+
+
+def test_mixed_backend_direct_cron_remove_denied_before_write(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ook de directe crontab-remover weigert een aanwezige managed unit."""
+    from runner_mcp import autostart
+
+    original = "\n".join((
+        "17 2 * * * /usr/bin/true # harmless-foreign",
+        CRON_BEGIN, 'MAILTO=""',
+        "* * * * * /usr/bin/runner-mcp --config-dir "
+        "/tmp/fixture autostart cron-run server --port 8000 >/dev/null 2>&1",
+        CRON_END, "",
+    ))
+    fake = FakeCrontab(original)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: True)
+    with pytest.raises(CronAutostartError, match="refuse blanket cron removal"):
+        remove_cron_services(runner=fake)
+    assert fake.content == original
+    assert all(command[-1] != "-" for command, _ in fake.calls)
+
+
+def test_mixed_backend_direct_cron_remove_denies_unknown_unit_state(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Onleesbare systemd-unitclaims mogen cron niet vernietigen."""
+    from runner_mcp import autostart
+    from runner_mcp.autostart import AutostartError
+
+    fake = FakeCrontab("\n".join((CRON_BEGIN, 'MAILTO=""', CRON_END, "")))
+    monkeypatch.setattr(
+        autostart, "has_managed_user_units",
+        lambda: (_ for _ in ()).throw(AutostartError("unknown")),
+    )
+    with pytest.raises(CronAutostartError, match="managed systemd status is unavailable"):
+        remove_cron_services(runner=fake)
+    assert fake.content.startswith(CRON_BEGIN)
+    assert all(command[-1] != "-" for command, _ in fake.calls)

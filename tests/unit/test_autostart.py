@@ -2257,3 +2257,46 @@ def test_m3_mixed_peers_require_canonical_shared_cron_renderer(
     assert status.generic_reconcile_authorized is False
     assert status.cutover_authorized is False
     assert list(tmp_path.rglob("*.service")) == []
+
+
+def test_mixed_backend_direct_user_remove_denied_before_systemctl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rechtstreekse Python-aanroep mag CLI's mixed-beveiliging niet omzeilen."""
+    from runner_mcp import cron_autostart
+
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    unit = unit_dir / SERVER_UNIT
+    unit.write_text(MANAGED_MARKER + "\n[Service]\n", encoding="utf-8")
+    monkeypatch.setattr(cron_autostart, "cron_available", lambda: True)
+    monkeypatch.setattr(cron_autostart, "has_managed_cron", lambda: True)
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="refuse blanket systemd removal"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+    assert systemctl.calls == []
+    assert unit.is_file()
+    assert unit.read_text(encoding="utf-8").startswith(MANAGED_MARKER)
+
+
+def test_mixed_backend_direct_user_remove_denies_unknown_cron_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Niet leesbare cron-status mag de systemd-remover niet vrijgeven."""
+    from runner_mcp import cron_autostart
+    from runner_mcp.cron_autostart import CronAutostartError
+
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    unit = unit_dir / SERVER_UNIT
+    unit.write_text(MANAGED_MARKER + "\n[Service]\n", encoding="utf-8")
+    monkeypatch.setattr(cron_autostart, "cron_available", lambda: True)
+    monkeypatch.setattr(
+        cron_autostart, "has_managed_cron",
+        lambda: (_ for _ in ()).throw(CronAutostartError("unavailable")),
+    )
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="managed cron status is unavailable"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+    assert systemctl.calls == []
+    assert unit.exists()

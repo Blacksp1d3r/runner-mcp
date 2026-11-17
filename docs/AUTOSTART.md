@@ -228,8 +228,12 @@ zijn **niet** geschikt om een gemengde configuratie aan te maken, te herstellen
 of te activeren. Zij blijven fail-closed. Bij `autostart remove` wordt de
 gemengde toestand **vóór de verwijderbevestiging** expliciet geweigerd met
 exitcode 2; zij mag nooit achtereenvolgens de vijf cronrollen en de
-enige systemd-peer vernietigen. Alleen een exact gekwalificeerd afzonderlijk
-herstelpad of de normale bevestigde één-backend-verwijdering is toegestaan. De gemengde status kan de
+enige systemd-peer vernietigen. Ook de direct aanroepbare `remove_cron_services` en
+`remove_user_services` bevatten nu dezelfde symmetrische
+fail-closed-guard: bij een andere managed backend of onleesbare
+beheerclaims geen all-role-verwijdering. Alleen een exact gekwalificeerd
+afzonderlijk herstelpad of de normale bevestigde één-backend-verwijdering
+is toegestaan. De gemengde status kan de
 pinned-snapshot-, proces-/lock-, werkresultaat-, A7- en rollbackpoorten
 niet vervangen.
 

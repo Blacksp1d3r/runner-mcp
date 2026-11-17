@@ -386,6 +386,19 @@ def remove_cron_services(
     bounds = _managed_block_bounds(lines)
     if bounds is None:
         return False
+    # Ook de direct aanroepbare all-role cron-remover mag geen vijf
+    # bestaande cronrollen verwijderen wanneer een beheerde systemd-peer
+    # al op de manager is geclaimd. Alleen een aparte exact rolgebonden
+    # herstelroute mag zo'n overgang uitvoeren.
+    from .autostart import AutostartError, has_managed_user_units
+
+    try:
+        if has_managed_user_units():
+            raise CronAutostartError(
+                "managed systemd exists; refuse blanket cron removal in mixed mode"
+            )
+    except AutostartError as exc:
+        raise CronAutostartError("managed systemd status is unavailable") from exc
     start, end = bounds
     remaining = lines[:start] + lines[end + 1 :]
     while remaining and not remaining[-1].strip():

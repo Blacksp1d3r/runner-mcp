@@ -1469,6 +1469,23 @@ def remove_user_services(
         raise AutostartError("systemd user unit directory is unavailable")
     if not target.exists():
         return []
+    # De brede Python-remover is geen éénrols-M3-hersteller. Net als de
+    # installer moet hij een door cron geclaimde rol als bronconflict zien,
+    # ook wanneer een aanroeper de afgebakende CLI omzeilt.
+    from .cron_autostart import (
+        CronAutostartError,
+        cron_available,
+        has_managed_cron,
+    )
+
+    if cron_available():
+        try:
+            if has_managed_cron():
+                raise AutostartError(
+                    "managed cron exists; refuse blanket systemd removal in mixed mode"
+                )
+        except CronAutostartError as exc:
+            raise AutostartError("managed cron status is unavailable") from exc
     _run_systemctl(["show-environment"], runner=runner)
     # Validate every known target before disabling or removing any unit.
     # An unsafe later peer must not leave a partially removed service set.

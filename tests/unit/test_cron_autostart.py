@@ -454,6 +454,26 @@ def test_remove_preserves_all_foreign_crontab_bytes(
     assert sum(command[-1] == "-" for command, _ in fake.calls) == 1
 
 
+def test_remove_retains_multiple_foreign_blank_lines_before_end_block(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Meerdere vreemde lege regels zijn geen installer-separator."""
+    from runner_mcp import autostart
+
+    prefix = "# user-maintained comment\n\n\n"
+    managed = (
+        f"{CRON_BEGIN}\n"
+        'MAILTO=""\n'
+        f"{CRON_END}\n"
+    )
+    fake = FakeCrontab(prefix + managed)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == prefix
+
+
 def test_cron_run_uses_fixed_exec_argv_and_loopback(
     tmp_path: Path,
 ) -> None:

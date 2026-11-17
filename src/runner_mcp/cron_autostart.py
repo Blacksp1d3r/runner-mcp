@@ -402,8 +402,19 @@ def remove_cron_services(
     except AutostartError as exc:
         raise CronAutostartError("managed systemd status is unavailable") from exc
     start, end = bounds
-    # Schrijf uitsluitend de omringende originele bytes terug; geen trim.
-    payload = "".join((*lines[:start], *lines[end + 1 :]))
+    # De bestaande installer voegt exact één lege scheidingsregel toe als
+    # hij een beheerd blok achter een niet-lege vreemde regel appendt.
+    # Verwijder die alleen bij dit end-anchored legacy-patroon. Meerdere
+    # of tussengevoegde vreemde lege regels blijven onaangeroerd.
+    prefix_end = start
+    if (
+        end == len(lines) - 1
+        and start >= 2
+        and lines[start - 1] == "\n"
+        and lines[start - 2].strip()
+    ):
+        prefix_end -= 1
+    payload = "".join((*lines[:prefix_end], *lines[end + 1 :]))
     _run_crontab(["-"], input_text=payload, runner=runner)
     return True
 

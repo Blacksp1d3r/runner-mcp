@@ -38,7 +38,43 @@ if [ -z "$run_temp" ] || [ ! -d "$run_temp" ]; then
   exit 2
 fi
 work="$(mktemp -d -p "$run_temp" rmcp-manual-roundtrip-XXXXXXXX)"
-trap 'rm -rf -- "$work"' EXIT
+unit="runner-mcp-669-disposable-manual.service"
+unit_dir="$HOME/.config/systemd/user"
+unit_target="$unit_dir/$unit"
+unit_owned=false
+
+cleanup() {
+  # Stop de eigen unit vóór verwijderen van wheels en private config.
+  if [[ "$unit_owned" == true ]]; then
+    if [[ -f "$unit_target" && ! -L "$unit_target" ]] &&
+       grep -Fxq 'Description=Runner-MCP 669 disposable manual upgrade proof' "$unit_target"; then
+      systemctl --user stop "$unit" >/dev/null 2>&1 || true
+      rm -f -- "$unit_target"
+      systemctl --user daemon-reload >/dev/null 2>&1 || true
+    fi
+  fi
+  rm -rf -- "$work"
+}
+trap cleanup EXIT
+
+if [[ "${RUNNER_ENVIRONMENT:-}" != github-hosted ]] ||
+   [[ "$(ps -p 1 -o comm=)" != systemd ]]; then
+  echo "STOP: niet een disposable systemd-user omgeving" >&2
+  exit 2
+fi
+export XDG_RUNTIME_DIR="/run/user/$(id -u)"
+sudo systemctl start "user@$(id -u).service"
+for _ in {1..20}; do
+  if systemctl --user show-environment >/dev/null 2>&1; then break; fi
+  sleep 1
+done
+systemctl --user show-environment >/dev/null
+mkdir -p -- "$unit_dir"
+if [[ -e "$unit_target" || -L "$unit_target" ]]; then
+  echo "STOP: de testunit bestaat al" >&2
+  exit 2
+fi
+unit_owned=true
 mkdir -p "$work/source/174" "$work/source/175" "$work/wheels/174" "$work/wheels/175"
 
 git archive "$baseline" | tar -xf - -C "$work/source/174"
@@ -96,6 +132,7 @@ PY
   "$python" -m pip check >/dev/null
   "$cli" --help >/dev/null
   "$python" scripts/qualify_manual_serving_roundtrip_ci.py "$expected" "$work"
+  "$python" scripts/qualify_manual_systemd_service_ci.py "$expected" "$work" "$unit_target"
 }
 
 verify 0.1.174
@@ -111,4 +148,5 @@ verify 0.1.175
 
 echo "MCP_DISPOSABLE_PY312_MANUAL_174_175_ROLLBACK_REUPGRADE=PASS"
 echo "MCP_DISPOSABLE_REAL_SERVING_RESTART_ROLLBACK=PASS"
+echo "MCP_DISPOSABLE_SYSTEMD_USER_MANAGED_ROUNDTRIP=PASS"
 echo "MCP_PRODUCTION_OR_A7_UPDATE_AUTHORIZED=FALSE"

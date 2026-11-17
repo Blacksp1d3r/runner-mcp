@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -236,6 +237,8 @@ def test_systemd_backend_uses_fixed_argument_array_without_shell(
     assert kwargs["shell"] is False
     assert kwargs["stdin"] is subprocess.DEVNULL
     assert kwargs["timeout"] == 10.0
+    assert kwargs["env"]["XDG_RUNTIME_DIR"] == f"/run/user/{os.geteuid()}"
+    assert "DBUS_SESSION_BUS_ADDRESS" not in kwargs["env"]
 
 
 def test_systemd_backend_does_not_return_raw_failure_output(
@@ -285,3 +288,29 @@ def test_systemd_backend_rejects_unknown_action_before_execution(
         backend.action("demo.service", "reload-or-something")
 
     assert called is False
+
+
+def test_systemd_backend_does_not_trust_unverified_caller_bus(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Untrusted XDG_RUNTIME_DIR cannot redirect the registered user manager."""
+    binary = tmp_path / "systemctl"
+    binary.write_text("test\n", encoding="utf-8")
+    binary.chmod(0o755)
+    monkeypatch.setenv("XDG_RUNTIME_DIR", "/tmp/foreign-userbus")
+    monkeypatch.setenv("DBUS_SESSION_BUS_ADDRESS", "unix:path=/tmp/other-bus")
+    seen = []
+
+    def capture(args, **kwargs):
+        seen.append(kwargs["env"])
+        return subprocess.CompletedProcess(args, 0, stdout="", stderr="")
+
+    monkeypatch.setattr(subprocess, "run", capture)
+    SystemdUserBackend(executable=binary).action("qualified.service", "restart")
+
+    assert seen == [{
+        "PATH": "/usr/local/bin:/usr/bin:/bin",
+        "LANG": "C.UTF-8",
+        "LC_ALL": "C.UTF-8",
+        "XDG_RUNTIME_DIR": f"/run/user/{os.geteuid()}",
+    }]

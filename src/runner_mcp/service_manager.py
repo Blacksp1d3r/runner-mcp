@@ -1,3 +1,9 @@
+"""Begrensde systemd-useracties voor geregistreerde service-aliassen.
+
+De servicebevoegdheden komen uit de bestaande registratie en operatorstop.
+De userbus wordt uitsluitend afgeleid van de effectieve procesidentiteit.
+"""
+
 from __future__ import annotations
 
 import os
@@ -62,6 +68,8 @@ class SystemdUserBackend:
             "PATH": "/usr/local/bin:/usr/bin:/bin",
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
+            # No caller-controlled XDG runtime dir or D-Bus address.
+            "XDG_RUNTIME_DIR": f"/run/user/{os.geteuid()}",
         }
         try:
             completed = subprocess.run(

@@ -87,3 +87,21 @@ disposable GitHub-hosted omgeving. Het is **geen** productie-installatie,
 root-kwalificatie van de originele A7-actor, systemd-overgang, geauthenticeerde
 SQL-bevestiging of herstelproef van een fysieke host. Een groene workflow mag
 nooit op zichzelf deploymentbevoegdheid verlenen.
+
+## ServiceManager-busbinding en echte systemd-userdistributieproef (alleen CI)
+
+De bestaande SystemdUserBackend gebruikt nu alleen
+`XDG_RUNTIME_DIR=/run/user/<effectieve UID>` en negeert
+caller-controlled XDG-/DBus-waarden. Registry, service-allowlist en
+operatorstop houden ongewijzigd hun normale bevoegdheidsgrenzen.
+
+De bestaande disposable Python 3.12-proef maakt één tijdelijke
+`runner-mcp-669-disposable-manual.service` zonder enable of bootpersistentie.
+ServiceManager.action start of herstart daadwerkelijk `runner-mcp serve` over
+`0.1.174 → 0.1.175 → 0.1.174 → 0.1.175`, met een echte controle dat na
+installatie eerst nog het vorige geladen serverproces leeft. Vervolgens
+moeten unitbron, MainPID, kernelstartticks, HTTP-health, geladen versie en
+instance-ID overeenstemmen. Opruimen stopt de unit vóór verwijderen van
+wheel- en configuratiebestanden.
+
+Geen cron→systemd #866 cutover, A7, productie, reboot of updatebevoegdheid.

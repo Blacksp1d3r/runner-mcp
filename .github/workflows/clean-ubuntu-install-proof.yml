@@ -61,7 +61,7 @@ jobs:
               "$RUNNER_MCP_BIN_DIR/runner-mcp" --help >/dev/null
             '
 
-      # Echte distributie-upgrade + rollback; geen daemon en geen A7.
+      # Echte distributie- en proces-upgrade met rollback; alleen disposable CI.
       # Alleen de bestaande niet-bevoorrechte GitHub-hosted PR-runner.
       - name: Set up Python 3.12 for disposable manual upgrade proof
         if: github.event_name == 'pull_request'

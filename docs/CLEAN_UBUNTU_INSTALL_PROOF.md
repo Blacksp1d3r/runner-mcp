@@ -63,3 +63,27 @@ Even a green clean-image proof does not clear the live host incident that showed
 A clean Ubuntu installer check for source-only release-roster and bounded in-memory Q7 bundle code (for example #739) verifies that the resulting package remains installable and that the fixed launcher still passes import/CLI smoke checks. It does **not** independently authenticate GitHub release pins, qualify immutable package bytes on the serving host, or establish an A6 journal, offline A7 rollback, installation authority or original-client ACK. These remain separate fail-closed operational gates.
 
 For the 33-asset Q7 consistency child, the clean-image job also remains wholly synthetic: no actual private release asset, credential, signed metadata authority or persistent runtime slot is imported. Completion of this job is a packaging compatibility observation only, never evidence that a protected old generation can be restored after a disconnected control-path failure.
+
+
+## Werkelijke manuele update- en rollbackproef op een disposable serviceproces
+
+De bestaande \`clean-ubuntu-install-proof\`-workflow voert in een aparte
+niet-root Linux-venv een handmatige distributieovergang uit van 0.1.174 naar
+0.1.175, een terugrol en een herupgrade. De wheels worden uitsluitend uit de
+vaste PR-baseline en de PR-kandidaat gebouwd. Iedere volgende transitie gebruikt
+\`pip --no-index --no-deps\` zodat na de eerste installatie geen afhankelijkheden
+stilzwijgend opnieuw opgehaald worden.
+
+Na iedere stap start de bestaande \`runner-mcp serve\`-CLI een echte nieuwe
+Uvicorn-server op een tijdelijke **loopback**poort. De test observeert de
+HTTP-healthroute, \`X-Runner-MCP-Loaded-Version\`,
+\`X-Runner-MCP-Instance-ID\`, de werkelijke Linux-PID/startticks en de Python-
+executable. De vorige server en luistersocket moeten gestopt zijn voordat de
+volgende release wordt geïnstalleerd. De private CI-configuratie en het
+gegeneerde testtoken bestaan uitsluitend in de verwijderbare testwerkmap.
+
+Dit bewijst uitsluitend de werking van het normale CLI-serviceproces in de
+disposable GitHub-hosted omgeving. Het is **geen** productie-installatie,
+root-kwalificatie van de originele A7-actor, systemd-overgang, geauthenticeerde
+SQL-bevestiging of herstelproef van een fysieke host. Een groene workflow mag
+nooit op zichzelf deploymentbevoegdheid verlenen.

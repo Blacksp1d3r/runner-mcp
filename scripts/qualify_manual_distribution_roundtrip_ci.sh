@@ -4,6 +4,8 @@
 # Herkomst: HEAD^1 is de GitHub-baseline 0.1.174; HEAD is de PR-kandidaat
 # 0.1.175. Beide worden in afzonderlijke wheels gebouwd. Daarna gebruikt één
 # private Python 3.12-venv exact die wheels voor vier echte pip-transities.
+# Na ELKE transitie wordt de bestaande echte CLI als lokale HTTP-server
+# gestart en weer gestopt; de kernel-PID en geladen-versieheader tellen mee.
 # Deze proef wijzigt nooit een server, een actieve dienst, een SQL-relay of A7.
 set -euo pipefail
 umask 077
@@ -93,6 +95,7 @@ print("DISPOSABLE_MANUAL_DIST_VERSION=" + actual)
 PY
   "$python" -m pip check >/dev/null
   "$cli" --help >/dev/null
+  "$python" scripts/qualify_manual_serving_roundtrip_ci.py "$expected" "$work"
 }
 
 verify 0.1.174
@@ -107,4 +110,5 @@ verify 0.1.174
 verify 0.1.175
 
 echo "MCP_DISPOSABLE_PY312_MANUAL_174_175_ROLLBACK_REUPGRADE=PASS"
+echo "MCP_DISPOSABLE_REAL_SERVING_RESTART_ROLLBACK=PASS"
 echo "MCP_PRODUCTION_OR_A7_UPDATE_AUTHORIZED=FALSE"

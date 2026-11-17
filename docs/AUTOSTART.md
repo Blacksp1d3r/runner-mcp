@@ -228,6 +228,16 @@ zijn **niet** geschikt om een gemengde configuratie aan te maken, te herstellen
 of te activeren. Zij blijven fail-closed. De gemengde status kan de
 pinned-snapshot-, proces-/lock-, werkresultaat-, A7- en rollbackpoorten
 niet vervangen.
+
+**Echte geïsoleerde CLI-proef:** het bestaande GitHub-hosted disposable
+systemd-testscript voert nu dezelfde `autostart status`-parser uit nadat
+de vijf overblijvende cronrollen en de ene statische kandidaatunit fysiek
+geïnstalleerd zijn. De read-only output moet beide rolroosters tonen,
+met exitcode `2` en alle activerings- en reconciliatierechten `no`.
+De volledige crontab, unitbytes en systemd enable-status moeten vóór
+en na de CLI-aanroep byte-/statusgelijk zijn. De gesimuleerde testlauncher
+wordt alleen binnen deze disposable fixture als verwacht executable
+doorgegeven: geen host- of geladen-wheelattestatie.
 Een betrouwbare bron-/hostgebonden rolreconciler en echte geïsoleerde
 fout-/hersteltests zijn de afzonderlijke volgende M3-implementatiestap.
 

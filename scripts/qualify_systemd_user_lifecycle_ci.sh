@@ -1176,6 +1176,91 @@ crontab "$peer_work/source-candidate.cron"
 install -m 0600 -- "$peer_work/source-boot-unit.txt" "$peer_target"
 systemctl --user daemon-reload
 "$peer_venv/bin/python" "$phase_script" staged_inactive "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Naast zuivere unit-tests ook de echte, niet-muterende operator-CLI
+# beoordelen met de nu aanwezige vijf cronrollen en precies één echte
+# bron-gerenderde user-unit. De test injecteert uitsluitend het exacte
+# test-executablepad voor deze disposable venv; de CLI neemt zelf zijn
+# werkelijke crontab en systemd-user-inventaris waar.
+"$peer_venv/bin/python" - "$peer_private" "$peer_exe" "$peer_target" <<'PY_MIXED_STATUS_CLI'
+"""Echte mixed-backend CLI-inventaris: read-only, nonzero en geen rollback."""
+from __future__ import annotations
+
+import contextlib
+import io
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from runner_mcp import cli
+from runner_mcp.cron_autostart import cron_status as real_cron_status, read_crontab
+
+config, executable, unit = map(Path, sys.argv[1:])
+root = os.environ.get("RUNNER_TEMP")
+expected = Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service"
+if (
+    os.environ.get("GITHUB_ACTIONS") != "true"
+    or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+    or os.geteuid() == 0
+    or not root
+    or not config.resolve().is_relative_to(Path(root).resolve())
+    or unit != expected
+    or unit.is_symlink()
+    or not unit.is_file()
+):
+    raise RuntimeError("STOP: mixed CLI probe is not disposable or unit-bound")
+cron_before = read_crontab()
+unit_before = unit.read_bytes()
+systemd_before = subprocess.run(
+    ["systemctl", "--user", "is-enabled", unit.name],
+    capture_output=True, text=True, check=False, timeout=10,
+)
+roles = (
+    "server", "topology-heartbeat", "github-watcher",
+    "completion-watcher", "agent-bus-worker", "fabric-agent-qualification",
+)
+# The fixture executable differs from the venv-installed CLI wrapper.
+# Keep the real parser and actual cron inspection, but bind its expected
+# executable to the already checked synthetic candidate.
+cli.configured_autostart_components = lambda _config: roles
+cli.cron_status = lambda **kwargs: real_cron_status(
+    config_dir=kwargs["config_dir"],
+    components=kwargs["components"],
+    executable=executable,
+    port=kwargs.get("port"),
+)
+output, errors = io.StringIO(), io.StringIO()
+with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+    result = cli.main([
+        "--config-dir", str(config), "autostart", "status",
+    ])
+lines = output.getvalue().splitlines()
+if (
+    result != 2
+    or errors.getvalue()
+    or not lines
+    or lines[0] != "backend: mixed-unqualified"
+    or "reason: multiple_managed_backends" not in lines
+    or "cron/server: installed=yes, enabled=yes, active=no" not in lines
+    or "cron/github-watcher: installed=no, enabled=no, active=no" not in lines
+    or "systemd-user/github-watcher: installed=yes, enabled=no, active=no" not in lines
+    or lines[-2:] != ["reconcile_authorized=no", "cutover_authorized=no"]
+    or str(config) in output.getvalue()
+):
+    raise RuntimeError("STOP: mixed CLI disclosed or qualified unsafe backend state")
+systemd_after = subprocess.run(
+    ["systemctl", "--user", "is-enabled", unit.name],
+    capture_output=True, text=True, check=False, timeout=10,
+)
+if (
+    read_crontab() != cron_before
+    or unit.read_bytes() != unit_before
+    or (systemd_after.returncode, systemd_after.stdout)
+       != (systemd_before.returncode, systemd_before.stdout)
+):
+    raise RuntimeError("STOP: read-only mixed CLI changed cron or systemd")
+print("M3_DISPOSABLE_REAL_MIXED_STATUS_CLI_NO_MUTATION=PASS")
+PY_MIXED_STATUS_CLI
 systemctl --user enable --now "$peer_unit"
 for _ in {1..80}; do
   if [[ -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 5 ]]; then break; fi
@@ -1301,6 +1386,7 @@ echo "M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS"
 echo "M3_DISPOSABLE_DISABLED_PEER_SYMLINK_DRIFT_DENIED=PASS"
 echo "M3_DISPOSABLE_INTERRUPTED_AFTER_UNIT_REMOVAL_AND_RESUMED=PASS"
 echo "M3_DISPOSABLE_ROLLBACK_READY_INTERLEAVED_FOREIGN_CRON_EDIT_DENIED=PASS"
+echo "M3_DISPOSABLE_MIXED_CLI_DUAL_STATUS_AND_READONLY=PASS"
 
 echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"

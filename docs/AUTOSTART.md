@@ -6,6 +6,25 @@ The preferred backend is a systemd user manager. When a host has no usable user 
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
+## Cron-only verwijdering en vreemde cronbytes (draft #1003, 2026-11-17)
+
+Bij een afzonderlijk geclaimde cron-backend verwijdert `remove_cron_services()`
+uitsluitend het bestaande managed blok. De aanroep bewaart de overige
+crontabtekst met oorspronkelijke regelafbrekingen, commentaar en lege regels;
+`splitlines()/join` met impliciete trim is daarvoor onveilig. Voor het
+herkenbare, aan het einde geplaatste beheerde blok mag exact één lege
+scheidingsregel verdwijnen die de bestaande `install_cron_services()`
+zelf toevoegde. Andere lege regels blijven behouden. Een historische
+installatie die al vóór deze correctie vreemde witruimte normaliseerde,
+kan niet achteraf alle oorspronkelijke bytes terughalen.
+
+Bij tegelijk aanwezige cron- én systemd-userclaims weigeren CLI en beide
+directe algemene verwijderfuncties nog steeds de brede verwijdering.
+Dit is **source-only** op de bestaande [draft #1003](https://github.com/Blacksp1d3r/runner-mcp/pull/1003),
+niet de rolgebonden productieomschakeling. De oorspronkelijke cronroosters,
+units en A7 zijn niet gewijzigd; exclusieve writers, actuele procesbron,
+functioneel ACK en fysiek rollbackbewijs blijven afzonderlijke M3-poorten.
+
 ## Brongebonden M3-fases op echte disposable Linux (0.1.174)
 
 [PR #1000](https://github.com/Blacksp1d3r/runner-mcp/pull/1000) sluit een fout in de vorige puur in-memory fasebewaking: `_exact_single_role_cron_delta` verifieert opnieuw dat de vijfrollen-kandidaat het **exacte verschil van één geselecteerde managed cron-run-regel** is, zonder ander lijn-/byteverlies, en bindt zijn executable en config-dir aan de bron-gerenderde systemd-`ExecStart`. Een veranderd vreemde cronregel of andere uitgesloten rol wordt voortaan afgewezen, ook wanneer die verandering in de meegeleverde waarneming voorkomt. Nooit activeringsbevoegdheid; `next_action_authorized=False` blijft invariant.

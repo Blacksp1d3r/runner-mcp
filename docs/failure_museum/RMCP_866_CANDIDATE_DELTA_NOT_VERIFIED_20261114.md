@@ -170,3 +170,40 @@ geeft. De eerder bestaande één-systemd-confirmatietest blijft relevant.
 Exacte code/CI ACCEPTATIE volgt alleen na terminale GitHub-readback;
 geen claim dat deze afwijking ooit op een originele server werd
 uitgevoerd. Public-source-fout, geen vastgestelde productie-uitval.
+
+## 2026-11-17 — cron-only remover: vreemde bytes versus bestaande installer-separator
+
+**Bronbevinding, géén gemeld live incident.** Het bestaande
+`remove_cron_services()` herbouwde vreemde cronregels met
+`splitlines()/join` en schrapte aan het einde vreemde lege regels.
+De eerste source-fix op draft [#1003](https://github.com/Blacksp1d3r/runner-mcp/pull/1003),
+commit `cee15ae0`, behield alle bytes buiten het managed blok, maar
+hield ook de ene lege regel vast die de bestaande installer zelf vóór
+een end-anchored managed blok toevoegt. De officiële validation
+[#44161450337](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/44161450337)
+faalde terecht op
+`test_managed_cron_roundtrip_preserves_independent_hourly_review`:
+**1 FAIL / 4.881 PASS**. De real-systemd-proef bleef SUCCESS.
+
+**Causale correctie:** op codecommit `938e8fb2` blijven vreemde
+tekstbytes behouden. Alleen wanneer een end-anchored managed blok
+exact één herkenbare, losse lege scheidingsregel heeft na een niet-lege
+vreemde regel, wordt die bekende legacy-separator mee verwijderd.
+Meerdere vreemde lege regels en commentaar vóór/na een managed blok
+blijven onaangeraakt. De bestaande reviewer-roundtriptest en twee
+nieuwe regressietests dekken de relevante gevallen.
+
+Officieel op `938e8fb2`: **4.883 pytest PASS**, Ruff PASS,
+echt disposable systemd-user PASS, schone Ubuntu-installatie PASS
+en commit-attributie PASS; de vijfminutendemo en artifactbouw hebben
+eigen terminal bewijs nodig. De productiecron en systemd-eigenaars
+zijn niet aangeraakt, mixed-mode removal blijft DENY, en geen
+automatische of handmatige oorspronkelijke hostcutover werd uitgevoerd.
+
+**No-repeat:** een generieke bytebehoud-fix moet het historisch
+installatieformaat en zijn gegenereerde scheidingsregel apart toetsen.
+Een mislukte roundtrip niet oplossen met een versoepelde test of
+het strippen van alle vreemde lege regels. De bestaande
+`install_cron_services()` kan historische vreemde lege eindregels
+bij installatie nog normaliseren; herstel van reeds verloren bytes
+mag nooit worden geclaimd.

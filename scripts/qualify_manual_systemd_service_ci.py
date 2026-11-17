@@ -217,39 +217,57 @@ def main() -> None:
         action = "restart"
 
     _attest_unit(unit_file)
-    manager = _manager(work, port)
-    # Diagnose is beperkt tot vooraf vastgelegde systemd-statusvelden. Een
-    # mislukte start wordt niet opnieuw geprobeerd, en er lekken geen logs,
-    # commandlines, buspaden, unitinhoud of privégegevens naar CI.
-    from runner_mcp.service_manager import ServiceManagerError, SystemdUserBackend
+    if version == "0.1.174":
+        # Het echte oude 0.1.174-wheel bevat de vaste user-busbinding NIET.
+        # De bestaande systemd-user-manager mag in deze wegwerp-runner alleen
+        # DEZE vaste testunit starten/herstarten; geen production fallback of
+        # wijziging van de historische 0.1.174-broncode is toegestaan.
+        legacy = subprocess.run(
+            ["/usr/bin/systemctl", "--user", action, UNIT],
+            env={"PATH": "/usr/bin:/bin",
+                 "XDG_RUNTIME_DIR": f"/run/user/{os.geteuid()}"},
+            stdin=subprocess.DEVNULL,
+            capture_output=True, text=True, timeout=10, check=False,
+        )
+        if legacy.returncode != 0:
+            raise RuntimeError("fixed disposable legacy systemd action failed")
+        print("MCP_DISPOSABLE_SYSTEMD_LEGACY_TEST_ONLY_CONTROL=PASS")
+    else:
+        # Dit is de ECHTE, nieuwe 0.1.175-ServiceManager uit het geïnstalleerde
+        # kandidaatwheel, met geregistreerde alias en operatorstop.
+        manager = _manager(work, port)
+        from runner_mcp.service_manager import ServiceManagerError, SystemdUserBackend
 
-    try:
-        actual = manager.action("ci", "server", action)
-    except ServiceManagerError:
-        snapshot = _read_unit()
-        for key in ("LoadState", "ActiveState", "MainPID"):
-            value = snapshot.get(key, "missing")
-            if key == "MainPID":
-                value = "positive" if value.isdecimal() and int(value) > 0 else "zero_or_missing"
-            print(f"MCP_DISPOSABLE_SYSTEMD_DIAG_{key.upper()}={value}", flush=True)
         try:
-            SystemdUserBackend().status(UNIT)
+            actual = manager.action("ci", "server", action)
         except ServiceManagerError:
-            print("MCP_DISPOSABLE_SYSTEMD_DIAG_STATUS_READ=FAILED", flush=True)
-        else:
-            print("MCP_DISPOSABLE_SYSTEMD_DIAG_STATUS_READ=PASS", flush=True)
-        raise
-    if actual.get("action") != action or actual.get("service") != "server":
-        raise RuntimeError("existing service manager did not execute registered action")
+            snapshot = _read_unit()
+            for key in ("LoadState", "ActiveState", "MainPID"):
+                value = snapshot.get(key, "missing")
+                if key == "MainPID":
+                    value = "positive" if value.isdecimal() and int(value) > 0 else "zero_or_missing"
+                print(f"MCP_DISPOSABLE_SYSTEMD_DIAG_{key.upper()}={value}", flush=True)
+            try:
+                SystemdUserBackend().status(UNIT)
+            except ServiceManagerError:
+                print("MCP_DISPOSABLE_SYSTEMD_DIAG_STATUS_READ=FAILED", flush=True)
+            else:
+                print("MCP_DISPOSABLE_SYSTEMD_DIAG_STATUS_READ=PASS", flush=True)
+            raise
+        if actual.get("action") != action or actual.get("service") != "server":
+            raise RuntimeError("existing service manager did not execute registered action")
+        print("MCP_DISPOSABLE_SYSTEMD_REGISTERED_MANAGER_ACTION=PASS")
     result = _new_generation(port, version, previous)
-    safe = manager.status("ci", "server")
-    if safe.get("active_state") != "active" or safe.get("health") != "healthy":
-        raise RuntimeError("existing service manager did not confirm real health")
+    if version == "0.1.175":
+        safe = manager.status("ci", "server")
+        if safe.get("active_state") != "active" or safe.get("health") != "healthy":
+            raise RuntimeError("new service manager did not confirm real health")
+    elif _read_unit().get("ActiveState") != "active":
+        raise RuntimeError("legacy disposable systemd unit not active")
     if _read_unit().get("MainPID") != str(result["pid"]):
         raise RuntimeError("systemd main PID is unstable")
     previous_file.write_text(json.dumps(result), encoding="ascii")
     print(f"MCP_DISPOSABLE_SYSTEMD_SERVING_VERSION={version}")
-    print("MCP_DISPOSABLE_SYSTEMD_REGISTERED_MANAGER_ACTION=PASS")
     if previous:
         print("MCP_DISPOSABLE_SYSTEMD_FRESH_GENERATION=PASS")
 

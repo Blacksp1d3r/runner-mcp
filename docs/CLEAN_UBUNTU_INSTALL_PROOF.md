@@ -105,3 +105,13 @@ instance-ID overeenstemmen. Opruimen stopt de unit vóór verwijderen van
 wheel- en configuratiebestanden.
 
 Geen cron→systemd #866 cutover, A7, productie, reboot of updatebevoegdheid.
+
+
+**Historische baselinegrens (disposable test):** versie 0.1.174 bevat de
+nieuwe gefixeerde user-busverbinding nog niet. Op de wegwerp-runner start of
+herstart de bestaande directe `systemctl --user` de eigen testunit voor
+precies die historische release, zonder het oude wheel te wijzigen. Pas op
+0.1.175 worden de echte geregistreerde `ServiceManager.action` en
+`ServiceManager.status` gebruikt. Uitvoer onderscheidt nadrukkelijk de
+markers `LEGACY_TEST_ONLY_CONTROL` en `REGISTERED_MANAGER_ACTION`.
+Er is geen productiefallback toegevoegd.

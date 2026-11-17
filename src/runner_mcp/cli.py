@@ -1516,6 +1516,14 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         return 0
 
     if args.autostart_action == "remove":
+        # De brede verwijderactie is géén rolgebonden M3-rollback. In
+        # mixed mode zou zij achtereenvolgens zowel de nog benodigde cron-
+        # als systemd-bron wissen. Weiger vóór zelfs de bevestigingsvraag:
+        # geen partiële destructieve uitvoering of schijnbare toestemming.
+        if managed_cron and managed_systemd:
+            raise AutostartError(
+                "mixed managed cron/systemd state; blanket autostart removal is forbidden"
+            )
         _require_removal_confirmation(
             "REMOVE RUNNER MCP AUTOSTART",
             AutostartError("autostart removal cancelled"),

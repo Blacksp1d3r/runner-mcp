@@ -4215,3 +4215,67 @@ def test_autostart_cli_mixed_reconcile_remains_fail_closed(
     assert result == 2
     assert "multiple managed autostart backends" in captured.err
     assert "reconciled" not in captured.out
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_mixed_remove_denied_before_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """De algemene remove mag bij gemengde rollen niet eens prompten."""
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(
+        "builtins.input", lambda _: (_ for _ in ()).throw(
+            AssertionError("unsafe mixed removal confirmation reached")
+        ),
+    )
+    for method in ("remove_cron_services", "remove_user_services"):
+        monkeypatch.setattr(
+            cli, method, lambda *a, **k: (_ for _ in ()).throw(
+                AssertionError("mixed removal mutated a backend")
+            ),
+        )
+    result = main([
+        "--config-dir", str(paths.config_dir), "autostart", "remove",
+    ])
+    captured = capsys.readouterr()
+    assert result == 2
+    assert captured.out == ""
+    assert "blanket autostart removal is forbidden" in captured.err
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_single_cron_backend_still_allows_confirmed_remove(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """De nieuwe mixed STOP laat oude enkel-cronverwijdering intact."""
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: False)
+    monkeypatch.setattr(
+        "builtins.input", lambda _: "REMOVE RUNNER MCP AUTOSTART",
+    )
+    monkeypatch.setattr(
+        cli, "remove_cron_services", lambda: calls.append("cron") or True,
+    )
+    monkeypatch.setattr(
+        cli, "remove_user_services", lambda: (_ for _ in ()).throw(
+            AssertionError("unrelated systemd removal reached")
+        ),
+    )
+    result = main([
+        "--config-dir", str(paths.config_dir), "autostart", "remove",
+    ])
+    captured = capsys.readouterr()
+    assert result == 0
+    assert captured.err == ""
+    assert "Removed 1 Runner MCP autostart backend(s)." in captured.out
+    assert calls == ["cron"]

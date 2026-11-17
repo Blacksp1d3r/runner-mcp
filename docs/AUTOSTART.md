@@ -225,7 +225,11 @@ migratie- of ACK-oordeel.
 
 De algemene `autostart reconcile/install/remove` en beide all-role-installers
 zijn **niet** geschikt om een gemengde configuratie aan te maken, te herstellen
-of te activeren. Zij blijven fail-closed. De gemengde status kan de
+of te activeren. Zij blijven fail-closed. Bij `autostart remove` wordt de
+gemengde toestand **vóór de verwijderbevestiging** expliciet geweigerd met
+exitcode 2; zij mag nooit achtereenvolgens de vijf cronrollen en de
+enige systemd-peer vernietigen. Alleen een exact gekwalificeerd afzonderlijk
+herstelpad of de normale bevestigde één-backend-verwijdering is toegestaan. De gemengde status kan de
 pinned-snapshot-, proces-/lock-, werkresultaat-, A7- en rollbackpoorten
 niet vervangen.
 

@@ -143,3 +143,30 @@ biedt geen bewezen gedeelde CAS met onbekende andere schrijvers.
 De test bewijst **niet** dat parallelle cronacties atomair kunnen
 worden teruggedraaid. M3/live en A7 blijven onbevoegd/ongewijzigd.
 Registreer werkelijke PASS-markers pas na officiële CI-terminatie.
+
+## 2026-11-17 — #866 brede CLI-remove kon beide gemengde beheerders wissen (SOURCE-FIX)
+
+Bij read-only review van de bestaande `cmd_autostart` op draft #1003
+werd een **nieuwe, afzonderlijke bronafwijking** vastgesteld:
+`autostart status` en `reconcile` wezen gemengd cron/systemd al af,
+maar `autostart remove` vroeg eerst één brede bevestiging en voerde
+daarna onafhankelijk `remove_cron_services()` EN
+`remove_user_services()` uit. Een gemengde éénrols-M3-toestand kon
+zo het nog benodigde cron-schema én de systemd-peer verwijderen, ondanks
+het bestaande strikt rolgebonden herstelvoorstel.
+
+**Causale, beperkte correctie:** `cmd_autostart` weigert nu het
+algemene `remove` direct bij beide managed supervisorclaims, dus
+**vóór** de operatorbevestiging en vóór beide mutatoren. Er is
+geen nieuwe productie-uitvoerder, geen wijziging van de daadwerkelijke
+rolgebonden rollback of de bron-/ACK-/lockgates. Bestaande normale
+één-backendverwijdering blijft behouden.
+
+**Regressie:** negatieve CLI-test stelt een verboden prompt en beide
+mutatoren op expliciete exception in gemengde toestand en verwacht
+code 2 zonder wijzigingen. Positieve regressie bewijst dat de
+bevestigde één-cron-backendverwijdering nog het verwachte resultaat
+geeft. De eerder bestaande één-systemd-confirmatietest blijft relevant.
+Exacte code/CI ACCEPTATIE volgt alleen na terminale GitHub-readback;
+geen claim dat deze afwijking ooit op een originele server werd
+uitgevoerd. Public-source-fout, geen vastgestelde productie-uitval.

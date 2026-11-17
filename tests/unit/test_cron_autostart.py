@@ -325,12 +325,12 @@ def test_cron_install_reinstall_remove_preserves_foreign_bytes(
 
     fake = FakeCrontab(foreign)
     monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
-    kwargs = dict(
-        executable=tmp_path / "runner-mcp",
-        config_dir=tmp_path / "private",
-        runner=fake,
-        activation_permit=AutostartActivationPermit.clear(),
-    )
+    kwargs = {
+        "executable": tmp_path / "runner-mcp",
+        "config_dir": tmp_path / "private",
+        "runner": fake,
+        "activation_permit": AutostartActivationPermit.clear(),
+    }
 
     install_cron_services(components=("server",), **kwargs)
     assert fake.content.startswith(foreign + CRON_BEGIN + "\n")

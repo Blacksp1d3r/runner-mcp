@@ -218,7 +218,27 @@ def main() -> None:
 
     _attest_unit(unit_file)
     manager = _manager(work, port)
-    actual = manager.action("ci", "server", action)
+    # Diagnose is beperkt tot vooraf vastgelegde systemd-statusvelden. Een
+    # mislukte start wordt niet opnieuw geprobeerd, en er lekken geen logs,
+    # commandlines, buspaden, unitinhoud of privégegevens naar CI.
+    from runner_mcp.service_manager import ServiceManagerError, SystemdUserBackend
+
+    try:
+        actual = manager.action("ci", "server", action)
+    except ServiceManagerError:
+        snapshot = _read_unit()
+        for key in ("LoadState", "ActiveState", "MainPID"):
+            value = snapshot.get(key, "missing")
+            if key == "MainPID":
+                value = "positive" if value.isdecimal() and int(value) > 0 else "zero_or_missing"
+            print(f"MCP_DISPOSABLE_SYSTEMD_DIAG_{key.upper()}={value}", flush=True)
+        try:
+            SystemdUserBackend().status(UNIT)
+        except ServiceManagerError:
+            print("MCP_DISPOSABLE_SYSTEMD_DIAG_STATUS_READ=FAILED", flush=True)
+        else:
+            print("MCP_DISPOSABLE_SYSTEMD_DIAG_STATUS_READ=PASS", flush=True)
+        raise
     if actual.get("action") != action or actual.get("service") != "server":
         raise RuntimeError("existing service manager did not execute registered action")
     result = _new_generation(port, version, previous)

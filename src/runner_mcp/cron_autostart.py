@@ -382,8 +382,10 @@ def remove_cron_services(
     runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
 ) -> bool:
     existing = read_crontab(runner=runner)
-    lines = existing.splitlines()
-    bounds = _managed_block_bounds(lines)
+    # Bewaar alle vreemde cronbytes, inclusief lege regels en newlinevorm.
+    # splitlines()/join zou de crontab van andere eigenaars normaliseren.
+    lines = existing.splitlines(keepends=True)
+    bounds = _managed_block_bounds(existing.splitlines())
     if bounds is None:
         return False
     # Ook de direct aanroepbare all-role cron-remover mag geen vijf
@@ -400,10 +402,8 @@ def remove_cron_services(
     except AutostartError as exc:
         raise CronAutostartError("managed systemd status is unavailable") from exc
     start, end = bounds
-    remaining = lines[:start] + lines[end + 1 :]
-    while remaining and not remaining[-1].strip():
-        remaining.pop()
-    payload = ("\n".join(remaining) + "\n") if remaining else ""
+    # Schrijf uitsluitend de omringende originele bytes terug; geen trim.
+    payload = "".join((*lines[:start], *lines[end + 1 :]))
     _run_crontab(["-"], input_text=payload, runner=runner)
     return True
 

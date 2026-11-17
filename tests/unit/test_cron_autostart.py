@@ -431,6 +431,29 @@ def test_remove_deletes_only_managed_block(
     assert "/usr/bin/other" in crontab.content
 
 
+def test_remove_preserves_all_foreign_crontab_bytes(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ook vreemde eindregels, witruimte en commentaar blijven byte-identiek."""
+    from runner_mcp import autostart
+
+    prefix = "# foreign comment with trailing spaces  \n\n17 2 * * * /usr/bin/true\n"
+    suffix = "\n# unrelated trailing comment  \n\n\n"
+    managed = (
+        f"{CRON_BEGIN}\n"
+        'MAILTO=""\n'
+        "* * * * * /usr/bin/runner-mcp autostart cron-run server >/dev/null 2>&1\n"
+        f"{CRON_END}\n"
+    )
+    fake = FakeCrontab(prefix + managed + suffix)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == prefix + suffix
+    assert sum(command[-1] == "-" for command, _ in fake.calls) == 1
+
+
 def test_cron_run_uses_fixed_exec_argv_and_loopback(
     tmp_path: Path,
 ) -> None:

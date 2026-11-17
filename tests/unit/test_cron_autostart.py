@@ -305,6 +305,89 @@ def test_install_preserves_unrelated_lines_and_is_idempotent(
     assert "cron-run github-watcher" in crontab.content
 
 
+@pytest.mark.parametrize(
+    "foreign",
+    [
+        "17 2 * * * /usr/bin/true\n",
+        "# original header  \n\n17 2 * * * /usr/bin/true\n\n",
+        "MAILTO=review@example.invalid\n17 * * * * /usr/bin/true\n\n\n",
+        "\n# unrelated comment with spaces  \n\n",
+    ],
+)
+def test_cron_install_reinstall_remove_preserves_foreign_bytes(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+    foreign: str,
+) -> None:
+    """Geen formatteringsverlies bij eerste installatie of herinstallatie."""
+    from runner_mcp import autostart
+
+    fake = FakeCrontab(foreign)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+    kwargs = dict(
+        executable=tmp_path / "runner-mcp",
+        config_dir=tmp_path / "private",
+        runner=fake,
+        activation_permit=AutostartActivationPermit.clear(),
+    )
+
+    install_cron_services(components=("server",), **kwargs)
+    assert fake.content.startswith(foreign + CRON_BEGIN + "\n")
+    assert fake.content.count(CRON_BEGIN) == 1
+
+    install_cron_services(components=("server", "github-watcher"), **kwargs)
+    assert fake.content.startswith(foreign + CRON_BEGIN + "\n")
+    assert fake.content.count(CRON_BEGIN) == 1
+    assert fake.content.count("autostart cron-run github-watcher") == 1
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == foreign
+
+
+def test_cron_install_rejects_foreign_crontab_without_final_newline(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Geen impliciet verlies of samenvoeging van een vreemde laatste regel."""
+    from runner_mcp import autostart
+
+    foreign = "17 2 * * * /usr/bin/true"
+    fake = FakeCrontab(foreign)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+    with pytest.raises(CronAutostartError, match="final newline"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=fake,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert fake.content == foreign
+    assert all(call[-1] != "-" for call, _ in fake.calls)
+
+
+def test_cron_remove_retains_ambiguous_legacy_separator(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een legacy lege regel zonder eigen bewijs blijft bewaard."""
+    from runner_mcp import autostart
+
+    prefix = "# unrelated line\n\n"
+    managed = (
+        f"{CRON_BEGIN}\n"
+        'MAILTO=""\n'
+        f"{CRON_END}\n"
+    )
+    fake = FakeCrontab(prefix + managed)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == prefix
+
+
 def test_managed_cron_roundtrip_preserves_independent_hourly_review(
     tmp_path: Path,
     fake_crontab_executable: None,

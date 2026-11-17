@@ -355,12 +355,18 @@ def install_cron_services(
             "unmanaged Runner MCP cron entries already exist; remove or migrate them first"
         )
 
+    # Hergebruik de bestaande block-grenzen, maar herschrijf geen vreemde
+    # regels. splitlines()/join() en rstrip() verliezen witruimte die niet
+    # aan Runner MCP toebehoort.
     bounds = _managed_block_bounds(lines)
     if bounds is not None:
         start, end = bounds
-        lines = lines[:start] + lines[end + 1 :]
-    while lines and not lines[-1].strip():
-        lines.pop()
+        source_lines = existing.splitlines(keepends=True)
+        remaining = "".join((*source_lines[:start], *source_lines[end + 1 :]))
+    else:
+        remaining = existing
+    if remaining and not remaining.endswith("\n"):
+        raise CronAutostartError("foreign crontab has no final newline")
 
     block = render_cron_block(
         executable=executable,
@@ -368,11 +374,9 @@ def install_cron_services(
         components=components,
         port=port,
     )
-    output_lines = [*lines]
-    if output_lines:
-        output_lines.append("")
-    output_lines.extend(block)
-    payload = "\n".join(output_lines) + "\n"
+    # Geen nieuwe scheidingsregel creëren: elke bestaande newline blijft
+    # eigendom van de oorspronkelijke crontab en is later byte-exact herstelbaar.
+    payload = remaining + "\n".join(block) + "\n"
     _run_crontab(["-"], input_text=payload, runner=runner)
     return components
 
@@ -402,19 +406,10 @@ def remove_cron_services(
     except AutostartError as exc:
         raise CronAutostartError("managed systemd status is unavailable") from exc
     start, end = bounds
-    # De bestaande installer voegt exact één lege scheidingsregel toe als
-    # hij een beheerd blok achter een niet-lege vreemde regel appendt.
-    # Verwijder die alleen bij dit end-anchored legacy-patroon. Meerdere
-    # of tussengevoegde vreemde lege regels blijven onaangeroerd.
-    prefix_end = start
-    if (
-        end == len(lines) - 1
-        and start >= 2
-        and lines[start - 1] == "\n"
-        and lines[start - 2].strip()
-    ):
-        prefix_end -= 1
-    payload = "".join((*lines[:prefix_end], *lines[end + 1 :]))
+    # Een historische installerseparator is niet te onderscheiden van een
+    # vreemde, al aanwezige lege regel. Verwijder daarom uitsluitend de
+    # gecertificeerde managed block-grenzen, nooit omliggende cronbytes.
+    payload = "".join((*lines[:start], *lines[end + 1 :]))
     _run_crontab(["-"], input_text=payload, runner=runner)
     return True
 

@@ -91,6 +91,16 @@ jobs:
           echo "RUNNER_MCP_BASE_COMMIT=$base" >> "$GITHUB_ENV"
           python scripts/check_release_version.py --base "$base"
 
+      # Reuse the existing Git-tree-bound doc-memory verifier in this
+      # already isolated disposable validation job; no new CI job or service.
+      # HEAD^1 is checked and exported by the preceding source-version step.
+      - name: Verify changed docs using existing doc-memory precommit
+        shell: bash
+        run: |
+          set -euo pipefail
+          python3 tools/doc_memory/doc_memory.py precommit --base "$RUNNER_MCP_BASE_COMMIT"
+          echo "DOC_MEMORY_PRECOMMIT_CI=PASS"
+
       - name: Verify declared MCP tool catalogue baseline
         run: python scripts/attest_tool_catalogue.py
 

@@ -215,9 +215,19 @@ Dit is uitsluitend **consistentie van aangeleverde observaties**: geen bewijs
 van actuele host-, proces-, wheel-, A7- of ACK-herkomst. De functie voert geen
 proces- of bestands-I/O uit. Ook een consistent resultaat heeft altijd
 `generic_reconcile_authorized=False` en `cutover_authorized=False`.
-De bestaande CLI `autostart status/reconcile/install/remove` en de twee
-all-role-installers zijn hiermee **nog niet mixed-mode-compatibel**. Gebruik
-ze niet om een gemengde configuratie te maken, te herstellen of te activeren.
+De CLI `autostart status` toont een gemengde toestand **alleen-lezen**:
+`backend: mixed-unqualified`, aparte `cron/<rol>`- en
+`systemd-user/<rol>`-regels en `reconcile_authorized=no` /
+`cutover_authorized=no`. Het exitresultaat blijft **2 (niet gekwalificeerd)**
+en een onbereikbare systemd-manager veroorzaakt STOP vóór gedeeltelijke
+uitvoer. Daarmee krijgt de operator een overzicht zonder een vals groen
+migratie- of ACK-oordeel.
+
+De algemene `autostart reconcile/install/remove` en beide all-role-installers
+zijn **niet** geschikt om een gemengde configuratie aan te maken, te herstellen
+of te activeren. Zij blijven fail-closed. De gemengde status kan de
+pinned-snapshot-, proces-/lock-, werkresultaat-, A7- en rollbackpoorten
+niet vervangen.
 Een betrouwbare bron-/hostgebonden rolreconciler en echte geïsoleerde
 fout-/hersteltests zijn de afzonderlijke volgende M3-implementatiestap.
 

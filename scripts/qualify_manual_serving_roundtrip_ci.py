@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 """Echte Runner-MCP-servicegeneratie bij een offline pip-upgrade in disposable CI.
 
 De bestaande private setup en CLI starten per versie één werkelijke Uvicorn-

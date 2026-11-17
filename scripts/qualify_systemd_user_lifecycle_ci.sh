@@ -166,75 +166,6 @@ printf '%s\n' "$cron_line" | crontab -
 crontab -r
 test_crontab_owned=false
 
-# M3 regressie tegen de ECHTE disposable crontab, niet alleen FakeCrontab:
-# een vreemde regel BINNEN managed markers mag nooit bij re-install/remove
-# verloren gaan. De huidige CI-gebruiker is hierboven als cron-vrij bewezen.
-# Dit blok maakt geen service aan en wijzigt alleen deze wegwerp-crontab.
-test_crontab_owned=true
-PYTHONPATH=src python - <<'PY_FOREIGN_BLOCK'
-"""Real disposable Linux cron write-denial proof for noncanonical managed jobs."""
-from pathlib import Path
-import subprocess
-
-from runner_mcp.autostart_activation import AutostartActivationPermit
-from runner_mcp.cron_autostart import (
-    CRON_END,
-    CronAutostartError,
-    install_cron_services,
-    read_crontab,
-    remove_cron_services,
-    render_cron_block,
-)
-
-if read_crontab():
-    raise RuntimeError("STOP: disposable crontab was not empty")
-exe = Path("/usr/bin/true")  # harmless even if cron ticks in this disposable CI
-config = Path("/tmp/runner-mcp-866-isolated-test")
-block = "\n".join(render_cron_block(
-    executable=exe, config_dir=config, components=("server",), port=8000,
-)) + "\n"
-original = "17 2 * * * /usr/bin/true # CI foreign owner\n" + block
-tampered = original.replace(
-    CRON_END + "\n",
-    "17 2 * * * /usr/bin/true # foreign INSIDE managed markers\n"
-    + CRON_END + "\n",
-)
-if tampered == original:
-    raise RuntimeError("STOP: fixture not modified")
-subprocess.run(
-    ["crontab", "-"], input=tampered, text=True,
-    capture_output=True, timeout=30, check=True,
-)
-try:
-    if read_crontab() != tampered:
-        raise RuntimeError("STOP: actual disposable cron fixture drifted")
-    for mutation in (
-        lambda: remove_cron_services(),
-        lambda: install_cron_services(
-            executable=exe, config_dir=config, components=("server",),
-            activation_permit=AutostartActivationPermit.clear(),
-        ),
-    ):
-        try:
-            mutation()
-        except CronAutostartError as exc:
-            if "managed cron block is not canonical" not in str(exc):
-                raise RuntimeError("STOP: wrong rejection reason") from exc
-        else:
-            raise RuntimeError("STOP: noncanonical cron mutator was admitted")
-        if read_crontab() != tampered:
-            raise RuntimeError("STOP: a foreign cron byte was changed")
-finally:
-    subprocess.run(
-        ["crontab", "-r"], capture_output=True, timeout=30, check=True,
-    )
-if read_crontab():
-    raise RuntimeError("STOP: disposable cron cleanup incomplete")
-print("M3_DISPOSABLE_ACTUAL_CRONTAB_NONCANONICAL_REMOVE_REINSTALL_DENIED=PASS")
-PY_FOREIGN_BLOCK
-[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
-test_crontab_owned=false
-
 # Een echte maar VOLLEDIG DISPOSABLE test van een zesrollen-crontab: laat
 # vijf onschuldige rollen en een niet-beheerde externe cronregel ongemoeid
 # terwijl alleen github-watcher naar de BESTAANDE test-eigen systemd-unit gaat.
@@ -305,6 +236,76 @@ peer_venv="$peer_work/venv"
 mkdir -m 0700 "$peer_private"
 python3 -m venv "$peer_venv"
 PIP_DISABLE_PIP_VERSION_CHECK=1 "$peer_venv/bin/python" -m pip install -q -e .
+
+# M3 regressie tegen de ECHTE disposable crontab, niet alleen FakeCrontab:
+# een vreemde regel BINNEN managed markers mag nooit bij re-install/remove
+# verloren gaan. De huidige CI-gebruiker is hierboven als cron-vrij bewezen.
+# Dit blok maakt geen service aan en wijzigt alleen deze wegwerp-crontab.
+test_crontab_owned=true
+"$peer_venv/bin/python" - <<'PY_FOREIGN_BLOCK'
+"""Real disposable Linux cron write-denial proof for noncanonical managed jobs."""
+from pathlib import Path
+import subprocess
+
+from runner_mcp.autostart_activation import AutostartActivationPermit
+from runner_mcp.cron_autostart import (
+    CRON_END,
+    CronAutostartError,
+    install_cron_services,
+    read_crontab,
+    remove_cron_services,
+    render_cron_block,
+)
+
+if read_crontab():
+    raise RuntimeError("STOP: disposable crontab was not empty")
+exe = Path("/usr/bin/true")  # harmless even if cron ticks in this disposable CI
+config = Path("/tmp/runner-mcp-866-isolated-test")
+block = "\n".join(render_cron_block(
+    executable=exe, config_dir=config, components=("server",), port=8000,
+)) + "\n"
+original = "17 2 * * * /usr/bin/true # CI foreign owner\n" + block
+tampered = original.replace(
+    CRON_END + "\n",
+    "17 2 * * * /usr/bin/true # foreign INSIDE managed markers\n"
+    + CRON_END + "\n",
+)
+if tampered == original:
+    raise RuntimeError("STOP: fixture not modified")
+subprocess.run(
+    ["crontab", "-"], input=tampered, text=True,
+    capture_output=True, timeout=30, check=True,
+)
+try:
+    if read_crontab() != tampered:
+        raise RuntimeError("STOP: actual disposable cron fixture drifted")
+    for mutation in (
+        lambda: remove_cron_services(),
+        lambda: install_cron_services(
+            executable=exe, config_dir=config, components=("server",),
+            activation_permit=AutostartActivationPermit.clear(),
+        ),
+    ):
+        try:
+            mutation()
+        except CronAutostartError as exc:
+            if "managed cron block is not canonical" not in str(exc):
+                raise RuntimeError("STOP: wrong rejection reason") from exc
+        else:
+            raise RuntimeError("STOP: noncanonical cron mutator was admitted")
+        if read_crontab() != tampered:
+            raise RuntimeError("STOP: a foreign cron byte was changed")
+finally:
+    subprocess.run(
+        ["crontab", "-r"], capture_output=True, timeout=30, check=True,
+    )
+if read_crontab():
+    raise RuntimeError("STOP: disposable cron cleanup incomplete")
+print("M3_DISPOSABLE_ACTUAL_CRONTAB_NONCANONICAL_REMOVE_REINSTALL_DENIED=PASS")
+PY_FOREIGN_BLOCK
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+test_crontab_owned=false
+
 
 # Een test-only binair met dezelfde vaste Runner-MCP argumenten; de lock,
 # fstat-controle, flock en execv zijn WEL de echte geïnstalleerde broncode.

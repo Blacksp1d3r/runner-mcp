@@ -43,3 +43,17 @@ activering, geautoriseerde SQL-ACK of fysieke reboot. De oude service-manager-
 route mag niet als generieke productie-workaround worden geïmplementeerd.
 De onafhankelijk vastgestelde #866-cronflakiness hoort bij de bestaande
 #866-eigenaar en het bestaande #866 Failure Museum, niet bij deze oorzaak.
+
+## Volgende historische baselinetest: 0.1.88 (2026-11-17)
+
+Dezelfde systemd-userbusfout heeft ook de **onveranderde** bron van 0.1.88:
+er is geen vaste `XDG_RUNTIME_DIR` in zijn historische ServiceManager. De nu
+**geslaagde**, extra CI-test koppelt rechtstreeks `systemctl --user` uitsluitend
+aan de eigen CI-wegwerpunit bij beide historische 0.1.88-stappen. Voor de twee
+0.1.175-stappen moet de echte `ServiceManager.action` zijn huidige vastgepinde
+userbus en geregistreerde servicealias gebruiken. [Clean Ubuntu #44121305525](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/44121305525)
+is TERMINAL SUCCESS over `0.1.88→0.1.175→0.1.88→0.1.175`.
+Geen vervangende historische wheel voor de originele host is vrijgegeven,
+en geen oorspronkelijke server, A7 of cronunit gewijzigd. De uit de publieke
+GitHub-commit opnieuw gebouwde 0.1.88-testwheel heeft uitdrukkelijk GEEN
+bewezen gelijkheid met de echte serverinstallatie.

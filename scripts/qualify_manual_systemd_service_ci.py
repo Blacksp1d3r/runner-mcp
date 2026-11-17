@@ -181,7 +181,7 @@ def _new_generation(port: int, version: str, previous: dict | None) -> dict:
 
 
 def main() -> None:
-    if len(sys.argv) != 4 or sys.argv[1] not in ("0.1.174", "0.1.175"):
+    if len(sys.argv) != 4 or sys.argv[1] not in ("0.1.88", "0.1.174", "0.1.175"):
         raise RuntimeError("only two fixed CI versions are supported")
     version = sys.argv[1]
     work = _private_ci_root(sys.argv[2])
@@ -217,8 +217,8 @@ def main() -> None:
         action = "restart"
 
     _attest_unit(unit_file)
-    if version == "0.1.174":
-        # Het echte oude 0.1.174-wheel bevat de vaste user-busbinding NIET.
+    if version in ("0.1.88", "0.1.174"):
+        # Beide historische baselines 0.1.88 en 0.1.174 missen de nieuwe user-busfix.
         # De bestaande systemd-user-manager mag in deze wegwerp-runner alleen
         # DEZE vaste testunit starten/herstarten; geen production fallback of
         # wijziging van de historische 0.1.174-broncode is toegestaan.

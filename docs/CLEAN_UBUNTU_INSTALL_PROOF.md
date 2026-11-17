@@ -115,3 +115,20 @@ precies die historische release, zonder het oude wheel te wijzigen. Pas op
 `ServiceManager.status` gebruikt. Uitvoer onderscheidt nadrukkelijk de
 markers `LEGACY_TEST_ONLY_CONTROL` en `REGISTERED_MANAGER_ACTION`.
 Er is geen productiefallback toegevoegd.
+
+
+## Historische 0.1.88-broncheck tegen dezelfde nieuwe systemd-servicebeheerder
+
+De bestaande disposable CI bouwt nu ook een wheel uit de **vaste historische
+GitHub-broncommit** `ce327e5db688fe6bae835a4c181824320f01f762`
+(`pyproject.toml` versie `0.1.88`) en doorloopt daarna dezelfde echte
+`0.1.88 → 0.1.175 → 0.1.88 → 0.1.175`-installatie-, CLI-,
+HTTP-proces- en systemd-usercyclus. Oude versie: vaste systemd-fixturemanager;
+nieuwe versie: geregistreerde `ServiceManager.action`. De eerdere
+`0.1.174`-proef blijft ongewijzigd en moet afzonderlijk PASS blijven.
+
+**Bronbewijs is geen originele installatiewheel.** Deze oude versie is niet
+publiek getagd als `v0.1.88`, en de gegenereerde testwheel is nooit
+aangetoond byte-identiek aan de verbonden `0.1.88` of aan root-gekwalificeerde
+A7-installatiebytes. Geen live update, releasepromotie, originele rollback,
+cron→systemd-cutover of nieuwe autorisatie volgt uit CI.

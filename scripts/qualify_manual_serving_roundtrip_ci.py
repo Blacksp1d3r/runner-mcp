@@ -114,7 +114,7 @@ def _socket_closed(port: int) -> bool:
 
 
 def main() -> None:
-    if len(sys.argv) != 3 or sys.argv[1] not in ("0.1.174", "0.1.175"):
+    if len(sys.argv) != 3 or sys.argv[1] not in ("0.1.88", "0.1.174", "0.1.175"):
         raise RuntimeError("alleen de twee vaste pakketversies zijn toegelaten")
     expected = sys.argv[1]
     work = _private_ci_root(sys.argv[2])

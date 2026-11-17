@@ -73,3 +73,8 @@ jobs:
         if: github.event_name == 'pull_request'
         shell: bash
         run: bash scripts/qualify_manual_distribution_roundtrip_ci.sh
+
+      - name: Prove pinned 0.1.88 source to 0.1.175 service upgrade and rollback
+        if: github.event_name == 'pull_request'
+        shell: bash
+        run: bash scripts/qualify_manual_distribution_roundtrip_ci.sh --historical-088

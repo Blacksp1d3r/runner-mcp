@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Echte handmatige distributie-upgrade/rollback, uitsluitend in disposable CI.
 #
-# Herkomst: HEAD^1 is de GitHub-baseline 0.1.174; HEAD is de PR-kandidaat
-# 0.1.175. Beide worden in afzonderlijke wheels gebouwd. Daarna gebruikt één
+# Herkomst: HEAD^1 (0.1.174) of vastgepinde historische broncommit
+# 0.1.88; HEAD is 0.1.175. Het gebouwde bronwheel is GEEN serving-A7-attest. Daarna gebruikt één
 # private Python 3.12-venv exact die wheels voor vier echte pip-transities.
 # Na ELKE transitie wordt de bestaande echte CLI als lokale HTTP-server
 # gestart en weer gestopt; de kernel-PID en geladen-versieheader tellen mee.
@@ -23,12 +23,36 @@ if [ "$(git rev-parse --is-shallow-repository)" != false ]; then
   exit 2
 fi
 
-baseline="$(git rev-parse HEAD^1)"
+if [[ "$#" -gt 1 ]]; then
+  echo "STOP: alleen de twee vooraf beoordeelde historische CI-baselines" >&2
+  exit 2
+fi
+case "${1:-}" in
+  "")
+    baseline="$(git rev-parse HEAD^1)"
+    expected_baseline="0.1.174"
+    ;;
+  --historical-088)
+    # Vaste oorspronkelijke Git-bron, GEEN originele server-wheelbron.
+    baseline="ce327e5db688fe6bae835a4c181824320f01f762"
+    expected_baseline="0.1.88"
+    ;;
+  *)
+    echo "STOP: onbekende CI-bronbaseline" >&2
+    exit 2
+    ;;
+esac
 candidate="$(git rev-parse HEAD)"
+if ! git cat-file -e "${baseline}^{commit}" ||
+   ! git merge-base --is-ancestor "$baseline" "$candidate"; then
+  echo "STOP: vaste historische broncommit is niet beschikbaar" >&2
+  exit 2
+fi
 baseline_version="$(git show "$baseline:pyproject.toml" | python3.12 -c 'import sys,tomllib;print(tomllib.loads(sys.stdin.read())["project"]["version"])')"
 candidate_version="$(python3.12 -c 'import tomllib;print(tomllib.load(open("pyproject.toml","rb"))["project"]["version"])')"
-if [ "$baseline_version" != 0.1.174 ] || [ "$candidate_version" != 0.1.175 ]; then
-  echo "STOP: uitsluitend bestaande 0.1.174 naar 0.1.175 PR-bron." >&2
+if [ "$baseline_version" != "$expected_baseline" ] ||
+   [ "$candidate_version" != 0.1.175 ]; then
+  echo "STOP: de historische baseline of kandidaat komt niet overeen" >&2
   exit 2
 fi
 
@@ -75,27 +99,26 @@ if [[ -e "$unit_target" || -L "$unit_target" ]]; then
   exit 2
 fi
 unit_owned=true
-mkdir -p "$work/source/174" "$work/source/175" "$work/wheels/174" "$work/wheels/175"
+mkdir -p "$work/source/baseline" "$work/source/175" "$work/wheels/baseline" "$work/wheels/175"
 
-git archive "$baseline" | tar -xf - -C "$work/source/174"
+git archive "$baseline" | tar -xf - -C "$work/source/baseline"
 git archive "$candidate" | tar -xf - -C "$work/source/175"
 python3.12 -m pip wheel --disable-pip-version-check --no-deps \
-  --wheel-dir "$work/wheels/174" "$work/source/174" >/dev/null
+  --wheel-dir "$work/wheels/baseline" "$work/source/baseline" >/dev/null
 python3.12 -m pip wheel --disable-pip-version-check --no-deps \
   --wheel-dir "$work/wheels/175" "$work/source/175" >/dev/null
 
-wheel174="$(find "$work/wheels/174" -maxdepth 1 -type f -name 'aifordable_runner_mcp-0.1.174-*.whl' -print -quit)"
+wheel_baseline="$(find "$work/wheels/baseline" -maxdepth 1 -type f -name "aifordable_runner_mcp-${baseline_version}-*.whl" -print -quit)"
 wheel175="$(find "$work/wheels/175" -maxdepth 1 -type f -name 'aifordable_runner_mcp-0.1.175-*.whl' -print -quit)"
-if [ ! -f "$wheel174" ] || [ ! -f "$wheel175" ]; then
-  echo "STOP: één van de echte releasewheels ontbreekt." >&2
+if [[ ! -f "$wheel_baseline" || ! -f "$wheel175" ]]; then
+  echo "STOP: één van de exact vaste twee bronwheels ontbreekt" >&2
   exit 2
 fi
-if [ "$(find "$work/wheels/174" -maxdepth 1 -type f | wc -l)" -ne 1 ] ||
-   [ "$(find "$work/wheels/175" -maxdepth 1 -type f | wc -l)" -ne 1 ]; then
-  echo "STOP: niet-exacte wheelset." >&2
+if [[ "$(find "$work/wheels/baseline" -maxdepth 1 -type f | wc -l)" -ne 1 ]] ||
+   [[ "$(find "$work/wheels/175" -maxdepth 1 -type f | wc -l)" -ne 1 ]]; then
+  echo "STOP: de wheels zijn niet exact één per broncommit" >&2
   exit 2
 fi
-
 python3.12 -m venv "$work/runtime"
 python="$work/runtime/bin/python"
 cli="$work/runtime/bin/runner-mcp"
@@ -103,7 +126,7 @@ cli="$work/runtime/bin/runner-mcp"
 # Alleen de eerste baseline-installatie haalt dependencies op. De daaropvolgende
 # drie transacties krijgen --no-index en --no-deps: uitsluitend reeds gebouwde
 # wheels, zonder verborgen downloads of een tweede updater.
-"$python" -m pip install --disable-pip-version-check --no-input "$wheel174" >/dev/null
+"$python" -m pip install --disable-pip-version-check --no-input "$wheel_baseline" >/dev/null
 
 verify() {
   expected="$1"
@@ -135,18 +158,23 @@ PY
   "$python" scripts/qualify_manual_systemd_service_ci.py "$expected" "$work" "$unit_target"
 }
 
-verify 0.1.174
+verify "$baseline_version"
 "$python" -m pip install --disable-pip-version-check --no-index --no-deps \
   --force-reinstall "$wheel175" >/dev/null
 verify 0.1.175
 "$python" -m pip install --disable-pip-version-check --no-index --no-deps \
-  --force-reinstall "$wheel174" >/dev/null
-verify 0.1.174
+  --force-reinstall "$wheel_baseline" >/dev/null
+verify "$baseline_version"
 "$python" -m pip install --disable-pip-version-check --no-index --no-deps \
   --force-reinstall "$wheel175" >/dev/null
 verify 0.1.175
 
-echo "MCP_DISPOSABLE_PY312_MANUAL_174_175_ROLLBACK_REUPGRADE=PASS"
+if [[ "$baseline_version" == "0.1.174" ]]; then
+  echo "MCP_DISPOSABLE_PY312_MANUAL_174_175_ROLLBACK_REUPGRADE=PASS"
+else
+  echo "MCP_DISPOSABLE_PY312_HISTORICAL_SOURCE_088_175_ROLLBACK_REUPGRADE=PASS"
+  echo "MCP_DISPOSABLE_HISTORICAL_WHEEL_EQUALS_ORIGINAL_SERVER=NOT_ATTESTED"
+fi
 echo "MCP_DISPOSABLE_REAL_SERVING_RESTART_ROLLBACK=PASS"
 echo "MCP_DISPOSABLE_SYSTEMD_USER_MANAGED_ROUNDTRIP=PASS"
 echo "MCP_PRODUCTION_OR_A7_UPDATE_AUTHORIZED=FALSE"

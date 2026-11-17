@@ -1148,13 +1148,16 @@ def test_mixed_backend_direct_cron_remove_denied_before_write(
     """Ook de directe crontab-remover weigert een aanwezige managed unit."""
     from runner_mcp import autostart
 
-    original = "\n".join((
-        "17 2 * * * /usr/bin/true # harmless-foreign",
-        CRON_BEGIN, 'MAILTO=""',
-        "* * * * * /usr/bin/runner-mcp --config-dir "
-        "/tmp/fixture autostart cron-run server --port 8000 >/dev/null 2>&1",
-        CRON_END, "",
-    ))
+    original = (
+        "17 2 * * * /usr/bin/true # harmless-foreign\n"
+        + "\n".join(render_cron_block(
+            executable=Path("/usr/bin/runner-mcp"),
+            config_dir=Path("/tmp/fixture"),
+            components=("server",),
+            port=8000,
+        ))
+        + "\n"
+    )
     fake = FakeCrontab(original)
     monkeypatch.setattr(autostart, "has_managed_user_units", lambda: True)
     with pytest.raises(CronAutostartError, match="refuse blanket cron removal"):
@@ -1171,7 +1174,7 @@ def test_mixed_backend_direct_cron_remove_denies_unknown_unit_state(
     from runner_mcp import autostart
     from runner_mcp.autostart import AutostartError
 
-    fake = FakeCrontab("\n".join((CRON_BEGIN, 'MAILTO=""', CRON_END, "")))
+    fake = FakeCrontab(f'{CRON_BEGIN}\nMAILTO=""\n{CRON_END}\n')
     monkeypatch.setattr(
         autostart, "has_managed_user_units",
         lambda: (_ for _ in ()).throw(AutostartError("unknown")),

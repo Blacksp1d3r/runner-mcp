@@ -314,3 +314,145 @@ def test_systemd_backend_does_not_trust_unverified_caller_bus(
         "LC_ALL": "C.UTF-8",
         "XDG_RUNTIME_DIR": f"/run/user/{os.geteuid()}",
     }]
+
+
+class SequencedHealth:
+    """Voorspelbare startup-gezondheidsreeks zonder echt netwerk of hostactie."""
+
+    def __init__(self, results: list[str]) -> None:
+        self.results = iter(results)
+        self.last = "unhealthy"
+        self.calls = 0
+
+    def check(self, service: ServiceConfig) -> str:
+        self.calls += 1
+        self.last = next(self.results, self.last)
+        return self.last
+
+
+def test_restart_waits_for_delayed_http_health(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een enkele te vroege HTTP-misser mag geen gezonde restart afkeuren."""
+    from runner_mcp import service_manager
+
+    monkeypatch.setattr(service_manager, "SERVICE_READINESS_POLL_SECONDS", 0.001)
+    backend = FakeBackend()
+    checker = SequencedHealth(["unhealthy", "unhealthy", "healthy"])
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path),
+        backend=backend,
+        health_checker=checker,
+    )
+
+    result = manager.action("demo", "web", "restart")
+
+    assert result["health"] == "healthy"
+    assert result["active_state"] == "active"
+    assert backend.actions == [("private-web.service", "restart")]
+    assert backend.status_units == ["private-web.service"] * 3
+    assert checker.calls == 3
+
+
+def test_restart_persistent_unhealthy_stays_unhealthy(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """De begrensde wachttijd mag een echte HTTP-fout niet maskeren."""
+    from runner_mcp import service_manager
+
+    monkeypatch.setattr(service_manager, "SERVICE_READINESS_GRACE_SECONDS", 0.01)
+    monkeypatch.setattr(service_manager, "SERVICE_READINESS_POLL_SECONDS", 0.001)
+    backend = FakeBackend()
+    checker = SequencedHealth(["unhealthy"])
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path),
+        backend=backend,
+        health_checker=checker,
+    )
+
+    result = manager.action("demo", "web", "restart")
+
+    assert result["health"] == "unhealthy"
+    assert len(backend.actions) == 1
+    assert checker.calls >= 1
+
+
+def test_restart_aborts_readiness_when_systemd_exits(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een achteraf gestopte service kan niet alsnog gezond heten."""
+    from runner_mcp import service_manager
+
+    monkeypatch.setattr(service_manager, "SERVICE_READINESS_POLL_SECONDS", 0.001)
+
+    class ExitingBackend(FakeBackend):
+        def status(self, unit: str) -> ServiceState:
+            self.status_units.append(unit)
+            if len(self.status_units) > 1:
+                self.state = ServiceState("loaded", "inactive", "dead")
+            return self.state
+
+    backend = ExitingBackend()
+    checker = SequencedHealth(["unhealthy", "healthy"])
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path),
+        backend=backend,
+        health_checker=checker,
+    )
+
+    result = manager.action("demo", "web", "restart")
+
+    assert result["health"] == "unhealthy"
+    assert result["active_state"] == "inactive"
+    assert checker.calls == 1
+    assert backend.status_units == ["private-web.service"] * 2
+
+
+def test_status_and_stop_do_not_wait_for_readiness(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """De bestaande read-only/status- en stopsemantiek blijft direct."""
+    from runner_mcp import service_manager
+
+    def forbidden_sleep(_delay: float) -> None:
+        pytest.fail("sleep is forbidden for status and stop")
+
+    monkeypatch.setattr(service_manager.time, "sleep", forbidden_sleep)
+    checker = SequencedHealth(["unhealthy"])
+    backend = FakeBackend()
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project", allow_stop=True),
+        safety=guard(tmp_path),
+        backend=backend,
+        health_checker=checker,
+    )
+
+    assert manager.status("demo", "web")["health"] == "unhealthy"
+    assert manager.action("demo", "web", "stop")["health"] == "unhealthy"
+    assert checker.calls == 2
+    assert backend.actions == [("private-web.service", "stop")]
+
+
+def test_restart_without_health_url_has_no_readiness_wait(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Geen extra checks voor services zonder geconfigureerde HTTP-health."""
+    from runner_mcp import service_manager
+
+    def forbidden_sleep(_delay: float) -> None:
+        pytest.fail("sleep is forbidden without a health URL")
+
+    monkeypatch.setattr(service_manager.time, "sleep", forbidden_sleep)
+    checker = SequencedHealth(["not_configured"])
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project", health_url=None),
+        safety=guard(tmp_path),
+        backend=FakeBackend(),
+        health_checker=checker,
+    )
+
+    assert manager.action("demo", "web", "restart")["health"] == "not_configured"
+    assert checker.calls == 1

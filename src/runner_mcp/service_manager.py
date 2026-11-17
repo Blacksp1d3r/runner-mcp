@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import os
 import subprocess
+import time
 import threading
 import urllib.error
 import urllib.request
@@ -18,6 +19,10 @@ from typing import Protocol
 from .config import ProjectRegistry, ServiceConfig
 from .host_platform import HostPlatform, detect_host_platform
 from .operational_safety import ActionClass, OperatorSafetyGuard
+
+
+SERVICE_READINESS_GRACE_SECONDS = 10.0
+SERVICE_READINESS_POLL_SECONDS = 0.25
 
 
 class ServiceManagerError(RuntimeError):
@@ -268,6 +273,26 @@ class ServiceManager:
             backend.action(service.unit, action)
             state = backend.status(service.unit)
             health = self.health_checker.check(service)
+
+            # Systemd Type=exec can report active before the HTTP listener is
+            # ready. Poll only this authorized service after start/restart;
+            # an inactive unit and a persistent health failure remain unhealthy.
+            if (
+                action in {"start", "restart"}
+                and service.health_url is not None
+                and state.active_state == "active"
+                and health == "unhealthy"
+            ):
+                deadline = time.monotonic() + SERVICE_READINESS_GRACE_SECONDS
+                while health == "unhealthy":
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    time.sleep(min(SERVICE_READINESS_POLL_SECONDS, remaining))
+                    state = backend.status(service.unit)
+                    if state.active_state != "active":
+                        break
+                    health = self.health_checker.check(service)
         finally:
             lock.release()
 

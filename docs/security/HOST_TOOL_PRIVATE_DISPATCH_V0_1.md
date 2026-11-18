@@ -87,3 +87,22 @@ This is a conservative application-level readback, **not** an atomic
 registry lock, process-generation seal, or qualified signed host permit.
 #669's original wheel/host attestation and A7 owner gate remain separate;
 no existing production service enables the private host guard.
+
+
+## v0.1.180 — independent schema snapshots across async catalogue checks
+
+The v0.1.179 readback previously retained references to SDK descriptor
+schema dictionaries. If the SDK reused descriptors and mutated an input or
+output schema **in place** during the awaited digest operation, the earlier
+and later comparisons could both observe the new value and incorrectly
+accept it. The first catalogue observation now deep-copies both schema
+structures before awaiting the digest provider. The second observation is
+compared to those independent values; mutation yields the same bounded
+`host_tool_catalogue_changed` denial and neutral audit tool label.
+
+Disposable regressions mutate top-level and nested input schema content
+through deliberately shared SDK descriptor objects while digest verification
+awaits. Neither may reach the handler; the existing stable-catalogue test
+continues to permit one synthetic execution. This is not an atomic SDK
+registry lock, signed host policy, active-wheel provenance, or deployment
+approval. #669, A7, I7 and actual server processes remain untouched.

@@ -9,6 +9,7 @@ owner before activation. The normal server has NO provider and is unchanged.
 from __future__ import annotations
 
 from collections.abc import Awaitable, Callable
+from copy import deepcopy
 from dataclasses import dataclass
 from time import time
 
@@ -67,8 +68,10 @@ class HostAdmissionMCPServer(MCPServer):
             # Derived from THIS registered SDK catalogue, not the policy or client.
             actual_tools = await self.list_tools()
             names = frozenset(tool.name for tool in actual_tools)
+            # Preserve a deep snapshot: SDK descriptors can reuse the same
+            # mutable nested schema objects across both list_tools() reads.
             original_catalogue = sorted(
-                (tool.name, tool.input_schema, tool.output_schema)
+                (tool.name, deepcopy(tool.input_schema), deepcopy(tool.output_schema))
                 for tool in actual_tools
             )
             actual_schema = await self._host_admission_digest_provider(self)

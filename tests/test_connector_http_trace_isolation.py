@@ -87,3 +87,94 @@ def test_malformed_client_trace_is_not_authoritative() -> None:
     returned = headers[b"traceparent"].decode("ascii")
     assert returned.split("-")[1] != "0" * 32
     assert headers[b"x-request-id"]
+
+
+def test_instance_headers_stable_per_app_and_changed_on_restart() -> None:
+    async def endpoint(scope: dict, receive: object, send: object) -> None:
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    first = RequestIdMiddleware(
+        endpoint, node_id="github-runner", build_version="0.1.7"
+    )
+    second = RequestIdMiddleware(
+        endpoint, node_id="aifordable-lab", build_version="0.1.7"
+    )
+    headers_a1, _, _ = asyncio.run(_invoke(first))
+    headers_a2, _, _ = asyncio.run(_invoke(first))
+    headers_b, _, _ = asyncio.run(_invoke(second))
+    assert headers_a1[b"x-runner-mcp-instance-id"] == headers_a2[
+        b"x-runner-mcp-instance-id"
+    ]
+    assert headers_a1[b"x-runner-mcp-instance-id"] != headers_b[
+        b"x-runner-mcp-instance-id"
+    ]
+    assert headers_a1[b"x-runner-mcp-node-id"] == b"github-runner"
+    assert headers_b[b"x-runner-mcp-node-id"] == b"aifordable-lab"
+    assert headers_a1[b"x-runner-mcp-loaded-version"] == b"0.1.7"
+    assert b"x-runner-mcp-source-revision" not in headers_a1
+    assert headers_a1[b"x-runner-mcp-started-at"].isdigit()
+
+
+def test_identity_headers_on_synthetic_mcp_stream_and_error() -> None:
+    async def endpoint(scope: dict, receive: object, send: object) -> None:
+        # Incoming caller-provided provenance headers are NOT passed through.
+        await send({
+            "type": "http.response.start",
+            "status": 401,
+            "headers": [
+                (b"x-runner-mcp-node-id", b"attacker"),
+                (b"x-runner-mcp-instance-id", b"spoofed"),
+            ],
+        })
+        await send({"type": "http.response.body", "body": b""})
+
+    instance = RequestIdMiddleware(
+        endpoint,
+        node_id="github-runner",
+        build_version="0.1.7",
+        source_revision="a" * 40,
+    )
+    headers, _, _ = asyncio.run(_invoke(instance))
+    assert headers[b"x-runner-mcp-node-id"] == b"github-runner"
+    assert headers[b"x-runner-mcp-instance-id"] == instance.instance_id.encode()
+    assert headers[b"x-runner-mcp-source-revision"] == b"a" * 40
+    assert headers[b"x-request-id"]
+
+
+def test_concurrent_requests_have_distinct_traces_but_same_instance() -> None:
+    async def endpoint(scope: dict, receive: object, send: object) -> None:
+        await asyncio.sleep(0)
+        await send({"type": "http.response.start", "status": 200, "headers": []})
+        await send({"type": "http.response.body", "body": b""})
+
+    app = RequestIdMiddleware(endpoint, node_id="github-runner")
+    # asyncio.gather is created inside the running event loop.
+    async def run():
+        return await asyncio.gather(*(_invoke(app) for _ in range(10)))
+
+    results = asyncio.run(run())
+    assert len({r[0][b"x-request-id"] for r in results}) == 10
+    assert len({r[0][b"traceparent"] for r in results}) == 10
+    assert {r[0][b"x-runner-mcp-instance-id"] for r in results} == {
+        app.instance_id.encode()
+    }
+
+
+def test_malformed_deployment_node_and_unproven_revision_rejected() -> None:
+    async def endpoint(scope: dict, receive: object, send: object) -> None:
+        return None
+
+    for bad in ("../../other", "WrongCase", "", "bad host", "a" * 65, True):
+        try:
+            RequestIdMiddleware(endpoint, node_id=bad)
+        except ValueError:
+            pass
+        else:
+            raise AssertionError("invalid host label accepted")
+    try:
+        RequestIdMiddleware(endpoint, source_revision="not-an-attested-hash")
+    except ValueError:
+        pass
+    else:
+        raise AssertionError("unproven revision string accepted")

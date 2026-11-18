@@ -1,0 +1,75 @@
+{
+  "_doel": "Streefwaarden voor het actieve projectgeheugen. Modus advisory = alleen waarschuwen; no_growth = niet verder laten groeien boven het doel; enforce = harde grens. Pas modi pas aan na migratie van het betreffende bestand.",
+  "files": {
+    "AGENTS.md": {
+      "target_chars": 10000,
+      "mode": "advisory"
+    },
+    "handover/CURRENT_STATE.md": {
+      "target_chars": 20000,
+      "mode": "advisory"
+    },
+    "handover/SESSION_HANDOFF.md": {
+      "target_chars": 10000,
+      "mode": "advisory"
+    },
+    "roadmap/ROADMAP.md": {
+      "target_chars": 25000,
+      "mode": "advisory"
+    },
+    "handover/AGENT_EXCHANGE.md": {
+      "target_chars": 15000,
+      "mode": "advisory"
+    },
+    "decisions/DECISIONS.md": {
+      "target_chars": 60000,
+      "mode": "advisory"
+    },
+    "handover/NEXT_ACTION.md": {
+      "target_chars": 10000,
+      "mode": "advisory"
+    },
+    "roadmap/DEPENDENCIES.md": {
+      "target_chars": 15000,
+      "mode": "advisory"
+    },
+    "claude_feedback/CURRENT_ASSIGNMENT.md": {
+      "target_chars": 10000,
+      "mode": "advisory"
+    }
+  },
+  "bootstrap_read_set": [
+    "AGENTS.md",
+    "handover/CURRENT_STATE.md",
+    "handover/SESSION_HANDOFF.md",
+    "roadmap/ROADMAP.md",
+    "roadmap/DEPENDENCIES.md",
+    "claude_feedback/CURRENT_ASSIGNMENT.md",
+    "handover/AGENT_EXCHANGE.md",
+    "decisions/DECISIONS.md"
+  ],
+  "duplicate_scan": [
+    "handover/CURRENT_STATE.md",
+    "handover/SESSION_HANDOFF.md",
+    "roadmap/ROADMAP.md"
+  ],
+  "manifest_glob": "**/*.doc-memory.json",
+  "infra_scan_globs": [
+    "AGENTS.md",
+    "handover/*.md",
+    "roadmap/*.md",
+    "decisions/*.md"
+  ],
+  "infra_allow_patterns": [],
+  "foreign_ref_prefixes": [
+    "Runner-Fabric",
+    "Runner Fabric",
+    "Fabric",
+    "AIfordable",
+    "Library"
+  ],
+  "archive_glob": "**/*.archive-*.md",
+  "frozen_files": {
+    "docs/agents/AGENTS_FULL_2026-11-15.md": "0d35aa6b52522397bb1a5d676099d461b15ab597d710c918c4dbb91114521e33"
+  }
+}

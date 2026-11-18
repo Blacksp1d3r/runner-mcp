@@ -210,6 +210,70 @@ def test_cursor_store_initializes_reads_and_restricts_permissions(tmp_path) -> N
     assert oct(path.stat().st_mode & 0o777) == "0o600"
 
 
+def test_cursor_status_missing_file_does_not_create(tmp_path, monkeypatch) -> None:
+    path = tmp_path / "cursor.json"
+    store = GitHubWatcherCursorStore(path)
+
+    def forbidden_chmod(*args, **kwargs):
+        raise AssertionError("read must not chmod")
+
+    monkeypatch.setattr("runner_mcp.github_watcher.os.fchmod", forbidden_chmod)
+    assert store.read() is None
+    assert not path.exists()
+
+
+def test_cursor_status_opens_readonly_without_chmod(tmp_path, monkeypatch) -> None:
+    import os
+
+    path = tmp_path / "cursor.json"
+    store = GitHubWatcherCursorStore(path)
+    store.initialize("a" * 40)
+    before = path.stat().st_mode
+    real_open = os.open
+    flags_seen = []
+
+    def observed_open(filename, flags, *args, **kwargs):
+        if str(filename) == str(path):
+            flags_seen.append(flags)
+        return real_open(filename, flags, *args, **kwargs)
+
+    def forbidden_chmod(*args, **kwargs):
+        raise AssertionError("read must not chmod")
+
+    monkeypatch.setattr("runner_mcp.github_watcher.os.open", observed_open)
+    monkeypatch.setattr("runner_mcp.github_watcher.os.fchmod", forbidden_chmod)
+    assert store.read() == "a" * 40
+    assert path.stat().st_mode == before
+    assert len(flags_seen) == 1
+    assert flags_seen[0] & os.O_ACCMODE == os.O_RDONLY
+    assert not flags_seen[0] & os.O_CREAT
+
+
+def test_cursor_status_rejects_unsafe_mode_without_repair(
+    tmp_path, monkeypatch,
+) -> None:
+    path = tmp_path / "cursor.json"
+    store = GitHubWatcherCursorStore(path)
+    store.initialize("a" * 40)
+    path.chmod(0o644)
+
+    def forbidden_chmod(*args, **kwargs):
+        raise AssertionError("read must not repair file permissions")
+
+    monkeypatch.setattr("runner_mcp.github_watcher.os.fchmod", forbidden_chmod)
+    with pytest.raises(GitHubWatcherError, match="permissions are unsafe"):
+        store.read()
+    assert path.stat().st_mode & 0o777 == 0o644
+
+
+def test_cursor_status_invalid_utf8_is_bounded(tmp_path) -> None:
+    path = tmp_path / "cursor.json"
+    path.write_bytes(bytes([0xFF]))
+    path.chmod(0o600)
+    with pytest.raises(GitHubWatcherError, match="read failed"):
+        GitHubWatcherCursorStore(path).read()
+
+
 def test_cursor_store_refuses_second_initialization(tmp_path) -> None:
     store = GitHubWatcherCursorStore(tmp_path / "cursor.json")
     store.initialize("a" * 40)
@@ -268,6 +332,7 @@ def test_cursor_store_refuses_symlink(tmp_path) -> None:
 def test_cursor_store_rejects_invalid_state(tmp_path, content: str) -> None:
     path = tmp_path / "cursor.json"
     path.write_text(content, encoding="utf-8")
+    path.chmod(0o600)
     store = GitHubWatcherCursorStore(path)
 
     with pytest.raises(GitHubWatcherError):
@@ -277,6 +342,7 @@ def test_cursor_store_rejects_invalid_state(tmp_path, content: str) -> None:
 def test_cursor_store_rejects_oversized_state(tmp_path) -> None:
     path = tmp_path / "cursor.json"
     path.write_text("x" * (MAX_CURSOR_BYTES + 1), encoding="utf-8")
+    path.chmod(0o600)
 
     with pytest.raises(GitHubWatcherError, match="size limit"):
         GitHubWatcherCursorStore(path).read()
@@ -309,6 +375,97 @@ def test_explicit_bootstrap_skips_existing_history(tmp_path) -> None:
     assert outcome.state == GitHubWatcherCycleState.IDLE
     assert executor.calls == []
     assert transport.compare_calls == []
+
+
+def test_watcher_head_changed_while_persisting_blocks_cursor_until_recheck(
+    tmp_path,
+) -> None:
+    class MutatingHeadTransport(FakeTransport):
+        def persist_result(self, request_id: str, result_json: str) -> None:
+            super().persist_result(request_id, result_json)
+            self.head = "c" * 40
+
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path, transport=MutatingHeadTransport()
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-head-changed"]
+    transport.requests["req-head-changed"] = _request("req-head-changed")
+
+    first = watcher.run_cycle(publish_heartbeat=False)
+    assert first.state == GitHubWatcherCycleState.DEGRADED
+    assert first.processed_requests == 1
+    assert first.recovery_attention == 1
+    assert cursor.read() == "a" * 40
+    assert len(executor.calls) == 1
+
+    # A subsequent exact-head comparison reconciles the durable result;
+    # it must not run the already-claimed request twice.
+    second = watcher.run_cycle(publish_heartbeat=False)
+    assert second.state == GitHubWatcherCycleState.PROCESSED
+    assert second.reconciled_requests == 1
+    assert cursor.read() == "c" * 40
+    assert len(executor.calls) == 1
+
+
+def test_watcher_head_read_failure_after_batch_preserves_cursor(tmp_path) -> None:
+    class RecheckUnavailableTransport(FakeTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.head_reads = 0
+
+        def request_head_sha(self) -> str:
+            self.head_reads += 1
+            if self.head_reads == 2:
+                raise GitHubMailboxTransportError(
+                    "head read temporarily unavailable",
+                    kind=TransportFailureKind.UNAVAILABLE,
+                )
+            return super().request_head_sha()
+
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path, transport=RecheckUnavailableTransport()
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-recheck-timeout"]
+    transport.requests["req-recheck-timeout"] = _request("req-recheck-timeout")
+
+    first = watcher.run_cycle(publish_heartbeat=False)
+    assert first.state == GitHubWatcherCycleState.DEGRADED
+    assert first.processed_requests == 1
+    assert cursor.read() == "a" * 40
+
+    second = watcher.run_cycle(publish_heartbeat=False)
+    assert second.state == GitHubWatcherCycleState.PROCESSED
+    assert second.reconciled_requests == 1
+    assert cursor.read() == "b" * 40
+    assert len(executor.calls) == 1
+
+
+def test_watcher_invalid_final_head_does_not_commit_cursor(tmp_path) -> None:
+    class InvalidFinalHeadTransport(FakeTransport):
+        def __init__(self) -> None:
+            super().__init__()
+            self.head_reads = 0
+
+        def request_head_sha(self) -> str:
+            self.head_reads += 1
+            if self.head_reads == 2:
+                return "NOT_A_COMMIT_SHA"
+            return super().request_head_sha()
+
+    watcher, transport, executor, _ledger, cursor = _watcher(
+        tmp_path, transport=InvalidFinalHeadTransport()
+    )
+    cursor.initialize("a" * 40)
+    transport.changed_ids = ["req-bad-head"]
+    transport.requests["req-bad-head"] = _request("req-bad-head")
+
+    outcome = watcher.run_cycle(publish_heartbeat=False)
+    assert outcome.state == GitHubWatcherCycleState.DEGRADED
+    assert outcome.processed_requests == 1
+    assert cursor.read() == "a" * 40
+    assert len(executor.calls) == 1
 
 
 def test_fresh_request_executes_once_and_advances_cursor(tmp_path) -> None:

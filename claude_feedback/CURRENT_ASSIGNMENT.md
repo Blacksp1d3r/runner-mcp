@@ -1774,7 +1774,7 @@ Do not publish automatically merely because this task is READY. Keep publication
 Status: `COMPLETE` via issue #217 / PR #219 / merge `4b5351de6e03ab8938ebb799e2847e2195e8ee3a`. Exact-head attribution #285 and validation #790 are green, including Ruff/pytest, built release artifact and clean five-minute demo.
 
 Goal:
-Close the two gaps found by live `github-runner` self-update qualification: host-dependent autostart CLI tests and a target checkout left ahead of the installed baseline after a pre-install failure.
+Close the two gaps found by live `AF-HOST-0001` self-update qualification: host-dependent autostart CLI tests and a target checkout left ahead of the installed baseline after a pre-install failure.
 
 Result:
 - all autostart CLI tests are isolated from real user systemd/cron state and real runtime smoke/diagnostics;

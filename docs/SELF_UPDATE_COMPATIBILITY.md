@@ -13,10 +13,12 @@ The current packaging metadata declares:
 | Python | `>=3.12` |
 | Build backend | `setuptools.build_meta` |
 | Build requirements | `setuptools>=75` |
-| Runtime | `setuptools>=75`, `mcp>=2.0,<3`, `pydantic>=2.10,<3`, `PyYAML>=6,<7`, `starlette>=0.48,<1`, `uvicorn>=0.35,<1` |
-| Development/test | `httpx>=0.28,<1`, `pytest>=8,<9`, `ruff>=0.13,<1` |
+| Runtime (GitHub main v0.1.27) | `setuptools>=75`, `cryptography>=44,<51`, `mcp>=2.0,<3`, `pydantic>=2.10,<3`, `PyYAML>=6,<7`, `starlette>=0.48,<1`, `uvicorn>=0.35,<1` |
+| Development/test (GitHub main v0.1.27) | `httpx>=0.28,<1`, `jsonschema>=4.23,<5`, `pytest>=8,<9`, `ruff>=0.13,<1` |
 
 `setuptools>=75` is intentionally both a build requirement and a runtime dependency today because offline self-update wheel staging disables build isolation and dependency resolution.
+
+> **2026-10-17 release-boundary clarification:** This table reflects the **GitHub main** package specification at version 0.1.27, not the independently attested contents of any serving host. The installed 0.1.9-associated source does **not** declare `cryptography`; 0.1.27 adds it as a required runtime dependency. The in-place `--no-deps` self-update must refuse that contract change and requires an attended, dependency-resolving **separate, non-serving install prefix** plus recovery qualification before any live cutover. Provenance of the actively serving 0.1.9 build is still unavailable; the version string alone is not an installation receipt. No alternate updater, policy bypass or unapproved CI artifact is authorized. The conservative policy below remains unchanged.
 
 ## What the current no-dependency path can safely assume
 

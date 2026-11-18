@@ -8,8 +8,18 @@ from datetime import datetime
 from typing import Any
 from uuid import UUID
 
+from .a6_storage_readonly import (
+    A6StorageReadError,
+    a6_storage_wait,
+    validate_a6_storage_readonly,
+)
 from .bridge_mcp_executor import LocalMCPClient, LocalMCPConfig
 from .bridge_processor import BridgeExecutionAdapterError
+from .worker_process_readonly import (
+    WorkerProcessBridgeError,
+    bounded_worker_wait,
+    validate_worker_observation,
+)
 
 _FABRIC_A6_PREFLIGHT_TOOLS = frozenset(
     {
@@ -21,6 +31,8 @@ _FABRIC_A6_PREFLIGHT_TOOLS = frozenset(
 _FABRIC_TOOLS = frozenset(
     {
         "host_inspect",
+        "worker_process_inspect",
+        "a6_storage_preflight",
         "external_target_preflight",
         "external_target_inspect",
         "operational_snapshot",
@@ -36,8 +48,17 @@ _FABRIC_TOOLS = frozenset(
         "ci_runner_guest_enroll",
         "ci_runner_guest_start",
         "ci_runner_guest_stop",
+        "control_center_black_submit",
+        "control_center_black_status",
+        "control_center_black_ack",
     }
 )
+
+# Host inspection and operational snapshot are provided by the fixed agent
+# server. A6, probe, CI guest and work-unit tools are capability-gated and
+# MUST NOT become required merely because this bridge allows their names.
+_FABRIC_REQUIRED_TOOLS = frozenset({"host_inspect", "operational_snapshot"})
+
 _ID_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
 _DIGEST_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -62,6 +83,119 @@ _CI_GUEST_OPERATIONS = {"status", "enroll", "start", "stop"}
 
 class FabricBridgeError(RuntimeError):
     """Safe Fabric bridge failure without endpoint/token/provider detail."""
+
+
+def bounded_host_inspection_unavailable(reason: object) -> dict[str, object]:
+    """Classify the original failed host read without a follow-up network call.
+
+    A failed read cannot justify automatic preflight/retries. The caller can
+    explicitly request fabric_bridge_preflight in a separate invocation.
+    """
+    invalid = {
+        "Runner Fabric returned invalid host inspection",
+        "Runner Fabric host inspection must be read-only",
+        "Runner Fabric host inspection is too large",
+        "Runner Fabric host inspection is invalid",
+        "Runner Fabric host inspection contains private detail",
+    }
+    category = (
+        "invalid_inspection_payload"
+        if isinstance(reason, str) and reason in invalid
+        else "fabric_inspection_unavailable"
+    )
+    return {
+        "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
+        "state": "unavailable",
+        "error_category": category,
+        "mutation_enabled": False,
+    }
+
+
+def bounded_snapshot_unavailable(reason: object) -> dict[str, object]:
+    """Report one failed read without retry or any mutation authority.
+
+    Only predeclared categories are emitted; raw exceptions, endpoints and
+    credentials never enter this read-only response.
+    """
+    invalid_payload = {
+        "Runner Fabric returned invalid operational snapshot",
+        "Runner Fabric operational snapshot must be read-only",
+    }
+    category = (
+        "fabric_snapshot_invalid_payload"
+        if isinstance(reason, str) and reason in invalid_payload
+        else "fabric_snapshot_unavailable"
+    )
+    return {
+        "schema_version": "runner-mcp/fabric-operational-snapshot-error/v1",
+        "state": "unavailable",
+        "reason_code": category,
+        "degraded": True,
+        "unknown_layers": ["fabric-bridge"],
+        "mutation_enabled": False,
+        "execution_enabled": False,
+    }
+
+
+
+def bounded_external_target_read_unavailable(
+    reason: object, *, phase: str
+) -> dict[str, object]:
+    """Report a known blocked Fabric target read without leaking peer errors.
+
+    A failed INSPECT may already have performed network reads. Never claim it
+    was not attempted, and never attempt another remote read to classify it.
+    """
+    if phase not in {"preflight", "inspect"}:
+        raise ValueError("invalid fixed external target read phase")
+    known_invalid = {
+        "Runner Fabric returned invalid external target preflight",
+        "Runner Fabric external target preflight is not ready",
+        "Runner Fabric external target preflight is not read-only",
+        "Runner Fabric returned invalid external target inspection",
+        "Runner Fabric external target inspection is invalid",
+        "Runner Fabric external target inspection must be read-only",
+    }
+    return {
+        "schema_version": "runner-mcp/fabric-external-target-read-unavailable/v1",
+        "state": "unavailable",
+        "phase": phase,
+        "reason_code": (
+            "invalid_peer_evidence"
+            if type(reason) is str and reason in known_invalid
+            else "target_read_unavailable"
+        ),
+        "ready": False,
+        "mutation_enabled": False,
+        "execution_enabled": False,
+    }
+
+
+def bounded_ci_guest_status_unavailable(reason: object) -> dict[str, object]:
+    """Represent a failed optional CI guest READ without guessing guest state.
+
+    Never expose transport errors, private configuration or actual host names.
+    A failed read cannot justify enrollment, activation or an automatic retry.
+    """
+    invalid = {
+        "Runner Fabric returned invalid CI guest result",
+        "Runner Fabric CI guest result contains private detail",
+        "Runner Fabric CI guest result is too large",
+    }
+    code = (
+        "ci_guest_status_invalid_payload"
+        if type(reason) is str and reason in invalid
+        else "ci_guest_status_unavailable"
+    )
+    return {
+        "schema_version": "runner-mcp/fabric-ci-guest-status-error/v1",
+        "state": "unavailable",
+        "reason_code": code,
+        "guest_registered": None,
+        "guest_running": None,
+        "mutation_enabled": False,
+        "execution_enabled": False,
+    }
 
 
 @dataclass(frozen=True, slots=True)
@@ -175,6 +309,38 @@ class FabricBridgeClient:
         except BridgeExecutionAdapterError as exc:
             raise FabricBridgeError("Runner Fabric host inspection failed") from exc
         return _validate_host_inspection(result)
+
+    def worker_process_inspect(self, worker: str) -> dict[str, object]:
+        """Ask only the fixed authenticated Fabric peer for process observation."""
+        try:
+            bounded_worker_wait(worker, "fabric_read_unavailable")
+        except WorkerProcessBridgeError as exc:
+            raise FabricBridgeError("worker identity is not allowlisted") from exc
+        try:
+            result = self._client()._call_tool(
+                "worker_process_inspect", {"worker": worker}
+            )
+        except BridgeExecutionAdapterError:
+            return bounded_worker_wait(worker, "fabric_read_unavailable")
+        try:
+            return validate_worker_observation(worker, result)
+        except WorkerProcessBridgeError:
+            return bounded_worker_wait(worker, "fabric_read_invalid")
+
+    def a6_storage_preflight(self) -> dict[str, object]:
+        """Read fixed local A6 journal from existing protected Fabric peer.
+
+        No new client, endpoint, caller path, mount, credential or host access.
+        An older Fabric peer yields safe WAIT, never automatic retry/update.
+        """
+        try:
+            raw = self._client()._call_tool("a6_storage_preflight", {})
+        except BridgeExecutionAdapterError:
+            return a6_storage_wait("fabric_read_unavailable")
+        try:
+            return validate_a6_storage_readonly(raw)
+        except A6StorageReadError:
+            return a6_storage_wait("fabric_read_invalid")
 
     def external_target_preflight(self) -> dict[str, Any]:
         """Return bounded config-only external-target preflight state."""
@@ -481,13 +647,65 @@ class FabricBridgeClient:
         )
         return result
 
+
+    def _call_black_control(self, name: str, arguments: dict[str, object]) -> dict[str, object]:
+        """Delegate ONLY fixed Black readback/ACK to the authenticated Fabric peer.
+
+        Fabric owns the actual operator-MFA credential, relay client and durable
+        original-requester receipt. Missing peer tools fail closed.
+        """
+        if name not in {
+            "control_center_black_submit",
+            "control_center_black_status",
+            "control_center_black_ack",
+        }:
+            raise FabricBridgeError("unsupported Control Center operation")
+        try:
+            result = self._client()._call_tool(name, arguments)
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError("Control Center Fabric issuer unavailable") from exc
+        if not isinstance(result, dict):
+            raise FabricBridgeError("Control Center evidence unavailable")
+        return result
+
+    def control_center_black_submit(self) -> dict[str, object]:
+        return self._call_black_control("control_center_black_submit", {})
+
+    def control_center_black_status(
+        self, request_id: str, fingerprint: str, requester_subject: str
+    ) -> dict[str, object]:
+        return self._call_black_control(
+            "control_center_black_status",
+            {
+                "request_id": request_id,
+                "fingerprint": fingerprint,
+                "requester_subject": requester_subject,
+            },
+        )
+
+    def control_center_black_ack(
+        self, request_id: str, fingerprint: str,
+        requester_subject: str, result_digest: str
+    ) -> dict[str, object]:
+        return self._call_black_control(
+            "control_center_black_ack",
+            {
+                "request_id": request_id,
+                "fingerprint": fingerprint,
+                "requester_subject": requester_subject,
+                "result_digest": result_digest,
+            },
+        )
+
     def _client(self) -> LocalMCPClient:
         client = getattr(self._local, "client", None)
         if client is None:
             client = LocalMCPClient(
                 self._mcp_config,
                 allowed_tools=_FABRIC_TOOLS,
+                required_tools=_FABRIC_REQUIRED_TOOLS,
                 client_name="runner-mcp-fabric-bridge",
+                expected_component_id="runner-fabric-agent-mcp",
             )
             self._local.client = client
         return client

@@ -1,6 +1,6 @@
 # Runner-MCP — Child task index and legacy compatibility
 
-Canonical standards: Library `MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` v1.2 and `AI_REPOSITORY_BLUEPRINT_STANDARD.md` v1.0. Tracking parent: [#630](https://github.com/Blacksp1d3r/runner-mcp/issues/630).
+Canonical standards: Library `MASTER_AI_ENGINEERING_SESSION_HANDOFF_PROTOCOL.md` v1.7 (current since 2026-10-31) and `AI_REPOSITORY_BLUEPRINT_STANDARD.md` v1.0. Tracking parent: [#630](https://github.com/Blacksp1d3r/runner-mcp/issues/630).
 
 This is an **index**, not a second task backlog or execution authority. Actual PR/issue state and qualified Fabric leases always win over an index, chat or stale STATE. No implicit claim, automated execution, approval or completed test is implied by a link.
 

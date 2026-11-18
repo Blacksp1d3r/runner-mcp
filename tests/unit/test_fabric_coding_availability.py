@@ -292,3 +292,90 @@ def test_unmanaged_launcher_fails_closed(tmp_path: Path) -> None:
         match="launcher_unmanaged",
     ):
         runner.run("unsafe-billing-configuration", "b" * 40)
+
+def test_managed_launcher_symlink_cycle_fails_closed_without_dispatch(
+    tmp_path: Path,
+) -> None:
+    home = tmp_path / "home"
+    launcher = home / ".local/bin/runner-fabric"
+    launcher.parent.mkdir(parents=True)
+    launcher.symlink_to(launcher)
+    calls = []
+
+    runner = FabricCodingAvailabilityQualificationRunner(
+        safety=_safety(tmp_path),
+        environment=_Q7_ENV,
+        home=home,
+        runner=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert runner.preflight() == {
+        "schemaVersion": "runner-mcp/coding-availability-preflight/v1",
+        "state": "wait",
+        "reason_code": "fabric_launcher_unqualified",
+        "qualification_executed": False,
+        "provider_session_checked": False,
+        "dispatch_authorized": False,
+    }
+    with pytest.raises(
+        FabricCodingAvailabilityQualificationError,
+        match="fabric_coding_availability_qualification_launcher_unmanaged",
+    ):
+        runner.run("provider-temporarily-unavailable", "a" * 40)
+    assert calls == []
+
+def test_managed_slots_symlink_cycle_fails_closed_without_dispatch(
+    tmp_path: Path,
+) -> None:
+    home = tmp_path / "home"
+    slots = home / ".local/state/runner-fabric/control-plane-update/slots"
+    slots.parent.mkdir(parents=True)
+    slots.symlink_to(slots, target_is_directory=True)
+    launcher = home / ".local/bin/runner-fabric"
+    launcher.parent.mkdir(parents=True)
+    launcher.symlink_to(slots / "release" / "runner-fabric")
+    calls = []
+
+    runner = FabricCodingAvailabilityQualificationRunner(
+        safety=_safety(tmp_path),
+        environment=_Q7_ENV,
+        home=home,
+        runner=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert runner.preflight()["reason_code"] == "fabric_launcher_unqualified"
+    with pytest.raises(
+        FabricCodingAvailabilityQualificationError,
+        match="fabric_coding_availability_qualification_launcher_unmanaged",
+    ):
+        runner.run("subscription-auth-required", "b" * 40)
+    assert calls == []
+
+def test_launcher_outside_managed_slots_refuses_execution(
+    tmp_path: Path,
+) -> None:
+    home = tmp_path / "home"
+    slots = home / ".local/state/runner-fabric/control-plane-update/slots"
+    slots.mkdir(parents=True)
+    outside = tmp_path / "outside-runner-fabric"
+    outside.write_text("#!/bin/sh\n", encoding="utf-8")
+    outside.chmod(0o700)
+    launcher = home / ".local/bin/runner-fabric"
+    launcher.parent.mkdir(parents=True)
+    launcher.symlink_to(outside)
+    calls = []
+
+    runner = FabricCodingAvailabilityQualificationRunner(
+        safety=_safety(tmp_path),
+        environment=_Q7_ENV,
+        home=home,
+        runner=lambda *args, **kwargs: calls.append((args, kwargs)),
+    )
+
+    assert runner.preflight()["reason_code"] == "fabric_launcher_unqualified"
+    with pytest.raises(
+        FabricCodingAvailabilityQualificationError,
+        match="fabric_coding_availability_qualification_launcher_unmanaged",
+    ):
+        runner.run("unsafe-billing-configuration", "c" * 40)
+    assert calls == []

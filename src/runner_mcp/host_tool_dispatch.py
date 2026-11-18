@@ -57,6 +57,9 @@ class HostAdmissionMCPServer(MCPServer):
         self, name: str, arguments: dict[str, object], context: object | None = None
     ) -> object:
         """Check on EVERY SDK call, before any registered handler can run."""
+        # A denied tools/call name is client-controlled. Never audit that raw
+        # string unless the SDK itself has declared it as a known tool.
+        names: frozenset[str] = frozenset()
         try:
             evidence = self._host_admission_evidence_provider()
             if type(evidence) is not HostDispatchEvidence:
@@ -97,7 +100,13 @@ class HostAdmissionMCPServer(MCPServer):
                 self._host_admission_audit.append(
                     AuditEvent(
                         current_request_id(),
-                        name if type(name) is str and len(name) <= 96 else "unknown_tool",
+                        (
+                            name
+                            if type(name) is str
+                            and len(name) <= 96
+                            and name in names
+                            else "unknown_tool"
+                        ),
                         None,
                         "authenticated-client",
                         "denied:" + verdict.reason_code,

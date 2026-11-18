@@ -46,3 +46,22 @@ physical host qualification.
 - No active host override or live policy loader.
 - No deployment, A7, I7, cron, systemd, runner or server restart.
 - Requires next-patch release reservation and exact-head full CI.
+
+## v0.1.178 — audit privacy for unregistered tool names
+
+An MCP client controls the `tools/call.params.name` string. An unregistered
+name may itself contain private markers or malicious log content. The private
+dispatch must NOT record that arbitrary name in the durable existing
+`AuditEvent`. Only an exact built-in string contained in the SDK's **actual
+registered** tool catalogue (and bounded to 96 chars) is logged by name;
+otherwise the audit field is the neutral literal `unknown_tool`. When private
+identity lookup fails before the catalogue is observed, the catalogue remains
+unknown and the same neutral label applies. The categorical refusal reason
+and request correlation remain intact.
+
+The guard still returns fixed `HOST_TOOL_NOT_PERMITTED`, and recognized
+denied OCR tools retain their exact audit names. New SDK and authenticated HTTP
+tests exercise a client-injected synthetic sensitive marker, absent policy
+and failed evidence provider. No secret or path ever becomes a policy input or
+new feature. This patch is not a replacement for the unmerged #669 original
+host/wheel witness, independent signed permit or deployment approval.

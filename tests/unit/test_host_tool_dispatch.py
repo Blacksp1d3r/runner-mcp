@@ -388,3 +388,48 @@ def test_identical_sdk_catalogue_after_async_digest_allows_one_handler():
     assert result
     assert count == {"executions": 1, "catalogue_reads": 2}
     assert sink.events == []
+
+
+@pytest.mark.parametrize("mutation", ["top_level", "nested"])
+def test_in_place_sdk_schema_mutation_during_digest_denies_before_handler(mutation):
+    """SDK descriptor aliasing must not erase the original schema snapshot."""
+    sink = AuditSink()
+    executed = {"count": 0, "reads": 0}
+    stable = HostDispatchEvidence(ASSET, REV, _policy())
+    shared_tools = []
+
+    async def mutable_schema_digest(_):
+        await asyncio.sleep(0)
+        schema = shared_tools[0].input_schema
+        if mutation == "top_level":
+            schema["x-test-schema-change"] = "changed"
+        else:
+            schema["properties"]["value"]["description"] = "changed"
+        return SCHEMA
+
+    mcp = HostAdmissionMCPServer(
+        "in-place-sdk-schema",
+        evidence_provider=lambda: stable,
+        schema_digest_provider=mutable_schema_digest,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test(value: str) -> str:
+        executed["count"] += 1
+        return "must-not-write:" + value
+
+    # Model the SDK returning the SAME descriptors before and after the await.
+    shared_tools.extend(asyncio.run(mcp.list_tools()))
+
+    async def shared_catalogue():
+        executed["reads"] += 1
+        return shared_tools
+
+    mcp.list_tools = shared_catalogue
+    with pytest.raises(ToolError, match="^HOST_TOOL_NOT_PERMITTED$"):
+        asyncio.run(mcp.call_tool("write_test", {"value": "safe"}))
+    assert executed == {"count": 0, "reads": 2}
+    assert len(sink.events) == 1
+    assert sink.events[0].tool == "unknown_tool"
+    assert sink.events[0].result == "denied:host_tool_catalogue_changed"

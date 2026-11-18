@@ -1071,6 +1071,17 @@ def assess_single_peer_mixed_backend_status(
         or any(type(row) is not AutostartStatus for row in systemd_rows)
     ):
         return wait("backend_inventory_unqualified")
+    # Wijs ongekwalificeerde rolwaarden af vóór de dictionaryconversie.
+    # Een lijst/dict als rolnaam mag geen TypeError veroorzaken; integer 0/1
+    # of tekst mag evenmin als een geldige booleaanse supervisorclaim gelden.
+    if any(
+        type(row.component) is not str
+        or type(row.installed) is not bool
+        or type(row.enabled) is not bool
+        or type(row.active) is not bool
+        for row in (*cron_rows, *systemd_rows)
+    ):
+        return wait("backend_inventory_type_unqualified")
     cron_by_role = {row.component: row for row in cron_rows}
     systemd_by_role = {row.component: row for row in systemd_rows}
     if set(cron_by_role) != expected or set(systemd_by_role) != expected:

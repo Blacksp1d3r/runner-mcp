@@ -1,0 +1,168 @@
+"""Disposable MCPServer interception tests, not real host authority."""
+
+from __future__ import annotations
+
+import asyncio
+from dataclasses import replace
+from time import time
+
+import pytest
+from mcp.server.mcpserver.exceptions import ToolError
+
+from runner_mcp.host_tool_admission import QualifiedHostToolPolicy
+from runner_mcp.host_tool_dispatch import HostAdmissionMCPServer, HostDispatchEvidence
+
+REV = "a" * 40
+SCHEMA = "b" * 64
+ASSET = "service:primary"
+
+
+class AuditSink:
+    def __init__(self, *, fail=False):
+        self.events = []
+        self.fail = fail
+
+    def append(self, event):
+        if self.fail:
+            raise OSError("private/audit/path/should-not-leak")
+        self.events.append(event)
+
+
+def _policy(*, host=ASSET, permitted=frozenset({"write_test"}), expiry=None):
+    return QualifiedHostToolPolicy(
+        service_asset_id=host,
+        release_source_revision=REV,
+        interface_schema_sha256=SCHEMA,
+        permitted_tool_names=permitted,
+        expires_at_epoch=expiry if expiry is not None else int(time()) + 3600,
+    )
+
+
+def _rig(*, policy=None, asset=ASSET, revision=REV, audit=None, provider_error=False):
+    sink = audit or AuditSink()
+    facts = HostDispatchEvidence(
+        verified_service_asset_id=asset,
+        runtime_source_revision=revision,
+        policy=policy,
+    )
+    observed = {"count": 0}
+
+    def provider():
+        if provider_error:
+            raise OSError("secret://provider/not-qualified")
+        return facts
+
+    async def digest(_):
+        return SCHEMA
+
+    mcp = HostAdmissionMCPServer(
+        "host-admission-disposable",
+        evidence_provider=provider,
+        schema_digest_provider=digest,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test(value: str) -> str:
+        observed["count"] += 1
+        return "written:" + value
+
+    return mcp, observed, sink
+
+
+def _invoke(mcp, value="safe"):
+    return asyncio.run(mcp.call_tool("write_test", {"value": value}))
+
+
+def test_qualified_private_policy_passes_to_original_sdk_handler_once():
+    mcp, observed, audit = _rig(policy=_policy())
+    response = _invoke(mcp)
+    assert response
+    assert observed["count"] == 1
+    assert audit.events == []
+
+
+@pytest.mark.parametrize(
+    ("case", "reason"),
+    [
+        ("missing", "host_policy_unavailable"),
+        ("wrong_host", "host_identity_mismatch"),
+        ("wrong_revision", "runtime_generation_mismatch"),
+        ("expired", "host_policy_expired"),
+        ("no_grant", "tool_not_granted_on_host"),
+        ("bad_catalogue", "host_policy_catalogue_mismatch"),
+        ("provider_error", "host_admission_evidence_unavailable"),
+    ],
+)
+def test_denials_are_audited_before_any_side_effect(case, reason):
+    policy = _policy()
+    attrs = {"policy": policy}
+    if case == "missing":
+        attrs["policy"] = None
+    elif case == "wrong_host":
+        attrs["asset"] = "service:foreign"
+    elif case == "wrong_revision":
+        attrs["revision"] = "c" * 40
+    elif case == "expired":
+        attrs["policy"] = replace(policy, expires_at_epoch=1)
+    elif case == "no_grant":
+        attrs["policy"] = replace(policy, permitted_tool_names=frozenset())
+    elif case == "bad_catalogue":
+        attrs["policy"] = replace(policy, permitted_tool_names=frozenset({"foreign_tool"}))
+    elif case == "provider_error":
+        attrs["provider_error"] = True
+    mcp, observed, sink = _rig(**attrs)
+    with pytest.raises(ToolError, match="HOST_TOOL_NOT_PERMITTED"):
+        _invoke(mcp, value="client:/etc/shadow")
+    assert observed["count"] == 0
+    assert len(sink.events) == 1
+    assert sink.events[0].result == "denied:" + reason
+    assert "shadow" not in str(sink.events[0])
+
+
+def test_failing_audit_does_not_execute_tool_or_leak_exception():
+    sink = AuditSink(fail=True)
+    mcp, observed, _ = _rig(policy=None, audit=sink)
+    with pytest.raises(ToolError, match="^HOST_TOOL_NOT_PERMITTED$") as exc:
+        _invoke(mcp)
+    assert "private" not in str(exc.value)
+    assert observed["count"] == 0
+
+
+def test_client_forged_host_and_policy_fields_are_not_trusted():
+    mcp, observed, audit = _rig(policy=None)
+    with pytest.raises(ToolError, match="HOST_TOOL_NOT_PERMITTED"):
+        _invoke(mcp, value="client-says-host-and-policy-permitted")
+    assert observed["count"] == 0
+    assert len(audit.events) == 1
+
+
+def test_qualified_tool_catalogue_unchanged_when_guard_installed():
+    mcp, _, _ = _rig(policy=None)
+    listed = asyncio.run(mcp.list_tools())
+    assert {x.name for x in listed} == {"write_test"}
+
+
+def test_wrong_actual_schema_digest_never_runs_tool():
+    sink = AuditSink()
+    observed = {"count": 0}
+
+    async def wrong_schema(_):
+        return "c" * 64
+
+    mcp = HostAdmissionMCPServer(
+        "bad-schema",
+        evidence_provider=lambda: HostDispatchEvidence(ASSET, REV, _policy()),
+        schema_digest_provider=wrong_schema,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test() -> str:
+        observed["count"] += 1
+        return "unexpected"
+
+    with pytest.raises(ToolError, match="HOST_TOOL_NOT_PERMITTED"):
+        asyncio.run(mcp.call_tool("write_test", {}))
+    assert observed["count"] == 0
+    assert sink.events[0].result == "denied:runtime_generation_mismatch"

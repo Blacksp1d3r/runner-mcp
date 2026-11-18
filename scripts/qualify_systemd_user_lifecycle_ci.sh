@@ -322,7 +322,40 @@ if len(sys.argv) not in (5, 6) or sys.argv[1] != "--config-dir":
     raise SystemExit(21)
 config = Path(sys.argv[2])
 args = sys.argv[3:]
+
+
+def _started_by_real_cron() -> bool:
+    """Herken uitsluitend de cron-daemonvoorouder van deze disposable CLI.
+
+    De echte hostcron kan bij iedere minuutgrens de exact bron-gerenderde
+    testregel afvuren. Die ongevraagde worker is geen geautoriseerde M3-
+    checkpointgeneratie en mag de test-lock of starts.log niet overnemen.
+    De afzonderlijke opt-in minuutproef laat dat expliciet WEL toe.
+    """
+    parent = os.getppid()
+    for _ in range(12):
+        if parent <= 1:
+            return False
+        try:
+            root = Path("/proc") / str(parent)
+            comm = (root / "comm").read_text(encoding="utf-8").strip()
+            if comm in ("cron", "crond"):
+                return True
+            fields = (root / "stat").read_text(encoding="utf-8").rsplit(") ", 1)[1].split()
+            parent = int(fields[1])
+        except (OSError, IndexError, ValueError):
+            return False
+    return False
+
+
 if args == ["autostart", "cron-run", "github-watcher"]:
+    # Geen echte cron-minuutstart tijdens de gewone bron-/rollbackfixture.
+    # Systemd en expliciete test-aanroepen behouden hetzelfde flock/execv-pad.
+    # Alleen de aparte, bewust aangezette FIFO-minute-probe laat een
+    # werkelijk door cron gestarte worker via de volledige broncode lopen.
+    minute_probe = Path(__file__).resolve().parent / "minute-probe.fifo"
+    if not minute_probe.is_fifo() and _started_by_real_cron():
+        raise SystemExit(0)
     run_cron_component(
         config_dir=config,
         executable=Path(__file__),

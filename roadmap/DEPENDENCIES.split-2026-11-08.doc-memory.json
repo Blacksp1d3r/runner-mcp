@@ -1,0 +1,1056 @@
+{
+  "schema": "doc-memory-split/v1",
+  "source_path": "roadmap/DEPENDENCIES.md",
+  "active_path": "roadmap/DEPENDENCIES.md",
+  "source_sha256": "d0d38a509cf5a4e1d0dd99586b909517d6c81ddf8e2386a98d21d5f6d791f9fe",
+  "source_chars": 182823,
+  "base_sha256": "d0d38a509cf5a4e1d0dd99586b909517d6c81ddf8e2386a98d21d5f6d791f9fe",
+  "removed_generated": "",
+  "removed_offset": -1,
+  "open_work_listed": 24,
+  "inserted_sha256": null,
+  "keep_since": "2026-11-08",
+  "sections": [
+    {
+      "index": 0,
+      "heading": "",
+      "date": null,
+      "chars": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "first_line": "",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 1,
+      "heading": "## 2026-11-14 — #866 v0.1.174: bronauthentieke zesrollen-cron ↔ systemd-fases ↔ exact rollback op echte disposable Linux PASS",
+      "date": "2026-11-14",
+      "chars": 3250,
+      "sha256": "0818dd1d84fecc64c52935498a92ff7b9ea3ca19700c12b1636b0e359f9633f8",
+      "first_line": "## 2026-11-14 — #866 v0.1.174: bronauthentieke zesrollen-cron ↔ systemd-fases ↔ exact rollback op echte disposable Linux PASS\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 2,
+      "heading": "## 2026-11-14 — #866 v0.1.173: alleen-lezen M3-fasecontrole weigert volledige cron-/unit-/procesdrift (CI PASS)",
+      "date": "2026-11-14",
+      "chars": 2729,
+      "sha256": "ab795284fc83f7fbd4689b1fa994417829c1e67531e9d566f6921328e382fcf7",
+      "first_line": "## 2026-11-14 — #866 v0.1.173: alleen-lezen M3-fasecontrole weigert volledige cron-/unit-/procesdrift (CI PASS)\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 3,
+      "heading": "## 2026-11-14 — #866 v0.1.172: enabled peer crasht na user-manager-herstart; blijvend exact cronherstel PASS (disposable)",
+      "date": "2026-11-14",
+      "chars": 2543,
+      "sha256": "82d25eaf51e070393c648f02c9c93f5588996bdfcbc13e409508e0d6dec8c49d",
+      "first_line": "## 2026-11-14 — #866 v0.1.172: enabled peer crasht na user-manager-herstart; blijvend exact cronherstel PASS (disposable)\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 4,
+      "heading": "## 2026-11-14 — #866 v0.1.171: echt gegenereerde lockbehoudende boot-peer, disposable user-manager-herstart en exact cronherstel PASS",
+      "date": "2026-11-14",
+      "chars": 2718,
+      "sha256": "7897f24878bb2cf62ff3fa2f5b52e2b10d5c796b006cc66296fde35f7579604b",
+      "first_line": "## 2026-11-14 — #866 v0.1.171: echt gegenereerde lockbehoudende boot-peer, disposable user-manager-herstart en exact cronherstel PASS\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 5,
+      "heading": "## 2026-11-14 — #866 v0.1.170: mislukte systemd ExecStart met exact zesrollen-cronherstel op disposable Linux PASS",
+      "date": "2026-11-14",
+      "chars": 2579,
+      "sha256": "985c921488bf7508c52d1e5a337bfa775be81b7c05739b0383cbdcb0eaeb5b6b",
+      "first_line": "## 2026-11-14 — #866 v0.1.170: mislukte systemd ExecStart met exact zesrollen-cronherstel op disposable Linux PASS\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 6,
+      "heading": "## 2026-11-14 — #866 v0.1.169 geïntegreerde zesrollen-cron + echt gegenereerde systemd-peer: disposable PASS",
+      "date": "2026-11-14",
+      "chars": 2903,
+      "sha256": "88e96b9e06c16a82e05535bba6ebc7608e6f23af75265b879cb03beb9e56639c",
+      "first_line": "## 2026-11-14 — #866 v0.1.169 geïntegreerde zesrollen-cron + echt gegenereerde systemd-peer: disposable PASS\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 7,
+      "heading": "## 2026-11-14 — #866 ECHT gegenereerde systemd-peer vs overerfde cron-flock: real disposable PASS; source 0.1.168 MERGED",
+      "date": "2026-11-14",
+      "chars": 3055,
+      "sha256": "9cc6ce2c484f3fdb0632e8f584ec21b6e12007a91ee80d7eb28e410deb6cdd01",
+      "first_line": "## 2026-11-14 — #866 ECHT gegenereerde systemd-peer vs overerfde cron-flock: real disposable PASS; source 0.1.168 MERGED\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 8,
+      "heading": "## 2026-11-14 — #866 zes cronrollen → vijf cron + één systemd → exact herstel REAL DISPOSABLE PASS, v0.1.167",
+      "date": "2026-11-14",
+      "chars": 3072,
+      "sha256": "041d9914fda974bed4731d3b2b3a41da1fd2764981d70278ae3e6046a435f698",
+      "first_line": "## 2026-11-14 — #866 zes cronrollen → vijf cron + één systemd → exact herstel REAL DISPOSABLE PASS, v0.1.167\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 9,
+      "heading": "## 2026-11-14 — #866 v0.1.166 lockgedeelde inactieve systemd-nevenunit SOURCE MERGED; fysieke M3–M6 WAIT",
+      "date": "2026-11-14",
+      "chars": 2868,
+      "sha256": "69b3b87c99164aa0d91a51599376caeb2b81d985b5ef85f8de669c92ca066364",
+      "first_line": "## 2026-11-14 — #866 v0.1.166 lockgedeelde inactieve systemd-nevenunit SOURCE MERGED; fysieke M3–M6 WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 10,
+      "heading": "## 2026-11-14 — #866 beperkte cron→systemd herstel-preview 0.1.165 SOURCE/CI GEMERGED, originele M3–M6 OPEN",
+      "date": "2026-11-14",
+      "chars": 2959,
+      "sha256": "4c2e02b93e95509852bfbaf6af9f5b228448cd8aea6646e985712cd0166dbf57",
+      "first_line": "## 2026-11-14 — #866 beperkte cron→systemd herstel-preview 0.1.165 SOURCE/CI GEMERGED, originele M3–M6 OPEN\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 11,
+      "heading": "## 2026-11-11 — #866 systemd-migratie is onafhankelijk van automatische updateketen",
+      "date": "2026-11-11",
+      "chars": 936,
+      "sha256": "6cba16b84608c18ba35b13e493e38ddb98a423945b83e8baba1ffcb303efc14e",
+      "first_line": "## 2026-11-11 — #866 systemd-migratie is onafhankelijk van automatische updateketen\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 12,
+      "heading": "## 2026-11-07 — #662 0.1.154 source candidate: releaseartifact niet voor volledige CI-demo",
+      "date": "2026-11-07",
+      "chars": 687,
+      "sha256": "74c849b29d40e1d63a6e05cdce4b220806c887d7b13a36da66eaf1b3b259f7c3",
+      "first_line": "## 2026-11-07 — #662 0.1.154 source candidate: releaseartifact niet voor volledige CI-demo\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 13,
+      "heading": "## 2026-11-07 — #662 actieve CI-release-run beschermingsfix 0.1.153 merged; operator gates open",
+      "date": "2026-11-07",
+      "chars": 694,
+      "sha256": "4d53bf182b9fc966f7f60010b2d026d9be29d7a18cce9696c50259e891703a3a",
+      "first_line": "## 2026-11-07 — #662 actieve CI-release-run beschermingsfix 0.1.153 merged; operator gates open\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 14,
+      "heading": "## 2026-11-07 — Runner-MCP #662 source candidate 0.1.153: main-CI uitrolkandidaat niet annuleren",
+      "date": "2026-11-07",
+      "chars": 760,
+      "sha256": "330d32fcadb8cbcbde815d1c857e6dcce22ee600259fe1cc61480566eb19eab6",
+      "first_line": "## 2026-11-07 — Runner-MCP #662 source candidate 0.1.153: main-CI uitrolkandidaat niet annuleren\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 15,
+      "heading": "## 2026-11-07 — F30 #341 0.1.152 lokale statuspoorten consistent: SOURCE/CI DONE",
+      "date": "2026-11-07",
+      "chars": 701,
+      "sha256": "50ff26f66dc93db8dc3575a238b6a1e4b8dcee714634fae77cec5f3425e1f86f",
+      "first_line": "## 2026-11-07 — F30 #341 0.1.152 lokale statuspoorten consistent: SOURCE/CI DONE\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 16,
+      "heading": "## 2026-11-07 — F30 #341 volledige lokale bundle-state consistentie (v0.1.152 kandidaat)",
+      "date": "2026-11-07",
+      "chars": 768,
+      "sha256": "d9b3e724d218dc89684710a0826b8e429733a4272160e8223754958cd6981b17",
+      "first_line": "## 2026-11-07 — F30 #341 volledige lokale bundle-state consistentie (v0.1.152 kandidaat)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 17,
+      "heading": "## 2026-11-07 — #341 v0.1.151 lokale wheel-record hercontrole SOURCE/CI DONE, first-node WAIT",
+      "date": "2026-11-07",
+      "chars": 976,
+      "sha256": "1e039b0ea8d98a1f16a47ae21d997ddb18934a40c58c9bfcccf8136ce353fa2b",
+      "first_line": "## 2026-11-07 — #341 v0.1.151 lokale wheel-record hercontrole SOURCE/CI DONE, first-node WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 18,
+      "heading": "## 2026-11-06 — F30 #341 keyless Release → eigenaar-private inactieve bundel → lokale read-only check SOURCE DONE",
+      "date": "2026-11-06",
+      "chars": 884,
+      "sha256": "9534780c18b91fa3d5495efe08ae65dc3b77e4a453f3acd6bc6cd7a80deff765",
+      "first_line": "## 2026-11-06 — F30 #341 keyless Release → eigenaar-private inactieve bundel → lokale read-only check SOURCE DONE\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 19,
+      "heading": "## 2026-11-06 — F30 #341 fictieve stage → bestaande lokale read-only acceptatie (CI-kandidaat)",
+      "date": "2026-11-06",
+      "chars": 800,
+      "sha256": "ab61616ec95bd0d81815c39b083ee848b272256a7c18f3eb80c201b1d7e573b0",
+      "first_line": "## 2026-11-06 — F30 #341 fictieve stage → bestaande lokale read-only acceptatie (CI-kandidaat)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 20,
+      "heading": "## 2026-11-06 — F30 signed inactieve custody source 0.1.145, productie blijft WAIT",
+      "date": "2026-11-06",
+      "chars": 508,
+      "sha256": "8c48b6d2db7c353c408bcce79c484a597fe7a991ed870b78c63588a84fa4ab67",
+      "first_line": "## 2026-11-06 — F30 signed inactieve custody source 0.1.145, productie blijft WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 21,
+      "heading": "## 2026-11-06 — F30 S2 internal end-to-end source pass, generieke production authority ontbreekt",
+      "date": "2026-11-06",
+      "chars": 1029,
+      "sha256": "c98068edc489e98cdd5bc891078d15af043e19639c1a3d637beaea4520393657",
+      "first_line": "## 2026-11-06 — F30 S2 internal end-to-end source pass, generieke production authority ontbreekt\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 22,
+      "heading": "## 2026-11-06 — F30 S2 intern volledig ketencontract vs externe signing/bevoegdheid",
+      "date": "2026-11-06",
+      "chars": 837,
+      "sha256": "c6677d158a4efb20e60cf752d6e965083d80ce411d635a1cb4d2454349f2bc79",
+      "first_line": "## 2026-11-06 — F30 S2 intern volledig ketencontract vs externe signing/bevoegdheid\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 23,
+      "heading": "## 2026-11-06 — F30 S2 source readiness 0.1.143 vs generieke issuer/productieblokkades",
+      "date": "2026-11-06",
+      "chars": 1060,
+      "sha256": "c4af5b3603f06d0b93183108ae52baab9a20dd490ee3d14d9c0af9bb880d3683",
+      "first_line": "## 2026-11-06 — F30 S2 source readiness 0.1.143 vs generieke issuer/productieblokkades\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 24,
+      "heading": "## 2026-11-06 — #937 metadata-verzamelaar en bytebatch gedeelde bestaande onderdelen",
+      "date": "2026-11-06",
+      "chars": 686,
+      "sha256": "77fea16c76402635f1d1ff06710d3815389aa93bfdac8786976b0fd3f8b29167",
+      "first_line": "## 2026-11-06 — #937 metadata-verzamelaar en bytebatch gedeelde bestaande onderdelen\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 25,
+      "heading": "## 2026-11-06 — F30 #937 bestaande per-asset downloader → generic in-memory signed batch 0.1.142",
+      "date": "2026-11-06",
+      "chars": 1035,
+      "sha256": "8a528aeb46776acbfbc318a0e9fda4c03da054182b5cc3226e6cc7fdcd79a007",
+      "first_line": "## 2026-11-06 — F30 #937 bestaande per-asset downloader → generic in-memory signed batch 0.1.142\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 26,
+      "heading": "## 2026-11-06 — #937 atomaire lokale custody-promotie source PASS; onafhankelijke signer/live WAIT",
+      "date": "2026-11-06",
+      "chars": 1088,
+      "sha256": "aad4566a53c247ffcefa99ed7c4f89888f3be4316c46735d78d075a15ccdf33d",
+      "first_line": "## 2026-11-06 — #937 atomaire lokale custody-promotie source PASS; onafhankelijke signer/live WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 27,
+      "heading": "## 2026-11-06 — F30 S2 verified source stages vs production gates",
+      "date": "2026-11-06",
+      "chars": 1261,
+      "sha256": "19119dd00a505a3afc8d177fd9b39c8ae93348bf670006c3fbe33e1824989f3b",
+      "first_line": "## 2026-11-06 — F30 S2 verified source stages vs production gates\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 28,
+      "heading": "## 2026-11-06 — F30 S2c wheel-inhoud is aparte admission vóór private custody",
+      "date": "2026-11-06",
+      "chars": 717,
+      "sha256": "0541895b78044d3e3d66be28986df391aef245113150bb04c59772009157bede",
+      "first_line": "## 2026-11-06 — F30 S2c wheel-inhoud is aparte admission vóór private custody\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 29,
+      "heading": "## 2026-11-06 — F30 S2b bundel-inhoud vóór inactieve custody",
+      "date": "2026-11-06",
+      "chars": 902,
+      "sha256": "5b6a47d791685e0330d74565f3b2504a8afec0e3777a648cc71220dd52ef71e2",
+      "first_line": "## 2026-11-06 — F30 S2b bundel-inhoud vóór inactieve custody\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 30,
+      "heading": "## 2026-11-06 — #937 S2 onafhankelijke signed-roster-gate vóór bestaande inactieve import",
+      "date": "2026-11-06",
+      "chars": 1241,
+      "sha256": "7e1ba028e5b672152e81137fd84d7d2a7e9a5bb0f59d13810e3c5e447f4ce095",
+      "first_line": "## 2026-11-06 — #937 S2 onafhankelijke signed-roster-gate vóór bestaande inactieve import\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 31,
+      "heading": "## 2026-11-06 — F30 release-feed en stage-afhankelijkheden",
+      "date": "2026-11-06",
+      "chars": 1167,
+      "sha256": "a3e4acb9b3b2eaae0973e54266955393db6186710938e34500ffb0918a9c4158",
+      "first_line": "## 2026-11-06 — F30 release-feed en stage-afhankelijkheden\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-11.md"
+    },
+    {
+      "index": 32,
+      "heading": "## 2026-10-28 — #381 hergebruik bestaande LAB Q7-private stage zonder tokenkopie (SOURCE 0.1.131 MERGED; LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 3010,
+      "sha256": "27d735807986aaf2c57ff8354b1d940221a1bcb659b06a30be77722128ec6970",
+      "first_line": "## 2026-10-28 — #381 hergebruik bestaande LAB Q7-private stage zonder tokenkopie (SOURCE 0.1.131 MERGED; LIVE WAIT)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 33,
+      "heading": "## 2026-10-28 — #381 Q7 forwarding legacy-mode compatibility (SOURCE 0.1.130 MERGED; LAB WAIT)",
+      "date": "2026-10-28",
+      "chars": 1766,
+      "sha256": "d73ef12b4e172ad146f87594ab18490c0ba18e797630de122d6d2c2a3e47f082",
+      "first_line": "## 2026-10-28 — #381 Q7 forwarding legacy-mode compatibility (SOURCE 0.1.130 MERGED; LAB WAIT)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 34,
+      "heading": "## 2026-10-28 — #381 correctie Q7 private configuratiedoorgifte (SOURCE 0.1.129 MERGED; LAB LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 2412,
+      "sha256": "482e509897c66fa5b87fd5f442d7a75345bbc9b1b33cc9292a54bb76f67c8cc8",
+      "first_line": "## 2026-10-28 — #381 correctie Q7 private configuratiedoorgifte (SOURCE 0.1.129 MERGED; LAB LIVE WAIT)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 35,
+      "heading": "## 2026-10-28 — #669 geselecteerde werkelijk geladen code-objecten zichtbaar op bestaande MCP runtime_status (SOURCE 0.1.128 MERGED, ORIGINEEL LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 3502,
+      "sha256": "12dac6d4be09b93d363686699584482f0320db17920efbcf0674fa5abae4dd43",
+      "first_line": "## 2026-10-28 — #669 geselecteerde werkelijk geladen code-objecten zichtbaar op bestaande MCP runtime_status (SOURCE 0.1.128 MERGED, ORIGINEEL LIVE WAIT)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 36,
+      "heading": "## 2026-10-28 — #341 bestaande updater: SHA-256 van provisional baseline wheel (SOURCE MERGED, LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 2064,
+      "sha256": "f5643ab0ba3e30f9bec1c3420f6d70f43813898411298f7442e4a1245098a62d",
+      "first_line": "## 2026-10-28 — #341 bestaande updater: SHA-256 van provisional baseline wheel (SOURCE MERGED, LIVE WAIT)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 37,
+      "heading": "## 2026-10-28 — #669 original source/RECORD byte equality promotes one dependency only",
+      "date": "2026-10-28",
+      "chars": 1795,
+      "sha256": "af0450c15210025e1c53a04f44a38c7da432c2d0441f0a414aaa1e186f162009",
+      "first_line": "## 2026-10-28 — #669 original source/RECORD byte equality promotes one dependency only\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 38,
+      "heading": "## 2026-10-27 — #669 v0.1.103 SOURCE MERGED; #662 exact wheel candidate bytes verified",
+      "date": "2026-10-27",
+      "chars": 2087,
+      "sha256": "6500fbef48525cbd51526b75df992016eebc28d1ae3c37169d14f47ad8303b78",
+      "first_line": "## 2026-10-27 — #669 v0.1.103 SOURCE MERGED; #662 exact wheel candidate bytes verified\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 39,
+      "heading": "## 2026-10-27 — #341 v0.1.101 SOURCE MERGED; #662 candidate bytes verified",
+      "date": "2026-10-27",
+      "chars": 1646,
+      "sha256": "032430ea96bb91c2bdffcb846925e5e52f8d03ab52bc5afd7a0ccb0563574f2f",
+      "first_line": "## 2026-10-27 — #341 v0.1.101 SOURCE MERGED; #662 candidate bytes verified\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 40,
+      "heading": "## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered",
+      "date": "2026-10-27",
+      "chars": 1677,
+      "sha256": "ab3c479ce8a6623477fae04f5a7d5e954a19c1140f818b021856ad53a822a79a",
+      "first_line": "## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 41,
+      "heading": "## 2026-10-27 — #341 v0.1.96 original-baseline retention source MERGED / live WAIT",
+      "date": "2026-10-27",
+      "chars": 737,
+      "sha256": "0314020e4b43542e68abd5186ad76e026a371ff3379bb1d9a0692aa323e0a397",
+      "first_line": "## 2026-10-27 — #341 v0.1.96 original-baseline retention source MERGED / live WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 42,
+      "heading": "## 2026-10-27 — #669/#341 source diagnostic dependency (0.1.94 candidate)",
+      "date": "2026-10-27",
+      "chars": 653,
+      "sha256": "966abbbc4fc361ae9bd88d772a8124a6434e90dd890ec004e09dbd57cc5c9e13",
+      "first_line": "## 2026-10-27 — #669/#341 source diagnostic dependency (0.1.94 candidate)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 43,
+      "heading": "## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT",
+      "date": "2026-10-20",
+      "chars": 2206,
+      "sha256": "5f5fcdd0d201d883f5ff894d0e921547d5cb036b991eff0588ee1eb0b0971297",
+      "first_line": "## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 44,
+      "heading": "## 2026-10-20 20:30 Europe/Brussels — #669 live identity WAIT / #509 CLOSED source but live A6 0/11",
+      "date": "2026-10-20",
+      "chars": 1719,
+      "sha256": "611250540aa7ea62f0072205cb2baf6265bd6f340a887df5ddf26c366cc08063",
+      "first_line": "## 2026-10-20 20:30 Europe/Brussels — #669 live identity WAIT / #509 CLOSED source but live A6 0/11\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 45,
+      "heading": "## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT",
+      "date": "2026-10-20",
+      "chars": 1480,
+      "sha256": "7fbce51c07362ef4d501aa572e990c63d9782e3d86c0d2e1e39a561836fb3796",
+      "first_line": "## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 46,
+      "heading": "## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT",
+      "date": "2026-10-20",
+      "chars": 854,
+      "sha256": "6dae9cee1519b86943914cccc56872f8cda0862f6c1a7c9cefbfd098141624ad",
+      "first_line": "## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 47,
+      "heading": "## 2026-10-20 — #664/#665 autonomous source v0.1.60 MERGED; connected 0.1.38 still WAIT",
+      "date": "2026-10-20",
+      "chars": 885,
+      "sha256": "e9df6d4a03e3c95320c4403bd049e321c20dff8b610a0904689b7a25c60f189c",
+      "first_line": "## 2026-10-20 — #664/#665 autonomous source v0.1.60 MERGED; connected 0.1.38 still WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 48,
+      "heading": "## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT",
+      "date": "2026-10-20",
+      "chars": 2810,
+      "sha256": "2133315b178a53e5c9d22ad049ed885b23f2886ed0a99584443dd1cbfa73721e",
+      "first_line": "## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 49,
+      "heading": "## 2026-10-20 — #725 test-only merge does not alter A6/A7 admission",
+      "date": "2026-10-20",
+      "chars": 873,
+      "sha256": "9e9183e3bf58303f71612512f234b93444c38c045ad17e2fbff99502b94a2839",
+      "first_line": "## 2026-10-20 — #725 test-only merge does not alter A6/A7 admission\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 50,
+      "heading": "## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT",
+      "date": "2026-10-20",
+      "chars": 1971,
+      "sha256": "9ab52ef9b6533bbb2bf74727c4e3a3dd8ff41738a5e34a27b2f34135008afb42",
+      "first_line": "## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 51,
+      "heading": "## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT",
+      "date": "2026-10-20",
+      "chars": 2587,
+      "sha256": "ad52121ddb9202d156eeb8a581e697e9e76ff8eee21c302bbadda210ad5aa0ef",
+      "first_line": "## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 52,
+      "heading": "## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 952,
+      "sha256": "b259aafa4308b65c88ee195f509f072872c5034225016d52e514f309ec6918ac",
+      "first_line": "## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 53,
+      "heading": "## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY",
+      "date": "2026-10-20",
+      "chars": 1216,
+      "sha256": "c71993e1d38749956122968c11af0d68074dbe2d469735f4a37b3b54892d6886",
+      "first_line": "## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 54,
+      "heading": "## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT",
+      "date": "2026-10-20",
+      "chars": 1773,
+      "sha256": "f1d5406e33ac0484414ff626a8d3392d9100ec007fbc5d45ed4f2d2ed53d5218",
+      "first_line": "## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 55,
+      "heading": "## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 859,
+      "sha256": "09c182b1927ee269f110955dbbac1d98233774d6e59a3fd422d1ab169fe94f1a",
+      "first_line": "## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 56,
+      "heading": "## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 881,
+      "sha256": "5ba5f55a2a3877a67c713aaed7f6a07b5ca63623c5fd6cf87d9fa9f017c074ab",
+      "first_line": "## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 57,
+      "heading": "## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT",
+      "date": "2026-10-20",
+      "chars": 1156,
+      "sha256": "8b76fa85503c3f8f75aa06e1eb31053f70bdc143da658e499b6c829dbe48cdf0",
+      "first_line": "## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 58,
+      "heading": "## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 1257,
+      "sha256": "374572a2e0f8e2bda46a878bdcc4b1cd06b1c0f8e11eb9bb536c1e75d672d305",
+      "first_line": "## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 59,
+      "heading": "## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 1225,
+      "sha256": "d05bfccf77b14055ec38e6969bb5088906f2639c4ab1a8f0b556c4550903ae91",
+      "first_line": "## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 60,
+      "heading": "## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT",
+      "date": "2026-10-20",
+      "chars": 2125,
+      "sha256": "bf31ae13b16eb82ead93bc62dd968505587f85b0ff38be18b23964c5f3f7daf1",
+      "first_line": "## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 61,
+      "heading": "## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)",
+      "date": "2026-10-20",
+      "chars": 964,
+      "sha256": "ed55b90b3c2a66e017997b0dd01daa5fad15bc35d1a0a874d54789dd4b3e8a7f",
+      "first_line": "## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 62,
+      "heading": "## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47",
+      "date": "2026-10-20",
+      "chars": 936,
+      "sha256": "093ee66626f3debdba2873ce68232aedb14cf09e029aa6c1bee5d1d5038f3195",
+      "first_line": "## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 63,
+      "heading": "## 2026-10-20 — first-node blocking gate reconciled, no service mutation",
+      "date": "2026-10-20",
+      "chars": 1037,
+      "sha256": "f1587ba9852771ecace438bf546d5401ad5cbc32c355863206be27f16be9b823",
+      "first_line": "## 2026-10-20 — first-node blocking gate reconciled, no service mutation\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 64,
+      "heading": "## 2026-10-19 — RELEASE ADMISSION MERGED, main 0.1.45; live operation remains WAIT",
+      "date": "2026-10-19",
+      "chars": 1894,
+      "sha256": "8c002e1ef5bb455c10b16d0e73c7352e68ea5c67dd6dd5c9d7811c2317e32b76",
+      "first_line": "## 2026-10-19 — RELEASE ADMISSION MERGED, main 0.1.45; live operation remains WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 65,
+      "heading": "## 2026-10-19 — #662 release collision READY-admission receipt; enforcement and live rollout separate",
+      "date": "2026-10-19",
+      "chars": 1562,
+      "sha256": "321da1546c7af0e07a3fc6a03ec11828d8fa8ad51d8b5a30ded3de00b75412eb",
+      "first_line": "## 2026-10-19 — #662 release collision READY-admission receipt; enforcement and live rollout separate\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 66,
+      "heading": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases",
+      "date": "2026-10-19",
+      "chars": 851,
+      "sha256": "c8f3a363f492bc4d559cc059da14316cd31d3b096e891b1b219f18c1e00920d0",
+      "first_line": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 67,
+      "heading": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge",
+      "date": "2026-10-19",
+      "chars": 939,
+      "sha256": "e181309642576f348dec5aae56768e551afe423c8fb83370fa9806b9a8c6ba26",
+      "first_line": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 68,
+      "heading": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42",
+      "date": "2026-10-19",
+      "chars": 890,
+      "sha256": "faddfc524c85f719d68a019183ead98a7cf452786ec085218e81550ecc01debc",
+      "first_line": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 69,
+      "heading": "## 2026-10-19 — Concrete source order and draft CI gate, separate from live admission",
+      "date": "2026-10-19",
+      "chars": 938,
+      "sha256": "197eccdf8183b2ee0b26f003ee578074eaf481cce70780f8356587f4974cd42e",
+      "first_line": "## 2026-10-19 — Concrete source order and draft CI gate, separate from live admission\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 70,
+      "heading": "## 2026-10-19 — Unique Runner-MCP versions and one-owner execution DAG",
+      "date": "2026-10-19",
+      "chars": 1096,
+      "sha256": "744eba113cce7b23b2371316b40e0a384f66ecaac25408b0dab4b96718ef8d72",
+      "first_line": "## 2026-10-19 — Unique Runner-MCP versions and one-owner execution DAG\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 71,
+      "heading": "## 2026-10-19 — #669 Doctor source vs live acceptance gates",
+      "date": "2026-10-19",
+      "chars": 806,
+      "sha256": "1faab356153975e31e384c0b6dbb2f8d554292cd4645797e9c0a54d172f665f9",
+      "first_line": "## 2026-10-19 — #669 Doctor source vs live acceptance gates\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 72,
+      "heading": "## 2026-10-17 — Black qualified non-serving stage done, separate setup and A2 gates",
+      "date": "2026-10-17",
+      "chars": 820,
+      "sha256": "d51dd747ec8549db93754440fa79c7fd1b7969c27769b454cee00f7e785c1c32",
+      "first_line": "## 2026-10-17 — Black qualified non-serving stage done, separate setup and A2 gates\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 73,
+      "heading": "## 2026-10-17 — RMCP-F-0030 physical venv dependency: diagnostic source != recovery",
+      "date": "2026-10-17",
+      "chars": 586,
+      "sha256": "734bf66a1e4466104da6ed7b80c4b17fbbb252dd092b2063e3bb7f337a1c557c",
+      "first_line": "## 2026-10-17 — RMCP-F-0030 physical venv dependency: diagnostic source != recovery\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 74,
+      "heading": "## 2026-10-17 — Black bootstrap exact-source completion and physical admission WAIT",
+      "date": "2026-10-17",
+      "chars": 631,
+      "sha256": "16712d529890bb858f8174408fe59b61918d16404d52f69d4d862cc6282fb0fb",
+      "first_line": "## 2026-10-17 — Black bootstrap exact-source completion and physical admission WAIT\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 75,
+      "heading": "## 2026-10-17 — First-party Black bootstrap and website chain",
+      "date": "2026-10-17",
+      "chars": 784,
+      "sha256": "ecbfd5cb325a0d3547120661617a0bc6ffacb031874e681d8af743ef8cbc9fd4",
+      "first_line": "## 2026-10-17 — First-party Black bootstrap and website chain\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 76,
+      "heading": "## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled",
+      "date": "2026-10-17",
+      "chars": 1150,
+      "sha256": "5aad1dd921c1bb3f0d71a4eaa51fcd8e5bac21491c759f8768812405666f13f7",
+      "first_line": "## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 77,
+      "heading": "## 2026-10-16 — Real-update order, dependency-contract mismatch confirmed",
+      "date": "2026-10-16",
+      "chars": 1104,
+      "sha256": "c5a96c9b50163e6493d1dda624935729ad8b53c53c9aafef3512de55c227e9b0",
+      "first_line": "## 2026-10-16 — Real-update order, dependency-contract mismatch confirmed\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 78,
+      "heading": "## 2026-10-16 — F30 source gate recovered; live first-node authority still not met",
+      "date": "2026-10-16",
+      "chars": 1164,
+      "sha256": "98b058d9dd5a254bc36126a96b8e8784303b583a7f70d07b76419c8a7c5d0207",
+      "first_line": "## 2026-10-16 — F30 source gate recovered; live first-node authority still not met\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 79,
+      "heading": "## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged",
+      "date": "2026-10-10",
+      "chars": 1915,
+      "sha256": "4a9e3ad8c01d87f1f43d8c4722cf1dce87d4064b397fb8c341bde91afded8252",
+      "first_line": "## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 80,
+      "heading": "## 2026-10-10 late — #540 fixed unsafe stale MCP tool replay (PR #650 MERGED); live #590 still blocked",
+      "date": "2026-10-10",
+      "chars": 3054,
+      "sha256": "0b6c02518e3bbed807a397836a8b9adcbb623837fec45444adab67eed1e9fb89",
+      "first_line": "## 2026-10-10 late — #540 fixed unsafe stale MCP tool replay (PR #650 MERGED); live #590 still blocked\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 81,
+      "heading": "## 2026-10-10 late evening — #590/#540 in-process MCP transport and catalogue proofs DONE; production unknown",
+      "date": "2026-10-10",
+      "chars": 2485,
+      "sha256": "b48bb3e154f4ba87e2a69e1dad28ae1e7b5c80498ead098f0c4f68634e97b89c",
+      "first_line": "## 2026-10-10 late evening — #590/#540 in-process MCP transport and catalogue proofs DONE; production unknown\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 82,
+      "heading": "## 2026-10-10 evening — #590 exact-request response/audit SOURCE proof #648 MERGED, live tunnel still OPEN",
+      "date": "2026-10-10",
+      "chars": 1989,
+      "sha256": "dcd3e653bb16a787f98003c873ff1ec0b6160a85e9f96f7e9ecb99541bf94a32",
+      "first_line": "## 2026-10-10 evening — #590 exact-request response/audit SOURCE proof #648 MERGED, live tunnel still OPEN\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 83,
+      "heading": "## 2026-10-10 late — Runner-MCP Q7 communication source repairs FINISHED; live rollout BLOCKED",
+      "date": "2026-10-10",
+      "chars": 2134,
+      "sha256": "831cb08ee32b485b4d033979098c28b228210abcbbe8e1a17707ba6c42501ba0",
+      "first_line": "## 2026-10-10 late — Runner-MCP Q7 communication source repairs FINISHED; live rollout BLOCKED\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 84,
+      "heading": "## 2026-10-10 evening — Q7 communication fixes (#381); Fabric lease/fencing stays with other chat",
+      "date": "2026-10-10",
+      "chars": 2579,
+      "sha256": "7e6b3d1f5cd663b9f5500ea8980fb72330714c7c944a3dc1e74f5c30caf8c929",
+      "first_line": "## 2026-10-10 evening — Q7 communication fixes (#381); Fabric lease/fencing stays with other chat\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 85,
+      "heading": "## 2026-10-10 evening — Claude #381 fixed listener provenance PR #645 MERGED; trusted Fabric authority still blocks operational closure",
+      "date": "2026-10-10",
+      "chars": 2840,
+      "sha256": "c5feff31866af62386a30d7270e508ef45d3044e9f7604bc35b72cb67e7974f0",
+      "first_line": "## 2026-10-10 evening — Claude #381 fixed listener provenance PR #645 MERGED; trusted Fabric authority still blocks operational closure\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 86,
+      "heading": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged",
+      "date": "2026-10-10",
+      "chars": 1869,
+      "sha256": "94c1bdbacdce3d0f715b07377ba083d6cca79f42ba8b7b2c4014e695fdc618fb",
+      "first_line": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 87,
+      "heading": "## 2026-10-10 — #381 operator-priority Claude source security PR #637 MERGED; live trust chain still BLOCKED",
+      "date": "2026-10-10",
+      "chars": 2472,
+      "sha256": "7f801e737a3e423e83bf6f5265b9930de49aa3b2a5baa397f67b78b29c002413",
+      "first_line": "## 2026-10-10 — #381 operator-priority Claude source security PR #637 MERGED; live trust chain still BLOCKED\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 88,
+      "heading": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)",
+      "date": "2026-10-10",
+      "chars": 2387,
+      "sha256": "d76dcc39745f40e33d75d838cbfa7773c6d078ff3d3eff18987b0ad85410ce17",
+      "first_line": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 89,
+      "heading": "## 2026-10-10 — Final #630 issue closure reconciliation",
+      "date": "2026-10-10",
+      "chars": 803,
+      "sha256": "fcd45d5363097663f9b59309a43d32ae44098b68bc520d543912c13d78634d6a",
+      "first_line": "## 2026-10-10 — Final #630 issue closure reconciliation\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 90,
+      "heading": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)",
+      "date": "2026-10-10",
+      "chars": 2413,
+      "sha256": "4d18be6649d45175f4246d2dcaa9c551801e378341cee1b5e28c5fde465ef6d6",
+      "first_line": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 91,
+      "heading": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled",
+      "date": "2026-10-10",
+      "chars": 2587,
+      "sha256": "f50ec00e7dd9e1d7670eda14b22ffda599fc8942e1ca0e5d85b4eeb9fc72f109",
+      "first_line": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 92,
+      "heading": "## 2026-10-10 — Shared blueprint #630 BPA-01 landed, remaining children blocked/independent",
+      "date": "2026-10-10",
+      "chars": 795,
+      "sha256": "1f959c2018537664405a121a5cf009f8ab69c1fd96327690fbe680813a68b7ae",
+      "first_line": "## 2026-10-10 — Shared blueprint #630 BPA-01 landed, remaining children blocked/independent\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 93,
+      "heading": "## 2026-10-10 — Claude priority #381: fixed host-local rootless source slice #628 MERGED; live worker STILL BLOCKED",
+      "date": "2026-10-10",
+      "chars": 3270,
+      "sha256": "0235ade5e86a8d9d924955fe779ede0e1ccb8eb0d77dd0e4955465b9f8e8f042",
+      "first_line": "## 2026-10-10 — Claude priority #381: fixed host-local rootless source slice #628 MERGED; live worker STILL BLOCKED\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 94,
+      "heading": "## 2026-10-10 — #629 build identity fail-closed source MERGED; #590 LIVE UNQUALIFIED",
+      "date": "2026-10-10",
+      "chars": 1745,
+      "sha256": "f65da42dfa94dc41c7c486cd7d06ba2c73e1bcfbfce37cd59b6ac6f2684c400a",
+      "first_line": "## 2026-10-10 — #629 build identity fail-closed source MERGED; #590 LIVE UNQUALIFIED\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 95,
+      "heading": "## 2026-10-10 — #590 second source-only identity diagnostic PR #629 (draft, exact CI pending)",
+      "date": "2026-10-10",
+      "chars": 2049,
+      "sha256": "361bd3b6367d27b0d0c718ed22bf48130a2470775f846b0fde7953b63eecc09f",
+      "first_line": "## 2026-10-10 — #590 second source-only identity diagnostic PR #629 (draft, exact CI pending)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 96,
+      "heading": "## 2026-10-10 — User priority changed to #381 Claude worker bridge; source implementation PR #628",
+      "date": "2026-10-10",
+      "chars": 3536,
+      "sha256": "33affaa9ed9c04dbef28194083c2113d67f687cc3745510a6cb9addd834bc760",
+      "first_line": "## 2026-10-10 — User priority changed to #381 Claude worker bridge; source implementation PR #628\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 97,
+      "heading": "## 2026-10-10 — Fabric #1397 owner has active #1428; exact lint blocker localized",
+      "date": "2026-10-10",
+      "chars": 924,
+      "sha256": "8b013de2ed1ef8991fd35fd1af4245389f5861ce73d80bd38ac15d26eb963f96",
+      "first_line": "## 2026-10-10 — Fabric #1397 owner has active #1428; exact lint blocker localized\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 98,
+      "heading": "## 2026-10-10 — Read-only connector split evidence and #618 CI reclassified",
+      "date": "2026-10-10",
+      "chars": 1870,
+      "sha256": "13140ae5938a06180670d18b34401d5b6cce3374ef065955108eafb85cc722c7",
+      "first_line": "## 2026-10-10 — Read-only connector split evidence and #618 CI reclassified\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 99,
+      "heading": "## 2026-10-10 — #627 bounded status source security MERGED; connected runtime still unqualified",
+      "date": "2026-10-10",
+      "chars": 3044,
+      "sha256": "a204d9c66a49e55c54deb971c8acf24c12db393613253c05a5a4782def9c6bac",
+      "first_line": "## 2026-10-10 — #627 bounded status source security MERGED; connected runtime still unqualified\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 100,
+      "heading": "## 2026-10-10 — #590 bounded runtime-status diagnostics; AIfordable #553 source dependency MERGED",
+      "date": "2026-10-10",
+      "chars": 3182,
+      "sha256": "3305fce31207863518a834e2e19f0f45434241c6f37d09c6f386559c10492be1",
+      "first_line": "## 2026-10-10 — #590 bounded runtime-status diagnostics; AIfordable #553 source dependency MERGED\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 101,
+      "heading": "## 2026-10-10 — #626 complete; physical custody prerequisites unchanged",
+      "date": "2026-10-10",
+      "chars": 1010,
+      "sha256": "4f3f8b81b07106cc07c98a1e298ac3ab5c139e606778d2220707c950ae9b4169",
+      "first_line": "## 2026-10-10 — #626 complete; physical custody prerequisites unchanged\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 102,
+      "heading": "## 2026-10-10 — Release-archive custody gates (latest)",
+      "date": "2026-10-10",
+      "chars": 1811,
+      "sha256": "855a834cb6e0d5ab8372e9c30309646203a36296d1c02a08b4a2903bdb7a2baf",
+      "first_line": "## 2026-10-10 — Release-archive custody gates (latest)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 103,
+      "heading": "## 2026-10-09 — Windows source prerequisites integrated; runtime still gated",
+      "date": "2026-10-09",
+      "chars": 1119,
+      "sha256": "34cc05bdfa48c20075e6ca33bf78e9737bcec69d4011825f143cd8567a1d2c01",
+      "first_line": "## 2026-10-09 — Windows source prerequisites integrated; runtime still gated\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 104,
+      "heading": "## 2026-10-09 — First-class Windows host without premature activation",
+      "date": "2026-10-09",
+      "chars": 1357,
+      "sha256": "d494150598fbce6893e07a51548ce4357eedc7502648517589cc09b6e4353651",
+      "first_line": "## 2026-10-09 — First-class Windows host without premature activation\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 105,
+      "heading": "## 2026-10-09 — Source gates versus live operator authority (reconciled)",
+      "date": "2026-10-09",
+      "chars": 1507,
+      "sha256": "95fe2478192a87df5503285e154d0f58818a5833517ac2d66df1f1177f5dd4ce",
+      "first_line": "## 2026-10-09 — Source gates versus live operator authority (reconciled)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 106,
+      "heading": "## 2026-10-09 — Runner registration CI isolation and credentials (issue #584)",
+      "date": "2026-10-09",
+      "chars": 1488,
+      "sha256": "c69230149b3efbef504d43fab9f1d3ae4bb52cb62c66e20aec5bdd7f75b64fbe",
+      "first_line": "## 2026-10-09 — Runner registration CI isolation and credentials (issue #584)\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 107,
+      "heading": "## 2026-10-06 customer update safety dependency",
+      "date": "2026-10-06",
+      "chars": 936,
+      "sha256": "cf366cfef6be674f0c0b16a428bbf0f8076f17e409dc402b7217e38b6b0f0a15",
+      "first_line": "## 2026-10-06 customer update safety dependency\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 108,
+      "heading": "## Current cross-product gates",
+      "date": null,
+      "chars": 1504,
+      "sha256": "dc75845853bd8ad13bb8660e50c7fb3a56bfe10d4a47716ab59f77226187a0ff",
+      "first_line": "## Current cross-product gates\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 109,
+      "heading": "## Current build order",
+      "date": null,
+      "chars": 4940,
+      "sha256": "25f8a510b119628e3dce645daa4750f230021dd58a742974765fcdd1ce71729f",
+      "first_line": "## Current build order\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 110,
+      "heading": "## 2026-10-04 reconciliation",
+      "date": "2026-10-04",
+      "chars": 1286,
+      "sha256": "c583adae4cb4b781c1824ff1f00627fec0e18a401d885bc50d3f12de6c7cefd0",
+      "first_line": "## 2026-10-04 reconciliation\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-10.md"
+    },
+    {
+      "index": 111,
+      "heading": "## Parallel work that is safe",
+      "date": null,
+      "chars": 233,
+      "sha256": "9183e2b5ce6059391c158bb59590980e30010e5ff8d3ef47ad0677f1dcd4d998",
+      "first_line": "## Parallel work that is safe\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 112,
+      "heading": "## Integration points",
+      "date": null,
+      "chars": 346,
+      "sha256": "8dbb728eaec9d994523dabb73a2a73c952e1489edf9a15db373ce7f1b680a6e2",
+      "first_line": "## Integration points\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 113,
+      "heading": "## Do not parallelize blindly",
+      "date": null,
+      "chars": 167,
+      "sha256": "b6551dead04986652ecabc4a59484dd13d877644630c4055ab45bacfea888c4c",
+      "first_line": "## Do not parallelize blindly\n",
+      "dest": "roadmap/DEPENDENCIES.md"
+    },
+    {
+      "index": 114,
+      "heading": "## 2026-09-30 reconciliation",
+      "date": "2026-09-30",
+      "chars": 1434,
+      "sha256": "b70ee84e156a933b75b82a940bb23d0b8c31544bd36f75c0b9db4f095eb1f405",
+      "first_line": "## 2026-09-30 reconciliation\n",
+      "dest": "roadmap/DEPENDENCIES.archive-2026-09.md"
+    }
+  ],
+  "outputs": {
+    "roadmap/DEPENDENCIES.md": "3c983f201e6a1bc56f3f1e73aba41d039c192f7eea658f967f67fe350414cae2",
+    "roadmap/DEPENDENCIES.archive-2026-11.md": "a5a57f9e2049eb694ec3eb9ffd0b2f7731a3838adc59a3a5ff4b8d67c07314b5",
+    "roadmap/DEPENDENCIES.archive-2026-10.md": "2c9b589d28ee8ea0cee24aa938594d7ffd016a40a0a79589de73369d68ba9b04",
+    "roadmap/DEPENDENCIES.archive-2026-09.md": "b70ee84e156a933b75b82a940bb23d0b8c31544bd36f75c0b9db4f095eb1f405"
+  }
+}

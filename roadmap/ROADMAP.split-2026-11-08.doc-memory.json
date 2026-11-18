@@ -1,0 +1,2252 @@
+{
+  "schema": "doc-memory-split/v1",
+  "source_path": "roadmap/ROADMAP.md",
+  "active_path": "roadmap/ROADMAP.md",
+  "source_sha256": "3bdac39ba913f64fc02485b7aec4e9d83f21c0f92098c1c427bee2dd4f3f7f99",
+  "source_chars": 428140,
+  "base_sha256": "3bdac39ba913f64fc02485b7aec4e9d83f21c0f92098c1c427bee2dd4f3f7f99",
+  "removed_generated": "",
+  "removed_offset": -1,
+  "open_work_listed": 26,
+  "inserted_sha256": null,
+  "keep_since": "2026-11-08",
+  "sections": [
+    {
+      "index": 0,
+      "heading": "",
+      "date": null,
+      "chars": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "first_line": "",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 1,
+      "heading": "## 2026-11-14 — #866 v0.1.174: bronauthentieke zesrollen-cron ↔ systemd-fases ↔ exact rollback op echte disposable Linux PASS",
+      "date": "2026-11-14",
+      "chars": 3250,
+      "sha256": "0818dd1d84fecc64c52935498a92ff7b9ea3ca19700c12b1636b0e359f9633f8",
+      "first_line": "## 2026-11-14 — #866 v0.1.174: bronauthentieke zesrollen-cron ↔ systemd-fases ↔ exact rollback op echte disposable Linux PASS\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 2,
+      "heading": "## 2026-11-14 — #866 v0.1.173: alleen-lezen M3-fasecontrole weigert volledige cron-/unit-/procesdrift (CI PASS)",
+      "date": "2026-11-14",
+      "chars": 2729,
+      "sha256": "ab795284fc83f7fbd4689b1fa994417829c1e67531e9d566f6921328e382fcf7",
+      "first_line": "## 2026-11-14 — #866 v0.1.173: alleen-lezen M3-fasecontrole weigert volledige cron-/unit-/procesdrift (CI PASS)\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 3,
+      "heading": "## 2026-11-14 — #866 v0.1.172: enabled peer crasht na user-manager-herstart; blijvend exact cronherstel PASS (disposable)",
+      "date": "2026-11-14",
+      "chars": 2543,
+      "sha256": "82d25eaf51e070393c648f02c9c93f5588996bdfcbc13e409508e0d6dec8c49d",
+      "first_line": "## 2026-11-14 — #866 v0.1.172: enabled peer crasht na user-manager-herstart; blijvend exact cronherstel PASS (disposable)\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 4,
+      "heading": "## 2026-11-14 — #866 v0.1.171: echt gegenereerde lockbehoudende boot-peer, disposable user-manager-herstart en exact cronherstel PASS",
+      "date": "2026-11-14",
+      "chars": 2718,
+      "sha256": "7897f24878bb2cf62ff3fa2f5b52e2b10d5c796b006cc66296fde35f7579604b",
+      "first_line": "## 2026-11-14 — #866 v0.1.171: echt gegenereerde lockbehoudende boot-peer, disposable user-manager-herstart en exact cronherstel PASS\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 5,
+      "heading": "## 2026-11-14 — #866 v0.1.170: mislukte systemd ExecStart met exact zesrollen-cronherstel op disposable Linux PASS",
+      "date": "2026-11-14",
+      "chars": 2579,
+      "sha256": "985c921488bf7508c52d1e5a337bfa775be81b7c05739b0383cbdcb0eaeb5b6b",
+      "first_line": "## 2026-11-14 — #866 v0.1.170: mislukte systemd ExecStart met exact zesrollen-cronherstel op disposable Linux PASS\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 6,
+      "heading": "## 2026-11-14 — #866 v0.1.169 geïntegreerde zesrollen-cron + echt gegenereerde systemd-peer: disposable PASS",
+      "date": "2026-11-14",
+      "chars": 2903,
+      "sha256": "88e96b9e06c16a82e05535bba6ebc7608e6f23af75265b879cb03beb9e56639c",
+      "first_line": "## 2026-11-14 — #866 v0.1.169 geïntegreerde zesrollen-cron + echt gegenereerde systemd-peer: disposable PASS\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 7,
+      "heading": "## 2026-11-14 — #866 ECHT gegenereerde systemd-peer vs overerfde cron-flock: real disposable PASS; source 0.1.168 MERGED",
+      "date": "2026-11-14",
+      "chars": 3055,
+      "sha256": "9cc6ce2c484f3fdb0632e8f584ec21b6e12007a91ee80d7eb28e410deb6cdd01",
+      "first_line": "## 2026-11-14 — #866 ECHT gegenereerde systemd-peer vs overerfde cron-flock: real disposable PASS; source 0.1.168 MERGED\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 8,
+      "heading": "## 2026-11-14 — #866 zes cronrollen → vijf cron + één systemd → exact herstel REAL DISPOSABLE PASS, v0.1.167",
+      "date": "2026-11-14",
+      "chars": 3072,
+      "sha256": "041d9914fda974bed4731d3b2b3a41da1fd2764981d70278ae3e6046a435f698",
+      "first_line": "## 2026-11-14 — #866 zes cronrollen → vijf cron + één systemd → exact herstel REAL DISPOSABLE PASS, v0.1.167\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 9,
+      "heading": "## 2026-11-14 — #866 v0.1.166 lockgedeelde inactieve systemd-nevenunit SOURCE MERGED; fysieke M3–M6 WAIT",
+      "date": "2026-11-14",
+      "chars": 2868,
+      "sha256": "69b3b87c99164aa0d91a51599376caeb2b81d985b5ef85f8de669c92ca066364",
+      "first_line": "## 2026-11-14 — #866 v0.1.166 lockgedeelde inactieve systemd-nevenunit SOURCE MERGED; fysieke M3–M6 WAIT\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 10,
+      "heading": "## 2026-11-14 — #866 beperkte cron→systemd herstel-preview 0.1.165 SOURCE/CI GEMERGED, originele M3–M6 OPEN",
+      "date": "2026-11-14",
+      "chars": 2959,
+      "sha256": "4c2e02b93e95509852bfbaf6af9f5b228448cd8aea6646e985712cd0166dbf57",
+      "first_line": "## 2026-11-14 — #866 beperkte cron→systemd herstel-preview 0.1.165 SOURCE/CI GEMERGED, originele M3–M6 OPEN\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 11,
+      "heading": "## 2026-11-11 — #341 Runner-MCP 0.1.164 dubbele managed-supervisor preflight SOURCE MERGED; originele productie WAIT",
+      "date": "2026-11-11",
+      "chars": 3076,
+      "sha256": "ead4fbd7fa4064671d6279d1b36bda10f392eddf6f6e94c415c175bb10dc843a",
+      "first_line": "## 2026-11-11 — #341 Runner-MCP 0.1.164 dubbele managed-supervisor preflight SOURCE MERGED; originele productie WAIT\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 12,
+      "heading": "## 2026-11-11 — #341 managed update supervisor-preflight 0.1.163 MERGED; #866 systemd-user is doel, cron faseert uit",
+      "date": "2026-11-11",
+      "chars": 2697,
+      "sha256": "c517e0760739bc0989ecc8e336e4cda1019e46cf56cb00572c108c36c1c4a2d9",
+      "first_line": "## 2026-11-11 — #341 managed update supervisor-preflight 0.1.163 MERGED; #866 systemd-user is doel, cron faseert uit\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 13,
+      "heading": "## 2026-11-11 — #341 retained rollback-wheel SOURCE 0.1.161 MERGED/CI PASS; fysieke originele UPDATE WAIT",
+      "date": "2026-11-11",
+      "chars": 3129,
+      "sha256": "fc3a7fb3887b7488b5255c73b4e31380f8bc998ff695f891f746820966905f6b",
+      "first_line": "## 2026-11-11 — #341 retained rollback-wheel SOURCE 0.1.161 MERGED/CI PASS; fysieke originele UPDATE WAIT\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 14,
+      "heading": "## 2026-11-11 — #866 één-rol cron→systemd BRON 0.1.159/0.1.160 MERGED; LIVE NIET GETEST",
+      "date": "2026-11-11",
+      "chars": 2383,
+      "sha256": "4045a25fa0c265d2949140f75ed5a236b4739a54be521149367d09023a968d9a",
+      "first_line": "## 2026-11-11 — #866 één-rol cron→systemd BRON 0.1.159/0.1.160 MERGED; LIVE NIET GETEST\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 15,
+      "heading": "## 2026-11-10 — #669 originele wielcapturereceipt per inode: v0.1.158 SOURCE MERGED/CI PASS, LIVE WAIT",
+      "date": "2026-11-10",
+      "chars": 2963,
+      "sha256": "a4a10cb0498c84227a8d10da9db2ece68b885e1b846152ab86f4525f0cac1bde",
+      "first_line": "## 2026-11-10 — #669 originele wielcapturereceipt per inode: v0.1.158 SOURCE MERGED/CI PASS, LIVE WAIT\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 16,
+      "heading": "## 2026-11-09 — F30 / #341 v0.1.157 veilige multijob-transactie SOURCE voltooid; fysieke updateketen niet",
+      "date": "2026-11-09",
+      "chars": 1758,
+      "sha256": "828135939a03b4f5273a670096261a041e4f27f8661a0058783f281ee52b3228",
+      "first_line": "## 2026-11-09 — F30 / #341 v0.1.157 veilige multijob-transactie SOURCE voltooid; fysieke updateketen niet\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 17,
+      "heading": "## 2026-11-07 — #341 hersteltransactie kan andere updater niet meer overschrijven: v0.1.155 SOURCE/CI MERGED",
+      "date": "2026-11-07",
+      "chars": 2639,
+      "sha256": "0e1c7f26b3753bd6033ea7f4c21c564095cdae1ab33fee74459530f3c6eec050",
+      "first_line": "## 2026-11-07 — #341 hersteltransactie kan andere updater niet meer overschrijven: v0.1.155 SOURCE/CI MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 18,
+      "heading": "## 2026-11-07 — #662 0.1.154 automatische artifactpublicatie na demo/isolated systemd (SOURCE KANDIDAAT)",
+      "date": "2026-11-07",
+      "chars": 937,
+      "sha256": "9e047b364b91b8c7563a8d141d061419bd14710dad57951ec7022a88e2c34de9",
+      "first_line": "## 2026-11-07 — #662 0.1.154 automatische artifactpublicatie na demo/isolated systemd (SOURCE KANDIDAAT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 19,
+      "heading": "## 2026-11-07 — #662 0.1.153 behouden actieve main-release CI (MERGED / live-uitrol WAIT)",
+      "date": "2026-11-07",
+      "chars": 935,
+      "sha256": "48d14a1bdc41ddf1f2a6a9f621240352091a14ebe6269897d14fba65dc5511a6",
+      "first_line": "## 2026-11-07 — #662 0.1.153 behouden actieve main-release CI (MERGED / live-uitrol WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 20,
+      "heading": "## 2026-11-07 — #662 bescherming van autonome main-release CI (0.1.153 BRONKANDIDAAT)",
+      "date": "2026-11-07",
+      "chars": 1151,
+      "sha256": "daea50a41db4a1d9d3913b883573bf83bb0c6796244f97103de4a8160516e6d8",
+      "first_line": "## 2026-11-07 — #662 bescherming van autonome main-release CI (0.1.153 BRONKANDIDAAT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 21,
+      "heading": "## 2026-11-07 — F30 #341 source 0.1.152 definitief getest en gemerged; fysieke uitrol nog WAIT",
+      "date": "2026-11-07",
+      "chars": 865,
+      "sha256": "c1ca63c359a63db5f9218b84d3aea14f909b7a42a093c5d4fdfe5eccffe5d14a",
+      "first_line": "## 2026-11-07 — F30 #341 source 0.1.152 definitief getest en gemerged; fysieke uitrol nog WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 22,
+      "heading": "## 2026-11-07 — F30 #341 bronkandidaat 0.1.152: stage en readiness hetzelfde lokale wheel-contract",
+      "date": "2026-11-07",
+      "chars": 1195,
+      "sha256": "d97ea40fa2873c487b946721b24ca2f2b799e56b9f23838f93dbd26e1b291447",
+      "first_line": "## 2026-11-07 — F30 #341 bronkandidaat 0.1.152: stage en readiness hetzelfde lokale wheel-contract\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 23,
+      "heading": "## 2026-11-07 — F30/#341 0.1.151 lokale ZIP/RECORD-hercontrole SOURCE VOLTOOID, HOST WAIT",
+      "date": "2026-11-07",
+      "chars": 1401,
+      "sha256": "b823f705b3f9da0b4b54461fff7eda0b047761badd8662bc8c49bd7ff4c5ce99",
+      "first_line": "## 2026-11-07 — F30/#341 0.1.151 lokale ZIP/RECORD-hercontrole SOURCE VOLTOOID, HOST WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 24,
+      "heading": "## 2026-11-06 — F30 #341 bronketen tot en met local_readiness geverifieerd",
+      "date": "2026-11-06",
+      "chars": 1315,
+      "sha256": "5e0e2e60fdc3beeb3b3d3fb75860398736cb7e7eca9081d96de70c9cacc76d31",
+      "first_line": "## 2026-11-06 — F30 #341 bronketen tot en met local_readiness geverifieerd\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 25,
+      "heading": "## 2026-11-06 — F30 #341 volgende veilige schakel: GitHub-inactieve custody → bestaande local_readiness",
+      "date": "2026-11-06",
+      "chars": 1275,
+      "sha256": "554ce65c68382113d95f15b57125971d71458668598dcf23aab9d15bb4125383",
+      "first_line": "## 2026-11-06 — F30 #341 volgende veilige schakel: GitHub-inactieve custody → bestaande local_readiness\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 26,
+      "heading": "## 2026-11-06 — F30 #341 tijdelijk genest / definitief vlak bewaarpad verduidelijkt",
+      "date": "2026-11-06",
+      "chars": 1034,
+      "sha256": "ca43ac4048640db6711873d3799fe8b3bbbd43e2a79e00272becad4253749b66",
+      "first_line": "## 2026-11-06 — F30 #341 tijdelijk genest / definitief vlak bewaarpad verduidelijkt\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 27,
+      "heading": "## 2026-11-06 — F30/#341 0.1.150 GitHub Release → bestaande inactieve custody, ED pas later",
+      "date": "2026-11-06",
+      "chars": 1028,
+      "sha256": "0e62fbfe3ff7bd2395643901d67be55c234d83b8f79fe3b53974c2b7905e5451",
+      "first_line": "## 2026-11-06 — F30/#341 0.1.150 GitHub Release → bestaande inactieve custody, ED pas later\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 28,
+      "heading": "## 2026-11-06 — F30/#341 S3 GitHub provider-integrity source WITHOUT Ed25519 owner key",
+      "date": "2026-11-06",
+      "chars": 1048,
+      "sha256": "9a2dd4fd8f3e32fdbe3b45419f47a23c814419d05f619a46b5236a0abe6fb2af",
+      "first_line": "## 2026-11-06 — F30/#341 S3 GitHub provider-integrity source WITHOUT Ed25519 owner key\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 29,
+      "heading": "## 2026-11-06 — F30 #937 v0.1.148 private signed Release end-to-end source closure",
+      "date": "2026-11-06",
+      "chars": 726,
+      "sha256": "724f218393959f78a61494c0fb548a48ea6a5edbcf10b442a524fcacc8251272",
+      "first_line": "## 2026-11-06 — F30 #937 v0.1.148 private signed Release end-to-end source closure\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 30,
+      "heading": "## 2026-11-06 — F30 #937 source-only gesloten signed Release-body → bestaande manager-verificatie",
+      "date": "2026-11-06",
+      "chars": 722,
+      "sha256": "4bd238fdb75e486d8a955f814300890fe26d8caee322a4811a5b0f99b9131024",
+      "first_line": "## 2026-11-06 — F30 #937 source-only gesloten signed Release-body → bestaande manager-verificatie\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 31,
+      "heading": "## 2026-11-06 — F30 #937 signed description consumer 0.1.146, source-only",
+      "date": "2026-11-06",
+      "chars": 660,
+      "sha256": "3ba484dd07f183c7584aae5109afa2e03d377f2a4ad3c8def9c01503afe2a86b",
+      "first_line": "## 2026-11-06 — F30 #937 signed description consumer 0.1.146, source-only\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 32,
+      "heading": "## 2026-11-06 — F30 #937 S2e bronkandidaat 0.1.145: offline signed inactive storage",
+      "date": "2026-11-06",
+      "chars": 552,
+      "sha256": "d2114fa6e1dd104410e2fa34113bfe2c8b1976403e112771403c373669623601",
+      "first_line": "## 2026-11-06 — F30 #937 S2e bronkandidaat 0.1.145: offline signed inactive storage\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 33,
+      "heading": "## 2026-11-06 — F30 #937 S2 bronketen 0.1.144 compleet in tests, S2d signer WAIT",
+      "date": "2026-11-06",
+      "chars": 1037,
+      "sha256": "6ede1ccedfa691bff84dfd80a6893871edc954c39bed0dd8948dfe60c6eb97d4",
+      "first_line": "## 2026-11-06 — F30 #937 S2 bronketen 0.1.144 compleet in tests, S2d signer WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 34,
+      "heading": "## 2026-11-06 — F30 #937 0.1.144 bronkandidaat: bestaande manager full chain slechts intern koppelen",
+      "date": "2026-11-06",
+      "chars": 985,
+      "sha256": "4c4139259fc3ff9032063911d46664fef1da592379bcfcb88f06d9451ad20a34",
+      "first_line": "## 2026-11-06 — F30 #937 0.1.144 bronkandidaat: bestaande manager full chain slechts intern koppelen\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 35,
+      "heading": "## 2026-11-06 — F30 #937 0.1.142 + 0.1.143 SOURCE GREEN; upstream signer/physical owner WAIT",
+      "date": "2026-11-06",
+      "chars": 1132,
+      "sha256": "67f697d05544210f5aff0efad0d704ac3f4de2c6f2337daa1cb3b6d77b036b65",
+      "first_line": "## 2026-11-06 — F30 #937 0.1.142 + 0.1.143 SOURCE GREEN; upstream signer/physical owner WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 36,
+      "heading": "## 2026-11-06 — F30 #937 exact ReleaseAdmission hergebruiken, zonder dubbele API-implementatie",
+      "date": "2026-11-06",
+      "chars": 901,
+      "sha256": "e0b7a00da4583651a0df52783bc84dbf5a6d9032b432cb953aece08c0468421b",
+      "first_line": "## 2026-11-06 — F30 #937 exact ReleaseAdmission hergebruiken, zonder dubbele API-implementatie\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 37,
+      "heading": "## 2026-11-06 — F30 #937 S2e: signed assetbytes op bestaand transport (0.1.142 kandidaat)",
+      "date": "2026-11-06",
+      "chars": 1013,
+      "sha256": "9574b8035c8acb2b9b07f47bf89b5712a00800f57de69189bf63aeee5285d535",
+      "first_line": "## 2026-11-06 — F30 #937 S2e: signed assetbytes op bestaand transport (0.1.142 kandidaat)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 38,
+      "heading": "## 2026-11-06 — F30 #937 S2e bestaande inactieve local-bundles stage: racefix MERGED 0.1.141",
+      "date": "2026-11-06",
+      "chars": 1054,
+      "sha256": "91eaaac176ca48e9e37f3bfd88620e96dca53ffa5dbcfdc00a5cd5b2874381ae",
+      "first_line": "## 2026-11-06 — F30 #937 S2e bestaande inactieve local-bundles stage: racefix MERGED 0.1.141\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 39,
+      "heading": "## 2026-11-06 — F30 S2 #937: drie bronmijlpalen MERGED, inactieve custody blijft OPEN",
+      "date": "2026-11-06",
+      "chars": 1142,
+      "sha256": "f335a938bc458069d1947ce0df3b8ffee9193e3ae3e59df840d8d845cad2b84a",
+      "first_line": "## 2026-11-06 — F30 S2 #937: drie bronmijlpalen MERGED, inactieve custody blijft OPEN\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 40,
+      "heading": "## 2026-11-06 — #937 S2c generieke Python-wheels verifiëren vóór inactieve opslag",
+      "date": "2026-11-06",
+      "chars": 646,
+      "sha256": "2f334d7fe4251a4a58bb4b8ce4056a1b77baa751f72790714ac6f522af58677b",
+      "first_line": "## 2026-11-06 — #937 S2c generieke Python-wheels verifiëren vóór inactieve opslag\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 41,
+      "heading": "## 2026-11-06 — #937 S2b: Q7 en generieke bundle-inhoud via één codepad",
+      "date": "2026-11-06",
+      "chars": 707,
+      "sha256": "415946f9ec17e201f72b007be6c0c53f7e5c6a8bb998a9864a88c81c9f2fab33",
+      "first_line": "## 2026-11-06 — #937 S2b: Q7 en generieke bundle-inhoud via één codepad\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 42,
+      "heading": "## 2026-11-06 — F30 S2a #937: generiek ondertekende Release-inventaris (bron kandidaat)",
+      "date": "2026-11-06",
+      "chars": 773,
+      "sha256": "2dc66623d982a39c981d1690a326fe2440b3b8ed86729964ba3a38bd848fd611",
+      "first_line": "## 2026-11-06 — F30 S2a #937: generiek ondertekende Release-inventaris (bron kandidaat)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 43,
+      "heading": "## 2026-11-06 — F30 releasecontrolemijlpaal: #934 en #936 SOURCE MERGED; #937 volgende stage",
+      "date": "2026-11-06",
+      "chars": 1311,
+      "sha256": "f0cf73c7118ec9f9ec1cccdf3032a8a540bd3e7319e0aed6c2bff7c83652fd38",
+      "first_line": "## 2026-11-06 — F30 releasecontrolemijlpaal: #934 en #936 SOURCE MERGED; #937 volgende stage\n",
+      "dest": "roadmap/ROADMAP.archive-2026-11.md"
+    },
+    {
+      "index": 44,
+      "heading": "## 2026-10-28 — #381 hergebruik bestaande LAB Q7-private stage zonder tokenkopie (SOURCE 0.1.131 MERGED; LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 3010,
+      "sha256": "27d735807986aaf2c57ff8354b1d940221a1bcb659b06a30be77722128ec6970",
+      "first_line": "## 2026-10-28 — #381 hergebruik bestaande LAB Q7-private stage zonder tokenkopie (SOURCE 0.1.131 MERGED; LIVE WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 45,
+      "heading": "## 2026-10-28 — #381 Q7 forwarding legacy-mode compatibility (SOURCE 0.1.130 MERGED; LAB WAIT)",
+      "date": "2026-10-28",
+      "chars": 1766,
+      "sha256": "d73ef12b4e172ad146f87594ab18490c0ba18e797630de122d6d2c2a3e47f082",
+      "first_line": "## 2026-10-28 — #381 Q7 forwarding legacy-mode compatibility (SOURCE 0.1.130 MERGED; LAB WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 46,
+      "heading": "## 2026-10-28 — #381 correctie Q7 private configuratiedoorgifte (SOURCE 0.1.129 MERGED; LAB LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 2412,
+      "sha256": "482e509897c66fa5b87fd5f442d7a75345bbc9b1b33cc9292a54bb76f67c8cc8",
+      "first_line": "## 2026-10-28 — #381 correctie Q7 private configuratiedoorgifte (SOURCE 0.1.129 MERGED; LAB LIVE WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 47,
+      "heading": "## 2026-10-28 — #669 geselecteerde werkelijk geladen code-objecten zichtbaar op bestaande MCP runtime_status (SOURCE 0.1.128 MERGED, ORIGINEEL LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 3502,
+      "sha256": "12dac6d4be09b93d363686699584482f0320db17920efbcf0674fa5abae4dd43",
+      "first_line": "## 2026-10-28 — #669 geselecteerde werkelijk geladen code-objecten zichtbaar op bestaande MCP runtime_status (SOURCE 0.1.128 MERGED, ORIGINEEL LIVE WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 48,
+      "heading": "## 2026-10-28 — #341 bestaande updater: SHA-256 van provisional baseline wheel (SOURCE MERGED, LIVE WAIT)",
+      "date": "2026-10-28",
+      "chars": 2064,
+      "sha256": "f5643ab0ba3e30f9bec1c3420f6d70f43813898411298f7442e4a1245098a62d",
+      "first_line": "## 2026-10-28 — #341 bestaande updater: SHA-256 van provisional baseline wheel (SOURCE MERGED, LIVE WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 49,
+      "heading": "## 2026-10-28 — #866 veilige symlink-voorouders bij systemd-installatie en -verwijdering (bron 0.1.125)",
+      "date": "2026-10-28",
+      "chars": 1803,
+      "sha256": "dda2fe3a5970238342f0d7c92941483bcfcbdaba55459611a5223cfead54b746",
+      "first_line": "## 2026-10-28 — #866 veilige symlink-voorouders bij systemd-installatie en -verwijdering (bron 0.1.125)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 50,
+      "heading": "## 2026-10-28 — #866 M2 echte wegwerpmanager, geladen rollback en exclusieve cron↔systemd-test PASS (0.1.121–0.1.123)",
+      "date": "2026-10-28",
+      "chars": 2302,
+      "sha256": "0c2d6589d8e96d53d090a47ffaddd4f9dc83286fe3a6bd5ba09bb3e38869d273",
+      "first_line": "## 2026-10-28 — #866 M2 echte wegwerpmanager, geladen rollback en exclusieve cron↔systemd-test PASS (0.1.121–0.1.123)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 51,
+      "heading": "## 2026-10-28 — #866 echte disposable user-manager restart PASS, source 0.1.120",
+      "date": "2026-10-28",
+      "chars": 1396,
+      "sha256": "7cc155e3e69e3a60589803069270e5d25a4d3f2d5c78b0e996466b2724c58968",
+      "first_line": "## 2026-10-28 — #866 echte disposable user-manager restart PASS, source 0.1.120\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 52,
+      "heading": "## 2026-10-28 — #866 echte geïsoleerde systemd-user herstart en unitrollback: CI PASS (0.1.119)",
+      "date": "2026-10-28",
+      "chars": 1515,
+      "sha256": "a2d2e7d21a11a94ea055b9d198c2fa3560bf4cf25811a13e72a35d565e41583e",
+      "first_line": "## 2026-10-28 — #866 echte geïsoleerde systemd-user herstart en unitrollback: CI PASS (0.1.119)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 53,
+      "heading": "## 2026-10-28 — #866 no-op removal does not create systemd tree; SOURCE 0.1.118 MERGED",
+      "date": "2026-10-28",
+      "chars": 1407,
+      "sha256": "536e7d53a01604cd130b66184685468e677bfdab61480f8d17197db9f0f23615",
+      "first_line": "## 2026-10-28 — #866 no-op removal does not create systemd tree; SOURCE 0.1.118 MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 54,
+      "heading": "## 2026-10-28 — #866 M2 verwijderen faalt veilig; source 0.1.117 MERGED",
+      "date": "2026-10-28",
+      "chars": 1152,
+      "sha256": "c241a43ac3226e06430f4b4dfb830c2b575ad58f7407e80149ca07120c7e9fca",
+      "first_line": "## 2026-10-28 — #866 M2 verwijderen faalt veilig; source 0.1.117 MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 55,
+      "heading": "## 2026-10-28 — #866 M0 cron-leesfout fail-closed; source 0.1.116 MERGED",
+      "date": "2026-10-28",
+      "chars": 1272,
+      "sha256": "31451ccdd5fddc98be82f2be22ebc8d029f9b8ed9cf22fd8fd3dcfb7f6b10b6f",
+      "first_line": "## 2026-10-28 — #866 M0 cron-leesfout fail-closed; source 0.1.116 MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 56,
+      "heading": "## 2026-10-28 — #866 C: bescherming cron/systemd en onafhankelijke F35-job (source-only)",
+      "date": "2026-10-28",
+      "chars": 1808,
+      "sha256": "69d768f6499e92966d84e7acc4127ee9a8c516172397051a86b1770009089d48",
+      "first_line": "## 2026-10-28 — #866 C: bescherming cron/systemd en onafhankelijke F35-job (source-only)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 57,
+      "heading": "## 2026-10-28 — #616 tweede request-headcontrole vóór cursor-CAS; SOURCE 0.1.113 MERGED",
+      "date": "2026-10-28",
+      "chars": 2141,
+      "sha256": "690f370e47d32ec087c9f2c461afce9c9eea6903369032c1697aa3d0d4ffd609",
+      "first_line": "## 2026-10-28 — #616 tweede request-headcontrole vóór cursor-CAS; SOURCE 0.1.113 MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 58,
+      "heading": "## 2026-10-28 — #269 lokale tests + bestaande Fabric-status in één read-only snapshot; SOURCE 0.1.110 MERGED",
+      "date": "2026-10-28",
+      "chars": 2639,
+      "sha256": "e3f096d209c58d2e9bdd10bc5c3105992ffa65cc41b6b5550a635913538764a7",
+      "first_line": "## 2026-10-28 — #269 lokale tests + bestaande Fabric-status in één read-only snapshot; SOURCE 0.1.110 MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 59,
+      "heading": "## 2026-10-28 — #616 watcher-cursorstatus echt alleen-lezen; SOURCE 0.1.108 MERGED, live herstel open",
+      "date": "2026-10-28",
+      "chars": 1648,
+      "sha256": "633f5497f91fd30aa684d6118dbfc4bc9509da0e0351430c9048a3438da480e2",
+      "first_line": "## 2026-10-28 — #616 watcher-cursorstatus echt alleen-lezen; SOURCE 0.1.108 MERGED, live herstel open\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 60,
+      "heading": "## 2026-10-28 — #297 server-toolcatalogus zichtbaar via bestaande runtime_status; SOURCE 0.1.107, LIVE blijft OPEN",
+      "date": "2026-10-28",
+      "chars": 1796,
+      "sha256": "d4a062f5c2070c5387451252d8d8ee88a924ea03c00d9257951b296988e5ad46",
+      "first_line": "## 2026-10-28 — #297 server-toolcatalogus zichtbaar via bestaande runtime_status; SOURCE 0.1.107, LIVE blijft OPEN\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 61,
+      "heading": "## 2026-10-28 — #669 original 0.1.88 on-disk source PASS; 0.1.104 source MERGED / imported runtime WAIT",
+      "date": "2026-10-28",
+      "chars": 2362,
+      "sha256": "360d685a861cb24739695cb58159c68ea2ff7960314fefcc7df4622890d2d8ef",
+      "first_line": "## 2026-10-28 — #669 original 0.1.88 on-disk source PASS; 0.1.104 source MERGED / imported runtime WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 62,
+      "heading": "## 2026-10-28 — Runner-MCP-B #381 Q7 launcher-cycle defect merged; live Claude admission remains WAIT",
+      "date": "2026-10-28",
+      "chars": 1960,
+      "sha256": "fe799c65e4f2c204af75dc3b6b0582dededa717aa5214e6f348cbbd648e4a225",
+      "first_line": "## 2026-10-28 — Runner-MCP-B #381 Q7 launcher-cycle defect merged; live Claude admission remains WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 63,
+      "heading": "## 2026-10-28 — P2 #866: cron → bestaande systemd-user, **CODE EERST; cron blijft live**",
+      "date": "2026-10-28",
+      "chars": 6117,
+      "sha256": "4f73af80a6953894bf22af955983054c6793f9a57fdf792ca12a9b805ffcc2a4",
+      "first_line": "## 2026-10-28 — P2 #866: cron → bestaande systemd-user, **CODE EERST; cron blijft live**\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 64,
+      "heading": "## 2026-10-27 — #669 v0.1.103 SOURCE MERGED; #662 exact wheel candidate bytes verified",
+      "date": "2026-10-27",
+      "chars": 2087,
+      "sha256": "6500fbef48525cbd51526b75df992016eebc28d1ae3c37169d14f47ad8303b78",
+      "first_line": "## 2026-10-27 — #669 v0.1.103 SOURCE MERGED; #662 exact wheel candidate bytes verified\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 65,
+      "heading": "## 2026-10-27 — #341 v0.1.101 SOURCE MERGED; #662 candidate bytes verified",
+      "date": "2026-10-27",
+      "chars": 1974,
+      "sha256": "a1cdf7238f6b80539c2555f9f0274c4f58d54aad0131b6841024c0e3744ee707",
+      "first_line": "## 2026-10-27 — #341 v0.1.101 SOURCE MERGED; #662 candidate bytes verified\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 66,
+      "heading": "## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered",
+      "date": "2026-10-27",
+      "chars": 1677,
+      "sha256": "ab3c479ce8a6623477fae04f5a7d5e954a19c1140f818b021856ad53a822a79a",
+      "first_line": "## 2026-10-27 — #341 A7 application integration MERGED; #662 exact candidate delivered\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 67,
+      "heading": "## 2026-10-27 — #341 source 0.1.96 provisional baseline retention MERGED / live qualification WAIT",
+      "date": "2026-10-27",
+      "chars": 1917,
+      "sha256": "3622c6c07db2c81689da762217581274675a5a31f091bae69ac780398134b806",
+      "first_line": "## 2026-10-27 — #341 source 0.1.96 provisional baseline retention MERGED / live qualification WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 68,
+      "heading": "## 2026-10-27 — #669/#341 bounded status/Doctor classification SOURCE MERGED (0.1.94)",
+      "date": "2026-10-27",
+      "chars": 1366,
+      "sha256": "354275233cf6ecfae5d8d4891e5c2592c942969d622bf93bacf3e76321dc28df",
+      "first_line": "## 2026-10-27 — #669/#341 bounded status/Doctor classification SOURCE MERGED (0.1.94)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 69,
+      "heading": "## 2026-10-27 — Runner-MCP-B (#381/#747) reikwijdte en bewijs (SOURCE, niet LIVE-ACK)",
+      "date": "2026-10-27",
+      "chars": 3071,
+      "sha256": "af083d4d7afb40ec37c10f8656d5ffe548c9b441309d71c3c6150dbd62eca1a9",
+      "first_line": "## 2026-10-27 — Runner-MCP-B (#381/#747) reikwijdte en bewijs (SOURCE, niet LIVE-ACK)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 70,
+      "heading": "## 2026-10-27 — #669 unmanaged six-role cron conflict denial (v0.1.93 SOURCE / CI gate)",
+      "date": "2026-10-27",
+      "chars": 1400,
+      "sha256": "cfa5e045a7b3b9e6e41c00899d7389cafe58c081454d80e904c4f9cc03948d02",
+      "first_line": "## 2026-10-27 — #669 unmanaged six-role cron conflict denial (v0.1.93 SOURCE / CI gate)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 71,
+      "heading": "## 2026-10-27 — #590 external-target read failures retain bounded status (SOURCE ONLY)",
+      "date": "2026-10-27",
+      "chars": 1346,
+      "sha256": "834b4c737460c5a691c504070029690ed136bbed65b04d88851d8530f7fac712",
+      "first_line": "## 2026-10-27 — #590 external-target read failures retain bounded status (SOURCE ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 72,
+      "heading": "## 2026-10-27 — #669 original-host v0.1.88 operational handover (physical receipt 2026-10-26)",
+      "date": "2026-10-27",
+      "chars": 2162,
+      "sha256": "5a47b7f313d2da840caa48aa86a7672ea951ea9e4ce4dcbb8591ce217ea3a874",
+      "first_line": "## 2026-10-27 — #669 original-host v0.1.88 operational handover (physical receipt 2026-10-26)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 73,
+      "heading": "## 2026-10-25 — #669 signed six-role witness offline comparison hardened in source 0.1.88; PHYSICAL WAIT",
+      "date": "2026-10-25",
+      "chars": 1204,
+      "sha256": "2e675a465a9bf8d4c9f963bd7d6215683656a96b79a5545b69e53826d4880b44",
+      "first_line": "## 2026-10-25 — #669 signed six-role witness offline comparison hardened in source 0.1.88; PHYSICAL WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 74,
+      "heading": "## 2026-10-24 — #587 original-host bounded protected archive BACKUP SOURCE merged 0.1.87; physical/live WAIT",
+      "date": "2026-10-24",
+      "chars": 2369,
+      "sha256": "24d08951119d410fc12b6472206324e5dc2b92d3089ab53d281f71b425551e26",
+      "first_line": "## 2026-10-24 — #587 original-host bounded protected archive BACKUP SOURCE merged 0.1.87; physical/live WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 75,
+      "heading": "## 2026-10-24 — #588 ORIGINAL physical 2/2 OFFLINE Fabric recovery drill PASS (NOT live restore)",
+      "date": "2026-10-24",
+      "chars": 3474,
+      "sha256": "2f4c90b2d0bbc108cc4a254f900c5a80aba3b02b0e569cf9ba3ea109f1f41f0e",
+      "first_line": "## 2026-10-24 — #588 ORIGINAL physical 2/2 OFFLINE Fabric recovery drill PASS (NOT live restore)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 76,
+      "heading": "## 2026-10-24 — #588 real Runner-MCP local reader exercised in disposable CI; original-host offline restore WAIT",
+      "date": "2026-10-24",
+      "chars": 2223,
+      "sha256": "4a5a432feb72bb255e6940e17db477299016f89775a8c4650226a032545cfb0c",
+      "first_line": "## 2026-10-24 — #588 real Runner-MCP local reader exercised in disposable CI; original-host offline restore WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 77,
+      "heading": "## 2026-10-24 — ORIGINAL physical #587 independent second-disk protected release archives 2/2 PASS; managed MCP path and #588 restore still pending",
+      "date": "2026-10-24",
+      "chars": 2549,
+      "sha256": "77ca74f45819aac4190f51f5d7a644101eedf72ccb2196f5dc8c68cbeda7dd6b",
+      "first_line": "## 2026-10-24 — ORIGINAL physical #587 independent second-disk protected release archives 2/2 PASS; managed MCP path and #588 restore still pending\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 78,
+      "heading": "## 2026-10-24 — #587 original physical mirror TOOL installed, but live #586 private bindings not yet configured",
+      "date": "2026-10-24",
+      "chars": 2265,
+      "sha256": "de9a9bbeeb971cb99c4fcda5397b8cf70a0adfa8511a09eb322895668b601a88",
+      "first_line": "## 2026-10-24 — #587 original physical mirror TOOL installed, but live #586 private bindings not yet configured\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 79,
+      "heading": "## 2026-10-24 — #587 physical archive namespace accepted; LIVE Runner-MCP #586 configuration still UNCONFIGURED",
+      "date": "2026-10-24",
+      "chars": 2757,
+      "sha256": "73311b4ccb0eba034bdd100ef0c0b395584a195cfa2068e231517cbeaa41e744",
+      "first_line": "## 2026-10-24 — #587 physical archive namespace accepted; LIVE Runner-MCP #586 configuration still UNCONFIGURED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 80,
+      "heading": "## 2026-10-24 — #669/#341 Fabric GitHub Release metadata preflight (SOURCE ONLY, target WAIT)",
+      "date": "2026-10-24",
+      "chars": 1865,
+      "sha256": "ed90911f0f4d63538f29ae572fb88a1366c9f372cd538a4ce9044151ac8abcd0",
+      "first_line": "## 2026-10-24 — #669/#341 Fabric GitHub Release metadata preflight (SOURCE ONLY, target WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 81,
+      "heading": "## 2026-10-23 — #669 original v0.1.38 GitHub wheel ↔ physical installed Python bytes MATCH (NOT loaded generation)",
+      "date": "2026-10-23",
+      "chars": 3427,
+      "sha256": "e05c87dee7c1cd6b2aa0e438a8eecf7208999cd1e7d748c0de5fb45c4c786d1f",
+      "first_line": "## 2026-10-23 — #669 original v0.1.38 GitHub wheel ↔ physical installed Python bytes MATCH (NOT loaded generation)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 82,
+      "heading": "## 2026-10-23 — #669 HISTORICAL 0.1.38 WHEEL CANDIDATE FOUND; SAME-HOST BYTE MATCH AND OFFLINE RESTORE STILL WAIT",
+      "date": "2026-10-23",
+      "chars": 3354,
+      "sha256": "e75be1c96e4491bb75066db4f4d2e45e81458f26bad7bf012c4201d36dc75c78",
+      "first_line": "## 2026-10-23 — #669 HISTORICAL 0.1.38 WHEEL CANDIDATE FOUND; SAME-HOST BYTE MATCH AND OFFLINE RESTORE STILL WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 83,
+      "heading": "## 2026-10-23 — #669 original 0.1.38 rollback wheel custody NEGATIVE (bounded original-host scope), recovery still WAIT",
+      "date": "2026-10-23",
+      "chars": 4096,
+      "sha256": "3f11cee710e538f4c9aed9471f1a2c66d654c69a9e92d5df1541ef6e2145f180",
+      "first_line": "## 2026-10-23 — #669 original 0.1.38 rollback wheel custody NEGATIVE (bounded original-host scope), recovery still WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 84,
+      "heading": "## 2026-10-23 — #669 original Agent Bus command PID PROVEN; six declared cron roles now attributable, imported code WAIT",
+      "date": "2026-10-23",
+      "chars": 3023,
+      "sha256": "c1dc94cf9379d83e8e055091c6cd31b91c9b36af9cccc8ee715bc2fcb22e8dc1",
+      "first_line": "## 2026-10-23 — #669 original Agent Bus command PID PROVEN; six declared cron roles now attributable, imported code WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 85,
+      "heading": "## 2026-10-23 — #669 original AF-HOST-0001 cron roster PARTIALLY VERIFIED; loaded generation WAIT",
+      "date": "2026-10-23",
+      "chars": 4124,
+      "sha256": "0e476539440095f865ede131c74ac756416f19f61f391154826768e850cfd24e",
+      "first_line": "## 2026-10-23 — #669 original AF-HOST-0001 cron roster PARTIALLY VERIFIED; loaded generation WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 86,
+      "heading": "## 2026-10-23 — #341 exact original publisher config-root mismatch, guarded sibling source correction",
+      "date": "2026-10-23",
+      "chars": 2794,
+      "sha256": "8a64b02ecc6f561c8fe054e95118e04e2c52031ca7c8bc98838e4f1430a25412",
+      "first_line": "## 2026-10-23 — #341 exact original publisher config-root mismatch, guarded sibling source correction\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 87,
+      "heading": "## 2026-10-23 — #341 exact original-parent issuer-location mismatch VERIFIED (read-only, not fixed)",
+      "date": "2026-10-23",
+      "chars": 3602,
+      "sha256": "ac4e94aba681ed2214ce8ef80ef0ac887c621827419aa09fab8c971d8f2f560e",
+      "first_line": "## 2026-10-23 — #341 exact original-parent issuer-location mismatch VERIFIED (read-only, not fixed)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 88,
+      "heading": "## 2026-10-23 — #341 ORIGINAL machine issuer AUTH GET PASS; Fabric rollback fix SOURCE MERGED, not installed",
+      "date": "2026-10-23",
+      "chars": 3657,
+      "sha256": "1f311ef3b11a7e186cdf03b1b3e2387c8ba949ca024b808d0f2f65a6981cb3f0",
+      "first_line": "## 2026-10-23 — #341 ORIGINAL machine issuer AUTH GET PASS; Fabric rollback fix SOURCE MERGED, not installed\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 89,
+      "heading": "## 2026-10-23 — #341 original-control-host previous-slot doctor PASS (READ-ONLY ONLY)",
+      "date": "2026-10-23",
+      "chars": 2610,
+      "sha256": "67fdf9ad6a05572a70d813800c584950a850aa31d7953bb6154729a46a78b98d",
+      "first_line": "## 2026-10-23 — #341 original-control-host previous-slot doctor PASS (READ-ONLY ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 90,
+      "heading": "## 2026-10-23 — #341 original machine issuer: receipt shape verified; private binding and actual Black ACK WAIT",
+      "date": "2026-10-23",
+      "chars": 4152,
+      "sha256": "498358316997b95864696461da96e5dcd07d67dcf7d678d5f6ae7fdd8661ad74",
+      "first_line": "## 2026-10-23 — #341 original machine issuer: receipt shape verified; private binding and actual Black ACK WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 91,
+      "heading": "## 2026-10-22 — #341 v0.1.83 ACK readback MERGED; physical machine chain still WAIT",
+      "date": "2026-10-22",
+      "chars": 3340,
+      "sha256": "8a9c1311e3ebb5791186f815bcc970725d76d2d302ef53c5c5165af9fe86f64c",
+      "first_line": "## 2026-10-22 — #341 v0.1.83 ACK readback MERGED; physical machine chain still WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 92,
+      "heading": "## 2026-10-22 — Runner-MCP #341 v0.1.82 source: fixed Black MACHINE issuer evidence",
+      "date": "2026-10-22",
+      "chars": 932,
+      "sha256": "47b74acfa9b9211add6951a5707f0aa7051746a5b3ef51741c6afd527f0817e0",
+      "first_line": "## 2026-10-22 — Runner-MCP #341 v0.1.82 source: fixed Black MACHINE issuer evidence\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 93,
+      "heading": "## 2026-10-22 — OPERATORBESLUIT: basis vóór menselijke MFA/login (uitgesteld)",
+      "date": "2026-10-22",
+      "chars": 1613,
+      "sha256": "cc87c4baacb9468f70c2e2df7017bee727ab4c5c3580f66ac7461426f2e54051",
+      "first_line": "## 2026-10-22 — OPERATORBESLUIT: basis vóór menselijke MFA/login (uitgesteld)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 94,
+      "heading": "## 2026-10-22 — #341 Black Control Center v0.1.81 SOURCE MERGED; isolated physical ACK WAIT",
+      "date": "2026-10-22",
+      "chars": 2168,
+      "sha256": "a6695e71b09062238a05c2457309c6d7c5321314a72aa20c0226a2ffa9001753",
+      "first_line": "## 2026-10-22 — #341 Black Control Center v0.1.81 SOURCE MERGED; isolated physical ACK WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 95,
+      "heading": "## 2026-10-22 — #341 Black original issuer: Fabric source connected, physical ACK WAIT; v0.1.81 guard candidate",
+      "date": "2026-10-22",
+      "chars": 2147,
+      "sha256": "4f6432f3d331a47e137fd9f01cfe7acc01ae05c299fc0a24d504b17a54e06b68",
+      "first_line": "## 2026-10-22 — #341 Black original issuer: Fabric source connected, physical ACK WAIT; v0.1.81 guard candidate\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 96,
+      "heading": "## 2026-10-22 — #341 Control Center Black fixed issuer proxy SOURCE MERGED; live ACK WAIT",
+      "date": "2026-10-22",
+      "chars": 1653,
+      "sha256": "e706e6ced792c8fa5284f516a43a3ac26003b71a62b30abb7fb0b84a94754ce2",
+      "first_line": "## 2026-10-22 — #341 Control Center Black fixed issuer proxy SOURCE MERGED; live ACK WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 97,
+      "heading": "## 2026-10-22 — #341 fixed Black Control Center issuer proxy SOURCE CANDIDATE (live ACK WAIT)",
+      "date": "2026-10-22",
+      "chars": 1565,
+      "sha256": "a36a4bd4129ba98e23c3ae7907c9b73c7f12c5e91db7123bf49cd3b928127340",
+      "first_line": "## 2026-10-22 — #341 fixed Black Control Center issuer proxy SOURCE CANDIDATE (live ACK WAIT)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 98,
+      "heading": "## 2026-10-22 — #669 correct-host dependency update: isolated node LOCAL_STABLE_PASS, original-client ACK WAIT",
+      "date": "2026-10-22",
+      "chars": 2859,
+      "sha256": "6a103de20380963e7f21e309208cfd7e1dc328a25601caf9600b7a9a47829786",
+      "first_line": "## 2026-10-22 — #669 correct-host dependency update: isolated node LOCAL_STABLE_PASS, original-client ACK WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 99,
+      "heading": "## 2026-10-22 — #669 v0.1.79 receipt publication safety SOURCE MERGED, live evidence WAIT",
+      "date": "2026-10-22",
+      "chars": 1394,
+      "sha256": "830269d9b906dae2fe78d3b79f663ec19cb09de802aa03985303e8691edef820",
+      "first_line": "## 2026-10-22 — #669 v0.1.79 receipt publication safety SOURCE MERGED, live evidence WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 100,
+      "heading": "## 2026-10-22 — #669 offline receipt durability correction v0.1.79 SOURCE CANDIDATE",
+      "date": "2026-10-22",
+      "chars": 660,
+      "sha256": "c9631da539173e4d0836db0de87177da480f289041cdac4709e38c5d24c2b51f",
+      "first_line": "## 2026-10-22 — #669 offline receipt durability correction v0.1.79 SOURCE CANDIDATE\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 101,
+      "heading": "## 2026-10-22 — #669 v0.1.78 SOURCE MERGED; independent live wheel/route still WAIT",
+      "date": "2026-10-22",
+      "chars": 2817,
+      "sha256": "d22e54bbb28acc592762b79a95d2f474ea7ad46cca6039c943960ad6c6e42200",
+      "first_line": "## 2026-10-22 — #669 v0.1.78 SOURCE MERGED; independent live wheel/route still WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 102,
+      "heading": "## 2026-10-21 — #669 v0.1.77 source MERGED; active 0.1.38 still UNVERIFIED",
+      "date": "2026-10-21",
+      "chars": 1547,
+      "sha256": "9b8b9474f7a276e4fb3ccbb04b664766593de9ee313a8724984917b6cf4c063f",
+      "first_line": "## 2026-10-21 — #669 v0.1.77 source MERGED; active 0.1.38 still UNVERIFIED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 103,
+      "heading": "## 2026-10-21 — F30 Black #739 one owner-authorized offline Q7 importer path",
+      "date": "2026-10-21",
+      "chars": 838,
+      "sha256": "64ec27f1d3de8ffd99bd1237bb2e581df73e02e219bea06e35e59f6c4dd11c16",
+      "first_line": "## 2026-10-21 — F30 Black #739 one owner-authorized offline Q7 importer path\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 104,
+      "heading": "## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT",
+      "date": "2026-10-20",
+      "chars": 2206,
+      "sha256": "5f5fcdd0d201d883f5ff894d0e921547d5cb036b991eff0588ee1eb0b0971297",
+      "first_line": "## 2026-10-20 — #669 independently pinned six-role offline source proof MERGED, #509 closed SOURCE / live A6 WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 105,
+      "heading": "## 2026-10-20 20:30 Europe/Brussels — #669 live identity WAIT / #509 CLOSED source but live A6 0/11",
+      "date": "2026-10-20",
+      "chars": 1719,
+      "sha256": "611250540aa7ea62f0072205cb2baf6265bd6f340a887df5ddf26c366cc08063",
+      "first_line": "## 2026-10-20 20:30 Europe/Brussels — #669 live identity WAIT / #509 CLOSED source but live A6 0/11\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 106,
+      "heading": "## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT",
+      "date": "2026-10-20",
+      "chars": 1480,
+      "sha256": "7fbce51c07362ef4d501aa572e990c63d9782e3d86c0d2e1e39a561836fb3796",
+      "first_line": "## 2026-10-20 — #615 atomic quarantine existing PR #618 MERGED; production still WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 107,
+      "heading": "## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT",
+      "date": "2026-10-20",
+      "chars": 854,
+      "sha256": "6dae9cee1519b86943914cccc56872f8cda0862f6c1a7c9cefbfd098141624ad",
+      "first_line": "## 2026-10-20 — #531 source v0.1.61 MERGED, operational watcher WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 108,
+      "heading": "## 2026-10-20 — #664/#665 autonomous source v0.1.60 MERGED; connected 0.1.38 still WAIT",
+      "date": "2026-10-20",
+      "chars": 885,
+      "sha256": "e9df6d4a03e3c95320c4403bd049e321c20dff8b610a0904689b7a25c60f189c",
+      "first_line": "## 2026-10-20 — #664/#665 autonomous source v0.1.60 MERGED; connected 0.1.38 still WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 109,
+      "heading": "## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT",
+      "date": "2026-10-20",
+      "chars": 2810,
+      "sha256": "2133315b178a53e5c9d22ad049ed885b23f2886ed0a99584443dd1cbfa73721e",
+      "first_line": "## 2026-10-20 — #509 v0.1.58 source MERGED / #669 six-role live attestation WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 110,
+      "heading": "## 2026-10-20 — owner-confirmed MCP boundary and cockpit integration (docs only)",
+      "date": "2026-10-20",
+      "chars": 851,
+      "sha256": "c334a53d26e34fe61c812f14161ce2426ee2f33b0a0d75274139a8ff40486eae",
+      "first_line": "## 2026-10-20 — owner-confirmed MCP boundary and cockpit integration (docs only)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 111,
+      "heading": "## 2026-10-20 — checkpoint: #725 source test hardening complete, update gates stay WAIT",
+      "date": "2026-10-20",
+      "chars": 1126,
+      "sha256": "3d3de1dc3b6ad464d398ca7150f241e8e9bf077fb3d254ceeb615bd98d1c7cd6",
+      "first_line": "## 2026-10-20 — checkpoint: #725 source test hardening complete, update gates stay WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 112,
+      "heading": "## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT",
+      "date": "2026-10-20",
+      "chars": 1971,
+      "sha256": "9ab52ef9b6533bbb2bf74727c4e3a3dd8ff41738a5e34a27b2f34135008afb42",
+      "first_line": "## 2026-10-20 — source 0.1.55 MERGED; original central 0.1.38 still WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 113,
+      "heading": "## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT",
+      "date": "2026-10-20",
+      "chars": 2587,
+      "sha256": "ad52121ddb9202d156eeb8a581e697e9e76ff8eee21c302bbadda210ad5aa0ef",
+      "first_line": "## 2026-10-20 — #669 source v0.1.53 MERGED; live correct-host attestation WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 114,
+      "heading": "## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 952,
+      "sha256": "b259aafa4308b65c88ee195f509f072872c5034225016d52e514f309ec6918ac",
+      "first_line": "## 2026-10-20 — #669 v0.1.53 standalone receipt path guard (SOURCE ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 115,
+      "heading": "## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY",
+      "date": "2026-10-20",
+      "chars": 1216,
+      "sha256": "c71993e1d38749956122968c11af0d68074dbe2d469735f4a37b3b54892d6886",
+      "first_line": "## 2026-10-20 — #669 false-green self-update readiness guard, v0.1.52 SOURCE ONLY\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 116,
+      "heading": "## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT",
+      "date": "2026-10-20",
+      "chars": 1773,
+      "sha256": "f1d5406e33ac0484414ff626a8d3392d9100ec007fbc5d45ed4f2d2ed53d5218",
+      "first_line": "## 2026-10-20 — #669 offline source v0.1.51 MERGED / correct-host LIVE WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 117,
+      "heading": "## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 859,
+      "sha256": "09c182b1927ee269f110955dbbac1d98233774d6e59a3fd422d1ab169fe94f1a",
+      "first_line": "## 2026-10-20 — #669 v0.1.51 offline evidence canonical input guard (SOURCE ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 118,
+      "heading": "## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 881,
+      "sha256": "5ba5f55a2a3877a67c713aaed7f6a07b5ca63623c5fd6cf87d9fa9f017c074ab",
+      "first_line": "## 2026-10-20 — #669 v0.1.50 offline RECORD extra-entry hardening (SOURCE ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 119,
+      "heading": "## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT",
+      "date": "2026-10-20",
+      "chars": 1156,
+      "sha256": "8b76fa85503c3f8f75aa06e1eb31053f70bdc143da658e499b6c829dbe48cdf0",
+      "first_line": "## 2026-10-20 — A6 source 0.1.49 MERGED / live WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 120,
+      "heading": "## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 1257,
+      "sha256": "374572a2e0f8e2bda46a878bdcc4b1cd06b1c0f8e11eb9bb536c1e75d672d305",
+      "first_line": "## 2026-10-20 — #509 A6 all-eleven binding value consistency (0.1.49 SOURCE ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 121,
+      "heading": "## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)",
+      "date": "2026-10-20",
+      "chars": 1225,
+      "sha256": "d05bfccf77b14055ec38e6969bb5088906f2639c4ab1a8f0b556c4550903ae91",
+      "first_line": "## 2026-10-20 — #509/#669 ancestor symlink private A6 qualification guard (0.1.48 SOURCE ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 122,
+      "heading": "## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT",
+      "date": "2026-10-20",
+      "chars": 2125,
+      "sha256": "bf31ae13b16eb82ead93bc62dd968505587f85b0ff38be18b23964c5f3f7daf1",
+      "first_line": "## 2026-10-20 — A6 source 0.1.47 and six-role witness tests MERGED / live WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 123,
+      "heading": "## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)",
+      "date": "2026-10-20",
+      "chars": 964,
+      "sha256": "ed55b90b3c2a66e017997b0dd01daa5fad15bc35d1a0a874d54789dd4b3e8a7f",
+      "first_line": "## 2026-10-20 — #669 six-role signed witness negative regression (TEST ONLY)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 124,
+      "heading": "## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47",
+      "date": "2026-10-20",
+      "chars": 936,
+      "sha256": "093ee66626f3debdba2873ce68232aedb14cf09e029aa6c1bee5d1d5038f3195",
+      "first_line": "## 2026-10-20 — #509/A6 Doctor false-green classification source candidate v0.1.47\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 125,
+      "heading": "## 2026-10-20 — first-node blocking gate reconciled, no service mutation",
+      "date": "2026-10-20",
+      "chars": 1037,
+      "sha256": "f1587ba9852771ecace438bf546d5401ad5cbc32c355863206be27f16be9b823",
+      "first_line": "## 2026-10-20 — first-node blocking gate reconciled, no service mutation\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 126,
+      "heading": "## 2026-10-19 — F30 fixed Claude/Qwen worker process source read route merged / live WAIT",
+      "date": "2026-10-19",
+      "chars": 2226,
+      "sha256": "0078e1d42f73836a2064f55d33eed0d6c57e36041446cdd5ad3a445c6d4770c5",
+      "first_line": "## 2026-10-19 — F30 fixed Claude/Qwen worker process source read route merged / live WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 127,
+      "heading": "## 2026-10-19 — RELEASE ADMISSION MERGED, main 0.1.45; live operation remains WAIT",
+      "date": "2026-10-19",
+      "chars": 1894,
+      "sha256": "8c002e1ef5bb455c10b16d0e73c7352e68ea5c67dd6dd5c9d7811c2317e32b76",
+      "first_line": "## 2026-10-19 — RELEASE ADMISSION MERGED, main 0.1.45; live operation remains WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 128,
+      "heading": "## 2026-10-19 — #662 release collision READY-admission receipt; enforcement and live rollout separate",
+      "date": "2026-10-19",
+      "chars": 1562,
+      "sha256": "321da1546c7af0e07a3fc6a03ec11828d8fa8ad51d8b5a30ded3de00b75412eb",
+      "first_line": "## 2026-10-19 — #662 release collision READY-admission receipt; enforcement and live rollout separate\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 129,
+      "heading": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases",
+      "date": "2026-10-19",
+      "chars": 851,
+      "sha256": "c8f3a363f492bc4d559cc059da14316cd31d3b096e891b1b219f18c1e00920d0",
+      "first_line": "## 2026-10-19 — #669 signed serving statement source after distinct 0.1.42/0.1.43 releases\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 130,
+      "heading": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge",
+      "date": "2026-10-19",
+      "chars": 939,
+      "sha256": "e181309642576f348dec5aae56768e551afe423c8fb83370fa9806b9a8c6ba26",
+      "first_line": "## 2026-10-19 — #739 follow-on fixed asset bytes source 0.1.43 after #743 merge\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 131,
+      "heading": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42",
+      "date": "2026-10-19",
+      "chars": 890,
+      "sha256": "faddfc524c85f719d68a019183ead98a7cf452786ec085218e81550ecc01debc",
+      "first_line": "## 2026-10-19 — User-authorized takeover of Runner-MCP #743; source 0.1.42\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 132,
+      "heading": "## 2026-10-19 — #662/#669 actual source release-lane reconciliation (not installed)",
+      "date": "2026-10-19",
+      "chars": 1755,
+      "sha256": "571a7998cce1625d129ae72ae8a127bead665c35344680b8a41edd17eddf2dd2",
+      "first_line": "## 2026-10-19 — #662/#669 actual source release-lane reconciliation (not installed)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 133,
+      "heading": "## 2026-10-19 — Single Runner-MCP release steward; coordinate Fabric and Agent Bus",
+      "date": "2026-10-19",
+      "chars": 1573,
+      "sha256": "46625686777f5eb6ce22d5a125c91b054caf6df350163ae2d9b673435125e149",
+      "first_line": "## 2026-10-19 — Single Runner-MCP release steward; coordinate Fabric and Agent Bus\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 134,
+      "heading": "## 2026-10-19 — Release version guard corrected / exact-head CI pending",
+      "date": "2026-10-19",
+      "chars": 625,
+      "sha256": "e4c7c17ed015ee025a16e8d95b7adc103c9fc1aaa0289d2efa3a00723d2416f9",
+      "first_line": "## 2026-10-19 — Release version guard corrected / exact-head CI pending\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 135,
+      "heading": "## 2026-10-19 — #669 runtime_doctor provenance child PR #742 IN PROGRESS",
+      "date": "2026-10-19",
+      "chars": 896,
+      "sha256": "19b78252ae1b21bf6ba41bd570e54e5af41dec16248a04c31a1dd21c26dec720",
+      "first_line": "## 2026-10-19 — #669 runtime_doctor provenance child PR #742 IN PROGRESS\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 136,
+      "heading": "## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT",
+      "date": "2026-10-17",
+      "chars": 1611,
+      "sha256": "b3f6ddbbf48ddb6bfa40b9da9ba876d572f6c57d568bdc9a665388f9bd6a002a",
+      "first_line": "## 2026-10-17 — #735 source merged, Black Agent Bus admission remains WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 137,
+      "heading": "## 2026-10-17 — Black non-serving stage PHYSICALLY DONE; source #732 fix merged; A2 Agent Bus WAIT",
+      "date": "2026-10-17",
+      "chars": 1761,
+      "sha256": "01ed3a74012eba59e6f4f3ffc91dc74e81aada5202f106ee7168482e51dcd5d6",
+      "first_line": "## 2026-10-17 — Black non-serving stage PHYSICALLY DONE; source #732 fix merged; A2 Agent Bus WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 138,
+      "heading": "## 2026-10-17 — Fabric Releases exact metadata gate source complete; local importer remains WAIT",
+      "date": "2026-10-17",
+      "chars": 1961,
+      "sha256": "bcec7675af46ea15e69b33ce9dcafc85bb1086f9853afcbd448772808ef6014c",
+      "first_line": "## 2026-10-17 — Fabric Releases exact metadata gate source complete; local importer remains WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 139,
+      "heading": "## 2026-10-17 — RMCP-F-0030 source diagnostic complete, physical Black recovery WAIT",
+      "date": "2026-10-17",
+      "chars": 943,
+      "sha256": "cb74bcf5a889f378e3709ce1bce4cd297ae413d5cf1d331f2a9e41e2abd00f19",
+      "first_line": "## 2026-10-17 — RMCP-F-0030 source diagnostic complete, physical Black recovery WAIT\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 140,
+      "heading": "## 2026-10-17 — #718 local failed-stage diagnostics, no Black retry",
+      "date": "2026-10-17",
+      "chars": 764,
+      "sha256": "02aa8e91c94f64e33cca6035bd01c706a46ae724e917b7d93a5eee77f77e2154",
+      "first_line": "## 2026-10-17 — #718 local failed-stage diagnostics, no Black retry\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 141,
+      "heading": "## 2026-10-17 — F30 Black one-time local bootstrap SOURCE COMPLETE",
+      "date": "2026-10-17",
+      "chars": 989,
+      "sha256": "95ccee6f2909939b300ced71045020fbb5f6e13e8a792be0803377e8010ef9f7",
+      "first_line": "## 2026-10-17 — F30 Black one-time local bootstrap SOURCE COMPLETE\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 142,
+      "heading": "## 2026-10-17 — #713 new Black physically attended first-party bootstrap source",
+      "date": "2026-10-17",
+      "chars": 1237,
+      "sha256": "9d4508e327cadb10c34ccce58d29df74c7a3ded88e1afafcf07b660f5b59f9d9",
+      "first_line": "## 2026-10-17 — #713 new Black physically attended first-party bootstrap source\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 143,
+      "heading": "## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled",
+      "date": "2026-10-17",
+      "chars": 1315,
+      "sha256": "ee0e41ebbe1dbcab3ea30ab5e6c179ce36b3f1a7538220ad7d54b8a303603818",
+      "first_line": "## 2026-10-17 — First physical Runner-MCP upgrade ACTIVE 0.1.27, rollback timer canceled\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 144,
+      "heading": "## 2026-10-17 — Fresh original-client A6/F30 read-only verification (NO host mutation)",
+      "date": "2026-10-17",
+      "chars": 2369,
+      "sha256": "0db2b264323e898d9adbc51b6edf12af95ab07c6104c5b758ec2a795541fdfb7",
+      "first_line": "## 2026-10-17 — Fresh original-client A6/F30 read-only verification (NO host mutation)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 145,
+      "heading": "## 2026-10-16 — F30 priority override: ACTUAL installed upgrade, source version lane paused",
+      "date": "2026-10-16",
+      "chars": 1682,
+      "sha256": "05f057894c93a91d381d81fa840b16fa619983b643232bbe3b8d797d747bcba6",
+      "first_line": "## 2026-10-16 — F30 priority override: ACTUAL installed upgrade, source version lane paused\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 146,
+      "heading": "## 2026-10-16 — Fleet diagnostic source tests land; next actual update admission",
+      "date": "2026-10-16",
+      "chars": 1431,
+      "sha256": "daaee640225c4ef8542fdcbddf0fc72f5249da48f9c06e68b68e501791df89c9",
+      "first_line": "## 2026-10-16 — Fleet diagnostic source tests land; next actual update admission\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 147,
+      "heading": "## 2026-10-16 — #664 legacy source tool-name retention test guard completed",
+      "date": "2026-10-16",
+      "chars": 1225,
+      "sha256": "e6450a6905c0347d7392e8021f817979b9238fa4fb24ab2998d43a3d0ce4caa0",
+      "first_line": "## 2026-10-16 — #664 legacy source tool-name retention test guard completed\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 148,
+      "heading": "## 2026-10-16 — #333 opt-in expected connector tunnel diagnosis, source candidate v0.1.24",
+      "date": "2026-10-16",
+      "chars": 917,
+      "sha256": "8f3da8d2696cbd13c3dcce1c5f315cdd1f4bdbcf2283369c043e5a4872237583",
+      "first_line": "## 2026-10-16 — #333 opt-in expected connector tunnel diagnosis, source candidate v0.1.24\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 149,
+      "heading": "## 2026-10-16 — #664 sampled legacy MCP contract signature CI guard (tests-only)",
+      "date": "2026-10-16",
+      "chars": 839,
+      "sha256": "75b88e22e3cf2354c133c787b0306102437a6ae14b1e3969b2b45a293eec89cc",
+      "first_line": "## 2026-10-16 — #664 sampled legacy MCP contract signature CI guard (tests-only)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 150,
+      "heading": "## 2026-10-16 — #665 tool identity three source children integrated through v0.1.23",
+      "date": "2026-10-16",
+      "chars": 1418,
+      "sha256": "4adaf473127d4209f6a92c3c01b331994c8964e6dc8f0e06b9b21c44a949dd42",
+      "first_line": "## 2026-10-16 — #665 tool identity three source children integrated through v0.1.23\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 151,
+      "heading": "## 2026-10-16 — #665 bounded mismatch alert digest source child 0.1.23",
+      "date": "2026-10-16",
+      "chars": 841,
+      "sha256": "cbc34c702aaf5577fac68dc9b370d09ae3b25eab526a6c38259559300ce92ee8",
+      "first_line": "## 2026-10-16 — #665 bounded mismatch alert digest source child 0.1.23\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 152,
+      "heading": "## 2026-10-16 — #665 tool identity comparator and collision preflight source MERGED",
+      "date": "2026-10-16",
+      "chars": 1157,
+      "sha256": "4d48b719f5e852affc8aa7e38df3fa23119f1337a6b1e02f6a9dbd120c6680e7",
+      "first_line": "## 2026-10-16 — #665 tool identity comparator and collision preflight source MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 153,
+      "heading": "## 2026-10-16 — #665 inventory collisions, source candidate 0.1.22",
+      "date": "2026-10-16",
+      "chars": 898,
+      "sha256": "9d81ef8040487d65170f036fe9cdcafd01969f65e7dafb8d0ce86f9795140067",
+      "first_line": "## 2026-10-16 — #665 inventory collisions, source candidate 0.1.22\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 154,
+      "heading": "## 2026-10-16 — #665 stable tool identity source-only comparator, v0.1.21",
+      "date": "2026-10-16",
+      "chars": 984,
+      "sha256": "a1ef176ff8540b26cc1d27f0d5f04b0d1408c4622b63367c1cee77734f1e9701",
+      "first_line": "## 2026-10-16 — #665 stable tool identity source-only comparator, v0.1.21\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 155,
+      "heading": "## 2026-10-16 — FASTER-13 #383 reproducible local JSON baseline, source-only",
+      "date": "2026-10-16",
+      "chars": 1032,
+      "sha256": "20965383dda21458385c2f956fe27c16d4dd380040bead52e950a1f7582fc171",
+      "first_line": "## 2026-10-16 — FASTER-13 #383 reproducible local JSON baseline, source-only\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 156,
+      "heading": "## 2026-10-16 — #681 host inspection failure without implicit network preflight",
+      "date": "2026-10-16",
+      "chars": 918,
+      "sha256": "7057275f1d691e941f31c1be8c56604a7129b8335d2b733effd11bdfcff33073",
+      "first_line": "## 2026-10-16 — #681 host inspection failure without implicit network preflight\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 157,
+      "heading": "## 2026-10-16 — #681 functional Fabric snapshot error observability",
+      "date": "2026-10-16",
+      "chars": 840,
+      "sha256": "7db9d5b0b4ecac804f1874c222186b268c23979315b767a8908716e162cfc81a",
+      "first_line": "## 2026-10-16 — #681 functional Fabric snapshot error observability\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 158,
+      "heading": "## 2026-10-16 — #681 continuity status expected failure returns bounded unavailability",
+      "date": "2026-10-16",
+      "chars": 1126,
+      "sha256": "daccaef6f11539488cea1ae0b8df245442dec985f512700a1fb83cfacb64c3c2",
+      "first_line": "## 2026-10-16 — #681 continuity status expected failure returns bounded unavailability\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 159,
+      "heading": "## 2026-10-16 — #669 signature+candidate source chain complete, operational trust authority next",
+      "date": "2026-10-16",
+      "chars": 1309,
+      "sha256": "4cf3ecd252c9e3b6054c42b69db4dfd9214362d60a6242af9df552bb7dcfca2a",
+      "first_line": "## 2026-10-16 — #669 signature+candidate source chain complete, operational trust authority next\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 160,
+      "heading": "## 2026-10-16 — #669 signed offline candidate chain (source-only 0.1.16)",
+      "date": "2026-10-16",
+      "chars": 816,
+      "sha256": "b5f3a477a76f2c3c5f5834726ddc0dff4309d29bbfe1a978a98e5168176dfb0c",
+      "first_line": "## 2026-10-16 — #669 signed offline candidate chain (source-only 0.1.16)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 161,
+      "heading": "## 2026-10-16 — #669 independent builder-key source verification child",
+      "date": "2026-10-16",
+      "chars": 867,
+      "sha256": "5f9daef15845a776ee189890afe412fbee210b7de1ba729f891ca996c4f8de17",
+      "first_line": "## 2026-10-16 — #669 independent builder-key source verification child\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 162,
+      "heading": "## 2026-10-16 — #669 source-only chain complete, trusted serving attestation BLOCKED",
+      "date": "2026-10-16",
+      "chars": 1100,
+      "sha256": "8290e50789c745dd9df4fe9c7a6d0e1f3c7a9b3c0534e87d498975bbd57ad334",
+      "first_line": "## 2026-10-16 — #669 source-only chain complete, trusted serving attestation BLOCKED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 163,
+      "heading": "## 2026-10-16 — #669 offline evidence chain, source candidate 0.1.14",
+      "date": "2026-10-16",
+      "chars": 724,
+      "sha256": "eea67d27da0305ff30cc12e58b48c911c9c9ea2115b461a8339822e2983845e3",
+      "first_line": "## 2026-10-16 — #669 offline evidence chain, source candidate 0.1.14\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 164,
+      "heading": "## 2026-10-16 — #669 versioned generation layout guard, source-only PR #691",
+      "date": "2026-10-16",
+      "chars": 667,
+      "sha256": "2339ed31dba60de3472a06b0e0e6de1e9eaea3442c4eee50f91fb1464a8a0fb0",
+      "first_line": "## 2026-10-16 — #669 versioned generation layout guard, source-only PR #691\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 165,
+      "heading": "## 2026-10-16 — #669 pinned builder-manifest source child 0.1.12",
+      "date": "2026-10-16",
+      "chars": 1030,
+      "sha256": "b29241fdced317e970b41fa7c3fa5998a22136d0a0c936da1faa9b25935336f1",
+      "first_line": "## 2026-10-16 — #669 pinned builder-manifest source child 0.1.12\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 166,
+      "heading": "## 2026-10-16 — #669 phase-2 offline receipt verification child",
+      "date": "2026-10-16",
+      "chars": 987,
+      "sha256": "c347d5beecab967530be0ba696f504bd86ec84186410bcbc7c2be98e91980719",
+      "first_line": "## 2026-10-16 — #669 phase-2 offline receipt verification child\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 167,
+      "heading": "## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged",
+      "date": "2026-10-10",
+      "chars": 1915,
+      "sha256": "4a9e3ad8c01d87f1f43d8c4722cf1dce87d4064b397fb8c341bde91afded8252",
+      "first_line": "## 2026-10-10 evening — Runner-MCP #590 loopback bearer egress source fix PR #651 merged\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 168,
+      "heading": "## 2026-10-10 late — #540 fixed unsafe stale MCP tool replay (PR #650 MERGED); live #590 still blocked",
+      "date": "2026-10-10",
+      "chars": 3054,
+      "sha256": "0b6c02518e3bbed807a397836a8b9adcbb623837fec45444adab67eed1e9fb89",
+      "first_line": "## 2026-10-10 late — #540 fixed unsafe stale MCP tool replay (PR #650 MERGED); live #590 still blocked\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 169,
+      "heading": "## 2026-10-10 late evening — #590/#540 in-process MCP transport and catalogue proofs DONE; production unknown",
+      "date": "2026-10-10",
+      "chars": 2485,
+      "sha256": "b48bb3e154f4ba87e2a69e1dad28ae1e7b5c80498ead098f0c4f68634e97b89c",
+      "first_line": "## 2026-10-10 late evening — #590/#540 in-process MCP transport and catalogue proofs DONE; production unknown\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 170,
+      "heading": "## 2026-10-10 evening — #590 exact-request response/audit SOURCE proof #648 MERGED, live tunnel still OPEN",
+      "date": "2026-10-10",
+      "chars": 1989,
+      "sha256": "dcd3e653bb16a787f98003c873ff1ec0b6160a85e9f96f7e9ecb99541bf94a32",
+      "first_line": "## 2026-10-10 evening — #590 exact-request response/audit SOURCE proof #648 MERGED, live tunnel still OPEN\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 171,
+      "heading": "## 2026-10-10 late — Runner-MCP Q7 communication source repairs FINISHED; live rollout BLOCKED",
+      "date": "2026-10-10",
+      "chars": 2134,
+      "sha256": "831cb08ee32b485b4d033979098c28b228210abcbbe8e1a17707ba6c42501ba0",
+      "first_line": "## 2026-10-10 late — Runner-MCP Q7 communication source repairs FINISHED; live rollout BLOCKED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 172,
+      "heading": "## 2026-10-10 evening — Q7 communication fixes (#381); Fabric lease/fencing stays with other chat",
+      "date": "2026-10-10",
+      "chars": 2579,
+      "sha256": "7e6b3d1f5cd663b9f5500ea8980fb72330714c7c944a3dc1e74f5c30caf8c929",
+      "first_line": "## 2026-10-10 evening — Q7 communication fixes (#381); Fabric lease/fencing stays with other chat\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 173,
+      "heading": "## 2026-10-10 evening — Claude #381 fixed listener provenance PR #645 MERGED; trusted Fabric authority still blocks operational closure",
+      "date": "2026-10-10",
+      "chars": 2840,
+      "sha256": "c5feff31866af62386a30d7270e508ef45d3044e9f7604bc35b72cb67e7974f0",
+      "first_line": "## 2026-10-10 evening — Claude #381 fixed listener provenance PR #645 MERGED; trusted Fabric authority still blocks operational closure\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 174,
+      "heading": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged",
+      "date": "2026-10-10",
+      "chars": 1869,
+      "sha256": "94c1bdbacdce3d0f715b07377ba083d6cca79f42ba8b7b2c4014e695fdc618fb",
+      "first_line": "## 2026-10-10 afternoon — #638 real JSON Schema proposal regression LANDED; physical authority unchanged\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 175,
+      "heading": "## 2026-10-10 — #381 operator-priority Claude source security PR #637 MERGED; live trust chain still BLOCKED",
+      "date": "2026-10-10",
+      "chars": 2472,
+      "sha256": "7f801e737a3e423e83bf6f5265b9930de49aa3b2a5baa397f67b78b29c002413",
+      "first_line": "## 2026-10-10 — #381 operator-priority Claude source security PR #637 MERGED; live trust chain still BLOCKED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 176,
+      "heading": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)",
+      "date": "2026-10-10",
+      "chars": 2387,
+      "sha256": "d76dcc39745f40e33d75d838cbfa7773c6d078ff3d3eff18987b0ad85410ce17",
+      "first_line": "## 2026-10-10 afternoon — #590 mixed-result connected probe evidence MERGED (no #381 work)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 177,
+      "heading": "## 2026-10-10 — Final #630 issue closure reconciliation",
+      "date": "2026-10-10",
+      "chars": 803,
+      "sha256": "fcd45d5363097663f9b59309a43d32ae44098b68bc520d543912c13d78634d6a",
+      "first_line": "## 2026-10-10 — Final #630 issue closure reconciliation\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 178,
+      "heading": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)",
+      "date": "2026-10-10",
+      "chars": 2413,
+      "sha256": "4d18be6649d45175f4246d2dcaa9c551801e378341cee1b5e28c5fde465ef6d6",
+      "first_line": "## 2026-10-10 — #630 blueprint source children LANDED; #634 operational Git authority BLOCKED (final checkpoint)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 179,
+      "heading": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled",
+      "date": "2026-10-10",
+      "chars": 2587,
+      "sha256": "f50ec00e7dd9e1d7670eda14b22ffda599fc8942e1ca0e5d85b4eeb9fc72f109",
+      "first_line": "## 2026-10-10 — This Runner-MCP lane excludes #381; blueprint #630 source children reconciled\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 180,
+      "heading": "## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated",
+      "date": "2026-10-10",
+      "chars": 1548,
+      "sha256": "6d297b39e2bfa843c51c40b4fc1ef3d29e5055b5567ace87aea94fc30a3e2016",
+      "first_line": "## 2026-10-10 — Shared repository blueprint BPA-01 landed; BPA-02/BPA-03 still gated\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 181,
+      "heading": "## 2026-10-10 — Claude priority #381: fixed host-local rootless source slice #628 MERGED; live worker STILL BLOCKED",
+      "date": "2026-10-10",
+      "chars": 3270,
+      "sha256": "0235ade5e86a8d9d924955fe779ede0e1ccb8eb0d77dd0e4955465b9f8e8f042",
+      "first_line": "## 2026-10-10 — Claude priority #381: fixed host-local rootless source slice #628 MERGED; live worker STILL BLOCKED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 182,
+      "heading": "## 2026-10-10 — #629 build identity fail-closed source MERGED; #590 LIVE UNQUALIFIED",
+      "date": "2026-10-10",
+      "chars": 1745,
+      "sha256": "f65da42dfa94dc41c7c486cd7d06ba2c73e1bcfbfce37cd59b6ac6f2684c400a",
+      "first_line": "## 2026-10-10 — #629 build identity fail-closed source MERGED; #590 LIVE UNQUALIFIED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 183,
+      "heading": "## 2026-10-10 — #590 second source-only identity diagnostic PR #629 (draft, exact CI pending)",
+      "date": "2026-10-10",
+      "chars": 2049,
+      "sha256": "361bd3b6367d27b0d0c718ed22bf48130a2470775f846b0fde7953b63eecc09f",
+      "first_line": "## 2026-10-10 — #590 second source-only identity diagnostic PR #629 (draft, exact CI pending)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 184,
+      "heading": "## 2026-10-10 — User priority changed to #381 Claude worker bridge; source implementation PR #628",
+      "date": "2026-10-10",
+      "chars": 3536,
+      "sha256": "33affaa9ed9c04dbef28194083c2113d67f687cc3745510a6cb9addd834bc760",
+      "first_line": "## 2026-10-10 — User priority changed to #381 Claude worker bridge; source implementation PR #628\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 185,
+      "heading": "## 2026-10-10 — Read-only connector split evidence and #618 CI reclassified",
+      "date": "2026-10-10",
+      "chars": 1870,
+      "sha256": "13140ae5938a06180670d18b34401d5b6cce3374ef065955108eafb85cc722c7",
+      "first_line": "## 2026-10-10 — Read-only connector split evidence and #618 CI reclassified\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 186,
+      "heading": "## 2026-10-10 — #627 bounded status source security MERGED; connected runtime still unqualified",
+      "date": "2026-10-10",
+      "chars": 3044,
+      "sha256": "a204d9c66a49e55c54deb971c8acf24c12db393613253c05a5a4782def9c6bac",
+      "first_line": "## 2026-10-10 — #627 bounded status source security MERGED; connected runtime still unqualified\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 187,
+      "heading": "## 2026-10-10 — #590 bounded runtime-status diagnostics; AIfordable #553 source dependency MERGED",
+      "date": "2026-10-10",
+      "chars": 3182,
+      "sha256": "3305fce31207863518a834e2e19f0f45434241c6f37d09c6f386559c10492be1",
+      "first_line": "## 2026-10-10 — #590 bounded runtime-status diagnostics; AIfordable #553 source dependency MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 188,
+      "heading": "## 2026-10-10 — #626 final mirror verification security slice DONE, live backups still gated",
+      "date": "2026-10-10",
+      "chars": 971,
+      "sha256": "4e4d7ad60e1c3663d902a4060f48c637472727bf72baed47ea3d9838e246d70c",
+      "first_line": "## 2026-10-10 — #626 final mirror verification security slice DONE, live backups still gated\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 189,
+      "heading": "## 2026-10-10 — Source-only protected mirror finalization child active",
+      "date": "2026-10-10",
+      "chars": 1669,
+      "sha256": "b56a3f4c4c94580ab3d7a66fc1739fbdcb2b8d61a44f3c3693bd6952ea5a9deb",
+      "first_line": "## 2026-10-10 — Source-only protected mirror finalization child active\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 190,
+      "heading": "## 2026-10-10 — latest protected-storage prerequisites and CI",
+      "date": "2026-10-10",
+      "chars": 1215,
+      "sha256": "3d60a0cf3bcdec1d0cd262c6451edcf050caf5a59ea2e1048742bd60b75f0515",
+      "first_line": "## 2026-10-10 — latest protected-storage prerequisites and CI\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 191,
+      "heading": "## 2026-10-10 — #623 full storage re-admission MERGED (supersedes prior WAITING_CI)",
+      "date": "2026-10-10",
+      "chars": 800,
+      "sha256": "8748e5239f86831102028a657e2878ef2ca05f8e5ed1ddb03b07d7ed7d307ea3",
+      "first_line": "## 2026-10-10 — #623 full storage re-admission MERGED (supersedes prior WAITING_CI)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 192,
+      "heading": "## 2026-10-10 — HIGH PRIORITY backup safety gates integrated; PHYSICAL BACKUP STILL BLOCKED",
+      "date": "2026-10-10",
+      "chars": 3120,
+      "sha256": "61fbcfffd14f4347da57bb15c25838a13ea2ed9af2f3b8efc0e36d4a076dd638",
+      "first_line": "## 2026-10-10 — HIGH PRIORITY backup safety gates integrated; PHYSICAL BACKUP STILL BLOCKED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 193,
+      "heading": "## 2026-10-10 — PRIORITY SHIFT: independent release custody #587/#588 ahead of other work",
+      "date": "2026-10-10",
+      "chars": 3187,
+      "sha256": "e2fe31c6aca044c38984aeebfa2086e20ea82ef016c4e219fa3c6975df3d4bc6",
+      "first_line": "## 2026-10-10 — PRIORITY SHIFT: independent release custody #587/#588 ahead of other work\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 194,
+      "heading": "## 2026-10-09 — Final landing: A6 doctor #518 and F36 read-only relay #412 exact green MERGED",
+      "date": "2026-10-09",
+      "chars": 2316,
+      "sha256": "c0f44172f51a70877dfd1db14bd2ec6a3a5dd18dccfd8000eeed5f19937cd52b",
+      "first_line": "## 2026-10-09 — Final landing: A6 doctor #518 and F36 read-only relay #412 exact green MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 195,
+      "heading": "## 2026-10-09 — Continuation: source drift duplicate closed, A6 doctor landed, F36 relay CI",
+      "date": "2026-10-09",
+      "chars": 1904,
+      "sha256": "bc19f8ee1c294fbc033ba326507e7ffc2a865b84eca7ee1b20289c9615b576eb",
+      "first_line": "## 2026-10-09 — Continuation: source drift duplicate closed, A6 doctor landed, F36 relay CI\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 196,
+      "heading": "## 2026-10-09 — Self-update source alignment and A6 dependency reconciliation",
+      "date": "2026-10-09",
+      "chars": 1283,
+      "sha256": "ce01bdc1deefd430415625e402ebf68b54734a078d98e24f86303634d7e5846f",
+      "first_line": "## 2026-10-09 — Self-update source alignment and A6 dependency reconciliation\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 197,
+      "heading": "## 2026-10-09 — Final autonomous checkpoint: #620/#526 merged, #511 superseded",
+      "date": "2026-10-09",
+      "chars": 2160,
+      "sha256": "02d881dadf6da60c55d83f202e4568291cbada81e8a5da51741bd6daa4f7e3e8",
+      "first_line": "## 2026-10-09 — Final autonomous checkpoint: #620/#526 merged, #511 superseded\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 198,
+      "heading": "## 2026-10-09 — Latest continuation: #620 and #526 exact green MERGED",
+      "date": "2026-10-09",
+      "chars": 1454,
+      "sha256": "14a3cfc26804e793f8c3d34dd4beaac5ac74c559cfcdb5b60660247550c74f9a",
+      "first_line": "## 2026-10-09 — Latest continuation: #620 and #526 exact green MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 199,
+      "heading": "## 2026-10-09 — #619 exact-head GREEN and MERGED (supersedes WAITING_CI)",
+      "date": "2026-10-09",
+      "chars": 1401,
+      "sha256": "cbd7d4f8a24145745121fc23da934798067101b77f83cc99d2561db554dbd8e9",
+      "first_line": "## 2026-10-09 — #619 exact-head GREEN and MERGED (supersedes WAITING_CI)\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 200,
+      "heading": "## 2026-10-09 — Faster-13 eventfd shadow + Windows host contract",
+      "date": "2026-10-09",
+      "chars": 1410,
+      "sha256": "549946551c3f65dbeb49ee46fd756df041f67547fb7d69b082456139c0d88425",
+      "first_line": "## 2026-10-09 — Faster-13 eventfd shadow + Windows host contract\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 201,
+      "heading": "## 2026-10-09 — Final landing: #456 fully GREEN and MERGED",
+      "date": "2026-10-09",
+      "chars": 1151,
+      "sha256": "d34c0c756cd0a151803799360753a616c9d3f41787c17fd6d4199fbef2edf575",
+      "first_line": "## 2026-10-09 — Final landing: #456 fully GREEN and MERGED\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 202,
+      "heading": "## 2026-10-09 — Faster-13 staged synthetic PRs reconciled",
+      "date": "2026-10-09",
+      "chars": 978,
+      "sha256": "3d7ab44cafc20cb35b7aba7b97d55d24c19453a103f6acee058c80ea8d0c0b5c",
+      "first_line": "## 2026-10-09 — Faster-13 staged synthetic PRs reconciled\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 203,
+      "heading": "## 2026-10-09 — Local MCP JSON-RPC response identity guard landed",
+      "date": "2026-10-09",
+      "chars": 767,
+      "sha256": "7cc2bc687d402fce59534b39f24f9f078d06de9c6e74059709af6e3d71a72c2e",
+      "first_line": "## 2026-10-09 — Local MCP JSON-RPC response identity guard landed\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 204,
+      "heading": "## 2026-10-09 — #599 stale poll-authentication evidence reconciled",
+      "date": "2026-10-09",
+      "chars": 773,
+      "sha256": "a98003a97a28827243bfcf36d38b19b84f6f9d56dcb1aeefa129e78c019219a0",
+      "first_line": "## 2026-10-09 — #599 stale poll-authentication evidence reconciled\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 205,
+      "heading": "## 2026-10-09 — CI, tunnel and independent archive source gates landed",
+      "date": "2026-10-09",
+      "chars": 1333,
+      "sha256": "981e11d9923ee64f9a17206bc2e2090865ad26b989b7febddf98373cf50c81d5",
+      "first_line": "## 2026-10-09 — CI, tunnel and independent archive source gates landed\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 206,
+      "heading": "## 2026-10-09 — Faster-13 local MCP baseline landed",
+      "date": "2026-10-09",
+      "chars": 623,
+      "sha256": "4b2ce42e56abf4e1ac01eaf1700ec58b5364149a0603785ee1625400c71aee32",
+      "first_line": "## 2026-10-09 — Faster-13 local MCP baseline landed\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 207,
+      "heading": "## 2026-10-09 — Connector response lineage and tunnel authentication freshness",
+      "date": "2026-10-09",
+      "chars": 1294,
+      "sha256": "e1b74b4476fdad939ad25a52c8b4e0455219a5823b2109ab598c71a89277fc73",
+      "first_line": "## 2026-10-09 — Connector response lineage and tunnel authentication freshness\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 208,
+      "heading": "## 2026-10-09 — Corrected CI runner priority, enrollment integrity",
+      "date": "2026-10-09",
+      "chars": 1002,
+      "sha256": "7302d3e3dd1e539f0a31bd610c7bfb0d41deeabaa7fef54cde2a339da380afd3",
+      "first_line": "## 2026-10-09 — Corrected CI runner priority, enrollment integrity\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 209,
+      "heading": "## 2026-10-08 — DIAG component topology, data lineage and failure registry",
+      "date": "2026-10-08",
+      "chars": 1197,
+      "sha256": "197aad2e8149216727aee6b8bf08a7313c53e3c2859d5856e00a05bbf0dec698",
+      "first_line": "## 2026-10-08 — DIAG component topology, data lineage and failure registry\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 210,
+      "heading": "## 2026-10-06 — fixed Fabric worker-qualification provisioning executor in validation",
+      "date": "2026-10-06",
+      "chars": 1067,
+      "sha256": "006e922163c03b8d9eb3258284aee21b3c0f0fff9027309bd161478b161303b2",
+      "first_line": "## 2026-10-06 — fixed Fabric worker-qualification provisioning executor in validation\n",
+      "dest": "roadmap/ROADMAP.archive-2026-10.md"
+    },
+    {
+      "index": 211,
+      "heading": "## Customer/on-prem update readiness counterpart",
+      "date": null,
+      "chars": 925,
+      "sha256": "eb68af8b976d5e22abb4dda250b5d03f48e7879c3dcf05fdbee6801298b9274d",
+      "first_line": "## Customer/on-prem update readiness counterpart\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 212,
+      "heading": "## Fleet Update Track A — control-path protection",
+      "date": null,
+      "chars": 2870,
+      "sha256": "49c56f7473b2e3e15ec3fbb45d996043909d6ba51fab295c09c64ba97d8e1538",
+      "first_line": "## Fleet Update Track A — control-path protection\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 213,
+      "heading": "## Maintenance mode — alpha/MVP core complete",
+      "date": null,
+      "chars": 1107,
+      "sha256": "5ae2e99ddfa688e9a0133dce54485bd3fbfd108279fc378a757405a4ef9ed954",
+      "first_line": "## Maintenance mode — alpha/MVP core complete\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 214,
+      "heading": "## Cross-cutting — end-to-end operational snapshot",
+      "date": null,
+      "chars": 1826,
+      "sha256": "20b8829fdcfd1c1a1dbf00067396f4426ba73caf2842d71296be1fd32c3bb65b",
+      "first_line": "## Cross-cutting — end-to-end operational snapshot\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 215,
+      "heading": "## Cross-cutting — AI fault containment with proportional security gates",
+      "date": null,
+      "chars": 2808,
+      "sha256": "3c2e154c7ddf89ed783c9c8c132aa087cf2e8633efa9300034f68dde25c457c8",
+      "first_line": "## Cross-cutting — AI fault containment with proportional security gates\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 216,
+      "heading": "## Cross-cutting — optional Runner Fabric coarse work-unit transport",
+      "date": null,
+      "chars": 1805,
+      "sha256": "596d785c35e743d7ccab64bbc95acb0e30b6748b4b5736ee4988c92c5c099601",
+      "first_line": "## Cross-cutting — optional Runner Fabric coarse work-unit transport\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 217,
+      "heading": "## Phase 0 — repository and design",
+      "date": null,
+      "chars": 198,
+      "sha256": "149121176bcd459908ffea2944d6c0b0d4ccf8f3573b6ea70298a4d35108d937",
+      "first_line": "## Phase 0 — repository and design\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 218,
+      "heading": "## Phase 1 — minimal MCP server",
+      "date": null,
+      "chars": 222,
+      "sha256": "c9a417fcf5651092655c5a536c6f9ab0722be312dbdf3bd711148e682eec699e",
+      "first_line": "## Phase 1 — minimal MCP server\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 219,
+      "heading": "## Phase 2 — safe file access",
+      "date": null,
+      "chars": 186,
+      "sha256": "6be784e3056ba8a91dde3576a9ab517173e3f1f7d920adbf47127976e5bbad8d",
+      "first_line": "## Phase 2 — safe file access\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 220,
+      "heading": "## Phase 2.5 — operator safety and rollback policy",
+      "date": null,
+      "chars": 682,
+      "sha256": "12b261b4750a735eebc5a2941f31515b2fd74a918f1fa0478c076c2d6507c0c0",
+      "first_line": "## Phase 2.5 — operator safety and rollback policy\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 221,
+      "heading": "## Phase 3 — controlled test runner",
+      "date": null,
+      "chars": 879,
+      "sha256": "8556af9ee53ec1decf4d37e3d748c574dc70e441617f4ce9952d753fc85c7afc",
+      "first_line": "## Phase 3 — controlled test runner\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 222,
+      "heading": "## Phase 3.5 — packaging and onboarding",
+      "date": null,
+      "chars": 1818,
+      "sha256": "a0643ac1a515c221406b2e4b16552719d97d556da25e32bb3b3d3085dcb910fc",
+      "first_line": "## Phase 3.5 — packaging and onboarding\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 223,
+      "heading": "## Phase 3.6 — community usability and extension path",
+      "date": null,
+      "chars": 1095,
+      "sha256": "73fce4c63824f3e71d41531ec6204a3c6b3416ca93ec2e25547742587a2ae442",
+      "first_line": "## Phase 3.6 — community usability and extension path\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 224,
+      "heading": "## Phase 3.7 — GitHub mailbox bridge protocol",
+      "date": null,
+      "chars": 947,
+      "sha256": "cbcffab780e4068483eda940a656e094c95e0eda5bf6771259d8ebd46edb8fb0",
+      "first_line": "## Phase 3.7 — GitHub mailbox bridge protocol\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 225,
+      "heading": "## Phase 3.8 — bridge result envelope and replay protection",
+      "date": null,
+      "chars": 1007,
+      "sha256": "4422b0a340b384b60c8b9cb908c9abd42a0c1ca56b6ef1b95c6163d96c246736",
+      "first_line": "## Phase 3.8 — bridge result envelope and replay protection\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 226,
+      "heading": "## Phase 3.8.1 — task-completion feedback",
+      "date": null,
+      "chars": 2180,
+      "sha256": "4632251c0b72f54f3b0cad83d91cd3b76275a8e0ec0c551533760a66540acc42",
+      "first_line": "## Phase 3.8.1 — task-completion feedback\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 227,
+      "heading": "## Phase 3.8.2 — watcher resilience and restart recovery",
+      "date": null,
+      "chars": 2852,
+      "sha256": "1096a5b84e6c5845ffe992af84e3c01b8decd84b1a551be8af2e8d6c4d4b8133",
+      "first_line": "## Phase 3.8.2 — watcher resilience and restart recovery\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 228,
+      "heading": "## Phase 3.8.3 — transport-neutral bridge processor",
+      "date": null,
+      "chars": 1724,
+      "sha256": "93e47d3ccae215107b82cfaee534154b14c726025e2af5cc227d90efbfb04d1f",
+      "first_line": "## Phase 3.8.3 — transport-neutral bridge processor\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 229,
+      "heading": "## Phase 3.8.4 — hardened GitHub mailbox transport",
+      "date": null,
+      "chars": 1460,
+      "sha256": "03312f71668874867b36cd8b320b636abc34e38dc0604b0f2a55ba913125e9c5",
+      "first_line": "## Phase 3.8.4 — hardened GitHub mailbox transport\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 230,
+      "heading": "## Phase 3.8.5 — incremental watcher coordinator",
+      "date": null,
+      "chars": 1830,
+      "sha256": "a0f3617492e5f228d1841aaa49f3cab96b5a23e8ae217107bca88f0aa3547a7c",
+      "first_line": "## Phase 3.8.5 — incremental watcher coordinator\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 231,
+      "heading": "## Phase 3.8.6 — loopback MCP bridge executor",
+      "date": null,
+      "chars": 1412,
+      "sha256": "8b559d5ca1cf9076f70c4062088bee9bd2b755fa71c0022c2ee1378a07679d69",
+      "first_line": "## Phase 3.8.6 — loopback MCP bridge executor\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 232,
+      "heading": "## Phase 3.8.7 — private-config watcher runtime and CLI",
+      "date": null,
+      "chars": 2145,
+      "sha256": "6cc5b7d575583fe4e048992062eaf91f2055eff0cc974039b1723ba38b6bcada",
+      "first_line": "## Phase 3.8.7 — private-config watcher runtime and CLI\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 233,
+      "heading": "## Phase 3.8.8 — controlled multi-project concurrency",
+      "date": null,
+      "chars": 1865,
+      "sha256": "701b9ded927397e70706e08e06106d87bd8c014d1af800488b841581d79daafa",
+      "first_line": "## Phase 3.8.8 — controlled multi-project concurrency\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 234,
+      "heading": "## Phase 3.8.9 — bounded operational bridge",
+      "date": null,
+      "chars": 1613,
+      "sha256": "4283c210b1fd605c60ee02f3a635c98c516d37ab98733abe64ffbb9d069854e5",
+      "first_line": "## Phase 3.8.9 — bounded operational bridge\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 235,
+      "heading": "## Phase 3.8.9a — shared Playwright test runtime",
+      "date": null,
+      "chars": 854,
+      "sha256": "77ec77752cd2d80d548a680e7ef84f0a66b05e99878ff1041541f1d2dc996bd9",
+      "first_line": "## Phase 3.8.9a — shared Playwright test runtime\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 236,
+      "heading": "## Phase 3.8.10 — runtime observability bridge",
+      "date": null,
+      "chars": 1053,
+      "sha256": "fb47e2ab863c66c9cb3ab9ac30171eea0f3b52b8062a1539473b17f2ce3db721",
+      "first_line": "## Phase 3.8.10 — runtime observability bridge\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 237,
+      "heading": "## Phase 3.8.11 — commit-pinned Runner MCP self-update",
+      "date": null,
+      "chars": 5587,
+      "sha256": "2b59a6513a9724aff409d3e9f548c5ca2b961aeea4766a39dc11ffb085d7c66f",
+      "first_line": "## Phase 3.8.11 — commit-pinned Runner MCP self-update\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 238,
+      "heading": "## Phase 3.9 — public launch readiness",
+      "date": null,
+      "chars": 2666,
+      "sha256": "e20d12cc18ac21da3cbbf896d9b4fe637b66e668bd59fa4ceaeede1eee0329f0",
+      "first_line": "## Phase 3.9 — public launch readiness\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 239,
+      "heading": "## Phase 4 — staging service management",
+      "date": null,
+      "chars": 901,
+      "sha256": "607d5f26fbd6574e32bea2cc4b8e231ebcf6afbe28b7c6a115f14244aca6747f",
+      "first_line": "## Phase 4 — staging service management\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 240,
+      "heading": "## Phase 5 — backups and migrations",
+      "date": null,
+      "chars": 2219,
+      "sha256": "da5596bea4181b39997244cf6c22acccb343668e1ac155acad402450f2458c2c",
+      "first_line": "## Phase 5 — backups and migrations\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 241,
+      "heading": "## Phase 6 — staging release engine",
+      "date": null,
+      "chars": 1139,
+      "sha256": "7ad805645550ccece84f15419d6883f19bcff63d2b99c8facafbdcbbb9d05326",
+      "first_line": "## Phase 6 — staging release engine\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 242,
+      "heading": "## Phase 7 — rollback engine",
+      "date": null,
+      "chars": 1414,
+      "sha256": "b728cc3265f1dcdf949216869e0b9651eea19afc3a660432539915eeec3c9b19",
+      "first_line": "## Phase 7 — rollback engine\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 243,
+      "heading": "## Phase 8 — multi-project adapters",
+      "date": null,
+      "chars": 999,
+      "sha256": "4a0377cea7fd023035fd10d2ec1a91c75eac431e933662b6b212e44e1e1bd909",
+      "first_line": "## Phase 8 — multi-project adapters\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 244,
+      "heading": "## Phase 9 — approval and risk gates",
+      "date": null,
+      "chars": 1107,
+      "sha256": "307934e2e6294048510f0bee1c9da3267f1242ae62f1a5ff3486643a9b5d5b0d",
+      "first_line": "## Phase 9 — approval and risk gates\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 245,
+      "heading": "## Phase 10 — optional restricted command templates",
+      "date": null,
+      "chars": 193,
+      "sha256": "0039146ad2876cbd4e30cce4a47c0c32145ff88c23f32396d0e73ddf79373d52",
+      "first_line": "## Phase 10 — optional restricted command templates\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 246,
+      "heading": "## MVP completion",
+      "date": null,
+      "chars": 273,
+      "sha256": "e4840c8f95550cce89e5fac3bdd47e28a9ac2d0f94a75c4ee80733b29e37fb02",
+      "first_line": "## MVP completion\n",
+      "dest": "roadmap/ROADMAP.md"
+    },
+    {
+      "index": 247,
+      "heading": "## Cross-project Infrastructure Authority invariant",
+      "date": null,
+      "chars": 578,
+      "sha256": "e42fc33f4c62b6d21023225fb00c2f8cb2b290dfd2a524bf4fbe9d634059aa56",
+      "first_line": "## Cross-project Infrastructure Authority invariant\n",
+      "dest": "roadmap/ROADMAP.md"
+    }
+  ],
+  "outputs": {
+    "roadmap/ROADMAP.md": "93bca220ea28561d0c3312b36d73175631e84a59a95eb31c78a40d6f6e847dd0",
+    "roadmap/ROADMAP.archive-2026-11.md": "7c49b29506bf0192d5df70b5b5f608a746354f0bdb4384ecb92753e843a613f8",
+    "roadmap/ROADMAP.archive-2026-10.md": "49b377995f4aea6ddcd92339a655a69ba3732408ac7f1ff17d2d7cd2cf717691"
+  }
+}

@@ -2165,6 +2165,8 @@ def test_m3_mixed_status_rejects_undocumented_managed_cron_lines(
         ("completion-watcher", "extra_argument"),
         ("server", "invalid_port"),
         ("server", "noncanonical_port"),
+        ("server", "oversized_port"),
+        ("server", "nonascii_port"),
     ],
 )
 def test_m3_mixed_peers_require_canonical_shared_cron_renderer(
@@ -2203,6 +2205,12 @@ def test_m3_mixed_peers_require_canonical_shared_cron_renderer(
     elif tamper == "noncanonical_port":
         assert tokens[11] == "--port"
         tokens[12] = "08000"
+    elif tamper == "oversized_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "9" * 5000
+    elif tamper == "nonascii_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "１２３４"
     else:
         raise AssertionError("unknown test case")
     altered = (

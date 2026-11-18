@@ -400,6 +400,7 @@ class SelfUpdateManager:
         restart_components: Collection[str] | None = None,
         active_revision_provider: Callable[[], str | None] | None = None,
         retain_activation_baseline: bool = False,
+        retain_installed_provenance: bool = False,
     ) -> None:
         root = config_dir.expanduser()
         if root.exists() and root.is_symlink():
@@ -483,6 +484,11 @@ class SelfUpdateManager:
         self._active_revision_provider = active_revision_provider
         if type(retain_activation_baseline) is not bool:
             raise SelfUpdateError("Provisional baseline retention flag is invalid")
+        # Default OFF for all existing callers. Enable only with a separately
+        # installed, qualified owner of the existing wheel/receipt path.
+        if type(retain_installed_provenance) is not bool:
+            raise SelfUpdateError("Installed wheel provenance retention flag is invalid")
+        self._retain_installed_provenance = retain_installed_provenance
         if self._server_activation_scheduler is not None and not retain_activation_baseline:
             raise SelfUpdateError(
                 "Managed activation requires retained independent recovery baseline"
@@ -1480,6 +1486,18 @@ class SelfUpdateManager:
                     if qualification_interrupt_after_install:
                         raise _SelfUpdateQualificationInterrupt()
                     self._package_installer.verify_runtime()
+                    # Keep an exact immutable target wheel + PR#969 receipt in
+                    # EXISTING private artifact-custody before temporary job
+                    # artifacts are cleaned or the transaction is finalized.
+                    # This is NOT live serving/owner attestation (issue #669).
+                    if self._retain_installed_provenance:
+                        self._package_installer.retain_installed_wheel_provenance(
+                            job_id=job_id,
+                            target_commit=job.commit,
+                            baseline_commit=baseline_commit,
+                            baseline_wheel_sha256=baseline_wheel_sha256,
+                            installed_package=Path(__file__).parent,
+                        )
                     installed = True
                 except PackageInstallError as install_exc:
                     if baseline_commit is None or baseline_wheel is None:

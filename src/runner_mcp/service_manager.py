@@ -1,8 +1,15 @@
+"""Begrensde systemd-useracties voor geregistreerde service-aliassen.
+
+De servicebevoegdheden komen uit de bestaande registratie en operatorstop.
+De userbus wordt uitsluitend afgeleid van de effectieve procesidentiteit.
+"""
+
 from __future__ import annotations
 
 import os
 import subprocess
 import threading
+import time
 import urllib.error
 import urllib.request
 from dataclasses import dataclass
@@ -12,6 +19,9 @@ from typing import Protocol
 from .config import ProjectRegistry, ServiceConfig
 from .host_platform import HostPlatform, detect_host_platform
 from .operational_safety import ActionClass, OperatorSafetyGuard
+
+SERVICE_READINESS_GRACE_SECONDS = 10.0
+SERVICE_READINESS_POLL_SECONDS = 0.25
 
 
 class ServiceManagerError(RuntimeError):
@@ -62,6 +72,8 @@ class SystemdUserBackend:
             "PATH": "/usr/local/bin:/usr/bin:/bin",
             "LANG": "C.UTF-8",
             "LC_ALL": "C.UTF-8",
+            # No caller-controlled XDG runtime dir or D-Bus address.
+            "XDG_RUNTIME_DIR": f"/run/user/{os.geteuid()}",
         }
         try:
             completed = subprocess.run(
@@ -260,6 +272,26 @@ class ServiceManager:
             backend.action(service.unit, action)
             state = backend.status(service.unit)
             health = self.health_checker.check(service)
+
+            # Systemd Type=exec kan actief melden voordat de HTTP-listener
+            # klaar is. Controleer uitsluitend deze toegelaten service kort
+            # opnieuw; een gestopte unit of blijvende fout blijft ongezond.
+            if (
+                action in {"start", "restart"}
+                and service.health_url is not None
+                and state.active_state == "active"
+                and health == "unhealthy"
+            ):
+                deadline = time.monotonic() + SERVICE_READINESS_GRACE_SECONDS
+                while health == "unhealthy":
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        break
+                    time.sleep(min(SERVICE_READINESS_POLL_SECONDS, remaining))
+                    state = backend.status(service.unit)
+                    if state.active_state != "active":
+                        break
+                    health = self.health_checker.check(service)
         finally:
             lock.release()
 

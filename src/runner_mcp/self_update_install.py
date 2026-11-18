@@ -13,6 +13,14 @@ from contextlib import contextmanager
 from pathlib import Path
 from typing import Any
 
+from .artifact_custody import ArtifactCustodyError, ContentAddressedArtifactCustody
+from .artifact_receipt_capture import (
+    WheelReceiptCaptureError,
+    capture_candidate_wheel_receipt,
+)
+from .artifact_receipt_preflight import offline_artifact_receipt_preflight
+from .offline_installed_record_preflight import offline_installed_record_preflight
+
 _COMMIT_RE = re.compile(r"^[0-9a-f]{40}$")
 _JOB_ID_RE = re.compile(r"^[0-9a-f]{32}$")
 _SHA256_RE = re.compile(r"^[0-9a-f]{64}$")
@@ -459,6 +467,141 @@ class SelfUpdatePackageInstaller:
             return digest
         except (OSError, PackageInstallError, ValueError):
             return None
+
+    def retain_installed_wheel_provenance(
+        self, *, job_id: str, target_commit: str,
+        baseline_commit: str | None, baseline_wheel_sha256: str | None,
+        installed_package: Path,
+    ) -> dict[str, object]:
+        """Retain the EXACT newly installed wheel in existing artifact-custody.
+
+        This runs AFTER the actual pip installation and its subprocess import
+        smoke, but BEFORE the SelfUpdateManager clears the recovery transaction
+        or removes the temporary wheel. It reuses the existing content-addressed
+        object, installer wheel receipt and installed RECORD comparator. No new
+        service, update/ACK route or independent publisher trust is created.
+
+        The receipt is immutable and the job lineage is stored next to the
+        retained digest object under the SAME private artifact-custody tree.
+        Both are only local byte claims. Active/loaded identity still requires
+        the existing external owner verifier after the NEW server starts.
+        """
+        if (
+            type(job_id) is not str or _JOB_ID_RE.fullmatch(job_id) is None
+            or type(target_commit) is not str
+            or _COMMIT_RE.fullmatch(target_commit) is None
+            or (baseline_commit is not None and (
+                type(baseline_commit) is not str
+                or _COMMIT_RE.fullmatch(baseline_commit) is None
+            ))
+            or (baseline_wheel_sha256 is not None and (
+                type(baseline_wheel_sha256) is not str
+                or _SHA256_RE.fullmatch(baseline_wheel_sha256) is None
+            ))
+            or (baseline_commit is None) != (baseline_wheel_sha256 is None)
+            or not isinstance(installed_package, Path)
+            or not installed_package.is_absolute()
+            or installed_package.name != "runner_mcp"
+        ):
+            raise PackageInstallError("Self-update wheel provenance input invalid")
+        try:
+            wheel = self.staged_wheel(job_id=job_id, label="target")
+            digest = self.staged_wheel_sha256(job_id=job_id, label="target")
+            if digest is None:
+                raise PackageInstallError("Self-update target wheel identity unavailable")
+            custody = ContentAddressedArtifactCustody(config_dir=self.artifacts_root.parent)
+            stored = custody.publish(
+                trusted_source=wheel, expected_sha256=digest,
+                expected_size_bytes=wheel.stat().st_size,
+            )
+            if offline_installed_record_preflight(
+                stored.path, installed_package, digest,
+            ).get("state") != "offline_installed_record_match":
+                raise PackageInstallError("Self-update installed RECORD mismatch")
+            receipt = stored.path.with_name(digest + ".receipt.json")
+            if receipt.exists() or receipt.is_symlink():
+                if offline_artifact_receipt_preflight(
+                    receipt, stored.path, installed_package,
+                ).get("state") != "offline_bytes_match":
+                    raise PackageInstallError("Self-update wheel receipt conflict")
+                raw_receipt = json.loads(receipt.read_text(encoding="utf-8"))
+                if (
+                    raw_receipt.get("source_revision") != target_commit
+                    or raw_receipt.get("wheel_sha256") != digest
+                ):
+                    raise PackageInstallError("Self-update wheel source claim conflict")
+            else:
+                capture_candidate_wheel_receipt(
+                    wheel=stored.path, installed_package=installed_package,
+                    receipt=receipt, source_revision=target_commit,
+                )
+            receipt_sha = hashlib.sha256(receipt.read_bytes()).hexdigest()
+            record: dict[str, object] = {
+                "schema_version": "runner-mcp/self-update-wheel-lineage/v1",
+                "job_id": job_id,
+                "source_revision": target_commit,
+                "artifact_digest": digest,
+                "receipt_sha256": receipt_sha,
+                "baseline_revision": baseline_commit,
+                "baseline_wheel_sha256": baseline_wheel_sha256,
+            }
+            encoded = (json.dumps(record, sort_keys=True, separators=(",", ":")) + "\n").encode()
+            if len(encoded) > 2048:
+                raise PackageInstallError("Self-update wheel lineage too large")
+            lineage = stored.path.with_name(digest + "." + job_id + ".lineage.json")
+            if lineage.is_symlink():
+                raise PackageInstallError("Self-update wheel lineage unsafe")
+            if lineage.exists():
+                info = lineage.lstat()
+                if (
+                    not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid()
+                    or info.st_nlink != 1 or info.st_mode & 0o077
+                    or lineage.read_bytes() != encoded
+                ):
+                    raise PackageInstallError("Self-update wheel lineage conflict")
+            else:
+                if not hasattr(os, "O_NOFOLLOW"):
+                    raise PackageInstallError("Self-update wheel lineage nofollow unavailable")
+                flags = os.O_WRONLY | os.O_CREAT | os.O_EXCL | os.O_NOFOLLOW
+                if hasattr(os, "O_CLOEXEC"):
+                    flags |= os.O_CLOEXEC
+                with os.fdopen(os.open(lineage, flags, 0o600), "wb") as handle:
+                    handle.write(encoded)
+                    handle.flush()
+                    os.fsync(handle.fileno())
+                parent_fd = os.open(lineage.parent, os.O_RDONLY | os.O_DIRECTORY)
+                try:
+                    os.fsync(parent_fd)
+                finally:
+                    os.close(parent_fd)
+            # Repeat both independent byte checks after creating the durable
+            # lineage: neither owner nor current process is authorized here.
+            if (
+                offline_artifact_receipt_preflight(
+                    receipt, stored.path, installed_package,
+                ).get("state") != "offline_bytes_match"
+                or offline_installed_record_preflight(
+                    stored.path, installed_package, digest,
+                ).get("state") != "offline_installed_record_match"
+            ):
+                raise PackageInstallError("Self-update wheel provenance changed")
+            return {
+                "state": "retained_installer_bytes_only",
+                "source_revision": target_commit,
+                "artifact_digest": digest,
+                "job_id": job_id,
+                "baseline_revision": baseline_commit,
+                "receipt_sha256": receipt_sha,
+                "owner_verified": False,
+                "loaded_process_verified": False,
+            }
+        except (
+            ArtifactCustodyError, WheelReceiptCaptureError,
+            OSError, ValueError, TypeError, KeyError, json.JSONDecodeError,
+        ) as exc:
+            raise PackageInstallError(
+                "Self-update installed wheel provenance unavailable"
+            ) from exc
 
     def install_wheel(self, wheel: Path) -> None:
         if wheel.is_symlink():

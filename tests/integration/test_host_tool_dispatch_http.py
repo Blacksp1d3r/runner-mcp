@@ -407,3 +407,38 @@ def test_all_five_real_ocr_tools_are_denied_over_authenticated_http_before_handl
     assert {record["tool"] for record in refused_events} == set(
         OCR_HOST_RESTRICTED_TOOLS
     )
+
+
+def test_unknown_client_tool_name_never_leaks_into_durable_http_audit(
+    tmp_path: Path,
+):
+    marker = "synthetic_client_credential_not_a_registered_tool_31415"
+    app = _app(
+        tmp_path,
+        evidence_provider=lambda: HostDispatchEvidence(
+            verified_service_asset_id="service:synthetic",
+            runtime_source_revision="a" * 40,
+            policy=None,
+        ),
+    )
+    with TestClient(app, base_url=ENDPOINT) as client:
+        headers = _session(client)
+        refusal = client.post(
+            "/mcp",
+            headers=headers,
+            json={
+                "jsonrpc": "2.0",
+                "id": 99,
+                "method": "tools/call",
+                "params": {"name": marker, "arguments": {}},
+            },
+        )
+        assert refusal.status_code == 200
+        assert "HOST_TOOL_NOT_PERMITTED" in refusal.text
+        assert marker not in refusal.text
+    audit_content = (tmp_path / "audit.jsonl").read_text(encoding="utf-8")
+    assert marker not in audit_content
+    audit_rows = [json.loads(line) for line in audit_content.splitlines()]
+    unknowns = [row for row in audit_rows if row.get("tool") == "unknown_tool"]
+    assert len(unknowns) == 1
+    assert unknowns[0]["result"].startswith("denied:")

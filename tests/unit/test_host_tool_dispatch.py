@@ -278,3 +278,26 @@ def test_unchanged_private_owner_rechecked_twice_before_one_execution():
     assert asyncio.run(mcp.call_tool("write_test", {}))
     assert seen == {"observations": 2, "executions": 1}
     assert sink.events == []
+
+
+def test_unknown_client_tool_name_does_not_enter_existing_audit():
+    sink = AuditSink()
+    mcp, observed, _ = _rig(policy=_policy(), audit=sink)
+    synthetic_secret = "private_token_client_supplied_never_log_123456"
+    with pytest.raises(ToolError, match="^HOST_TOOL_NOT_PERMITTED$"):
+        asyncio.run(mcp.call_tool(synthetic_secret, {"key": synthetic_secret}))
+    assert observed["count"] == 0
+    assert len(sink.events) == 1
+    assert sink.events[0].tool == "unknown_tool"
+    assert synthetic_secret not in repr(sink.events[0])
+
+
+def test_provider_failure_does_not_log_unverified_tool_name():
+    mcp, observed, sink = _rig(provider_error=True)
+    with pytest.raises(ToolError, match="^HOST_TOOL_NOT_PERMITTED$"):
+        _invoke(mcp)
+    assert observed["count"] == 0
+    assert len(sink.events) == 1
+    # The provider failed before the SDK catalogue could be verified.
+    assert sink.events[0].tool == "unknown_tool"
+    assert sink.events[0].result == "denied:host_admission_evidence_unavailable"

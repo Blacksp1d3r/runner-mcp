@@ -22,6 +22,11 @@ from runner_mcp.file_access import FileAccessService
 from runner_mcp.host_tool_admission import QualifiedHostToolPolicy
 from runner_mcp.host_tool_dispatch import HostDispatchEvidence
 from runner_mcp.server import (
+    BewindOcrQualificationExecutionAuthorityConfigurator,
+    BewindOcrQualificationRunner,
+    BewindOcrQualificationSourceProvisioner,
+    BewindOcrQualificationStager,
+    BewindOcrRuntimeImagePreparer,
     Settings,
     build_mcp,
     create_app,
@@ -325,3 +330,80 @@ def test_lab_permit_replay_on_primary_is_denied_at_actual_http_tool_dispatch(
     assert len([
         row for row in audit if row.get("result") == "denied:host_identity_mismatch"
     ]) == 1
+
+OCR_HOST_RESTRICTED_TOOLS = (
+    "bewind_ocr_qualification_run",
+    "bewind_ocr_qualification_stage",
+    "bewind_ocr_runtime_image_prepare",
+    "bewind_ocr_qualification_source_provision",
+    "bewind_ocr_qualification_execution_authority_configure",
+)
+
+
+def test_all_five_real_ocr_tools_are_denied_over_authenticated_http_before_handlers(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+):
+    """Same live catalogue; deny five lab-only names before any real OCR code."""
+    schema = _synthetic_real_server_schema(tmp_path)
+    executed = {"count": 0}
+
+    def forbidden_ocr(*_args: object, **_kwargs: object):
+        executed["count"] += 1
+        raise AssertionError("OCR action must not reach its handler")
+
+    # Patch the actual five mutation-capable implementations, NOT the SDK
+    # call_tool method. A failed pre-dispatch gate must leave them untouched.
+    for cls, method in (
+        (BewindOcrQualificationRunner, "run"),
+        (BewindOcrQualificationStager, "stage"),
+        (BewindOcrRuntimeImagePreparer, "prepare"),
+        (BewindOcrQualificationSourceProvisioner, "provision"),
+        (BewindOcrQualificationExecutionAuthorityConfigurator, "configure"),
+    ):
+        monkeypatch.setattr(cls, method, forbidden_ocr)
+
+    primary_permit = _synthetic_host_permit(
+        host="service:primary", schema=schema, allow_read=True,
+    )
+    app = _private_host_app(
+        tmp_path / "ocr-primary",
+        observed_asset="service:primary",
+        policy=primary_permit,
+    )
+    with TestClient(app, base_url=ENDPOINT) as client:
+        headers = _session(client)
+        catalogue = _listed(client, headers)
+        assert catalogue.status_code == 200
+        for name in OCR_HOST_RESTRICTED_TOOLS:
+            assert name in catalogue.text
+        for n, name in enumerate(OCR_HOST_RESTRICTED_TOOLS, start=100):
+            refused = client.post(
+                "/mcp",
+                headers=headers,
+                json={
+                    "jsonrpc": "2.0",
+                    "id": n,
+                    "method": "tools/call",
+                    "params": {"name": name, "arguments": {}},
+                },
+            )
+            assert refused.status_code == 200
+            assert "HOST_TOOL_NOT_PERMITTED" in refused.text
+            assert "isError" in refused.text
+            assert "OCR action must not reach its handler" not in refused.text
+    assert executed["count"] == 0
+    records = [
+        json.loads(line)
+        for line in (tmp_path / "ocr-primary" / "audit.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    refused_events = [
+        row for row in records
+        if row.get("result") == "denied:tool_not_granted_on_host"
+    ]
+    assert len(refused_events) == len(OCR_HOST_RESTRICTED_TOOLS)
+    assert {record["tool"] for record in refused_events} == set(
+        OCR_HOST_RESTRICTED_TOOLS
+    )

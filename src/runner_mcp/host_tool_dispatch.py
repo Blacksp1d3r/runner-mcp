@@ -76,7 +76,7 @@ class HostAdmissionMCPServer(MCPServer):
                 policy=evidence.policy,
                 now_epoch=int(time()),
             )
-        except Exception:
+        except Exception:  # noqa: BLE001 - untrusted private evidence must fail closed
             # No sensitive exception values, source paths or policy data leak.
             verdict = HostToolAdmission(
                 False, "host_admission_evidence_unavailable", "HOST_TOOL_NOT_PERMITTED"
@@ -93,7 +93,7 @@ class HostAdmissionMCPServer(MCPServer):
                         utc_timestamp(),
                     )
                 )
-            except Exception:
+            except Exception:  # noqa: BLE001 - no audit failure may permit action
                 # No unrecorded deny, but audit failure must NEVER permit a tool.
                 raise ToolError("HOST_TOOL_NOT_PERMITTED") from None
             raise ToolError("HOST_TOOL_NOT_PERMITTED")

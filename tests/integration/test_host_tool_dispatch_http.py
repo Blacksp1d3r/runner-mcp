@@ -7,16 +7,26 @@ so every guarded tool call must be denied before its handler is invoked.
 
 from __future__ import annotations
 
+import asyncio
 import json
 from pathlib import Path
+from time import time
 
 import pytest
 from starlette.testclient import TestClient
 
+from runner_mcp.audit import AuditLogger
+from runner_mcp.build_identity import BuildIdentity
 from runner_mcp.config import ProjectConfig, ProjectRegistry
 from runner_mcp.file_access import FileAccessService
+from runner_mcp.host_tool_admission import QualifiedHostToolPolicy
 from runner_mcp.host_tool_dispatch import HostDispatchEvidence
-from runner_mcp.server import Settings, create_app
+from runner_mcp.server import (
+    Settings,
+    build_mcp,
+    create_app,
+    runner_mcp_interface_schema_digest,
+)
 
 TOKEN = "x" * 32
 ENDPOINT = "https://mcp.example.invalid"
@@ -171,3 +181,147 @@ def test_default_server_retains_existing_tool_dispatch_without_private_gate(tmp_
         assert response.status_code == 200
         assert "PRIVATE_DISPOSABLE_FILE_MARKER" in response.text
         assert "HOST_TOOL_NOT_PERMITTED" not in response.text
+
+
+def _synthetic_real_server_schema(tmp_path: Path) -> str:
+    """Measure the actual SDK catalogue, not a hand-entered policy digest."""
+    project_root = tmp_path / "schema-reference"
+    project_root.mkdir()
+    settings = Settings(
+        bearer_token=TOKEN,
+        auth_issuer="https://auth.example.invalid/",
+        resource_url=ENDPOINT + "/mcp",
+        projects_config=tmp_path / "reference.yml",
+        audit_log=tmp_path / "schema-audit.jsonl",
+    )
+    registry = ProjectRegistry(
+        projects={
+            "demo": ProjectConfig(
+                display_name="Demo",
+                repository="example/demo",
+                root=project_root,
+            )
+        }
+    )
+    mcp = build_mcp(
+        settings,
+        registry,
+        AuditLogger(settings.audit_log),
+        # The real create_app also registers its build_identity tool.
+        build_identity_provider=lambda: BuildIdentity("runner-mcp", "synthetic"),
+    )
+    return asyncio.run(runner_mcp_interface_schema_digest(mcp))
+
+
+def _synthetic_host_permit(*, host: str, schema: str, allow_read: bool):
+    return QualifiedHostToolPolicy(
+        service_asset_id=host,
+        release_source_revision="a" * 40,
+        interface_schema_sha256=schema,
+        permitted_tool_names=(
+            frozenset({"read_project_file"}) if allow_read else frozenset()
+        ),
+        expires_at_epoch=int(time()) + 1800,
+    )
+
+
+def _private_host_app(tmp_path: Path, *, observed_asset: str, policy):
+    tmp_path.mkdir()
+    return _app(
+        tmp_path,
+        evidence_provider=lambda: HostDispatchEvidence(
+            verified_service_asset_id=observed_asset,
+            runtime_source_revision="a" * 40,
+            policy=policy,
+        ),
+    )
+
+
+def _listed(client: TestClient, headers: dict[str, str]):
+    return client.post(
+        "/mcp",
+        headers=headers,
+        json={"jsonrpc": "2.0", "id": 10, "method": "tools/list", "params": {}},
+    )
+
+
+def test_synthetic_primary_and_lab_publish_same_tools_but_deny_or_allow_locally(
+    tmp_path: Path,
+):
+    schema = _synthetic_real_server_schema(tmp_path)
+    assert len(schema) == 64
+    primary = _synthetic_host_permit(
+        host="service:primary", schema=schema, allow_read=False
+    )
+    lab = _synthetic_host_permit(
+        host="service:lab", schema=schema, allow_read=True
+    )
+    # The permits and independently observed service names are synthetic.
+    # This proves SDK HTTP policy mechanics, NEVER a real qualified identity.
+    primary_app = _private_host_app(
+        tmp_path / "primary", observed_asset="service:primary", policy=primary
+    )
+    lab_app = _private_host_app(
+        tmp_path / "lab", observed_asset="service:lab", policy=lab
+    )
+    with (
+        TestClient(primary_app, base_url=ENDPOINT) as primary_client,
+        TestClient(lab_app, base_url=ENDPOINT) as lab_client,
+    ):
+        primary_headers = _session(primary_client)
+        lab_headers = _session(lab_client)
+        primary_tools = _listed(primary_client, primary_headers)
+        lab_tools = _listed(lab_client, lab_headers)
+        assert primary_tools.status_code == lab_tools.status_code == 200
+        assert primary_tools.text == lab_tools.text
+        assert "read_project_file" in primary_tools.text
+
+        denied = _read(primary_client, primary_headers)
+        assert denied.status_code == 200
+        assert "HOST_TOOL_NOT_PERMITTED" in denied.text
+        assert "PRIVATE_DISPOSABLE_FILE_MARKER" not in denied.text
+
+        accepted = _read(lab_client, lab_headers)
+        assert accepted.status_code == 200
+        assert "PRIVATE_DISPOSABLE_FILE_MARKER" in accepted.text
+        assert "HOST_TOOL_NOT_PERMITTED" not in accepted.text
+
+    audit = [
+        json.loads(line)
+        for line in (tmp_path / "primary" / "audit.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert len([
+        row for row in audit if row.get("result") == "denied:tool_not_granted_on_host"
+    ]) == 1
+
+
+def test_lab_permit_replay_on_primary_is_denied_at_actual_http_tool_dispatch(
+    tmp_path: Path,
+):
+    schema = _synthetic_real_server_schema(tmp_path)
+    foreign = _synthetic_host_permit(
+        host="service:lab", schema=schema, allow_read=True
+    )
+    app = _private_host_app(
+        tmp_path / "foreign-replay",
+        observed_asset="service:primary",
+        policy=foreign,
+    )
+    with TestClient(app, base_url=ENDPOINT) as client:
+        headers = _session(client)
+        denied = _read(client, headers)
+        assert denied.status_code == 200
+        assert "HOST_TOOL_NOT_PERMITTED" in denied.text
+        assert "PRIVATE_DISPOSABLE_FILE_MARKER" not in denied.text
+
+    audit = [
+        json.loads(line)
+        for line in (tmp_path / "foreign-replay" / "audit.jsonl")
+        .read_text(encoding="utf-8")
+        .splitlines()
+    ]
+    assert len([
+        row for row in audit if row.get("result") == "denied:host_identity_mismatch"
+    ]) == 1

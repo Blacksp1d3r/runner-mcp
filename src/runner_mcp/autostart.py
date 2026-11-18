@@ -1024,7 +1024,7 @@ def assess_single_peer_mixed_backend_status(
                 or not 1 <= len(tokens[12]) <= 5
             ):
                 return wait("original_cron_role_unqualified")
-            # Vaste ASCII-lengte begrenst int-conversie en verbiedt 
+            # Vaste ASCII-lengte begrenst int-conversie en verbiedt
             # Unicode/getallen met duizenden cijfers uit onbetrouwbare cronbytes.
             role_port = int(tokens[12])
             if not 1 <= role_port <= 65535:

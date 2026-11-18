@@ -301,3 +301,90 @@ def test_provider_failure_does_not_log_unverified_tool_name():
     # The provider failed before the SDK catalogue could be verified.
     assert sink.events[0].tool == "unknown_tool"
     assert sink.events[0].result == "denied:host_admission_evidence_unavailable"
+
+
+@pytest.mark.parametrize("drift", ["schema", "registered_name"])
+def test_sdk_catalogue_changed_during_async_digest_denies_without_handler(
+    drift: str,
+):
+    """A single policy decision cannot combine different SDK generations."""
+    sink = AuditSink()
+    executed = {"count": 0}
+    stable = HostDispatchEvidence(ASSET, REV, _policy())
+
+    async def async_schema_observer(_):
+        await asyncio.sleep(0)
+        return SCHEMA
+
+    mcp = HostAdmissionMCPServer(
+        "changing-sdk-catalogue",
+        evidence_provider=lambda: stable,
+        schema_digest_provider=async_schema_observer,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test() -> str:
+        executed["count"] += 1
+        return "must-not-write"
+
+    original_list = mcp.list_tools
+    read_count = {"n": 0}
+
+    async def catalogue_observer():
+        current = await original_list()
+        read_count["n"] += 1
+        if read_count["n"] == 2:
+            if drift == "schema":
+                return [
+                    tool.model_copy(update={"input_schema": {"type": "object"}})
+                    for tool in current
+                ]
+            return [
+                tool.model_copy(update={"name": "different_registered_tool"})
+                for tool in current
+            ]
+        return current
+
+    mcp.list_tools = catalogue_observer
+    with pytest.raises(ToolError, match="^HOST_TOOL_NOT_PERMITTED$"):
+        asyncio.run(mcp.call_tool("write_test", {}))
+    assert read_count["n"] == 2
+    assert executed["count"] == 0
+    assert len(sink.events) == 1
+    assert sink.events[0].tool == "unknown_tool"
+    assert sink.events[0].result == "denied:host_tool_catalogue_changed"
+
+
+def test_identical_sdk_catalogue_after_async_digest_allows_one_handler():
+    sink = AuditSink()
+    count = {"executions": 0, "catalogue_reads": 0}
+    stable = HostDispatchEvidence(ASSET, REV, _policy())
+
+    async def async_schema_observer(_):
+        await asyncio.sleep(0)
+        return SCHEMA
+
+    mcp = HostAdmissionMCPServer(
+        "stable-sdk-catalogue",
+        evidence_provider=lambda: stable,
+        schema_digest_provider=async_schema_observer,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test() -> str:
+        count["executions"] += 1
+        return "complete"
+
+    original_list = mcp.list_tools
+
+    async def stable_catalogue():
+        count["catalogue_reads"] += 1
+        return await original_list()
+
+    mcp.list_tools = stable_catalogue
+    result = asyncio.run(mcp.call_tool("write_test", {}))
+    assert result
+    assert count == {"executions": 1, "catalogue_reads": 2}
+    assert sink.events == []

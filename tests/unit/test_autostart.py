@@ -2300,3 +2300,73 @@ def test_mixed_backend_direct_user_remove_denies_unknown_cron_state(
         remove_user_services(unit_dir=unit_dir, runner=systemctl)
     assert systemctl.calls == []
     assert unit.exists()
+
+@pytest.mark.parametrize(
+    ("backend", "field", "invalid"),
+    [
+        ("cron", "component", []),
+        ("systemd", "component", {}),
+        ("cron", "installed", 0),
+        ("cron", "enabled", "yes"),
+        ("cron", "active", None),
+        ("systemd", "installed", 1),
+        ("systemd", "enabled", 0),
+        ("systemd", "active", "no"),
+    ],
+)
+def test_m3_mixed_status_rejects_malformed_inventory_fields_without_exception(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    backend: str, field: str, invalid: object,
+) -> None:
+    """Een onbetrouwbare statusrij leidt tot WAIT, nooit TypeError of vrijgave."""
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    remaining = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    cron_rows = tuple(
+        CronComponentStatus(role, role in remaining, role in remaining, False)
+        for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(role, role == preview.component, False, False)
+        for role in CRON_COMPONENTS
+    )
+    if backend == "cron":
+        cron_rows = tuple(
+            replace(row, **{field: invalid}) if row.component == "server" else row
+            for row in cron_rows
+        )
+    else:
+        systemd_rows = tuple(
+            replace(row, **{field: invalid})
+            if row.component == preview.component else row
+            for row in systemd_rows
+        )
+
+    result = assess_single_peer_mixed_backend_status(
+        preview=preview,
+        phase="peer_disabled_idle",
+        observed_crontab=preview.candidate_crontab,
+        observed_unit_contents=preview.boot_unit_contents,
+        unit_enabled=False,
+        unit_active=False,
+        main_pid=0,
+        role_lock_active=False,
+        new_function_ack=False,
+        cron_rows=cron_rows,
+        systemd_rows=systemd_rows,
+    )
+    assert result.consistent is False
+    assert result.reason_code == "backend_inventory_type_unqualified"
+    assert result.generic_reconcile_authorized is False
+    assert result.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []

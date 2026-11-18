@@ -2,7 +2,9 @@ from __future__ import annotations
 
 import argparse
 import getpass
+import os
 import secrets
+import socket
 import sys
 from collections.abc import Sequence
 from importlib.metadata import PackageNotFoundError, version
@@ -13,6 +15,7 @@ import uvicorn
 
 from .agent_bus_worker import (
     agent_bus_convergence_status,
+    agent_bus_worker_preflight,
     run_agent_bus_worker_process,
 )
 from .approval_manager import ApprovalError, ApprovalManager
@@ -24,6 +27,7 @@ from .autostart import (
     default_user_unit_dir,
     has_managed_user_units,
     install_user_services,
+    plan_cron_to_systemd,
     remove_user_services,
     systemd_user_available,
     user_service_status,
@@ -268,6 +272,7 @@ def _managed_tunnel_process_running(config_dir: Path) -> bool:
         rows = cron_status(
             config_dir=config_dir,
             components=components,
+            executable=(Path(sys.executable).parent / "runner-mcp").resolve(),
         )
         tunnel = next((row for row in rows if row.component == "tunnel"), None)
         return bool(tunnel is not None and tunnel.installed and tunnel.active)
@@ -1288,6 +1293,59 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         print(f"Autostart activation: ready ({state})")
         return 0
 
+    if args.autostart_action == "plan":
+        # Refuse to probe another owner or host. These local names are only
+        # bounded consistency checks, not issuer identity or wheel attestation.
+        observed_hostname = socket.gethostname().split(".", 1)[0]
+        observed_uid = os.getuid()
+        if (
+            args.expected_hostname != observed_hostname
+            or args.expected_uid != observed_uid
+            or args.expected_uid <= 0
+        ):
+            print("migration_plan=WAIT")
+            print("reason=host_or_uid_mismatch")
+            print("cutover_authorized=no")
+            return 0
+
+        components = configured_autostart_components(config_dir)
+        cron_present = cron_available()
+        cron_managed = has_managed_cron() if cron_present else False
+        rows = (
+            tuple(
+                cron_status(
+                    config_dir=config_dir,
+                    components=components,
+                    executable=executable,
+                    port=args.expected_port,
+                )
+            )
+            if cron_managed
+            else ()
+        )
+        manager_reachable = systemd_user_available()
+        unit_rows = tuple(user_service_status())
+        plan = plan_cron_to_systemd(
+            component=args.component,
+            expected_hostname=args.expected_hostname,
+            expected_uid=args.expected_uid,
+            observed_hostname=observed_hostname,
+            observed_uid=observed_uid,
+            configured_components=components,
+            cron_managed=cron_managed,
+            cron_rows=rows,
+            systemd_rows=unit_rows,
+            systemd_manager_reachable=manager_reachable,
+        )
+        print(f"migration_plan={plan.state}")
+        print(f"component={plan.component}")
+        print(f"reason={plan.reason_code}")
+        print(f"cron_installed={'yes' if plan.cron_installed else 'no'}")
+        print(f"systemd_user_manager={'yes' if plan.systemd_manager_reachable else 'no'}")
+        print(f"systemd_units_absent={'yes' if plan.systemd_units_absent else 'no'}")
+        print("cutover_authorized=no")
+        return 0
+
     managed_cron = has_managed_cron() if cron_available() else False
     managed_systemd = has_managed_user_units()
 
@@ -1303,6 +1361,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
             return 0
@@ -1318,6 +1377,7 @@ def cmd_autostart(args: argparse.Namespace) -> int:
                 cron_status(
                     config_dir=config_dir,
                     components=components,
+                    executable=executable,
                 ),
             )
         else:
@@ -1593,9 +1653,30 @@ def cmd_agent_bus(args: argparse.Namespace) -> int:
     config_dir = _config_dir(args.config_dir)
 
     if args.agent_bus_action == "status":
-        result = agent_bus_config_status(config_dir)
-        print("configured" if result["configured"] else "not configured")
+        # _config_dir resolves symlinks for established commands. Preserve
+        # caller-supplied path components for this new deny-by-default
+        # diagnostic so a symlink to a missing/private root is not hidden.
+        raw = args.config_dir or os.getenv("RUNNER_MCP_CONFIG_DIR", "").strip()
+        status_dir = (
+            Path(raw).expanduser() if raw else Path.home() / ".config" / "runner-mcp"
+        )
+        if not status_dir.is_absolute():
+            status_dir = Path.cwd() / status_dir
+        result = agent_bus_config_status(status_dir)
+        if result.get("base_config_not_initialized"):
+            print("base_config_not_initialized")
+            print("Next: run runner-mcp setup locally with an approved real project.")
+        else:
+            print("configured" if result["configured"] else "not configured")
         return 0
+
+    if args.agent_bus_action == "preflight":
+        result = agent_bus_worker_preflight(config_dir)
+        print(
+            f"state={result['state']} reason_code={result['reason_code']} "
+            "original_client_ack_proven=false"
+        )
+        return 0 if result["state"] == "ready" else 2
 
     if args.agent_bus_action == "convergence":
         result = agent_bus_convergence_status(config_dir)
@@ -2448,6 +2529,31 @@ def build_parser() -> argparse.ArgumentParser:
         help="Run the local read-only autostart activation gate.",
     )
     autostart_preflight.set_defaults(func=cmd_autostart)
+    autostart_plan = autostart_sub.add_parser(
+        "plan",
+        help="Read-only per-owner cron-to-systemd plan; never permits cutover.",
+    )
+    autostart_plan.add_argument("--expected-hostname", required=True)
+    autostart_plan.add_argument("--expected-uid", required=True, type=int)
+    autostart_plan.add_argument(
+        "--expected-port", required=True, type=int,
+        choices=range(1, 65536), metavar="PORT",
+    )
+    autostart_plan.add_argument(
+        "--component",
+        required=True,
+        choices=(
+            "server",
+            "tunnel",
+            "topology-heartbeat",
+            "github-watcher",
+            "completion-watcher",
+            "agent-bus-worker",
+            "fabric-agent-qualification",
+            "fabric-live-overview",
+        ),
+    )
+    autostart_plan.set_defaults(func=cmd_autostart)
     autostart_install = autostart_sub.add_parser(
         "install",
         help="Install and start managed loopback Runner MCP user services.",
@@ -2684,6 +2790,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="Show whether the private Agent Bus relay is configured.",
     )
     agent_bus_status.set_defaults(func=cmd_agent_bus)
+    agent_bus_preflight = agent_bus_sub.add_parser(
+        "preflight",
+        help="Check fixed local Agent Bus worker prerequisites without starting services.",
+    )
+    agent_bus_preflight.set_defaults(func=cmd_agent_bus)
     agent_bus_convergence = agent_bus_sub.add_parser(
         "convergence",
         help="Show bounded durable-result convergence without private result details.",

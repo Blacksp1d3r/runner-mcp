@@ -76,6 +76,65 @@ def agent_bus_worker_configured(config_dir: Path) -> bool:
     return all(present)
 
 
+def agent_bus_worker_preflight(config_dir: Path) -> dict[str, str]:
+    """Read-only local prerequisites, never a live relay/worker/ACK assertion.
+
+    Reuse the existing worker validators. No credentials, endpoint values,
+    file paths, network requests, subprocesses, directories or state files
+    are emitted or created. A local PASS is *not* Agent Bus admission.
+    """
+
+    paths, _settings, _registry = read_private_runtime(config_dir)
+    values = load_env_file(paths.env_file)
+    present = tuple(bool(values.get(key, "").strip()) for key in _AGENT_BUS_KEYS)
+    if not any(present):
+        return {"state": "wait", "reason_code": "relay_not_configured"}
+    if not all(present):
+        return {"state": "blocked", "reason_code": "relay_configuration_incomplete"}
+
+    try:
+        validate_agent_bus_relay_config(
+            origin=values["RUNNER_FABRIC_RELAY_ORIGIN"],
+            subject=values["RUNNER_FABRIC_RELAY_SUBJECT"],
+            credential=values["RUNNER_FABRIC_RELAY_CREDENTIAL"],
+        )
+    except AgentBusWorkerError:
+        return {"state": "blocked", "reason_code": "relay_configuration_invalid"}
+
+    if not _valid_secret(values.get("RUNNER_MCP_BEARER_TOKEN", "")):
+        return {"state": "blocked", "reason_code": "local_bridge_token_invalid"}
+
+    endpoint = values.get(
+        _LOCAL_ENDPOINT_KEY, "http://127.0.0.1:8000/mcp",
+    ).strip()
+    try:
+        _validate_loopback_endpoint(endpoint)
+        _validate_agent_mcp_endpoint(values[_AGENT_MCP_RESOURCE_URL_KEY].strip())
+    except AgentBusWorkerError:
+        return {"state": "blocked", "reason_code": "loopback_endpoint_invalid"}
+
+    if not _valid_secret(values[_AGENT_MCP_BEARER_TOKEN_KEY]):
+        return {"state": "blocked", "reason_code": "agent_bearer_invalid"}
+
+    try:
+        _fixed_runner_fabric_executable()
+    except AgentBusWorkerError:
+        return {"state": "wait", "reason_code": "fabric_launcher_unavailable"}
+
+    state_root = paths.config_dir / "agent-bus-state"
+    if state_root.is_symlink():
+        return {"state": "blocked", "reason_code": "durable_state_unsafe"}
+    if state_root.exists():
+        try:
+            _assert_private_directory(state_root)
+            if state_root.stat().st_uid != os.geteuid():
+                return {"state": "blocked", "reason_code": "durable_state_unsafe"}
+        except OSError:
+            return {"state": "blocked", "reason_code": "durable_state_unsafe"}
+
+    return {"state": "ready", "reason_code": "local_static_prerequisites_ready"}
+
+
 def run_agent_bus_worker_process(
     config_dir: Path,
     *,

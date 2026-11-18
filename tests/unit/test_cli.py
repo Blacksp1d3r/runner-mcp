@@ -2349,6 +2349,62 @@ def isolated_autostart_cli_host(monkeypatch: pytest.MonkeyPatch) -> None:
 
 
 @pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_plan_is_read_only_and_never_authorizes_cutover(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import AutostartStatus
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr("runner_mcp.cli.socket.gethostname", lambda: "example-host")
+    monkeypatch.setattr("runner_mcp.cli.os.getuid", lambda: 1001)
+    monkeypatch.setattr("runner_mcp.cli.cron_available", lambda: True)
+    monkeypatch.setattr("runner_mcp.cli.has_managed_cron", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.cli.configured_autostart_components",
+        lambda _: ("server",),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.cli.cron_status",
+        lambda **_: [CronComponentStatus("server", True, True, False)],
+    )
+    monkeypatch.setattr("runner_mcp.cli.systemd_user_available", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.cli.user_service_status",
+        lambda: [AutostartStatus(c, False, False, False) for c in CRON_COMPONENTS],
+    )
+    for method in ("install_user_services", "install_cron_services"):
+        monkeypatch.setattr(
+            cli, method,
+            lambda *args, **kwargs: (_ for _ in ()).throw(
+                AssertionError("read-only migration plan attempted activation")
+            ),
+        )
+
+    base = [
+        "--config-dir", str(paths.config_dir),
+        "autostart", "plan",
+        "--expected-uid", "1001",
+        "--expected-port", "8000",
+        "--component", "server",
+    ]
+    assert main([*base, "--expected-hostname", "example-host"]) == 0
+    output = capsys.readouterr().out
+    assert "migration_plan=PLAN_ONLY" in output
+    assert "cron_installed=yes" in output
+    assert "systemd_user_manager=yes" in output
+    assert "cutover_authorized=no" in output
+
+    assert main([*base, "--expected-hostname", "different-host"]) == 0
+    denied = capsys.readouterr().out
+    assert "migration_plan=WAIT" in denied
+    assert "reason=host_or_uid_mismatch" in denied
+    assert "cutover_authorized=no" in denied
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
 def test_autostart_cli_install_and_status_are_path_safe(
     tmp_path: Path,
     capsys: pytest.CaptureFixture[str],

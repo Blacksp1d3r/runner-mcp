@@ -1,5 +1,7 @@
 # Runner MCP
 
+**Confirmed cross-product role (2026-10-20):** Runner-MCP is the **bounded authenticated execution and MCP access boundary**, not the company cockpit or a second technical orchestrator. AIfordable owns the company-wide business cockpit and customer/product/registration/desired-state data; Runner-Fabric owns the **technical F10/F17 Cockpit** and is the **sole technical coordinator**. Existing Agent Bus relay code is retained as a transport, not a duplicate scheduler. Runner-MCP's optional Fabric bridge remains narrow, with no automatic expansion of authority. [Cross-product role contract](https://github.com/Blacksp1d3r/AIfordable/blob/main/docs/CROSS_PRODUCT_ROLE_BOUNDARIES.md).
+
 <!-- mcp-name: io.github.Blacksp1d3r/runner-mcp -->
 
 [![Runner MCP validation](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml/badge.svg?branch=main)](https://github.com/Blacksp1d3r/runner-mcp/actions/workflows/validation.yml)
@@ -18,6 +20,8 @@ _An AIfordable project — secure software. Built with AI. Fairly priced._
 Runner MCP is currently **alpha and in maintenance mode**. The canonical public release is **v0.1.3**, available on [PyPI](https://pypi.org/project/aifordable-runner-mcp/), the [official MCP Registry](https://registry.modelcontextprotocol.io/?q=io.github.Blacksp1d3r%2Frunner-mcp) and [GitHub Releases](https://github.com/Blacksp1d3r/runner-mcp/releases). The core alpha scope is complete; new work is limited to security fixes, bugs, compatibility, and concrete operational needs rather than speculative feature growth.
 
 **Start here:** [5-minute demo](docs/DEMO.md) · [Quickstart](QUICKSTART.md) · [Security model](SECURITY.md) · [Threat model](security/THREAT_MODEL.md)
+
+**One-time new-host staging (local operator only):** [Source-pinned host bootstrap](docs/LOCAL_HOST_BOOTSTRAP.md). This does not activate a service or confer remote authority.
 
 ### The difference in one table
 

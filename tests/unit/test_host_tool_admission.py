@@ -1,4 +1,7 @@
 """Same advertised tools everywhere; host execution remains independently denied."""
+import ast
+import inspect
+import textwrap
 from dataclasses import replace
 
 import pytest
@@ -16,7 +19,7 @@ NAMES = frozenset({
     "queue_status",
     "bewind_ocr_qualification_run",
     "bewind_ocr_qualification_stage",
-    "restart_service",
+    "fabric_disposable_target_qualify",
 })
 
 
@@ -58,13 +61,92 @@ def test_same_tool_names_but_different_local_rights():
     tool = "bewind_ocr_qualification_run"
     denied = evaluate(tool, permit=control)
     allowed = evaluate(tool, permit=lab, host="service:lab")
+    replayed = evaluate(tool, permit=lab, host="service:primary")
+    assert replayed.reason_code == "host_identity_mismatch"
     assert denied.allowed is False
     assert denied.response_code == "HOST_TOOL_NOT_PERMITTED"
     assert denied.reason_code == "tool_not_granted_on_host"
     assert allowed.allowed is True
     assert allowed.reason_code == "exact_host_capability_granted"
     assert allowed.response_code == "OK"
-    assert evaluate(tool, permit=lab).reason_code == "host_identity_mismatch"
+
+
+
+
+def test_five_ocr_policy_names_are_declared_in_real_mcp_server_source():
+    """Require MCP tool decorators, not just similarly named source helpers."""
+    from runner_mcp.server import build_mcp
+
+    declared = {
+        node.name
+        for node in ast.walk(
+            ast.parse(textwrap.dedent(inspect.getsource(build_mcp)))
+        )
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(decorator, ast.Call)
+            and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "tool"
+            and isinstance(decorator.func.value, ast.Name)
+            and decorator.func.value.id == "mcp"
+            for decorator in node.decorator_list
+        )
+    }
+    assert {
+        "bewind_ocr_qualification_run",
+        "bewind_ocr_qualification_stage",
+        "bewind_ocr_runtime_image_prepare",
+        "bewind_ocr_qualification_source_provision",
+        "bewind_ocr_qualification_execution_authority_configure",
+        "fabric_disposable_target_qualify",
+        "runtime_status",
+        "queue_status",
+    } <= declared
+
+
+def test_five_real_ocr_tool_names_denied_by_primary_in_synthetic_policy():
+    """Use real server tool names; synthetic host grants are NOT a live policy."""
+    lab_only = frozenset({
+        "bewind_ocr_qualification_run",
+        "bewind_ocr_qualification_stage",
+        "bewind_ocr_runtime_image_prepare",
+        "bewind_ocr_qualification_source_provision",
+        "bewind_ocr_qualification_execution_authority_configure",
+    })
+    shared_names = NAMES | lab_only
+    primary = policy()
+    lab = replace(
+        primary,
+        service_asset_id="service:lab",
+        permitted_tool_names=primary.permitted_tool_names | lab_only,
+    )
+    for name in sorted(lab_only):
+        primary_result = evaluate_host_tool_admission(
+            name,
+            registered_tool_names=shared_names,
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=primary,
+            now_epoch=1_000,
+        )
+        lab_result = evaluate_host_tool_admission(
+            name,
+            registered_tool_names=shared_names,
+            verified_service_asset_id="service:lab",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=lab,
+            now_epoch=1_000,
+        )
+        assert primary_result.to_public_payload() == {
+            "allowed": False,
+            "reasonCode": "tool_not_granted_on_host",
+            "code": "HOST_TOOL_NOT_PERMITTED",
+        }
+        assert lab_result.allowed is True
+    # Real source names, but synthetic policy: no live tools/list or dispatch proof.
+
 
 
 def test_missing_host_policy_is_explicit_denial_not_missing_tool():
@@ -112,10 +194,10 @@ def test_undeclared_tool_or_unqualified_catalogue_refused():
 
 
 def test_shared_high_risk_tool_is_not_implicitly_permitted():
-    denied = evaluate("restart_service", permit=policy())
+    denied = evaluate("fabric_disposable_target_qualify", permit=policy())
     assert denied.allowed is False
     assert denied.reason_code == "tool_not_granted_on_host"
-    assert "restart_service" not in denied.to_public_payload().values()
+    assert "fabric_disposable_target_qualify" not in denied.to_public_payload().values()
 
 
 @pytest.mark.parametrize(
@@ -154,17 +236,9 @@ def test_bad_client_inputs_never_create_permission():
             evaluate_host_tool_admission(**args)
 
 
-def test_foreign_host_permit_denied_even_with_exact_code_and_schema():
-    qualified = policy()
-    result = evaluate_host_tool_admission(
-        "runtime_status",
-        registered_tool_names=NAMES,
-        verified_service_asset_id="service:lab",
-        runtime_source_revision=REVISION,
-        runtime_interface_schema_sha256=SCHEMA,
-        policy=qualified,
-        now_epoch=1_000,
-    )
+def test_foreign_policy_does_not_grant_permission_on_primary():
+    foreign = replace(policy(), service_asset_id="service:lab")
+    result = evaluate("runtime_status", permit=foreign, host="service:primary")
     assert result.to_public_payload() == {
         "allowed": False,
         "reasonCode": "host_identity_mismatch",
@@ -173,32 +247,60 @@ def test_foreign_host_permit_denied_even_with_exact_code_and_schema():
 
 
 @pytest.mark.parametrize("unverified", [None, "", "FORGED/HOST", True])
-def test_missing_or_invalid_verified_host_identity_denied(unverified):
-    result = evaluate_host_tool_admission(
-        "runtime_status",
-        registered_tool_names=NAMES,
-        verified_service_asset_id=unverified,
-        runtime_source_revision=REVISION,
-        runtime_interface_schema_sha256=SCHEMA,
-        policy=policy(),
-        now_epoch=1_000,
-    )
-    assert result.reason_code == "host_identity_mismatch"
-    assert result.allowed is False
+def test_combined_missing_or_malformed_verified_host_identity(unverified):
+    result = evaluate("runtime_status", permit=policy(), host=unverified)
+    assert result.to_public_payload() == {
+        "allowed": False,
+        "reasonCode": "host_identity_mismatch",
+        "code": "HOST_TOOL_NOT_PERMITTED",
+    }
 
-def test_verified_asset_subclass_cannot_override_identity_comparison():
-    class ForgedHost(str):
+
+def test_ci_installed_mcpserver_dispatch_contract():
+    """Qualify this CI wheel's SDK entry, not unpinned upstream main."""
+    from mcp.server import MCPServer
+
+    handler = MCPServer.call_tool
+    signature = inspect.signature(handler)
+    assert inspect.iscoroutinefunction(handler)
+    assert {"name", "arguments", "context"} <= set(signature.parameters)
+    assert signature.parameters["context"].default is None
+
+
+def test_ci_installed_sdk_handler_calls_public_tool_seam():
+    """Qualify that inbound tools/call reaches call_tool on CI's SDK wheel."""
+    from mcp.server import MCPServer
+
+    tree = ast.parse(textwrap.dedent(inspect.getsource(MCPServer._handle_call_tool)))
+    assert any(
+        isinstance(node, ast.Call)
+        and isinstance(node.func, ast.Attribute)
+        and node.func.attr == "call_tool"
+        and isinstance(node.func.value, ast.Name)
+        and node.func.value.id == "self"
+        for node in ast.walk(tree)
+    )
+
+
+def test_verified_host_identity_cannot_override_equality():
+    """An adversarial str subclass must not make a foreign permit look local."""
+    class DeceptiveAssetId(str):
         def __ne__(self, other):
             return False
 
         def __eq__(self, other):
             return True
 
-    result = evaluate("runtime_status", permit=policy(), host=ForgedHost("service:lab"))
+    result = evaluate(
+        "runtime_status",
+        permit=policy(),
+        host=DeceptiveAssetId("service:lab"),
+    )
     assert result.allowed is False
     assert result.reason_code == "host_identity_mismatch"
 
-def test_forged_policy_id_string_subclass_is_rejected():
+def test_policy_host_identity_must_be_builtin_string():
+    """Reject policy asset values with adversarial equality methods."""
     class ForgedPolicyAsset(str):
         def __eq__(self, other):
             return True
@@ -209,7 +311,7 @@ def test_forged_policy_id_string_subclass_is_rejected():
     with pytest.raises(HostToolPolicyError, match="invalid"):
         replace(policy(), service_asset_id=ForgedPolicyAsset("service:lab"))
 
-def test_admission_refuses_forged_tool_name_hash_and_equality():
+def test_combined_oracle_rejects_hash_forged_tool_name_and_catalogue():
     class ForgedTool(str):
         def __hash__(self):
             return hash("runtime_status")
@@ -217,37 +319,15 @@ def test_admission_refuses_forged_tool_name_hash_and_equality():
         def __eq__(self, other):
             return True
 
+    forged = ForgedTool("fabric_hidden_command")
     with pytest.raises(HostToolPolicyError, match="invalid"):
-        evaluate(
-            ForgedTool("fabric_hidden_command"),
-            permit=policy(),
-        )
-
-
-def test_policy_rejects_forged_tool_set_member_hash_and_equality():
-    class ForgedTool(str):
-        def __hash__(self):
-            return hash("runtime_status")
-
-        def __eq__(self, other):
-            return True
-
+        evaluate(forged, permit=policy())
     with pytest.raises(HostToolPolicyError, match="invalid"):
-        replace(policy(), permitted_tool_names=frozenset({ForgedTool("fabric_hidden_command")}))
-
-
-def test_registered_catalogue_rejects_forged_tool_set_member():
-    class ForgedTool(str):
-        def __hash__(self):
-            return hash("runtime_status")
-
-        def __eq__(self, other):
-            return True
-
+        replace(policy(), permitted_tool_names=frozenset({forged}))
     with pytest.raises(HostToolPolicyError, match="invalid"):
         evaluate_host_tool_admission(
             "runtime_status",
-            registered_tool_names=frozenset({ForgedTool("fabric_hidden_command")}),
+            registered_tool_names=frozenset({forged}),
             verified_service_asset_id="service:primary",
             runtime_source_revision=REVISION,
             runtime_interface_schema_sha256=SCHEMA,
@@ -256,7 +336,7 @@ def test_registered_catalogue_rejects_forged_tool_set_member():
         )
 
 @pytest.mark.parametrize("field", ["revision", "digest"])
-def test_runtime_digest_subclass_cannot_fake_matching_generation(field):
+def test_combined_oracle_rejects_forged_runtime_generation(field):
     class ForgedDigest(str):
         def __eq__(self, other):
             return True
@@ -264,17 +344,17 @@ def test_runtime_digest_subclass_cannot_fake_matching_generation(field):
         def __ne__(self, other):
             return False
 
-    fake = ForgedDigest(("c" * 40) if field == "revision" else ("c" * 64))
-    result = evaluate("runtime_status", permit=policy(), **{field: fake})
-    assert result.allowed is False
-    assert result.reason_code == "runtime_generation_mismatch"
+    fake = ForgedDigest("c" * (40 if field == "revision" else 64))
+    denied = evaluate("runtime_status", permit=policy(), **{field: fake})
+    assert denied.reason_code == "runtime_generation_mismatch"
+    assert denied.allowed is False
 
 
-@pytest.mark.parametrize("field,invalid", [
+@pytest.mark.parametrize("field,value", [
     ("release_source_revision", "c" * 40),
     ("interface_schema_sha256", "c" * 64),
 ])
-def test_policy_digest_subclass_is_invalid(field, invalid):
+def test_combined_oracle_rejects_forged_policy_generation(field, value):
     class ForgedDigest(str):
         def __eq__(self, other):
             return True
@@ -283,15 +363,13 @@ def test_policy_digest_subclass_is_invalid(field, invalid):
             return False
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
-        replace(policy(), **{field: ForgedDigest(invalid)})
+        replace(policy(), **{field: ForgedDigest(value)})
 
-def test_qualified_policy_subclass_cannot_override_grants():
-    # A subclass is invalid even if it otherwise carries matching source facts.
-    # Construct without changing real policy class or invoking a live host.
+def test_combined_oracle_rejects_policy_subclass():
     class DeceptivePolicy(QualifiedHostToolPolicy):
         pass
 
-    altered = DeceptivePolicy(
+    forged = DeceptivePolicy(
         service_asset_id="service:primary",
         release_source_revision=REVISION,
         interface_schema_sha256=SCHEMA,
@@ -299,35 +377,10 @@ def test_qualified_policy_subclass_cannot_override_grants():
         expires_at_epoch=2_000,
     )
     with pytest.raises(HostToolPolicyError, match="invalid"):
-        evaluate_host_tool_admission(
-            "runtime_status",
-            registered_tool_names=NAMES,
-            verified_service_asset_id="service:primary",
-            runtime_source_revision=REVISION,
-            runtime_interface_schema_sha256=SCHEMA,
-            policy=altered,
-            now_epoch=1_000,
-        )
+        evaluate("runtime_status", permit=forged)
 
-def test_forged_catalogue_frozenset_subclass_is_rejected():
-    class ForgedCatalogue(frozenset):
-        def __contains__(self, item):
-            return True
-
-    with pytest.raises(HostToolPolicyError, match="invalid"):
-        evaluate_host_tool_admission(
-            "runtime_status",
-            registered_tool_names=ForgedCatalogue({"runtime_status"}),
-            verified_service_asset_id="service:primary",
-            runtime_source_revision=REVISION,
-            runtime_interface_schema_sha256=SCHEMA,
-            policy=policy(),
-            now_epoch=1_000,
-        )
-
-
-def test_forged_policy_grants_frozenset_subclass_is_rejected():
-    class ForgedGrants(frozenset):
+def test_combined_oracle_rejects_frozenset_override_on_both_sides():
+    class ForgedSet(frozenset):
         def __contains__(self, item):
             return True
 
@@ -335,4 +388,38 @@ def test_forged_policy_grants_frozenset_subclass_is_rejected():
             return True
 
     with pytest.raises(HostToolPolicyError, match="invalid"):
-        replace(policy(), permitted_tool_names=ForgedGrants({"runtime_status"}))
+        replace(policy(), permitted_tool_names=ForgedSet({"runtime_status"}))
+    with pytest.raises(HostToolPolicyError, match="invalid"):
+        evaluate_host_tool_admission(
+            "runtime_status",
+            registered_tool_names=ForgedSet({"runtime_status"}),
+            verified_service_asset_id="service:primary",
+            runtime_source_revision=REVISION,
+            runtime_interface_schema_sha256=SCHEMA,
+            policy=policy(),
+            now_epoch=1_000,
+        )
+
+def test_entire_declared_mcp_catalogue_is_policy_name_compatible():
+    """Guard all source declarations, not only the eight OCR fixtures."""
+    from runner_mcp.server import build_mcp
+
+    nodes = ast.walk(ast.parse(textwrap.dedent(inspect.getsource(build_mcp))))
+    decorated_names = [
+        node.name
+        for node in nodes
+        if isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef))
+        and any(
+            isinstance(decorator, ast.Call)
+            and isinstance(decorator.func, ast.Attribute)
+            and decorator.func.attr == "tool"
+            and isinstance(decorator.func.value, ast.Name)
+            and decorator.func.value.id == "mcp"
+            for decorator in node.decorator_list
+        )
+    ]
+    assert decorated_names
+    assert len(decorated_names) == len(set(decorated_names))
+    assert len(decorated_names) <= 256
+    permit = policy(granted=frozenset(decorated_names))
+    assert permit.permitted_tool_names == frozenset(decorated_names)

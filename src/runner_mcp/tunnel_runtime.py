@@ -18,7 +18,14 @@ class TunnelRuntimeError(RuntimeError):
 
 
 def _resolve_tunnel_client() -> Path:
-    candidate = shutil.which("tunnel-client")
+    # A cron-managed process often has only /usr/bin:/bin in PATH. The
+    # service user's fixed local install must remain discoverable after reboot
+    # and after an autostart reconcile, without broadening the cron PATH.
+    service_local = Path.home() / ".local" / "bin" / "tunnel-client"
+    if service_local.exists() or service_local.is_symlink():
+        candidate = str(service_local)
+    else:
+        candidate = shutil.which("tunnel-client")
     if not candidate:
         raise TunnelRuntimeError("tunnel-client is unavailable")
     try:

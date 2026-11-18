@@ -4,13 +4,18 @@ import hashlib
 import json
 import stat
 import urllib.error
+import urllib.request
 from datetime import UTC, datetime
+from email.message import Message
 from pathlib import Path
 
 import pytest
 
 from runner_mcp.tunnel_topology_refresh import (
     TunnelTopologyRefreshError,
+    _NoTopologyRefreshRedirects,
+    _open_topology_refresh_request,
+    _topology_refresh_opener,
     bounded_tunnel_topology_refresh_reason,
     refresh_tunnel_topology_attestation,
 )
@@ -289,3 +294,167 @@ def test_bounded_refresh_reason_maps_only_known_safe_messages(
         )
         is None
     )
+
+
+def test_topology_refresh_default_transport_bypasses_hostile_proxies(monkeypatch) -> None:
+    monkeypatch.setenv("HTTP_PROXY", "http://proxy.example.invalid:8888")
+    monkeypatch.setenv("HTTPS_PROXY", "http://proxy.example.invalid:8888")
+    monkeypatch.setenv("ALL_PROXY", "http://proxy.example.invalid:8888")
+    monkeypatch.setenv("NO_PROXY", "")
+    monkeypatch.setattr(
+        urllib.request,
+        "getproxies",
+        lambda: pytest.fail("private topology refresh must not consult proxy environment"),
+    )
+    opener = _topology_refresh_opener()
+    assert any(isinstance(h, _NoTopologyRefreshRedirects) for h in opener.handlers)
+    assert not any(
+        isinstance(h, urllib.request.HTTPRedirectHandler)
+        and not isinstance(h, _NoTopologyRefreshRedirects)
+        for h in opener.handlers
+    )
+    assert all(
+        h.proxies == {} for h in opener.handlers
+        if isinstance(h, urllib.request.ProxyHandler)
+    )
+
+
+@pytest.mark.parametrize("status", [301, 302, 303, 307, 308])
+@pytest.mark.parametrize(
+    "destination",
+    [
+        "https://other.example.invalid/leak",
+        "http://other.example.invalid/leak",
+        "https://control.example.invalid/other-path",
+    ],
+)
+def test_topology_refresh_redirect_never_forwards_private_header(
+    status: int, destination: str
+) -> None:
+    request = urllib.request.Request(
+        "https://control.example.invalid/internal/topology/heartbeat",
+        data=b'{"synthetic":true}',
+        headers={"X-AIfordable-Runner-Credential": "synthetic-credential"},
+        method="POST",
+    )
+    assert _NoTopologyRefreshRedirects().redirect_request(
+        request, None, status, "redirect", Message(), destination
+    ) is None
+    assert request.get_header("X-aifordable-runner-credential") == "synthetic-credential"
+    assert request.full_url == (
+        "https://control.example.invalid/internal/topology/heartbeat"
+    )
+
+
+def test_fixed_topology_refresh_opens_only_private_opener(monkeypatch) -> None:
+    calls = []
+
+    class TrackingOpener:
+        def open(self, request, *, timeout):
+            calls.append((request, timeout))
+            return "synthetic-result"
+
+    monkeypatch.setattr(
+        "runner_mcp.tunnel_topology_refresh._topology_refresh_opener",
+        lambda: TrackingOpener(),
+    )
+    monkeypatch.setattr(
+        urllib.request,
+        "urlopen",
+        lambda *_args, **_kwargs: pytest.fail("urlopen must not be used"),
+    )
+    request = urllib.request.Request(
+        "https://control.example.invalid/internal/topology/heartbeat",
+        data=b'{}',
+        method="POST",
+    )
+    assert _open_topology_refresh_request(request, timeout=10) == "synthetic-result"
+    assert calls == [(request, 10)]
+
+
+@pytest.mark.parametrize("code", [301, 302, 303, 307, 308])
+def test_default_refresh_redirect_refusal_is_bounded_and_does_not_replace_evidence(
+    tmp_path: Path, monkeypatch, code: int
+) -> None:
+    root = private_config(tmp_path)
+    existing = root / "tunnel-topology-attestation.json"
+    existing.write_bytes(attestation())
+    existing.chmod(0o600)
+    baseline = existing.read_bytes()
+    monkeypatch.setattr(
+        "runner_mcp.tunnel_topology_refresh._read_private_runtime",
+        lambda path: (
+            type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
+            object(),
+            object(),
+        ),
+    )
+    calls = []
+
+    class RejectingOpener:
+        def open(self, request, *, timeout):
+            calls.append(request.full_url)
+            raise urllib.error.HTTPError(
+                request.full_url,
+                code,
+                "redirect",
+                {"Location": "https://other.example.invalid/leak"},
+                None,
+            )
+
+    monkeypatch.setattr(
+        "runner_mcp.tunnel_topology_refresh._topology_refresh_opener",
+        lambda: RejectingOpener(),
+    )
+    with pytest.raises(
+        TunnelTopologyRefreshError, match="rejected the refresh"
+    ) as caught:
+        refresh_tunnel_topology_attestation(
+            root,
+            runtime_instance_collector=lambda _path: INSTANCE,
+            now=NOW,
+        )
+    assert len(calls) == 1
+    assert existing.read_bytes() == baseline
+    assert "other.example.invalid" not in str(caught.value)
+    assert "r" * 48 not in str(caught.value)
+
+
+@pytest.mark.parametrize(
+    ("reason", "message", "bounded"),
+    [
+        ("health_url_missing", "tunnel health URL is missing", "health_url_missing"),
+        ("health_endpoint_unreachable", "tunnel health endpoint is unreachable", "health_endpoint_unreachable"),
+        ("health_schema_incompatible", "tunnel health schema is incompatible", "health_schema_incompatible"),
+        ("runtime_identity_invalid", "tunnel runtime identity is invalid", "runtime_identity_invalid"),
+    ],
+)
+def test_default_topology_refresh_preserves_first_failed_local_edge(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    reason: str,
+    message: str,
+    bounded: str,
+) -> None:
+    import runner_mcp.tunnel_topology_refresh as module
+
+    root = private_config(tmp_path)
+    monkeypatch.setattr(
+        module, "_read_private_runtime",
+        lambda _path: (
+            type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
+            object(), object(),
+        ),
+    )
+    monkeypatch.setattr(
+        module, "inspect_tunnel_runtime_instance_id",
+        lambda _root: (None, reason),
+    )
+    with pytest.raises(TunnelTopologyRefreshError, match=message) as error:
+        refresh_tunnel_topology_attestation(
+            root,
+            opener=lambda *_args, **_kwargs: (_ for _ in ()).throw(
+                AssertionError("missing local identity must not send credential")
+            ),
+        )
+    assert bounded_tunnel_topology_refresh_reason(error.value) == bounded

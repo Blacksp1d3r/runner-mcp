@@ -1,0 +1,317 @@
+"""Isolated 0700 Q7 custody lifecycle: no network, genuine binaries or installation."""
+from __future__ import annotations
+
+import hashlib
+import os
+import stat
+import subprocess
+import sys
+from dataclasses import replace
+from pathlib import Path
+
+import pytest
+
+from runner_mcp.fabric_release_assets import ReleaseAdmission
+from runner_mcp.fabric_release_independent_roster import PinnedReleaseAsset, PinnedReleaseRoster
+from runner_mcp.fabric_release_private_custody import (
+    Q7CustodyUnqualified,
+    _stage_verified_bytes,
+    read_q7_lab_custody_offline,
+    stage_pinned_q7_bundle_once,
+)
+
+COMMIT = "b26822aeb6718bf339f0871df621c3e61fbf1e1c"
+
+
+def _synthetic():
+    bodies = {f"file_{i:02d}.whl": f"synthetic-{i}".encode() for i in range(33)}
+    pins = PinnedReleaseRoster(
+        COMMIT, "fabric-q7-bundle-" + COMMIT, 415955374,
+        tuple(PinnedReleaseAsset(
+            name, index + 1, len(data), hashlib.sha256(data).hexdigest()
+        ) for index, (name, data) in enumerate(sorted(bodies.items()))),
+    )
+    return pins, bodies
+
+
+def _private(tmp_path: Path) -> Path:
+    root = tmp_path / "control-plane-update"
+    root.mkdir(mode=0o700)
+    return root
+
+
+def test_complete_stage_written_once_as_owner_private_fixed_bundle(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    receipt = _stage_verified_bytes(root, pins, bodies)
+    assert receipt["state"] == "owner_private_bytes_custodied"
+    assert receipt["asset_count"] == 33
+    assert receipt["independent_signer_verified"] is False
+    assert receipt["install_authorized"] is False
+    assert receipt["original_client_ack"] is False
+    assert not (root / ".q7-bundle-inflight").exists()
+    stage = root / "bundle"
+    assert stat.S_IMODE(stage.stat().st_mode) == 0o700
+    assert sorted(p.name for p in stage.iterdir()) == sorted(bodies)
+    for name, content in bodies.items():
+        file = stage / name
+        assert file.read_bytes() == content
+        assert stat.S_IMODE(file.stat().st_mode) == 0o600
+        assert file.stat().st_nlink == 1
+
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+    assert all((stage / name).read_bytes() == content for name, content in bodies.items())
+
+
+def test_existing_bundle_never_overwritten(tmp_path):
+    root = _private(tmp_path)
+    already = root / "bundle"
+    already.mkdir(mode=0o700)
+    (already / "source.txt").write_text("original")
+    pins, bodies = _synthetic()
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+    assert (already / "source.txt").read_text() == "original"
+
+
+def test_partial_stage_blocks_replay_and_is_preserved(tmp_path, monkeypatch):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    original_write = os.write
+    calls = 0
+
+    def fail_after_first(fd, data):
+        nonlocal calls
+        calls += 1
+        if calls == 2:
+            raise OSError("synthetic disk failure")
+        return original_write(fd, data)
+
+    monkeypatch.setattr(os, "write", fail_after_first)
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+    assert not (root / "bundle").exists()
+    assert (root / ".q7-bundle-inflight").is_dir()
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+
+
+@pytest.mark.parametrize("mode", [0o755, 0o750, 0o770])
+def test_nonprivate_root_refused_without_side_effects(tmp_path, mode):
+    root = _private(tmp_path)
+    root.chmod(mode)
+    pins, bodies = _synthetic()
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+    assert list(root.iterdir()) == []
+
+
+def test_symlinked_root_refused(tmp_path):
+    actual = _private(tmp_path)
+    alias = tmp_path / "alias"
+    alias.symlink_to(actual, target_is_directory=True)
+    pins, bodies = _synthetic()
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(alias, pins, bodies)
+    assert list(actual.iterdir()) == []
+
+
+def test_symlinked_preexisting_stage_refused_and_preserved(tmp_path):
+    root = _private(tmp_path)
+    target = tmp_path / "target"
+    target.mkdir()
+    (root / ".q7-bundle-inflight").symlink_to(target, target_is_directory=True)
+    pins, bodies = _synthetic()
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+    assert list(target.iterdir()) == []
+
+
+def test_duplicate_or_unsafe_names_refused_before_any_write(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    bad = dict(bodies)
+    bad["../escape"] = bad.pop("file_00.whl")
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bad)
+    assert list(root.iterdir()) == []
+
+
+def test_public_entry_requires_real_independent_bundle_verification(monkeypatch, tmp_path):
+    root = _private(tmp_path)
+    monkeypatch.setattr(
+        "runner_mcp.fabric_release_private_custody._fixed_root", lambda: root
+    )
+    pins, bodies = _synthetic()
+    with pytest.raises(ValueError):
+        stage_pinned_q7_bundle_once(None, pins, bodies)  # type: ignore[arg-type]
+    assert list(root.iterdir()) == []
+
+
+def test_racing_destination_cannot_replace_existing_files(tmp_path, monkeypatch):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    from runner_mcp import fabric_release_private_custody as custody
+
+    real_promote = custody._promote_noreplace
+
+    def racing_promote(fd):
+        os.mkdir("bundle", 0o700, dir_fd=fd)
+        extra = os.open("bundle", os.O_RDONLY | os.O_DIRECTORY, dir_fd=fd)
+        try:
+            handle = os.open("prior", os.O_CREAT | os.O_EXCL | os.O_WRONLY,
+                             0o600, dir_fd=extra)
+            os.write(handle, b"preserve")
+            os.close(handle)
+        finally:
+            os.close(extra)
+        return real_promote(fd)
+
+    monkeypatch.setattr(custody, "_promote_noreplace", racing_promote)
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies)
+    assert (root / "bundle/prior").read_bytes() == b"preserve"
+    assert (root / ".q7-bundle-inflight").is_dir()
+
+
+@pytest.mark.parametrize("invalid_commit", ["a" * 40, "b" * 40])
+def test_public_custody_rejects_wrong_source_pin_before_mutation(
+    tmp_path, monkeypatch, invalid_commit
+):
+    root = _private(tmp_path)
+    monkeypatch.setattr(
+        "runner_mcp.fabric_release_private_custody._fixed_root", lambda: root
+    )
+    pins, bodies = _synthetic()
+    candidate = ReleaseAdmission(
+        invalid_commit, "fabric-q7-bundle-" + invalid_commit,
+        415955374, (), "runner_fabric-x.whl"
+    )
+    with pytest.raises(Q7CustodyUnqualified):
+        stage_pinned_q7_bundle_once(candidate, pins, bodies)
+    with pytest.raises(Q7CustodyUnqualified):
+        stage_pinned_q7_bundle_once(
+            replace(candidate, commit=COMMIT), replace(pins, release_id=999), bodies
+        )
+    assert list(root.iterdir()) == []
+
+
+def test_unsigned_lab_bytes_never_share_signed_final_bundle(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    lab_receipt = _stage_verified_bytes(root, pins, bodies, lab=True)
+    assert lab_receipt["unsigned_lab_custody"] is True
+    assert (root / "lab-unsigned-bundle").is_dir()
+    assert not (root / "bundle").exists()
+    assert not (root / ".q7-lab-unsigned-inflight").exists()
+    signed_receipt = _stage_verified_bytes(root, pins, bodies)
+    assert "unsigned_lab_custody" not in signed_receipt
+    assert (root / "bundle").is_dir()
+    assert (root / "lab-unsigned-bundle").is_dir()
+    assert sorted(p.name for p in (root / "bundle").iterdir()) == sorted(bodies)
+    assert sorted(p.name for p in (root / "lab-unsigned-bundle").iterdir()) == sorted([*bodies, ".lab-custody-receipt.json"])
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies, lab=True)
+    assert (root / "bundle").is_dir()
+
+
+def test_unsigned_lab_failed_partial_stage_preserves_original_signed_custody(
+    tmp_path, monkeypatch
+):
+    root = _private(tmp_path)
+    pins, bodies = _synthetic()
+    _stage_verified_bytes(root, pins, bodies)
+    original = (root / "bundle/file_00.whl").read_bytes()
+
+    def fail(*args, **kwargs):
+        raise OSError("synthetic no-write")
+    monkeypatch.setattr(os, "write", fail)
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies, lab=True)
+    assert (root / ".q7-lab-unsigned-inflight").is_dir()
+    assert not (root / "lab-unsigned-bundle").exists()
+    assert (root / "bundle/file_00.whl").read_bytes() == original
+    with pytest.raises(Q7CustodyUnqualified):
+        _stage_verified_bytes(root, pins, bodies, lab=True)
+
+
+def _realistic_unsigned_lab():
+    names = ["BOOTSTRAP.py", "BUNDLE.json", "COMMIT_SHA", "SHA256SUMS"]
+    names += ["runner_fabric-0.0.1-py3-none-any.whl"]
+    names += [f"synthetic_{i:02d}-1.0-py3-none-any.whl" for i in range(28)]
+    blobs = {name: f"synthetic-{i}".encode() for i, name in enumerate(names)}
+    pins = PinnedReleaseRoster(
+        COMMIT, "fabric-q7-bundle-" + COMMIT, 415955374,
+        tuple(PinnedReleaseAsset(
+            name, i + 100, len(blobs[name]),
+            hashlib.sha256(blobs[name]).hexdigest()
+        ) for i, name in enumerate(names)),
+    )
+    return pins, blobs
+
+
+def test_lab_offline_readback_survives_separate_python_process(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _realistic_unsigned_lab()
+    _stage_verified_bytes(root, pins, bodies, lab=True)
+    before = read_q7_lab_custody_offline(root)
+    assert before == {
+        "state": "q7_lab_local_readback_verified_only",
+        "asset_count": 33, "publisher_authenticated": False,
+        "independent_off_target_verified": False,
+        "install_authorized": False, "original_client_ack": False,
+    }
+    child = subprocess.run(
+        [sys.executable, "-c", (
+            "from pathlib import Path; "
+            "from runner_mcp.fabric_release_private_custody import read_q7_lab_custody_offline; "
+            "import sys; "
+            "assert read_q7_lab_custody_offline(Path(sys.argv[1]))['asset_count'] == 33"
+        ), str(root)], check=False, capture_output=True, text=True, timeout=15,
+    )
+    assert child.returncode == 0, child.stderr
+    assert sorted(x.name for x in (root / "lab-unsigned-bundle").iterdir()) == sorted(
+        [*bodies, ".lab-custody-receipt.json"]
+    )
+    assert not (root / "bundle").exists()
+
+
+@pytest.mark.parametrize("fault", [
+    "missing", "tampered", "symlink", "hardlink", "extra", "marker_deleted"
+])
+def test_lab_offline_readback_refuses_corruption_without_writing(tmp_path, fault):
+    root = _private(tmp_path)
+    pins, bodies = _realistic_unsigned_lab()
+    _stage_verified_bytes(root, pins, bodies, lab=True)
+    folder = root / "lab-unsigned-bundle"
+    selected = folder / "BOOTSTRAP.py"
+    if fault == "missing":
+        selected.unlink()
+    elif fault == "tampered":
+        selected.write_bytes(b"wrong-body")
+    elif fault == "symlink":
+        selected.unlink()
+        selected.symlink_to(tmp_path / "unrelated", target_is_directory=False)
+    elif fault == "hardlink":
+        os.link(selected, folder / "extra-hardlink")
+    elif fault == "extra":
+        (folder / "extra").write_text("extra")
+    else:
+        (folder / ".lab-custody-receipt.json").unlink()
+    before = sorted(x.name for x in folder.iterdir())
+    with pytest.raises(Q7CustodyUnqualified):
+        read_q7_lab_custody_offline(root)
+    assert sorted(x.name for x in folder.iterdir()) == before
+    assert not (root / "bundle").exists()
+
+
+def test_lab_offline_readback_refuses_wrong_perms_without_auto_fix(tmp_path):
+    root = _private(tmp_path)
+    pins, bodies = _realistic_unsigned_lab()
+    _stage_verified_bytes(root, pins, bodies, lab=True)
+    target = root / "lab-unsigned-bundle/BOOTSTRAP.py"
+    target.chmod(0o644)
+    with pytest.raises(Q7CustodyUnqualified):
+        read_q7_lab_custody_offline(root)
+    assert stat.S_IMODE(target.stat().st_mode) == 0o644

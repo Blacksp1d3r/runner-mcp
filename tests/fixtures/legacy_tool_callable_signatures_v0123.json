@@ -1,0 +1,133 @@
+{
+  "schema_version": "runner-mcp/legacy-signature-baseline/v1",
+  "source_reference": "main@53a002df136d010ebe460643a37ddcf86af58c6e",
+  "scope": "AST-verified existing MCP tool callable names, required/defaulted parameter lists and return annotation only; NOT actual runtime JSON schemas or historical released wheel snapshots",
+  "tools": [
+    {
+      "name": "runtime_status",
+      "params": [],
+      "return": "dict"
+    },
+    {
+      "name": "runtime_doctor",
+      "params": [],
+      "return": "dict"
+    },
+    {
+      "name": "fabric_continuity_status",
+      "params": [],
+      "return": "dict"
+    },
+    {
+      "name": "fabric_bootstrap",
+      "params": [
+        {
+          "name": "commit",
+          "type": "str",
+          "required": true
+        }
+      ],
+      "return": "dict"
+    },
+    {
+      "name": "list_projects",
+      "params": [],
+      "return": "list[dict[str, str]]"
+    },
+    {
+      "name": "list_services",
+      "params": [
+        {
+          "name": "project",
+          "type": "str",
+          "required": true
+        }
+      ],
+      "return": "list[dict]"
+    },
+    {
+      "name": "service_status",
+      "params": [
+        {
+          "name": "project",
+          "type": "str",
+          "required": true
+        },
+        {
+          "name": "service",
+          "type": "str",
+          "required": true
+        }
+      ],
+      "return": "dict"
+    },
+    {
+      "name": "stop_service",
+      "params": [
+        {
+          "name": "project",
+          "type": "str",
+          "required": true
+        },
+        {
+          "name": "service",
+          "type": "str",
+          "required": true
+        }
+      ],
+      "return": "dict"
+    },
+    {
+      "name": "list_backups",
+      "params": [
+        {
+          "name": "project",
+          "type": "str",
+          "required": true
+        },
+        {
+          "name": "limit",
+          "type": "int",
+          "required": false,
+          "default": 100
+        }
+      ],
+      "return": "list[dict]"
+    },
+    {
+      "name": "rollback_status",
+      "params": [
+        {
+          "name": "job_id",
+          "type": "str",
+          "required": true
+        }
+      ],
+      "return": "dict"
+    },
+    {
+      "name": "build_identity",
+      "params": [],
+      "return": "dict[str, object]",
+      "conditional_registration": true
+    },
+    {
+      "name": "fabric_bridge_preflight",
+      "params": [],
+      "return": "dict",
+      "conditional_registration": true
+    },
+    {
+      "name": "fabric_host_inspect",
+      "params": [],
+      "return": "dict",
+      "conditional_registration": true
+    },
+    {
+      "name": "fabric_operational_snapshot",
+      "params": [],
+      "return": "dict",
+      "conditional_registration": true
+    }
+  ]
+}

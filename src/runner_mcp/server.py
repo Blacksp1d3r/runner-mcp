@@ -23,6 +23,7 @@ from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Mount, Route
 
+from . import __version__ as _loaded_package_version
 from .adapters import AdapterError, get_adapter, inspect_project, list_adapters
 from .approval_manager import ApprovalError, ApprovalManager
 from .artifact_custody import ContentAddressedArtifactCustody
@@ -59,9 +60,12 @@ from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyConfigurator,
     BewindWorkerQualificationPolicyError,
 )
+from .bounded_status_read import bounded_status_object
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
+    candidate_revision_with_wheel_identity,
+    fail_closed_runtime_provenance,
     installed_source_revision,
     runner_mcp_build_identity,
     runner_mcp_mcp_build_identity,
@@ -85,13 +89,21 @@ from .ci_runner_lifecycle import (
     plan_ci_runner,
 )
 from .ci_runner_secret_handoff import CIRunnerSecretHandoffStore
+from .coding_workspace import CodingWorkspaceProvisioner
 from .config import ProjectRegistry, load_project_registry
+from .control_center_black import (
+    BlackControlEvidenceError,
+    confirm_black_ack_readback,
+    validate_black_ack,
+    validate_black_record,
+)
 from .database_manager import DatabaseManager, DatabaseManagerError
 from .deployment_jobs import DeploymentJobError, DeploymentJobRunner
 from .deployment_manager import DeploymentError, DeploymentManager
 from .fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
     a6_state_requested,
+    classify_a6_bindings_for_doctor,
     inspect_a6_binding_state,
     repair_a6_qualification_binding,
 )
@@ -100,7 +112,15 @@ from .fabric_agent_runtime import (
     restart_fabric_qualification_agent,
 )
 from .fabric_bootstrap import FabricBootstrapError, FabricBootstrapManager
-from .fabric_bridge import FabricBridgeClient, FabricBridgeConfig, FabricBridgeError
+from .fabric_bridge import (
+    FabricBridgeClient,
+    FabricBridgeConfig,
+    FabricBridgeError,
+    bounded_ci_guest_status_unavailable,
+    bounded_external_target_read_unavailable,
+    bounded_host_inspection_unavailable,
+    bounded_snapshot_unavailable,
+)
 from .fabric_coding_availability import (
     FabricCodingAvailabilityQualificationError,
     FabricCodingAvailabilityQualificationRunner,
@@ -109,10 +129,15 @@ from .fabric_coding_availability import (
 from .fabric_continuity_status import (
     FabricContinuityStatusError,
     FabricContinuityStatusRunner,
+    bounded_continuity_unavailable,
 )
 from .fabric_disposable_target import (
     FabricDisposableTargetQualificationError,
     FabricDisposableTargetQualificationRunner,
+)
+from .fabric_release_archive_mirror import (
+    ProtectedReleaseArchiveMirror,
+    ProtectedReleaseMirrorError,
 )
 from .fabric_release_archive_mirror_readiness import (
     FabricReleaseArchiveMirrorReadiness,
@@ -128,7 +153,9 @@ from .fabric_repository_mirrors import (
 from .fabric_update import (
     FabricUpdateError,
     FabricUpdateManager,
+    bounded_fabric_readiness_failure,
     bounded_local_custody_failure_reason,
+    read_alternative_release_metadata_after_actions_failure,
 )
 from .fabric_worker_qualification_provisioning import (
     FabricWorkerQualificationProvisioner,
@@ -166,10 +193,17 @@ from .operational_safety import (
     RetentionPolicy,
     SafetyConfigurationError,
 )
+from .operational_snapshot import bounded_operational_snapshot
 from .self_update import SelfUpdateError, SelfUpdateManager
 from .service_manager import ServiceManager, ServiceManagerError
+from .serving_instance_epoch import ServingInstanceEpoch
+from .serving_process_readonly import observe_current_process_modules
 from .source_control import SourceControlError, SourceSynchronizer
 from .test_runner import TestRunner, TestRunnerError
+from .tunnel_readiness import (
+    TunnelReadinessEvidence,
+    bounded_doctor_tunnel_check,
+)
 from .tunnel_topology_refresh import (
     TunnelTopologyRefreshError,
     bounded_tunnel_topology_refresh_reason,
@@ -442,11 +476,16 @@ def build_mcp(
     safety_guard: OperatorSafetyGuard | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    self_update_retain_activation_baseline: bool = False,
+    self_update_server_activation_scheduler: Callable[[], object] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
+    tunnel_expected: bool = False,
+    tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
+    serving_epoch = ServingInstanceEpoch()
     mcp = MCPServer(
         "Runner MCP",
         token_verifier=StaticBearerVerifier(settings.bearer_token, settings.resource_url),
@@ -476,6 +515,7 @@ def build_mcp(
         else None
     )
     private_values = secret_values or os.environ
+    coding_workspaces = CodingWorkspaceProvisioner(private_values)
     github_token = private_values.get(GITHUB_TOKEN_ENV, "").strip()
     known_project_local_sources = private_values.get(
         "RUNNER_MCP_KNOWN_PROJECT_LOCAL_SOURCES_JSON",
@@ -566,11 +606,15 @@ def build_mcp(
             return None
         try:
             identity = build_identity_provider()
-        except (RuntimeError, TypeError, ValueError):
+        except (OSError, RuntimeError, TypeError, ValueError, LookupError, AttributeError):
             return None
-        if not isinstance(identity, BuildIdentity):
-            return None
-        return identity.source_revision
+        # A source revision alone is not sufficient. A qualified provider must
+        # also furnish the matching loaded version and active wheel digest.
+        # The provider's independent process/signature authority is a separate
+        # host admission gate, never inferred from this structural check.
+        return candidate_revision_with_wheel_identity(
+            identity, loaded_version=_loaded_package_version
+        )
 
     self_update_manager = SelfUpdateManager(
         config_dir=settings.projects_config.parent,
@@ -581,6 +625,7 @@ def build_mcp(
         resource_url=settings.resource_url,
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
+        server_activation_scheduler=self_update_server_activation_scheduler,
         restart_components=(
             self_update_restart_components
             if self_update_restart_components is not None
@@ -591,6 +636,7 @@ def build_mcp(
             if build_identity_provider is not None
             else None
         ),
+        retain_activation_baseline=self_update_retain_activation_baseline,
     )
     fabric_bootstrap_manager = FabricBootstrapManager(
         config_dir=settings.projects_config.parent,
@@ -661,6 +707,11 @@ def build_mcp(
     )
     release_archive_mirror_readiness = FabricReleaseArchiveMirrorReadiness(
         environment=private_values,
+    )
+    protected_release_archive_mirror = ProtectedReleaseArchiveMirror(
+        environment=private_values,
+        safety=safety,
+        readiness=release_archive_mirror_readiness,
     )
     mirror_runtime_environment = dict(private_values)
     fabric_repository_mirror_runner = FabricRepositoryMirrorRunner(
@@ -761,7 +812,16 @@ def build_mcp(
         except PackageNotFoundError:
             package = "development"
         result = {
-            "version": package,
+            # The module version is frozen in the process when imported. A
+            # later pip install can change dist-info without replacing the
+            # Python modules already executing in this process.
+            "version": _loaded_package_version,
+            "installed_distribution_version": package,
+            "serving_instance_epoch": serving_epoch.value(),
+            "serving_instance_epoch_authenticated": False,
+            "active_build_provenance_verified": False,
+            "active_artifact_revision": None,
+            "active_artifact_digest": None,
             "mode": status.mode,
             "emergency_stop": status.stop_active,
             "retention_confirmed": settings.retention_confirmed,
@@ -776,6 +836,14 @@ def build_mcp(
             "migration_jobs_configured": migration_jobs is not None,
             "approvals_configured": approval_manager is not None,
             "fabric_bridge_configured": fabric_bridge is not None,
+            # Reuse the already-computed in-process MCP tools/list digest
+            # (also published by build_identity). This is a useful server
+            # catalogue witness, NOT an attestation of the client's cached
+            # tool list or of the physical host/source/wheel identity.
+            "interface_schema_digest": bounded_build_identity_payload(
+                build_identity_provider
+            ).get("interface_schema_digest"),
+            "client_catalogue_alignment_verified": False,
         }
         # Each first-party manager is an independent evidence source. Return
         # only categorical failure facts if any source is unreadable: no
@@ -787,8 +855,8 @@ def build_mcp(
             ("fabric-update-state-unavailable", fabric_update_manager.runtime_status),
         ):
             try:
-                state = read_status()
-                if not isinstance(state, dict):
+                state = bounded_status_object(read_status)
+                if state is None:
                     raise TypeError("runtime manager returned non-object status")
                 result.update(state)
             except (OSError, RuntimeError, ValueError, TypeError):
@@ -818,7 +886,57 @@ def build_mcp(
                 utc_timestamp(),
             )
         )
-        return result
+        # Use the SAME in-process observer as the existing narrower preflight.
+        # This is already reachable through the authenticated runtime_status
+        # connector, without adding another tool/relay/observer. A local code
+        # digest is not independently trusted wheel or six-role provenance.
+        local = observe_current_process_modules(
+            imported_version=_loaded_package_version,
+            installed_distribution_version=package,
+        )
+        safe = fail_closed_runtime_provenance(
+            result,
+            loaded_version=_loaded_package_version,
+            installed_distribution_version=package,
+            serving_instance_epoch=serving_epoch.value(),
+        )
+        measured = local.get("loadedCodeObservationComplete") is True
+        safe.update(
+            {
+                "selected_loaded_code_observation_complete": measured,
+                "selected_loaded_code_sha256": (
+                    local.get("loadedCodeObjectDigest") if measured else None
+                ),
+                "selected_loaded_code_object_count": (
+                    local.get("loadedCodeObjectCount") if measured else 0
+                ),
+                "selected_loaded_code_module_count": (
+                    local.get("loadedCodeModuleCount") if measured else 0
+                ),
+                "selected_loaded_code_wheel_verified": False,
+            }
+        )
+        return safe
+
+    @mcp.tool()
+    def serving_process_observation_preflight() -> dict[str, object]:
+        """Observe ONLY the current loaded MCP process; no live wheel attestation.
+
+        This cannot inspect other managed roles or independent storage, issue a
+        signer receipt, or grant self-update/dispatch/rollback authority.
+        """
+        try:
+            installed = version("aifordable-runner-mcp")
+        except PackageNotFoundError:
+            installed = "development"
+        return {
+            **observe_current_process_modules(
+                imported_version=_loaded_package_version,
+                installed_distribution_version=installed,
+            ),
+            "servingInstanceEpoch": serving_epoch.value(),
+            "servingInstanceEpochAuthenticated": False,
+        }
 
     @mcp.tool()
     def runtime_doctor() -> dict:
@@ -856,8 +974,17 @@ def build_mcp(
             "configured" if github_token else "not_configured",
         )
 
+        tunnel_status = bounded_doctor_tunnel_check(
+            expected=tunnel_expected,
+            evidence_provider=tunnel_readiness_provider,
+        )
+        if tunnel_status is not None:
+            add("connector_tunnel_readiness", *tunnel_status)
+
         try:
-            self_update_status = self_update_manager.runtime_status()
+            self_update_status = bounded_status_object(self_update_manager.runtime_status)
+            if self_update_status is None:
+                raise SelfUpdateError("unavailable")
         except SelfUpdateError:
             add(
                 "self_update_source_baseline",
@@ -923,10 +1050,14 @@ def build_mcp(
                 )
 
         try:
-            a6_state = inspect_a6_binding_state(
-                config_dir=settings.projects_config.parent,
-                state_root=_a6_state_root(),
+            a6_state = bounded_status_object(
+                lambda: inspect_a6_binding_state(
+                    config_dir=settings.projects_config.parent,
+                    state_root=_a6_state_root(),
+                )
             )
+            if a6_state is None:
+                raise FabricA6BindingRepairError("unavailable")
         except FabricA6BindingRepairError:
             add(
                 "fabric_a6_binding_state",
@@ -934,35 +1065,15 @@ def build_mcp(
                 "unavailable",
             )
         else:
-            roots = str(a6_state.get("state_roots", "unknown"))
-            count = a6_state.get("binding_count")
-            total = a6_state.get("binding_total")
-            complete = a6_state.get("binding_complete") is True
-            if (
-                roots == "ready"
-                and complete
-                and isinstance(count, int)
-                and isinstance(total, int)
-            ):
-                detail = f"ready_{count}_of_{total}"
-                state = "pass"
-            elif (
-                roots == "absent"
-                and count == 0
-                and isinstance(total, int)
-            ):
-                detail = f"not_configured_0_of_{total}"
-                state = "pass"
-            elif isinstance(count, int) and isinstance(total, int):
-                detail = f"{roots}_{count}_of_{total}"
-                state = "warn"
-            else:
-                detail = "unavailable"
-                state = "warn"
+            state, detail = classify_a6_bindings_for_doctor(a6_state)
             add("fabric_a6_binding_state", state, detail)
 
         try:
-            actions_readiness = fabric_update_manager.actions_readiness()
+            actions_readiness = bounded_status_object(
+                fabric_update_manager.actions_readiness
+            )
+            if actions_readiness is None:
+                raise FabricUpdateError("unavailable")
         except FabricUpdateError:
             add(
                 "runner_fabric_actions_read",
@@ -977,12 +1088,20 @@ def build_mcp(
             )
 
         try:
-            fabric_continuity_status_runner.status()
+            continuity = fabric_continuity_status_runner.status()
+            if type(continuity) is not dict:
+                raise FabricContinuityStatusError("unavailable")
         except FabricContinuityStatusError as exc:
             add(
                 "fabric_continuity_status",
                 "warn",
                 str(exc),
+            )
+        except (OSError, RuntimeError, ValueError, TypeError, AttributeError, KeyError):
+            add(
+                "fabric_continuity_status",
+                "warn",
+                "unavailable",
             )
         else:
             add(
@@ -999,10 +1118,14 @@ def build_mcp(
             )
         else:
             try:
-                readiness = fabric_bridge.worker_qualification_readiness(
-                    "aifordable-lab",
-                    "bewind-ocr-qualification-v1",
+                readiness = bounded_status_object(
+                    lambda: fabric_bridge.worker_qualification_readiness(
+                        "aifordable-lab",
+                        "bewind-ocr-qualification-v1",
+                    )
                 )
+                if readiness is None:
+                    raise FabricBridgeError("unavailable")
             except FabricBridgeError:
                 add(
                     "fabric_worker_qualification_readiness",
@@ -1462,10 +1585,11 @@ def build_mcp(
 
     @mcp.tool()
     def fabric_continuity_status() -> dict:
-        """Return fixed read-only Runner Fabric continuity evidence."""
+        """Return bounded continuity evidence or sanitized fail-closed unavailability."""
         try:
             result = fabric_continuity_status_runner.status()
-        except FabricContinuityStatusError:
+        except FabricContinuityStatusError as exc:
+            unavailable = bounded_continuity_unavailable(str(exc))
             audit.append(
                 AuditEvent(
                     current_request_id(),
@@ -1476,9 +1600,7 @@ def build_mcp(
                     utc_timestamp(),
                 )
             )
-            raise ValueError(
-                "Fabric continuity status is unavailable"
-            ) from None
+            return unavailable
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1499,6 +1621,46 @@ def build_mcp(
             AuditEvent(
                 current_request_id(),
                 "fabric_release_archive_mirror_readiness",
+                "runner-fabric:release-archive-mirror",
+                "authenticated-client",
+                str(result.get("reasonCode", "unknown")),
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_release_archive_mirror_backup() -> dict:
+        """Mirror exactly the two locally protected Fabric archives; no caller args."""
+        try:
+            result = protected_release_archive_mirror.run()
+        except (
+            ProtectedReleaseMirrorError,
+            OperatorStopActive,
+            SafetyConfigurationError,
+        ) as exc:
+            reason = (
+                str(exc) if isinstance(exc, ProtectedReleaseMirrorError)
+                else "operator-backup-not-permitted"
+            )
+            result = {
+                "schemaVersion": "runner-mcp/protected-release-archive-mirror/v1",
+                "state": "blocked",
+                "protectedRevisionCount": 2,
+                "mirroredCount": 0,
+                "verifiedCount": 0,
+                "alreadyStoredCount": 0,
+                "separateDeviceReady": False,
+                "reasonCode": reason,
+                "mutationScope": "protected-release-archive-mirror",
+                "restoreTriggered": False,
+                "updateTriggered": False,
+                "deleteTriggered": False,
+            }
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_release_archive_mirror_backup",
                 "runner-fabric:release-archive-mirror",
                 "authenticated-client",
                 str(result.get("reasonCode", "unknown")),
@@ -1630,17 +1792,23 @@ def build_mcp(
         try:
             result = fabric_update_manager.readiness(commit)
         except FabricUpdateError as exc:
+            blocked = bounded_fabric_readiness_failure(exc, source="github-actions")
+            alternate = read_alternative_release_metadata_after_actions_failure(
+                fabric_update_manager, commit, exc,
+            )
+            if alternate is not None:
+                blocked["alternative_release_metadata"] = alternate
             audit.append(
                 AuditEvent(
                     current_request_id(),
                     "fabric_update_readiness",
                     "runner-fabric",
                     "authenticated-client",
-                    "denied",
+                    "blocked",
                     utc_timestamp(),
                 )
             )
-            raise ValueError(str(exc)) from None
+            return blocked
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1648,6 +1816,36 @@ def build_mcp(
                 "runner-fabric",
                 "authenticated-client",
                 "ok",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def fabric_release_assets_readiness(commit: str) -> dict:
+        """Check fixed GitHub Release metadata; never stage or authorize an update."""
+        try:
+            result = fabric_update_manager.release_assets_readiness(commit)
+        except FabricUpdateError as exc:
+            blocked = bounded_fabric_readiness_failure(exc, source="github-release")
+            audit.append(
+                AuditEvent(
+                    current_request_id(),
+                    "fabric_release_assets_readiness",
+                    "runner-fabric",
+                    "authenticated-client",
+                    "blocked",
+                    utc_timestamp(),
+                )
+            )
+            return blocked
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "fabric_release_assets_readiness",
+                "runner-fabric",
+                "authenticated-client",
+                "ready",
                 utc_timestamp(),
             )
         )
@@ -1716,7 +1914,7 @@ def build_mcp(
                     "artifact_ready": False,
                     "source": "local-custody",
                 }
-            raise ValueError("Fabric local update readiness is unavailable") from None
+            return bounded_fabric_readiness_failure(exc, source="local-custody")
         audit.append(
             AuditEvent(
                 current_request_id(),
@@ -1925,46 +2123,84 @@ def build_mcp(
         )
 
     def _fabric_host_inspect_failure(exc: FabricBridgeError) -> dict:
-        """Project one Fabric host-inspection failure into bounded public evidence."""
+        """Bound one failed read with no implied follow-up Fabric request."""
+        return bounded_host_inspection_unavailable(str(exc))
 
-        category = (
-            "fabric_inspection_unavailable"
-            if str(exc) == "Runner Fabric host inspection failed"
-            else "invalid_inspection_payload"
-        )
-        bridge = _require_fabric_bridge()
-        preflight_method = getattr(bridge, "preflight", None)
-        if callable(preflight_method):
-            try:
-                preflight = preflight_method()
-            except FabricBridgeError:
-                preflight = {}
-        else:
-            preflight = {}
-        reason = preflight.get("reason_code") if isinstance(preflight, dict) else None
-        if (
-            preflight.get("state") == "blocked"
-            and isinstance(reason, str)
-            and reason in {
-                "transport_or_auth_unavailable",
-                "initialization_failed",
-                "protocol_incompatible",
-                "interface_incompatible",
-                "build_identity_incompatible",
-                "server_identity_invalid",
-                "session_invalid",
-                "response_invalid",
-                "peer_unavailable",
-                "bridge_unavailable",
-            }
-        ):
-            category = reason
-        return {
-            "schema_version": "runner-mcp/fabric-host-inspection-error/v1",
-            "state": "unavailable",
-            "error_category": category,
-            "mutation_enabled": False,
-        }
+    @mcp.tool()
+    def control_center_black_submit() -> dict[str, object]:
+        """Submit only runtime_status to the prebound Black via Fabric's MFA issuer."""
+        try:
+            raw = _require_fabric_bridge().control_center_black_submit()
+            result = validate_black_record(raw)
+        except (FabricBridgeError, BlackControlEvidenceError):
+            _audit_fabric("control_center_black_submit", "runner:black", "blocked")
+            raise ValueError("authenticated Black issuer unavailable") from None
+        _audit_fabric("control_center_black_submit", "runner:black", "submitted")
+        return result
+
+    @mcp.tool()
+    def control_center_black_status(
+        request_id: str, fingerprint: str, requester_subject: str
+    ) -> dict[str, object]:
+        """Read only the original issuer's receipt-bound Black request status."""
+        try:
+            raw = _require_fabric_bridge().control_center_black_status(
+                request_id, fingerprint, requester_subject
+            )
+            result = validate_black_record(
+                raw, request_id=request_id, fingerprint=fingerprint,
+                requester_subject=requester_subject,
+            )
+        except (FabricBridgeError, BlackControlEvidenceError):
+            _audit_fabric("control_center_black_status", "runner:black", "blocked")
+            raise ValueError("original Black command status unavailable") from None
+        _audit_fabric("control_center_black_status", "runner:black", "read")
+        return result
+
+    @mcp.tool()
+    def control_center_black_ack(
+        request_id: str, fingerprint: str,
+        requester_subject: str, result_digest: str,
+    ) -> dict[str, object]:
+        """Explicit ACK only after terminal digest and SAME MFA issuer readback.
+
+        No automatic ACK from status and no arbitrary target, operation or URL.
+        Fabric must enforce the original MFA requester, not trust these hints.
+        """
+        try:
+            peer = _require_fabric_bridge()
+            raw = peer.control_center_black_status(
+                request_id, fingerprint, requester_subject
+            )
+            status = validate_black_record(
+                raw, request_id=request_id, fingerprint=fingerprint,
+                requester_subject=requester_subject,
+            )
+            if status["state"] not in {"completed", "failed"}:
+                raise BlackControlEvidenceError("Black result not terminal")
+            if result_digest != status["result_digest"]:
+                raise BlackControlEvidenceError("Black result digest mismatch")
+            ack = validate_black_ack(
+                peer.control_center_black_ack(
+                    request_id, fingerprint, requester_subject, result_digest
+                ),
+                status=status,
+            )
+            observed = validate_black_record(
+                peer.control_center_black_status(
+                    request_id, fingerprint, requester_subject
+                ),
+                request_id=request_id, fingerprint=fingerprint,
+                requester_subject=requester_subject,
+            )
+            confirm_black_ack_readback(
+                status=status, ack=ack, observed=observed,
+            )
+        except (FabricBridgeError, BlackControlEvidenceError):
+            _audit_fabric("control_center_black_ack", "runner:black", "blocked")
+            raise ValueError("original Black result ACK unavailable") from None
+        _audit_fabric("control_center_black_ack", "runner:black", "verified")
+        return ack
 
     def fabric_bridge_preflight() -> dict:
         """Return bounded read-only Fabric MCP handshake readiness."""
@@ -2001,6 +2237,33 @@ def build_mcp(
         _audit_fabric("fabric_host_inspect", "host:local", "ok")
         return result
 
+    def fabric_worker_process_inspect(worker: str) -> dict:
+        """Read one fixed worker's process facts through existing Fabric MCP."""
+        try:
+            result = _require_fabric_bridge().worker_process_inspect(worker)
+        except FabricBridgeError:
+            _audit_fabric("fabric_worker_process_inspect", "worker:fixed", "denied")
+            raise ValueError("worker process inspection unavailable") from None
+        _audit_fabric(
+            "fabric_worker_process_inspect",
+            "worker:fixed",
+            str(result.get("state", "wait")),
+        )
+        return result
+
+    def fabric_a6_storage_preflight() -> dict:
+        """Observe EXISTING Fabric A6 local hash chain; never authorize update."""
+        try:
+            result = _require_fabric_bridge().a6_storage_preflight()
+        except FabricBridgeError:
+            _audit_fabric("fabric_a6_storage_preflight", "a6:local", "denied")
+            raise ValueError("A6 read-only inspection unavailable") from None
+        _audit_fabric(
+            "fabric_a6_storage_preflight", "a6:local",
+            str(result.get("reasonCode", "fabric_read_unavailable")),
+        )
+        return result
+
     def fabric_external_target_preflight() -> dict:
         """Return bounded config-only readiness for the trusted external target."""
         try:
@@ -2011,7 +2274,9 @@ def build_mcp(
                 "external-target:managed",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_external_target_read_unavailable(
+                str(exc), phase="preflight"
+            )
         _audit_fabric(
             "fabric_external_target_preflight",
             "external-target:managed",
@@ -2029,7 +2294,9 @@ def build_mcp(
                 "external-target:managed",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_external_target_read_unavailable(
+                str(exc), phase="inspect"
+            )
         _audit_fabric(
             "fabric_external_target_inspect",
             "external-target:managed",
@@ -2047,7 +2314,7 @@ def build_mcp(
                 "ci-runner:aifordable-lab-ci",
                 "denied",
             )
-            raise ValueError(str(exc)) from None
+            return bounded_ci_guest_status_unavailable(str(exc))
         _audit_fabric(
             "fabric_ci_runner_guest_status",
             "ci-runner:aifordable-lab-ci",
@@ -2366,12 +2633,12 @@ def build_mcp(
         return result
 
     def fabric_operational_snapshot() -> dict:
-        """Return bounded end-to-end operational state from Runner Fabric."""
+        """Return read-only Fabric state or explicit safe unavailable evidence."""
         try:
             result = _require_fabric_bridge().operational_snapshot()
         except FabricBridgeError as exc:
             _audit_fabric("fabric_operational_snapshot", "fabric:operational", "denied")
-            raise ValueError(str(exc)) from None
+            return bounded_snapshot_unavailable(str(exc))
         _audit_fabric("fabric_operational_snapshot", "fabric:operational", "ok")
         return result
 
@@ -2441,6 +2708,8 @@ def build_mcp(
     if fabric_bridge is not None:
         mcp.tool()(fabric_bridge_preflight)
         mcp.tool()(fabric_host_inspect)
+        mcp.tool()(fabric_worker_process_inspect)
+        mcp.tool()(fabric_a6_storage_preflight)
         mcp.tool()(fabric_external_target_preflight)
         mcp.tool()(fabric_external_target_inspect)
         mcp.tool()(fabric_ci_runner_guest_status)
@@ -2644,13 +2913,55 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def known_project_preflight(project_id: str) -> dict:
+    def coding_workspace_preflight(worker_id: str) -> dict:
+        """Read-only readiness of the caller's fixed local owner-bound workspace."""
+        result = coding_workspaces.preflight(worker_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_preflight", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
+    def coding_workspace_inspect(worker_id: str, work_unit_id: str) -> dict:
+        """Read a fixed owner-local task pair without preparing or mutating it."""
+        result = coding_workspaces.inspect(worker_id, work_unit_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_inspect", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
+    def coding_workspace_prepare(worker_id: str, work_unit_id: str) -> dict:
+        """Create only fixed jobs/patches directories inside this worker's private root."""
+        if safety.status().stop_active:
+            result = {
+                "schema_version": "runner-mcp/coding-workspace/v1",
+                "state": "blocked",
+                "reason_code": "operator_stop_active",
+                "worker_id": None,
+                "work_unit_id": None,
+                "filesystem_path_exposed": False,
+                "cross_host_execution_authorized": False,
+            }
+        else:
+            result = coding_workspaces.prepare(worker_id, work_unit_id)
+        audit.append(AuditEvent(
+            current_request_id(), "coding_workspace_prepare", None,
+            "authenticated-client", str(result["reason_code"]), utc_timestamp(),
+        ))
+        return result
+
+    @mcp.tool()
+    def known_project_preflight(project_id: str, anchor_project_id: str | None = None) -> dict:
         """Return bounded preparation state for one built-in managed project."""
         request_id = current_request_id()
         try:
             result = preflight_known_project_binding(
                 registry,
                 project_id=project_id,
+                anchor_project_id=anchor_project_id,
             )
             if result.get("state") == "ready-to-prepare":
                 source = preflight_known_project_source_binding(
@@ -2723,7 +3034,7 @@ def build_mcp(
         return result
 
     @mcp.tool()
-    def prepare_known_project(project_id: str) -> dict:
+    def prepare_known_project(project_id: str, anchor_project_id: str | None = None) -> dict:
         """Prepare one built-in managed project clone without caller-selected repo or path."""
         request_id = current_request_id()
         if safety.status().stop_active:
@@ -2742,6 +3053,7 @@ def build_mcp(
             result = prepare_known_project_binding(
                 registry,
                 project_id=project_id,
+                anchor_project_id=anchor_project_id,
                 github_token=known_project_github_token(project_id),
                 local_source_bindings_raw=known_project_local_sources or None,
             )
@@ -3139,6 +3451,37 @@ def build_mcp(
             tool_name="test_status",
             project=result.get("project"),
             result="ok",
+        )
+        return result
+
+    @mcp.tool()
+    def operational_snapshot() -> dict:
+        """Aggregate bounded local tests and existing Fabric status in one read."""
+        local_queue = None
+        fabric_state = None
+        if tests is not None:
+            try:
+                local_queue = tests.queue_status()
+            except (TestRunnerError, OSError, RuntimeError, ValueError, TypeError):
+                pass
+        if fabric_bridge is not None:
+            try:
+                fabric_state = fabric_bridge.operational_snapshot()
+            except (FabricBridgeError, OSError, RuntimeError, ValueError, TypeError):
+                pass
+        result = bounded_operational_snapshot(
+            local_queue=local_queue,
+            fabric_snapshot=fabric_state,
+        )
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "operational_snapshot",
+                None,
+                "authenticated-client",
+                "degraded" if result["degraded"] else "ok",
+                utc_timestamp(),
+            )
         )
         return result
 
@@ -3835,16 +4178,20 @@ def create_app(
     registry: ProjectRegistry | None = None,
     secret_values: Mapping[str, str] | None = None,
     self_update_restart_components: frozenset[str] | None = None,
+    self_update_retain_activation_baseline: bool = False,
+    self_update_server_activation_scheduler: Callable[[], object] | None = None,
     server_bind_host: str | None = None,
     server_bind_port: int | None = None,
+    tunnel_expected: bool = False,
+    tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
-    try:
-        package_version = version("aifordable-runner-mcp")
-    except PackageNotFoundError:
-        package_version = "development"
+    # Capture the already-imported runtime generation. Distribution metadata
+    # may change under a live process when an operator upgrades in place.
+    package_version = _loaded_package_version
     identity: BuildIdentity | None = None
+    # Historical self-update state is NOT an active wheel/source attestation.
     source_revision = installed_source_revision(settings.projects_config.parent)
 
     def current_build_identity() -> BuildIdentity:
@@ -3884,9 +4231,13 @@ def create_app(
         safety_guard=safety_guard,
         secret_values=secret_values,
         self_update_restart_components=self_update_restart_components,
+        self_update_retain_activation_baseline=self_update_retain_activation_baseline,
+        self_update_server_activation_scheduler=self_update_server_activation_scheduler,
         server_bind_host=server_bind_host,
         server_bind_port=server_bind_port,
         build_identity_provider=current_build_identity,
+        tunnel_expected=tunnel_expected,
+        tunnel_readiness_provider=tunnel_readiness_provider,
     )
     transport_security = transport_security_for(settings.resource_url)
 
@@ -3911,7 +4262,12 @@ def create_app(
             ),
         ],
         middleware=[
-            Middleware(RequestIdMiddleware),
+            Middleware(
+                RequestIdMiddleware,
+                node_id=os.environ.get("RUNNER_MCP_NODE_ID"),
+                build_version=package_version,
+                source_revision=source_revision,
+            ),
             Middleware(
                 RateLimitMiddleware,
                 max_requests=settings.rate_limit_per_minute,

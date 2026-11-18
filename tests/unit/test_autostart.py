@@ -1,6 +1,9 @@
 from __future__ import annotations
 
+import hashlib
+import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 import pytest
@@ -20,8 +23,10 @@ from runner_mcp.autostart import (
     AutostartError,
     _write_managed_unit,
     install_user_services,
+    plan_qualification_override_swap,
     remove_user_services,
     render_user_units,
+    restart_managed_server_unit,
     user_service_status,
 )
 from runner_mcp.autostart_activation import AutostartActivationPermit
@@ -86,6 +91,216 @@ def _private_config(tmp_path: Path):
     return paths, executable
 
 
+def test_migration_plan_is_never_a_cutover_permit() -> None:
+    from runner_mcp.autostart import AutostartStatus, plan_cron_to_systemd
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    cron = tuple(
+        CronComponentStatus(
+            component=name,
+            installed=name == "server",
+            enabled=name == "server",
+            active=False,
+        )
+        for name in CRON_COMPONENTS
+    )
+    units = tuple(
+        AutostartStatus(name, installed=False, enabled=False, active=False)
+        for name in CRON_COMPONENTS
+    )
+    inputs = {
+        "component": "server",
+        "expected_hostname": "test-host",
+        "expected_uid": 1001,
+        "observed_hostname": "test-host",
+        "observed_uid": 1001,
+        "configured_components": ("server",),
+        "cron_managed": True,
+        "cron_rows": cron,
+        "systemd_rows": units,
+        "systemd_manager_reachable": True,
+    }
+    plan = plan_cron_to_systemd(**inputs)
+    assert plan.state == "PLAN_ONLY"
+    assert plan.reason_code == "original_host_and_rollback_not_attested"
+    assert plan.cron_installed
+    assert plan.systemd_units_absent
+    assert plan.systemd_manager_reachable
+    assert plan.cutover_authorized is False
+
+
+@pytest.mark.parametrize(
+    ("change", "reason"),
+    [
+        ({"observed_hostname": "other-host"}, "host_or_uid_mismatch"),
+        ({"observed_uid": 1002}, "host_or_uid_mismatch"),
+        ({"expected_uid": 0, "observed_uid": 0}, "host_or_uid_mismatch"),
+        ({"cron_managed": False}, "exact_owned_cron_role_unavailable"),
+        ({"configured_components": ()}, "exact_owned_cron_role_unavailable"),
+        ({"cron_rows": ()}, "exact_owned_cron_role_unavailable"),
+        ({"systemd_manager_reachable": False}, "systemd_user_manager_unreachable"),
+    ],
+)
+def test_migration_plan_fails_closed_for_missing_owner_or_manager(
+    change: dict[str, object],
+    reason: str,
+) -> None:
+    from runner_mcp.autostart import AutostartStatus, plan_cron_to_systemd
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    inputs = {
+        "component": "server",
+        "expected_hostname": "lab-host",
+        "expected_uid": 1001,
+        "observed_hostname": "lab-host",
+        "observed_uid": 1001,
+        "configured_components": ("server",),
+        "cron_managed": True,
+        "cron_rows": (CronComponentStatus("server", True, True, False),),
+        "systemd_rows": tuple(
+            AutostartStatus(name, False, False, False)
+            for name in CRON_COMPONENTS
+        ),
+        "systemd_manager_reachable": True,
+    }
+    plan = plan_cron_to_systemd(**(inputs | change))
+    assert plan.state == "WAIT"
+    assert plan.reason_code == reason
+    assert plan.cutover_authorized is False
+
+
+def test_migration_plan_refuses_existing_foreign_or_duplicate_units() -> None:
+    from runner_mcp.autostart import AutostartStatus, plan_cron_to_systemd
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    units = tuple(
+        AutostartStatus(name, name == "server", False, False)
+        for name in CRON_COMPONENTS
+    )
+    plan = plan_cron_to_systemd(
+        component="server",
+        expected_hostname="lab-host",
+        expected_uid=1001,
+        observed_hostname="lab-host",
+        observed_uid=1001,
+        configured_components=("server",),
+        cron_managed=True,
+        cron_rows=(CronComponentStatus("server", True, True, False),),
+        systemd_rows=units,
+        systemd_manager_reachable=True,
+    )
+    assert plan.state == "WAIT"
+    assert plan.reason_code == "systemd_unit_conflict_or_unknown"
+    assert plan.cutover_authorized is False
+
+
+
+def test_inactive_cron_server_peer_unit_never_starts_second_server(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import render_inactive_cron_server_peer_unit
+
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components",
+        lambda _path: ("server", "github-watcher", "completion-watcher"),
+    )
+    original = render_user_units(config_dir=paths.config_dir, executable=executable)
+    assert f"Requires={SERVER_UNIT}" in original[GITHUB_WATCHER_UNIT]
+    assert "WantedBy=default.target" in original[GITHUB_WATCHER_UNIT]
+    name, candidate = render_inactive_cron_server_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    assert name == GITHUB_WATCHER_UNIT
+    assert candidate.startswith(MANAGED_MARKER)
+    assert "github-watcher" in candidate
+    assert "Requires=runner-mcp.service" not in candidate
+    assert "After=network-online.target runner-mcp.service" not in candidate
+    assert "[Install]" not in candidate
+    assert "WantedBy=default.target" not in candidate
+    assert ' "autostart" "cron-run" "github-watcher"' in candidate
+    assert ' "github-watcher" "run"' not in candidate
+    assert ' "github-watcher" "run"' in original[GITHUB_WATCHER_UNIT]
+    assert f"Requires={SERVER_UNIT}" in original[GITHUB_WATCHER_UNIT]
+    # Alleen de aangevraagde nevenunit, nooit een tweede serverunit teruggeven.
+    assert name != SERVER_UNIT
+
+
+@pytest.mark.parametrize("component", ("server", "tunnel", "evil", "agent-bus-worker"))
+def test_inactive_cron_server_peer_denies_control_or_unconfigured_role(
+    tmp_path: Path, component: str,
+) -> None:
+    from runner_mcp.autostart import render_inactive_cron_server_peer_unit
+
+    paths, executable = _private_config(tmp_path)
+    with pytest.raises(AutostartError):
+        render_inactive_cron_server_peer_unit(
+            config_dir=paths.config_dir, executable=executable, component=component,
+        )
+
+
+def test_boot_candidate_is_only_the_locked_static_peer_plus_install_hook(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import (
+        render_boot_candidate_cron_peer_unit,
+        render_inactive_cron_server_peer_unit,
+    )
+
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components",
+        lambda _path: ("server", "github-watcher", "completion-watcher"),
+    )
+    static_name, static = render_inactive_cron_server_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    boot_name, boot = render_boot_candidate_cron_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    assert boot_name == static_name == GITHUB_WATCHER_UNIT
+    assert boot == static + "\n[Install]\nWantedBy=default.target\n"
+    assert "Requires=runner-mcp.service" not in boot
+    assert boot.count("ExecStart=") == 1
+    assert ' "autostart" "cron-run" "github-watcher"' in boot
+    assert "[Install]" not in static
+    assert list(tmp_path.rglob("*.service")) == []
+    with pytest.raises(AutostartError):
+        render_boot_candidate_cron_peer_unit(
+            config_dir=paths.config_dir, executable=executable,
+            component="server",
+        )
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd parser qualification")
+def test_inactive_cron_server_peer_is_real_static_systemd_unit(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.autostart import render_inactive_cron_server_peer_unit
+
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components",
+        lambda _path: ("server", "github-watcher"),
+    )
+    name, contents = render_inactive_cron_server_peer_unit(
+        config_dir=paths.config_dir, executable=executable,
+        component="github-watcher",
+    )
+    path = tmp_path / name
+    path.write_text(contents, encoding="utf-8")
+    result = subprocess.run(
+        [analyze, "verify", str(path)], text=True, capture_output=True,
+        timeout=20, check=False,
+    )
+    assert result.returncode == 0, result.stderr[-1200:]
+    assert {p.name for p in tmp_path.iterdir() if p.suffix == ".service"} == {name}
+
 def test_render_server_unit_contains_no_credentials(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
 
@@ -100,6 +315,123 @@ def test_render_server_unit_contains_no_credentials(tmp_path: Path) -> None:
     assert "serve" in units[SERVER_UNIT]
     assert "Authorization" not in units[SERVER_UNIT]
     assert "token" not in units[SERVER_UNIT].lower()
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")
+def test_disposable_rendered_units_pass_real_systemd_parser(tmp_path: Path) -> None:
+    """Validate real unit syntax/dependencies without a user manager or install."""
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    tunnel_env = paths.config_dir / "tunnel.env"
+    tunnel_env.write_text(
+        "CONTROL_PLANE_TUNNEL_ID=synthetic-qualification-id\n"
+        "CONTROL_PLANE_API_KEY=synthetic-qualification-key\n",
+        encoding="utf-8",
+    )
+    tunnel_env.chmod(0o600)
+    units = render_user_units(
+        config_dir=paths.config_dir,
+        executable=executable,
+        port=8123,
+    )
+    assert set(units) == {SERVER_UNIT, TUNNEL_UNIT}
+    sandbox = tmp_path / "candidates"
+    sandbox.mkdir()
+    candidates = []
+    for name, content in sorted(units.items()):
+        target = sandbox / name
+        target.write_text(content, encoding="utf-8")
+        candidates.append(str(target))
+
+    result = subprocess.run(
+        [analyze, "verify", *candidates],
+        text=True,
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr[-1200:]
+    assert "synthetic-qualification-key" not in result.stderr
+    assert "synthetic-qualification-key" not in result.stdout
+    # Verification did not activate or install a service; only test-owned
+    # disposable candidate files exist and the original source is untouched.
+    assert {file.name for file in sandbox.iterdir()} == {SERVER_UNIT, TUNNEL_UNIT}
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")
+def test_all_configured_roles_pass_real_systemd_parser(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """The complete known service graph must parse before any live cutover."""
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    monkeypatch.setattr(
+        autostart_module,
+        "configured_autostart_components",
+        lambda _config_dir: (
+            "server",
+            "tunnel",
+            "topology-heartbeat",
+            "github-watcher",
+            "completion-watcher",
+            "agent-bus-worker",
+            "fabric-agent-qualification",
+            "fabric-live-overview",
+        ),
+    )
+    units = render_user_units(config_dir=paths.config_dir, executable=executable)
+    assert set(units) == set(autostart_module.KNOWN_UNITS)
+    sandbox = tmp_path / "candidate-graph"
+    sandbox.mkdir()
+    paths_to_verify: list[str] = []
+    for unit_name, content in sorted(units.items()):
+        candidate = sandbox / unit_name
+        candidate.write_text(content, encoding="utf-8")
+        paths_to_verify.append(str(candidate))
+        assert "Restart=on-failure" in content
+        assert "RestartSec=3" in content
+        if unit_name != SERVER_UNIT:
+            assert f"Requires={SERVER_UNIT}" in content
+    result = subprocess.run(
+        [analyze, "verify", *paths_to_verify],
+        text=True,
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode == 0, result.stderr[-1200:]
+    assert {p.name for p in sandbox.iterdir()} == set(units)
+
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux systemd syntax qualification")
+def test_disposable_systemd_parser_rejects_broken_execstart(tmp_path: Path) -> None:
+    """A malformed candidate must fail before any real manager is involved."""
+    analyze = shutil.which("systemd-analyze")
+    assert analyze is not None, "Linux qualification image must have systemd-analyze"
+    paths, executable = _private_config(tmp_path)
+    good = render_user_units(config_dir=paths.config_dir, executable=executable)[
+        SERVER_UNIT
+    ]
+    broken = "\n".join(
+        'ExecStart="unterminated' if line.startswith("ExecStart=") else line
+        for line in good.splitlines()
+    ) + "\n"
+    candidate = tmp_path / SERVER_UNIT
+    candidate.write_text(broken, encoding="utf-8")
+
+    result = subprocess.run(
+        [analyze, "verify", str(candidate)],
+        text=True,
+        capture_output=True,
+        timeout=20,
+        check=False,
+    )
+    assert result.returncode != 0
+    assert candidate.read_text(encoding="utf-8") == broken
+    assert not (tmp_path / "units").exists()
 
 
 def test_complete_tunnel_config_adds_fixed_dependent_tunnel_unit(
@@ -255,6 +587,60 @@ def test_optional_watchers_are_added_only_after_bootstrap(tmp_path: Path) -> Non
     assert "completion-watcher" in units[COMPLETION_WATCHER_UNIT]
 
 
+def test_direct_systemd_install_refuses_active_managed_cron_before_any_writes(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    unit_dir = tmp_path / "uncreated_units"
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr("runner_mcp.cron_autostart.cron_available", lambda: True)
+    monkeypatch.setattr("runner_mcp.cron_autostart.has_managed_cron", lambda: True)
+
+    with pytest.raises(AutostartError, match="parallel systemd activation"):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert not unit_dir.exists()
+    assert systemctl.calls == []
+
+
+def test_direct_systemd_install_refuses_unreadable_managed_cron(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.cron_autostart import CronAutostartError
+
+    paths, executable = _private_config(tmp_path)
+    unit_dir = tmp_path / "uncreated_units"
+    systemctl = FakeSystemctl()
+
+    def unavailable() -> bool:
+        raise CronAutostartError("private crontab details")
+
+    monkeypatch.setattr("runner_mcp.cron_autostart.cron_available", lambda: True)
+    monkeypatch.setattr(
+        "runner_mcp.cron_autostart.has_managed_cron", unavailable
+    )
+
+    with pytest.raises(AutostartError, match="managed cron status is unavailable"):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert not unit_dir.exists()
+    assert systemctl.calls == []
+
+
 def test_install_uses_fixed_systemctl_arrays_and_managed_files(tmp_path: Path) -> None:
     paths, executable = _private_config(tmp_path)
     unit_dir = tmp_path / "units"
@@ -299,6 +685,51 @@ def test_install_refuses_to_replace_foreign_unit(tmp_path: Path) -> None:
         )
 
     assert unit_path.read_text(encoding="utf-8") == foreign_content
+
+
+@pytest.mark.parametrize(
+    ("invalid_optional", "reason"),
+    [
+        ("foreign", "not managed"),
+        ("dangling_symlink", "unit path is unsafe"),
+    ],
+)
+def test_install_preflight_rejects_obsolete_foreign_unit_before_server_rewrite(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    invalid_optional: str,
+    reason: str,
+) -> None:
+    paths, executable = _private_config(tmp_path)
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    server = unit_dir / SERVER_UNIT
+    previous = MANAGED_MARKER + "\noriginal trusted unit\n"
+    server.write_text(previous, encoding="utf-8")
+    server.chmod(0o600)
+    obsolete = unit_dir / TUNNEL_UNIT
+    if invalid_optional == "foreign":
+        obsolete.write_text("[Service]\nExecStart=/bin/false\n", encoding="utf-8")
+    else:
+        obsolete.symlink_to(tmp_path / "not-existing")
+    systemctl = FakeSystemctl()
+    monkeypatch.setattr("runner_mcp.cron_autostart.cron_available", lambda: False)
+
+    with pytest.raises(AutostartError, match=reason):
+        install_user_services(
+            paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+
+    assert server.read_text(encoding="utf-8") == previous
+    if invalid_optional == "foreign":
+        assert obsolete.exists()
+    else:
+        assert obsolete.is_symlink()
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
 
 
 def test_write_managed_unit_uses_private_atomic_replace(tmp_path: Path) -> None:
@@ -433,6 +864,51 @@ def test_status_is_safe_and_normalized(tmp_path: Path) -> None:
     ]
 
 
+def test_install_refuses_symlinked_parent_without_unit_writes(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    (real / "systemd").mkdir(parents=True)
+    linked = tmp_path / "linked"
+    linked.symlink_to(real, target_is_directory=True)
+    unit_dir = linked / "systemd" / "user"
+    systemctl = FakeSystemctl()
+    paths, executable = _private_config(tmp_path)
+    with pytest.raises(AutostartError, match="must not be a symlink"):
+        install_user_services(
+            config_dir=paths.config_dir,
+            executable=executable,
+            unit_dir=unit_dir,
+            runner=systemctl,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert not (real / "systemd" / "user").exists()
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
+
+
+def test_remove_refuses_symlinked_parent_without_systemctl_or_writes(tmp_path: Path) -> None:
+    real = tmp_path / "real"
+    unit_dir = real / "systemd" / "user"
+    unit_dir.mkdir(parents=True)
+    original = MANAGED_MARKER + "\n[Service]\nExecStart=/bin/true\n"
+    target = unit_dir / SERVER_UNIT
+    target.write_text(original, encoding="utf-8")
+    linked = tmp_path / "linked"
+    linked.symlink_to(real, target_is_directory=True)
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="unit directory is unavailable"):
+        remove_user_services(unit_dir=linked / "systemd" / "user", runner=systemctl)
+    assert target.read_text(encoding="utf-8") == original
+    assert systemctl.calls == []
+
+
+def test_remove_absent_user_unit_tree_is_noop_without_writes(tmp_path: Path) -> None:
+    missing = tmp_path / "absent" / "units"
+    systemctl = FakeSystemctl()
+    assert remove_user_services(unit_dir=missing, runner=systemctl) == []
+    assert not missing.exists()
+    assert not missing.parent.exists()
+    assert systemctl.calls == []
+
+
 def test_remove_only_deletes_runner_mcp_managed_units(tmp_path: Path) -> None:
     unit_dir = tmp_path / "units"
     unit_dir.mkdir()
@@ -447,6 +923,30 @@ def test_remove_only_deletes_runner_mcp_managed_units(tmp_path: Path) -> None:
     assert not managed.exists()
     assert ["systemctl", "--user", "disable", "--now", SERVER_UNIT] in systemctl.calls
     assert systemctl.calls[-1] == ["systemctl", "--user", "daemon-reload"]
+
+
+def test_remove_preserves_unit_when_systemctl_disable_fails(tmp_path: Path) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    target = unit_dir / SERVER_UNIT
+    original = MANAGED_MARKER + "\n[Service]\nExecStart=/bin/true\n"
+    target.write_text(original, encoding="utf-8")
+
+    class RejectDisable(FakeSystemctl):
+        def __call__(self, argv, **kwargs):
+            result = super().__call__(argv, **kwargs)
+            if argv[2:4] == ["disable", "--now"]:
+                return subprocess.CompletedProcess(argv, 1, "", "synthetic failure")
+            return result
+
+    systemctl = RejectDisable()
+    with pytest.raises(AutostartError, match="service operation failed"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+    assert target.read_text(encoding="utf-8") == original
+    assert systemctl.calls == [
+        ["systemctl", "--user", "show-environment"],
+        ["systemctl", "--user", "disable", "--now", SERVER_UNIT],
+    ]
 
 
 def test_remove_refuses_foreign_unit(tmp_path: Path) -> None:
@@ -522,3 +1022,724 @@ def test_fabric_agent_qualification_unit_is_optional_and_contains_no_credentials
     assert " run" in content
     assert "credential" not in content.casefold()
     assert "token" not in content.casefold()
+
+
+def test_managed_user_units_refuse_dangling_symlink(tmp_path: Path) -> None:
+    """A broken peer unit must not look absent to the cron installer."""
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    link = unit_dir / SERVER_UNIT
+    referent = tmp_path / "missing-foreign-unit"
+    link.symlink_to(referent)
+
+    with pytest.raises(AutostartError, match="unit path is unsafe"):
+        autostart_module.has_managed_user_units(unit_dir=unit_dir)
+
+    assert link.is_symlink()
+    assert not referent.exists()
+
+
+@pytest.mark.parametrize("kind", ["foreign", "dangling_symlink"])
+def test_remove_user_services_preflights_every_unit_before_mutation(
+    tmp_path: Path,
+    kind: str,
+) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    server = unit_dir / SERVER_UNIT
+    original = MANAGED_MARKER + "\n[Service]\nExecStart=/bin/true\n"
+    server.write_text(original, encoding="utf-8")
+    optional = unit_dir / TUNNEL_UNIT
+    if kind == "foreign":
+        optional.write_text("[Service]\nExecStart=/bin/false\n", encoding="utf-8")
+    else:
+        optional.symlink_to(tmp_path / "unresolved")
+    systemctl = FakeSystemctl()
+
+    with pytest.raises(AutostartError, match="not managed|unit path is unsafe"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+
+    assert server.read_text(encoding="utf-8") == original
+    assert optional.is_symlink() if kind == "dangling_symlink" else optional.is_file()
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
+
+
+def test_systemd_user_status_does_not_create_absent_unit_tree(
+    tmp_path: Path,
+) -> None:
+    """Read-only inspection must never bootstrap files or call systemctl."""
+    unit_dir = tmp_path / "uncreated" / "units"
+    systemctl = FakeSystemctl()
+
+    rows = user_service_status(unit_dir=unit_dir, runner=systemctl)
+
+    assert len(rows) == len(autostart_module.KNOWN_UNITS)
+    assert all(not row.installed and not row.enabled and not row.active for row in rows)
+    assert not unit_dir.exists()
+    assert not unit_dir.parent.exists()
+    assert systemctl.calls == []
+
+
+@pytest.mark.parametrize("target_type", ["file", "symlink", "dangling_symlink"])
+def test_systemd_user_status_rejects_unsafe_unit_dir_without_writes(
+    tmp_path: Path,
+    target_type: str,
+) -> None:
+    """Foreign entries cannot be overwritten or silently reclassified."""
+    unit_dir = tmp_path / "units"
+    referent = tmp_path / "referent"
+    if target_type == "file":
+        unit_dir.write_text("foreign", encoding="utf-8")
+    elif target_type == "symlink":
+        referent.mkdir()
+        unit_dir.symlink_to(referent, target_is_directory=True)
+    else:
+        unit_dir.symlink_to(referent, target_is_directory=True)
+    systemctl = FakeSystemctl()
+
+    with pytest.raises(AutostartError, match="unit directory is unavailable"):
+        user_service_status(unit_dir=unit_dir, runner=systemctl)
+
+    assert systemctl.calls == []
+    if target_type == "file":
+        assert unit_dir.read_text(encoding="utf-8") == "foreign"
+    else:
+        assert unit_dir.is_symlink()
+        assert unit_dir.readlink() == referent
+        assert not (referent / SERVER_UNIT).exists()
+
+
+def test_systemd_user_status_rejects_dangling_unit_symlink_without_writes(
+    tmp_path: Path,
+) -> None:
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    link = unit_dir / SERVER_UNIT
+    referent = tmp_path / "foreign"
+    link.symlink_to(referent)
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="unit path is unsafe"):
+        user_service_status(unit_dir=unit_dir, runner=systemctl)
+    assert link.is_symlink()
+    assert not referent.exists()
+    # The read-only status may probe the user manager; it never modifies it.
+    assert all("--now" not in command for command in systemctl.calls)
+
+
+def test_systemd_user_status_does_not_misreport_down_when_session_bus_unreachable(
+    tmp_path: Path,
+) -> None:
+    """`sudo -iu` may have unit files but no XDG_RUNTIME_DIR/user bus."""
+
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    (unit_dir / SERVER_UNIT).write_text(MANAGED_MARKER + "\n")
+    (unit_dir / SERVER_UNIT).chmod(0o600)
+
+    class DisconnectedSystemd(FakeSystemctl):
+        def __call__(self, argv, **kwargs):
+            super().__call__(argv, **kwargs)
+            if argv[2:] == ["show-environment"]:
+                return subprocess.CompletedProcess(argv, 1, "", "private session error")
+            raise AssertionError("Must fail closed before reading per-unit states")
+
+    systemctl = DisconnectedSystemd()
+    with pytest.raises(AutostartError, match="user manager is unreachable"):
+        user_service_status(unit_dir=unit_dir, runner=systemctl)
+    assert systemctl.calls == [["systemctl", "--user", "show-environment"]]
+
+
+def test_systemd_user_status_can_report_genuinely_disabled_services(
+    tmp_path: Path,
+) -> None:
+    """An accessible user manager may correctly report an inactive unit."""
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    (unit_dir / SERVER_UNIT).write_text(MANAGED_MARKER + "\n")
+    (unit_dir / SERVER_UNIT).chmod(0o600)
+
+    systemctl = FakeSystemctl()
+    rows = user_service_status(unit_dir=unit_dir, runner=systemctl)
+    server = next(row for row in rows if row.component == "server")
+
+    assert server.installed
+    assert not server.enabled
+    assert not server.active
+    assert systemctl.calls[0] == ["systemctl", "--user", "show-environment"]
+
+# Fixed source-only A7 handoff; no service, timer, update or restart is triggered.
+_OLD_QUALIFICATION_LAUNCHER = (
+    "/home/fixture/.local/share/runner-mcp-candidates/"
+    "0.1.38-old/bin/runner-mcp"
+)
+_NEW_QUALIFICATION_LAUNCHER = (
+    "/home/fixture/.local/share/runner-mcp-candidates/"
+    "0.1.131-new/install/venv/bin/runner-mcp"
+)
+
+
+def _qualification_override() -> bytes:
+    return (
+        "# old private override remains untouched\n"
+        "[Service]\n"
+        "ExecStart=\n"
+        "ExecStart=" + _OLD_QUALIFICATION_LAUNCHER
+        + " --config-dir /home/fixture/.config/runner-mcp"
+        + " fabric-agent-qualification run\n"
+    ).encode()
+
+
+def _plan_qualification_override(original: bytes, **kwargs):
+    digest = hashlib.sha256(original).hexdigest() if type(original) is bytes else "0" * 64
+    return plan_qualification_override_swap(
+        original_override=original,
+        expected_original_sha256=kwargs.get("expected_original_sha256", digest),
+        original_launcher=kwargs.get(
+            "original_launcher", _OLD_QUALIFICATION_LAUNCHER
+        ),
+        candidate_launcher=kwargs.get(
+            "candidate_launcher", _NEW_QUALIFICATION_LAUNCHER
+        ),
+    )
+
+
+def test_qualification_override_plan_exact_bytes_reversible_without_activation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    original = _qualification_override()
+    # Prove an in-memory-only plan: any attempted filesystem/service action is a defect.
+    def forbidden(*args, **kwargs):
+        raise AssertionError("planner must not perform any host operation")
+
+    monkeypatch.setattr(autostart_module.subprocess, "run", forbidden)
+    plan = _plan_qualification_override(original)
+    assert plan.original_override == original
+    assert plan.original_sha256 == hashlib.sha256(original).hexdigest()
+    assert plan.candidate_sha256 == hashlib.sha256(plan.candidate_override).hexdigest()
+    assert plan.change_scope == "one_fixed_execstart_executable"
+    assert plan.candidate_override.count(b"ExecStart=") == 2
+    assert plan.candidate_override == original.replace(
+        _OLD_QUALIFICATION_LAUNCHER.encode(),
+        _NEW_QUALIFICATION_LAUNCHER.encode(),
+        1,
+    )
+    assert plan.candidate_override.replace(
+        _NEW_QUALIFICATION_LAUNCHER.encode(),
+        _OLD_QUALIFICATION_LAUNCHER.encode(),
+        1,
+    ) == original
+    assert plan.activation_authorized is False
+    assert plan.rollback_verified is False
+    assert not list(tmp_path.iterdir())
+
+
+@pytest.mark.parametrize(
+    "mutation",
+    [
+        lambda s: s.replace(b"ExecStart=\n", b""),
+        lambda s: s.replace(b"ExecStart=\n", b"ExecStart=\nExecStart=\n"),
+        lambda s: s.replace(b"[Service]\n", b"[Service]\nEnvironment=X=y\n"),
+        lambda s: s.replace(b"[Service]\n", b"[Install]\n"),
+        lambda s: s.replace(b"fabric-agent-qualification run", b"server run"),
+        lambda s: s.replace(b" --config-dir ", b" --config-dir /other --config-dir "),
+        lambda s: s.replace(b" fabric-agent-qualification run", b"; restart run"),
+        lambda s: s.replace(b"ExecStart=", b"ExecStartPre=", 1),
+        lambda s: s + b"ExecStart=/bin/sh\n",
+        lambda s: s[:-1],
+        lambda s: s.replace(b"\n", b"\r\n"),
+        lambda s: s + b"\x00",
+        lambda s: s + b"\xff",
+    ],
+)
+def test_qualification_override_plan_rejects_extra_or_unsafe_directives(
+    mutation,
+) -> None:
+    original = mutation(_qualification_override())
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(original)
+
+
+@pytest.mark.parametrize(
+    "bad_launcher",
+    [
+        "runner-mcp",
+        "/home/fixture/../escape/bin/runner-mcp",
+        "/home/fixture//bad/bin/runner-mcp",
+        "/home/fixture/bad;reboot/bin/runner-mcp",
+        "/home/fixture/$HOME/bin/runner-mcp",
+        "/home/fixture/%n/bin/runner-mcp",
+        "/home/fixture/x y/bin/runner-mcp",
+        "/home/fixture/bin/runner-mcp\\nExecStart=/bin/sh",
+        "/home/fixture/bin/runner-mcp-other",
+    ],
+)
+def test_qualification_override_plan_rejects_unqualified_candidate_path(
+    bad_launcher: str,
+) -> None:
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            _qualification_override(), candidate_launcher=bad_launcher
+        )
+
+
+def test_qualification_override_plan_denies_unpinned_or_same_release() -> None:
+    original = _qualification_override()
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            original, expected_original_sha256="0" * 64
+        )
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            original, candidate_launcher=_OLD_QUALIFICATION_LAUNCHER
+        )
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(
+            original, original_launcher=_NEW_QUALIFICATION_LAUNCHER
+        )
+
+
+@pytest.mark.parametrize("invalid", [b"", b"A" * 8193, "text", None])
+def test_qualification_override_plan_requires_bounded_bytes(invalid) -> None:
+    with pytest.raises(AutostartError, match="override plan is unqualified"):
+        _plan_qualification_override(invalid)
+
+
+def test_restart_managed_server_unit_only_fixed_owner_file(
+    tmp_path: Path,
+) -> None:
+    root = tmp_path / "units"
+    root.mkdir()
+    server_unit = root / SERVER_UNIT
+    server_unit.write_text(MANAGED_MARKER + "\n[Service]\n", encoding="utf-8")
+    server_unit.chmod(0o600)
+    runner = FakeSystemctl()
+    restart_managed_server_unit(unit_dir=root, runner=runner)
+    assert runner.calls == [["systemctl", "--user", "restart", SERVER_UNIT]]
+
+
+@pytest.mark.parametrize("foreign", ["marker", "group-writable", "symlink"])
+def test_restart_managed_server_unit_rejects_untrusted_source(
+    tmp_path: Path, foreign: str,
+) -> None:
+    root = tmp_path / "units"
+    root.mkdir()
+    server_unit = root / SERVER_UNIT
+    if foreign == "symlink":
+        other = tmp_path / "elsewhere"
+        other.write_text(MANAGED_MARKER + "\n", encoding="utf-8")
+        server_unit.symlink_to(other)
+    else:
+        server_unit.write_text(
+            "[Service]\nExecStart=/bin/false\n"
+            if foreign == "marker"
+            else MANAGED_MARKER + "\n[Service]\n",
+            encoding="utf-8",
+        )
+        server_unit.chmod(0o660 if foreign == "group-writable" else 0o600)
+    runner = FakeSystemctl()
+    with pytest.raises(AutostartError):
+        restart_managed_server_unit(unit_dir=root, runner=runner)
+    assert runner.calls == []
+
+
+# Source-only compositie voor #866: één cronrol, één statische unit, oude cron als herstel.
+@pytest.mark.parametrize(
+    "component",
+    ("topology-heartbeat", "github-watcher", "completion-watcher",
+     "agent-bus-worker", "fabric-agent-qualification"),
+)
+def test_single_peer_systemd_preview_preserves_other_five_and_rollback(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, component: str,
+) -> None:
+    from runner_mcp.autostart import (
+        AutostartMigrationPlan,
+        SinglePeerSystemdMigrationPreview,
+        plan_single_peer_systemd_migration,
+    )
+    from runner_mcp.cron_autostart import render_cron_block
+
+    executable = tmp_path / "bin" / "runner-mcp"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config_dir = tmp_path / "private"
+    config_dir.mkdir()
+    roles = ("server", "topology-heartbeat", "github-watcher",
+             "completion-watcher", "agent-bus-worker",
+             "fabric-agent-qualification")
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components", lambda _p: roles,
+    )
+    preflight = AutostartMigrationPlan(
+        component=component, state="PLAN_ONLY",
+        reason_code="original_host_and_rollback_not_attested",
+        cron_installed=True, systemd_manager_reachable=True,
+        systemd_units_absent=True,
+    )
+    original = "17 * * * * /usr/bin/true # unrelated\n\n" + "\n".join(
+        render_cron_block(
+            executable=executable, config_dir=config_dir,
+            components=roles, port=8000,
+        )
+    ) + "\n"
+
+    def no_process(*_args, **_kwargs):
+        pytest.fail("source-only proposal must not invoke systemctl/crontab")
+    monkeypatch.setattr(subprocess, "run", no_process)
+
+    plan = plan_single_peer_systemd_migration(
+        preflight=preflight, original_crontab=original,
+        executable=executable, config_dir=config_dir,
+        components=roles, component=component,
+    )
+    assert type(plan) is SinglePeerSystemdMigrationPreview
+    assert plan.component == component
+    assert plan.original_crontab == original
+    assert plan.candidate_crontab.startswith("17 * * * * /usr/bin/true # unrelated\n\n")
+    assert "autostart cron-run " + component not in plan.candidate_crontab
+    assert sum(
+        plan.candidate_crontab.count("autostart cron-run " + role)
+        for role in roles
+    ) == len(roles) - 1
+    assert plan.rollback_crontab_sha256 == hashlib.sha256(
+        original.encode("utf-8")
+    ).hexdigest()
+    assert plan.inactive_unit_name == f"runner-mcp-{component}.service"
+    assert plan.inactive_unit_contents.startswith(MANAGED_MARKER + "\n")
+    assert "Requires=runner-mcp.service" not in plan.inactive_unit_contents
+    assert "[Install]" not in plan.inactive_unit_contents
+    assert (
+        plan.boot_unit_contents
+        == plan.inactive_unit_contents + "\n[Install]\nWantedBy=default.target\n"
+    )
+    assert (
+        f' "autostart" "cron-run" "{component}"'
+        in plan.inactive_unit_contents
+    )
+    assert f' "{component}" "run"' not in plan.inactive_unit_contents
+    assert plan.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+
+def _single_peer_phase_fixture(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+):
+    """Zes onschuldige cronrollen plus vreemde regel; geen subprocess."""
+    from runner_mcp.autostart import (
+        AutostartMigrationPlan,
+        plan_single_peer_systemd_migration,
+    )
+    from runner_mcp.cron_autostart import render_cron_block
+
+    executable = tmp_path / "bin" / "runner-mcp"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config_dir = tmp_path / "private"
+    config_dir.mkdir()
+    roles = ("server", "topology-heartbeat", "github-watcher",
+             "completion-watcher", "agent-bus-worker",
+             "fabric-agent-qualification")
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components", lambda _p: roles,
+    )
+
+    def no_process(*_args, **_kwargs):
+        pytest.fail("M3 checkpoint must not call any external process")
+    monkeypatch.setattr(subprocess, "run", no_process)
+    original = "17 * * * * /usr/bin/true # unrelated\n\n" + "\n".join(
+        render_cron_block(
+            executable=executable, config_dir=config_dir,
+            components=roles, port=8000,
+        )
+    ) + "\n"
+    preflight = AutostartMigrationPlan(
+        component="github-watcher", state="PLAN_ONLY",
+        reason_code="original_host_and_rollback_not_attested",
+        cron_installed=True, systemd_manager_reachable=True,
+        systemd_units_absent=True,
+    )
+    preview = plan_single_peer_systemd_migration(
+        preflight=preflight, original_crontab=original,
+        executable=executable, config_dir=config_dir,
+        components=roles, component="github-watcher",
+    )
+    assert list(tmp_path.rglob("*.service")) == []
+    return preview
+
+
+@pytest.mark.parametrize(
+    ("phase", "cron_state", "unit_state", "enabled", "active",
+     "pid", "lock", "ack"),
+    (
+        ("before_exclusion", "original", None, False, False, 0, False, False),
+        ("ready_to_stage", "candidate", None, False, False, 0, False, False),
+        ("staged_inactive", "candidate", "boot", False, False, 0, False, False),
+        ("new_worker_ack", "candidate", "boot", True, True, 82731, True, True),
+        ("rollback_ready", "candidate", None, False, False, 0, False, False),
+        ("rollback_confirmed", "original", None, False, False, 0, False, False),
+    ),
+)
+def test_single_peer_checkpoint_is_pure_and_never_authorizes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    phase: str, cron_state: str, unit_state: str | None,
+    enabled: bool, active: bool, pid: int, lock: bool, ack: bool,
+) -> None:
+    from runner_mcp.autostart import assess_single_peer_migration_checkpoint
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    crontab = (
+        preview.original_crontab if cron_state == "original"
+        else preview.candidate_crontab
+    )
+    observed_unit = preview.boot_unit_contents if unit_state == "boot" else None
+    result = assess_single_peer_migration_checkpoint(
+        preview=preview, phase=phase, observed_crontab=crontab,
+        observed_unit_contents=observed_unit,
+        unit_enabled=enabled, unit_active=active, main_pid=pid,
+        role_lock_active=lock, new_function_ack=ack,
+    )
+    assert result.consistent is True
+    assert result.reason_code == "checkpoint_consistent_not_authorized"
+    assert result.next_action_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    ("changed", "replacement", "reason"),
+    (
+        ("observed_crontab", "foreign cron changed", "full_crontab_drift"),
+        ("observed_unit_contents", "tampered", "unit_source_drift"),
+        ("unit_enabled", False, "supervisor_state_drift"),
+        ("unit_active", False, "supervisor_state_drift"),
+        ("main_pid", 0, "worker_or_lock_drift"),
+        ("role_lock_active", False, "worker_or_lock_drift"),
+        ("new_function_ack", False, "functional_ack_unqualified"),
+        ("unit_enabled", "true", "observation_type_unqualified"),
+        ("main_pid", True, "observation_type_unqualified"),
+        ("phase", "unknown", "unknown_checkpoint_phase"),
+    ),
+)
+def test_single_peer_checkpoint_fails_closed_on_drift(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    changed: str, replacement: object, reason: str,
+) -> None:
+    from runner_mcp.autostart import assess_single_peer_migration_checkpoint
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    values: dict[str, object] = {
+        "preview": preview,
+        "phase": "new_worker_ack",
+        "observed_crontab": preview.candidate_crontab,
+        "observed_unit_contents": preview.boot_unit_contents,
+        "unit_enabled": True,
+        "unit_active": True,
+        "main_pid": 82731,
+        "role_lock_active": True,
+        "new_function_ack": True,
+    }
+    if changed == "observed_crontab":
+        replacement = preview.candidate_crontab.replace(
+            "17 * * * * /usr/bin/true # unrelated",
+            "17 * * * * /usr/bin/true # changed-by-other-owner",
+        )
+    values[changed] = replacement
+    result = assess_single_peer_migration_checkpoint(**values)
+    assert result.consistent is False
+    assert result.reason_code == reason
+    assert result.next_action_authorized is False
+
+
+def test_single_peer_checkpoint_rejects_mutated_preview(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from dataclasses import replace
+
+    from runner_mcp.autostart import assess_single_peer_migration_checkpoint
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    foreign_cron_change = preview.candidate_crontab.replace(
+        "17 * * * * /usr/bin/true # unrelated",
+        "17 * * * * /usr/bin/true # altered",
+    )
+    # Een kwaad of per ongeluk gewijzigd voorstel kan anders de waarneming
+    # zelf laten aansluiten op een foutieve 5-rollen-crontab.
+    alternate_role = next(
+        line + "\n" for line in preview.original_crontab.splitlines()
+        if "autostart cron-run completion-watcher" in line
+    )
+    changed_role = preview.original_crontab.replace(alternate_role, "")
+    assert changed_role != preview.candidate_crontab
+    for candidate in (
+        replace(preview, boot_unit_contents=preview.boot_unit_contents + "x"),
+        replace(preview, rollback_crontab_sha256="0" * 64),
+        replace(preview, cutover_authorized=True),
+        replace(preview, candidate_crontab=foreign_cron_change),
+        replace(preview, candidate_crontab=changed_role),
+        replace(preview, candidate_crontab=preview.original_crontab + "x"),
+    ):
+        result = assess_single_peer_migration_checkpoint(
+            preview=candidate, phase="before_exclusion",
+            observed_crontab=preview.original_crontab,
+            observed_unit_contents=None,
+            unit_enabled=False, unit_active=False, main_pid=0,
+            role_lock_active=False, new_function_ack=False,
+        )
+        assert result.reason_code == "preview_untrusted_or_drifted"
+        assert result.consistent is False
+        assert result.next_action_authorized is False
+
+
+@pytest.mark.parametrize(
+    "variant",
+    ("wait", "wrong-role", "unknown-role", "server", "tunnel",
+     "missing-cron", "foreign-duplicate", "wrong-exe", "unit-missing",
+     "manager-unavailable", "changed-port", "unlocked-exec"),
+)
+def test_single_peer_systemd_preview_rejects_unsafe_scope(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, variant: str,
+) -> None:
+    from runner_mcp.autostart import (
+        AutostartError,
+        AutostartMigrationPlan,
+        plan_single_peer_systemd_migration,
+    )
+    from runner_mcp.cron_autostart import render_cron_block
+
+    executable = tmp_path / "bin" / "runner-mcp"
+    executable.parent.mkdir()
+    executable.write_text("#!/bin/sh\nexit 0\n", encoding="utf-8")
+    executable.chmod(0o700)
+    config_dir = tmp_path / "private"
+    config_dir.mkdir()
+    roles = ("server", "github-watcher", "completion-watcher")
+    selected = "github-watcher"
+    managed = "\n".join(render_cron_block(
+        executable=executable, config_dir=config_dir,
+        components=roles, port=8000,
+    )) + "\n"
+    monkeypatch.setattr(
+        autostart_module, "configured_autostart_components", lambda _p: roles,
+    )
+    kwargs = {
+        "preflight": AutostartMigrationPlan(
+            component=selected, state="PLAN_ONLY",
+            reason_code="original_host_and_rollback_not_attested",
+            cron_installed=True, systemd_manager_reachable=True,
+            systemd_units_absent=True,
+        ),
+        "original_crontab": managed,
+        "executable": executable,
+        "config_dir": config_dir,
+        "components": roles,
+        "component": selected,
+        "port": 8000,
+    }
+    if variant in ("wait", "manager-unavailable"):
+        kwargs["preflight"] = AutostartMigrationPlan(
+            component=selected, state="WAIT",
+            reason_code="systemd_user_manager_unreachable",
+            cron_installed=True, systemd_manager_reachable=False,
+            systemd_units_absent=True,
+        )
+    elif variant == "wrong-role":
+        kwargs["preflight"] = AutostartMigrationPlan(
+            component="completion-watcher", state="PLAN_ONLY",
+            reason_code="original_host_and_rollback_not_attested",
+            cron_installed=True, systemd_manager_reachable=True,
+            systemd_units_absent=True,
+        )
+    elif variant == "unknown-role":
+        kwargs["component"] = "invented"
+    elif variant == "server":
+        kwargs["component"] = "server"
+    elif variant == "tunnel":
+        kwargs["component"] = "tunnel"
+    elif variant == "missing-cron":
+        kwargs["original_crontab"] = managed.replace(
+            next(line + "\n" for line in managed.splitlines()
+                 if "cron-run github-watcher" in line), "",
+        )
+    elif variant == "foreign-duplicate":
+        kwargs["original_crontab"] += (
+            "* * * * * runner-mcp autostart cron-run github-watcher\n"
+        )
+    elif variant == "wrong-exe":
+        kwargs["executable"] = tmp_path / "missing-runner-mcp"
+    elif variant == "unit-missing":
+        monkeypatch.setattr(
+            autostart_module, "configured_autostart_components",
+            lambda _p: ("server", "completion-watcher"),
+        )
+    elif variant == "changed-port":
+        kwargs["port"] = 8123
+    elif variant == "unlocked-exec":
+        original_renderer = autostart_module.render_inactive_cron_server_peer_unit
+
+        def unlocked_peer(**options):
+            name, contents = original_renderer(**options)
+            return name, contents.replace(
+                ' "autostart" "cron-run" "github-watcher"',
+                ' "github-watcher" "run"',
+            )
+
+        monkeypatch.setattr(
+            autostart_module, "render_inactive_cron_server_peer_unit",
+            unlocked_peer,
+        )
+    with pytest.raises(AutostartError):
+        plan_single_peer_systemd_migration(**kwargs)
+    assert list(tmp_path.rglob("*.service")) == []
+
+@pytest.mark.skipif(sys.platform != "linux", reason="Linux cross-exec flock proof")
+@pytest.mark.parametrize(
+    "component", ("github-watcher", "agent-bus-worker", "fabric-agent-qualification"),
+)
+def test_migration_peer_reuses_real_cron_lock_across_exec(
+    tmp_path: Path, component: str,
+) -> None:
+    """Bewijs echte flock-erfenis door execv zonder een rol te dupliceren.
+
+    Alleen een tijdelijke Linux subprocess met een onschuldige sleep; geen
+    systemd-installatie, echte cron, owner-config of andere externe dienst.
+    """
+    import time
+
+    from runner_mcp.cron_autostart import component_active, run_cron_component
+
+    private = tmp_path / "private"
+    private.mkdir(mode=0o700)
+    executable = tmp_path / "runner-mcp"
+    executable.write_text("#!/bin/sh\nexec sleep 8\n", encoding="utf-8")
+    executable.chmod(0o700)
+    child_code = (
+        "import sys; from pathlib import Path; "
+        "from runner_mcp.cron_autostart import run_cron_component; "
+        "run_cron_component(config_dir=Path(sys.argv[1]), "
+        "executable=Path(sys.argv[2]), component=sys.argv[3])"
+    )
+    child = subprocess.Popen(
+        [sys.executable, "-c", child_code, str(private), str(executable), component],
+        stdin=subprocess.DEVNULL, stdout=subprocess.DEVNULL,
+        stderr=subprocess.DEVNULL,
+    )
+    try:
+        deadline = time.monotonic() + 3
+        while not component_active(private, component) and time.monotonic() < deadline:
+            assert child.poll() is None, "locked worker exited early"
+            time.sleep(0.02)
+        assert component_active(private, component), "execv dropped the shared flock"
+        calls = []
+        assert run_cron_component(
+            config_dir=private, executable=executable, component=component,
+            exec_fn=lambda *_args: calls.append(True),
+        ) == 0
+        assert calls == [], "second launcher executed despite existing worker lock"
+        assert child.poll() is None
+    finally:
+        if child.poll() is None:
+            child.terminate()
+        child.wait(timeout=3)
+    assert component_active(private, component) is False

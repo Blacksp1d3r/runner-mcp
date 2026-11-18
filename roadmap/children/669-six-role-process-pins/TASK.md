@@ -1,0 +1,9 @@
+# #669 — independent six-role process pin comparison (source-only)
+
+Existing `signed_serving_witness_preflight` provides signed **offline** statement consistency, but can match an arbitrary-sized expected roster with signer-supplied unique process_instance fields. It cannot turn an inventory of 3 or 5 roles into evidence for the required real six roles, and it does not compare each process instance against separately supplied owner-trusted expectations.
+
+Implement a narrow wrapper on this existing comparator: require **exactly six** independently specified valid role labels AND independently pinned unique SHA-256 process-instance digests for each role. Reject missing, additional, swapped, repeated or invalid role/process pins; refuse old/wrong signed host, nonce, wheel, source, loaded version, generation and expired proof using the original Ed25519 signed comparator. Return only `six_role_process_pins_consistent_offline` on a complete synthetic match, always `active_build_provenance_verified=false`, `source_revision=null`, `artifact_digest=null`. No private path/role/host IDs in public results, no MCP tool or new signer, credential, relay, updater, read/write host access.
+
+Testing: six independent synthetic roles positive *offline only*, 5-role roster denial, per-role missing/foreign/duplicate/swapped instance, signer statement swapped, stale package/wheel/source/generation, foreign host, nonce, expired signature. Existing general signed statement API/ABI tests unchanged.
+
+**Unqualified:** an independent correct-host signer/custody and fresh nonce issuer; original old 0.1.38 wheel bytes/installed RECORD; actual loaded module bytes/launchers for all six real roles; previous-good immutable six-role escrow; Fabric #1617/#942 physical A6 and #943 offline A7, #1556 original-client durable ACK and #924 attended cutover. This wrapper MUST NOT be wired into `runtime_status` as an active authority or used to invoke source-closed #509.

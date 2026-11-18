@@ -217,3 +217,93 @@ def test_configured_redaction_literals_do_not_appear_in_output() -> None:
     assert secret not in result.text
     assert path not in result.text
     assert "another-private-value" not in result.text
+
+
+@pytest.mark.parametrize(
+    "opaque",
+    [
+        "ghs_" + "a" * 32 + "_" + "b" * 48,
+        "ghs_" + "a" * 32 + "-" + "b" * 48,
+        "ghs_" + "a" * 24 + "/" + "b" * 48 + "=",
+        "ghs_" + "a" * 32 + "." + "b" * 48,
+        "ghr_" + "a" * 32 + "_" + "b" * 48,
+        "ghu_" + "a" * 32 + "-" + "b" * 48,
+        "github_pat_" + "a" * 32 + "_" + "b" * 48,
+    ],
+)
+def test_github_app_stateless_tokens_are_not_partially_exposed(opaque: str) -> None:
+    """No real provider tokens, only synthetic log-like strings."""
+    result = redact("before " + opaque + ", after")
+    assert result.text == "before [REDACTED], after"
+    assert opaque not in result.text
+    assert "b" * 20 not in result.text
+
+
+def test_long_stateless_token_redacted_before_input_byte_truncation() -> None:
+    opaque = "ghs_" + "a" * 45 + "_" + "b" * 45
+    result = redact(
+        ("x" * 60) + " " + opaque,
+        max_input_bytes=68,
+        max_output_bytes=256,
+    )
+    assert result.input_truncated is True
+    assert "ghs_" not in result.text
+    assert "a" * 16 not in result.text
+    assert "b" * 16 not in result.text
+    assert "[INPUT TRUNCATED BY RUNNER MCP]" in result.text
+
+
+def test_non_secret_short_github_like_text_preserved() -> None:
+    result = redact("note ghs_example benign")
+    assert result.text == "note ghs_example benign"
+
+
+@pytest.mark.parametrize(
+    "wrapper",
+    [
+        "{token}",
+        "Authorization: Bearer {token}",
+        "log-token={token}",
+        "https://example.invalid/?token={token}",
+        "prefix [{token}] suffix",
+    ],
+)
+def test_stateless_github_app_long_jwt_masked_in_log_wrappers(
+    wrapper: str,
+) -> None:
+    # Synthetic APPID/JWT shape; never insert a live credential in fixtures.
+    token = "ghs_123456_" + ("a" * 128) + "." + ("b" * 128) + "." + ("c" * 250)
+    assert len(token) > 510
+    result = redact(
+        wrapper.format(token=token),
+        max_input_bytes=256,
+        max_output_bytes=256,
+    )
+    assert token not in result.text
+    assert "ghs_123456" not in result.text
+    assert "a" * 32 not in result.text
+    assert "b" * 32 not in result.text
+    assert "c" * 32 not in result.text
+    assert "[REDACTED]" in result.text
+
+
+def test_stateless_github_app_long_token_does_not_leak_when_output_is_short() -> None:
+    token = "ghs_42_" + "a" * 180 + "." + "b" * 180 + "." + "c" * 180
+    result = redact(
+        ("diagnostic " * 30) + token + " after",
+        max_input_bytes=256,
+        max_output_bytes=96,
+    )
+    assert token not in result.text
+    assert "ghs_42" not in result.text
+    assert "a" * 20 not in result.text
+    assert "b" * 20 not in result.text
+    assert "c" * 20 not in result.text
+    assert len(result.text.encode("utf-8")) <= 96
+
+
+@pytest.mark.parametrize("nonsecret", ["ghs_example benign", "ghs_ab short", "neighbor_ghs_" + "x" * 30])
+def test_stateless_token_regression_preserves_short_or_embedded_benign_text(
+    nonsecret: str,
+) -> None:
+    assert redact(nonsecret).text == nonsecret

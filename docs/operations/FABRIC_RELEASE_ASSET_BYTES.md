@@ -1,0 +1,9 @@
+# Source-only fixed GitHub Release asset-byte verifier — #739
+
+The helper `runner_mcp.fabric_release_asset_bytes.fetch_pinned_asset_bytes` is **inert source code**, not an exposed tool, CLI import or approved release installer. It is built for one bounded next step in the owner-private offline bundle chain. It accepts no user-selected repository/host/path/URL and cannot write to disk or execute commands.
+
+Parameters: operator-held (never logged) private GitHub API bearer, exact positive numeric asset ID, fixed expected size <=64 MiB, and a **separately trusted** lowercase 64-character SHA256 digest; a test-only optional opener. None of the caller-provided fields independently authenticate an asset; upstream must establish signed source/manifest and exact release-ID/asset roster. The returned verified bytes are in memory only.
+
+Default transport refuses environment HTTP proxies and auto redirects. First request is HTTPS to fixed GitHub REST asset ID with authorization. A direct 200 is streamed in bounded chunks; exactly one 302 to HTTPS `release-assets.githubusercontent.com` is allowed with a fresh token-free GET. All other location hosts, schemes, ports, userinfo, fragments and subsequent redirects deny. Checked bytes and reported Content-Length (when present) must match the independent size pin; constant-time SHA256 digest comparison denies corruption.
+
+**Current limitations:** This step does not authenticate the independent signer/publisher, require full exactly-33 asset transfer, verify BUNDLE.json/COMMIT_SHA/SHA256SUMS or wheel metadata, persist or atomically retain bytes, enforce replay/rollback or grant host authorization. The actual GitHub 302 target has not been independently tested with a legitimate private token; a different GitHub host will fail closed until explicitly qualified. Physical host/custody/installer/ACK remain WAIT. No protected source release or customer outcome may be claimed from isolated tests.

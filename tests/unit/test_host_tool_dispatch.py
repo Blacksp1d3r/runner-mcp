@@ -166,3 +166,115 @@ def test_wrong_actual_schema_digest_never_runs_tool():
         asyncio.run(mcp.call_tool("write_test", {}))
     assert observed["count"] == 0
     assert sink.events[0].result == "denied:runtime_generation_mismatch"
+
+
+@pytest.mark.parametrize("rotation", ["revoked", "foreign_host", "new_revision", "replaced_policy"])
+def test_private_owner_rotation_while_schema_awaits_denies_before_handler(rotation):
+    sink = AuditSink()
+    observed = {"calls": 0}
+    owner = {"asset": ASSET, "revision": REV, "policy": _policy()}
+
+    def private_owner():
+        return HostDispatchEvidence(
+            owner["asset"],
+            owner["revision"],
+            owner["policy"],
+        )
+
+    async def schema_observer(_):
+        # This await represents an async catalogue/schema observation. The
+        # external owner can revoke/rotate facts during this interruption.
+        await asyncio.sleep(0)
+        if rotation == "revoked":
+            owner["policy"] = None
+        elif rotation == "foreign_host":
+            owner["asset"] = "service:foreign"
+        elif rotation == "new_revision":
+            owner["revision"] = "c" * 40
+        else:
+            owner["policy"] = replace(_policy(), expires_at_epoch=int(time()) + 7200)
+        return SCHEMA
+
+    mcp = HostAdmissionMCPServer(
+        "rotating-owner",
+        evidence_provider=private_owner,
+        schema_digest_provider=schema_observer,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test() -> str:
+        observed["calls"] += 1
+        return "must-not-write"
+
+    with pytest.raises(ToolError, match="^HOST_TOOL_NOT_PERMITTED$"):
+        asyncio.run(mcp.call_tool("write_test", {}))
+    assert observed["calls"] == 0
+    assert len(sink.events) == 1
+    assert sink.events[0].result == "denied:host_admission_evidence_changed"
+
+
+def test_private_owner_second_observation_unavailable_denies_before_handler():
+    sink = AuditSink()
+    observed = {"calls": 0}
+    seen = {"observations": 0}
+
+    def transient_owner():
+        seen["observations"] += 1
+        if seen["observations"] == 2:
+            raise OSError("private/owner/secret/must-not-leak")
+        return HostDispatchEvidence(ASSET, REV, _policy())
+
+    async def schema_observer(_):
+        await asyncio.sleep(0)
+        return SCHEMA
+
+    mcp = HostAdmissionMCPServer(
+        "lost-owner",
+        evidence_provider=transient_owner,
+        schema_digest_provider=schema_observer,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test() -> str:
+        observed["calls"] += 1
+        return "must-not-write"
+
+    with pytest.raises(ToolError, match="^HOST_TOOL_NOT_PERMITTED$") as exc:
+        asyncio.run(mcp.call_tool("write_test", {}))
+    assert seen["observations"] == 2
+    assert observed["calls"] == 0
+    assert len(sink.events) == 1
+    assert sink.events[0].result == "denied:host_admission_evidence_unavailable"
+    assert "private/owner" not in str(exc.value)
+
+
+def test_unchanged_private_owner_rechecked_twice_before_one_execution():
+    sink = AuditSink()
+    seen = {"observations": 0, "executions": 0}
+    stable = HostDispatchEvidence(ASSET, REV, _policy())
+
+    def private_owner():
+        seen["observations"] += 1
+        return stable
+
+    async def schema_observer(_):
+        await asyncio.sleep(0)
+        return SCHEMA
+
+    mcp = HostAdmissionMCPServer(
+        "stable-owner",
+        evidence_provider=private_owner,
+        schema_digest_provider=schema_observer,
+        audit=sink,
+    )
+
+    @mcp.tool()
+    def write_test() -> str:
+        seen["executions"] += 1
+        return "complete"
+
+    assert asyncio.run(mcp.call_tool("write_test", {}))
+    assert seen == {"observations": 2, "executions": 1}
+    assert sink.events == []

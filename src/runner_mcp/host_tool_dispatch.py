@@ -67,15 +67,26 @@ class HostAdmissionMCPServer(MCPServer):
             actual_schema = await self._host_admission_digest_provider(self)
             if type(actual_schema) is not str:
                 raise ValueError("live schema digest unavailable")
-            verdict = evaluate_host_tool_admission(
-                name,
-                registered_tool_names=names,
-                verified_service_asset_id=evidence.verified_service_asset_id,
-                runtime_source_revision=evidence.runtime_source_revision,
-                runtime_interface_schema_sha256=actual_schema,
-                policy=evidence.policy,
-                now_epoch=int(time()),
-            )
+            # list_tools() and the digest provider can await I/O. A first-party
+            # owner/lease/policy generation may change while awaiting them.
+            # Read the private witness again immediately before dispatch.
+            latest = self._host_admission_evidence_provider()
+            if type(latest) is not HostDispatchEvidence:
+                raise ValueError("post-schema private evidence unavailable")
+            if latest != evidence:
+                verdict = HostToolAdmission(
+                    False, "host_admission_evidence_changed", "HOST_TOOL_NOT_PERMITTED"
+                )
+            else:
+                verdict = evaluate_host_tool_admission(
+                    name,
+                    registered_tool_names=names,
+                    verified_service_asset_id=latest.verified_service_asset_id,
+                    runtime_source_revision=latest.runtime_source_revision,
+                    runtime_interface_schema_sha256=actual_schema,
+                    policy=latest.policy,
+                    now_epoch=int(time()),
+                )
         except Exception:  # noqa: BLE001 - untrusted private evidence must fail closed
             # No sensitive exception values, source paths or policy data leak.
             verdict = HostToolAdmission(

@@ -14,6 +14,15 @@ schema digest via `runner_mcp_interface_schema_digest`, and uses an in-process
 clock rather than any caller-supplied timestamp. A mismatch or missing
 authority returns fixed `HOST_TOOL_NOT_PERMITTED` and writes one existing
 `AuditEvent` with the bounded reason. Audit failure never permits execution.
+An async tool-catalogue or schema read may overlap a private owner/policy
+rotation. The guarded SDK dispatch therefore re-observes the same internal
+first-party evidence provider after those awaits and compares the complete
+host/policy/revision facts before calling the original tool handler. A
+revoked/replaced permit, changed host/loaded revision or failed second read
+remains denied and audited (no side effects). This is NOT a kernel-atomic
+lease, a signature, or independent physical provenance: only a bounded
+recheck before this single SDK dispatch.
+
 A positive oracle result does not bypass OperatorSafetyGuard, approvals,
 leases, emergency stop, project allowlists or A7.
 

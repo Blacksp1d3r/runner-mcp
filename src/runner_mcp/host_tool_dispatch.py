@@ -67,29 +67,45 @@ class HostAdmissionMCPServer(MCPServer):
             # Derived from THIS registered SDK catalogue, not the policy or client.
             actual_tools = await self.list_tools()
             names = frozenset(tool.name for tool in actual_tools)
+            original_catalogue = sorted(
+                (tool.name, tool.input_schema, tool.output_schema)
+                for tool in actual_tools
+            )
             actual_schema = await self._host_admission_digest_provider(self)
             if type(actual_schema) is not str:
                 raise ValueError("live schema digest unavailable")
-            # list_tools() and the digest provider can await I/O. A first-party
-            # owner/lease/policy generation may change while awaiting them.
-            # Read the private witness again immediately before dispatch.
-            latest = self._host_admission_evidence_provider()
-            if type(latest) is not HostDispatchEvidence:
-                raise ValueError("post-schema private evidence unavailable")
-            if latest != evidence:
+            # The schema provider may await a SECOND SDK list_tools call.
+            # Do not combine names from one tool generation with a digest
+            # from another. This recheck also happens before owner re-read.
+            latest_tools = await self.list_tools()
+            latest_catalogue = sorted(
+                (tool.name, tool.input_schema, tool.output_schema)
+                for tool in latest_tools
+            )
+            if latest_catalogue != original_catalogue:
+                names = frozenset()  # Do not log any unqualified tool name.
                 verdict = HostToolAdmission(
-                    False, "host_admission_evidence_changed", "HOST_TOOL_NOT_PERMITTED"
+                    False, "host_tool_catalogue_changed", "HOST_TOOL_NOT_PERMITTED"
                 )
             else:
-                verdict = evaluate_host_tool_admission(
-                    name,
-                    registered_tool_names=names,
-                    verified_service_asset_id=latest.verified_service_asset_id,
-                    runtime_source_revision=latest.runtime_source_revision,
-                    runtime_interface_schema_sha256=actual_schema,
-                    policy=latest.policy,
-                    now_epoch=int(time()),
-                )
+                # A first-party owner or lease may change across these awaits.
+                latest = self._host_admission_evidence_provider()
+                if type(latest) is not HostDispatchEvidence:
+                    raise ValueError("post-schema private evidence unavailable")
+                if latest != evidence:
+                    verdict = HostToolAdmission(
+                        False, "host_admission_evidence_changed", "HOST_TOOL_NOT_PERMITTED"
+                    )
+                else:
+                    verdict = evaluate_host_tool_admission(
+                        name,
+                        registered_tool_names=names,
+                        verified_service_asset_id=latest.verified_service_asset_id,
+                        runtime_source_revision=latest.runtime_source_revision,
+                        runtime_interface_schema_sha256=actual_schema,
+                        policy=latest.policy,
+                        now_epoch=int(time()),
+                    )
         except Exception:  # noqa: BLE001 - untrusted private evidence must fail closed
             # No sensitive exception values, source paths or policy data leak.
             verdict = HostToolAdmission(

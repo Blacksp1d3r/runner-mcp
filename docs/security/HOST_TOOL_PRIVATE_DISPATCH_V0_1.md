@@ -65,3 +65,25 @@ tests exercise a client-injected synthetic sensitive marker, absent policy
 and failed evidence provider. No secret or path ever becomes a policy input or
 new feature. This patch is not a replacement for the unmerged #669 original
 host/wheel witness, independent signed permit or deployment approval.
+
+## v0.1.179 — SDK tool-catalogue generation recheck
+
+The private guard reads `list_tools()` for the allowed names, then obtains
+the interface-schema digest from a provider which itself may read
+`list_tools()` again. A concurrent tool registration or tool schema change
+could otherwise combine names and schema from *different* SDK generations in
+one policy decision.
+
+After the digest provider returns, the guard now takes a second SDK tool
+snapshot and compares canonical `(name, input_schema, output_schema)` tuples
+against the initial one. Any discrepancy rejects the whole invocation as
+`host_tool_catalogue_changed`, records the generic `unknown_tool` audit
+identity and returns fixed `HOST_TOOL_NOT_PERMITTED` before the handler.
+If unchanged, it proceeds to the existing private owner/policy second read
+and original admission logic. Synthetic tests cover name replacement,
+input-schema drift and stable catalogue/authorized execution.
+
+This is a conservative application-level readback, **not** an atomic
+registry lock, process-generation seal, or qualified signed host permit.
+#669's original wheel/host attestation and A7 owner gate remain separate;
+no existing production service enables the private host guard.

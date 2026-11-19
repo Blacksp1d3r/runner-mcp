@@ -61,6 +61,7 @@ from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyError,
 )
 from .bounded_status_read import bounded_status_object
+from .incus_acl_cleanup_transport import revoke_fixed_incus_qualification_acl
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
@@ -1534,6 +1535,26 @@ def build_mcp(
                 "runner-fabric:disposable-target",
                 "authenticated-client",
                 "qualified",
+                utc_timestamp(),
+            )
+        )
+        return result
+
+    @mcp.tool()
+    def incus_qualification_acl_revoke() -> dict:
+        """Revoke only the installed fixed temporary Incus qualification ACL.
+
+        The root-owned helper and one exact sudo invocation must be
+        independently installed/authorized; no arbitrary root command.
+        """
+        result = revoke_fixed_incus_qualification_acl()
+        audit.append(
+            AuditEvent(
+                current_request_id(),
+                "incus_qualification_acl_revoke",
+                "incus:fixed-qualification-socket",
+                "authenticated-client",
+                str(result["state"]),
                 utc_timestamp(),
             )
         )

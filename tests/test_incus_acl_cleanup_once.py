@@ -73,18 +73,18 @@ def test_unknown_acl_never_admits_revoke(bad):
     {"socket": mod.SocketEvidence(13, 0, 0, 789, 0o660, True, 1)},
 ])
 def test_host_root_and_socket_generation_are_required(overrides):
-    args = dict(binding=BINDING, host="lab-example", caller_euid=0,
-                socket=SOCKET, acl_text=GRANT)
+    args = {"binding": BINDING, "host": "lab-example", "caller_euid": 0,
+            "socket": SOCKET, "acl_text": GRANT}
     args.update(overrides)
     with pytest.raises(mod.CleanupStop):
         mod.plan_cleanup(**args)
 
 
 def test_private_config_rejects_smuggled_fields(monkeypatch):
-    base = dict(schema=mod._SCHEMA, host_short="lab-example",
-                owner_name="worker-example", owner_uid=1234, owner_gid=1234,
-                socket_path="/example/incus.socket", socket_gid=789,
-                installed_sha256=BINDING.installed_sha256)
+    base = {"schema": mod._SCHEMA, "host_short": "lab-example",
+            "owner_name": "worker-example", "owner_uid": 1234, "owner_gid": 1234,
+            "socket_path": "/example/incus.socket", "socket_gid": 789,
+            "installed_sha256": BINDING.installed_sha256}
     monkeypatch.setattr(mod.pwd, "getpwnam", lambda name: SimpleNamespace(
         pw_uid=1234, pw_gid=1234))
     for payload in [

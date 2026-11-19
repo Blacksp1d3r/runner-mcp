@@ -61,7 +61,6 @@ from .bewind_worker_qualification_policy import (
     BewindWorkerQualificationPolicyError,
 )
 from .bounded_status_read import bounded_status_object
-from .incus_acl_cleanup_transport import revoke_fixed_incus_qualification_acl
 from .build_identity import (
     BuildIdentity,
     bounded_build_identity_payload,
@@ -166,6 +165,7 @@ from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
 from .host_tool_dispatch import HostAdmissionMCPServer, HostDispatchEvidence
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
+from .incus_acl_cleanup_transport import revoke_fixed_incus_qualification_acl
 from .known_project_catalog import (
     KnownProjectRegistrationError,
     resolve_known_project_github_token,

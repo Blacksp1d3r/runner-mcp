@@ -869,6 +869,12 @@ def assess_single_peer_migration_checkpoint(
         "ready_to_stage": ("candidate", "absent", False, False, False, False, False),
         "staged_inactive": ("candidate", "boot", False, False, False, False, False),
         "new_worker_ack": ("candidate", "boot", True, True, True, True, True),
+        # Na een crash kan de unit enabled zijn zonder actieve PID, lock of ACK.
+        # Het faseoordeel laat nooit automatisch herstellen of activeren.
+        "peer_failed_idle": ("candidate", "boot", True, False, False, False, False),
+        # Crash/onderbreking ná succesvolle disable maar vóór unlink.
+        # De unit bestaat exact, maar mag geen herstart, PID of lock hebben.
+        "peer_disabled_idle": ("candidate", "boot", False, False, False, False, False),
         "rollback_ready": ("candidate", "absent", False, False, False, False, False),
         "rollback_confirmed": ("original", "absent", False, False, False, False, False),
     }
@@ -894,6 +900,302 @@ def assess_single_peer_migration_checkpoint(
         phase=phase,
         consistent=True,
         reason_code="checkpoint_consistent_not_authorized",
+    )
+
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerMixedBackendStatus:
+    """Alleen-lezen M3-eigenaarschap; nooit een installer-/reconcilevergunning.
+
+    Consistentie betekent uitsluitend dat de aangeleverde cron-/unitinventaris
+    strookt met een eerder vastgelegd éénrolsbronvoorstel en fasecheckpoint.
+    Het bewijst geen originele host, werkende taak, herstart of A7-herstel.
+    """
+
+    consistent: bool
+    reason_code: str
+    selected_systemd_role: str | None = None
+    remaining_cron_roles: tuple[str, ...] = ()
+    generic_reconcile_authorized: bool = False
+    cutover_authorized: bool = False
+
+
+def assess_single_peer_mixed_backend_status(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[object, ...],
+) -> SinglePeerMixedBackendStatus:
+    """Controleer één systemd-peer naast de overige exact beheerde cronrollen.
+
+    Hergebruik de bestaande volledige cron-/unitbron- en flockcheckpointcheck.
+    Controleer aanvullend alle vaste rolclaims, niet alleen de geselecteerde
+    rol. Deze functie leest geen host, crontab of filesystem en schrijft niets.
+    De algemene install/reconcile/remove-actuatoren blijven expliciet verboden
+    in mixed mode, ook na een intern consistent oordeel.
+    """
+    from .cron_autostart import (
+        CRON_BEGIN,
+        CRON_COMPONENTS,
+        CRON_END,
+        CronAutostartError,
+        CronComponentStatus,
+        render_cron_block,
+    )
+
+    def wait(reason: str) -> SinglePeerMixedBackendStatus:
+        return SinglePeerMixedBackendStatus(consistent=False, reason_code=reason)
+
+    if phase not in (
+        "staged_inactive", "new_worker_ack", "peer_failed_idle",
+        "peer_disabled_idle", "rollback_ready", "rollback_confirmed",
+    ):
+        return wait("mixed_phase_not_observed")
+    checkpoint = assess_single_peer_migration_checkpoint(
+        preview=preview,
+        phase=phase,
+        observed_crontab=observed_crontab,
+        observed_unit_contents=observed_unit_contents,
+        unit_enabled=unit_enabled,
+        unit_active=unit_active,
+        main_pid=main_pid,
+        role_lock_active=role_lock_active,
+        new_function_ack=new_function_ack,
+    )
+    if not checkpoint.consistent:
+        return wait(checkpoint.reason_code)
+
+    # Het originele volledige cronblok is de enige rol-authority in dit
+    # broncontract. Een los meegegeven rollenlijst zou vervalst kunnen zijn.
+    original = preview.original_crontab.splitlines()
+    if original.count(CRON_BEGIN) != 1 or original.count(CRON_END) != 1:
+        return wait("original_managed_block_unqualified")
+    first, last = original.index(CRON_BEGIN), original.index(CRON_END)
+    if first >= last:
+        return wait("original_managed_block_unqualified")
+    # Het renderercontract laat alleen MAILTO="" gevolgd door exacte
+    # cron-run-regels toe. Een extra PATH-/SHELL-/MAILTO-toewijzing of een
+    # verborgen tweede job in het beheerde blok mag niet worden genegeerd,
+    # zelfs niet wanneer bron en kandidaat dezelfde vervalsing bevatten.
+    body = original[first + 1:last]
+    if (
+        len(body) < 3
+        or body[0] != 'MAILTO=""'
+        or any(not line.startswith("* * * * * ") for line in body[1:])
+    ):
+        return wait("original_managed_block_unqualified")
+    roles: list[str] = []
+    executable: str | None = None
+    config_dir: str | None = None
+    port: int | None = None
+    for line in body[1:]:
+        try:
+            tokens = shlex.split(line)
+        except ValueError:
+            return wait("original_cron_role_unqualified")
+        if (
+            len(tokens) not in (13, 15)
+            or tokens[:5] != ["*"] * 5
+            or not tokens[5].startswith("/")
+            or tokens[6] != "--config-dir"
+            or not tokens[7].startswith("/")
+            or tokens[8:10] != ["autostart", "cron-run"]
+            or tokens[10] not in CRON_COMPONENTS
+            or tokens[-2:] != [">/dev/null", "2>&1"]
+        ):
+            return wait("original_cron_role_unqualified")
+        role = tokens[10]
+        port_role = role in ("server", "tunnel")
+        if port_role:
+            if (
+                len(tokens) != 15
+                or tokens[11] != "--port"
+                or not tokens[12].isascii()
+                or not tokens[12].isdecimal()
+                or not 1 <= len(tokens[12]) <= 5
+            ):
+                return wait("original_cron_role_unqualified")
+            # Vaste ASCII-lengte begrenst int-conversie en verbiedt
+            # Unicode/getallen met duizenden cijfers uit onbetrouwbare cronbytes.
+            role_port = int(tokens[12])
+            if not 1 <= role_port <= 65535:
+                return wait("original_cron_role_unqualified")
+            if port is not None and role_port != port:
+                return wait("original_cron_role_unqualified")
+            port = role_port
+        elif len(tokens) != 13:
+            return wait("original_cron_role_unqualified")
+        if executable is None:
+            executable, config_dir = tokens[5], tokens[7]
+        elif tokens[5] != executable or tokens[7] != config_dir:
+            return wait("original_cron_role_unqualified")
+        roles.append(role)
+    if (
+        len(roles) < 2
+        or len(roles) != len(set(roles))
+        or preview.component not in roles
+        or executable is None
+        or config_dir is None
+    ):
+        return wait("original_cron_roles_unqualified")
+
+    # Hergebruik de enige bestaande canonieke renderer. Alleen de gekozen
+    # rol verwijderen is onvoldoende bewijs: ook alle vijf cronpeers moeten
+    # exact dezelfde bron, config, vaste flags en geldige poort behouden.
+    # Deze herberekening leest geen bestand of proces en start geen worker.
+    try:
+        rendered = render_cron_block(
+            executable=Path(executable),
+            config_dir=Path(config_dir),
+            components=tuple(roles),
+            port=port if port is not None else 8000,
+        )
+    except CronAutostartError:
+        return wait("original_cron_role_unqualified")
+    if original[first:last + 1] != rendered:
+        return wait("original_cron_role_unqualified")
+
+    # Beide inventarissen zijn volledig: elke vaste rol moet exact één keer
+    # voorkomen. Extra units, dubbele rolclaims of een verdwenen cronpeer
+    # mogen niet worden verdoezeld door alleen positieve regels te filteren.
+    expected = set(CRON_COMPONENTS)
+    if type(cron_rows) is not tuple or type(systemd_rows) is not tuple:
+        return wait("backend_inventory_type_unqualified")
+    if (
+        len(cron_rows) != len(expected)
+        or len(systemd_rows) != len(expected)
+        or any(type(row) is not CronComponentStatus for row in cron_rows)
+        or any(type(row) is not AutostartStatus for row in systemd_rows)
+    ):
+        return wait("backend_inventory_unqualified")
+    # Wijs ongekwalificeerde rolwaarden af vóór de dictionaryconversie.
+    # Een lijst/dict als rolnaam mag geen TypeError veroorzaken; integer 0/1
+    # of tekst mag evenmin als een geldige booleaanse supervisorclaim gelden.
+    if any(
+        type(row.component) is not str
+        or type(row.installed) is not bool
+        or type(row.enabled) is not bool
+        or type(row.active) is not bool
+        for row in (*cron_rows, *systemd_rows)
+    ):
+        return wait("backend_inventory_type_unqualified")
+    cron_by_role = {row.component: row for row in cron_rows}
+    systemd_by_role = {row.component: row for row in systemd_rows}
+    if set(cron_by_role) != expected or set(systemd_by_role) != expected:
+        return wait("backend_role_claims_unqualified")
+
+    restored = phase == "rollback_confirmed"
+    peer_installed = phase in (
+        "staged_inactive", "new_worker_ack", "peer_failed_idle",
+        "peer_disabled_idle",
+    )
+    remaining = tuple(role for role in roles if restored or role != preview.component)
+    for role in CRON_COMPONENTS:
+        cron = cron_by_role[role]
+        systemd = systemd_by_role[role]
+        cron_expected = role in remaining
+        systemd_expected = peer_installed and role == preview.component
+        if (
+            cron.installed is not cron_expected
+            or cron.enabled is not cron_expected
+            or (not cron_expected and cron.active is not False)
+            or systemd.installed is not systemd_expected
+            or (not systemd_expected and (systemd.enabled or systemd.active))
+        ):
+            return wait("mixed_supervisor_claims_conflict")
+        if systemd_expected and (
+            systemd.enabled is not unit_enabled
+            or systemd.active is not unit_active
+        ):
+            return wait("mixed_peer_state_drift")
+
+    return SinglePeerMixedBackendStatus(
+        consistent=True,
+        reason_code="mixed_source_consistent_not_authorized",
+        selected_systemd_role=preview.component if peer_installed else None,
+        remaining_cron_roles=remaining,
+    )
+
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerReconcileProposal:
+    """Inerte volgende stap voor één rol, met herstelanker en zonder bevoegdheid."""
+
+    phase: str
+    consistent: bool
+    reason_code: str
+    proposed_step: str
+    rollback_sha256: str | None = None
+    action_authorized: bool = False
+
+
+def propose_single_peer_reconciliation(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[object, ...],
+) -> SinglePeerReconcileProposal:
+    """Plan uitsluitend de volgende revalidatiestap zonder de host te wijzigen.
+
+    Dit is geen installer, recovery-actuator of toestemming voor de A7-owner.
+    Een externe geautoriseerde executor moet apart de echte crontabbytes,
+    unit, PID, lock en ACK op dezelfde host attesteren, vóór ELKE wijziging.
+    Herhaal na een stap de exacte fasecontrole en herleid het rollbackobject
+    opnieuw; de generieke all-role reconcile mag nooit worden gebruikt.
+    """
+    check = assess_single_peer_mixed_backend_status(
+        preview=preview,
+        phase=phase,
+        observed_crontab=observed_crontab,
+        observed_unit_contents=observed_unit_contents,
+        unit_enabled=unit_enabled,
+        unit_active=unit_active,
+        main_pid=main_pid,
+        role_lock_active=role_lock_active,
+        new_function_ack=new_function_ack,
+        cron_rows=cron_rows,
+        systemd_rows=systemd_rows,
+    )
+    if not check.consistent:
+        return SinglePeerReconcileProposal(
+            phase=phase if type(phase) is str else "UNKNOWN",
+            consistent=False,
+            reason_code=check.reason_code,
+            proposed_step="STOP_UNQUALIFIED",
+        )
+
+    next_steps = {
+        "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
+        "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
+        "peer_failed_idle": "DISABLE_FAILED_PEER_THEN_RECHECK",
+        "peer_disabled_idle": "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK",
+        "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
+        "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
+    }
+    return SinglePeerReconcileProposal(
+        phase=phase,
+        consistent=True,
+        reason_code="source_plan_only_no_host_authority",
+        proposed_step=next_steps[phase],
+        rollback_sha256=preview.rollback_crontab_sha256,
     )
 
 
@@ -1184,6 +1486,23 @@ def remove_user_services(
         raise AutostartError("systemd user unit directory is unavailable")
     if not target.exists():
         return []
+    # De brede Python-remover is geen éénrols-M3-hersteller. Net als de
+    # installer moet hij een door cron geclaimde rol als bronconflict zien,
+    # ook wanneer een aanroeper de afgebakende CLI omzeilt.
+    from .cron_autostart import (
+        CronAutostartError,
+        cron_available,
+        has_managed_cron,
+    )
+
+    if cron_available():
+        try:
+            if has_managed_cron():
+                raise AutostartError(
+                    "managed cron exists; refuse blanket systemd removal in mixed mode"
+                )
+        except CronAutostartError as exc:
+            raise AutostartError("managed cron status is unavailable") from exc
     _run_systemctl(["show-environment"], runner=runner)
     # Validate every known target before disabling or removing any unit.
     # An unsafe later peer must not leave a partially removed service set.

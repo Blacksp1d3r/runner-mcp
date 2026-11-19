@@ -6,6 +6,25 @@ The preferred backend is a systemd user manager. When a host has no usable user 
 
 This packaging is for a host where Runner MCP is already installed and its private configuration is valid.
 
+## Cron-only verwijdering en vreemde cronbytes (draft #1003, 2026-11-17)
+
+Bij een afzonderlijk geclaimde cron-backend verwijdert `remove_cron_services()`
+uitsluitend het bestaande managed blok. De aanroep bewaart de overige
+crontabtekst met oorspronkelijke regelafbrekingen, commentaar en lege regels;
+`splitlines()/join` met impliciete trim is daarvoor onveilig. Voor het
+herkenbare, aan het einde geplaatste beheerde blok mag exact één lege
+scheidingsregel verdwijnen die de bestaande `install_cron_services()`
+zelf toevoegde. Andere lege regels blijven behouden. Een historische
+installatie die al vóór deze correctie vreemde witruimte normaliseerde,
+kan niet achteraf alle oorspronkelijke bytes terughalen.
+
+Bij tegelijk aanwezige cron- én systemd-userclaims weigeren CLI en beide
+directe algemene verwijderfuncties nog steeds de brede verwijdering.
+Dit is **source-only** op de bestaande [draft #1003](https://github.com/Blacksp1d3r/runner-mcp/pull/1003),
+niet de rolgebonden productieomschakeling. De oorspronkelijke cronroosters,
+units en A7 zijn niet gewijzigd; exclusieve writers, actuele procesbron,
+functioneel ACK en fysiek rollbackbewijs blijven afzonderlijke M3-poorten.
+
 ## Brongebonden M3-fases op echte disposable Linux (0.1.174)
 
 [PR #1000](https://github.com/Blacksp1d3r/runner-mcp/pull/1000) sluit een fout in de vorige puur in-memory fasebewaking: `_exact_single_role_cron_delta` verifieert opnieuw dat de vijfrollen-kandidaat het **exacte verschil van één geselecteerde managed cron-run-regel** is, zonder ander lijn-/byteverlies, en bindt zijn executable en config-dir aan de bron-gerenderde systemd-`ExecStart`. Een veranderd vreemde cronregel of andere uitgesloten rol wordt voortaan afgewezen, ook wanneer die verandering in de meegeleverde waarneming voorkomt. Nooit activeringsbevoegdheid; `next_action_authorized=False` blijft invariant.
@@ -200,6 +219,168 @@ runner-mcp autostart remove
 The CLI requires the explicit local confirmation phrase shown on screen. Foreign unit files and unrelated crontab entries are never removed.
 
 On the systemd backend, removal disables and stops the managed units. On the cron backend, removal deletes the managed schedule so no future restart occurs; it deliberately does not send a blind process-kill signal to a currently running component. Stop or reboot that local account explicitly when immediate termination is required. This conservative behavior avoids killing a process whose identity cannot be proven from cron state alone.
+
+## Broncontract voor één gemengde cron/systemd-rol (M3, nog niet live)
+
+De zuivere functie `assess_single_peer_mixed_backend_status` vergelijkt een eerder
+vastgelegd éénrols-migratievoorstel met de bestaande zesfasenbroncontrole en
+volledige rolstatus van beide supervisors. Bij de zesrolvariant moeten precies
+vijf cronrollen en één geselecteerde managed systemd-unit overeenkomen met het
+bronvoorstel; de twee overige optionele rolposities blijven onbeheerd. Een
+ontbrekende cronrol, tweede unit, dubbelrol, gewijzigde vreemde cronregel,
+verkeerde actieve toestand of ontbrekende functionele ACK levert geen PASS.
+
+Dit is uitsluitend **consistentie van aangeleverde observaties**: geen bewijs
+van actuele host-, proces-, wheel-, A7- of ACK-herkomst. De functie voert geen
+proces- of bestands-I/O uit. Ook een consistent resultaat heeft altijd
+`generic_reconcile_authorized=False` en `cutover_authorized=False`.
+De CLI `autostart status` toont een gemengde toestand **alleen-lezen**:
+`backend: mixed-unqualified`, aparte `cron/<rol>`- en
+`systemd-user/<rol>`-regels en `reconcile_authorized=no` /
+`cutover_authorized=no`. Het exitresultaat blijft **2 (niet gekwalificeerd)**
+en een onbereikbare systemd-manager veroorzaakt STOP vóór gedeeltelijke
+uitvoer. Daarmee krijgt de operator een overzicht zonder een vals groen
+migratie- of ACK-oordeel.
+
+De algemene `autostart reconcile/install/remove` en beide all-role-installers
+zijn **niet** geschikt om een gemengde configuratie aan te maken, te herstellen
+of te activeren. Zij blijven fail-closed. Bij `autostart remove` wordt de
+gemengde toestand **vóór de verwijderbevestiging** expliciet geweigerd met
+exitcode 2; zij mag nooit achtereenvolgens de vijf cronrollen en de
+enige systemd-peer vernietigen. Ook de direct aanroepbare `remove_cron_services` en
+`remove_user_services` bevatten nu dezelfde symmetrische
+fail-closed-guard: bij een andere managed backend of onleesbare
+beheerclaims geen all-role-verwijdering. Alleen een exact gekwalificeerd
+afzonderlijk herstelpad of de normale bevestigde één-backend-verwijdering
+is toegestaan. De gemengde status kan de
+pinned-snapshot-, proces-/lock-, werkresultaat-, A7- en rollbackpoorten
+niet vervangen.
+
+**Echte geïsoleerde CLI-proef:** het bestaande GitHub-hosted disposable
+systemd-testscript voert nu dezelfde `autostart status`-parser uit nadat
+de vijf overblijvende cronrollen en de ene statische kandidaatunit fysiek
+geïnstalleerd zijn. De read-only output moet beide rolroosters tonen,
+met exitcode `2` en alle activerings- en reconciliatierechten `no`.
+De volledige crontab, unitbytes en systemd enable-status moeten vóór
+en na de CLI-aanroep byte-/statusgelijk zijn. De gesimuleerde testlauncher
+wordt alleen binnen deze disposable fixture als verwacht executable
+doorgegeven: geen host- of geladen-wheelattestatie.
+Een betrouwbare bron-/hostgebonden rolreconciler en echte geïsoleerde
+fout-/hersteltests zijn de afzonderlijke volgende M3-implementatiestap.
+
+### Omkeerbare rolreconciliatie als zuiver bronvoorstel (draft 0.1.175)
+
+De nieuwe `propose_single_peer_reconciliation` combineert de bestaande
+`assess_single_peer_migration_checkpoint` met de volledige cron-/unitrolstatus.
+Er zijn zes herkenbare toestanden: `staged_inactive` (inactieve peer verwijderen
+vóór herstel), `new_worker_ack` (gezonde peer ongemoeid laten),
+`peer_failed_idle` (wel enabled, geen worker-PID/lock/ACK: uitschakelen en
+opnieuw meten), `peer_disabled_idle` (unit bestaat disabled en zonder worker:
+alleen die unit verwijderen en opnieuw meten), `rollback_ready` (unit afwezig; exact oorspronkelijke
+cronbytes terugzetten ná afzonderlijke bevoegdheid) en `rollback_confirmed`
+(het originele cronblok is exact terug). Een bron-, status-, dubbele-roldrifts
+of mislukte ACK geeft `STOP_UNQUALIFIED`. Zelfs een volledige bron-PASS levert
+**nooit** een uitvoeringsvergunning: `action_authorized=False` voor elke
+uitkomst. De functie bevat geen crontab-write, systemctl-call of andere I/O.
+
+De bestaande CI op disposable Linux leest nu bij vier van die fasen werkelijk
+`crontab` en de bestaande `systemctl --user`-status vóór het zuivere
+herstelvoorstel. Het live herstel wordt nog steeds uitsluitend door de al
+bestaande testharnas uitgevoerd; de extra statusplanner voert niets uit. De
+uitgevallen-workerfase wordt daarnaast in de unit-testmatrix beoordeeld;
+geen claim van automatische productie-rollback, reboot of echte Agent Bus-ACK.
+
+Het voorstel is bewust **niet** aangesloten op de algemene `autostart
+reconcile/install/remove`-CLI of A7. Eerst is externe host-/eigenaar-/wheel-/PID-
+attestatie, de echte functieresultaat-ACK, actieve A7-herstelacceptatie en een
+bevoegde, voor exact één rol begrensde actuator nodig. De oorspronkelijke
+`AF-HOST-0001` en vijf andere cronrollen blijven onaangeroerd.
+
+### Exact herstel uitvoeren op een weggegooide Linux-testhost (draft 0.1.175)
+
+De **enige** nieuwe uitvoerende herstelroute staat in het **bestaande** script `scripts/qualify_systemd_user_lifecycle_ci.sh`. Dat script weigert rechtstreeks gebruik buiten de GitHub-hosted, non-root wegwerp-runner. Het hergebruikt pinned bron-/cronbytes en de bestaande systemd/cronbeheerders; de productiefunctie `propose_single_peer_reconciliation` blijft read-only. Alleen de test-unit `runner-mcp-github-watcher.service` wordt uitgeschakeld en verwijderd, na een eigen geïnduceerde executiefout met bewezen `MainPID=0` en vrijgegeven flock. Het hele zesrollen- plus vreemde cronblok wordt daarna byte-identiek teruggezet. Gecontroleerde positieve markers: `M3_DISPOSABLE_BOUNDED_SINGLE_ROLE_EXECUTOR_EXACT_ROLLBACK=PASS` en `M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS`; gezonde unit of tussentijdse vreemde-cronwijziging geeft STOP zonder een wijziging.
+
+**Beperking:** deze testuitvoerder is nadrukkelijk niet uitvoerbaar verklaard voor de oorspronkelijke `AF-HOST-0001`, vormt geen herbruikbare productiebevoegdheid en bewijst geen automatische crash-/rebootrollback op fysieke hosts. De algemene CLI blijft mixed-mode weigeren. Eerst de bestaande A7-bevoegde uitvoeringsroute en originele host-/workresultaatattestaties, zonder automatische updates te verstoren.
+
+### Hervatten na onderbroken disable (draft 0.1.175)
+
+De extra **puur interpreterende** fase `peer_disabled_idle` modelleert een precies
+onderbroken herstel: de cronrol blijft uitgesloten, het eigen bron-gerenderde
+systemd-unitbestand bestaat nog, maar is disabled én inactive; MainPID, lock
+en nieuwe functionele ACK zijn afwezig. De volgende voorgestelde stap is
+`REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK`. De read-only planner blijft altijd
+`action_authorized=False`. Geen productieresume, geen automatische herstart
+en geen eigenaarswissel.
+
+De bestaande GitHub-hosted wegwerpproef voert een werkelijke onderbreking na
+`disable --now` na, stopt het eerste Python-testproces en verifieert in een
+tweede proces opnieuw de volledige cronbytes, bron-unit, eigenaarschap/inode,
+PID en lock. Bij een wijziging van een vreemde cronregel tijdens deze
+onderbreking wordt het hervatten afgewezen **vóór unitverwijdering**. Alleen de
+onveranderde testfixture mag verdergaan tot exact zesrollen-cronherstel.
+Deze route is niet beschikbaar als productie-CLI.
+
+Het mixed-backend broncontract weigert ook alle extra `PATH`, `SHELL`,
+ongekende `MAILTO`, commentaar- en jobregels **binnen het managed cronblok**.
+Het normale rendererformaat vereist exact één `MAILTO=""` als eerste regel,
+gevolgd door uitsluitend gekende per-rol-`cron-run`-regels. Een preview met
+een extra regel is nooit autorisatiebewijs, zelfs wanneer de kandidaat exact
+dezelfde vervalsing bevat. De gewone all-role beheerders blijven intact.
+
+### Laatste negatieve herstartproeven op disposable Linux
+
+Ook tijdens `peer_disabled_idle` kan een terugkerende testuitvoerder
+een gewijzigde vreemde cronregel of een gewijzigde unitpad-identiteit
+aantreffen. De bestaande GitHub-hosted test vervangt uitsluitend het eigen
+uitgeschakelde test-unitbestand tijdelijk door een symlink; de herstartende
+uitvoerder moet dan STOP geven **vóór** verwijderen of cronherstel. Pas na
+herstel van de originele inode en exact de kandidaat-cronbytes mag de
+tweede uitvoerder hervatten.
+
+Op [exacte broncommit cdd5df7](https://github.com/Blacksp1d3r/runner-mcp/commit/cdd5df7427b8f49ba42a10fcb9b8a8d73d694bbb)
+zijn `M3_DISPOSABLE_DISABLED_PEER_SYMLINK_DRIFT_DENIED=PASS`,
+`M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS`,
+`M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS`,
+Ruff en **4.851 Python-tests** geslaagd, op een wegwerp-Linux-host.
+De vijfminutendemo is een afzonderlijke check. Dit is geen bewijs voor
+atoomvaste bescherming tegen concurrente veranderingen op productie en
+geeft geen activeringsbevoegdheid.
+
+### Canonieke vijfrollen-broncontrole (draft 0.1.175)
+
+Naast het vastgepinde verwijderde croncommando eist de read-only
+`assess_single_peer_mixed_backend_status` nu dat ook elke overige
+beheerste cronrol **exact** overeenkomt met `render_cron_block`, de bestaande
+canonieke cronrenderer. Alle rollen gebruiken dezelfde executable en
+configuratiemap; alleen de twee bekende poortrollen mogen `--port` gebruiken,
+met een geldige, consistent opgemaakte poort. Verborgen extra argumenten,
+afwijkende uitvoerbare bestanden, andere configuratiepaden en ongeldige
+poortwaarden geven `original_cron_role_unqualified`; ook wanneer een
+vervalst origineel/kandidaatpaar en de eigen SHA256 onderling gelijk zijn.
+Deze broncontrole blijft in-memory, is geen hostattestatie en geeft nooit
+`cutover_authorized=True`. A7-gebruikers of de normale crontabinstaller zijn
+niet gewijzigd.
+
+### Tweede onderbreking van éénrolsherstel: unit verwijderd, cron nog vijf rollen
+
+De bestaande GitHub-hosted disposable Linux-proef gebruikt nu ook het al
+bestaande `rollback_ready`-checkpoint na een **echte onderbreking** tussen
+unitverwijdering en `crontab -`. Een nieuw niet-root Python-testproces
+herleest eigen unit-afwezigheid, vijfrollen-cron inclusief vreemde taak,
+PID, lock, de gepinde snapshot-SHA en de volledige backendinventaris.
+Het harnas onderbreekt vervolgens ook tussen de planner en de laatste
+cron-readback met een expliciet gemuteerde vreemde cronregel; die
+testwijziging moet behouden blijven en de hervatte executor mag dan
+**niet** de oudere zesrollen-backup schrijven. Pas nadat de test zijn
+kandidaat-crontab terugplaatst, hervat een nieuw proces het exacte
+zesrollenherstel. Geen extra productieherstelpad of tweede updater.
+
+Deze afbakening verhelpt uitsluitend geteste onderbrekingen **vóór**
+de laatste readback. Er is **geen** voor alle writers gedeelde
+exclusieve crontab-lock of atomair compare-and-swap: een echte writer
+kan nog tussen laatste readback en `crontab -` wijzigingen maken.
+Daarom blijven originele M3-productieactuatie, reboot en A7-coupling
+**GEBLOKKEERD**; een geslaagde CI-test is geen vrijgave.
 
 ## Original-host cron to systemd-user migration (#866)
 

@@ -1,3 +1,11 @@
+## 0.1.182 — #520 root-owned Incus ACL cleanup helper (SOURCE ONLY, LIVE DISABLED)
+
+- Nieuwe zelfstandige, uitsluitend-standaardbibliotheek ACL-herstelhelper met nul aanroepopties; de bestaande MCP-server, Fabric/Agent Bus en Incus-opdrachten krijgen **geen** nieuwe privilege-/grant-/shellroute.
+- Alleen een exact root-owned, checksum-gebonden installatie plus private host-/account-/socketidentiteit kan na aparte operatorvrijgave de tijdelijke ACL verwijderen of het eerder waargenomen resterende ACL-masker herstellen. Andere namen, extra ACL-grants, onveilige socketouders en onbekende procesgeneraties stoppen.
+- Gerichte synthetische ACL- en foutregressies; geen fysieke root-/socket-test, geen installatie, geen serverwijziging, geen A7/Q7 of AIfordable #227-activering. Runner-MCP #520 blijft OPEN tot de onafhankelijke originele installatie/autoriteit/rollback en negatieve toegangscontrole geslaagd zijn.
+
+---
+
 ## 0.1.164 — #341 hercontrole van beheerde herstart vlak vóór installatie (SOURCE, LIVE WAIT)
 
 - De bestaande Runner-MCP self-update controleert de reeds gekwalificeerde cron/systemd-user server **opnieuw nadat bron-sync, lint, tests en wheelbouw klaar zijn**, onmiddellijk vóór de eerste installatietransactie. Een tussentijds verloren of onleesbare supervisor leidt tot een begrensde fout `restart_supervisor_unavailable`, zonder transactie, wheelinstallatie of herstartmarker; de reeds bestaande pre-install bronrollback blijft actief.

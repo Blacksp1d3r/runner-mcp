@@ -163,6 +163,7 @@ from .fabric_worker_qualification_provisioning import (
 )
 from .file_access import FileAccessError, FileAccessService
 from .github_mailbox import GITHUB_TOKEN_ENV, GitHubApiSession
+from .host_tool_dispatch import HostAdmissionMCPServer, HostDispatchEvidence
 from .http_middleware import RateLimitMiddleware, RequestIdMiddleware, current_request_id
 from .known_project_catalog import (
     KnownProjectRegistrationError,
@@ -483,19 +484,33 @@ def build_mcp(
     build_identity_provider: Callable[[], BuildIdentity] | None = None,
     tunnel_expected: bool = False,
     tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
+    host_dispatch_evidence_provider: Callable[[], HostDispatchEvidence] | None = None,
 ) -> MCPServer:
     harden_mcp_argument_validation()
     serving_epoch = ServingInstanceEpoch()
-    mcp = MCPServer(
-        "Runner MCP",
-        token_verifier=StaticBearerVerifier(settings.bearer_token, settings.resource_url),
-        auth=AuthSettings(
+    # Source-only private seam: never infer authority from a client, hostname,
+    # environment variable, policy object or historical update marker.
+    kwargs = {
+        "token_verifier": StaticBearerVerifier(
+            settings.bearer_token, settings.resource_url
+        ),
+        "auth": AuthSettings(
             issuer_url=AnyHttpUrl(settings.auth_issuer),
             resource_server_url=AnyHttpUrl(settings.resource_url),
             required_scopes=["runner:read"],
             validate_token_resource=True,
         ),
-    )
+    }
+    if host_dispatch_evidence_provider is None:
+        mcp = MCPServer("Runner MCP", **kwargs)
+    else:
+        mcp = HostAdmissionMCPServer(
+            "Runner MCP",
+            evidence_provider=host_dispatch_evidence_provider,
+            schema_digest_provider=runner_mcp_interface_schema_digest,
+            audit=audit,
+            **kwargs,
+        )
     files = FileAccessService(registry)
     safety = safety_guard or OperatorSafetyGuard(
         stop_file=settings.operator_stop_file,
@@ -4184,6 +4199,7 @@ def create_app(
     server_bind_port: int | None = None,
     tunnel_expected: bool = False,
     tunnel_readiness_provider: Callable[[], TunnelReadinessEvidence] | None = None,
+    host_dispatch_evidence_provider: Callable[[], HostDispatchEvidence] | None = None,
 ) -> Starlette:
     settings = settings or Settings.from_env()
     registry = registry or load_project_registry(settings.projects_config)
@@ -4238,6 +4254,7 @@ def create_app(
         build_identity_provider=current_build_identity,
         tunnel_expected=tunnel_expected,
         tunnel_readiness_provider=tunnel_readiness_provider,
+        host_dispatch_evidence_provider=host_dispatch_evidence_provider,
     )
     transport_security = transport_security_for(settings.resource_url)
 

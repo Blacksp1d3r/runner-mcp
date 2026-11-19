@@ -305,6 +305,90 @@ def test_install_preserves_unrelated_lines_and_is_idempotent(
     assert "cron-run github-watcher" in crontab.content
 
 
+@pytest.mark.parametrize(
+    "foreign",
+    [
+        "17 2 * * * /usr/bin/true\n",
+        "# original header  \n\n17 2 * * * /usr/bin/true\n\n",
+        "MAILTO=review@example.invalid\n17 * * * * /usr/bin/true\n\n\n",
+        "\n# unrelated comment with spaces  \n\n",
+    ],
+)
+def test_cron_install_reinstall_remove_preserves_foreign_bytes(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+    foreign: str,
+) -> None:
+    """Geen formatteringsverlies bij eerste installatie of herinstallatie."""
+    from runner_mcp import autostart
+
+    fake = FakeCrontab(foreign)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+    kwargs = {
+        "executable": tmp_path / "runner-mcp",
+        "config_dir": tmp_path / "private",
+        "runner": fake,
+        "activation_permit": AutostartActivationPermit.clear(),
+    }
+
+    install_cron_services(components=("server",), **kwargs)
+    assert fake.content.startswith(foreign + CRON_BEGIN + "\n")
+    assert fake.content.count(CRON_BEGIN) == 1
+
+    install_cron_services(components=("server", "github-watcher"), **kwargs)
+    assert fake.content.startswith(foreign + CRON_BEGIN + "\n")
+    assert fake.content.count(CRON_BEGIN) == 1
+    assert fake.content.count("autostart cron-run github-watcher") == 1
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == foreign
+
+
+def test_cron_install_rejects_foreign_crontab_without_final_newline(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Geen impliciet verlies of samenvoeging van een vreemde laatste regel."""
+    from runner_mcp import autostart
+
+    foreign = "17 2 * * * /usr/bin/true"
+    fake = FakeCrontab(foreign)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+    with pytest.raises(CronAutostartError, match="final newline"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=fake,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert fake.content == foreign
+    assert all(call[-1] != "-" for call, _ in fake.calls)
+
+
+def test_cron_remove_retains_ambiguous_legacy_separator(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een legacy lege regel zonder eigen bewijs blijft bewaard."""
+    from runner_mcp import autostart
+
+    prefix = "# unrelated line\n\n"
+    managed = "\n".join(render_cron_block(
+        executable=Path("/usr/bin/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
+    fake = FakeCrontab(prefix + managed)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == prefix
+
+
 def test_managed_cron_roundtrip_preserves_independent_hourly_review(
     tmp_path: Path,
     fake_crontab_executable: None,
@@ -412,16 +496,69 @@ def test_malformed_managed_block_fails_closed(
         )
 
 
+@pytest.mark.parametrize(
+    "foreign_line",
+    [
+        "* * * * * /usr/bin/true # foreign scheduled job",
+        "MAILTO=unexpected@example.invalid",
+        "# foreign comment inside managed block",
+        "* * * * * /bin/echo 'autostart cron-run server'",
+        (
+            "* * * * * /usr/bin/runner-mcp --config-dir /fixture/private "
+            "autostart cron-run github-watcher >/dev/null 2>&1"
+        ),
+    ],
+)
+def test_cron_mutators_deny_foreign_entry_inside_managed_block(
+    tmp_path: Path,
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+    foreign_line: str,
+) -> None:
+    """Ook bij geldige markers blijft de crontab van andere eigenaars veilig."""
+    from runner_mcp import autostart
+
+    block = render_cron_block(
+        executable=tmp_path / "runner-mcp",
+        config_dir=tmp_path / "private",
+        components=("server",),
+        port=8000,
+    )
+    original = (
+        "17 2 * * * /usr/bin/backup\n"
+        + "\n".join([*block[:-1], foreign_line, block[-1]])
+        + "\n"
+    )
+    fake = FakeCrontab(original)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    with pytest.raises(CronAutostartError, match="managed cron block is not canonical"):
+        remove_cron_services(runner=fake)
+    with pytest.raises(CronAutostartError, match="managed cron block is not canonical"):
+        install_cron_services(
+            executable=tmp_path / "runner-mcp",
+            config_dir=tmp_path / "private",
+            components=("server",),
+            runner=fake,
+            activation_permit=AutostartActivationPermit.clear(),
+        )
+    assert fake.content == original
+    assert all(command[-1] != "-" for command, _ in fake.calls)
+
+
 def test_remove_deletes_only_managed_block(
     fake_crontab_executable: None,
 ) -> None:
+    block = "\n".join(render_cron_block(
+        executable=Path("/x/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
     crontab = FakeCrontab(
         "5 1 * * * /usr/bin/backup\n"
-        f"{CRON_BEGIN}\n"
-        'MAILTO=""\n'
-        "* * * * * /x/runner-mcp autostart cron-run server >/dev/null 2>&1\n"
-        f"{CRON_END}\n"
-        "9 1 * * * /usr/bin/other\n"
+        + block
+        + "9 1 * * * /usr/bin/other\n"
     )
 
     assert remove_cron_services(runner=crontab) is True
@@ -429,6 +566,50 @@ def test_remove_deletes_only_managed_block(
     assert CRON_END not in crontab.content
     assert "/usr/bin/backup" in crontab.content
     assert "/usr/bin/other" in crontab.content
+
+
+def test_remove_preserves_all_foreign_crontab_bytes(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ook vreemde eindregels, witruimte en commentaar blijven byte-identiek."""
+    from runner_mcp import autostart
+
+    prefix = "# foreign comment with trailing spaces  \n\n17 2 * * * /usr/bin/true\n"
+    suffix = "\n# unrelated trailing comment  \n\n\n"
+    managed = "\n".join(render_cron_block(
+        executable=Path("/usr/bin/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
+    fake = FakeCrontab(prefix + managed + suffix)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == prefix + suffix
+    assert sum(command[-1] == "-" for command, _ in fake.calls) == 1
+
+
+def test_remove_retains_multiple_foreign_blank_lines_before_end_block(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Meerdere vreemde lege regels zijn geen installer-separator."""
+    from runner_mcp import autostart
+
+    prefix = "# user-maintained comment\n\n\n"
+    managed = "\n".join(render_cron_block(
+        executable=Path("/usr/bin/runner-mcp"),
+        config_dir=Path("/fixture/private"),
+        components=("server",),
+        port=8000,
+    )) + "\n"
+    fake = FakeCrontab(prefix + managed)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: False)
+
+    assert remove_cron_services(runner=fake) is True
+    assert fake.content == prefix
 
 
 def test_cron_run_uses_fixed_exec_argv_and_loopback(
@@ -1139,3 +1320,47 @@ def test_cron_status_ignores_commented_legacy_entry_outside_managed_block(
     assert server.installed is True
     assert server.active is False
     assert not list(config.glob("autostart-*.lock"))
+
+
+def test_mixed_backend_direct_cron_remove_denied_before_write(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ook de directe crontab-remover weigert een aanwezige managed unit."""
+    from runner_mcp import autostart
+
+    original = (
+        "17 2 * * * /usr/bin/true # harmless-foreign\n"
+        + "\n".join(render_cron_block(
+            executable=Path("/usr/bin/runner-mcp"),
+            config_dir=Path("/tmp/fixture"),
+            components=("server",),
+            port=8000,
+        ))
+        + "\n"
+    )
+    fake = FakeCrontab(original)
+    monkeypatch.setattr(autostart, "has_managed_user_units", lambda: True)
+    with pytest.raises(CronAutostartError, match="refuse blanket cron removal"):
+        remove_cron_services(runner=fake)
+    assert fake.content == original
+    assert all(command[-1] != "-" for command, _ in fake.calls)
+
+
+def test_mixed_backend_direct_cron_remove_denies_unknown_unit_state(
+    fake_crontab_executable: None,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Onleesbare systemd-unitclaims mogen cron niet vernietigen."""
+    from runner_mcp import autostart
+    from runner_mcp.autostart import AutostartError
+
+    fake = FakeCrontab(f'{CRON_BEGIN}\nMAILTO=""\n{CRON_END}\n')
+    monkeypatch.setattr(
+        autostart, "has_managed_user_units",
+        lambda: (_ for _ in ()).throw(AutostartError("unknown")),
+    )
+    with pytest.raises(CronAutostartError, match="managed systemd status is unavailable"):
+        remove_cron_services(runner=fake)
+    assert fake.content.startswith(CRON_BEGIN)
+    assert all(command[-1] != "-" for command, _ in fake.calls)

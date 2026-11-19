@@ -1743,3 +1743,638 @@ def test_migration_peer_reuses_real_cron_lock_across_exec(
             child.terminate()
         child.wait(timeout=3)
     assert component_active(private, component) is False
+
+
+
+@pytest.mark.parametrize(
+    ("phase", "enabled", "active", "pid", "lock", "ack"),
+    [
+        ("staged_inactive", False, False, 0, False, False),
+        ("new_worker_ack", True, True, 45678, True, True),
+    ],
+)
+def test_m3_mixed_backend_status_never_enables_generic_reconcile(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    phase: str, enabled: bool, active: bool, pid: int, lock: bool, ack: bool,
+) -> None:
+    """De echte bronpreview behoudt vijf cronrollen en één lockende systemd-peer."""
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    selected = preview.component
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    cron_rows = tuple(
+        CronComponentStatus(
+            role, role in managed and role != selected,
+            role in managed and role != selected, False,
+        ) for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(role, role == selected,
+                        enabled if role == selected else False,
+                        active if role == selected else False)
+        for role in CRON_COMPONENTS
+    )
+    outcome = assess_single_peer_mixed_backend_status(
+        preview=preview, phase=phase,
+        observed_crontab=preview.candidate_crontab,
+        observed_unit_contents=preview.boot_unit_contents,
+        unit_enabled=enabled, unit_active=active, main_pid=pid,
+        role_lock_active=lock, new_function_ack=ack,
+        cron_rows=cron_rows, systemd_rows=systemd_rows,
+    )
+    assert outcome.consistent is True
+    assert outcome.selected_systemd_role == selected
+    assert len(outcome.remaining_cron_roles) == 5
+    assert set(outcome.remaining_cron_roles) == managed - {selected}
+    assert outcome.generic_reconcile_authorized is False
+    assert outcome.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    "drift",
+    [
+        "selected_cron_still_installed", "other_cron_missing",
+        "extra_systemd_unit", "systemd_state_drift",
+        "duplicate_role", "foreign_cron_modified", "ack_missing",
+        "untrusted_list_type", "wrong_phase",
+    ],
+)
+def test_m3_mixed_backend_status_fails_closed_on_conflicting_roles(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, drift: str,
+) -> None:
+    """Een tweede uitvoerder of onbekende toestand levert nooit een vrijgave."""
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    selected = preview.component
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    cron_rows = tuple(
+        CronComponentStatus(role, role in managed and role != selected,
+                            role in managed and role != selected, False)
+        for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(role, role == selected,
+                        role == selected, role == selected)
+        for role in CRON_COMPONENTS
+    )
+    values = {
+        "preview": preview, "phase": "new_worker_ack",
+        "observed_crontab": preview.candidate_crontab,
+        "observed_unit_contents": preview.boot_unit_contents,
+        "unit_enabled": True, "unit_active": True, "main_pid": 789,
+        "role_lock_active": True, "new_function_ack": True,
+        "cron_rows": cron_rows, "systemd_rows": systemd_rows,
+    }
+    if drift == "selected_cron_still_installed":
+        values["cron_rows"] = tuple(
+            replace(row, installed=True, enabled=True) if row.component == selected else row
+            for row in cron_rows
+        )
+    elif drift == "other_cron_missing":
+        values["cron_rows"] = tuple(
+            replace(row, installed=False, enabled=False)
+            if row.component == "agent-bus-worker" else row for row in cron_rows
+        )
+    elif drift == "extra_systemd_unit":
+        values["systemd_rows"] = tuple(
+            replace(row, installed=True, enabled=True, active=True)
+            if row.component == "agent-bus-worker" else row for row in systemd_rows
+        )
+    elif drift == "systemd_state_drift":
+        values["systemd_rows"] = tuple(
+            replace(row, active=False) if row.component == selected else row
+            for row in systemd_rows
+        )
+    elif drift == "duplicate_role":
+        values["cron_rows"] = cron_rows[:-1] + (cron_rows[0],)
+    elif drift == "foreign_cron_modified":
+        values["observed_crontab"] = preview.candidate_crontab.replace(
+            "17 * * * * /usr/bin/true # unrelated",
+            "17 * * * * /usr/bin/true # changed",
+        )
+    elif drift == "ack_missing":
+        values["new_function_ack"] = False
+    elif drift == "untrusted_list_type":
+        values["cron_rows"] = list(cron_rows)
+    elif drift == "wrong_phase":
+        values["phase"] = "before_exclusion"
+
+    outcome = assess_single_peer_mixed_backend_status(**values)
+    assert outcome.consistent is False
+    assert outcome.generic_reconcile_authorized is False
+    assert outcome.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+
+@pytest.mark.parametrize(
+    ("phase", "unit_installed", "unit_enabled", "unit_active",
+     "pid", "lock", "ack", "expected", "remaining"),
+    [
+        ("staged_inactive", True, False, False, 0, False, False,
+         "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK", 5),
+        ("new_worker_ack", True, True, True, 2468, True, True,
+         "KEEP_PEER_NO_GENERIC_RECONCILE", 5),
+        ("peer_failed_idle", True, True, False, 0, False, False,
+         "DISABLE_FAILED_PEER_THEN_RECHECK", 5),
+        ("peer_disabled_idle", True, False, False, 0, False, False,
+         "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK", 5),
+        ("rollback_ready", False, False, False, 0, False, False,
+         "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK", 5),
+        ("rollback_confirmed", False, False, False, 0, False, False,
+         "NO_ACTION_ALREADY_RESTORED", 6),
+    ],
+)
+def test_m3_reconcile_proposal_never_mutates_or_authorizes(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    phase: str, unit_installed: bool, unit_enabled: bool, unit_active: bool,
+    pid: int, lock: bool, ack: bool, expected: str, remaining: int,
+) -> None:
+    """Beoordeel een volledige cyclus incl. inactieve failure en exact herstel."""
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        propose_single_peer_reconciliation,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    cron_claims = managed if phase == "rollback_confirmed" else managed - {preview.component}
+    cron_rows = tuple(
+        CronComponentStatus(role, role in cron_claims, role in cron_claims, False)
+        for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(
+            role, unit_installed and role == preview.component,
+            unit_enabled and role == preview.component,
+            unit_active and role == preview.component,
+        ) for role in CRON_COMPONENTS
+    )
+    outcome = propose_single_peer_reconciliation(
+        preview=preview, phase=phase,
+        observed_crontab=(
+            preview.original_crontab if phase == "rollback_confirmed"
+            else preview.candidate_crontab
+        ),
+        observed_unit_contents=preview.boot_unit_contents if unit_installed else None,
+        unit_enabled=unit_enabled, unit_active=unit_active,
+        main_pid=pid, role_lock_active=lock, new_function_ack=ack,
+        cron_rows=cron_rows, systemd_rows=systemd_rows,
+    )
+    assert outcome.consistent is True, outcome.reason_code
+    assert outcome.proposed_step == expected
+    assert outcome.rollback_sha256 == preview.rollback_crontab_sha256
+    assert outcome.action_authorized is False
+    assert len([row for row in cron_rows if row.installed]) == remaining
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize("drift", [
+    "role_overlap", "unit_missing", "peer_still_running", "failed_peer_has_ack",
+    "cron_modified", "second_unit", "wrong_snapshot_type",
+    "early_cron_restore", "wrong_failure_phase",
+])
+def test_m3_reconcile_proposal_rejects_partial_or_duplicate_restore(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, drift: str,
+) -> None:
+    """Bij bron-/PID-/ACK-/backenddrift moet de hele herstelstap STOP zijn."""
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        propose_single_peer_reconciliation,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    managed = {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    rows = tuple(
+        CronComponentStatus(role, role in managed and role != preview.component,
+                            role in managed and role != preview.component, False)
+        for role in CRON_COMPONENTS
+    )
+    units = tuple(
+        AutostartStatus(role, role == preview.component,
+                        role == preview.component, False)
+        for role in CRON_COMPONENTS
+    )
+    values = {
+        "preview": preview, "phase": "peer_failed_idle",
+        "observed_crontab": preview.candidate_crontab,
+        "observed_unit_contents": preview.boot_unit_contents,
+        "unit_enabled": True, "unit_active": False, "main_pid": 0,
+        "role_lock_active": False, "new_function_ack": False,
+        "cron_rows": rows, "systemd_rows": units,
+    }
+    if drift == "role_overlap":
+        values["cron_rows"] = tuple(
+            replace(row, installed=True, enabled=True)
+            if row.component == preview.component else row for row in rows
+        )
+    elif drift == "unit_missing":
+        values["observed_unit_contents"] = None
+    elif drift == "peer_still_running":
+        values["main_pid"] = 2001
+    elif drift == "failed_peer_has_ack":
+        values["new_function_ack"] = True
+    elif drift == "cron_modified":
+        values["observed_crontab"] += "17 * * * * /usr/bin/true # unexpected\n"
+    elif drift == "second_unit":
+        values["systemd_rows"] = tuple(
+            replace(row, installed=True, enabled=True, active=True)
+            if row.component == "agent-bus-worker" else row for row in units
+        )
+    elif drift == "wrong_snapshot_type":
+        values["cron_rows"] = list(rows)
+    elif drift == "early_cron_restore":
+        values["observed_crontab"] = preview.original_crontab
+    elif drift == "wrong_failure_phase":
+        values["phase"] = "new_worker_ack"
+
+    outcome = propose_single_peer_reconciliation(**values)
+    assert outcome.consistent is False
+    assert outcome.proposed_step == "STOP_UNQUALIFIED"
+    assert outcome.action_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    ("changed", "replacement"),
+    [
+        ("unit_enabled", True),
+        ("unit_active", True),
+        ("main_pid", 1387),
+        ("role_lock_active", True),
+        ("new_function_ack", True),
+        ("observed_unit_contents", None),
+        ("observed_crontab", "other cron entries\n"),
+        ("phase", "peer_failed_idle"),
+    ],
+)
+def test_m3_disabled_peer_resume_denies_stale_or_ambiguous_observation(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    changed: str, replacement: object,
+) -> None:
+    """Crash na disable is herstelbaar, maar niet bij PID/ACK-/cron-/unitdrift."""
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        propose_single_peer_reconciliation,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    plan = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    installed = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    values: dict[str, object] = {
+        "preview": plan,
+        "phase": "peer_disabled_idle",
+        "observed_crontab": plan.candidate_crontab,
+        "observed_unit_contents": plan.boot_unit_contents,
+        "unit_enabled": False,
+        "unit_active": False,
+        "main_pid": 0,
+        "role_lock_active": False,
+        "new_function_ack": False,
+        "cron_rows": tuple(
+            CronComponentStatus(role, role in installed, role in installed, False)
+            for role in CRON_COMPONENTS
+        ),
+        "systemd_rows": tuple(
+            AutostartStatus(role, role == plan.component, False, False)
+            for role in CRON_COMPONENTS
+        ),
+    }
+    values[changed] = replacement
+    result = propose_single_peer_reconciliation(**values)
+    assert result.consistent is False
+    assert result.proposed_step == "STOP_UNQUALIFIED"
+    assert result.action_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+
+@pytest.mark.parametrize("extra_line", [
+    "PATH=/tmp/foreign-executable-directory",
+    "SHELL=/bin/bash",
+    "*/5 * * * * /bin/true # hidden-extra-job",
+    "# hidden-runner-mcp-note",
+])
+def test_m3_mixed_status_rejects_undocumented_managed_cron_lines(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, extra_line: str,
+) -> None:
+    """Ook een intern 'consistent' maar vervalst cronblok is nooit M3-PASS."""
+    import hashlib
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_migration_checkpoint,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    plan = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    anchor = 'MAILTO=""\n'
+    inserted = anchor + extra_line + "\n"
+    original = plan.original_crontab.replace(anchor, inserted, 1)
+    candidate = plan.candidate_crontab.replace(anchor, inserted, 1)
+    assert original != plan.original_crontab
+    assert candidate != plan.candidate_crontab
+    poisoned = replace(
+        plan,
+        original_crontab=original,
+        candidate_crontab=candidate,
+        rollback_crontab_sha256=hashlib.sha256(
+            original.encode("utf-8")
+        ).hexdigest(),
+    )
+    # De lagere delta-check ziet slechts één verwijderde rol en kan dus
+    # geen aanvullende croninstellingen claimen als normaal renderercontract.
+    checkpoint = assess_single_peer_migration_checkpoint(
+        preview=poisoned, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=poisoned.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+    )
+    assert checkpoint.consistent
+
+    remaining = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    status = assess_single_peer_mixed_backend_status(
+        preview=poisoned, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=poisoned.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(
+            CronComponentStatus(role, role in remaining, role in remaining, False)
+            for role in CRON_COMPONENTS
+        ),
+        systemd_rows=tuple(
+            AutostartStatus(role, role == poisoned.component, False, False)
+            for role in CRON_COMPONENTS
+        ),
+    )
+    assert status.consistent is False
+    assert status.reason_code == "original_managed_block_unqualified"
+    assert status.generic_reconcile_authorized is False
+    assert status.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+@pytest.mark.parametrize(
+    ("role", "tamper"),
+    [
+        ("topology-heartbeat", "foreign_executable"),
+        ("topology-heartbeat", "foreign_config_dir"),
+        ("completion-watcher", "extra_argument"),
+        ("server", "invalid_port"),
+        ("server", "noncanonical_port"),
+        ("server", "oversized_port"),
+        ("server", "nonascii_port"),
+    ],
+)
+def test_m3_mixed_peers_require_canonical_shared_cron_renderer(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    role: str, tamper: str,
+) -> None:
+    """Weiger een vervalste *andere* rol, ook bij interne bron/hash-gelijkheid."""
+    import hashlib
+    import shlex
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_migration_checkpoint,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    original_lines = preview.original_crontab.splitlines(keepends=True)
+    candidate_lines = preview.candidate_crontab.splitlines(keepends=True)
+    selected_line = next(
+        line for line in original_lines
+        if f"autostart cron-run {role}" in line
+    )
+    tokens = shlex.split(selected_line)
+    if tamper == "foreign_executable":
+        tokens[5] = "/bin/false"
+    elif tamper == "foreign_config_dir":
+        tokens[7] = "/tmp/foreign-config"
+    elif tamper == "extra_argument":
+        tokens.insert(-2, "--wrong-extra")
+    elif tamper == "invalid_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "65536"
+    elif tamper == "noncanonical_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "08000"
+    elif tamper == "oversized_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "9" * 5000
+    elif tamper == "nonascii_port":
+        assert tokens[11] == "--port"
+        tokens[12] = "１２３４"
+    else:
+        raise AssertionError("unknown test case")
+    altered = (
+        "* * * * * "
+        + " ".join(shlex.quote(item) for item in tokens[5:-2])
+        + " >/dev/null 2>&1\n"
+    )
+    original_lines[original_lines.index(selected_line)] = altered
+    candidate_lines[candidate_lines.index(selected_line)] = altered
+    original = "".join(original_lines)
+    candidate = "".join(candidate_lines)
+    forged = replace(
+        preview,
+        original_crontab=original,
+        candidate_crontab=candidate,
+        rollback_crontab_sha256=hashlib.sha256(
+            original.encode("utf-8")
+        ).hexdigest(),
+    )
+    # Het lagere geselecteerde-rol/rollbackcontract ziet dit nog als een
+    # interne consistente mutatie. De volledige cronbroncontrole MOET STOP.
+    checkpoint = assess_single_peer_migration_checkpoint(
+        preview=forged, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=forged.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+    )
+    assert checkpoint.consistent, checkpoint.reason_code
+
+    remaining = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    status = assess_single_peer_mixed_backend_status(
+        preview=forged, phase="peer_disabled_idle",
+        observed_crontab=candidate,
+        observed_unit_contents=forged.boot_unit_contents,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(
+            CronComponentStatus(item, item in remaining, item in remaining, False)
+            for item in CRON_COMPONENTS
+        ),
+        systemd_rows=tuple(
+            AutostartStatus(item, item == forged.component, False, False)
+            for item in CRON_COMPONENTS
+        ),
+    )
+    assert status.consistent is False
+    assert status.reason_code == "original_cron_role_unqualified"
+    assert status.generic_reconcile_authorized is False
+    assert status.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []
+
+
+def test_mixed_backend_direct_user_remove_denied_before_systemctl(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rechtstreekse Python-aanroep mag CLI's mixed-beveiliging niet omzeilen."""
+    from runner_mcp import cron_autostart
+
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    unit = unit_dir / SERVER_UNIT
+    unit.write_text(MANAGED_MARKER + "\n[Service]\n", encoding="utf-8")
+    monkeypatch.setattr(cron_autostart, "cron_available", lambda: True)
+    monkeypatch.setattr(cron_autostart, "has_managed_cron", lambda: True)
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="refuse blanket systemd removal"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+    assert systemctl.calls == []
+    assert unit.is_file()
+    assert unit.read_text(encoding="utf-8").startswith(MANAGED_MARKER)
+
+
+def test_mixed_backend_direct_user_remove_denies_unknown_cron_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Niet leesbare cron-status mag de systemd-remover niet vrijgeven."""
+    from runner_mcp import cron_autostart
+    from runner_mcp.cron_autostart import CronAutostartError
+
+    unit_dir = tmp_path / "units"
+    unit_dir.mkdir()
+    unit = unit_dir / SERVER_UNIT
+    unit.write_text(MANAGED_MARKER + "\n[Service]\n", encoding="utf-8")
+    monkeypatch.setattr(cron_autostart, "cron_available", lambda: True)
+    monkeypatch.setattr(
+        cron_autostart, "has_managed_cron",
+        lambda: (_ for _ in ()).throw(CronAutostartError("unavailable")),
+    )
+    systemctl = FakeSystemctl()
+    with pytest.raises(AutostartError, match="managed cron status is unavailable"):
+        remove_user_services(unit_dir=unit_dir, runner=systemctl)
+    assert systemctl.calls == []
+    assert unit.exists()
+
+@pytest.mark.parametrize(
+    ("backend", "field", "invalid"),
+    [
+        ("cron", "component", []),
+        ("systemd", "component", {}),
+        ("cron", "installed", 0),
+        ("cron", "enabled", "yes"),
+        ("cron", "active", None),
+        ("systemd", "installed", 1),
+        ("systemd", "enabled", 0),
+        ("systemd", "active", "no"),
+    ],
+)
+def test_m3_mixed_status_rejects_malformed_inventory_fields_without_exception(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    backend: str, field: str, invalid: object,
+) -> None:
+    """Een onbetrouwbare statusrij leidt tot WAIT, nooit TypeError of vrijgave."""
+    from dataclasses import replace
+
+    from runner_mcp.autostart import (
+        AutostartStatus,
+        assess_single_peer_mixed_backend_status,
+    )
+    from runner_mcp.cron_autostart import CRON_COMPONENTS, CronComponentStatus
+
+    preview = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    remaining = {
+        "server", "topology-heartbeat", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    }
+    cron_rows = tuple(
+        CronComponentStatus(role, role in remaining, role in remaining, False)
+        for role in CRON_COMPONENTS
+    )
+    systemd_rows = tuple(
+        AutostartStatus(role, role == preview.component, False, False)
+        for role in CRON_COMPONENTS
+    )
+    if backend == "cron":
+        cron_rows = tuple(
+            replace(row, **{field: invalid}) if row.component == "server" else row
+            for row in cron_rows
+        )
+    else:
+        systemd_rows = tuple(
+            replace(row, **{field: invalid})
+            if row.component == preview.component else row
+            for row in systemd_rows
+        )
+
+    result = assess_single_peer_mixed_backend_status(
+        preview=preview,
+        phase="peer_disabled_idle",
+        observed_crontab=preview.candidate_crontab,
+        observed_unit_contents=preview.boot_unit_contents,
+        unit_enabled=False,
+        unit_active=False,
+        main_pid=0,
+        role_lock_active=False,
+        new_function_ack=False,
+        cron_rows=cron_rows,
+        systemd_rows=systemd_rows,
+    )
+    assert result.consistent is False
+    assert result.reason_code == "backend_inventory_type_unqualified"
+    assert result.generic_reconcile_authorized is False
+    assert result.cutover_authorized is False
+    assert list(tmp_path.rglob("*.service")) == []

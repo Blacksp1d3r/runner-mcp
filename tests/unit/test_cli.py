@@ -4088,3 +4088,194 @@ def test_fresh_setup_does_not_invent_repository_mirror_bindings(
         "RUNNER_FABRIC_REPOSITORY_MIRROR_GIT_CONFIG",
     ):
         assert key not in values
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_mixed_status_reports_both_backends_without_qualifying(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een gemengde toestand tonen mag nooit normale reconcile toestaan."""
+    from runner_mcp.autostart import AutostartStatus
+    from runner_mcp.cron_autostart import CronComponentStatus
+
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(
+        cli, "configured_autostart_components",
+        lambda _: ("server", "github-watcher"),
+    )
+    monkeypatch.setattr(cli, "cron_status", lambda **_: (
+        calls.append("cron-read"),
+        [
+            CronComponentStatus("server", True, True, False),
+            CronComponentStatus("github-watcher", False, False, False),
+        ],
+    )[1])
+    monkeypatch.setattr(cli, "user_service_status", lambda: (
+        calls.append("systemd-read"),
+        [
+            AutostartStatus("server", False, False, False),
+            AutostartStatus("github-watcher", True, False, False),
+        ],
+    )[1])
+    for name in ("install_user_services", "install_cron_services",
+                 "remove_user_services", "remove_cron_services"):
+        monkeypatch.setattr(
+            cli, name, lambda *a, **k: (_ for _ in ()).throw(
+                AssertionError("mixed status attempted backend mutation")
+            ),
+        )
+    result = main([
+        "--config-dir", str(paths.config_dir), "autostart", "status",
+    ])
+    output = capsys.readouterr()
+    assert result == 2
+    assert output.err == ""
+    assert output.out.splitlines() == [
+        "backend: mixed-unqualified",
+        "reason: multiple_managed_backends",
+        "cron/server: installed=yes, enabled=yes, active=no",
+        "cron/github-watcher: installed=no, enabled=no, active=no",
+        "systemd-user/server: installed=no, enabled=no, active=no",
+        "systemd-user/github-watcher: installed=yes, enabled=no, active=no",
+        "reconcile_authorized=no",
+        "cutover_authorized=no",
+    ]
+    assert calls == ["cron-read", "systemd-read"]
+    assert str(paths.config_dir) not in output.out
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_mixed_status_fails_closed_if_systemd_unreachable(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Geen misleidende partiële status bij niet bereikbaar gebruikersbeheer."""
+    from runner_mcp.autostart import AutostartError
+    from runner_mcp.cron_autostart import CronComponentStatus
+
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(cli, "configured_autostart_components", lambda _: ("server",))
+    monkeypatch.setattr(
+        cli, "cron_status", lambda **_: [
+            CronComponentStatus("server", True, True, False),
+        ],
+    )
+    monkeypatch.setattr(
+        cli, "user_service_status",
+        lambda: (_ for _ in ()).throw(
+            AutostartError("systemd user manager is unreachable")
+        ),
+    )
+    result = main([
+        "--config-dir", str(paths.config_dir), "autostart", "status",
+    ])
+    captured = capsys.readouterr()
+    assert result == 2
+    assert captured.out == ""
+    assert "systemd user manager is unreachable" in captured.err
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_mixed_reconcile_remains_fail_closed(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Nieuwe diagnose mag de normale all-role-actuator niet activeren."""
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(
+        cli, "user_service_status",
+        lambda: (_ for _ in ()).throw(
+            AssertionError("reconcile must stop before backend readback")
+        ),
+    )
+    for method in ("install_user_services", "install_cron_services"):
+        monkeypatch.setattr(
+            cli, method, lambda *a, **k: (_ for _ in ()).throw(
+                AssertionError("reconcile attempted mutation")
+            ),
+        )
+    result = main([
+        "--config-dir", str(paths.config_dir), "autostart", "reconcile",
+    ])
+    captured = capsys.readouterr()
+    assert result == 2
+    assert "multiple managed autostart backends" in captured.err
+    assert "reconciled" not in captured.out
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_mixed_remove_denied_before_confirmation(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """De algemene remove mag bij gemengde rollen niet eens prompten."""
+    paths, _ = install_config(tmp_path)
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: True)
+    monkeypatch.setattr(
+        "builtins.input", lambda _: (_ for _ in ()).throw(
+            AssertionError("unsafe mixed removal confirmation reached")
+        ),
+    )
+    for method in ("remove_cron_services", "remove_user_services"):
+        monkeypatch.setattr(
+            cli, method, lambda *a, **k: (_ for _ in ()).throw(
+                AssertionError("mixed removal mutated a backend")
+            ),
+        )
+    result = main([
+        "--config-dir", str(paths.config_dir), "autostart", "remove",
+    ])
+    captured = capsys.readouterr()
+    assert result == 2
+    assert captured.out == ""
+    assert "blanket autostart removal is forbidden" in captured.err
+
+
+@pytest.mark.usefixtures("isolated_autostart_cli_host")
+def test_autostart_cli_single_cron_backend_still_allows_confirmed_remove(
+    tmp_path: Path,
+    capsys: pytest.CaptureFixture[str],
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """De nieuwe mixed STOP laat oude enkel-cronverwijdering intact."""
+    paths, _ = install_config(tmp_path)
+    calls: list[str] = []
+    monkeypatch.setattr(cli, "cron_available", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_cron", lambda: True)
+    monkeypatch.setattr(cli, "has_managed_user_units", lambda: False)
+    monkeypatch.setattr(
+        "builtins.input", lambda _: "REMOVE RUNNER MCP AUTOSTART",
+    )
+    monkeypatch.setattr(
+        cli, "remove_cron_services", lambda: calls.append("cron") or True,
+    )
+    monkeypatch.setattr(
+        cli, "remove_user_services", lambda: (_ for _ in ()).throw(
+            AssertionError("unrelated systemd removal reached")
+        ),
+    )
+    result = main([
+        "--config-dir", str(paths.config_dir), "autostart", "remove",
+    ])
+    captured = capsys.readouterr()
+    assert result == 0
+    assert captured.err == ""
+    assert "Removed 1 Runner MCP autostart backend(s)." in captured.out
+    assert calls == ["cron"]

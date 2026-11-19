@@ -1,3 +1,9 @@
+## 2026-11-19 — #520 latest correct helper 0.1.183; install gate remains WAIT
+
+- **Reuse:** `0.1.182` original standalone root-helper source/CI is complete; later [#1025](https://github.com/Blacksp1d3r/runner-mcp/pull/1025) was merged `b8a87c5fb896fb986c6c75e657cfdc646ec7b949` as `0.1.183` to use the existing exact row-set ACL parser at final readback instead of order-sensitive text; official CI all SUCCESS. Installed helper source blob `3baad08259b67696796e80289f683ca1ca2ac66c` is currently GitHub source ONLY.
+- **Physical original LAB operator receipt:** latest `RMCP520_ACL_CLASS=EXACT_BASE`, three base entries, no mask/named users/named groups, `RMCP520_NO_CHANGES=TRUE`; previous in-order `DIFF_STOP` was inconsistent but does not independently prove a permission change. Prior owner write-access denied and same MCP PID/startticks receipt remain valid, helper/policy slot ABSENT.
+- **Next and sole open gate:** fixed root-owned 0500 code/0600 private binding installation on actual authorized host, current parent/Python/runtime/source and rollback checks, read-only + bounded no-grant test, and only then existing control-path integration. No generic sudo, new daemon/auth/controller, Q7/A7 or repeated RF999.
+
 ## 2026-11-19 — #520 root ACL helper source merged; target-only install gate still WAIT
 
 - **DONE source:** Existing #520 PR [#1023](https://github.com/Blacksp1d3r/runner-mcp/pull/1023) merged `65f9dd9ced24c334e9ada06c830447862af0812a` for unique version `0.1.182`. Official head validation [#44472071082](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/44472071082) SUCCESS (4,990 tests/Ruff/demo/disposable Linux/build), clean Ubuntu [#44472070913](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/44472070913) SUCCESS and attribution [#44472070910](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/44472070910) SUCCESS; main helper blob and version readback done.

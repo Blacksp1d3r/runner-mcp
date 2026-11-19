@@ -1,7 +1,7 @@
 {
   "schemaVersion": "runner-mcp/tool-catalogue-baseline/v1",
   "sourceFile": "src/runner_mcp/server.py",
-  "minimumToolCount": 106,
+  "minimumToolCount": 108,
   "tools": [
     "apply_migrations",
     "approval_status",
@@ -69,6 +69,7 @@
     "fabric_worker_qualification_readiness",
     "file_metadata",
     "get_test_log",
+    "incus_qualification_acl_revoke",
     "job_status",
     "known_project_preflight",
     "known_project_source_preflight",

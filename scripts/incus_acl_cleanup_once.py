@@ -291,7 +291,7 @@ def main() -> int:
     except CleanupStop as exc:
         print(f"INCUS_ACL_REVOKE=STOP:{exc.code}")
         return 2
-    except Exception:
+    except Exception:  # noqa: BLE001 - root-fouten mogen geen details lekken
         print("INCUS_ACL_REVOKE=STOP:unexpected")
         return 2
     print(f"INCUS_ACL_REVOKE=PASS:{status}")

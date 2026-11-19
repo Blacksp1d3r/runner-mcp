@@ -1,3 +1,7 @@
+## 2026-11-19 — #520 ACL-helper 0.1.183 broncorrectie gemerged; rootinstallatie nog open
+
+Na de geslaagde `0.1.182`-bronfase is de concrete ordergevoelige ACL-eindcontrole hersteld via [PR #1025](https://github.com/Blacksp1d3r/runner-mcp/pull/1025), MERGED `b8a87c5fb896fb986c6c75e657cfdc646ec7b949`, `0.1.183`; officiële validatie/Clean Ubuntu/attributie SUCCESS. De helper accepteert alleen exact dezelfde drie basisrechten ongeacht tekstvolgorde, extra ACL-vermeldingen en maskers blijven STOP. Laatste originele LAB-readback heeft exact basisrechten, geen extra grant of masker, gebruiker kan niet schrijven. **Fysieke root-codeinstallatie, privébinding, beheerintegratie en onafhankelijke rollbacktest blijven OPEN #520;** GitHub-code is geen actieve servercode. Geen nieuwe VM-, Q7-/A7- of serviceupdate; geen tweede beheer- of authenticatiesysteem.
+
 ## 2026-11-18 — Eigenaarsbesluit: A7 eerst via bestaande SSH/PowerShell, geïntegreerde geregistreerde-login-interface LATER
 
 **NIEUWE BESLISSING — primeert op eventuele oudere, te strikte tekst in deze roadmap en #1005:**

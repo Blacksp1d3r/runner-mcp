@@ -246,9 +246,13 @@ def _verify(binding: Binding, before: SocketEvidence) -> None:
     current = _socket(binding)
     if current != before:
         raise CleanupStop("socket_generation_changed")
-    if _acl(binding.socket_path).splitlines() != [
-        "user::rw-", "group::rw-", "other::---",
-    ]:
+    # De ACL-rijvolgorde is geen bevoegdheid. Hergebruik de bestaande
+    # strikte parser: exact drie basisregels, geen dubbels of extra entries.
+    try:
+        baseline = _acl_action(_acl(binding.socket_path), binding.owner_uid)
+    except CleanupStop as exc:
+        raise CleanupStop("acl_baseline_not_restored") from exc
+    if baseline != Operation.NOOP:
         raise CleanupStop("acl_baseline_not_restored")
     if not _owner_denied(binding):
         raise CleanupStop("owner_access_unverified")

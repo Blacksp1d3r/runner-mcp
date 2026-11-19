@@ -1,3 +1,11 @@
+## 0.1.183 — #520 exact ACL-baseline semantisch, niet rijvolgorde (SOURCE ONLY)
+
+- De standalone ACL-herstelhelper beschouwt de drie exact toegestane POSIX-basisregels ook bij gewijzigde uitvoervolgorde als dezelfde veilige ACL. De reeds bestaande strikte parser weigert nog steeds extra named users/groups, een masker, dubbele regels en onverwachte entries bij de eindcontrole.
+- Negatieve en positieve regressies voor permutaties, maskers, extra ACL-records en een onvolledige setfacl-readback. Dit corrigeert een mogelijke valse STOP bij de eerdere operator-metingen; bewijst geen daadwerkelijke wijziging van de ACL tussen die metingen.
+- Alleen broncode en tests. Geen root-helper geïnstalleerd, geen socketrechten gewijzigd, geen Incus-VM-test of A7/Q7-/MCP-service-update. De fysieke installatie- en beheerde aanroepacceptatie van #520 blijft OPEN.
+
+---
+
 ## 0.1.182 — #520 root-owned Incus ACL cleanup helper (SOURCE ONLY, LIVE DISABLED)
 
 - Nieuwe zelfstandige, uitsluitend-standaardbibliotheek ACL-herstelhelper met nul aanroepopties; de bestaande MCP-server, Fabric/Agent Bus en Incus-opdrachten krijgen **geen** nieuwe privilege-/grant-/shellroute.

@@ -202,3 +202,38 @@ def test_main_only_returns_bounded_status(monkeypatch, capsys):
         mod.CleanupStop("acl_unexpected")))
     assert mod.main() == 2
     assert capsys.readouterr().out == "INCUS_ACL_REVOKE=STOP:acl_unexpected\n"
+
+
+
+def test_verify_semantic_baseline_accepts_row_reordering(monkeypatch):
+    """Alleen gewijzigde volgorde verandert de ACL-bevoegdheid niet."""
+    changed_order = "other::---\nuser::rw-\ngroup::rw-\n"
+    state = _fake_runtime(monkeypatch, initial=changed_order)
+    assert mod.cleanup_once() == mod.Operation.NOOP
+    assert state["writes"] == []
+
+
+@pytest.mark.parametrize("bad", [
+    "user::rw-\ngroup::rw-\nmask::rw-\nother::---\n",
+    "user::rw-\ngroup::rw-\nother::---\nuser:9999:rw-\n",
+    "user::rw-\ngroup::rw-\nother::---\ngroup:9999:rw-\n",
+    "user::rw-\ngroup::rw-\nother::---\nother::---\n",
+])
+def test_verify_rejects_nonbase_acl_even_after_revoke(monkeypatch, bad):
+    """De volgorde-correctie mag geen maskers, extra rechten of dubbels toestaan."""
+    _fake_runtime(monkeypatch, initial=bad)
+    with pytest.raises(mod.CleanupStop, match="acl_baseline_not_restored"):
+        mod._verify(BINDING, SOCKET)
+
+
+def test_cleanup_after_revoke_never_accepts_unexpected_final_mask(monkeypatch):
+    """Een foutieve setfacl-uitkomst mag geen vals eind-PASS opleveren."""
+    state = _fake_runtime(monkeypatch, initial=GRANT)
+    def leave_mask(args, **kwargs):
+        state["writes"].append(args)
+        state["acl"] = MASK
+        return subprocess.CompletedProcess(args, 0, "", "")
+    monkeypatch.setattr(mod, "_run", leave_mask)
+    with pytest.raises(mod.CleanupStop, match="acl_baseline_not_restored"):
+        mod.cleanup_once()
+    assert len(state["writes"]) == 1

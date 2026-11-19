@@ -186,7 +186,7 @@ def test_failure_journal_stages_are_bounded_and_private(
         if kind == "reject":
             return subprocess.CompletedProcess(argv, 1, "", "PRIVATE_SUDO_DETAIL")
         return subprocess.CompletedProcess(
-            argv, 0, "UNEXPECTED_PRIVATE_REPLY\\n", "PRIVATE_SUDO_DETAIL"
+            argv, 0, "UNEXPECTED_PRIVATE_REPLY\n", "PRIVATE_SUDO_DETAIL"
         )
 
     if kind == "admission":
@@ -218,7 +218,7 @@ def test_success_creates_no_transport_warning(monkeypatch, caplog):
     monkeypatch.setattr(
         sut.subprocess, "run",
         lambda argv, **kwargs: subprocess.CompletedProcess(
-            argv, 0, "INCUS_ACL_REVOKE=PASS:already_restored\\n", ""
+            argv, 0, "INCUS_ACL_REVOKE=PASS:already_restored\n", ""
         ),
     )
     with caplog.at_level("WARNING", logger=sut.__name__):

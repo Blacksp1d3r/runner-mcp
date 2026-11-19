@@ -163,3 +163,65 @@ def test_unavailable_command_and_timeout_are_sanitized(monkeypatch, error):
     assert result["state"] == "unavailable"
     assert result["reasonCode"] == "privileged_helper_unavailable"
     assert "secret" not in str(result)
+
+
+@pytest.mark.parametrize(
+    ("kind", "expected"),
+    [
+        ("admission", "admission"),
+        ("spawn", "spawn_or_timeout"),
+        ("reject", "command_rejected"),
+        ("receipt", "invalid_receipt"),
+    ],
+)
+def test_failure_journal_stages_are_bounded_and_private(
+    monkeypatch, caplog, kind, expected
+):
+    """A failed managed call must be diagnosable without logging stderr or paths."""
+    admit_root_owned_install(monkeypatch)
+
+    def run(argv, **kwargs):
+        if kind == "spawn":
+            raise OSError("PRIVATE_SPAWN_DETAIL")
+        if kind == "reject":
+            return subprocess.CompletedProcess(argv, 1, "", "PRIVATE_SUDO_DETAIL")
+        return subprocess.CompletedProcess(
+            argv, 0, "UNEXPECTED_PRIVATE_REPLY\\n", "PRIVATE_SUDO_DETAIL"
+        )
+
+    if kind == "admission":
+        monkeypatch.setattr(sut, "_root_installation_present", lambda: False)
+        monkeypatch.setattr(
+            sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
+        )
+    else:
+        monkeypatch.setattr(sut.subprocess, "run", run)
+
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+
+    assert result == {
+        "schemaVersion": sut._SCHEMA,
+        "state": "unavailable",
+        "normalActivationEnabled": False,
+        "reasonCode": "privileged_helper_unavailable",
+    }
+    assert [r.message for r in caplog.records] == [
+        f"incus_acl_revoke_unavailable stage={expected}"
+    ]
+    assert "PRIVATE" not in caplog.text
+    assert "/usr/local/sbin" not in caplog.text
+
+
+def test_success_creates_no_transport_warning(monkeypatch, caplog):
+    admit_root_owned_install(monkeypatch)
+    monkeypatch.setattr(
+        sut.subprocess, "run",
+        lambda argv, **kwargs: subprocess.CompletedProcess(
+            argv, 0, "INCUS_ACL_REVOKE=PASS:already_restored\\n", ""
+        ),
+    )
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+    assert result["state"] == "already_restored"
+    assert not caplog.records

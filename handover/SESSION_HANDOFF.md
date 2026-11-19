@@ -1,3 +1,9 @@
+## 2026-11-19 — #520 fixed root helper live no-op PASS; managed MCP tool 0.1.184 SOURCE ONLY
+
+- Original operator installer checksum PASS; exact static `0500` root-owned helper and `0600` root-private policy INSTALLED, helper already-restored no-op PASS, socket/ACL unchanged, owner Incus access denied, original MCP service generation unchanged. Reuse [issue #520 receipt](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7015845039); **do not rerun installer or RF999**.
+- [PR #1027](https://github.com/Blacksp1d3r/runner-mcp/pull/1027) merged source 0.1.184, exact fixed sudo command, parameterless authenticated MCP tool, bounded status/audit and synthetic negative tests; all exact-head CI SUCCESS incl. 5,016 tests and 108-tool catalogue. No original MCP update, no exact sudoers permission or managed call/ACK proved.
+- Remaining single next gate: requalify original serving process/source and unchanged rollback under existing A7 owner, then approve only exact fixed OS helper command and test authentic original-client **no-op**; actual time-bounded revoke/grant test requires a separately approved bounded campaign. Until then #520 OPEN and `MANAGED_RUNTIME_INTEGRATION=NOT_PERFORMED`. AIfordable #227 customer job/ACK, Q7 and A7 remain owned elsewhere; do not create another management plane.
+
 ## 2026-11-19 — #520 latest correct helper 0.1.183; install gate remains WAIT
 
 - **Reuse:** `0.1.182` original standalone root-helper source/CI is complete; later [#1025](https://github.com/Blacksp1d3r/runner-mcp/pull/1025) was merged `b8a87c5fb896fb986c6c75e657cfdc646ec7b949` as `0.1.183` to use the existing exact row-set ACL parser at final readback instead of order-sensitive text; official CI all SUCCESS. Installed helper source blob `3baad08259b67696796e80289f683ca1ca2ac66c` is currently GitHub source ONLY.

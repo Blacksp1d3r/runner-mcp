@@ -8,6 +8,7 @@ No caller-supplied host, path, command, user, sudo options or environment.
 
 from __future__ import annotations
 
+import logging
 import os
 import stat
 import subprocess
@@ -23,6 +24,7 @@ _ROOT_DIRS = (
 )
 _SCHEMA = "runner-mcp/incus-qualification-acl-revoke/v1"
 _UNAVAILABLE = "privileged_helper_unavailable"
+_LOG = logging.getLogger(__name__)
 _PASSED = {
     "INCUS_ACL_REVOKE=PASS:already_restored": "already_restored",
     "INCUS_ACL_REVOKE=PASS:revoke_only": "revoked",
@@ -38,6 +40,16 @@ def _bounded(state: str, *, reason: str | None = None) -> dict[str, object]:
     if reason is not None:
         result["reasonCode"] = reason
     return result
+
+
+def _fail_closed(stage: str) -> dict[str, object]:
+    """Log only an enumerated local failure class, never subprocess details."""
+    if stage not in {
+        "admission", "spawn_or_timeout", "command_rejected", "invalid_receipt"
+    }:
+        stage = "unknown"
+    _LOG.warning("incus_acl_revoke_unavailable stage=%s", stage)
+    return _bounded("unavailable", reason=_UNAVAILABLE)
 
 
 def _root_installation_present() -> bool:
@@ -73,7 +85,7 @@ def revoke_fixed_incus_qualification_acl() -> dict[str, object]:
     setfacl, arbitrary shell, direct Incus management or root escalation.
     """
     if not _root_installation_present():
-        return _bounded("unavailable", reason=_UNAVAILABLE)
+        return _fail_closed("admission")
     try:
         result = subprocess.run(
             _SUDO_ARGV,
@@ -89,10 +101,10 @@ def revoke_fixed_incus_qualification_acl() -> dict[str, object]:
                  "LANG": "C", "LC_ALL": "C"},
         )
     except (OSError, subprocess.SubprocessError):
-        return _bounded("unavailable", reason=_UNAVAILABLE)
+        return _fail_closed("spawn_or_timeout")
     if result.returncode != 0:
-        return _bounded("unavailable", reason=_UNAVAILABLE)
+        return _fail_closed("command_rejected")
     state = _PASSED.get(result.stdout.strip())
     if state is None or result.stdout.count("\n") != 1:
-        return _bounded("unavailable", reason=_UNAVAILABLE)
+        return _fail_closed("invalid_receipt")
     return _bounded(state)

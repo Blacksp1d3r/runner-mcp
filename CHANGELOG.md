@@ -1,3 +1,11 @@
+## 0.1.184 — #520 vaste beheerde Incus-ACL-intrekking via bestaande OS-sudo (SOURCE ONLY)
+
+- Nieuwe exact nul-argumenten `incus_qualification_acl_revoke`-tool in de **bestaande** Runner-MCP-server, met gecontroleerde audit. De enige opdracht is een vast `sudo -n`-argv naar de reeds afzonderlijk als root geïnstalleerde first-party intrekhelper. Er is **geen generieke shell, pad-, gebruiker-, ACL-, endpoint- of sudo-parameter**.
+- Zonder veilige root-owned helperbestandsidentiteit, onafhankelijke exact-command OS-toelating of een geldige begrensde `already_restored`/`revoke_only`-uitvoer volgt uitsluitend `privileged_helper_unavailable`. Helper-stdout/stderr, hostmetadata en sudo-details worden niet aan MCP-clients doorgegeven; `normalActivationEnabled=false` blijft altijd.
+- Negatieve tests voor vreemde output, timeout, sudo-denial, afwezige of onveilige helper, directory-symlink en vaste argv. Dit is **alleen een bronmerge**, geen actieve 0.1.184-serverinstallatie, geen sudoers-regel of nieuwe authenticatie. Eerst exacte originele hostproces-/rollback-/privilegebinding en apart live resultaatbewijs voordat #520 wordt afgesloten; RF999 en Q7/A7 ongemoeid.
+
+---
+
 ## 0.1.183 — #520 exact ACL-baseline semantisch, niet rijvolgorde (SOURCE ONLY)
 
 - De standalone ACL-herstelhelper beschouwt de drie exact toegestane POSIX-basisregels ook bij gewijzigde uitvoervolgorde als dezelfde veilige ACL. De reeds bestaande strikte parser weigert nog steeds extra named users/groups, een masker, dubbele regels en onverwachte entries bij de eindcontrole.

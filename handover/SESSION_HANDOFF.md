@@ -1,3 +1,9 @@
+## 2026-11-19 — #520 real original LAB MCP 0.1.184 manual cutover PASS; fixed sudo/MCP call next
+
+- Reuse physical owner [#520 cutover receipt](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7017588782): actual `AF-SVC-0003` user-systemd service switched from bound 0.1.38 to exact separately staged source `0c252eb8202f35c70d51aba155fb959d33c5b10b` / 0.1.184; new process and same listener PASS; old candidate and matching rollback drop-in preserved. Staging and cutover are **DONE, do not rerun**. No independent exercised rollback.
+- Installed 0.1.183 root-owned fixed ACL recovery helper/no-op PASS remains reusable; no retest of helper installer, temporary ACL grant or #999 disposable VM lifecycle.
+- One remaining first-party gate: root-owner independently admits only exact `/usr/bin/python3 -I -S` root helper argv for the service principal via existing sudo policy; verify visudo, old-baseline custody, and denied-by-default behavior. Then one authentic original-client zero-argument MCP invocation and negative socket access/ACL readback. No general sudo shell, new controller/relay/updater/auth, A7/Q7 or Agent Bus modification. `MANAGED_RUNTIME_INTEGRATION=NOT_ATTESTED`; #520 **OPEN**.
+
 ## 2026-11-19 — #520 fixed root helper live no-op PASS; managed MCP tool 0.1.184 SOURCE ONLY
 
 - Original operator installer checksum PASS; exact static `0500` root-owned helper and `0600` root-private policy INSTALLED, helper already-restored no-op PASS, socket/ACL unchanged, owner Incus access denied, original MCP service generation unchanged. Reuse [issue #520 receipt](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7015845039); **do not rerun installer or RF999**.

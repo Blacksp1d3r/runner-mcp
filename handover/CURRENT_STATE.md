@@ -1,3 +1,13 @@
+## 2026-11-20 — #520 opvolging PR #1040: gecorrigeerde bron, GEEN productieactivatie
+
+**Canonieke eigenaar:** [issue #520, bestaande voortgangscomment](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).
+Een synthetische pytest-collectiefout door een verkeerd gekoppelde `parametrize` is in de bestaande PR opgelost.
+Het vaste nieuwe AF_UNIX-client/socketpaar gebruikt nu een enkel path rechtstreeks onder root-beheerd `/run`; een servicebeschrijfbare tussenmap mag de serverack niet kunnen nabootsen.
+Peer groeps-/capability-grens, ACL-generatiegevoelige replay-denial, onderbroken client-ACK en ledger-fsync zijn aangevuld met gerichte bronregressies.
+**PR #1040 blijft DRAFT; exacte nieuwe CI ONBEKEND/NOT_ATTESTED.**
+Een geïsoleerde syntactische systemd-analyse (niet op originele LAB) is PASS voor de twee templates, niet een root-/socket-/setfacl-/runuser-canary.
+Originele server/fysieke versie, bestaande root-helper, Incus-ACL, gasten, NNP/userns en herstelbestanden zijn NIET GEWIJZIGD. Geen merge, service-installatie, grant of fysieke ACK.
+Volgende stap: actuele exact-head CI en onafhankelijke securityreview, vervolgens afzonderlijke eigenaarstoestemming voor de nieuwe privileged unit/installatie; pas daarna gecontroleerde fysieke acceptatie. Een echte ACL-grant vereist een tweede aparte toestemming.
 ## #520 — 2026-11-20: root-side Incus-revoke socketkandidaat, uitsluitend bron
 
 - Originele AF-SVC-0003: 0.1.186/NNP=1 met hostroot ongemapt in service-userns; vaste root-only Incus-helper en basis-ACL blijven ongemoeid. De afzonderlijke A7-rootactor heeft geen bewezen Incus-aanroepgrens. **Bestaande geschikte executor NOT_ATTESTED.**

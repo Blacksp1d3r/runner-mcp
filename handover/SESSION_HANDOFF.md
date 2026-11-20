@@ -1,3 +1,9 @@
+## 2026-11-20 — #520 source-capability parity on original serving process (READ ONLY)
+
+- Draft [PR #1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040) gained source guard for all `CapInh/CapPrm/CapEff/CapAmb` sets and three negative synthetic test cases (source commits `6efd40a`, `29005f3`), preserving original NNP and service user namespace. 12/12 source-static consistency checks PASS; **NOT** pytest/CI.
+- **Actual original AF-SVC-0003 process** read-only: previously bound PID/service generation and exact original user-unit still matched; original uid/gid and four capability fields were checked in `/proc`; all `CapInh=CapPrm=CapEff=CapAmb=0`, `NoNewPrivs=1`. No privileged changes or mutable tools. [Canonical sanitized owner evidence](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).
+- This observation attests current source-admission compatibility only; new root-executor not installed, no original MCP-client root ACK, no grant/revoke, no CI on current PR head. Existing `0.1.186` service/old `0.1.185` recovery unaffected.
+- Further work: exact PR-head pytest/Ruff on qualified isolated own runner, independent review, then separate owner permission for new root-installed systemd socket/actor; later separate permission for real temporary ACL grant/revoke. Keep PR DRAFT and issue #520 OPEN.
 ## 2026-11-20 — #520 cached PASS blocked by unresolved PENDING
 
 **Bronstatus:** [Runner-MCP PR #1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040) DRAFT; #520 OWNER-rule comment 7044318943 unchanged. New executor source globally blocks any cached PASS ACK when any unrelated ledger PENDING remains; added explicit no-helper/no-ACK regression. Fixed source+test changes in commits 977445bef61bf493135b5c48687232fad08d6c5b and 16f3cd53a002d44ae09803df34b0e7d02ce41591.

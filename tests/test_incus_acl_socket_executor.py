@@ -6,10 +6,12 @@ De echte hostcanary en oorspronkelijke MCP-acceptatie zijn aparte gates.
 
 from __future__ import annotations
 
+import errno
 import hashlib
 import importlib.util
 import json
 import os
+import stat
 import struct
 from pathlib import Path
 from types import SimpleNamespace
@@ -49,7 +51,8 @@ def setup_synthetic(monkeypatch, fd, *, state="already_restored"):
     """Simuleer alleen de reeds geautoriseerde rootgrens."""
     count = []
     monkeypatch.setattr(sut, "_root_only", lambda: None)
-    monkeypatch.setattr(sut, "_binding", lambda: (1001, 1001))
+    monkeypatch.setattr(sut, "_binding", lambda: (1001, 1001, 108))
+    monkeypatch.setattr(sut, "_socket_generation", lambda _gid: "10:20:30")
     monkeypatch.setattr(sut, "_peer", lambda *_a: (123, "55555"))
     monkeypatch.setattr(sut, "_same_peer", lambda *_a: True)
     monkeypatch.setattr(sut, "_ledger_open", lambda: os.dup(fd))
@@ -76,7 +79,7 @@ def test_first_durable_ack_then_replay_executes_fixed_helper_once(monkeypatch, t
         assert called == ["already_restored"]
         f.seek(0)
         assert f.read() == (
-            f"{NONCE} PENDING\n{NONCE} PASS:already_restored\n"
+            f"{NONCE} PENDING\n{NONCE} PASS:already_restored:10:20:30\n"
         ).encode()
         assert first.timeout == 3
 
@@ -90,7 +93,7 @@ def test_root_ack_only_after_persisted_helper_result(monkeypatch, tmp_path, stat
         assert count == [state]
         assert client.reply == [f"RMCP520/1 {NONCE} PASS {state}\n".encode()]
         f.seek(0)
-        assert f.read().endswith(f"{NONCE} PASS:{state}\n".encode())
+        assert f.read().endswith(f"{NONCE} PASS:{state}:10:20:30\n".encode())
 
 
 def test_helper_failure_keeps_pending_and_blocks_new_work(monkeypatch, tmp_path):
@@ -157,10 +160,10 @@ def test_untrusted_command_or_parameter_is_denied_without_helper(
     "content",
     [
         "PRIVATE_DATA\n",
-        f"{NONCE} PASS:revoked\n",
+        f"{NONCE} PASS:revoked:10:20:30\n",
         f"{NONCE} PENDING\n{NONCE} PENDING\n",
-        (f"{NONCE} PENDING\n{NONCE} PASS:already_restored\n"
-         f"{NONCE} PASS:revoked\n"),
+        (f"{NONCE} PENDING\n{NONCE} PASS:already_restored:10:20:30\n"
+         f"{NONCE} PASS:revoked:10:20:30\n"),
         f"{NONCE} PENDING",
         "x" * 65537,
     ],
@@ -261,6 +264,76 @@ def test_existing_private_policy_binding_blocks_wrong_host_or_helper(
         code = "host_policy"
     with pytest.raises(sut.Denied, match=code):
         sut._binding()
+
+
+
+def test_old_success_is_not_replayed_after_socket_grant_generation_change(
+    monkeypatch, tmp_path,
+):
+    """An old ACK must never claim restoration of a later temporary grant."""
+    with (tmp_path / "ledger").open("w+b") as f:
+        called = setup_synthetic(monkeypatch, f.fileno())
+        sut.execute(Client(NONCE))
+        assert called == ["already_restored"]
+        monkeypatch.setattr(sut, "_socket_generation", lambda _gid: "10:20:31")
+        replay = Client(NONCE)
+        with pytest.raises(sut.Denied, match="stale_replay"):
+            sut.execute(replay)
+        assert replay.reply == []
+        assert called == ["already_restored"]
+        # A *fresh* request is still able to invoke the fixed revoke helper.
+        fresh = Client(OTHER)
+        sut.execute(fresh)
+        assert len(called) == 2
+        assert fresh.reply == [
+            f"RMCP520/1 {OTHER} PASS already_restored\n".encode()
+        ]
+
+
+def test_socket_fingerprint_requires_root_socket_and_no_posix_extended_acl(
+    monkeypatch,
+):
+    baseline = dict(
+        st_dev=10, st_ino=20, st_ctime_ns=30,
+        st_mode=stat.S_IFSOCK | 0o660,
+        st_uid=0, st_gid=108, st_nlink=1,
+    )
+    monkeypatch.setattr(
+        sut.os, "lstat", lambda _path: SimpleNamespace(**baseline)
+    )
+
+    def no_acl(_path, _name, **_kw):
+        raise OSError(errno.ENODATA, "No ACL")
+
+    monkeypatch.setattr(sut.os, "getxattr", no_acl)
+    assert sut._socket_generation(108) == "10:20:30"
+
+    monkeypatch.setattr(sut.os, "getxattr", lambda *_a, **_kw: b"new grant")
+    with pytest.raises(sut.Denied, match="socket_acl_unverified"):
+        sut._socket_generation(108)
+    monkeypatch.setattr(sut.os, "getxattr", no_acl)
+    baseline["st_gid"] = 999
+    with pytest.raises(sut.Denied, match="socket_generation"):
+        sut._socket_generation(108)
+
+
+def test_socket_mutation_during_acl_readback_is_denied(monkeypatch):
+    ctimes = iter([30, 31])
+
+    def stat_socket(_path):
+        return SimpleNamespace(
+            st_dev=10, st_ino=20, st_ctime_ns=next(ctimes),
+            st_mode=stat.S_IFSOCK | 0o660,
+            st_uid=0, st_gid=108, st_nlink=1,
+        )
+
+    def no_acl(_path, _name, **_kw):
+        raise OSError(errno.ENODATA, "No ACL")
+
+    monkeypatch.setattr(sut.os, "lstat", stat_socket)
+    monkeypatch.setattr(sut.os, "getxattr", no_acl)
+    with pytest.raises(sut.Denied, match="socket_generation"):
+        sut._socket_generation(108)
 
 
 def test_root_script_contains_no_dynamic_cli_shell_or_acl_grant():

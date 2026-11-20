@@ -75,6 +75,8 @@ De bestaande A7 systemd-root-actor is uitsluitend een vaste recovery-tick,
 niet een geauthenticeerde Incus-actuator. Hergebruik zou A7-autoriteit onjuist
 uitbreiden; er is géén bewezen geschikte bestaande host-root-aanroep.
 
+**Root-IPC-pad:** vaste socket rechtstreeks onder de door root beheerde `/run`-map, niet onder een mogelijk service-account-beschrijfbare submap. Een verifieerbaar root-owned parentpad is onderdeel van de installatietoelating; zonder dat bewijs geen client-ACK-claim.
+
 **Gekozen minimale bronkandidaat:** één **systemd system** socket
 `runner-mcp-incus-acl-revoke.socket` met `Accept=yes`, die per aanvraag
 één kortlevend root-owned `runner-mcp-incus-acl-revoke@.service` start.

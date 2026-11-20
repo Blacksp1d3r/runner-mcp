@@ -100,10 +100,15 @@ authenticatiedienst. De bronbestanden zijn templates, niet geïnstalleerd.
   ACL verwijderen en controleert zelf de Incus-socket/inode/ACL en negatief
   toegangsbewijs; nooit een ACL-grant.
 - Een root-only, `0700` statusmap en `0600` fsync-ledger bewaken de
-  correlation-ID. De eerste `PENDING` wordt vóór uitvoering duurzaam
+  correlation-ID. De nieuw aangemaakte ledger-mapvermelding wordt
+  apart gefsynct; de eerste `PENDING` wordt vóór uitvoering duurzaam
   bewaard; na gevalideerde helperuitvoer krijgt ze `PASS` en pas dan
   komt de begrensde ACK. Exacte replay krijgt dezelfde ACK zonder tweede
-  helperaanroep. Onderbroken/afwijkende status blijft `PENDING` en
+  helperaanroep. Een cached PASS geldt uitsluitend voor dezelfde, opnieuw
+  geverifieerde root-owned Incus-socketgeneratie en werkelijk afwezige
+  uitgebreide POSIX-ACL; een latere grant/ACL-wijziging maakt de oude
+  replay-ACK ongeldig. Een nieuwe unieke aanvraag mag de vaste helper
+  opnieuw oproepen. Onderbroken/afwijkende status blijft `PENDING` en
   blokkeert nieuwe uitvoeringen tot onafhankelijk operatorherstel.
   Rootservice audit schrijft alleen vaste uitkomsten in bestaande journald;
   bestaande MCP-audit blijft onafhankelijk van de rootledger.

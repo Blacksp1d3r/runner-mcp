@@ -132,7 +132,7 @@ def _start_ticks(pid: int) -> str:
     return tail[19]
 
 
-def _peer(conn: socket.socket, uid: int, gid: int) -> tuple[int, str]:
+def _peer(conn: socket.socket, uid: int, gid: int, socket_gid: int) -> tuple[int, str]:
     """SO_PEERCRED + exact één proces in de oorspronkelijke user-unit."""
     raw = conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
     pid, peer_uid, peer_gid = struct.unpack("3i", raw)
@@ -157,6 +157,17 @@ def _peer(conn: socket.socket, uid: int, gid: int) -> tuple[int, str]:
             or fields.get("Gid", "").split() != [str(gid)] * 4
             or fields.get("NoNewPrivs", "").split() != ["1"]):
         raise Denied("peer_security")
+    try:
+        cap_effective = int(fields.get("CapEff", "-1").strip(), 16)
+    except ValueError as exc:
+        raise Denied("peer_security") from exc
+    if cap_effective != 0:
+        raise Denied("peer_security")
+    # A socket with only the base ACL may still be writable via its
+    # POSIX owning group; no cached success may bypass this check.
+    if ("Groups" not in fields or gid == socket_gid
+            or str(socket_gid) in fields["Groups"].split()):
+        raise Denied("peer_socket_group")
     if Path(f"/proc/{pid}/comm").read_text(encoding="ascii").strip() != "runner-mcp":
         raise Denied("peer_process")
     return pid, _start_ticks(pid)
@@ -300,7 +311,7 @@ def execute(conn: socket.socket) -> None:
     """Eén aanvraag; onderbroken PENDING voorkomt dubbele onzekere uitvoering."""
     _root_only()
     uid, gid, socket_gid = _binding()
-    pid, start = _peer(conn, uid, gid)
+    pid, start = _peer(conn, uid, gid, socket_gid)
     conn.settimeout(3)
     data = bytearray()
     while len(data) < 80 and b"\n" not in data:
@@ -355,7 +366,8 @@ def main() -> int:
         known = {
             "not_host_root", "untrusted_install", "host_policy", "helper_digest",
             "peer_credentials", "peer_unit", "peer_not_exclusive", "peer_security",
-            "peer_process", "peer_generation", "request_invalid", "ledger_untrusted",
+            "peer_process", "peer_generation", "peer_socket_group",
+            "request_invalid", "ledger_untrusted",
             "ledger_invalid", "ledger_full", "recovery_required", "helper_denied",
             "helper_receipt", "socket_generation", "socket_acl_unverified",
             "stale_replay",

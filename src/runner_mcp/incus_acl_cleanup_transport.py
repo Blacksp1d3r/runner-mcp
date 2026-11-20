@@ -14,7 +14,7 @@ import re
 import secrets
 import socket
 
-_SOCKET = "/run/runner-mcp/incus-acl-revoke.sock"
+_SOCKET = "/run/runner-mcp-incus-acl-revoke.sock"
 _SCHEMA = "runner-mcp/incus-qualification-acl-revoke/v1"
 _UNAVAILABLE = "privileged_helper_unavailable"
 _LOG = logging.getLogger(__name__)

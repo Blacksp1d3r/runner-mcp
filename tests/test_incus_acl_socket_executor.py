@@ -121,7 +121,8 @@ def test_helper_failure_keeps_pending_and_blocks_new_work(monkeypatch, tmp_path)
 def test_peer_generation_changed_keeps_pending_and_no_success(monkeypatch, tmp_path):
     with (tmp_path / "ledger").open("w+b") as f:
         count = setup_synthetic(monkeypatch, f.fileno())
-        monkeypatch.setattr(sut, "_same_peer", lambda *_a: False)
+        checks = iter([True, False])
+        monkeypatch.setattr(sut, "_same_peer", lambda *_a: next(checks))
         client = Client()
         with pytest.raises(sut.Denied, match="peer_generation"):
             sut.execute(client)
@@ -307,6 +308,46 @@ def test_existing_private_policy_binding_blocks_wrong_host_or_helper(
     with pytest.raises(sut.Denied, match=code):
         sut._binding()
 
+
+
+def test_peer_replaced_during_queue_denied_before_root_helper_or_pending(
+    monkeypatch, tmp_path,
+):
+    with (tmp_path / "ledger").open("w+b") as f:
+        called = setup_synthetic(monkeypatch, f.fileno())
+        seen = iter([(123, "55555"), (123, "55556")])
+        monkeypatch.setattr(sut, "_peer", lambda *_args: next(seen))
+        client = Client()
+        with pytest.raises(sut.Denied, match="peer_generation"):
+            sut.execute(client)
+        assert called == []
+        assert client.reply == []
+        f.seek(0)
+        assert f.read() == b""
+
+
+def test_peer_security_drift_during_queue_denied_before_root_helper(
+    monkeypatch, tmp_path,
+):
+    with (tmp_path / "ledger").open("w+b") as f:
+        called = setup_synthetic(monkeypatch, f.fileno())
+        seen = 0
+
+        def peer_recheck(*_args):
+            nonlocal seen
+            seen += 1
+            if seen == 2:
+                raise sut.Denied("peer_security")
+            return 123, "55555"
+
+        monkeypatch.setattr(sut, "_peer", peer_recheck)
+        client = Client()
+        with pytest.raises(sut.Denied, match="peer_security"):
+            sut.execute(client)
+        assert called == []
+        assert client.reply == []
+        f.seek(0)
+        assert f.read() == b""
 
 
 def test_old_success_is_not_replayed_after_socket_grant_generation_change(

@@ -484,6 +484,44 @@ def test_ledger_short_read_must_not_hide_later_pending(
             sut._records(f.fileno())
 
 
+def test_root_replay_is_logged_as_replay_not_new_durable_action(
+    monkeypatch, tmp_path, capsys,
+):
+    with (tmp_path / "ledger").open("w+b") as f:
+        called = setup_synthetic(monkeypatch, f.fileno())
+        sut.execute(Client(NONCE))
+        capsys.readouterr()
+        sut.execute(Client(NONCE))
+    assert called == ["already_restored"]
+    journal = capsys.readouterr().err
+    assert "RMCP520_ROOT_REPLAY=PASS receipt=" in journal
+    assert "RMCP520_ROOT_DURABLE=PASS" not in journal
+
+
+def test_loss_of_peer_authority_after_helper_does_not_create_pass(
+    monkeypatch, tmp_path,
+):
+    with (tmp_path / "ledger").open("w+b") as f:
+        called = setup_synthetic(monkeypatch, f.fileno())
+        checks = 0
+
+        def peer(*_args):
+            nonlocal checks
+            checks += 1
+            if checks == 3:
+                raise sut.Denied("peer_security")
+            return 123, "55555"
+
+        monkeypatch.setattr(sut, "_peer", peer)
+        client = Client()
+        with pytest.raises(sut.Denied, match="peer_security"):
+            sut.execute(client)
+        assert called == ["already_restored"]
+        assert client.reply == []
+        f.seek(0)
+        assert f.read() == f"{NONCE} PENDING\n".encode()
+
+
 def test_root_script_contains_no_dynamic_cli_shell_or_acl_grant():
     assert sut._ACTION == "incus_qualification_acl_revoke"
     assert sut._HELPER.name == "runner-mcp-incus-acl-revoke"

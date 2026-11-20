@@ -186,10 +186,17 @@ def _same_peer(pid: int, start: str, uid: int) -> bool:
 
 
 def _append(fd: int, value: str) -> None:
+    """Een resultaat wordt NOOIT bevestigd na slechts een gedeeltelijke write."""
+    payload = (value + "\n").encode("ascii")
     os.lseek(fd, 0, os.SEEK_END)
-    if os.fstat(fd).st_size + len(value) + 1 > _MAX_LEDGER:
+    if os.fstat(fd).st_size + len(payload) > _MAX_LEDGER:
         raise Denied("ledger_full")
-    os.write(fd, (value + "\n").encode("ascii"))
+    remaining = memoryview(payload)
+    while remaining:
+        written = os.write(fd, remaining)
+        if written <= 0:
+            raise Denied("ledger_io")
+        remaining = remaining[written:]
     os.fsync(fd)
 
 
@@ -235,7 +242,10 @@ def _records(fd: int) -> dict[str, str]:
     if length > _MAX_LEDGER:
         raise Denied("ledger_full")
     os.lseek(fd, 0, os.SEEK_SET)
-    raw = os.read(fd, _MAX_LEDGER + 1)
+    raw = os.read(fd, length + 1)
+    # A partial read ending on a valid newline must not hide a later PENDING.
+    if len(raw) != length:
+        raise Denied("ledger_invalid")
     try:
         lines = raw.decode("ascii").splitlines(keepends=True)
     except UnicodeError as exc:

@@ -4,7 +4,7 @@
 Description=One fixed Incus qualification ACL revoke request
 
 [Socket]
-ListenStream=/run/runner-mcp/incus-acl-revoke.sock
+ListenStream=/run/runner-mcp-incus-acl-revoke.sock
 SocketUser=@SERVICE_ACCOUNT@
 SocketGroup=@SERVICE_ACCOUNT@
 SocketMode=0600

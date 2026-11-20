@@ -1,3 +1,7 @@
+## 2026-11-20 — #866 M6 bronclaim vrijgegeven; Q7/A7 live-eigenaars behouden
+
+De specifieke `autostart.py` mixed-status-broncorrectie is **MERGED** als [PR #1037](https://github.com/Blacksp1d3r/runner-mcp/pull/1037) (0.1.187). Geen tweede branch/functie voor dezelfde pure statuscompatibiliteit starten. A7 #943 en Q7 #972 behouden hun eigen live target/worker-/updatebevoegdheid. Er is geen fysieke agent-role-cutover uitgevoerd, geen 0.1.187-deployment of nieuwe ACK geclaimd. Voor latere rolactivering uitsluitend de huidige vierrollencron en beide eerdere systemd-peers onder de echte eigenaar herbevestigen; voor Agent Bus bovendien een leeg/onbezwaard lease-/receipt-/outboxwerkpad. [#866 operationele gate](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-7043888936).
+
 ## 2026-11-19 — #866 systemd-eigenaar: bron afgerond, originele herstelcustody bij #669
 
 - [#1003](https://github.com/Blacksp1d3r/runner-mcp/pull/1003) is MERGED als `main 0.1.181`, commit `aca5ba6059320da3c9dc5f96cca465b14eb232b7`, postmerge-CI [#44395827050](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/44395827050) SUCCESS. Geen nieuw bron- of disposable testwerk voor M1/M2.

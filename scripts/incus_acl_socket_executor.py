@@ -157,12 +157,14 @@ def _peer(conn: socket.socket, uid: int, gid: int, socket_gid: int) -> tuple[int
             or fields.get("Gid", "").split() != [str(gid)] * 4
             or fields.get("NoNewPrivs", "").split() != ["1"]):
         raise Denied("peer_security")
+    # Effective=0 alone is insufficient: permitted/inheritable/ambient
+    # capabilities could be raised later without an exec transition.
     try:
-        cap_effective = int(fields.get("CapEff", "-1").strip(), 16)
+        for cap_key in ("CapInh", "CapPrm", "CapEff", "CapAmb"):
+            if int(fields.get(cap_key, "-1").strip(), 16) != 0:
+                raise Denied("peer_security")
     except ValueError as exc:
         raise Denied("peer_security") from exc
-    if cap_effective != 0:
-        raise Denied("peer_security")
     # A socket with only the base ACL may still be writable via its
     # POSIX owning group; no cached success may bypass this check.
     if ("Groups" not in fields or gid == socket_gid

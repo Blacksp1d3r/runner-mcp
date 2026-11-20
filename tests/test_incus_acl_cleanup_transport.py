@@ -138,7 +138,7 @@ def test_fragmented_ack_can_be_assembled(monkeypatch):
 
 
 def test_transport_has_no_host_root_stat_or_privileged_helper_call():
-    assert sut._SOCKET.startswith("/run/")
+    assert sut._SOCKET == "/run/runner-mcp-incus-acl-revoke.sock"
     assert not hasattr(sut, "_root_installation_reason")
     assert not hasattr(sut, "_root_installation_present")
     assert not hasattr(sut, "_HELPER")

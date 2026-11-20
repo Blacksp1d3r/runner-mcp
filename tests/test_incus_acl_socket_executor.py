@@ -308,6 +308,63 @@ def test_peer_cannot_hold_reactivatable_capabilities(monkeypatch, cap_key):
         sut._peer(Peer(), 1001, 1001, 108)
 
 
+@pytest.mark.parametrize(
+    ("uid_map", "gid_map", "allow"),
+    [
+        ("1001 1001 1\n", "1001 1001 1\n", True),
+        ("0 0 1\n1001 1001 1\n", "1001 1001 1\n", False),
+        ("1001 1001 2\n", "1001 1001 1\n", False),
+        ("1001 1001 1\n", "0 0 1\n1001 1001 1\n", False),
+        ("1001 1001 1\n", "1001 1001 2\n", False),
+    ],
+)
+def test_original_peer_user_namespace_must_map_only_its_service_ids(
+    monkeypatch, uid_map, gid_map, allow,
+):
+    """Root UID/GID or even one extra mapping must fail closed."""
+    class Peer:
+        def getsockopt(self, *_args):
+            return struct.pack("3i", 123, 1001, 1001)
+
+    cgroup = (
+        "/user.slice/user-1001.slice/user@1001.service/"
+        "app.slice/runner-mcp.service"
+    )
+
+    def read(path, **_kw):
+        key = str(path)
+        if key == "/proc/123/cgroup":
+            return f"0::{cgroup}\n"
+        if key.endswith("/cgroup.procs"):
+            return "123\n"
+        if key == "/proc/123/status":
+            return (
+                "Uid:\t1001\t1001\t1001\t1001\n"
+                "Gid:\t1001\t1001\t1001\t1001\n"
+                "NoNewPrivs:\t1\n"
+                "CapInh:\t0000000000000000\n"
+                "CapPrm:\t0000000000000000\n"
+                "CapEff:\t0000000000000000\n"
+                "CapAmb:\t0000000000000000\n"
+                "Groups:\t100 1001\n"
+            )
+        if key == "/proc/123/uid_map":
+            return uid_map
+        if key == "/proc/123/gid_map":
+            return gid_map
+        if key == "/proc/123/comm":
+            return "runner-mcp\n"
+        raise AssertionError(key)
+
+    monkeypatch.setattr(Path, "read_text", read)
+    monkeypatch.setattr(sut, "_start_ticks", lambda _pid: "55555")
+    if allow:
+        assert sut._peer(Peer(), 1001, 1001, 108) == (123, "55555")
+    else:
+        with pytest.raises(sut.Denied, match="peer_namespace"):
+            sut._peer(Peer(), 1001, 1001, 108)
+
+
 @pytest.mark.parametrize("tamper", ["host", "digest", "uid"])
 def test_existing_private_policy_binding_blocks_wrong_host_or_helper(
     monkeypatch, tamper,

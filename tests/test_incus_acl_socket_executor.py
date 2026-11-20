@@ -484,6 +484,28 @@ def test_ledger_short_read_must_not_hide_later_pending(
             sut._records(f.fileno())
 
 
+def test_existing_pending_blocks_even_successful_cached_replay(
+    monkeypatch, tmp_path,
+):
+    """A cached success must not bypass another unresolved root operation."""
+    history = (
+        f"{NONCE} PENDING\n"
+        f"{NONCE} PASS:already_restored:10:20:30\n"
+        f"{OTHER} PENDING\n"
+    ).encode("ascii")
+    with (tmp_path / "pending-replay-ledger").open("w+b") as f:
+        f.write(history)
+        f.flush()
+        called = setup_synthetic(monkeypatch, f.fileno())
+        replay = Client(NONCE)
+        with pytest.raises(sut.Denied, match="recovery_required"):
+            sut.execute(replay)
+        assert replay.reply == []
+        assert called == []
+        f.seek(0)
+        assert f.read() == history
+
+
 def test_root_replay_is_logged_as_replay_not_new_durable_action(
     monkeypatch, tmp_path, capsys,
 ):

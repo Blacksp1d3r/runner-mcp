@@ -331,9 +331,13 @@ def execute(conn: socket.socket) -> None:
                 raise Denied("peer_generation")
             generation = _socket_generation(socket_gid)
             _append(fd, f"{token} PASS:{state}:{generation}")
-        # Een succesbewijs bestaat pas na een fsync van de root-owned ontvangst.
+        # Audit the fsynced result even if the client disconnects before ACK.
+        # Sending bytes does NOT prove the original client consumed the ACK.
+        receipt = hashlib.sha256(token.encode("ascii")).hexdigest()
+        print("RMCP520_ROOT_DURABLE=PASS receipt=" + receipt,
+              file=sys.stderr, flush=True)
         conn.sendall(f"RMCP520/1 {token} PASS {state}\n".encode("ascii"))
-        print("RMCP520_ROOT_ACK=PASS receipt=" + hashlib.sha256(token.encode("ascii")).hexdigest(),
+        print("RMCP520_ROOT_SEND=PASS receipt=" + receipt,
               file=sys.stderr, flush=True)
     finally:
         os.close(fd)

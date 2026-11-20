@@ -1,3 +1,7 @@
+## 2026-11-20 — #520 owner claim: host-root socketontwerp, draft #1040
+
+Claim uitsluitend voor bestaande #520 door AI-assistent: branch `fix/520-fixed-root-socket-executor-20261120`, [PR #1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040) op canonieke Runner-MCP. Bron/CI-werk actief; geen runtime-, privilege-, Incus-, A7- of Q7-installatiebevoegdheid. De originele client blijft `unavailable` tot afzonderlijk goedgekeurde root-custody/installatie en echte hostcanary. Voorkom conflicterende tweede #520-branch of privileged executor; aanvaarding uitsluitend via [#520](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7044318943).
+
 ## 2026-11-20 — #866 M6 bronclaim vrijgegeven; Q7/A7 live-eigenaars behouden
 
 De specifieke `autostart.py` mixed-status-broncorrectie is **MERGED** als [PR #1037](https://github.com/Blacksp1d3r/runner-mcp/pull/1037) (0.1.187). Geen tweede branch/functie voor dezelfde pure statuscompatibiliteit starten. A7 #943 en Q7 #972 behouden hun eigen live target/worker-/updatebevoegdheid. Er is geen fysieke agent-role-cutover uitgevoerd, geen 0.1.187-deployment of nieuwe ACK geclaimd. Voor latere rolactivering uitsluitend de huidige vierrollencron en beide eerdere systemd-peers onder de echte eigenaar herbevestigen; voor Agent Bus bovendien een leeg/onbezwaard lease-/receipt-/outboxwerkpad. [#866 operationele gate](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-7043888936).

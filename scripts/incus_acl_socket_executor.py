@@ -378,7 +378,8 @@ def main() -> int:
             "peer_credentials", "peer_unit", "peer_not_exclusive", "peer_security",
             "peer_process", "peer_generation", "peer_socket_group",
             "request_invalid", "ledger_untrusted",
-            "ledger_invalid", "ledger_full", "recovery_required", "helper_denied",
+            "ledger_invalid", "ledger_full", "ledger_io", "recovery_required",
+            "helper_denied",
             "helper_receipt", "socket_generation", "socket_acl_unverified",
             "stale_replay",
         }

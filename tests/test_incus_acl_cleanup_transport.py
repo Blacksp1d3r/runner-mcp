@@ -2,7 +2,6 @@
 
 from __future__ import annotations
 
-
 import pytest
 
 from runner_mcp import incus_acl_cleanup_transport as sut

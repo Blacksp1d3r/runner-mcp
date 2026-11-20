@@ -8,6 +8,7 @@ Geen dynamische host, command, pad, ACL, credentials of shellargumenten.
 
 from __future__ import annotations
 
+import hashlib
 import logging
 import re
 import secrets
@@ -75,4 +76,8 @@ def revoke_fixed_incus_qualification_acl() -> dict[str, object]:
     state = match.group(2).decode("ascii")
     if state not in _VALID:
         return _fail_closed("invalid_receipt")
+    _LOG.info(
+        "incus_acl_revoke_ack receipt=%s",
+        hashlib.sha256(nonce.encode("ascii")).hexdigest(),
+    )
     return _bounded(state)

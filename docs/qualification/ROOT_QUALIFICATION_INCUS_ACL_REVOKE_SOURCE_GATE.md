@@ -76,6 +76,17 @@ niet een geauthenticeerde Incus-actuator. Hergebruik zou A7-autoriteit onjuist
 uitbreiden; er is géén bewezen geschikte bestaande host-root-aanroep.
 
 **Root-IPC-pad:** vaste socket rechtstreeks onder de door root beheerde `/run`-map, niet onder een mogelijk service-account-beschrijfbare submap. Een verifieerbaar root-owned parentpad is onderdeel van de installatietoelating; zonder dat bewijs geen client-ACK-claim.
+De uitvoeringssocket-inode zelf blijft **root-owned**, met modus `0660`
+en enkel de geattesteerde primaire MCP-servicegroep als `SocketGroup`.
+Een serviceaccount mag de socket niet zelf kunnen `chmod`-en of vervangen;
+deze bestaande groep geeft uitsluitend transporttoegang, **geen** root- of
+actieautorisatie. De root-executor toetst daarom ook SO_PEERCRED,
+process unit, PID/startgeneratie, NNP en oorspronkelijke owner-policy.
+De installateur moet voor `@SERVICE_PRIMARY_GROUP@` exact de huidige
+primaire GID/naam uit de oorspronkelijke host/policy vaststellen, en
+bevestigen dat die GID in de oorspronkelijke service-userns is gemapt.
+Ontbrekend of afwijkend bewijs betekent STOP, nooit `SocketUser` op het
+ongeprivilegieerde account instellen als workaround.
 
 **Gekozen minimale bronkandidaat:** één **systemd system** socket
 `runner-mcp-incus-acl-revoke.socket` met `Accept=yes`, die per aanvraag

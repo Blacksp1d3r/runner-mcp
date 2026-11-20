@@ -159,8 +159,8 @@ def test_untrusted_command_or_parameter_is_denied_without_helper(
         "PRIVATE_DATA\n",
         f"{NONCE} PASS:revoked\n",
         f"{NONCE} PENDING\n{NONCE} PENDING\n",
-        f"{NONCE} PENDING\n{NONCE} PASS:already_restored\n"
-        f"{NONCE} PASS:revoked\n",
+        (f"{NONCE} PENDING\n{NONCE} PASS:already_restored\n"
+         f"{NONCE} PASS:revoked\n"),
         f"{NONCE} PENDING",
         "x" * 65537,
     ],

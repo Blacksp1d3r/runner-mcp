@@ -253,7 +253,10 @@ def test_serving_peer_cannot_gain_socket_group_or_effective_capability(
                 "Uid:\t1001\t1001\t1001\t1001\n"
                 f"Gid:\t{owner_gid}\t{owner_gid}\t{owner_gid}\t{owner_gid}\n"
                 "NoNewPrivs:\t1\n"
+                "CapInh:\t0000000000000000\n"
+                "CapPrm:\t0000000000000000\n"
                 f"CapEff:\t{cap_eff}\n"
+                "CapAmb:\t0000000000000000\n"
                 f"Groups:\t{groups}\n"
             )
         if value == "/proc/123/comm":
@@ -263,6 +266,46 @@ def test_serving_peer_cannot_gain_socket_group_or_effective_capability(
     monkeypatch.setattr(sut, "_start_ticks", lambda _pid: "55")
     with pytest.raises(sut.Denied, match=code):
         sut._peer(Peer(), 1001, owner_gid, 108)
+
+
+@pytest.mark.parametrize("cap_key", ["CapInh", "CapPrm", "CapAmb"])
+def test_peer_cannot_hold_reactivatable_capabilities(monkeypatch, cap_key):
+    """Effective=0 must not hide capabilities retained in another set."""
+    class Peer:
+        def getsockopt(self, *_args):
+            return struct.pack("3i", 123, 1001, 1001)
+
+    cgroup = (
+        "/user.slice/user-1001.slice/user@1001.service/"
+        "app.slice/runner-mcp.service"
+    )
+
+    def read(path, **_kw):
+        value = str(path)
+        if value == "/proc/123/cgroup":
+            return f"0::{cgroup}\n"
+        if value.endswith("/cgroup.procs"):
+            return "123\n"
+        if value == "/proc/123/status":
+            caps = {key: "0000000000000000" for key in (
+                "CapInh", "CapPrm", "CapEff", "CapAmb"
+            )}
+            caps[cap_key] = "0000000000000001"
+            return (
+                "Uid:\t1001\t1001\t1001\t1001\n"
+                "Gid:\t1001\t1001\t1001\t1001\n"
+                "NoNewPrivs:\t1\n"
+                "Groups:\t100 1001\n"
+                + "".join(f"{key}:\t{value}\n" for key, value in caps.items())
+            )
+        if value == "/proc/123/comm":
+            return "runner-mcp\n"
+        raise AssertionError(value)
+
+    monkeypatch.setattr(Path, "read_text", read)
+    monkeypatch.setattr(sut, "_start_ticks", lambda _pid: "55")
+    with pytest.raises(sut.Denied, match="peer_security"):
+        sut._peer(Peer(), 1001, 1001, 108)
 
 
 @pytest.mark.parametrize("tamper", ["host", "digest", "uid"])

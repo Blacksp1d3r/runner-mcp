@@ -1,3 +1,9 @@
+## 2026-11-20 — #520 draft #1040 root-owned IPC and post-action peer revalidation (SOURCE ONLY)
+
+Owner instruction and evidence: [canonical #520 progress](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).
+Latest source-only design owns the new systemd IPC inode as **root** with mode 0660 and the original owner PRIMARY GROUP; real target GID mapping/permissions NOT ATTESTED. Root actor rechecks original pid/cgroup/NNP/CapEff/Groups before and after fixed revoke under locked ledger, distinguishes replay journal and rejects stale ACL ACK, short read/write, crash/PENDING and foreign peers.
+20 static repo-contract checks passed; exact-PR-head CI/Python pytest and real systemd canary NOT RUN/NOT ATTESTED (no workflow runs visible on queried head). Synthetic isolated Linux SO_PEERCRED and AF_UNIX base xattr semantics passed but are NOT LAB evidence. CI source download to sandbox unavailable; no remote-shell substitute.
+LAB previously proven original v0.1.186/rollback reserved; no new service, Incus, ACL, userns/NNP, A7/Q7 or guest mutation. PR DRAFT; no merge/deploy. Distinct owner approval needed before installing any new host-root executor; separate approval for real ACL grant/revoke. #520 OPEN.
 ## 2026-11-20 — #520 opvolging PR #1040: gecorrigeerde bron, GEEN productieactivatie
 
 **Canonieke eigenaar:** [issue #520, bestaande voortgangscomment](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).

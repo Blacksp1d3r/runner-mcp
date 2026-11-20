@@ -522,6 +522,21 @@ def test_loss_of_peer_authority_after_helper_does_not_create_pass(
         assert f.read() == f"{NONCE} PENDING\n".encode()
 
 
+def test_socket_unit_keeps_root_inode_custody_and_owner_group_access():
+    """The service account must never own/chmod the privileged IPC inode."""
+    path = (
+        Path(__file__).resolve().parents[1]
+        / "packaging/systemd/runner-mcp-incus-acl-revoke.socket.in"
+    )
+    source = path.read_text(encoding="utf-8")
+    assert "SocketUser=root\n" in source
+    assert "SocketGroup=@SERVICE_PRIMARY_GROUP@\n" in source
+    assert "SocketMode=0660\n" in source
+    assert "SocketUser=@SERVICE_ACCOUNT@" not in source
+    assert "ListenStream=/run/runner-mcp-incus-acl-revoke.sock\n" in source
+    assert "Accept=yes\n" in source
+
+
 def test_root_script_contains_no_dynamic_cli_shell_or_acl_grant():
     assert sut._ACTION == "incus_qualification_acl_revoke"
     assert sut._HELPER.name == "runner-mcp-incus-acl-revoke"

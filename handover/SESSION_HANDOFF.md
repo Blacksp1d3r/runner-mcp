@@ -1,3 +1,8 @@
+## 2026-11-21 — #520 exact-blob socket protocol regression 66/66 PASS
+
+- **New source**: `tests/test_incus_acl_local_socket_integration.py` in draft PR #1040 commit `b77a912297944f5cd3d25aed62f28367aa8bd354`; verifies real local AF_UNIX communication between the existing fixed client and original root-executor source (only privileged peer/helper boundaries synthetic). 2 correlated calls, 1 simulated helper action, fsynced PENDING→PASS and proper bounded ACK replay.
+- **Actual exact Git-blob pytest**: new integration blob `776770724af753c1e87919b4bec56a822e78e5e1` plus previously pinned 5 source blobs. Isolated Python3.13.5 pytest9.0.2 **66 passed**; no host or Incus changes. Systemd unit templates parse offline, root socket has not been installed.
+- **Remain STOP** until full source CI/Ruff/Python3.12 parity/independent review and explicit owner approval for privileged actor installation; later extra approval for grant/revoke. Original client-host live ACK, rollback/reboot not tested. [Canonical #520 evidence](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564). #520 OPEN.
 ## 2026-11-21 — #520 exact-blob root + client test execution 65/65 PASS
 
 - Targeted **real pytest** using exact five verified Git blobs from draft PR #1040 `84ae52548bfb79b396bcf0b1d7adef8593df6bd0`: 50 root-executor tests + 15 fixed socket-client tests = **65/65 PASS** using CPython 3.13.5 / pytest 9.0.2 in a transient, isolated non-LAB sandbox. Four .py files compile; root socket + root template rendered syntactically `systemd-analyze verify` exit 0. This proves isolated source tests, NOT a root systemd lifecycle.

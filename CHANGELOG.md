@@ -1,3 +1,11 @@
+## 0.1.188 — #520 host-root socketexec (SOURCE ONLY; INSTALLATION NOT APPROVED)
+
+- Replace the in-process `sudo -n` ACL cleanup transport with a fixed AF_UNIX socket request. Never treat root UID overflow inside a user namespace as host-root evidence.
+- Provide an **uninstalled** root-owned, socket-activated systemd executor template, fixed SO_PEERCRED/cgroup guard, immutable helper policy and SHA, crash-safe replay ledger and independent ACK. The existing root-owned Incus ACL helper alone may revoke; no grant/general shell.
+- Negative synthetic tests cover protocol, replay, wrong host, changed source hash, untrusted peer, crash and audit boundaries. **No original-client success, live privilege installation, socket/ACL change, approved grant/revoke or rollback test is claimed.** Issue #520 remains OPEN pending independent owner approval and original-host acceptance.
+
+---
+
 ## 0.1.184 — #520 vaste beheerde Incus-ACL-intrekking via bestaande OS-sudo (SOURCE ONLY)
 
 - Nieuwe exact nul-argumenten `incus_qualification_acl_revoke`-tool in de **bestaande** Runner-MCP-server, met gecontroleerde audit. De enige opdracht is een vast `sudo -n`-argv naar de reeds afzonderlijk als root geïnstalleerde first-party intrekhelper. Er is **geen generieke shell, pad-, gebruiker-, ACL-, endpoint- of sudo-parameter**.

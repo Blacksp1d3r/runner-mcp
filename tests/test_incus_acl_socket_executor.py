@@ -207,7 +207,7 @@ def test_unauthorized_peer_denied_before_cgroup_and_helper(monkeypatch, uid, gid
             return struct.pack("3i", 123, uid, gid)
 
     with pytest.raises(sut.Denied, match="peer_credentials"):
-        sut._peer(Peer(), 1001, 1001)
+        sut._peer(Peer(), 1001, 1001, 108)
 
 
 def test_foreign_cgroup_is_denied(monkeypatch):
@@ -219,10 +219,52 @@ def test_foreign_cgroup_is_denied(monkeypatch):
         Path, "read_text", lambda path, **_kw: "0::/user.slice/foreign.service\n"
     )
     with pytest.raises(sut.Denied, match="peer_unit"):
-        sut._peer(Peer(), 1001, 1001)
+        sut._peer(Peer(), 1001, 1001, 108)
 
 
 @pytest.mark.parametrize("tamper", ["host", "digest", "uid"])
+@pytest.mark.parametrize(
+    ("groups", "cap_eff", "owner_gid", "code"),
+    [
+        ("1001 108", "0000000000000000", 1001, "peer_socket_group"),
+        ("", "0000000000000001", 1001, "peer_security"),
+        ("1001", "0000000000000000", 108, "peer_socket_group"),
+    ],
+)
+def test_serving_peer_cannot_gain_socket_group_or_effective_capability(
+    monkeypatch, groups, cap_eff, owner_gid, code,
+):
+    class Peer:
+        def getsockopt(self, *_a):
+            return struct.pack("3i", 123, 1001, owner_gid)
+
+    cgroup = (
+        "/user.slice/user-1001.slice/user@1001.service/"
+        "app.slice/runner-mcp.service"
+    )
+    def read(path, **_kw):
+        value = str(path)
+        if value == "/proc/123/cgroup":
+            return f"0::{cgroup}\n"
+        if value.endswith("/cgroup.procs"):
+            return "123\n"
+        if value == "/proc/123/status":
+            return (
+                "Uid:\t1001\t1001\t1001\t1001\n"
+                f"Gid:\t{owner_gid}\t{owner_gid}\t{owner_gid}\t{owner_gid}\n"
+                "NoNewPrivs:\t1\n"
+                f"CapEff:\t{cap_eff}\n"
+                f"Groups:\t{groups}\n"
+            )
+        if value == "/proc/123/comm":
+            return "runner-mcp\n"
+        raise AssertionError(value)
+    monkeypatch.setattr(Path, "read_text", read)
+    monkeypatch.setattr(sut, "_start_ticks", lambda _pid: "55")
+    with pytest.raises(sut.Denied, match=code):
+        sut._peer(Peer(), 1001, owner_gid, 108)
+
+
 def test_existing_private_policy_binding_blocks_wrong_host_or_helper(
     monkeypatch, tamper,
 ):

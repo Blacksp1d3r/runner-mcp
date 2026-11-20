@@ -2380,7 +2380,8 @@ def test_m3_mixed_status_rejects_malformed_inventory_fields_without_exception(
     assert list(tmp_path.rglob("*.service")) == []
 
 def _m6_later_peer_preview(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, third: bool,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *,
+    third: bool, first_preview=None,
 ):
     """Herbruik de geteste éénrolsplanner zonder bestand- of processchrijfpad."""
     from runner_mcp.autostart import (
@@ -2388,7 +2389,11 @@ def _m6_later_peer_preview(
         plan_single_peer_systemd_migration,
     )
 
-    first = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    first = (
+        first_preview
+        if first_preview is not None
+        else _single_peer_phase_fixture(tmp_path, monkeypatch)
+    )
 
     def next_preview(cron: str, roles: tuple[str, ...], component: str):
         return plan_single_peer_systemd_migration(
@@ -2576,10 +2581,10 @@ def test_m6_three_serial_cron_to_systemd_receipts_never_restore_stale_owner(
 
     first = _single_peer_phase_fixture(tmp_path, monkeypatch)
     second, previous_for_second = _m6_later_peer_preview(
-        tmp_path, monkeypatch, third=False,
+        tmp_path, monkeypatch, third=False, first_preview=first,
     )
     third, previous_for_third = _m6_later_peer_preview(
-        tmp_path, monkeypatch, third=True,
+        tmp_path, monkeypatch, third=True, first_preview=first,
     )
 
     assert previous_for_second == ("github-watcher",)

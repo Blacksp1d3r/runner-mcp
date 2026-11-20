@@ -64,7 +64,7 @@ def test_fixed_action_no_sudo_and_ack_matching(monkeypatch, caplog, name, expect
         "state": expected,
         "normalActivationEnabled": False,
     }
-    assert conn.target == "/run/runner-mcp/incus-acl-revoke.sock"
+    assert conn.target == "/run/runner-mcp-incus-acl-revoke.sock"
     assert conn.timeout == sut._TIMEOUT
     assert conn.sent == [f"RMCP520/1 {NONCE}\n".encode("ascii")]
     assert not caplog.records

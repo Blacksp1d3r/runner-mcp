@@ -1,3 +1,11 @@
+## #520 — 2026-11-20: vaste host-root-aanroep, draft/veiligheidsgrens
+
+**Hergebruik, niet herhalen:** oorspronkelijke AF-SVC-0003 0.1.186 en 0.1.185 rollback-kopie; geïnstrumenteerde `root_invalid`/UID-map+NNP-oorzaak; vaste geïnstalleerde roothelper, aparte operator no-op, exacte basis-ACL en geweigerde gewone gebruiker. Vandaag uitsluitend read-only fysieke root-executor-inventaris: onafhankelijke A7 systemd-tick is niet geschikt als generieke of Incus-aanroep en geen bestaande geschikte host-root-aanroep is fysiek bewezen. Geen bestaande service gewijzigd.
+
+**Nieuw SOURCE ONLY:** [draft #1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040), kandidaat 0.1.188. Nieuwe, nog niet geïnstalleerde eenmalige systemd AF_UNIX root-executor gebruikt bestaande root-private helper/policy; alleen exacte actie, SO_PEERCRED, vaste unit/PID, duurzame fsync replay/ACK en alleen bounded output. Synthetische regressies/CI en onafhankelijke review verplicht; niet als live PASS beschouwen.
+
+**Volgende eigenaarshandeling:** eerst bron-HEAD CI/testproblemen oplossen en beleids-/unitreview; daarna afzonderlijke expliciete toestemming voor root-installatie met root-owned bron-SHA, root-only ledger en uitsluitend vaste socket; oorspronkelijke MCP- en Incus-isolatie intact. Grant/revoke vergt latere aparte goedkeuring. Echte oorspronkelijke client no-op/replay/audit/rollback/host-reboot **NOT TESTED**. #520 OPEN. Geen herhaling A7/Q7/RF999.
+
 ## 2026-11-20 — #866 M6 vervolg na source-only fix
 
 **Reeds gedaan, niet herhalen:** PR #1037 merged naar `main 277f7cfdcea3e31477c9350f15b0c357f2304283` (0.1.187; 7/7 CI PASS), sourcecontract voor 2+ systemd peers, zonder hostmutatie. Live oorspronkelijke 2 systemd / 4 cron. **Volgend onafhankelijk werk:** fysieke derde-rolcontrole pas na afstemming Q7/A7 en bewijs dat Agent Bus geen in-flight claim of onopgelost resultaat heeft; andere optie topology-heartbeat alleen na herstel van bestaand tunnel-healthcontract, primaire server als laatste vanwege grotere impact. Bij elke cutover actuele vierrollen-cronrollback, exact één rolautoriteit, proces/lock/ACK en originele systeemstatus apart bewijzen. Oude zesrollenrestore nooit blind terugzetten. Reboot en rollbackacceptatie blijven NIET GETEST. [Canoniek #866](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-7043888936).

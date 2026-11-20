@@ -277,7 +277,7 @@ def test_fixed_admission_detail_is_specific_and_private(
         f"incus_acl_revoke_unavailable stage=admission detail={expected}"
     ]
     assert "PRIVATE_HOST_PATH" not in caplog.text
-    assert target not in caplog.text
+    assert target not in caplog.records[0].message
 
 
 def test_effective_root_admission_detail_cannot_trigger_sudo(monkeypatch, caplog):

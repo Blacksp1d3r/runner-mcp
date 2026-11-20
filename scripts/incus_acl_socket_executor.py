@@ -73,7 +73,10 @@ def _trusted_file(path: Path, mode: int, limit: int) -> bytes:
                     or item.st_nlink != 1 or not 0 < item.st_size <= limit):
                 raise Denied("untrusted_install")
             data = os.read(fd, limit + 1)
-            if len(data) != item.st_size or os.fstat(fd) != item:
+            after = os.fstat(fd)
+            seal = lambda p: (p.st_dev, p.st_ino, p.st_uid, p.st_mode,
+                              p.st_size, p.st_mtime_ns, p.st_ctime_ns)
+            if len(data) != item.st_size or seal(after) != seal(item):
                 raise Denied("untrusted_install")
             return data
         finally:
@@ -129,11 +132,11 @@ def _peer(conn: socket.socket, uid: int, gid: int) -> tuple[int, str]:
     if members != [str(pid)]:
         raise Denied("peer_not_exclusive")
     status = Path(f"/proc/{pid}/status").read_text(encoding="ascii")
-    expected_ids = f"{uid}\t{uid}\t{uid}\t{uid}"
-    expected_groups = f"{gid}\t{gid}\t{gid}\t{gid}"
-    if (re.search(r"^Uid:\s*(.+)$", status, re.M).group(1) != expected_ids
-            or re.search(r"^Gid:\s*(.+)$", status, re.M).group(1) != expected_groups
-            or re.search(r"^NoNewPrivs:\s*(\d+)$", status, re.M).group(1) != "1"):
+    fields = dict(line.split(":", 1) for line in status.splitlines()
+                  if ":" in line)
+    if (fields.get("Uid", "").split() != [str(uid)] * 4
+            or fields.get("Gid", "").split() != [str(gid)] * 4
+            or fields.get("NoNewPrivs", "").split() != ["1"]):
         raise Denied("peer_security")
     if Path(f"/proc/{pid}/comm").read_text(encoding="ascii").strip() != "runner-mcp":
         raise Denied("peer_process")
@@ -162,12 +165,19 @@ def _append(fd: int, value: str) -> None:
 
 def _ledger_open() -> int:
     """Alleen één door systemd root-eigenaar aangemaakte private statusmap."""
-    info = _LEDGER_DIR.lstat()
-    if (not stat.S_ISDIR(info.st_mode) or info.st_uid != 0
-            or stat.S_IMODE(info.st_mode) != 0o700):
-        raise Denied("ledger_untrusted")
-    parent = os.open(_LEDGER_DIR, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
+    parent = os.open("/", os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW)
     try:
+        for part in _LEDGER_DIR.parts[1:]:
+            next_fd = os.open(part, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW,
+                              dir_fd=parent)
+            os.close(parent)
+            parent = next_fd
+            item = os.fstat(parent)
+            if item.st_uid != 0 or item.st_mode & 0o022:
+                raise Denied("ledger_untrusted")
+        item = os.fstat(parent)
+        if stat.S_IMODE(item.st_mode) != 0o700:
+            raise Denied("ledger_untrusted")
         fd = os.open(_LEDGER, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
                      0o600, dir_fd=parent)
     finally:
@@ -232,8 +242,13 @@ def execute(conn: socket.socket) -> None:
     uid, gid = _binding()
     pid, start = _peer(conn, uid, gid)
     conn.settimeout(3)
-    data = conn.recv(80)
-    match = _RE.fullmatch(data)
+    data = bytearray()
+    while len(data) < 80 and b"\n" not in data:
+        chunk = conn.recv(80 - len(data))
+        if not chunk:
+            break
+        data.extend(chunk)
+    match = _RE.fullmatch(bytes(data))
     if match is None:
         raise Denied("request_invalid")
     token = match.group(1).decode("ascii")

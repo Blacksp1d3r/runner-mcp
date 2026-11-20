@@ -337,6 +337,11 @@ def execute(conn: socket.socket) -> None:
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         records = _records(fd)
+        # An unresolved earlier operation makes *all* cached successes
+        # unsafe to acknowledge until the independent recovery process
+        # resolves that transaction. Never bypass PENDING via replay.
+        if any(value == "PENDING" for value in records.values()):
+            raise Denied("recovery_required")
         # Recheck after acquiring the ledger lock: the authenticated MCP
         # process and its credentials must still be eligible before root work.
         new_pid, new_start = _peer(conn, uid, gid, socket_gid)
@@ -349,8 +354,6 @@ def execute(conn: socket.socket) -> None:
             if ":".join(generation) != _socket_generation(socket_gid):
                 raise Denied("stale_replay")
         else:
-            if any(value == "PENDING" for value in records.values()):
-                raise Denied("recovery_required")
             if len(records) >= _MAX_ENTRIES:
                 raise Denied("ledger_full")
             _append(fd, f"{token} PENDING")

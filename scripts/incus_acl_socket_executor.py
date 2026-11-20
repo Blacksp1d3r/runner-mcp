@@ -9,6 +9,7 @@ Geen opties, shell, nieuwe credentials, fabric- of Incus-beheercommando's.
 
 from __future__ import annotations
 
+import errno
 import fcntl
 import hashlib
 import json
@@ -24,6 +25,7 @@ from pathlib import Path
 
 _ACTION = "incus_qualification_acl_revoke"
 _HELPER = Path("/usr/local/sbin/runner-mcp-incus-acl-revoke")
+_INCUS_SOCKET = Path("/var/lib/incus/unix.socket")
 _POLICY = Path("/etc/runner-mcp/incus-qualification-acl-policy.json")
 _LEDGER_DIR = Path("/var/lib/runner-mcp/incus-acl-executor")
 _LEDGER = "revoke-ledger"
@@ -33,7 +35,11 @@ _OUTCOMES = {
     "INCUS_ACL_REVOKE=PASS:already_restored\n": "already_restored",
     "INCUS_ACL_REVOKE=PASS:revoke_only\n": "revoked",
 }
-_RECORD_RE = re.compile(r"([0-9a-f]{32}) (PENDING|PASS:already_restored|PASS:revoked)\Z")
+_RECORD_RE = re.compile(
+    r"([0-9a-f]{32}) "
+    r"(PENDING|PASS:(?:already_restored|revoked)"
+    r"(?::(?:0|[1-9][0-9]{0,19})){3})\Z"
+)
 _MAX_LEDGER = 65536
 _MAX_ENTRIES = 512
 
@@ -85,7 +91,7 @@ def _trusted_file(path: Path, mode: int, limit: int) -> bytes:
         os.close(directory)
 
 
-def _binding() -> tuple[int, int]:
+def _binding() -> tuple[int, int, int]:
     raw = _trusted_file(_POLICY, 0o600, 4096)
     try:
         doc = json.loads(raw)
@@ -96,7 +102,7 @@ def _binding() -> tuple[int, int]:
         if (type(doc) is not dict or set(doc) != expected_keys
                 or doc["schema"] != _SCHEMA
                 or doc["host_short"] != os.uname().nodename.split(".")[0]
-                or doc["socket_path"] != "/var/lib/incus/unix.socket"):
+                or doc["socket_path"] != str(_INCUS_SOCKET)):
             raise Denied("host_policy")
         uid, gid, digest = doc["owner_uid"], doc["owner_gid"], doc["installed_sha256"]
         name, socket_gid = doc["owner_name"], doc["socket_gid"]
@@ -114,7 +120,7 @@ def _binding() -> tuple[int, int]:
         raise Denied("host_policy") from exc
     if hashlib.sha256(_trusted_file(_HELPER, 0o500, 65536)).hexdigest() != digest:
         raise Denied("helper_digest")
-    return uid, gid
+    return uid, gid, socket_gid
 
 
 def _start_ticks(pid: int) -> str:
@@ -191,8 +197,18 @@ def _ledger_open() -> int:
         item = os.fstat(parent)
         if stat.S_IMODE(item.st_mode) != 0o700:
             raise Denied("ledger_untrusted")
-        fd = os.open(_LEDGER, os.O_RDWR | os.O_CREAT | os.O_NOFOLLOW,
-                     0o600, dir_fd=parent)
+        try:
+            fd = os.open(_LEDGER, os.O_RDWR | os.O_CREAT | os.O_EXCL
+                         | os.O_NOFOLLOW, 0o600, dir_fd=parent)
+        except FileExistsError:
+            fd = os.open(_LEDGER, os.O_RDWR | os.O_NOFOLLOW,
+                         dir_fd=parent)
+        else:
+            try:
+                os.fsync(parent)  # Durable new pathname before any helper actuation.
+            except OSError:
+                os.close(fd)
+                raise
     finally:
         os.close(parent)
     info = os.fstat(fd)
@@ -232,6 +248,37 @@ def _records(fd: int) -> dict[str, str]:
     return entries
 
 
+def _socket_generation(expected_gid: int) -> str:
+    """Hercontroleer basis-ACL en socketgeneratie vóór een (ook herhaalde) ACK.
+
+    Het door de vaste helper bewezen schone ACL-resultaat is geen blijvend
+    bewijs na een latere grant: de cached ACK is dan STALE, niet PASS.
+    De afwezigheid van de Linux POSIX-ACL-xattr is na setfacl -b vereist.
+    """
+    before = os.lstat(_INCUS_SOCKET)
+    if (not stat.S_ISSOCK(before.st_mode) or before.st_uid != 0
+            or before.st_gid != expected_gid
+            or stat.S_IMODE(before.st_mode) != 0o660
+            or before.st_nlink != 1):
+        raise Denied("socket_generation")
+    try:
+        os.getxattr(_INCUS_SOCKET, "system.posix_acl_access",
+                    follow_symlinks=False)
+    except OSError as exc:
+        if exc.errno != errno.ENODATA:
+            raise Denied("socket_acl_unverified") from exc
+    else:
+        raise Denied("socket_acl_unverified")
+    after = os.lstat(_INCUS_SOCKET)
+    identity = lambda row: (
+        row.st_dev, row.st_ino, row.st_ctime_ns,
+        row.st_mode, row.st_uid, row.st_gid, row.st_nlink,
+    )
+    if identity(before) != identity(after):
+        raise Denied("socket_generation")
+    return f"{after.st_dev}:{after.st_ino}:{after.st_ctime_ns}"
+
+
 def _helper() -> str:
     result = subprocess.run(
         ("/usr/bin/python3", "-I", "-S", str(_HELPER)),
@@ -252,7 +299,7 @@ def _helper() -> str:
 def execute(conn: socket.socket) -> None:
     """Eén aanvraag; onderbroken PENDING voorkomt dubbele onzekere uitvoering."""
     _root_only()
-    uid, gid = _binding()
+    uid, gid, socket_gid = _binding()
     pid, start = _peer(conn, uid, gid)
     conn.settimeout(3)
     data = bytearray()
@@ -270,7 +317,9 @@ def execute(conn: socket.socket) -> None:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         records = _records(fd)
         if token in records and records[token].startswith("PASS:"):
-            state = records[token][5:]
+            _prefix, state, *generation = records[token].split(":")
+            if ":".join(generation) != _socket_generation(socket_gid):
+                raise Denied("stale_replay")
         else:
             if any(value == "PENDING" for value in records.values()):
                 raise Denied("recovery_required")
@@ -280,7 +329,8 @@ def execute(conn: socket.socket) -> None:
             state = _helper()
             if not _same_peer(pid, start, uid):
                 raise Denied("peer_generation")
-            _append(fd, f"{token} PASS:{state}")
+            generation = _socket_generation(socket_gid)
+            _append(fd, f"{token} PASS:{state}:{generation}")
         # Een succesbewijs bestaat pas na een fsync van de root-owned ontvangst.
         conn.sendall(f"RMCP520/1 {token} PASS {state}\n".encode("ascii"))
         print("RMCP520_ROOT_ACK=PASS receipt=" + hashlib.sha256(token.encode("ascii")).hexdigest(),
@@ -303,7 +353,8 @@ def main() -> int:
             "peer_credentials", "peer_unit", "peer_not_exclusive", "peer_security",
             "peer_process", "peer_generation", "request_invalid", "ledger_untrusted",
             "ledger_invalid", "ledger_full", "recovery_required", "helper_denied",
-            "helper_receipt",
+            "helper_receipt", "socket_generation", "socket_acl_unverified",
+            "stale_replay",
         }
         code = str(exc) if str(exc) in known else "other"
         print(f"RMCP520_ROOT=DENIED reason={code}", file=sys.stderr, flush=True)

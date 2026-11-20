@@ -336,6 +336,26 @@ def test_socket_mutation_during_acl_readback_is_denied(monkeypatch):
         sut._socket_generation(108)
 
 
+def test_durable_audit_survives_client_disconnect_before_ack(
+    monkeypatch, tmp_path, capsys,
+):
+    """A dropped ACK cannot erase the root-side durable operation record."""
+    class Disconnect(Client):
+        def sendall(self, _value):
+            raise BrokenPipeError("synthetic peer disconnected")
+
+    with (tmp_path / "ledger").open("w+b") as f:
+        called = setup_synthetic(monkeypatch, f.fileno())
+        with pytest.raises(BrokenPipeError):
+            sut.execute(Disconnect())
+        f.seek(0)
+        assert f.read().endswith(f"{NONCE} PASS:already_restored:10:20:30\n".encode())
+    assert called == ["already_restored"]
+    logs = capsys.readouterr().err
+    assert "RMCP520_ROOT_DURABLE=PASS receipt=" in logs
+    assert "RMCP520_ROOT_SEND=PASS" not in logs
+
+
 def test_root_script_contains_no_dynamic_cli_shell_or_acl_grant():
     assert sut._ACTION == "incus_qualification_acl_revoke"
     assert sut._HELPER.name == "runner-mcp-incus-acl-revoke"

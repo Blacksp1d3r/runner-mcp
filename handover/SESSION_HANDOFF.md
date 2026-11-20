@@ -1,3 +1,9 @@
+## 2026-11-20 — #520 cached PASS blocked by unresolved PENDING
+
+**Bronstatus:** [Runner-MCP PR #1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040) DRAFT; #520 OWNER-rule comment 7044318943 unchanged. New executor source globally blocks any cached PASS ACK when any unrelated ledger PENDING remains; added explicit no-helper/no-ACK regression. Fixed source+test changes in commits 977445bef61bf493135b5c48687232fad08d6c5b and 16f3cd53a002d44ae09803df34b0e7d02ce41591.
+**Evidence:** isolated manual-copy Python decision microtests 6/6 PASS (NOT exact-head pytest or official CI). First-party connected MCP is v0.1.88, NOT original LAB 0.1.186; its source-preflight for runner-mcp returned INVALID_ARGUMENT, so no invalid-origin test was started. Public raw source acquisition for local container blocked; exact PR suite remains NOT_ATTESTED.
+**No changes on server:** original NNP/userns/PID, helper, systemd, Incus ACL, six guests and rollback unmodified. No new rootactor permission approval and no ACL grant approval. No GitHub Actions run started. Source PR still DRAFT; #520 OPEN.
+**Next:** qualify exact PR-head isolated test source via existing first-party control path, run targeted regression suite and review. Do not merge, install or grant without independent gates and explicit owner approval.
 ## 2026-11-20 — #520 draft #1040 root-owned IPC and post-action peer revalidation (SOURCE ONLY)
 
 Owner instruction and evidence: [canonical #520 progress](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).

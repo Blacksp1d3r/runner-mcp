@@ -1544,8 +1544,8 @@ def build_mcp(
     def incus_qualification_acl_revoke() -> dict:
         """Revoke only the installed fixed temporary Incus qualification ACL.
 
-        The root-owned helper and one exact sudo invocation must be
-        independently installed/authorized; no arbitrary root command.
+        The root-owned helper and its separate systemd socket executor must be
+        independently authorized; no sudo or arbitrary root command.
         """
         result = revoke_fixed_incus_qualification_acl()
         audit.append(

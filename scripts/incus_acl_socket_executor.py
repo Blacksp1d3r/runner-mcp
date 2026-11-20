@@ -343,7 +343,8 @@ def execute(conn: socket.socket) -> None:
         if ((new_pid, new_start) != (pid, start)
                 or not _same_peer(pid, start, uid)):
             raise Denied("peer_generation")
-        if token in records and records[token].startswith("PASS:"):
+        replay = token in records and records[token].startswith("PASS:")
+        if replay:
             _prefix, state, *generation = records[token].split(":")
             if ":".join(generation) != _socket_generation(socket_gid):
                 raise Denied("stale_replay")
@@ -354,14 +355,19 @@ def execute(conn: socket.socket) -> None:
                 raise Denied("ledger_full")
             _append(fd, f"{token} PENDING")
             state = _helper()
-            if not _same_peer(pid, start, uid):
+            # The original process may have exited or changed privileges
+            # during the helper; no durable caller ACK after such drift.
+            final_pid, final_start = _peer(conn, uid, gid, socket_gid)
+            if ((final_pid, final_start) != (pid, start)
+                    or not _same_peer(pid, start, uid)):
                 raise Denied("peer_generation")
             generation = _socket_generation(socket_gid)
             _append(fd, f"{token} PASS:{state}:{generation}")
         # Audit the fsynced result even if the client disconnects before ACK.
         # Sending bytes does NOT prove the original client consumed the ACK.
         receipt = hashlib.sha256(token.encode("ascii")).hexdigest()
-        print("RMCP520_ROOT_DURABLE=PASS receipt=" + receipt,
+        event = "RMCP520_ROOT_REPLAY" if replay else "RMCP520_ROOT_DURABLE"
+        print(event + "=PASS receipt=" + receipt,
               file=sys.stderr, flush=True)
         conn.sendall(f"RMCP520/1 {token} PASS {state}\n".encode("ascii"))
         print("RMCP520_ROOT_SEND=PASS receipt=" + receipt,

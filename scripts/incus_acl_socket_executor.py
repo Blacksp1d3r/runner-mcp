@@ -13,6 +13,7 @@ import fcntl
 import hashlib
 import json
 import os
+import pwd
 import re
 import socket
 import stat
@@ -88,15 +89,28 @@ def _binding() -> tuple[int, int]:
     raw = _trusted_file(_POLICY, 0o600, 4096)
     try:
         doc = json.loads(raw)
-        if (type(doc) is not dict or doc.get("schema") != _SCHEMA
-                or doc.get("host_short") != os.uname().nodename.split(".")[0]):
+        expected_keys = {
+            "schema", "host_short", "owner_name", "owner_uid", "owner_gid",
+            "socket_path", "socket_gid", "installed_sha256",
+        }
+        if (type(doc) is not dict or set(doc) != expected_keys
+                or doc["schema"] != _SCHEMA
+                or doc["host_short"] != os.uname().nodename.split(".")[0]
+                or doc["socket_path"] != "/var/lib/incus/unix.socket"):
             raise Denied("host_policy")
         uid, gid, digest = doc["owner_uid"], doc["owner_gid"], doc["installed_sha256"]
+        name, socket_gid = doc["owner_name"], doc["socket_gid"]
         if (type(uid) is not int or uid < 1 or type(gid) is not int or gid < 1
+                or type(socket_gid) is not int or socket_gid < 1
+                or type(name) is not str
+                or re.fullmatch(r"[a-z_][a-z0-9_-]{0,31}", name) is None
                 or type(digest) is not str
                 or re.fullmatch(r"[0-9a-f]{64}", digest) is None):
             raise Denied("host_policy")
-    except (ValueError, KeyError, TypeError) as exc:
+        original = pwd.getpwnam(name)
+        if original.pw_uid != uid or original.pw_gid != gid:
+            raise Denied("host_policy")
+    except (ValueError, KeyError, TypeError, OverflowError) as exc:
         raise Denied("host_policy") from exc
     if hashlib.sha256(_trusted_file(_HELPER, 0o500, 65536)).hexdigest() != digest:
         raise Denied("helper_digest")
@@ -213,7 +227,7 @@ def _records(fd: int) -> dict[str, str]:
         if key not in entries and state != "PENDING":
             raise Denied("ledger_invalid")
         entries[key] = state
-    if len(entries) >= _MAX_ENTRIES:
+    if len(entries) > _MAX_ENTRIES:
         raise Denied("ledger_full")
     return entries
 
@@ -260,6 +274,8 @@ def execute(conn: socket.socket) -> None:
         else:
             if any(value == "PENDING" for value in records.values()):
                 raise Denied("recovery_required")
+            if len(records) >= _MAX_ENTRIES:
+                raise Denied("ledger_full")
             _append(fd, f"{token} PENDING")
             state = _helper()
             if not _same_peer(pid, start, uid):

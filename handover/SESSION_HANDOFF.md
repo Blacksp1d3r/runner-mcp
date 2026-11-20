@@ -1,3 +1,8 @@
+## 2026-11-21 — #520 exact-blob root + client test execution 65/65 PASS
+
+- Targeted **real pytest** using exact five verified Git blobs from draft PR #1040 `84ae52548bfb79b396bcf0b1d7adef8593df6bd0`: 50 root-executor tests + 15 fixed socket-client tests = **65/65 PASS** using CPython 3.13.5 / pytest 9.0.2 in a transient, isolated non-LAB sandbox. Four .py files compile; root socket + root template rendered syntactically `systemd-analyze verify` exit 0. This proves isolated source tests, NOT a root systemd lifecycle.
+- Blob hashes, source-transfer details, scope and unchanged host noted in the single [#520 canonical progress comment](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564). No duplicate topology/inventory or deployment.
+- Still **NOT_ATTESTED**: official full project CI/Ruff, original Python 3.12 runtime parity, independent reviewer, original MCP→real root-executor ACK, installation, ACL grant/revoke and reboot/rollback. Keep draft PR open; no merge/installation without separate explicit human authorization.
 ## 2026-11-21 — #520 original LAB exact namespace and root socket group parity
 
 - **Physical original AF-SVC-0003 read-only evidence**: serving `runner-mcp` process PID 106731 (the original qualified 0.1.186 generation); NNP=1, four capability sets =0; host-bound `/proc/106731/uid_map` and `gid_map` both exactly singleton `1001 1001 1` (host-root UID/GID not mapped). Host `getent` resolves the existing original owner and primary group as `aifordable-runner` 1001; `/run` root:root mode0755. No live change.

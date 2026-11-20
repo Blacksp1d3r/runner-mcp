@@ -225,3 +225,88 @@ def test_success_creates_no_transport_warning(monkeypatch, caplog):
         result = sut.revoke_fixed_incus_qualification_acl()
     assert result["state"] == "already_restored"
     assert not caplog.records
+
+
+@pytest.mark.parametrize(
+    ("target", "mutate", "expected"),
+    [
+        ("/", {"st_mode": stat.S_IFDIR | 0o777}, "root_writable"),
+        ("/usr", {"st_uid": 1001}, "usr_invalid"),
+        ("/usr/local", {"st_mode": stat.S_IFLNK | 0o777}, "usr_local_invalid"),
+        ("/usr/local/sbin", "error", "usr_local_sbin_unavailable"),
+        (str(sut._HELPER), "error", "helper_unavailable"),
+        (str(sut._HELPER), {"st_uid": 1001}, "helper_invalid"),
+        (str(sut._HELPER), {"st_mode": stat.S_IFREG | 0o600}, "helper_mode"),
+        (str(sut._HELPER), {"st_nlink": 2}, "helper_links"),
+    ],
+)
+def test_fixed_admission_detail_is_specific_and_private(
+    monkeypatch, caplog, target, mutate, expected
+):
+    admit_root_owned_install(monkeypatch)
+    original = Path.lstat
+
+    def injected(self):
+        if str(self) == target and mutate == "error":
+            raise PermissionError("PRIVATE_HOST_PATH")
+        row = original(self)
+        if str(self) != target:
+            return row
+        data = {
+            "st_mode": row.st_mode,
+            "st_uid": row.st_uid,
+            "st_nlink": getattr(row, "st_nlink", 1),
+        }
+        data.update(mutate)
+        return SimpleNamespace(**data)
+
+    monkeypatch.setattr(Path, "lstat", injected)
+    monkeypatch.setattr(
+        sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
+    )
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+
+    assert result == {
+        "schemaVersion": sut._SCHEMA,
+        "state": "unavailable",
+        "normalActivationEnabled": False,
+        "reasonCode": "privileged_helper_unavailable",
+    }
+    assert [r.message for r in caplog.records] == [
+        f"incus_acl_revoke_unavailable stage=admission detail={expected}"
+    ]
+    assert "PRIVATE_HOST_PATH" not in caplog.text
+    assert target not in caplog.text
+
+
+def test_effective_root_admission_detail_cannot_trigger_sudo(monkeypatch, caplog):
+    admit_root_owned_install(monkeypatch)
+    monkeypatch.setattr(sut.os, "geteuid", lambda: 0)
+    monkeypatch.setattr(
+        sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
+    )
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+    assert result["reasonCode"] == "privileged_helper_unavailable"
+    assert [r.message for r in caplog.records] == [
+        "incus_acl_revoke_unavailable stage=admission detail=caller_root"
+    ]
+
+
+def test_diagnostic_detail_never_logs_unknown_string(monkeypatch, caplog):
+    admit_root_owned_install(monkeypatch)
+    monkeypatch.setattr(sut, "_root_installation_present", lambda: False)
+    monkeypatch.setattr(
+        sut, "_root_installation_reason", lambda: "PRIVATE_RUNTIME_VALUE"
+    )
+    monkeypatch.setattr(
+        sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
+    )
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+    assert result["state"] == "unavailable"
+    assert [r.message for r in caplog.records] == [
+        "incus_acl_revoke_unavailable stage=admission"
+    ]
+    assert "PRIVATE_RUNTIME_VALUE" not in caplog.text

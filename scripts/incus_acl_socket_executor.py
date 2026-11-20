@@ -337,6 +337,12 @@ def execute(conn: socket.socket) -> None:
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         records = _records(fd)
+        # Recheck after acquiring the ledger lock: the authenticated MCP
+        # process and its credentials must still be eligible before root work.
+        new_pid, new_start = _peer(conn, uid, gid, socket_gid)
+        if ((new_pid, new_start) != (pid, start)
+                or not _same_peer(pid, start, uid)):
+            raise Denied("peer_generation")
         if token in records and records[token].startswith("PASS:"):
             _prefix, state, *generation = records[token].split(":")
             if ":".join(generation) != _socket_generation(socket_gid):

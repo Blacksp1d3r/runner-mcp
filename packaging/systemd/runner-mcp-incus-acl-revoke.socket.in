@@ -1,13 +1,14 @@
-# SOURCE ONLY (#520). Render @SERVICE_ACCOUNT@ from canonical host identity
-# only after a separate human approval. Do not install as-is.
+# SOURCE ONLY (#520). Bind @SERVICE_PRIMARY_GROUP@ to the verified
+# primary group of the original MCP owner after separate human approval.
+# The socket inode MUST remain root-owned; do not install as-is.
 [Unit]
 Description=One fixed Incus qualification ACL revoke request
 
 [Socket]
 ListenStream=/run/runner-mcp-incus-acl-revoke.sock
-SocketUser=@SERVICE_ACCOUNT@
-SocketGroup=@SERVICE_ACCOUNT@
-SocketMode=0600
+SocketUser=root
+SocketGroup=@SERVICE_PRIMARY_GROUP@
+SocketMode=0660
 DirectoryMode=0755
 Accept=yes
 RemoveOnStop=yes

@@ -398,6 +398,51 @@ def test_durable_audit_survives_client_disconnect_before_ack(
     assert "RMCP520_ROOT_SEND=PASS" not in logs
 
 
+def test_ledger_append_retries_partial_writes(monkeypatch, tmp_path):
+    """A simulated short write cannot create a fictitious durable receipt."""
+    target = tmp_path / "partial-write-ledger"
+    with target.open("w+b") as f:
+        original = os.write
+
+        def partial_write(fd, data):
+            return original(fd, data[:max(1, len(data) // 3)])
+
+        monkeypatch.setattr(sut.os, "write", partial_write)
+        sut._append(f.fileno(), f"{NONCE} PENDING")
+        f.seek(0)
+        assert f.read() == f"{NONCE} PENDING\n".encode()
+
+
+def test_ledger_append_zero_write_denied_without_claimed_ack(
+    monkeypatch, tmp_path,
+):
+    with (tmp_path / "zero-write-ledger").open("w+b") as f:
+        monkeypatch.setattr(sut.os, "write", lambda _fd, _data: 0)
+        with pytest.raises(sut.Denied, match="ledger_io"):
+            sut._append(f.fileno(), f"{NONCE} PENDING")
+        f.seek(0)
+        assert f.read() == b""
+
+
+def test_ledger_short_read_must_not_hide_later_pending(
+    monkeypatch, tmp_path,
+):
+    # First entry is syntactically valid; the omitted later PENDING must
+    # not become invisible to a later request.
+    first = f"{NONCE} PENDING\n{NONCE} PASS:already_restored:10:20:30\n".encode()
+    later = f"{OTHER} PENDING\n".encode()
+    with (tmp_path / "short-read-ledger").open("w+b") as f:
+        f.write(first + later)
+        f.flush()
+        real_read = os.read
+        monkeypatch.setattr(
+            sut.os, "read",
+            lambda fd, size: real_read(fd, min(size, len(first))),
+        )
+        with pytest.raises(sut.Denied, match="ledger_invalid"):
+            sut._records(f.fileno())
+
+
 def test_root_script_contains_no_dynamic_cli_shell_or_acl_grant():
     assert sut._ACTION == "incus_qualification_acl_revoke"
     assert sut._HELPER.name == "runner-mcp-incus-acl-revoke"

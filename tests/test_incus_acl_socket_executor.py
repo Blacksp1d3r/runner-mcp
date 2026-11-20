@@ -222,7 +222,6 @@ def test_foreign_cgroup_is_denied(monkeypatch):
         sut._peer(Peer(), 1001, 1001, 108)
 
 
-@pytest.mark.parametrize("tamper", ["host", "digest", "uid"])
 @pytest.mark.parametrize(
     ("groups", "cap_eff", "owner_gid", "code"),
     [
@@ -265,6 +264,7 @@ def test_serving_peer_cannot_gain_socket_group_or_effective_capability(
         sut._peer(Peer(), 1001, owner_gid, 108)
 
 
+@pytest.mark.parametrize("tamper", ["host", "digest", "uid"])
 def test_existing_private_policy_binding_blocks_wrong_host_or_helper(
     monkeypatch, tamper,
 ):

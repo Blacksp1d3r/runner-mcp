@@ -1,4 +1,3 @@
-#!/usr/bin/python3
 """#520 — vaste Incus-ACL-intrekking aan de HOST-rootgrens.
 
 Deze korte systemd-socket-activated uitvoerder gebruikt alleen Python stdlib.
@@ -268,7 +267,8 @@ def execute(conn: socket.socket) -> None:
             _append(fd, f"{token} PASS:{state}")
         # Een succesbewijs bestaat pas na een fsync van de root-owned ontvangst.
         conn.sendall(f"RMCP520/1 {token} PASS {state}\n".encode("ascii"))
-        print("RMCP520_ROOT_ACK=PASS", file=sys.stderr, flush=True)
+        print("RMCP520_ROOT_ACK=PASS receipt=" + hashlib.sha256(token.encode("ascii")).hexdigest(),
+              file=sys.stderr, flush=True)
     finally:
         os.close(fd)
 
@@ -280,9 +280,20 @@ def main() -> int:
         with socket.socket(fileno=0) as conn:
             execute(conn)
         return 0
-    except (Denied, OSError, ValueError, IndexError, subprocess.SubprocessError):
-        # Nooit stdout, stderr van helper, padwaarden of interne fouten tonen.
-        print("RMCP520_ROOT=DENIED", file=sys.stderr, flush=True)
+    except Denied as exc:
+        # Alleen een door onszelf uitgegeven, enumerated reason; geen hostdata.
+        known = {
+            "not_host_root", "untrusted_install", "host_policy", "helper_digest",
+            "peer_credentials", "peer_unit", "peer_not_exclusive", "peer_security",
+            "peer_process", "peer_generation", "request_invalid", "ledger_untrusted",
+            "ledger_invalid", "ledger_full", "recovery_required", "helper_denied",
+            "helper_receipt",
+        }
+        code = str(exc) if str(exc) in known else "other"
+        print(f"RMCP520_ROOT=DENIED reason={code}", file=sys.stderr, flush=True)
+        return 1
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError):
+        print("RMCP520_ROOT=DENIED reason=runtime", file=sys.stderr, flush=True)
         return 1
 
 

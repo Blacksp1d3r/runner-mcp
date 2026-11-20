@@ -227,8 +227,11 @@ def test_existing_private_policy_binding_blocks_wrong_host_or_helper(
     fields = {
         "schema": sut._SCHEMA,
         "host_short": "unit-test-host",
+        "owner_name": "test-owner",
         "owner_uid": 1001,
         "owner_gid": 1001,
+        "socket_path": "/var/lib/incus/unix.socket",
+        "socket_gid": 108,
         "installed_sha256": hashlib.sha256(helper).hexdigest(),
     }
     if tamper == "host":
@@ -239,6 +242,10 @@ def test_existing_private_policy_binding_blocks_wrong_host_or_helper(
         fields["owner_uid"] = -1
     monkeypatch.setattr(
         sut.os, "uname", lambda: SimpleNamespace(nodename="unit-test-host")
+    )
+    monkeypatch.setattr(
+        sut.pwd, "getpwnam",
+        lambda _name: SimpleNamespace(pw_uid=1001, pw_gid=1001),
     )
     monkeypatch.setattr(
         sut, "_trusted_file",

@@ -42,40 +42,65 @@ def _bounded(state: str, *, reason: str | None = None) -> dict[str, object]:
     return result
 
 
-def _fail_closed(stage: str) -> dict[str, object]:
-    """Log only an enumerated local failure class, never subprocess details."""
+_ROOT_LABELS = ("root", "usr", "usr_local", "usr_local_sbin")
+_ADMISSION_DETAILS = frozenset(
+    {"caller_root", "helper_unavailable", "helper_invalid", "helper_mode", "helper_links"}
+    | {f"{label}_{code}" for label in _ROOT_LABELS
+       for code in ("unavailable", "invalid", "writable")}
+)
+
+
+def _fail_closed(
+    stage: str, *, admission_detail: str | None = None
+) -> dict[str, object]:
+    """Write only fixed failure classes to the existing private service journal."""
     if stage not in {
         "admission", "spawn_or_timeout", "command_rejected", "invalid_receipt"
     }:
         stage = "unknown"
-    _LOG.warning("incus_acl_revoke_unavailable stage=%s", stage)
+    if stage == "admission" and admission_detail in _ADMISSION_DETAILS:
+        _LOG.warning(
+            "incus_acl_revoke_unavailable stage=%s detail=%s",
+            stage, admission_detail,
+        )
+    else:
+        _LOG.warning("incus_acl_revoke_unavailable stage=%s", stage)
     return _bounded("unavailable", reason=_UNAVAILABLE)
 
 
-def _root_installation_present() -> bool:
-    """A quick *unprivileged* admission, not proof of the helper's own digest.
+def _root_installation_reason() -> str | None:
+    """Enumerate only the first failed fixed admission condition.
 
-    The root-owned helper independently checks its private root-only source
-    digest, exact host/socket/account, ACL, inode and post-operation denial.
+    No stat values, inspected paths, exception messages or private details
+    leave this function. None means the original root-owned checks passed.
     """
-    try:
-        if os.geteuid() == 0:
-            return False
-        for path in _ROOT_DIRS:
+    if os.geteuid() == 0:
+        return "caller_root"
+    for label, path in zip(_ROOT_LABELS, _ROOT_DIRS, strict=True):
+        try:
             row = path.lstat()
-            if not stat.S_ISDIR(row.st_mode) or row.st_uid != 0:
-                return False
-            if row.st_mode & 0o022:
-                return False
+        except OSError:
+            return f"{label}_unavailable"
+        if not stat.S_ISDIR(row.st_mode) or row.st_uid != 0:
+            return f"{label}_invalid"
+        if row.st_mode & 0o022:
+            return f"{label}_writable"
+    try:
         row = _HELPER.lstat()
-        return (
-            stat.S_ISREG(row.st_mode)
-            and row.st_uid == 0
-            and stat.S_IMODE(row.st_mode) == 0o500
-            and row.st_nlink == 1
-        )
     except OSError:
-        return False
+        return "helper_unavailable"
+    if not stat.S_ISREG(row.st_mode) or row.st_uid != 0:
+        return "helper_invalid"
+    if stat.S_IMODE(row.st_mode) != 0o500:
+        return "helper_mode"
+    if row.st_nlink != 1:
+        return "helper_links"
+    return None
+
+
+def _root_installation_present() -> bool:
+    """Original fail-closed gate; the root helper still checks its own digest."""
+    return _root_installation_reason() is None
 
 
 def revoke_fixed_incus_qualification_acl() -> dict[str, object]:
@@ -85,7 +110,7 @@ def revoke_fixed_incus_qualification_acl() -> dict[str, object]:
     setfacl, arbitrary shell, direct Incus management or root escalation.
     """
     if not _root_installation_present():
-        return _fail_closed("admission")
+        return _fail_closed("admission", admission_detail=_root_installation_reason())
     try:
         result = subprocess.run(
             _SUDO_ARGV,

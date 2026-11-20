@@ -917,6 +917,7 @@ class SinglePeerMixedBackendStatus:
     reason_code: str
     selected_systemd_role: str | None = None
     remaining_cron_roles: tuple[str, ...] = ()
+    preexisting_systemd_roles: tuple[str, ...] = ()
     generic_reconcile_authorized: bool = False
     cutover_authorized: bool = False
 
@@ -934,12 +935,14 @@ def assess_single_peer_mixed_backend_status(
     new_function_ack: bool,
     cron_rows: tuple[object, ...],
     systemd_rows: tuple[object, ...],
+    preexisting_systemd_roles: tuple[str, ...] = (),
 ) -> SinglePeerMixedBackendStatus:
     """Controleer één systemd-peer naast de overige exact beheerde cronrollen.
 
     Hergebruik de bestaande volledige cron-/unitbron- en flockcheckpointcheck.
-    Controleer aanvullend alle vaste rolclaims, niet alleen de geselecteerde
-    rol. Deze functie leest geen host, crontab of filesystem en schrijft niets.
+    Controleer alle vaste rolclaims. Expliciete voorgaande systemd-rollen
+    moeten uniek, actief en afwezig uit de actuele cronbron zijn; hun units
+    vragen afzonderlijke owner-attestatie. Geen host-I/O of activeringsrecht.
     De algemene install/reconcile/remove-actuatoren blijven expliciet verboden
     in mixed mode, ook na een intern consistent oordeel.
     """
@@ -973,6 +976,24 @@ def assess_single_peer_mixed_backend_status(
     )
     if not checkpoint.consistent:
         return wait(checkpoint.reason_code)
+
+    if (
+        type(preexisting_systemd_roles) is not tuple
+        or any(type(role) is not str for role in preexisting_systemd_roles)
+    ):
+        return wait("preexisting_systemd_roles_unqualified")
+    if (
+        len(set(preexisting_systemd_roles)) != len(preexisting_systemd_roles)
+        or any(
+            role not in CRON_COMPONENTS
+            or role in ("server", "tunnel", preview.component)
+            for role in preexisting_systemd_roles
+        )
+        or preexisting_systemd_roles != tuple(
+            role for role in CRON_COMPONENTS if role in preexisting_systemd_roles
+        )
+    ):
+        return wait("preexisting_systemd_roles_unqualified")
 
     # Het originele volledige cronblok is de enige rol-authority in dit
     # broncontract. Een los meegegeven rollenlijst zou vervalst kunnen zijn.
@@ -1048,6 +1069,9 @@ def assess_single_peer_mixed_backend_status(
     ):
         return wait("original_cron_roles_unqualified")
 
+    if any(role in roles for role in preexisting_systemd_roles):
+        return wait("preexisting_systemd_cron_overlap")
+
     # Hergebruik de enige bestaande canonieke renderer. Alleen de gekozen
     # rol verwijderen is onvoldoende bewijs: ook alle vijf cronpeers moeten
     # exact dezelfde bron, config, vaste flags en geldige poort behouden.
@@ -1103,7 +1127,10 @@ def assess_single_peer_mixed_backend_status(
         cron = cron_by_role[role]
         systemd = systemd_by_role[role]
         cron_expected = role in remaining
-        systemd_expected = peer_installed and role == preview.component
+        existing_peer = role in preexisting_systemd_roles
+        systemd_expected = existing_peer or (
+            peer_installed and role == preview.component
+        )
         if (
             cron.installed is not cron_expected
             or cron.enabled is not cron_expected
@@ -1112,7 +1139,11 @@ def assess_single_peer_mixed_backend_status(
             or (not systemd_expected and (systemd.enabled or systemd.active))
         ):
             return wait("mixed_supervisor_claims_conflict")
-        if systemd_expected and (
+        if existing_peer and (
+            systemd.enabled is not True or systemd.active is not True
+        ):
+            return wait("preexisting_systemd_peer_unavailable")
+        if role == preview.component and systemd_expected and (
             systemd.enabled is not unit_enabled
             or systemd.active is not unit_active
         ):
@@ -1123,6 +1154,7 @@ def assess_single_peer_mixed_backend_status(
         reason_code="mixed_source_consistent_not_authorized",
         selected_systemd_role=preview.component if peer_installed else None,
         remaining_cron_roles=remaining,
+        preexisting_systemd_roles=preexisting_systemd_roles,
     )
 
 
@@ -1152,6 +1184,7 @@ def propose_single_peer_reconciliation(
     new_function_ack: bool,
     cron_rows: tuple[object, ...],
     systemd_rows: tuple[object, ...],
+    preexisting_systemd_roles: tuple[str, ...] = (),
 ) -> SinglePeerReconcileProposal:
     """Plan uitsluitend de volgende revalidatiestap zonder de host te wijzigen.
 
@@ -1173,6 +1206,7 @@ def propose_single_peer_reconciliation(
         new_function_ack=new_function_ack,
         cron_rows=cron_rows,
         systemd_rows=systemd_rows,
+        preexisting_systemd_roles=preexisting_systemd_roles,
     )
     if not check.consistent:
         return SinglePeerReconcileProposal(

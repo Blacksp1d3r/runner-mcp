@@ -170,6 +170,14 @@ def _peer(conn: socket.socket, uid: int, gid: int, socket_gid: int) -> tuple[int
     if ("Groups" not in fields or gid == socket_gid
             or str(socket_gid) in fields["Groups"].split()):
         raise Denied("peer_socket_group")
+    # Keep the original isolated service's ONE mapped user and group;
+    # admitting a broader user namespace could silently remap host root.
+    for map_name, expected_id in (("uid_map", uid), ("gid_map", gid)):
+        values = Path(f"/proc/{pid}/{map_name}").read_text(
+            encoding="ascii"
+        ).split()
+        if values != [str(expected_id), str(expected_id), "1"]:
+            raise Denied("peer_namespace")
     if Path(f"/proc/{pid}/comm").read_text(encoding="ascii").strip() != "runner-mcp":
         raise Denied("peer_process")
     return pid, _start_ticks(pid)
@@ -394,6 +402,7 @@ def main() -> int:
             "not_host_root", "untrusted_install", "host_policy", "helper_digest",
             "peer_credentials", "peer_unit", "peer_not_exclusive", "peer_security",
             "peer_process", "peer_generation", "peer_socket_group",
+            "peer_namespace",
             "request_invalid", "ledger_untrusted",
             "ledger_invalid", "ledger_full", "ledger_io", "recovery_required",
             "helper_denied",

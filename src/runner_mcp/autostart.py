@@ -806,7 +806,9 @@ def plan_final_server_systemd_migration(
     # rechtstreeks 'serve' en vroegere ensure-running-supervisors herkent.
     # Een willekeurige vreemde tekst met 'cron-run' is geen tweede server.
     # De kandidaat bewaart iedere niet-beheerde cronregel byte-identiek.
-    if _has_unmanaged_runner_mcp_entries(lines):
+    # De bestaande detector verwacht regels zonder newline (splitlines),
+    # niet de keepends-variant die we voor byte-exacte rollback bewaren.
+    if _has_unmanaged_runner_mcp_entries(original_crontab.splitlines()):
         raise AutostartError(invalid)
     outside = (*lines[:first], *lines[last + 1:])
     candidate_crontab = "".join(outside)

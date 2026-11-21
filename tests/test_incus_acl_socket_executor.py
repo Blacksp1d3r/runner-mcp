@@ -192,13 +192,35 @@ def test_host_root_attestation_rejects_nonroot_and_user_namespace(monkeypatch):
     def foreign_userns(path):
         if path == "/proc/self/ns/user":
             return SimpleNamespace(st_ino=42)
-        if path == "/proc/1/ns/user":
-            return SimpleNamespace(st_ino=43)
         return actual_stat(path)
 
     monkeypatch.setattr(sut.os, "stat", foreign_userns)
     with pytest.raises(sut.Denied, match="not_host_root"):
         sut._root_only()
+
+
+def test_host_root_attestation_does_not_need_pid1_ptrace(monkeypatch):
+    """Behoud host-rootbewijs zonder toegang tot PID1's namespace-symlink."""
+    monkeypatch.setattr(sut.os, "geteuid", lambda: 0)
+    stat_original = sut.os.stat
+    lstat_original = sut.os.lstat
+    observed = []
+
+    def constrained_stat(path):
+        observed.append(path)
+        if path == "/proc/self/ns/user":
+            return SimpleNamespace(st_ino=sut._INIT_USER_NS_INO)
+        if path == "/proc/1/ns/user":
+            raise PermissionError("PID1 procfs symlink requires ptrace privilege")
+        return stat_original(path)
+
+    monkeypatch.setattr(sut.os, "stat", constrained_stat)
+    monkeypatch.setattr(
+        sut.os, "lstat",
+        lambda path: SimpleNamespace(st_uid=0) if path == "/" else lstat_original(path),
+    )
+    sut._root_only()
+    assert observed == ["/proc/self/ns/user"]
 
 
 @pytest.mark.parametrize("uid,gid", [(1000, 1001), (1001, 0), (0, 0)])

@@ -756,6 +756,7 @@ def plan_final_server_systemd_migration(
         CRON_COMPONENTS,
         CRON_END,
         CronAutostartError,
+        _has_unmanaged_runner_mcp_entries,
         render_cron_block,
     )
 
@@ -801,14 +802,15 @@ def plan_final_server_systemd_migration(
     if [line[:-1] for line in lines[first:last + 1]] != canonical:
         raise AutostartError(invalid)
 
-    # Vreemde jobs blijven byte-identiek, maar een tweede cron-run buiten
-    # het beheerde blok zou een verborgen tweede primaire manager kunnen zijn.
-    outside = (*lines[:first], *lines[last + 1:])
-    if any(
-        "cron-run" in line and not line.lstrip().startswith("#")
-        for line in outside
-    ):
+    # Hergebruik de bestaande cron-conflictdetector, die naast cron-run ook
+    # rechtstreeks 'serve' en vroegere ensure-running-supervisors herkent.
+    # Een willekeurige vreemde tekst met 'cron-run' is geen tweede server.
+    # De kandidaat bewaart iedere niet-beheerde cronregel byte-identiek.
+    # De bestaande detector verwacht regels zonder newline (splitlines),
+    # niet de keepends-variant die we voor byte-exacte rollback bewaren.
+    if _has_unmanaged_runner_mcp_entries(original_crontab.splitlines()):
         raise AutostartError(invalid)
+    outside = (*lines[:first], *lines[last + 1:])
     candidate_crontab = "".join(outside)
 
     # Gebruik de bestaande server-unitrenderer en vervang EXACT het

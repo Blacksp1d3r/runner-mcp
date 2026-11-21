@@ -750,6 +750,7 @@ def test_root_journal_reports_only_runtime_phase(monkeypatch, capsys):
 
     monkeypatch.setattr(sut.socket, "socket", lambda **_kwargs: SocketContext())
     monkeypatch.setattr(sut, "execute", faulty_execute)
+    monkeypatch.setattr(sut.sys, "argv", ["runner-mcp-incus-acl-executor"])
     assert sut.main() == 1
     journal = capsys.readouterr().err
     assert journal == "RMCP520_ROOT=DENIED reason=runtime stage=peer_inspect\n"

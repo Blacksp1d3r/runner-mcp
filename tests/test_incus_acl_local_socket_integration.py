@@ -140,4 +140,3 @@ def test_real_af_unix_peercred_denies_wrong_owner_without_ledger_or_helper(
     assert result["state"] == "unavailable"
     assert result["reasonCode"] == "privileged_helper_unavailable"
     assert calls == []
-

@@ -55,15 +55,17 @@ class RuntimePhase(Exception):
 _RUNTIME_PHASES = frozenset({
     "socket_fd", "root_context", "host_policy", "peer_inspect",
     "request_socket", "request_read", "ledger_open",
+    "peer_credentials", "peer_cgroup", "peer_members", "peer_status",
+    "peer_uid_map", "peer_gid_map", "peer_comm", "peer_start_ticks",
 })
 
 
-def _checked(stage, operation, *args):
+def _checked(stage, operation, *args, **kwargs):
     """Behoud de bestaande fail-closed werking; classificeer syscall-fouten."""
     if stage not in _RUNTIME_PHASES:
         raise RuntimePhase("unknown")
     try:
-        return operation(*args)
+        return operation(*args, **kwargs)
     except (OSError, ValueError, IndexError, subprocess.SubprocessError) as exc:
         raise RuntimePhase(stage) from exc
 
@@ -154,7 +156,8 @@ def _start_ticks(pid: int) -> str:
 
 def _peer(conn: socket.socket, uid: int, gid: int, socket_gid: int) -> tuple[int, str]:
     """SO_PEERCRED + exact één proces in de oorspronkelijke user-unit."""
-    raw = conn.getsockopt(socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
+    raw = _checked("peer_credentials", conn.getsockopt,
+                   socket.SOL_SOCKET, socket.SO_PEERCRED, 12)
     pid, peer_uid, peer_gid = struct.unpack("3i", raw)
     if pid <= 1 or peer_uid != uid or peer_gid != gid:
         raise Denied("peer_credentials")
@@ -163,14 +166,17 @@ def _peer(conn: socket.socket, uid: int, gid: int, socket_gid: int) -> tuple[int
         "app.slice/runner-mcp.service"
     )
     expected = f"0::{cgroup}"
-    if Path(f"/proc/{pid}/cgroup").read_text(encoding="ascii").strip() != expected:
+    if _checked("peer_cgroup", Path(f"/proc/{pid}/cgroup").read_text,
+                encoding="ascii").strip() != expected:
         raise Denied("peer_unit")
-    members = Path("/sys/fs/cgroup" + cgroup + "/cgroup.procs").read_text(
-        encoding="ascii"
+    members = _checked(
+        "peer_members", Path("/sys/fs/cgroup" + cgroup + "/cgroup.procs").read_text,
+        encoding="ascii",
     ).split()
     if members != [str(pid)]:
         raise Denied("peer_not_exclusive")
-    status = Path(f"/proc/{pid}/status").read_text(encoding="ascii")
+    status = _checked("peer_status", Path(f"/proc/{pid}/status").read_text,
+                      encoding="ascii")
     fields = dict(line.split(":", 1) for line in status.splitlines()
                   if ":" in line)
     if (fields.get("Uid", "").split() != [str(uid)] * 4
@@ -193,14 +199,15 @@ def _peer(conn: socket.socket, uid: int, gid: int, socket_gid: int) -> tuple[int
     # Keep the original isolated service's ONE mapped user and group;
     # admitting a broader user namespace could silently remap host root.
     for map_name, expected_id in (("uid_map", uid), ("gid_map", gid)):
-        values = Path(f"/proc/{pid}/{map_name}").read_text(
-            encoding="ascii"
-        ).split()
+        stage = "peer_uid_map" if map_name == "uid_map" else "peer_gid_map"
+        values = _checked(stage, Path(f"/proc/{pid}/{map_name}").read_text,
+                          encoding="ascii").split()
         if values != [str(expected_id), str(expected_id), "1"]:
             raise Denied("peer_namespace")
-    if Path(f"/proc/{pid}/comm").read_text(encoding="ascii").strip() != "runner-mcp":
+    if _checked("peer_comm", Path(f"/proc/{pid}/comm").read_text,
+                encoding="ascii").strip() != "runner-mcp":
         raise Denied("peer_process")
-    return pid, _start_ticks(pid)
+    return pid, _checked("peer_start_ticks", _start_ticks, pid)
 
 
 def _same_peer(pid: int, start: str, uid: int) -> bool:

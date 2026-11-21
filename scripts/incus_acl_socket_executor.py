@@ -440,8 +440,9 @@ def main() -> int:
         print(f"RMCP520_ROOT=DENIED reason={code}", file=sys.stderr, flush=True)
         return 1
     except RuntimePhase as exc:
-        # Alleen intern vastgelegde fasecodes, nooit exception-tekst of paden.
-        print(f"RMCP520_ROOT=DENIED reason=runtime stage={exc}",
+        # Publiceer uitsluitend de vastgepinde fases, nooit ruwe exceptions.
+        stage = str(exc) if str(exc) in _RUNTIME_PHASES else "unknown"
+        print(f"RMCP520_ROOT=DENIED reason=runtime stage={stage}",
               file=sys.stderr, flush=True)
         return 1
     except (OSError, ValueError, IndexError, subprocess.SubprocessError):

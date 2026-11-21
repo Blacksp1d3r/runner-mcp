@@ -667,3 +667,91 @@ def test_root_script_contains_no_dynamic_cli_shell_or_acl_grant():
         "INCUS_ACL_REVOKE=PASS:revoke_only\n": "revoked",
     }
     assert sut._MAX_ENTRIES <= 512
+
+
+@pytest.mark.parametrize(
+    ("target", "phase"),
+    [
+        ("_root_only", "root_context"),
+        ("_binding", "host_policy"),
+        ("_peer", "peer_inspect"),
+        ("_ledger_open", "ledger_open"),
+    ],
+)
+def test_runtime_before_ledger_is_bounded_without_execution(
+    monkeypatch, target, phase,
+):
+    """A host sandbox syscall error must not expose paths or start root work."""
+    monkeypatch.setattr(sut, "_root_only", lambda: None)
+    monkeypatch.setattr(sut, "_binding", lambda: (1001, 1001, 108))
+    monkeypatch.setattr(sut, "_peer", lambda *_args: (123, "55555"))
+    monkeypatch.setattr(
+        sut, "_ledger_open",
+        lambda: pytest.fail("ledger must not be opened before a failing stage"),
+    )
+    monkeypatch.setattr(
+        sut, "_helper",
+        lambda: pytest.fail("root helper must not run on a pre-ledger error"),
+    )
+
+    def denied_runtime(*_args):
+        raise PermissionError("PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK")
+
+    monkeypatch.setattr(sut, target, denied_runtime)
+    client = Client()
+    with pytest.raises(sut.RuntimePhase) as raised:
+        sut.execute(client)
+    assert str(raised.value) == phase
+    assert "PRIVATE_PATH" not in str(raised.value)
+    assert client.reply == []
+
+
+def test_runtime_socket_read_is_bounded_and_never_opens_ledger(monkeypatch):
+    monkeypatch.setattr(sut, "_root_only", lambda: None)
+    monkeypatch.setattr(sut, "_binding", lambda: (1001, 1001, 108))
+    monkeypatch.setattr(sut, "_peer", lambda *_args: (123, "55555"))
+    monkeypatch.setattr(
+        sut, "_ledger_open", lambda: pytest.fail("unexpected ledger open"),
+    )
+
+    class BrokenClient(Client):
+        def recv(self, _count):
+            raise OSError("PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK")
+
+    with pytest.raises(sut.RuntimePhase, match="^request_read$"):
+        sut.execute(BrokenClient())
+
+
+def test_runtime_classification_never_swallow_explicit_denial(monkeypatch):
+    def explicit_deny():
+        raise sut.Denied("peer_security")
+
+    with pytest.raises(sut.Denied, match="peer_security"):
+        sut._checked("root_context", explicit_deny)
+
+
+def test_invalid_phase_never_calls_callback():
+    with pytest.raises(sut.RuntimePhase, match="unknown"):
+        sut._checked("PRIVATE_PATH", lambda: pytest.fail("should not call"))
+
+
+def test_root_journal_reports_only_runtime_phase(monkeypatch, capsys):
+    class SocketContext:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def faulty_execute(_conn):
+        raise sut.RuntimePhase("peer_inspect") from PermissionError(
+            "PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK"
+        )
+
+    monkeypatch.setattr(sut.socket, "socket", lambda **_kwargs: SocketContext())
+    monkeypatch.setattr(sut, "execute", faulty_execute)
+    assert sut.main() == 1
+    journal = capsys.readouterr().err
+    assert journal == "RMCP520_ROOT=DENIED reason=runtime stage=peer_inspect\n"
+    assert "PRIVATE_PATH" not in journal
+    assert "PermissionError" not in journal

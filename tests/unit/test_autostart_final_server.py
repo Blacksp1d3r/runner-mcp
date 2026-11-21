@@ -14,8 +14,8 @@ import pytest
 
 from runner_mcp import autostart
 from runner_mcp.autostart import (
-    AutostartError,
     SERVER_UNIT,
+    AutostartError,
     plan_final_server_systemd_migration,
     render_user_units,
 )

@@ -2726,7 +2726,7 @@ def test_m6_fourth_fifth_peer_cutovers_preserve_each_immediate_rollback(
         assert preview.cutover_authorized is False
         assert preview.boot_unit_contents.count("ExecStart=") == 1
         assert '"autostart" "cron-run"' in preview.boot_unit_contents
-        assert "Requires=runner-mcp.service" not in preview.boot_unit_contents
+        assert "Requires=" not in preview.boot_unit_contents
 
         old_roles = {
             role for role in CRON_COMPONENTS

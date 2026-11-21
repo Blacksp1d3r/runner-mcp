@@ -824,3 +824,22 @@ def test_peer_individual_runtime_phase_does_not_leak(
     assert str(caught.value) == phase
     assert "PRIVATE_HOST_DATA" not in str(caught.value)
 
+
+def test_root_journal_redacts_untrusted_runtime_phase(monkeypatch, capsys):
+    class SocketContext:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def faulty_execute(_conn):
+        raise sut.RuntimePhase("PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK")
+
+    monkeypatch.setattr(sut.socket, "socket", lambda **_kwargs: SocketContext())
+    monkeypatch.setattr(sut, "execute", faulty_execute)
+    monkeypatch.setattr(sut.sys, "argv", ["runner-mcp-incus-acl-executor"])
+    assert sut.main() == 1
+    assert capsys.readouterr().err == (
+        "RMCP520_ROOT=DENIED reason=runtime stage=unknown\n"
+    )

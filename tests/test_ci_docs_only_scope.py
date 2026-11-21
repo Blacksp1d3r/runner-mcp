@@ -5,9 +5,9 @@ No network calls, hosted CI run, production changes or new dependencies.
 """
 
 import os
-from pathlib import Path
 import re
 import subprocess
+from pathlib import Path
 
 import pytest
 

@@ -14,6 +14,8 @@
 
 [Canoniek live+source bewijs #866](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-7062070239). **Fysiek 3/6, #866 OPEN.**
 
+**Aanvulling laatste primaire rol — SOURCE MERGED:** [PR #1051](https://github.com/Blacksp1d3r/runner-mcp/pull/1051) is met zeven officiële groen afgeronde controles gemerged als `4ebf0dae5addc1850633e285dcb7b20d9f7213f8`, pakketversie 0.1.191. De nieuwe in-memory `plan_final_server_systemd_migration` hergebruikt de bestaande `runner-mcp.service`-renderer en `cron-run server`-flock, bewaart de onmiddellijke laatste één-server-cronrollback-SHA en weigert ongeldige/ontbrekende eerdere peers. `cutover_authorized=False`; dit is GEEN originele hostinstallatie. De eerdere 0.1.190 topology-release blijft afzonderlijk als A7-bron kandidaat voor rol 4; geen 0.1.191 redeploy eisen om AF227/AF402 te herstellen. Fysiek blijft exact 3/6.
+
 ## 2026-11-21 — #520 rootruntime fasecorrelatie bron release 0.1.189 MERGED, live acceptance NIET
 
 **Source:** Runner-MCP PR #1046 gemerged als `41ca48c9a4e4aa5893821d4c86c4ef053b8ae875`, voorstel 0.1.189. Exact-head checks #44897591496 (met release-reservering), #44897591452, #44897591502 SUCCESS; bronrootactor exact Git blob `f11d97062474e508e1eda2421d25c62bb42d3506`. Alleen vaste, secretvrije pre-ledger runtimefase; bestaande helper, root-denials, ACL-policy en ACK/ledgersemantiek niet versoepeld.

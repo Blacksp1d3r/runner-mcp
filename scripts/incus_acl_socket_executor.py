@@ -48,6 +48,26 @@ class Denied(Exception):
     """Een begrensde weigering zonder gevoelige informatie."""
 
 
+class RuntimePhase(Exception):
+    """Een vaste fasecode, nooit de ruwe syscall-fout of een privépad."""
+
+
+_RUNTIME_PHASES = frozenset({
+    "socket_fd", "root_context", "host_policy", "peer_inspect",
+    "request_socket", "request_read", "ledger_open",
+})
+
+
+def _checked(stage, operation, *args):
+    """Behoud de bestaande fail-closed werking; classificeer syscall-fouten."""
+    if stage not in _RUNTIME_PHASES:
+        raise RuntimePhase("unknown")
+    try:
+        return operation(*args)
+    except (OSError, ValueError, IndexError, subprocess.SubprocessError) as exc:
+        raise RuntimePhase(stage) from exc
+
+
 def _root_only() -> None:
     """Een echte systeem-root, nooit de overflow-UID van een user namespace."""
     if os.geteuid() != 0:
@@ -329,13 +349,13 @@ def _helper() -> str:
 
 def execute(conn: socket.socket) -> None:
     """Eén aanvraag; onderbroken PENDING voorkomt dubbele onzekere uitvoering."""
-    _root_only()
-    uid, gid, socket_gid = _binding()
-    pid, start = _peer(conn, uid, gid, socket_gid)
-    conn.settimeout(3)
+    _checked("root_context", _root_only)
+    uid, gid, socket_gid = _checked("host_policy", _binding)
+    pid, start = _checked("peer_inspect", _peer, conn, uid, gid, socket_gid)
+    _checked("request_socket", conn.settimeout, 3)
     data = bytearray()
     while len(data) < 80 and b"\n" not in data:
-        chunk = conn.recv(80 - len(data))
+        chunk = _checked("request_read", conn.recv, 80 - len(data))
         if not chunk:
             break
         data.extend(chunk)
@@ -343,7 +363,7 @@ def execute(conn: socket.socket) -> None:
     if match is None:
         raise Denied("request_invalid")
     token = match.group(1).decode("ascii")
-    fd = _ledger_open()
+    fd = _checked("ledger_open", _ledger_open)
     try:
         fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         records = _records(fd)
@@ -393,7 +413,7 @@ def main() -> int:
     if len(sys.argv) != 1:
         return 2
     try:
-        with socket.socket(fileno=0) as conn:
+        with _checked("socket_fd", lambda: socket.socket(fileno=0)) as conn:
             execute(conn)
         return 0
     except Denied as exc:
@@ -411,6 +431,11 @@ def main() -> int:
         }
         code = str(exc) if str(exc) in known else "other"
         print(f"RMCP520_ROOT=DENIED reason={code}", file=sys.stderr, flush=True)
+        return 1
+    except RuntimePhase as exc:
+        # Alleen intern vastgelegde fasecodes, nooit exception-tekst of paden.
+        print(f"RMCP520_ROOT=DENIED reason=runtime stage={exc}",
+              file=sys.stderr, flush=True)
         return 1
     except (OSError, ValueError, IndexError, subprocess.SubprocessError):
         print("RMCP520_ROOT=DENIED reason=runtime", file=sys.stderr, flush=True)

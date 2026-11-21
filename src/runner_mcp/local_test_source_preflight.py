@@ -8,12 +8,14 @@ commit reachability. No guest, command or host can be chosen by callers.
 
 from __future__ import annotations
 
+from pathlib import Path
 from typing import Any
 
 from .config import PROJECT_CODE_RE, ProjectRegistry
 from .source_control import (
     SourceControlError,
     _require_configured_origin,
+    _run_git,
     _safe_root,
     clean_head,
 )
@@ -67,6 +69,11 @@ def inspect_local_test_source(
         if any(item.is_symlink() for item in (config.root, *config.root.parents)):
             raise SourceControlError("Symlinked project root is unsafe")
         root = _safe_root(config.root)
+        # A registered project root must be the repository root, not a
+        # nested folder that silently borrows the parent repository HEAD.
+        top = Path(_run_git(root, ["rev-parse", "--show-toplevel"]))
+        if top.resolve(strict=True) != root:
+            raise SourceControlError("Project root is not its Git top-level")
         if (root / ".gitmodules").exists():
             raise SourceControlError("Submodule checkouts are not supported")
         # The configured URL is checked, NOT remote custody or authentication.

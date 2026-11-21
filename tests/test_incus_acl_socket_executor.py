@@ -476,11 +476,11 @@ def test_old_success_is_not_replayed_after_socket_grant_generation_change(
 def test_socket_fingerprint_requires_root_socket_and_no_posix_extended_acl(
     monkeypatch,
 ):
-    baseline = dict(
-        st_dev=10, st_ino=20, st_ctime_ns=30,
-        st_mode=stat.S_IFSOCK | 0o660,
-        st_uid=0, st_gid=108, st_nlink=1,
-    )
+    baseline = {
+        "st_dev": 10, "st_ino": 20, "st_ctime_ns": 30,
+        "st_mode": stat.S_IFSOCK | 0o660,
+        "st_uid": 0, "st_gid": 108, "st_nlink": 1,
+    }
     monkeypatch.setattr(
         sut.os, "lstat", lambda _path: SimpleNamespace(**baseline)
     )

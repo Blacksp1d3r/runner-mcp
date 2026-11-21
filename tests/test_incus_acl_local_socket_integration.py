@@ -60,7 +60,7 @@ def test_real_unix_socket_client_to_root_protocol_replay(monkeypatch, tmp_path):
                         conn, _ = listener.accept()
                         with conn:
                             root.execute(conn)
-                except Exception as exc:  # alleen deze gesimuleerde testthread
+                except (OSError, ValueError, root.Denied) as exc:
                     errors.append(type(exc).__name__)
 
             worker = threading.Thread(target=serve, daemon=True)

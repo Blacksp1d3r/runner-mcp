@@ -1,3 +1,12 @@
+## 0.1.191 — #866 last-primary server migration preview (SOURCE ONLY)
+
+- Add a separate, fail-closed source preview for the final primary server role after five individually qualified systemd peers. Keep existing peer planner's server exclusion unchanged.
+- Reuse the original runner-mcp.service renderer with exactly one verified ExecStart change to the existing flock-protected cron-run server path; preserve all unrelated cron lines and the immediate one-server cron rollback SHA.
+- Reject an incomplete peer roster, a second manager/cron role, a different port, noncanonical source, foreign managed content or service hardening drift. New tests run without systemd, processes or service writes.
+- The preview always denies activation. Physical M6 remains 3/6; AF227/AF402, A7, Agent Bus lease/ACK, primary control-path/rollback and boot proof remain separate live gates.
+
+---
+
 ## 0.1.190 — #866 isolate topology authority from SQL relay (SOURCE ONLY)
 
 - Add a strict owner-private opt-in selecting the existing fixed loopback AIfordable Control API solely for topology heartbeat. No arbitrary endpoint, additional relay/controller, public ingress, extra credential or change to Agent Bus SQL transport.

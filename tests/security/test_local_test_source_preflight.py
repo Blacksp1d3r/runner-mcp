@@ -5,7 +5,8 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.config import ProjectConfig, ProjectRegistry, TestProfile as RegisteredTestProfile
+from runner_mcp.config import ProjectConfig, ProjectRegistry
+from runner_mcp.config import TestProfile as RegisteredTestProfile
 from runner_mcp.local_test_source_preflight import (
     LocalTestSourcePreflightError,
     inspect_local_test_source,

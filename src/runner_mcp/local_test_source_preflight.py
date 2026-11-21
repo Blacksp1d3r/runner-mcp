@@ -62,6 +62,10 @@ def inspect_local_test_source(
         raise LocalTestSourcePreflightError("non_staging_source_not_admitted")
 
     try:
+        # Refuse symlinked path components before resolving the root.
+        # source_control._safe_root() resolves links, so check explicitly.
+        if any(item.is_symlink() for item in (config.root, *config.root.parents)):
+            raise SourceControlError("Symlinked project root is unsafe")
         root = _safe_root(config.root)
         if (root / ".gitmodules").exists():
             raise SourceControlError("Submodule checkouts are not supported")

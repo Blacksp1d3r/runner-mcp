@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from runner_mcp.config import ProjectConfig, ProjectRegistry, TestProfile
+from runner_mcp.config import ProjectConfig, ProjectRegistry, TestProfile as RegisteredTestProfile
 from runner_mcp.local_test_source_preflight import (
     LocalTestSourcePreflightError,
     inspect_local_test_source,
@@ -33,7 +33,7 @@ def candidate(tmp_path: Path):
     git(root, "add", "sample.txt")
     git(root, "commit", "-m", "source fixture")
     revision = git(root, "rev-parse", "HEAD")
-    profile = TestProfile(argv=["/usr/bin/python3", "-m", "unittest"])
+    profile = RegisteredTestProfile(argv=["/usr/bin/python3", "-m", "unittest"])
     project = ProjectConfig(
         display_name="Hive",
         repository="Blacksp1d3r/Hive",
@@ -82,6 +82,8 @@ def test_matching_clean_registered_source_is_never_dispatch_authority(
         ("hive", "unknown", "a" * 40, "test_profile_not_registered"),
         ("hive", "python-tests", "latest", "invalid_exact_source_sha"),
         ("hive", "python-tests", "A" * 40, "invalid_exact_source_sha"),
+        ("hive", "x" * 65, "a" * 40, "invalid_project_or_profile"),
+        ("x" * 65, "python-tests", "a" * 40, "invalid_project_or_profile"),
         ("../hive", "python-tests", "a" * 40, "invalid_project_or_profile"),
         ("hive", "python;sh", "a" * 40, "invalid_project_or_profile"),
     ],

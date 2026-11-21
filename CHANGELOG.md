@@ -1,3 +1,11 @@
+## 0.1.193 — #520 root-context probe without PID1 ptrace (SOURCE ONLY)
+
+- Fix the existing host-root executor's `root_context` rejection: check the current process's namespace against Linux's reserved initial user-namespace inode instead of dereferencing `/proc/1/ns/user`, which may require CAP_SYS_PTRACE under the existing narrowed capability set.
+- Retain explicit EUID=0, root-owned `/`, all original peer/cgroup/socket/helper/ledger/ACK guards and the same root-helper. A new synthetic regression proves no cross-PID procfs lookup is required, and foreign user namespaces are still rejected.
+- Do not widen the existing root-unit capabilities or add any control service. Source-only: original LAB still has the old installed executor, no new client ACK, no ACL or systemd mutation. The recorded one-shot client denial is not to be retried automatically.
+
+---
+
 ## 0.1.192 — #866 final primary cron-conflict guard (SOURCE ONLY)
 
 - Reuse the existing managed-cron unmanaged-supervisor detector in the final server preview. A second unmanaged direct 'serve' or legacy ensure-running supervisor now fails closed, not only an external 'cron-run' string.

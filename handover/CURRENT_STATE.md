@@ -1,3 +1,5 @@
+**#866 aanvulling 2026-11-20:** bron-regressie PR #1041 MERGED, zes exacte PR-CI-checks PASS; rollback van derde rol herstelt *huidige* vierrollen-cronprestate, niet de originele zesrollenback-up. Originele agent-bus-run heeft eigenaar/private-state binding PASS en lokale receipts/outbox=0 op meetmoment. Maar start kiest steeds een nieuwe `consumer_id` en de bestaande consumer-lease kan opvolger tot bestaande expiry (configureerbaar 1–3600 s) weigeren; relay claim-/controlstatus + veilige quiesce/fence NIET geattesteerd. Verbonden andere Runner-MCP-status (v0.1.88, relay unknown) is geen origineel bewijs. Derde live cutover NIET GEAUTORISEERD; 2/6 fysiek ongewijzigd. [Canoniek #866](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-7045564087).
+
 ## 2026-11-20 — #520 draft #1040 root-owned IPC and post-action peer revalidation (SOURCE ONLY)
 
 Owner instruction and evidence: [canonical #520 progress](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).

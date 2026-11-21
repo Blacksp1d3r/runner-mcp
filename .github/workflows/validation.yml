@@ -61,6 +61,9 @@ jobs:
 
   validate:
     name: Ruff and pytest
+    # Required check remains present for every PR and main push.
+    outputs:
+      full_qualification: ${{ steps.scope.outputs.full }}
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -70,12 +73,54 @@ jobs:
           persist-credentials: false
           fetch-depth: 0
 
+      # Docs-only updates keep required shipping-version, docs-memory,
+      # whitespace and independent commit-attribution checks.
+      # Unknown events, unavailable bases, failed diff or empty changes
+      # fail CLOSED: all source/release tests still run.
+      - name: Determine qualification scope (fail closed)
+        id: scope
+        shell: bash
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          full=true
+          base=""
+          if [[ "$GITHUB_EVENT_NAME" == "pull_request" ]]; then
+            base="$(git rev-parse HEAD^1 2>/dev/null || true)"
+          elif [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+            # A push can include multiple commits; HEAD^1 can miss code.
+            base="$PUSH_BEFORE"
+          fi
+          if [[ "$base" =~ ^[0-9a-f]{40}$ ]] && git cat-file -e "$base^{commit}" 2>/dev/null; then
+            changed=0
+            only_docs=true
+            if git diff --no-renames --name-only -z "$base" HEAD > "$RUNNER_TEMP/runner-mcp-changed-paths.z"; then
+              while IFS= read -r -d '' changed_path; do
+                changed=$((changed + 1))
+                case "$changed_path" in
+                  docs/*.md|docs/*.rst|docs/*.txt|AGENTS.md|README.md|CHANGELOG.md|CONTRIBUTING.md|SECURITY.md|FUTURE_LAB.md|QUICKSTART.md)
+                    ;;
+                  *)
+                    only_docs=false
+                    ;;
+                esac
+              done < "$RUNNER_TEMP/runner-mcp-changed-paths.z"
+              if (( changed > 0 )) && [[ "$only_docs" == true ]]; then
+                full=false
+              fi
+            fi
+          fi
+          printf 'full=%s\n' "$full" >> "$GITHUB_OUTPUT"
+          echo "RUNNER_MCP_QUALIFICATION_SCOPE=$([[ "$full" == true ]] && echo FULL || echo DOCS_ONLY)"
+
       - name: Set up Python
         uses: actions/setup-python@5fda3b95a4ea91299a34e894583c3862153e4b97 # v7.0.0
         with:
           python-version: "3.12"
 
       - name: Install validation dependencies
+        if: steps.scope.outputs.full == 'true'
         env:
           PIP_DISABLE_PIP_VERSION_CHECK: "1"
         run: |
@@ -102,18 +147,23 @@ jobs:
           echo "DOC_MEMORY_PRECOMMIT_CI=PASS"
 
       - name: Verify declared MCP tool catalogue baseline
+        if: steps.scope.outputs.full == 'true'
         run: python scripts/attest_tool_catalogue.py
 
       - name: Compile Python
+        if: steps.scope.outputs.full == 'true'
         run: python -m compileall -q src tests
 
       - name: Ruff
+        if: steps.scope.outputs.full == 'true'
         run: ruff check .
 
       - name: Pytest
+        if: steps.scope.outputs.full == 'true'
         run: pytest -q
 
       - name: Validate MCP Registry metadata
+        if: steps.scope.outputs.full == 'true'
         env:
           MCP_PUBLISHER_VERSION: "v1.8.1"
           MCP_PUBLISHER_SHA256: "a06c9096dcb9727c13555b6be26c7effa707b01f06a4c561ba7a3635443cf2cc"
@@ -135,6 +185,7 @@ jobs:
   demo-smoke:
     name: Clean five-minute demo
     needs: validate
+    if: needs.validate.outputs.full_qualification == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:
@@ -159,6 +210,7 @@ jobs:
     # Pas een publiceerbare source-kandidaat bouwen na de bestaande volledige
     # demo én de onafhankelijke disposable-systemd-test (geen extra job).
     needs: [validate, demo-smoke, disposable-systemd-user]
+    if: needs.validate.outputs.full_qualification == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 15
     steps:

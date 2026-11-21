@@ -1,4 +1,28 @@
+**#520 — 21 november 2026:** eigenaar heeft de nieuwe beperkte root-owned systemd-socket/executor-installatie op AF-SVC-0003 **voorwaardelijk goedgekeurd**, uitsluitend na geldige proces-/bron-/herstelbinding en hostcanary. Dit is GEEN toestemming voor tijdelijke Incus-ACL-grant of een generieke root-/sudo-omweg. Eerder aangetoond 0.1.186-executable- en bronbewijs voor originele PID106731 wordt hergebruikt zolang dezelfde procesgeneratie geldig blijft; de laatste doelreadback heeft PID106731/startticks 75515291. PR #1040 is met upstream #866 geïntegreerd (merge-clean) en official Python3.12 5082/5082 + Ruff zijn op de vorige head geslaagd, maar exacte volledige CI faalde op uitsluitend een lege EOF-regel in een nieuwe synthetische test; deze commit verwijdert die regel. Root-installatie, originele MCP-ACK en rollback NIET UITGEVOERD. Nieuwe CI op deze head vereist; #520 OPEN.
+
 **#866 aanvulling 2026-11-20:** bron-regressie PR #1041 MERGED, zes exacte PR-CI-checks PASS; rollback van derde rol herstelt *huidige* vierrollen-cronprestate, niet de originele zesrollenback-up. Originele agent-bus-run heeft eigenaar/private-state binding PASS en lokale receipts/outbox=0 op meetmoment. Maar start kiest steeds een nieuwe `consumer_id` en de bestaande consumer-lease kan opvolger tot bestaande expiry (configureerbaar 1–3600 s) weigeren; relay claim-/controlstatus + veilige quiesce/fence NIET geattesteerd. Verbonden andere Runner-MCP-status (v0.1.88, relay unknown) is geen origineel bewijs. Derde live cutover NIET GEAUTORISEERD; 2/6 fysiek ongewijzigd. [Canoniek #866](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-7045564087).
+
+## 2026-11-20 — #520 draft #1040 root-owned IPC and post-action peer revalidation (SOURCE ONLY)
+
+Owner instruction and evidence: [canonical #520 progress](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).
+Latest source-only design owns the new systemd IPC inode as **root** with mode 0660 and the original owner PRIMARY GROUP; real target GID mapping/permissions NOT ATTESTED. Root actor rechecks original pid/cgroup/NNP/CapEff/Groups before and after fixed revoke under locked ledger, distinguishes replay journal and rejects stale ACL ACK, short read/write, crash/PENDING and foreign peers.
+20 static repo-contract checks passed; exact-PR-head CI/Python pytest and real systemd canary NOT RUN/NOT ATTESTED (no workflow runs visible on queried head). Synthetic isolated Linux SO_PEERCRED and AF_UNIX base xattr semantics passed but are NOT LAB evidence. CI source download to sandbox unavailable; no remote-shell substitute.
+LAB previously proven original v0.1.186/rollback reserved; no new service, Incus, ACL, userns/NNP, A7/Q7 or guest mutation. PR DRAFT; no merge/deploy. Distinct owner approval needed before installing any new host-root executor; separate approval for real ACL grant/revoke. #520 OPEN.
+## 2026-11-20 — #520 opvolging PR #1040: gecorrigeerde bron, GEEN productieactivatie
+
+**Canonieke eigenaar:** [issue #520, bestaande voortgangscomment](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7046409564).
+Een synthetische pytest-collectiefout door een verkeerd gekoppelde `parametrize` is in de bestaande PR opgelost.
+Het vaste nieuwe AF_UNIX-client/socketpaar gebruikt nu een enkel path rechtstreeks onder root-beheerd `/run`; een servicebeschrijfbare tussenmap mag de serverack niet kunnen nabootsen.
+Peer groeps-/capability-grens, ACL-generatiegevoelige replay-denial, onderbroken client-ACK en ledger-fsync zijn aangevuld met gerichte bronregressies.
+**PR #1040 blijft DRAFT; exacte nieuwe CI ONBEKEND/NOT_ATTESTED.**
+Een geïsoleerde syntactische systemd-analyse (niet op originele LAB) is PASS voor de twee templates, niet een root-/socket-/setfacl-/runuser-canary.
+Originele server/fysieke versie, bestaande root-helper, Incus-ACL, gasten, NNP/userns en herstelbestanden zijn NIET GEWIJZIGD. Geen merge, service-installatie, grant of fysieke ACK.
+Volgende stap: actuele exact-head CI en onafhankelijke securityreview, vervolgens afzonderlijke eigenaarstoestemming voor de nieuwe privileged unit/installatie; pas daarna gecontroleerde fysieke acceptatie. Een echte ACL-grant vereist een tweede aparte toestemming.
+## #520 — 2026-11-20: root-side Incus-revoke socketkandidaat, uitsluitend bron
+
+- Originele AF-SVC-0003: 0.1.186/NNP=1 met hostroot ongemapt in service-userns; vaste root-only Incus-helper en basis-ACL blijven ongemoeid. De afzonderlijke A7-rootactor heeft geen bewezen Incus-aanroepgrens. **Bestaande geschikte executor NOT_ATTESTED.**
+- [Draft PR #1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040): kandidaat 0.1.188 vervangt in-service sudo/root-stat door één parameterloze AF_UNIX-aanroep. Niet-geïnstalleerde systemd-socket/root-executor-template, SO_PEERCRED + vaste user-unitcgroup, verzegelde bestaande helper, fsync PENDING/PASS replay-ledger, begrensde journald-/MCP-ACK-correlatie en synthetische regressies. **SOURCE ONLY; CI en review nog kwalificeren.**
+- **STOP privilegegrens:** geen nieuwe root-installatie, unit/socket/ledger, sudoersaanpassing, service-cutover of tijdelijke Incus-ACL zonder afzonderlijk eigenaarsbesluit. Volgende stap: gerichte exact-head tests en review, dan onafhankelijk installatiereview/toestemming, hostcanary, originele authenticated MCP no-op en apart geautoriseerde grant/revoke + rollback. #520 blijft OPEN; [canonieke opdracht](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7044318943).
 
 ## 2026-11-20 — #866 M6 status: source 0.1.187 MERGED; live 2/6 ongewijzigd
 

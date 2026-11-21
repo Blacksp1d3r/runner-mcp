@@ -1,312 +1,145 @@
-"""#520: negative tests for the sole first-party OS-authorized revoke call."""
+"""#520 — veilige, parameterloze socketclient zonder sudo/UID-overflow-bypass."""
 
 from __future__ import annotations
-
-import stat
-import subprocess
-from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 
 from runner_mcp import incus_acl_cleanup_transport as sut
 
+NONCE = "a" * 32
 
-def admit_root_owned_install(monkeypatch):
-    """Synthetic nonroot server and immutable root-owned installed file."""
-    monkeypatch.setattr(sut.os, "geteuid", lambda: 1001)
 
-    def fake_lstat(path):
-        if str(path) == str(sut._HELPER):
-            return SimpleNamespace(
-                st_mode=stat.S_IFREG | 0o500,
-                st_uid=0,
-                st_nlink=1,
-            )
-        if path in sut._ROOT_DIRS:
-            return SimpleNamespace(st_mode=stat.S_IFDIR | 0o755, st_uid=0)
-        raise FileNotFoundError()
+class FakeConnection:
+    """Eén synthetische hostexecutor-reply zonder echte host/root-toegang."""
 
-    monkeypatch.setattr(Path, "lstat", fake_lstat)
+    def __init__(self, reply: bytes | None = None, error: Exception | None = None):
+        self.reply = reply
+        self.error = error
+        self.sent = []
+        self.timeout = None
+        self.target = None
+
+    def __enter__(self):
+        return self
+
+    def __exit__(self, *_args):
+        return False
+
+    def settimeout(self, timeout):
+        self.timeout = timeout
+
+    def connect(self, path):
+        self.target = path
+        if self.error:
+            raise self.error
+
+    def sendall(self, payload):
+        self.sent.append(payload)
+
+    def recv(self, _size):
+        value, self.reply = self.reply, None
+        return value or b""
+
+
+def fake_transport(monkeypatch, reply=None, error=None):
+    """Vervang uitsluitend het synthetische AF_UNIX endpoint."""
+    conn = FakeConnection(reply, error)
+    monkeypatch.setattr(sut.secrets, "token_hex", lambda length: NONCE if length == 16 else "")
+    monkeypatch.setattr(sut.socket, "socket", lambda *_args: conn)
+    return conn
 
 
 @pytest.mark.parametrize(
-    ("result", "state"),
-    [
-        ("INCUS_ACL_REVOKE=PASS:already_restored\n", "already_restored"),
-        ("INCUS_ACL_REVOKE=PASS:revoke_only\n", "revoked"),
-    ],
+    ("name", "expected"),
+    [("already_restored", "already_restored"), ("revoked", "revoked")],
 )
-def test_single_fixed_command_and_only_bounded_success(monkeypatch, result, state):
-    admit_root_owned_install(monkeypatch)
-    calls = []
-
-    def run(argv, **kwargs):
-        calls.append((argv, kwargs))
-        return subprocess.CompletedProcess(argv, 0, result, "")
-
-    monkeypatch.setattr(sut.subprocess, "run", run)
-    assert sut.revoke_fixed_incus_qualification_acl() == {
+def test_fixed_action_no_sudo_and_ack_matching(monkeypatch, caplog, name, expected):
+    conn = fake_transport(
+        monkeypatch, f"RMCP520/1 {NONCE} PASS {name}\n".encode("ascii")
+    )
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+    assert result == {
         "schemaVersion": sut._SCHEMA,
-        "state": state,
+        "state": expected,
         "normalActivationEnabled": False,
     }
-    assert len(calls) == 1
-    argv, params = calls[0]
-    assert argv == (
-        "/usr/bin/sudo", "-n", "--", "/usr/bin/python3", "-I", "-S",
-        "/usr/local/sbin/runner-mcp-incus-acl-revoke",
-    )
-    assert params["shell"] is False
-    assert params["stdin"] == subprocess.DEVNULL
-    assert params["stderr"] == subprocess.DEVNULL
-    assert params["timeout"] == 20
-    assert params["cwd"] == "/"
-    assert "HOME" not in params["env"]
-    assert "PYTHONPATH" not in params["env"]
+    assert conn.target == "/run/runner-mcp-incus-acl-revoke.sock"
+    assert conn.timeout == sut._TIMEOUT
+    assert conn.sent == [f"RMCP520/1 {NONCE}\n".encode("ascii")]
+    assert not caplog.records
+    assert not hasattr(sut, "_SUDO_ARGV")
+    assert "subprocess" not in sut.__dict__
 
 
 @pytest.mark.parametrize(
-    "changed",
+    "reply",
     [
-        {"st_mode": stat.S_IFREG | 0o777},
-        {"st_mode": stat.S_IFLNK | 0o777},
-        {"st_mode": stat.S_IFREG | 0o550},
-        {"st_uid": 1001},
-        {"st_nlink": 2},
+        b"",
+        b"PRIVATE ERROR",
+        f"RMCP520/1 {'b' * 32} PASS revoked\n".encode("ascii"),
+        f"RMCP520/1 {NONCE} PASS unauthorized\n".encode("ascii"),
+        f"RMCP520/1 {NONCE} PASS revoked".encode("ascii"),
+        f"RMCP520/1 {NONCE} PASS revoked\nEXTRA\n".encode("ascii"),
+        b"x" * 100,
+        f"RMCP520/1 {NONCE} PASS revoked\n".encode("ascii") + b"x",
     ],
 )
-def test_untrusted_installed_helper_stops_without_sudo(monkeypatch, changed):
-    admit_root_owned_install(monkeypatch)
-    original = Path.lstat
+def test_foreign_broken_replayed_or_oversized_ack_is_not_success(
+    monkeypatch, caplog, reply,
+):
+    fake_transport(monkeypatch, reply)
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+    assert result == {
+        "schemaVersion": sut._SCHEMA,
+        "state": "unavailable",
+        "normalActivationEnabled": False,
+        "reasonCode": "privileged_helper_unavailable",
+    }
+    assert caplog.records[0].message in {
+        "incus_acl_revoke_unavailable stage=socket_unavailable",
+        "incus_acl_revoke_unavailable stage=invalid_receipt",
+    }
+    assert "PRIVATE" not in caplog.text
 
-    def faulty(self):
-        result = original(self)
-        if self == sut._HELPER:
-            data = {
-                "st_mode": result.st_mode,
-                "st_uid": result.st_uid,
-                "st_nlink": result.st_nlink,
-            }
-            data.update(changed)
-            return SimpleNamespace(**data)
-        return result
 
-    monkeypatch.setattr(Path, "lstat", faulty)
-    monkeypatch.setattr(sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked"))
-    assert sut.revoke_fixed_incus_qualification_acl()["reasonCode"] == (
-        "privileged_helper_unavailable"
+@pytest.mark.parametrize("error", [OSError("PRIVATE_PATH"), TimeoutError("SECRET")])
+def test_missing_socket_or_timeout_fails_closed(monkeypatch, caplog, error):
+    conn = fake_transport(monkeypatch, error=error)
+    with caplog.at_level("WARNING", logger=sut.__name__):
+        result = sut.revoke_fixed_incus_qualification_acl()
+    assert result["state"] == "unavailable"
+    assert result["reasonCode"] == "privileged_helper_unavailable"
+    assert conn.sent == []
+    assert caplog.records[0].message == (
+        "incus_acl_revoke_unavailable stage=socket_unavailable"
     )
+    assert "PRIVATE_PATH" not in caplog.text
+    assert "SECRET" not in caplog.text
 
 
-@pytest.mark.parametrize("change", ["nonroot", "missing", "world_writable", "symlink"])
-def test_root_directory_or_caller_mismatch_never_invokes_sudo(monkeypatch, change):
-    admit_root_owned_install(monkeypatch)
-    original = Path.lstat
-    if change == "nonroot":
-        monkeypatch.setattr(sut.os, "geteuid", lambda: 0)
-    else:
-        def broken(self):
-            row = original(self)
-            if self == Path("/usr/local/sbin"):
-                if change == "missing":
-                    raise FileNotFoundError()
-                if change == "world_writable":
-                    return SimpleNamespace(st_mode=stat.S_IFDIR | 0o777, st_uid=0)
-                return SimpleNamespace(st_mode=stat.S_IFLNK | 0o777, st_uid=0)
-            return row
-        monkeypatch.setattr(Path, "lstat", broken)
-    monkeypatch.setattr(sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked"))
+def test_invalid_self_generated_nonce_does_not_access_socket(monkeypatch):
+    monkeypatch.setattr(sut.secrets, "token_hex", lambda _n: "invalid")
+    monkeypatch.setattr(
+        sut.socket, "socket", lambda *_args: pytest.fail("socket attempted")
+    )
     assert sut.revoke_fixed_incus_qualification_acl()["state"] == "unavailable"
 
 
-@pytest.mark.parametrize(
-    ("rc", "output"),
-    [
-        (1, ""),
-        (1, "INCUS_ACL_REVOKE=PASS:revoke_only\n"),
-        (0, "INCUS_ACL_REVOKE=STOP:root_file_untrusted\n"),
-        (0, "INCUS_ACL_REVOKE=PASS:revoke_only\nunexpected\n"),
-        (0, "INCUS_ACL_REVOKE=PASS:revoke_only"),
-        (0, "INCUS_ACL_REVOKE=PASS:revoked\n"),
-        (0, ""),
-    ],
-)
-def test_sudo_failure_or_unexpected_output_never_claims_restored(
-    monkeypatch, rc, output,
-):
-    admit_root_owned_install(monkeypatch)
-    monkeypatch.setattr(
-        sut.subprocess, "run",
-        lambda argv, **kwargs: subprocess.CompletedProcess(argv, rc, output, "private"),
-    )
-    result = sut.revoke_fixed_incus_qualification_acl()
-    assert result == {
-        "schemaVersion": sut._SCHEMA,
-        "state": "unavailable",
-        "normalActivationEnabled": False,
-        "reasonCode": "privileged_helper_unavailable",
-    }
-
-
-@pytest.mark.parametrize(
-    "error", [OSError("secret"), subprocess.TimeoutExpired("sudo", 20)],
-)
-def test_unavailable_command_and_timeout_are_sanitized(monkeypatch, error):
-    admit_root_owned_install(monkeypatch)
-
-    def fail(argv, **kwargs):
-        raise error
-
-    monkeypatch.setattr(sut.subprocess, "run", fail)
-    result = sut.revoke_fixed_incus_qualification_acl()
-    assert result["state"] == "unavailable"
-    assert result["reasonCode"] == "privileged_helper_unavailable"
-    assert "secret" not in str(result)
-
-
-@pytest.mark.parametrize(
-    ("kind", "expected"),
-    [
-        ("admission", "admission"),
-        ("spawn", "spawn_or_timeout"),
-        ("reject", "command_rejected"),
-        ("receipt", "invalid_receipt"),
-    ],
-)
-def test_failure_journal_stages_are_bounded_and_private(
-    monkeypatch, caplog, kind, expected
-):
-    """A failed managed call must be diagnosable without logging stderr or paths."""
-    admit_root_owned_install(monkeypatch)
-
-    def run(argv, **kwargs):
-        if kind == "spawn":
-            raise OSError("PRIVATE_SPAWN_DETAIL")
-        if kind == "reject":
-            return subprocess.CompletedProcess(argv, 1, "", "PRIVATE_SUDO_DETAIL")
-        return subprocess.CompletedProcess(
-            argv, 0, "UNEXPECTED_PRIVATE_REPLY\n", "PRIVATE_SUDO_DETAIL"
-        )
-
-    if kind == "admission":
-        monkeypatch.setattr(sut, "_root_installation_present", lambda: False)
-        monkeypatch.setattr(
-            sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
-        )
-    else:
-        monkeypatch.setattr(sut.subprocess, "run", run)
-
-    with caplog.at_level("WARNING", logger=sut.__name__):
-        result = sut.revoke_fixed_incus_qualification_acl()
-
-    assert result == {
-        "schemaVersion": sut._SCHEMA,
-        "state": "unavailable",
-        "normalActivationEnabled": False,
-        "reasonCode": "privileged_helper_unavailable",
-    }
-    assert [r.message for r in caplog.records] == [
-        f"incus_acl_revoke_unavailable stage={expected}"
+def test_fragmented_ack_can_be_assembled(monkeypatch):
+    conn = fake_transport(monkeypatch)
+    fragments = [
+        f"RMCP520/1 {NONCE} PASS ".encode("ascii"),
+        b"already_restored\n",
     ]
-    assert "PRIVATE" not in caplog.text
-    assert "/usr/local/sbin" not in caplog.text
+    monkeypatch.setattr(conn, "recv", lambda _length: fragments.pop(0))
+    assert sut.revoke_fixed_incus_qualification_acl()["state"] == "already_restored"
 
 
-def test_success_creates_no_transport_warning(monkeypatch, caplog):
-    admit_root_owned_install(monkeypatch)
-    monkeypatch.setattr(
-        sut.subprocess, "run",
-        lambda argv, **kwargs: subprocess.CompletedProcess(
-            argv, 0, "INCUS_ACL_REVOKE=PASS:already_restored\n", ""
-        ),
-    )
-    with caplog.at_level("WARNING", logger=sut.__name__):
-        result = sut.revoke_fixed_incus_qualification_acl()
-    assert result["state"] == "already_restored"
-    assert not caplog.records
-
-
-@pytest.mark.parametrize(
-    ("target", "mutate", "expected"),
-    [
-        ("/", {"st_mode": stat.S_IFDIR | 0o777}, "root_writable"),
-        ("/usr", {"st_uid": 1001}, "usr_invalid"),
-        ("/usr/local", {"st_mode": stat.S_IFLNK | 0o777}, "usr_local_invalid"),
-        ("/usr/local/sbin", "error", "usr_local_sbin_unavailable"),
-        (str(sut._HELPER), "error", "helper_unavailable"),
-        (str(sut._HELPER), {"st_uid": 1001}, "helper_invalid"),
-        (str(sut._HELPER), {"st_mode": stat.S_IFREG | 0o600}, "helper_mode"),
-        (str(sut._HELPER), {"st_nlink": 2}, "helper_links"),
-    ],
-)
-def test_fixed_admission_detail_is_specific_and_private(
-    monkeypatch, caplog, target, mutate, expected
-):
-    admit_root_owned_install(monkeypatch)
-    original = Path.lstat
-
-    def injected(self):
-        if str(self) == target and mutate == "error":
-            raise PermissionError("PRIVATE_HOST_PATH")
-        row = original(self)
-        if str(self) != target:
-            return row
-        data = {
-            "st_mode": row.st_mode,
-            "st_uid": row.st_uid,
-            "st_nlink": getattr(row, "st_nlink", 1),
-        }
-        data.update(mutate)
-        return SimpleNamespace(**data)
-
-    monkeypatch.setattr(Path, "lstat", injected)
-    monkeypatch.setattr(
-        sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
-    )
-    with caplog.at_level("WARNING", logger=sut.__name__):
-        result = sut.revoke_fixed_incus_qualification_acl()
-
-    assert result == {
-        "schemaVersion": sut._SCHEMA,
-        "state": "unavailable",
-        "normalActivationEnabled": False,
-        "reasonCode": "privileged_helper_unavailable",
-    }
-    assert [r.message for r in caplog.records] == [
-        f"incus_acl_revoke_unavailable stage=admission detail={expected}"
-    ]
-    assert "PRIVATE_HOST_PATH" not in caplog.text
-    assert target not in caplog.records[0].message
-
-
-def test_effective_root_admission_detail_cannot_trigger_sudo(monkeypatch, caplog):
-    admit_root_owned_install(monkeypatch)
-    monkeypatch.setattr(sut.os, "geteuid", lambda: 0)
-    monkeypatch.setattr(
-        sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
-    )
-    with caplog.at_level("WARNING", logger=sut.__name__):
-        result = sut.revoke_fixed_incus_qualification_acl()
-    assert result["reasonCode"] == "privileged_helper_unavailable"
-    assert [r.message for r in caplog.records] == [
-        "incus_acl_revoke_unavailable stage=admission detail=caller_root"
-    ]
-
-
-def test_diagnostic_detail_never_logs_unknown_string(monkeypatch, caplog):
-    admit_root_owned_install(monkeypatch)
-    monkeypatch.setattr(sut, "_root_installation_present", lambda: False)
-    monkeypatch.setattr(
-        sut, "_root_installation_reason", lambda: "PRIVATE_RUNTIME_VALUE"
-    )
-    monkeypatch.setattr(
-        sut.subprocess, "run", lambda *a, **k: pytest.fail("sudo invoked")
-    )
-    with caplog.at_level("WARNING", logger=sut.__name__):
-        result = sut.revoke_fixed_incus_qualification_acl()
-    assert result["state"] == "unavailable"
-    assert [r.message for r in caplog.records] == [
-        "incus_acl_revoke_unavailable stage=admission"
-    ]
-    assert "PRIVATE_RUNTIME_VALUE" not in caplog.text
+def test_transport_has_no_host_root_stat_or_privileged_helper_call():
+    assert sut._SOCKET == "/run/runner-mcp-incus-acl-revoke.sock"
+    assert not hasattr(sut, "_root_installation_reason")
+    assert not hasattr(sut, "_root_installation_present")
+    assert not hasattr(sut, "_HELPER")
+    assert not hasattr(sut, "_SUDO_ARGV")

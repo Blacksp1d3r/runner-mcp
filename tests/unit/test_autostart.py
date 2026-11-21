@@ -2380,7 +2380,8 @@ def test_m3_mixed_status_rejects_malformed_inventory_fields_without_exception(
     assert list(tmp_path.rglob("*.service")) == []
 
 def _m6_later_peer_preview(
-    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *, third: bool,
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, *,
+    third: bool, first_preview=None,
 ):
     """Herbruik de geteste éénrolsplanner zonder bestand- of processchrijfpad."""
     from runner_mcp.autostart import (
@@ -2388,7 +2389,11 @@ def _m6_later_peer_preview(
         plan_single_peer_systemd_migration,
     )
 
-    first = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    first = (
+        first_preview
+        if first_preview is not None
+        else _single_peer_phase_fixture(tmp_path, monkeypatch)
+    )
 
     def next_preview(cron: str, roles: tuple[str, ...], component: str):
         return plan_single_peer_systemd_migration(
@@ -2567,3 +2572,78 @@ def test_m6_later_peer_status_fails_closed_on_drift(
     assert result.generic_reconcile_authorized is False
     assert result.cutover_authorized is False
     assert list(tmp_path.rglob("*.service")) == []
+
+def test_m6_three_serial_cron_to_systemd_receipts_never_restore_stale_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Rollback van rol 3 herstelt fase 2, nooit de oorspronkelijke zes rollen."""
+    from runner_mcp.cron_autostart import CRON_COMPONENTS
+
+    first = _single_peer_phase_fixture(tmp_path, monkeypatch)
+    second, previous_for_second = _m6_later_peer_preview(
+        tmp_path, monkeypatch, third=False, first_preview=first,
+    )
+    third, previous_for_third = _m6_later_peer_preview(
+        tmp_path, monkeypatch, third=True, first_preview=first,
+    )
+
+    assert previous_for_second == ("github-watcher",)
+    assert previous_for_third == ("github-watcher", "completion-watcher")
+    assert second.component == "completion-watcher"
+    assert third.component == "agent-bus-worker"
+
+    six_roles = first.original_crontab
+    five_roles = first.candidate_crontab
+    four_roles = second.candidate_crontab
+    three_roles = third.candidate_crontab
+    assert second.original_crontab == five_roles
+    assert third.original_crontab == four_roles
+
+    # Elke herstelreceipt is EXACT aan zijn directe vorige fase gebonden.
+    for preview, expected in (
+        (first, six_roles),
+        (second, five_roles),
+        (third, four_roles),
+    ):
+        assert preview.original_crontab == expected
+        assert preview.rollback_crontab_sha256 == hashlib.sha256(
+            expected.encode("utf-8")
+        ).hexdigest()
+
+    assert len({
+        first.rollback_crontab_sha256,
+        second.rollback_crontab_sha256,
+        third.rollback_crontab_sha256,
+    }) == 3
+    assert third.rollback_crontab_sha256 != first.rollback_crontab_sha256
+
+    def present(crontab: str) -> set[str]:
+        return {
+            role for role in CRON_COMPONENTS
+            if f"autostart cron-run {role}" in crontab
+        }
+
+    assert present(six_roles) == {
+        "server", "topology-heartbeat", "github-watcher",
+        "completion-watcher", "agent-bus-worker",
+        "fabric-agent-qualification",
+    }
+    assert present(five_roles) == present(six_roles) - {"github-watcher"}
+    assert present(four_roles) == present(five_roles) - {"completion-watcher"}
+    assert present(three_roles) == present(four_roles) - {"agent-bus-worker"}
+
+    # Herstel van M6 gaat slechts terug naar 2 systemd / 4 cron.
+    restored_four = third.original_crontab
+    assert restored_four == four_roles
+    assert "autostart cron-run github-watcher" not in restored_four
+    assert "autostart cron-run completion-watcher" not in restored_four
+    assert "autostart cron-run agent-bus-worker" in restored_four
+
+    # Bij herstel van M5 gaat men terug naar 1 systemd / 5 cron,
+    # dus ook dat herstel kan de oudere systemd-watcher niet dupliceren.
+    restored_five = second.original_crontab
+    assert "autostart cron-run github-watcher" not in restored_five
+    assert "autostart cron-run completion-watcher" in restored_five
+
+    # Dit is een pure bron- en herstelbewijs-test; nooit een echte manager.
+    assert not list(tmp_path.rglob("*.service"))

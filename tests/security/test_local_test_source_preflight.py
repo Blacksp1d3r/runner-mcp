@@ -1,5 +1,7 @@
 """Synthetic, offline checks for the no-dispatch local source gate."""
 
+import hashlib
+import json
 import subprocess
 from pathlib import Path
 
@@ -74,6 +76,49 @@ def test_matching_clean_registered_source_is_never_dispatch_authority(
     assert "/usr/bin/python3" not in repr(result)
     assert git(root, "rev-parse", "HEAD") == revision
     assert git(root, "status", "--porcelain") == before_status
+
+
+def test_source_subject_is_stable_and_bound_to_profile_repository_commit(
+    tmp_path: Path,
+) -> None:
+    registry, root, revision = candidate(tmp_path)
+    initial = inspect(registry, revision)
+    digest = initial["source_subject_sha256"]
+    assert len(digest) == 64
+    assert all(char in "0123456789abcdef" for char in digest)
+    subject = {
+        "schema_version": "runner-mcp/local-test-source-subject/v1",
+        "project": "hive",
+        "suite": "python-tests",
+        "repository": "blacksp1d3r/hive",
+        "source_sha": revision,
+    }
+    canonical = json.dumps(subject, sort_keys=True, separators=(",", ":"))
+    assert hashlib.sha256(canonical.encode()).hexdigest() == digest
+    assert inspect(registry, revision)["source_subject_sha256"] == digest
+
+    # A different selected suite must never reuse the original subject.
+    registry.projects["hive"].test_profiles["go-tests"] = (
+        registry.projects["hive"].test_profiles["python-tests"]
+    )
+    other_profile = inspect_local_test_source(
+        registry,
+        project="hive",
+        suite="go-tests",
+        expected_sha=revision,
+    )
+    assert other_profile["source_subject_sha256"] != digest
+    assert other_profile["dispatch_authorized"] is False
+
+    # A new committed source revision must not inherit an older receipt.
+    (root / "sample.txt").write_text("next exact commit\\n", encoding="utf-8")
+    git(root, "add", "sample.txt")
+    git(root, "commit", "-m", "next exact source")
+    other_commit = git(root, "rev-parse", "HEAD")
+    assert other_commit != revision
+    next_result = inspect(registry, other_commit)
+    assert next_result["source_subject_sha256"] != digest
+    assert next_result["dispatch_authorized"] is False
 
 
 @pytest.mark.parametrize(

@@ -99,7 +99,8 @@ def test_final_server_preserves_last_rollback_and_uses_existing_primary_unit(
     (
         "missing-peer", "duplicate-peer", "wrong-order",
         "second-server", "other-cron-role", "duplicate-marker",
-        "wrong-port", "hidden-manager", "missing-newline",
+        "wrong-port", "hidden-manager", "unmanaged-direct-serve",
+        "unmanaged-ensure-running", "missing-newline",
         "modified-managed-body", "wrong-executable", "bool-port",
     ),
 )
@@ -134,6 +135,16 @@ def test_final_primary_refuses_partial_or_ambiguous_original_cron(
         values["original_crontab"] = (
             "27 * * * * /tmp/runner-mcp autostart cron-run server\n" + original
         )
+    elif corruption == "unmanaged-direct-serve":
+        values["original_crontab"] = (
+            "* * * * * /usr/bin/runner-mcp --config-dir /tmp/private serve "
+            "--host 127.0.0.1 --port 8000 >/dev/null 2>&1\n" + original
+        )
+    elif corruption == "unmanaged-ensure-running":
+        values["original_crontab"] = (
+            "* * * * * /usr/bin/runner-mcp ensure-running >/dev/null 2>&1\n"
+            + original
+        )
     elif corruption == "missing-newline":
         values["original_crontab"] = original.rstrip("\n")
     elif corruption == "modified-managed-body":
@@ -164,4 +175,26 @@ def test_final_primary_rejects_changed_unit_security_contract(
     monkeypatch.setattr(autostart, "render_user_units", lambda **_kwargs: bad)
     with pytest.raises(AutostartError, match="final server primary migration"):
         plan_final_server_systemd_migration(**final_primary_input)
+    assert not list(tmp_path.rglob("*.service"))
+
+def test_final_primary_keeps_unrelated_cron_run_text_byte_identical(
+    final_primary_input: dict[str, object], tmp_path: Path,
+) -> None:
+    """An unrelated scheduled message is not a second Runner-MCP supervisor."""
+    original = final_primary_input["original_crontab"]
+    unrelated = "17 * * * * /usr/bin/echo 'cron-run planned' # unrelated\n"
+    changed = original.replace(
+        "17 * * * * /usr/bin/true # unrelated\n",
+        unrelated,
+        1,
+    )
+    assert changed != original
+    preview = plan_final_server_systemd_migration(
+        **{**final_primary_input, "original_crontab": changed},
+    )
+    assert preview.candidate_crontab == unrelated + "\n"
+    assert preview.rollback_crontab_sha256 == hashlib.sha256(
+        changed.encode("utf-8")
+    ).hexdigest()
+    assert preview.cutover_authorized is False
     assert not list(tmp_path.rglob("*.service"))

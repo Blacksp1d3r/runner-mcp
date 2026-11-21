@@ -1,7 +1,7 @@
 ## 0.1.189 — #520 root-runtime phase classification (SOURCE ONLY; NO RETRY)
 
 - After the original authenticated 0.1.188 MCP call returned `unavailable`, independent owner readback confirmed root journal `reason=runtime`, no ledger, no root ACK, and intact Incus baseline ACL. The actual syscall/stage is not yet known.
-- The existing socket-activated root executor now records one bounded, enumerated pre-ledger **phase** alongside `runtime` for its own kernel/runtime errors, never exception strings, filesystem paths, credentials or peer data. Explicit security `Denied` conditions, the fixed root helper, grants and replay semantics remain unchanged.
+- The existing socket-activated root executor now records one bounded, enumerated pre-ledger **phase** alongside `runtime` for its own kernel/runtime errors, including separate process credential, cgroup membership, namespace-map and starttick reads. It never prints exception strings, filesystem paths, credentials or peer data. Explicit security `Denied` conditions, the fixed root helper, grants and replay semantics remain unchanged.
 - Targeted synthetic negative tests prove failures before ledger never call the root helper or send ACK, and source journald never leaks raw exception text. The next live privileged binary update, its rollback, actual root-sandbox validation and original authenticated client ACK require separate qualification. **This commit does not install/activate any server changes and must not trigger a repeated MCP call.** #520 stays OPEN.
 
 ---

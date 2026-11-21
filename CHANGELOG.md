@@ -1,3 +1,11 @@
+## 0.1.192 — #866 final primary cron-conflict guard (SOURCE ONLY)
+
+- Reuse the existing managed-cron unmanaged-supervisor detector in the final server preview. A second unmanaged direct 'serve' or legacy ensure-running supervisor now fails closed, not only an external 'cron-run' string.
+- Preserve byte-identical unrelated cron jobs, including harmless text containing 'cron-run'. Targeted positive/negative tests cover both changes.
+- No new supervisor, authority, filesystem/systemd mutation, host update, live ACK or cutover permission. Physical original remains 3/6 until AF227, AF402, A7 and Agent Bus operational gates pass.
+
+---
+
 ## 0.1.191 — #866 last-primary server migration preview (SOURCE ONLY)
 
 - Add a separate, fail-closed source preview for the final primary server role after five individually qualified systemd peers. Keep existing peer planner's server exclusion unchanged.

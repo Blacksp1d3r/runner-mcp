@@ -42,8 +42,10 @@ def inspect_local_test_source(
         raise LocalTestSourcePreflightError("invalid_project_registry")
     if (
         not isinstance(project, str)
+        or len(project) > 64
         or not PROJECT_CODE_RE.fullmatch(project)
         or not isinstance(suite, str)
+        or len(suite) > 64
         or not PROJECT_CODE_RE.fullmatch(suite)
     ):
         raise LocalTestSourcePreflightError("invalid_project_or_profile")
@@ -79,7 +81,7 @@ def inspect_local_test_source(
         # The configured URL is checked, NOT remote custody or authentication.
         _require_configured_origin(root, config.repository)
         evidence = clean_head(root)
-    except SourceControlError:
+    except (SourceControlError, OSError, ValueError):
         raise LocalTestSourcePreflightError("checkout_or_origin_not_verified") from None
 
     if evidence["commit"] != expected_sha:

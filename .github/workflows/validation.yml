@@ -23,6 +23,11 @@ jobs:
 
   disposable-systemd-user:
     name: Disposable real systemd user lifecycle
+    # Required for ALL code, packaging, script, workflow and unknown changes.
+    # Docs-only keeps the independently required docs/version/attribution
+    # checks; no unchanged executable lifecycle needs to be rebuilt.
+    needs: validate
+    if: needs.validate.outputs.full_qualification == 'true'
     runs-on: ubuntu-24.04
     timeout-minutes: 5
     permissions:

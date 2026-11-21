@@ -37,6 +37,12 @@ Even when the source check succeeds the result is:
 `guest_identity_verified=false`,
 `fabric_lease_verified=false`.
 
+A deterministic `source_subject_sha256` also binds the configured repository,
+project, selected test profile and exact Git SHA through canonical JSON. This
+is an integrity/identity **label**, not an authenticated receipt, signing key,
+Fabric F18 lease or permission to execute. A changed profile or commit gets a
+different subject and cannot inherit previous results.
+
 An origin *configuration match* is **not** remote authentication or an
 authoritative provenance receipt. There is no way for this module to return
 PASS for actual local test execution. It cannot make the existing host-local
@@ -78,6 +84,7 @@ no Fabric tool changed, no existing runner or local service was touched.
 `tests/security/test_local_test_source_preflight.py` adds actual local-Git
 fixtures and negative assertions for: unknown project/profile, malformed
 identifiers or SHA, mismatched source SHA, wrong origin URL, dirty tree,
+deterministic subject binding and changing profile/commit,
 submodules, symlinked or nested root, non-staging project and unavailable registry.
 The positive check explicitly proves that source admission **never**
 authorizes dispatch or host-local fallback, and does not move Git HEAD.

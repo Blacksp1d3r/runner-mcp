@@ -8,6 +8,8 @@ commit reachability. No guest, command or host can be chosen by callers.
 
 from __future__ import annotations
 
+import hashlib
+import json
 from pathlib import Path
 from typing import Any
 
@@ -87,12 +89,25 @@ def inspect_local_test_source(
     if evidence["commit"] != expected_sha:
         raise LocalTestSourcePreflightError("exact_source_sha_mismatch")
 
+    # A stable subject for a future authenticated F18 request/result/ACK.
+    # It is an integrity label, NOT a signature, lease or execution approval.
+    subject = {
+        "schema_version": "runner-mcp/local-test-source-subject/v1",
+        "project": project,
+        "suite": suite,
+        "repository": config.repository.lower(),
+        "source_sha": expected_sha,
+    }
+    canonical = json.dumps(subject, sort_keys=True, separators=(",", ":"))
+    subject_sha256 = hashlib.sha256(canonical.encode("utf-8")).hexdigest()
+
     return {
         "schema_version": "runner-mcp/local-test-source-preflight/v1",
         "state": "source_checked_wait_f26_guest",
         "project": project,
         "suite": suite,
         "source_sha": expected_sha,
+        "source_subject_sha256": subject_sha256,
         "checkout_clean": True,
         "configured_origin_matches": True,
         "remote_reachability_verified": False,

@@ -133,17 +133,28 @@ jobs:
 
       - name: Verify unique shipping version and registry parity
         shell: bash
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          # GitHub PR checks use a synthetic merge with target as first parent.
-          # Main pushes also use the first parent of the newly merged commit.
-          base="$(git rev-parse HEAD^1)"
+          # PRs use the synthetic merge's first parent (target branch).
+          # On main push, compare the WHOLE event, not only the last
+          # commit: a pushed docs tail must not hide earlier code changes.
+          if [[ "$GITHUB_EVENT_NAME" == "push" && "$GITHUB_REF" == "refs/heads/main" ]]; then
+            base="$PUSH_BEFORE"
+          else
+            base="$(git rev-parse HEAD^1)"
+          fi
+          if [[ ! "$base" =~ ^[0-9a-f]{40}$ ]] || ! git cat-file -e "$base^{commit}"; then
+            echo "Runner-MCP release admission STOP: full Git base unavailable" >&2
+            exit 1
+          fi
           echo "RUNNER_MCP_BASE_COMMIT=$base" >> "$GITHUB_ENV"
           python scripts/check_release_version.py --base "$base"
 
       # Reuse the existing Git-tree-bound doc-memory verifier in this
       # already isolated disposable validation job; no new CI job or service.
-      # HEAD^1 is checked and exported by the preceding source-version step.
+      # The complete PR or push base was checked and exported above.
       - name: Verify changed docs using existing doc-memory precommit
         shell: bash
         run: |
@@ -242,9 +253,16 @@ jobs:
         id: candidate
         if: github.event_name == 'push' && github.ref == 'refs/heads/main'
         shell: bash
+        env:
+          PUSH_BEFORE: ${{ github.event.before }}
         run: |
           set -euo pipefail
-          python scripts/check_release_version.py --base "$(git rev-parse HEAD^1)" --github-output
+          base="$PUSH_BEFORE"
+          if [[ ! "$base" =~ ^[0-9a-f]{40}$ ]] || ! git cat-file -e "$base^{commit}"; then
+            echo "Runner-MCP candidate STOP: full push base unavailable" >&2
+            exit 1
+          fi
+          python scripts/check_release_version.py --base "$base" --github-output
 
       - name: Record immutable candidate identity and hashes
         if: steps.candidate.outputs.release == 'true'

@@ -1,3 +1,11 @@
+## 2026-11-21 — #520 origineel rootactor 0.1.193 CODE-ONLY LIVE PASS; originele MCP-tool-ACK OPEN
+
+**Echte eigenaarsterminal, bestaande updater:** private SHA256-pinned 0.1.193 installer op het oorspronkelijke AF-SVC-0003-doel gaf PRELIGHT=PASS_READ_ONLY, ROOT_ACTOR_UPGRADE=PASS_CODE_ONLY en ROOT_ACTOR_ROLLBACK=RETAINED; oorspronkelijke Runner-MCP-service 0.1.188, root-socket en Incus ACL UNCHANGED, en ORIGINAL_CLIENT_ACK=NOT_REATTEMPTED. Broncommit van de nieuwe rootactor is de reeds gemergede [#1056](https://github.com/Blacksp1d3r/runner-mcp/pull/1056) (0.1.193), Git blob `d96bb0722653940b8171167b3ea164aa78ad0b4c`; vorige 0.1.189 (`f11d97062474e508e1eda2421d25c62bb42d3506`) plus oudere 0.1.188 actor-backup retained.
+
+**Onafhankelijke alleen-lezen SSH-readback op werkelijk origineel:** zelfde oorspronkelijke MCP-procesgeneratie/PID, root-owned executor mode 0500, beide recoverybestanden, bestaande systemd root-socket active, Incus-ACL exact basis en HTTP401 zonder bearer op bestaande loopback MCP. De externe onprivileged readback kan de 0500 actorbytes niet zelf hashen: de bronpin is door de oorspronkelijke ownerinstaller geattesteerd; dit is geen live root-helper of nieuwe model-/tool-ACK.
+
+**Resterend:** het eerdere originele geauthenticeerde MCP-verzoek liep tegen `runtime stage=root_context` op oude actor. **Na nieuwe actor is geen verzoek uitgevoerd**, dus `already_restored` niet bewezen. Een NIEUWE expliciete one-shot-ownerbeslissing + contemporane exact-basis-ACL/geen-PENDING ledger-admission is vereist, daarna maximaal één bestaande geauthenticeerde call en originele duurzame ACK-reconciliatie. Geen retry van eerdere transactie, helper/ACL grant of extra service/tunnel/updater; optionele hardening blijft later volgens #1055. Zie [#520 fysieke receipt](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7067488635). **#520 OPEN.**
+
 ## 2026-11-21 — #520 root-context DENIED; fix 0.1.193 BRON GEMERGED, LIVE OPEN
 
 - Originele LAB: root-executor 0.1.189 code-only geïnstalleerd; vorige actor 0.1.188 behouden, oorspronkelijke MCP-user-service 0.1.188 ongewijzigd. AIfordable topology #963 gemerged. De eigenaar bevestigde exact de drie basis-ACL-regels.

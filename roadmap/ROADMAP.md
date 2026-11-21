@@ -1,3 +1,9 @@
+## 2026-11-21 — #520 bron 0.1.189 MERGED; bestaande rootactor op originele LAB nog ongewijzigd
+
+**SOURCE DONE:** PR #1046 merged op main `41ca48c9a4e4aa5893821d4c86c4ef053b8ae875` na exact-head officiële CI, release-reservering, schone Ubuntu-installatie, Python/Ruff/pytest en attributie PASS. De bestaande afgebakende host-root-executor heeft nu uitsluitend vaste foutfasecodes voor pre-ledger runtime- en individuele peer-/cgroup-lezingen. Geen nieuwe privilegeroute, no-grant-policy of extra service.
+
+**PHYSICAL WAIT:** de oorspronkelijke 0.1.188 user-service en rootactor/socket bleven volgens laatste originele hostreadback unchanged, ledger absent, Incus ACL exact basis. Eén authentieke originele nulargumenten-MCP-toolcall gaf `unavailable` en rootjournal `reason=runtime`; er is geen `already_restored`-ACK en geen second call geautoriseerd. Volgende aparte gate is uitsluitend bounded existing-root-actor code replacement met byte-identieke vorige actor als rollback, na actuele bron-/proces-/unit-/helper-/ACL-/hersteladmission; geen nieuwe MCP-call totdat fysiek gekwalificeerd. Tijdelijke Incus grant/revoke vereist nogmaals afzonderlijke eigenaarsbeslissing. [Actuele #520-evidentie](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7061732213). **#520 OPEN.**
+
 ## 2026-11-21 — #520 originele service 0.1.188 fysiek geactiveerd; CLIENT-ACK NOG OPEN
 
 - **OWNER-RECEIPT:** op originele AF-SVC-0003 is de exact gecommitde 0.1.188 eerst inactief gestaged en vervolgens op dezelfde bestaande user-systemd `runner-mcp.service` ingeschakeld. `RMCP520_0188_STAGE=PASS_INACTIVE`, `RMCP520_0188_CUTOVER=PASS`, `RMCP520_0188_NEW_PID=NEW_SERVING_GENERATION`, `RMCP520_0188_NNP_AND_CAPS=PASS`. Root socket behouden, 0.1.186 byte-identieke override-rollback behouden, oudere 0.1.185 herstelkandidaat behouden, Incus ACL ongewijzigd. De eigenaar vermeldt expliciet `RMCP520_ORIGINAL_CLIENT_ACK=NOT_ATTEMPTED`.

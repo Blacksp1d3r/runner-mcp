@@ -155,6 +155,24 @@ def test_symlinked_project_root_refused(tmp_path: Path) -> None:
         inspect(registry, revision)
 
 
+
+def test_nested_directory_cannot_borrow_parent_git_identity(
+    tmp_path: Path,
+) -> None:
+    registry, root, _revision = candidate(tmp_path)
+    nested = root / "nested"
+    nested.mkdir()
+    (nested / "sample.txt").write_text("inside project\\n", encoding="utf-8")
+    git(root, "add", "nested/sample.txt")
+    git(root, "commit", "-m", "nested fixture")
+    revision = git(root, "rev-parse", "HEAD")
+    registry.projects["hive"].root = nested
+    with pytest.raises(
+        LocalTestSourcePreflightError, match="checkout_or_origin_not_verified"
+    ):
+        inspect(registry, revision)
+
+
 def test_non_staging_project_refused(tmp_path: Path) -> None:
     registry, _root, revision = candidate(tmp_path)
     registry.projects["hive"].environment = "protected"

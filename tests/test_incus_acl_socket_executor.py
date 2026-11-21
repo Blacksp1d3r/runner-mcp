@@ -667,3 +667,198 @@ def test_root_script_contains_no_dynamic_cli_shell_or_acl_grant():
         "INCUS_ACL_REVOKE=PASS:revoke_only\n": "revoked",
     }
     assert sut._MAX_ENTRIES <= 512
+
+
+@pytest.mark.parametrize(
+    ("target", "phase"),
+    [
+        ("_root_only", "root_context"),
+        ("_binding", "host_policy"),
+        ("_peer", "peer_inspect"),
+        ("_ledger_open", "ledger_open"),
+    ],
+)
+def test_runtime_before_ledger_is_bounded_without_execution(
+    monkeypatch, target, phase,
+):
+    """A host sandbox syscall error must not expose paths or start root work."""
+    monkeypatch.setattr(sut, "_root_only", lambda: None)
+    monkeypatch.setattr(sut, "_binding", lambda: (1001, 1001, 108))
+    monkeypatch.setattr(sut, "_peer", lambda *_args: (123, "55555"))
+    monkeypatch.setattr(
+        sut, "_ledger_open",
+        lambda: pytest.fail("ledger must not be opened before a failing stage"),
+    )
+    monkeypatch.setattr(
+        sut, "_helper",
+        lambda: pytest.fail("root helper must not run on a pre-ledger error"),
+    )
+
+    def denied_runtime(*_args):
+        raise PermissionError("PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK")
+
+    monkeypatch.setattr(sut, target, denied_runtime)
+    client = Client()
+    with pytest.raises(sut.RuntimePhase) as raised:
+        sut.execute(client)
+    assert str(raised.value) == phase
+    assert "PRIVATE_PATH" not in str(raised.value)
+    assert client.reply == []
+
+
+def test_runtime_socket_read_is_bounded_and_never_opens_ledger(monkeypatch):
+    monkeypatch.setattr(sut, "_root_only", lambda: None)
+    monkeypatch.setattr(sut, "_binding", lambda: (1001, 1001, 108))
+    monkeypatch.setattr(sut, "_peer", lambda *_args: (123, "55555"))
+    monkeypatch.setattr(
+        sut, "_ledger_open", lambda: pytest.fail("unexpected ledger open"),
+    )
+
+    class BrokenClient(Client):
+        def recv(self, _count):
+            raise OSError("PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK")
+
+    with pytest.raises(sut.RuntimePhase, match="^request_read$"):
+        sut.execute(BrokenClient())
+
+
+def test_runtime_classification_never_swallow_explicit_denial(monkeypatch):
+    def explicit_deny():
+        raise sut.Denied("peer_security")
+
+    with pytest.raises(sut.Denied, match="peer_security"):
+        sut._checked("root_context", explicit_deny)
+
+
+def test_invalid_phase_never_calls_callback():
+    with pytest.raises(sut.RuntimePhase, match="unknown"):
+        sut._checked("PRIVATE_PATH", lambda: pytest.fail("should not call"))
+
+
+def test_root_journal_reports_only_runtime_phase(monkeypatch, capsys):
+    class SocketContext:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def faulty_execute(_conn):
+        raise sut.RuntimePhase("peer_inspect") from PermissionError(
+            "PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK"
+        )
+
+    monkeypatch.setattr(sut.socket, "socket", lambda **_kwargs: SocketContext())
+    monkeypatch.setattr(sut, "execute", faulty_execute)
+    monkeypatch.setattr(sut.sys, "argv", ["runner-mcp-incus-acl-executor"])
+    assert sut.main() == 1
+    journal = capsys.readouterr().err
+    assert journal == "RMCP520_ROOT=DENIED reason=runtime stage=peer_inspect\n"
+    assert "PRIVATE_PATH" not in journal
+    assert "PermissionError" not in journal
+
+
+@pytest.mark.parametrize(
+    ("phase", "target"),
+    [
+        ("peer_credentials", "<socket>"),
+        ("peer_cgroup", "/proc/123/cgroup"),
+        ("peer_members", "/sys/fs/cgroup" + (
+            "/user.slice/user-1001.slice/user@1001.service/"
+            "app.slice/runner-mcp.service/cgroup.procs"
+        )),
+        ("peer_status", "/proc/123/status"),
+        ("peer_uid_map", "/proc/123/uid_map"),
+        ("peer_gid_map", "/proc/123/gid_map"),
+        ("peer_comm", "/proc/123/comm"),
+        ("peer_start_ticks", "/proc/123/stat"),
+    ],
+)
+def test_peer_individual_runtime_phase_does_not_leak(
+    monkeypatch, phase, target,
+):
+    """One source-level sandbox read error yields only a fixed phase code."""
+    cgroup = (
+        "/user.slice/user-1001.slice/user@1001.service/"
+        "app.slice/runner-mcp.service"
+    )
+    proc_status = (
+        "Uid:\t1001 1001 1001 1001\n"
+        "Gid:\t1001 1001 1001 1001\n"
+        "Groups:\t1001\n"
+        "NoNewPrivs:\t1\n"
+        "CapInh:\t0000000000000000\n"
+        "CapPrm:\t0000000000000000\n"
+        "CapEff:\t0000000000000000\n"
+        "CapAmb:\t0000000000000000\n"
+    )
+    values = {
+        "/proc/123/cgroup": "0::" + cgroup + "\n",
+        "/sys/fs/cgroup" + cgroup + "/cgroup.procs": "123\n",
+        "/proc/123/status": proc_status,
+        "/proc/123/uid_map": "1001 1001 1\n",
+        "/proc/123/gid_map": "1001 1001 1\n",
+        "/proc/123/comm": "runner-mcp\n",
+        "/proc/123/stat": "123 (runner-mcp) " + " ".join(["0"] * 20),
+    }
+
+    class FakePath:
+        def __init__(self, name):
+            self.name = str(name)
+
+        def read_text(self, encoding="ascii"):
+            assert encoding == "ascii"
+            if self.name == target:
+                raise PermissionError("PRIVATE_HOST_DATA_MUST_NOT_LEAK")
+            return values[self.name]
+
+    class FakeConn:
+        def getsockopt(self, _level, _option, _length):
+            if target == "<socket>":
+                raise PermissionError("PRIVATE_HOST_DATA_MUST_NOT_LEAK")
+            return struct.pack("3i", 123, 1001, 1001)
+
+    monkeypatch.setattr(sut, "Path", FakePath)
+    with pytest.raises(sut.RuntimePhase) as caught:
+        sut._peer(FakeConn(), 1001, 1001, 108)
+    assert str(caught.value) == phase
+    assert "PRIVATE_HOST_DATA" not in str(caught.value)
+
+
+def test_root_journal_redacts_untrusted_runtime_phase(monkeypatch, capsys):
+    class SocketContext:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, *_args):
+            return False
+
+    def faulty_execute(_conn):
+        raise sut.RuntimePhase("PRIVATE_PATH_AND_TOKEN_MUST_NOT_LEAK")
+
+    monkeypatch.setattr(sut.socket, "socket", lambda **_kwargs: SocketContext())
+    monkeypatch.setattr(sut, "execute", faulty_execute)
+    monkeypatch.setattr(sut.sys, "argv", ["runner-mcp-incus-acl-executor"])
+    assert sut.main() == 1
+    assert capsys.readouterr().err == (
+        "RMCP520_ROOT=DENIED reason=runtime stage=unknown\n"
+    )
+
+
+def test_socket_fd_runtime_error_has_fixed_stage_and_no_root_action(
+    monkeypatch, capsys,
+):
+    """A broken inherited socket fd must fail before execute, without leaking."""
+    monkeypatch.setattr(sut.sys, "argv", ["runner-mcp-incus-acl-executor"])
+
+    def broken_socket(**_kwargs):
+        raise OSError("PRIVATE_FD_AND_TOKEN_MUST_NOT_LEAK")
+
+    monkeypatch.setattr(sut.socket, "socket", broken_socket)
+    monkeypatch.setattr(
+        sut, "execute", lambda _conn: pytest.fail("executor must not run"),
+    )
+    assert sut.main() == 1
+    assert capsys.readouterr().err == (
+        "RMCP520_ROOT=DENIED reason=runtime stage=socket_fd\n"
+    )

@@ -19,6 +19,7 @@ The inspector requires, before returning its bounded source result:
 - an already configured staging project code and explicitly registered suite;
 - a lowercase, full 40-character Git SHA;
 - a pre-existing local Git checkout with no symlink in its root path;
+- project root exactly equals the Git top-level (nested folder inheritance refused);
 - configured `origin` URL equal to the registered GitHub repository;
 - clean tracked and untracked working tree;
 - exactly matching checkout HEAD;
@@ -77,7 +78,7 @@ no Fabric tool changed, no existing runner or local service was touched.
 `tests/security/test_local_test_source_preflight.py` adds actual local-Git
 fixtures and negative assertions for: unknown project/profile, malformed
 identifiers or SHA, mismatched source SHA, wrong origin URL, dirty tree,
-submodules, symlinked root, non-staging project and unavailable registry.
+submodules, symlinked or nested root, non-staging project and unavailable registry.
 The positive check explicitly proves that source admission **never**
 authorizes dispatch or host-local fallback, and does not move Git HEAD.
 

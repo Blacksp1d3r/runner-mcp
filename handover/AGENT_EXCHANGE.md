@@ -1,6 +1,6 @@
 ## 2026-11-21 — #866 M6 final-primary bronclaim vrijgegeven
 
-- **DONE / claim released:** [PR #1051](https://github.com/Blacksp1d3r/runner-mcp/pull/1051), source-only v0.1.191, merged `4ebf0dae5addc1850633e285dcb7b20d9f7213f8` na alle zeven officiële checks. Scope: aparte niet-uitvoerende laatste primaire server-preview met bestaande serviceflock en rollback-SHA. De bronbranch is niet langer geclaimd.
+- **DONE / claim released:** [PR #1051](https://github.com/Blacksp1d3r/runner-mcp/pull/1051), source-only v0.1.191, merged `4ebf0dae5addc1850633e285dcb7b20d9f7213f8` na alle zeven officiële checks. Scope: aparte niet-uitvoerende laatste primaire server-preview met bestaande serviceflock en rollback-SHA. De bronbranch is niet langer geclaimd. Latere afgebakende hardening [#1053](https://github.com/Blacksp1d3r/runner-mcp/pull/1053) is eveneens MERGED als v0.1.192 `cb8845caf4c5409f62cce67dbcca7d8f5e047e05` na alle zeven officiële CI-checks; de tijdelijke laatste-primary-conflictclaim is vrijgegeven.
 - **Operationele eigenaars blijven gescheiden:** oorspronkelijke M6 #866 3/6 blijft onder hostowner; AF227/AF402 beheert Control API en unieke primaire attestatie; A7 #943 levert pas via eigen release-/herstelcustody; Agent Bus-lease/ACK blijft zijn eigen gate. Geen fysieke serviceactivering, nieuwe backend, hostmutatie of claim op Q7/A7.
 
 ## 2026-11-20 — #520 owner claim: host-root socketontwerp, draft #1040

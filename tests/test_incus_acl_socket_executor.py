@@ -843,3 +843,22 @@ def test_root_journal_redacts_untrusted_runtime_phase(monkeypatch, capsys):
     assert capsys.readouterr().err == (
         "RMCP520_ROOT=DENIED reason=runtime stage=unknown\n"
     )
+
+
+def test_socket_fd_runtime_error_has_fixed_stage_and_no_root_action(
+    monkeypatch, capsys,
+):
+    """A broken inherited socket fd must fail before execute, without leaking."""
+    monkeypatch.setattr(sut.sys, "argv", ["runner-mcp-incus-acl-executor"])
+
+    def broken_socket(**_kwargs):
+        raise OSError("PRIVATE_FD_AND_TOKEN_MUST_NOT_LEAK")
+
+    monkeypatch.setattr(sut.socket, "socket", broken_socket)
+    monkeypatch.setattr(
+        sut, "execute", lambda _conn: pytest.fail("executor must not run"),
+    )
+    assert sut.main() == 1
+    assert capsys.readouterr().err == (
+        "RMCP520_ROOT=DENIED reason=runtime stage=socket_fd\n"
+    )

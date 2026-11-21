@@ -78,7 +78,7 @@ def test_matching_clean_registered_source_is_never_dispatch_authority(
     assert git(root, "status", "--porcelain") == before_status
 
 
-def test_source_subject_is_stable_and_bound_to_profile_repository_commit(
+def test_source_subject_is_bound_to_project_profile_repository_and_commit(
     tmp_path: Path,
 ) -> None:
     registry, root, revision = candidate(tmp_path)
@@ -109,6 +109,40 @@ def test_source_subject_is_stable_and_bound_to_profile_repository_commit(
     )
     assert other_profile["source_subject_sha256"] != digest
     assert other_profile["dispatch_authorized"] is False
+
+    # Distinct registered projects cannot share the source subject.
+    registry.projects["academy"] = ProjectConfig(
+        display_name="Academy",
+        repository="Blacksp1d3r/Hive",
+        root=root,
+        environment="staging",
+        test_profiles={
+            "python-tests": registry.projects["hive"].test_profiles["python-tests"]
+        },
+    )
+    other_project = inspect_local_test_source(
+        registry,
+        project="academy",
+        suite="python-tests",
+        expected_sha=revision,
+    )
+    assert other_project["source_subject_sha256"] != digest
+    assert other_project["dispatch_authorized"] is False
+
+    # The repository origin is part of the identity even for equal Git HEAD.
+    registry.projects["hive"].repository = "Blacksp1d3r/OtherSyntheticRepo"
+    git(
+        root,
+        "remote",
+        "set-url",
+        "origin",
+        "https://github.com/Blacksp1d3r/OtherSyntheticRepo.git",
+    )
+    other_repository = inspect(registry, revision)
+    assert other_repository["source_subject_sha256"] != digest
+    assert other_repository["dispatch_authorized"] is False
+    registry.projects["hive"].repository = "Blacksp1d3r/Hive"
+    git(root, "remote", "set-url", "origin", "https://github.com/Blacksp1d3r/Hive.git")
 
     # A new committed source revision must not inherit an older receipt.
     (root / "sample.txt").write_text("next exact commit\\n", encoding="utf-8")

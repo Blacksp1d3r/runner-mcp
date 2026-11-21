@@ -1,3 +1,11 @@
+## 0.1.190 — #866 isolate topology authority from SQL relay (SOURCE ONLY)
+
+- Add a strict owner-private opt-in selecting the existing fixed loopback AIfordable Control API solely for topology heartbeat. No arbitrary endpoint, additional relay/controller, public ingress, extra credential or change to Agent Bus SQL transport.
+- Reject invalid option values before sending the machine credential or touching private attestations; unset/0 remains the existing relay route. Keep no-proxy/no-redirects and external authority unique-primary validation.
+- This source release does not activate :8010 or deploy Runner-MCP on original github-runner. Separate AIfordable #227 API activation, independent #402 authority, exact A7 source qualification, original host rollback and real ACK required before M6 role four.
+
+---
+
 ## 0.1.189 — #520 root-runtime phase classification (SOURCE ONLY; NO RETRY)
 
 - After the original authenticated 0.1.188 MCP call returned `unavailable`, independent owner readback confirmed root journal `reason=runtime`, no ledger, no root ACK, and intact Incus baseline ACL. The actual syscall/stage is not yet known.

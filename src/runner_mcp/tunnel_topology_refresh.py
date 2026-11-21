@@ -42,6 +42,14 @@ _BOUNDED_REFRESH_REASONS = {
 }
 
 
+# The native owner-only AIfordable Control API is an existing, distinct
+# loopback service. The transport relay origin remains untouched: a private
+# one-bit opt-in selects ONLY this fixed local topology authority endpoint.
+# Never allow a caller-selected URL or credential-bearing fallback here.
+_LOCAL_TOPOLOGY_AUTHORITY_KEY = "RUNNER_MCP_TOPOLOGY_AUTHORITY_LOCAL"
+_LOCAL_TOPOLOGY_AUTHORITY_ORIGIN = "http://127.0.0.1:8010"
+
+
 class TunnelTopologyRefreshError(RuntimeError):
     """Safe refresh failure without endpoint, credential or binding detail."""
 
@@ -76,6 +84,18 @@ def bounded_tunnel_topology_refresh_reason(
     return _BOUNDED_REFRESH_REASONS.get(str(error))
 
 
+def _topology_authority_origin(values: dict[str, str], relay_origin: str) -> str:
+    """Select an owner-private local Control API without generic URL egress."""
+    mode = values.get(_LOCAL_TOPOLOGY_AUTHORITY_KEY, "")
+    if mode == "1":
+        return _LOCAL_TOPOLOGY_AUTHORITY_ORIGIN
+    if mode in {"", "0"}:
+        return relay_origin
+    raise TunnelTopologyRefreshError(
+        "AIfordable topology authority configuration is unavailable"
+    )
+
+
 def refresh_tunnel_topology_attestation(
     config_dir: Path,
     *,
@@ -88,11 +108,12 @@ def refresh_tunnel_topology_attestation(
     paths, _settings, _registry = _read_private_runtime(config_dir)
     values = _load_env_file(paths.env_file)
     try:
-        origin, _subject, credential = _validate_agent_bus_relay_config(
+        relay_origin, _subject, credential = _validate_agent_bus_relay_config(
             origin=values.get("RUNNER_FABRIC_RELAY_ORIGIN", ""),
             subject=values.get("RUNNER_FABRIC_RELAY_SUBJECT", ""),
             credential=values.get("RUNNER_FABRIC_RELAY_CREDENTIAL", ""),
         )
+        origin = _topology_authority_origin(values, relay_origin)
     except (RuntimeError, TypeError, ValueError) as exc:
         raise TunnelTopologyRefreshError(
             "AIfordable topology authority configuration is unavailable"

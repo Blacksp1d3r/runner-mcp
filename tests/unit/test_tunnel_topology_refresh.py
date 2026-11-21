@@ -130,6 +130,86 @@ def test_refresh_posts_private_binding_and_persists_only_valid_attestation(
     )
 
 
+@pytest.mark.parametrize("mode,expected", [("1", "http://127.0.0.1:8010"), ("0", "https://control.example.invalid")])
+def test_owner_private_local_authority_selection_preserves_bound_credential(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+    expected: str,
+) -> None:
+    root = private_config(tmp_path)
+    with (root / "runner.env").open("a", encoding="utf-8") as handle:
+        handle.write(f"RUNNER_MCP_TOPOLOGY_AUTHORITY_LOCAL={mode}\n")
+    monkeypatch.setattr(
+        "runner_mcp.tunnel_topology_refresh._read_private_runtime",
+        lambda path: (
+            type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
+            object(), object(),
+        ),
+    )
+    seen: dict[str, str] = {}
+
+    def opener(request, *, timeout):
+        seen["url"] = request.full_url
+        seen["credential"] = request.get_header("X-aifordable-runner-credential")
+        return FakeResponse(attestation())
+
+    result = refresh_tunnel_topology_attestation(
+        root,
+        opener=opener,
+        runtime_instance_collector=lambda _root: INSTANCE,
+        now=NOW,
+    )
+    assert result["qualified"] is True
+    assert seen == {
+        "url": expected + "/internal/topology/heartbeat",
+        "credential": "r" * 48,
+    }
+
+
+@pytest.mark.parametrize(
+    "mode",
+    ["true", "yes", "01", "https://other.example.invalid", "http://127.0.0.1:8010"],
+)
+def test_unapproved_topology_origin_is_rejected_before_network_or_write(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+    mode: str,
+) -> None:
+    root = private_config(tmp_path)
+    with (root / "runner.env").open("a", encoding="utf-8") as handle:
+        handle.write(f"RUNNER_MCP_TOPOLOGY_AUTHORITY_LOCAL={mode}\n")
+    existing = root / "tunnel-topology-attestation.json"
+    existing.write_bytes(attestation())
+    existing.chmod(0o600)
+    before = existing.read_bytes()
+    monkeypatch.setattr(
+        "runner_mcp.tunnel_topology_refresh._read_private_runtime",
+        lambda path: (
+            type("Paths", (), {"config_dir": root, "env_file": root / "runner.env"})(),
+            object(), object(),
+        ),
+    )
+
+    def forbidden_opener(*_args, **_kwargs):
+        pytest.fail("invalid topology authority mode must never send credentials")
+
+    with pytest.raises(
+        TunnelTopologyRefreshError,
+        match="AIfordable topology authority configuration is unavailable",
+    ) as caught:
+        refresh_tunnel_topology_attestation(
+            root,
+            opener=forbidden_opener,
+            runtime_instance_collector=lambda _root: INSTANCE,
+            now=NOW,
+        )
+    assert existing.read_bytes() == before
+    assert bounded_tunnel_topology_refresh_reason(caught.value) == (
+        "authority_configuration_unavailable"
+    )
+
+
 def test_refresh_returns_not_unique_without_exposing_private_values(
     tmp_path: Path,
     monkeypatch,

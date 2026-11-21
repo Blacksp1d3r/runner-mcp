@@ -1,3 +1,9 @@
+## 2026-11-21 — #520 NO_RETRY na root `runtime` vóór ledger; #1046 bron-only
+
+- **Definitief laatst geldige fysieke bewijs:** originele 0.1.188 user-service, root socket en hardening blijven ongewijzigd; oorspronkelijke authenticated client riep exact EEN keer de nulargumentenrevoke aan en kreeg `unavailable`. De oorspronkelijke Incus ACL bleef exact basis; geen root ledgerrecord, geen `PENDING`, geen `DURABLE`, geen `SEND`, rootjournal `DENIED reason=runtime`. Bestaande host-readonly-grensinspectie bevestigt bron/unit/policy/helper/cgroup/procreads en ledger-directory `MODE_OK` BUITEN de systemd-instance. Niet verwarren met geslaagde sandbox-/root-helperactie.
+- **Vervolg, GEEN HOSTMUTATIE:** bron-DRAFT [#1046](https://github.com/Blacksp1d3r/runner-mcp/pull/1046) voegt uitsluitend vaste, secretvrije pre-ledger fasecodes toe. CI, bronreview, nieuw release-versienummer en later afzonderlijk exact rootactor-binary-update/rollback bewijs. Pas bij gekwalificeerde fysieke herstelaanpak een afzonderlijk geautoriseerde vervolgaanroep. NO_RETRY op 0.1.188. Geen ACL-grant, unitrestart, sudo-omweg, nieuw relais, SQL/A7/Q7/VM-acties.
+- [Root host boundary issue-evidentie](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7061028795). #520 OPEN.
+
 ## 2026-11-21 — #520 vervolg na 0.1.188 serving, één originele no-op als volgende stap
 
 - **Fysiek owner-resultaat:** oorspronkelijke `aifordable-lab` service AF-SVC-0003 draait na same-unit cutover bronversie `0.1.188`, nieuwe PID **NEW_SERVING_GENERATION**, NNP/capabilities PASS; root socket, bestaande Incus-basis-ACL, 0.1.186 byte-identieke drop-in rollback en 0.1.185 herstelkandidaat behouden. Dit is hostbewijs, NIET het geauthenticeerde MCP-ACK. Bedieningsroute blijft originele, geen verbonden andere v0.1.88 instance.

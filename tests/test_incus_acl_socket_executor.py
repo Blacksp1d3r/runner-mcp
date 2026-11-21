@@ -782,22 +782,22 @@ def test_peer_individual_runtime_phase_does_not_leak(
         "app.slice/runner-mcp.service"
     )
     proc_status = (
-        "Uid:\\t1001 1001 1001 1001\\n"
-        "Gid:\\t1001 1001 1001 1001\\n"
-        "Groups:\\t1001\\n"
-        "NoNewPrivs:\\t1\\n"
-        "CapInh:\\t0000000000000000\\n"
-        "CapPrm:\\t0000000000000000\\n"
-        "CapEff:\\t0000000000000000\\n"
-        "CapAmb:\\t0000000000000000\\n"
+        "Uid:\t1001 1001 1001 1001\n"
+        "Gid:\t1001 1001 1001 1001\n"
+        "Groups:\t1001\n"
+        "NoNewPrivs:\t1\n"
+        "CapInh:\t0000000000000000\n"
+        "CapPrm:\t0000000000000000\n"
+        "CapEff:\t0000000000000000\n"
+        "CapAmb:\t0000000000000000\n"
     )
     values = {
-        "/proc/123/cgroup": "0::" + cgroup + "\\n",
-        "/sys/fs/cgroup" + cgroup + "/cgroup.procs": "123\\n",
+        "/proc/123/cgroup": "0::" + cgroup + "\n",
+        "/sys/fs/cgroup" + cgroup + "/cgroup.procs": "123\n",
         "/proc/123/status": proc_status,
-        "/proc/123/uid_map": "1001 1001 1\\n",
-        "/proc/123/gid_map": "1001 1001 1\\n",
-        "/proc/123/comm": "runner-mcp\\n",
+        "/proc/123/uid_map": "1001 1001 1\n",
+        "/proc/123/gid_map": "1001 1001 1\n",
+        "/proc/123/comm": "runner-mcp\n",
         "/proc/123/stat": "123 (runner-mcp) " + " ".join(["0"] * 20),
     }
 

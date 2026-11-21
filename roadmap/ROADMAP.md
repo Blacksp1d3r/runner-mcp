@@ -1,3 +1,9 @@
+## 2026-11-21 — #520 root-owned socket geinstalleerd; originele clientacceptatie OPEN
+
+- **FYSIEK OWNER-RECEIPT:** na expliciet beperkte installatiegoedkeuring en exacte origineel-host-preflight bevestigt de operator `RMCP520_ROOT_INSTALL=PASS_SOCKET_ONLY`. Het nieuwe vaste root-owned AF_UNIX/systemd-socketpaar is geinstalleerd en enabled; de oorspronkelijke Runner-MCP user-service bleef op de eerder geattesteerde v0.1.186 en de Incus-ACL/helper bleven ongemoeid. Dit is nog **geen** originele authenticated client-ACK of fysieke revoke.
+- **SOURCE:** [#1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040) 0.1.188 gemerged als `b987b22ea071ac969330edf95568d4b14409ad06`; exacte PR-head validatie 5082 tests/Ruff/clean Ubuntu/attributie geslaagd. Bron is niet gelijk aan serving release.
+- **NEXT:** hergebruik officiële `install.sh` en bestaande afzonderlijke owner-private kandidaatrelease/zelfde user-systemd override met byte-identieke rollback om 0.1.188 inactief te installeren en later gecontroleerd te activeren. Pas daarna één originele authenticated fixed-zero-argument MCP no-op, onafhankelijke ACL/negative-access/ACK+journald/ledger readback, DENY/replay/restart/rollback. Echte tijdelijke ACL grant/revoke enkel na afzonderlijke tweede eigenaarstoestemming. #520 OPEN. [Canonieke actuele receipt](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7060609513).
+
 ## 2026-11-20 — #520 fysiek rootgrensherstel in ontwerp; bron #1040 draft
 
 - **DONE read-only:** AF-SVC-0003 userns/NNP oorzakelijkheid reeds bewezen, onafhankelijke A7-root-tick fysiek aanwezig maar geen toegelaten Incus-aanroep, geen geschikt bestaande toegankelijke host-executor bewezen.

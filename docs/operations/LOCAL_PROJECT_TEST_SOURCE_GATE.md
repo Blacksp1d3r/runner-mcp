@@ -50,8 +50,10 @@ PASS for actual local test execution. It cannot make the existing host-local
 
 ## Scope and current physical state
 
-No new project was registered, no source was transferred, no guest started,
-no Fabric tool changed, no existing runner or local service was touched.
+No user-project source was transferred and no new project was registered.
+A temporary source-only Runner-MCP QA copy was transferred to offline H56;
+no application guest was started, no Fabric mutation was called and no active
+runner or local service was changed.
 
 - Hive H03 previously: 178/178 Python and 3/3 Go PASS on exact application
   SHA `bf3c6a41f9c7098a78905c6940bb549554a535cc`, on the separate
@@ -89,9 +91,50 @@ submodules, symlinked or nested root, non-staging project and unavailable regist
 The positive check explicitly proves that source admission **never**
 authorizes dispatch or host-local fallback, and does not move Git HEAD.
 
-These tests are checked into the development branch but **must not be
-presented as executed physical-H56/Fabric evidence until they actually run**.
-A source branch and a test file are not acceptance receipts.
+### Actual independent offline H56 qualification — 21 November 2026
+
+A copy of the source branch was transferred from Home1 to the already-existing
+offline H56 test VM (Python 3.12.3; no default IPv4 route). Pytest, Ruff and
+the limited required Python dependencies were placed in a private temporary
+folder from Python 3.12 Linux wheels. No system pip, apt, daemon, credential,
+GitHub Actions runner or production service was installed.
+
+**Exact verified source/test Git objects**, not merely Windows-converted files:
+
+- `src/runner_mcp/local_test_source_preflight.py` Git blob
+  `b4a2f8a53b63c59b4695016587a0100ac9990252`;
+- `tests/security/test_local_test_source_preflight.py` Git blob
+  `008d299519ba705023410a7cb961848278f1cb54`.
+
+Windows checkout/archive byte translation initially produced CRLF files.
+Before the final accepted test, only these two temporary QA copies were
+normalised, checked against their exact Git blob identities and then retested.
+No source-file change was made by this normalization to the GitHub branch.
+
+**Executed commands**, from the temporary H56 source tree:
+
+```sh
+python3 -B -m ruff check \
+  src/runner_mcp/local_test_source_preflight.py \
+  tests/security/test_local_test_source_preflight.py
+python3 -B -m pytest -q --tb=short \
+  tests/security/test_local_test_source_preflight.py \
+  tests/security/test_source_control.py
+```
+
+**Result: Ruff ALL CHECKS PASSED; pytest 32/32 PASSED (18 new preflight cases,
+14 pre-existing Git source-control tests).** Exit status 0. One source-only
+identity test explicitly covers different project, repository, test profile
+and Git commit using synthetic local fixtures.
+
+The result is **source-only acceptance**. It does not prove the full
+Runner-MCP suite, a Fabric/F18 job, H36 attestation, F26 Gate 0, guest lease,
+local test dispatch, durable ACK, physical cleanup or multi-project scheduling.
+All of those execution assertions remain unqualified.
+
+No GitHub Actions workflow/runner registration or Actions minute spending is
+part of this implementation. The development branch stays unmerged while the
+F26 Gate 0/F4–F6 runtime admission is absent.
 
 No GitHub Actions workflow/runner registration or Actions minute spending is
 part of this implementation. The development branch stays unmerged while the

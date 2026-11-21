@@ -719,6 +719,144 @@ def plan_single_peer_systemd_migration(
     )
 
 
+@dataclass(frozen=True, slots=True)
+class FinalServerSystemdMigrationPreview:
+    """Zuiver laatste-primary-rolvoorstel; nooit runtime- of cutoverbewijs."""
+
+    original_crontab: str
+    candidate_crontab: str
+    rollback_crontab_sha256: str
+    server_unit_name: str
+    server_unit_contents: str
+    preexisting_systemd_roles: tuple[str, ...]
+    cutover_authorized: bool = False
+
+
+def plan_final_server_systemd_migration(
+    *,
+    original_crontab: str,
+    executable: Path,
+    config_dir: Path,
+    preexisting_systemd_roles: tuple[str, ...],
+    port: int = 8000,
+) -> FinalServerSystemdMigrationPreview:
+    """Bereken het allerlaatste primary-cutoverobject zonder enige hostactie.
+
+    Vijf eerdere peers moeten afzonderlijk op de echte host bevestigd zijn.
+    Dit broncontract kan die bevestiging NIET leveren. Het weigert een
+    overblijvende tweede cronrol of afwijkende server/poort, behoudt iedere
+    vreemde cronregel en hergebruikt uitsluitend runner-mcp.service.
+    De unit start via dezelfde cron-run-flock als de oude cronserver, zodat
+    beide managers niet tegelijk de primaire serverrol kunnen uitvoeren.
+    Een onafhankelijke control-path-ACK, PID, herstelproef en rollback blijven
+    vóór iedere live transactie verplicht; autorisatie is altijd False.
+    """
+    from .cron_autostart import (
+        CRON_BEGIN, CRON_COMPONENTS, CRON_END,
+        CronAutostartError, render_cron_block,
+    )
+
+    invalid = "final server primary migration is not qualified"
+    expected_peers = (
+        "topology-heartbeat", "github-watcher", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    )
+    expected_order = tuple(
+        role for role in CRON_COMPONENTS if role in expected_peers
+    )
+    if (
+        type(preexisting_systemd_roles) is not tuple
+        or preexisting_systemd_roles != expected_order
+        or type(original_crontab) is not str
+        or not original_crontab.endswith("\n")
+        or len(original_crontab) > 131072
+        or "\r" in original_crontab
+        or "\x00" in original_crontab
+        or not isinstance(executable, Path)
+        or not isinstance(config_dir, Path)
+        or type(port) is not int
+        or not 1 <= port <= 65535
+        or not executable.is_absolute()
+        or not config_dir.is_absolute()
+    ):
+        raise AutostartError(invalid)
+
+    lines = original_crontab.splitlines(keepends=True)
+    begin, end = CRON_BEGIN + "\n", CRON_END + "\n"
+    if lines.count(begin) != 1 or lines.count(end) != 1:
+        raise AutostartError(invalid)
+    first, last = lines.index(begin), lines.index(end)
+    if first >= last:
+        raise AutostartError(invalid)
+    try:
+        canonical = render_cron_block(
+            executable=executable, config_dir=config_dir,
+            components=("server",), port=port,
+        )
+    except CronAutostartError as exc:
+        raise AutostartError(invalid) from exc
+    if [line[:-1] for line in lines[first:last + 1]] != canonical:
+        raise AutostartError(invalid)
+
+    # Vreemde jobs blijven byte-identiek, maar een tweede cron-run buiten
+    # het beheerde blok zou een verborgen tweede primaire manager kunnen zijn.
+    outside = (*lines[:first], *lines[last + 1:])
+    if any(
+        "cron-run" in line and not line.lstrip().startswith("#")
+        for line in outside
+    ):
+        raise AutostartError(invalid)
+    candidate_crontab = "".join(outside)
+
+    # Gebruik de bestaande server-unitrenderer en vervang EXACT het
+    # bestaande serve-argv door het al beproefde lockende cron-run-argv.
+    # Geen nieuwe unitnaam, service-actuator of tweede netwerklistener.
+    try:
+        units = render_user_units(
+            config_dir=config_dir, executable=executable, port=port,
+        )
+        ordinary = units[SERVER_UNIT]
+        resolved_exe = _validate_executable(executable)
+    except (AutostartError, KeyError, OSError) as exc:
+        raise AutostartError(invalid) from exc
+    prefix = (
+        f"ExecStart={_systemd_quote(str(resolved_exe))} --config-dir "
+        f"{_systemd_quote(str(config_dir.expanduser().resolve()))}"
+    )
+    direct = (
+        prefix + ' "serve" "--host" "127.0.0.1" "--port" '
+        + _systemd_quote(str(port)) + "\n"
+    )
+    guarded = (
+        prefix + ' "autostart" "cron-run" "server" "--port" '
+        + _systemd_quote(str(port)) + "\n"
+    )
+    if (
+        ordinary.count(direct) != 1
+        or ordinary.count("ExecStart=") != 1
+        or not ordinary.startswith(MANAGED_MARKER + "\n")
+        or "Requires=" in ordinary
+        or "NoNewPrivileges=true\n" not in ordinary
+        or "PrivateTmp=true\n" not in ordinary
+        or not ordinary.endswith("\n[Install]\nWantedBy=default.target\n")
+    ):
+        raise AutostartError(invalid)
+    server_unit = ordinary.replace(direct, guarded, 1)
+    if server_unit.replace(guarded, direct, 1) != ordinary:
+        raise AutostartError(invalid)
+
+    return FinalServerSystemdMigrationPreview(
+        original_crontab=original_crontab,
+        candidate_crontab=candidate_crontab,
+        rollback_crontab_sha256=hashlib.sha256(
+            original_crontab.encode("utf-8")
+        ).hexdigest(),
+        server_unit_name=SERVER_UNIT,
+        server_unit_contents=server_unit,
+        preexisting_systemd_roles=expected_order,
+    )
+
+
 def _exact_single_role_cron_delta(
     preview: SinglePeerSystemdMigrationPreview,
 ) -> bool:

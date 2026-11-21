@@ -24,6 +24,9 @@ import sys
 from pathlib import Path
 
 _ACTION = "incus_qualification_acl_revoke"
+# Linux init_user_ns heeft een gereserveerd inode (PROC_USER_INIT_INO).
+# Dit vermijdt de door CAP_SYS_PTRACE afgeschermde /proc/1/ns/user-lezing.
+_INIT_USER_NS_INO = 0xEFFFFFFD
 _HELPER = Path("/usr/local/sbin/runner-mcp-incus-acl-revoke")
 _INCUS_SOCKET = Path("/var/lib/incus/unix.socket")
 _POLICY = Path("/etc/runner-mcp/incus-qualification-acl-policy.json")
@@ -74,7 +77,8 @@ def _root_only() -> None:
     """Een echte systeem-root, nooit de overflow-UID van een user namespace."""
     if os.geteuid() != 0:
         raise Denied("not_host_root")
-    if os.stat("/proc/self/ns/user").st_ino != os.stat("/proc/1/ns/user").st_ino:
+    # Host-root = de Linux initial user namespace, zonder cross-PID ptrace.
+    if os.stat("/proc/self/ns/user").st_ino != _INIT_USER_NS_INO:
         raise Denied("not_host_root")
     if os.lstat("/").st_uid != 0:
         raise Denied("not_host_root")

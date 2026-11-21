@@ -755,3 +755,71 @@ def test_root_journal_reports_only_runtime_phase(monkeypatch, capsys):
     assert journal == "RMCP520_ROOT=DENIED reason=runtime stage=peer_inspect\n"
     assert "PRIVATE_PATH" not in journal
     assert "PermissionError" not in journal
+
+
+@pytest.mark.parametrize(
+    ("phase", "target"),
+    [
+        ("peer_credentials", "<socket>"),
+        ("peer_cgroup", "/proc/123/cgroup"),
+        ("peer_members", "/sys/fs/cgroup" + (
+            "/user.slice/user-1001.slice/user@1001.service/"
+            "app.slice/runner-mcp.service/cgroup.procs"
+        )),
+        ("peer_status", "/proc/123/status"),
+        ("peer_uid_map", "/proc/123/uid_map"),
+        ("peer_gid_map", "/proc/123/gid_map"),
+        ("peer_comm", "/proc/123/comm"),
+        ("peer_start_ticks", "/proc/123/stat"),
+    ],
+)
+def test_peer_individual_runtime_phase_does_not_leak(
+    monkeypatch, phase, target,
+):
+    """One source-level sandbox read error yields only a fixed phase code."""
+    cgroup = (
+        "/user.slice/user-1001.slice/user@1001.service/"
+        "app.slice/runner-mcp.service"
+    )
+    proc_status = (
+        "Uid:\\t1001 1001 1001 1001\\n"
+        "Gid:\\t1001 1001 1001 1001\\n"
+        "Groups:\\t1001\\n"
+        "NoNewPrivs:\\t1\\n"
+        "CapInh:\\t0000000000000000\\n"
+        "CapPrm:\\t0000000000000000\\n"
+        "CapEff:\\t0000000000000000\\n"
+        "CapAmb:\\t0000000000000000\\n"
+    )
+    values = {
+        "/proc/123/cgroup": "0::" + cgroup + "\\n",
+        "/sys/fs/cgroup" + cgroup + "/cgroup.procs": "123\\n",
+        "/proc/123/status": proc_status,
+        "/proc/123/uid_map": "1001 1001 1\\n",
+        "/proc/123/gid_map": "1001 1001 1\\n",
+        "/proc/123/comm": "runner-mcp\\n",
+        "/proc/123/stat": "123 (runner-mcp) " + " ".join(["0"] * 20),
+    }
+
+    class FakePath:
+        def __init__(self, name):
+            self.name = str(name)
+
+        def read_text(self, encoding="ascii"):
+            assert encoding == "ascii"
+            if self.name == target:
+                raise PermissionError("PRIVATE_HOST_DATA_MUST_NOT_LEAK")
+            return values[self.name]
+
+    class FakeConn:
+        def getsockopt(self, _level, _option, _length):
+            if target == "<socket>":
+                raise PermissionError("PRIVATE_HOST_DATA_MUST_NOT_LEAK")
+            return struct.pack("3i", 123, 1001, 1001)
+
+    monkeypatch.setattr(sut, "Path", FakePath)
+    with pytest.raises(sut.RuntimePhase) as caught:
+        sut._peer(FakeConn(), 1001, 1001, 108)
+    assert str(caught.value) == phase
+    assert "PRIVATE_HOST_DATA" not in str(caught.value)
+

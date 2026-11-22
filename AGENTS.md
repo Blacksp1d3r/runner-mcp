@@ -236,3 +236,8 @@ of credentials; verwijs met register-ID uit de private AIfordable/Runner-Fabric-
 | Multi-agent beschikbaarheid en overname | een taak van een andere agent wordt overgenomen |
 | Externe discovery en onafhankelijkheid | een directory- of registry-listing wijzigt |
 | Volledige eigenaarsbeslissingen (§3) | een beslissing in detail moet worden toegepast |
+
+
+## Bestandsidentificatie KOP — gedeeld eigenaarsbesluit 2026-11-22
+
+Volg `/Standards/AI_REPOSITORY_BLUEPRINT_STANDARD.md` **v1.2, §10a** voor nieuwe beheerde bestanden: eerste **toegelaten commentaarregel** begint met `KOP | Eigenaar: ... | Project: ... | Programma: ... | Aangemaakt in versie: ... | Datum: ... | Doel: ...`. Introductieversie komt uit de echte project-/releasebron; niet gokken en niet iedere release bijwerken. Shebangs, XML/PHP-prologs, frontmatter, strikte JSON-schema's, lockfiles, binaries, vendor/generated en bestaande bestanden niet verstoren. Geen massale headerbackfill en geen bestanden opruimen op basis van KOP alleen. Optionele bestaande Git-hook via `.githooks/pre-commit` en `tools/kop/check_kop_header.py`: *alleen nieuwe staged bestanden*, adviserend, geen automatische wijziging/installatie; activering en strengere CI vereisen afzonderlijke goedkeuring. Bestaande beveiligings-/attributiecontroles blijven gelden.

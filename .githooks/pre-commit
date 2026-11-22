@@ -1,0 +1,7 @@
+#!/bin/sh
+# KOP | Eigenaar: Blacksp1d3r | Project: runner-mcp | Programma: git-pre-commit | Aangemaakt in versie: 1.2 | Datum: 2026-11-22 | Doel: Optionele Git-hook voor eigenaarschap van nieuwe bestanden
+# Opt-in template: not installed/enabled by a source commit.
+set -eu
+cd "$(git rev-parse --show-toplevel)"
+python3 tools/doc_memory/doc_memory.py precommit
+python3 tools/kop/check_kop_header.py --staged --advisory

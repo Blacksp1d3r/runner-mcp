@@ -1,4 +1,3 @@
-#!/usr/bin/env python3
 # KOP | Eigenaar: Blacksp1d3r | Project: runner-mcp | Programma: kop-header-checker | Aangemaakt in versie: 1.2 | Datum: 2026-11-22 | Doel: Nieuwe geschikte bronbestanden controleren op eigenaarskop
 """Opt-in, dependency-free KOP check. It never edits files or runs host commands."""
 from __future__ import annotations

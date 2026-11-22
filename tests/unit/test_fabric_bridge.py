@@ -569,6 +569,71 @@ def test_synthetic_probe_status_rejects_invalid_or_private_payload(mutator) -> N
         bridge.synthetic_probe_status()
 
 
+
+def fleet_fact_payload() -> dict:
+    return {
+        "state": "observed_unbound",
+        "asset_id": "AF-HOST-0999",
+        "service_id": "AF-SVC-0999",
+        "field": "runtime.version",
+        "value": "0.1.195",
+        "source_id": "runner-mcp:runtime_status",
+        "observed_at": "2026-11-22T10:00:00+00:00",
+        "expires_at": "2026-11-22T10:02:00+00:00",
+        "boot_id": "boot-unavailable",
+        "generation": "synthetic_epoch_1",
+        "authority_revision": "infra:synthetic",
+        "source_host_verified": False,
+        "witness_evidence_ref": None,
+    }
+
+
+def test_fleet_facts_reads_only_fixed_field_from_existing_bridge():
+    payload = fleet_fact_payload()
+    bridge, fake = bridge_with_responses(payload)
+    assert bridge.get_facts() == payload
+    assert fake.calls == [("get_facts", {"field": "runtime.version"})]
+
+
+def test_fleet_fact_unknown_is_explicit_and_contains_no_stale_value():
+    missing = {
+        "state": "unknown",
+        "asset_id": "AF-HOST-0999",
+        "service_id": "AF-SVC-0999",
+        "field": "service.mode",
+    }
+    bridge, _ = bridge_with_responses(missing)
+    assert bridge.get_facts("service.mode") == missing
+
+
+@pytest.mark.parametrize(
+    "mutator",
+    [
+        lambda p: p.update({"private_path": "/secret"}),
+        lambda p: p.update({"state": "verified"}),
+        lambda p: p.update({"asset_id": "../other-host"}),
+        lambda p: p.update({"field": "arbitrary.command"}),
+        lambda p: p.update({"observed_at": "not-a-timestamp"}),
+        lambda p: p.update({"source_host_verified": "true"}),
+        lambda p: p.update({"value": "/private/confidential"}),
+        lambda p: p.update({"generation": "bad generation"}),
+    ],
+)
+def test_fleet_facts_rejects_untrusted_peer_values(mutator):
+    payload = fleet_fact_payload()
+    mutator(payload)
+    bridge, _ = bridge_with_responses(payload)
+    with pytest.raises(FabricBridgeError):
+        bridge.get_facts()
+
+
+def test_fleet_facts_rejects_unbounded_field_before_any_remote_call():
+    bridge, fake = bridge_with_responses(fleet_fact_payload())
+    with pytest.raises(FabricBridgeError, match="allowlisted"):
+        bridge.get_facts("private.command")
+    assert fake.calls == []
+
+
 def operational_snapshot_payload() -> dict:
     return {
         "schema_version": "runner.fabric/operational-snapshot/v1",

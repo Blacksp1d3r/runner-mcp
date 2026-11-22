@@ -2678,6 +2678,20 @@ def build_mcp(
         _audit_fabric("fabric_operational_snapshot", "fabric:operational", "ok")
         return result
 
+    def fabric_get_facts(field: str = "runtime.version") -> dict:
+        """Read the shared Fabric F10 cache; never scan or select hosts."""
+        try:
+            result = _require_fabric_bridge().get_facts(field)
+        except FabricBridgeError:
+            _audit_fabric("fabric_get_facts", "fabric:fact", "unavailable")
+            return {
+                "state": "unknown",
+                "field": field,
+                "reason_code": "fabric_facts_unavailable",
+            }
+        _audit_fabric("fabric_get_facts", "fabric:fact", "observed")
+        return result
+
     def fabric_run_work_unit(
         work_unit_id: str,
         project_id: str,
@@ -2757,6 +2771,7 @@ def build_mcp(
         mcp.tool()(fabric_worker_qualification_readiness)
         mcp.tool()(fabric_worker_qualification_activate)
         mcp.tool()(fabric_operational_snapshot)
+        mcp.tool()(fabric_get_facts)
         mcp.tool()(fabric_run_work_unit)
         mcp.tool()(fabric_get_work_unit)
         mcp.tool()(fabric_cancel_work_unit)

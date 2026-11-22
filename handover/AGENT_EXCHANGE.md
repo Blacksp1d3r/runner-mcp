@@ -1,3 +1,21 @@
+## 2026-11-21 — #866 M6 final-primary bronclaim vrijgegeven
+
+- **DONE / claim released:** [PR #1051](https://github.com/Blacksp1d3r/runner-mcp/pull/1051), source-only v0.1.191, merged `4ebf0dae5addc1850633e285dcb7b20d9f7213f8` na alle zeven officiële checks. Scope: aparte niet-uitvoerende laatste primaire server-preview met bestaande serviceflock en rollback-SHA. De bronbranch is niet langer geclaimd. Latere afgebakende hardening [#1053](https://github.com/Blacksp1d3r/runner-mcp/pull/1053) is eveneens MERGED als v0.1.192 `cb8845caf4c5409f62cce67dbcca7d8f5e047e05` na alle zeven officiële CI-checks; de tijdelijke laatste-primary-conflictclaim is vrijgegeven.
+- **Operationele eigenaars blijven gescheiden:** oorspronkelijke M6 #866 3/6 blijft onder hostowner; AF227/AF402 beheert Control API en unieke primaire attestatie; A7 #943 levert pas via eigen release-/herstelcustody; Agent Bus-lease/ACK blijft zijn eigen gate. Geen fysieke serviceactivering, nieuwe backend, hostmutatie of claim op Q7/A7.
+
+## 2026-11-20 — #520 owner claim: host-root socketontwerp, draft #1040
+
+Claim uitsluitend voor bestaande #520 door AI-assistent: branch `fix/520-fixed-root-socket-executor-20261120`, [PR #1040](https://github.com/Blacksp1d3r/runner-mcp/pull/1040) op canonieke Runner-MCP. Bron/CI-werk actief; geen runtime-, privilege-, Incus-, A7- of Q7-installatiebevoegdheid. De originele client blijft `unavailable` tot afzonderlijk goedgekeurde root-custody/installatie en echte hostcanary. Voorkom conflicterende tweede #520-branch of privileged executor; aanvaarding uitsluitend via [#520](https://github.com/Blacksp1d3r/runner-mcp/issues/520#issuecomment-7044318943).
+
+## 2026-11-20 — #866 M6 bronclaim vrijgegeven; Q7/A7 live-eigenaars behouden
+
+De specifieke `autostart.py` mixed-status-broncorrectie is **MERGED** als [PR #1037](https://github.com/Blacksp1d3r/runner-mcp/pull/1037) (0.1.187). Geen tweede branch/functie voor dezelfde pure statuscompatibiliteit starten. A7 #943 en Q7 #972 behouden hun eigen live target/worker-/updatebevoegdheid. Er is geen fysieke agent-role-cutover uitgevoerd, geen 0.1.187-deployment of nieuwe ACK geclaimd. Voor latere rolactivering uitsluitend de huidige vierrollencron en beide eerdere systemd-peers onder de echte eigenaar herbevestigen; voor Agent Bus bovendien een leeg/onbezwaard lease-/receipt-/outboxwerkpad. [#866 operationele gate](https://github.com/Blacksp1d3r/runner-mcp/issues/866#issuecomment-7043888936).
+
+## 2026-11-19 — #866 systemd-eigenaar: bron afgerond, originele herstelcustody bij #669
+
+- [#1003](https://github.com/Blacksp1d3r/runner-mcp/pull/1003) is MERGED als `main 0.1.181`, commit `aca5ba6059320da3c9dc5f96cca465b14eb232b7`, postmerge-CI [#44395827050](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/44395827050) SUCCESS. Geen nieuw bron- of disposable testwerk voor M1/M2.
+- De bestaande [#669](https://github.com/Blacksp1d3r/runner-mcp/issues/669)-eigenaar behoudt de originele-host/wheel/herstelcustody en zijn afzonderlijke [DRAFT #1004](https://github.com/Blacksp1d3r/runner-mcp/pull/1004) (historische `0.1.175`, niet mergen/overnemen). De #866-versiecollision is afgehandeld; #1004 heeft een eigen nieuwe release- en D-0037-beoordeling nodig.
+- Runner-Fabric A7 whole-crontab en zesrollen-restorer zijn SOURCE ONLY; originele restorer-installatie, exacte volledige cronbytes + vorige werkelijk geladen wheel, en restore-readback ontbreken als **actueel** M3-bewijs. Eigenaarsactie: `M3_RESTORER_INSTALL_AND_READBACK`; vervolgens actuele scheduler-writer/monitor-compatibiliteit en echte originele taakreceipt/duurzame ACK. Zonder die poorten `M3_RECOVERY=WAIT`, geen éénrols-cutover, A7-activering, nieuwe backup of alternatieve hostbevoegdheid. [Criteria #866](https://github.com/Blacksp1d3r/runner-mcp/issues/866).
 ## 2026-11-06 — F30 #937 source children cleared; S2d/e ownership en veiligheidsgrens
 
 - Runner-MCP #937 S2a [#939](https://github.com/Blacksp1d3r/runner-mcp/pull/939) v0.1.138, S2b [#940](https://github.com/Blacksp1d3r/runner-mcp/pull/940) v0.1.139 en S2c [#941](https://github.com/Blacksp1d3r/runner-mcp/pull/941) v0.1.140 **MERGED**, finale exacte-head tests/Ubuntu/attribution groen. Single reuse van historische Q7 metadata/manifest/wheel validators; signatures/bytes alleen in-memory en niet-authorizing.

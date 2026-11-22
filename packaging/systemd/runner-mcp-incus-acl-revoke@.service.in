@@ -1,0 +1,37 @@
+# SOURCE ONLY (#520). This is not the existing Runner-MCP user unit.
+# Host-owner must bind the root-owned, SHA-pinned installed script before use.
+[Unit]
+Description=One fixed root-owned Incus ACL revoke execution
+CollectMode=inactive-or-failed
+
+[Service]
+Type=exec
+User=root
+Group=root
+ExecStart=/usr/bin/python3 -I -S /usr/local/sbin/runner-mcp-incus-acl-executor
+StandardInput=socket
+StandardOutput=socket
+StandardError=journal
+WorkingDirectory=/
+NoNewPrivileges=yes
+PrivateUsers=no
+PrivateTmp=yes
+PrivateNetwork=yes
+PrivateDevices=yes
+ProtectHome=yes
+ProtectSystem=strict
+ReadWritePaths=/var/lib/incus/unix.socket /var/lib/runner-mcp/incus-acl-executor
+StateDirectory=runner-mcp/incus-acl-executor
+StateDirectoryMode=0700
+CapabilityBoundingSet=CAP_FOWNER CAP_SETUID CAP_SETGID
+AmbientCapabilities=CAP_FOWNER CAP_SETUID CAP_SETGID
+RestrictAddressFamilies=AF_UNIX
+RestrictSUIDSGID=yes
+ProtectKernelTunables=yes
+ProtectKernelModules=yes
+ProtectControlGroups=yes
+LockPersonality=yes
+MemoryDenyWriteExecute=yes
+UMask=0077
+TimeoutStartSec=25
+RuntimeMaxSec=25

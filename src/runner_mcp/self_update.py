@@ -395,6 +395,7 @@ class SelfUpdateManager:
         server_bind_host: str | None = None,
         server_bind_port: int | None = None,
         server_reexec: Callable[[], object] | None = None,
+        server_activation_scheduler: Callable[[], object] | None = None,
         restart_delay_seconds: float = 5.0,
         restart_components: Collection[str] | None = None,
         active_revision_provider: Callable[[], str | None] | None = None,
@@ -471,12 +472,21 @@ class SelfUpdateManager:
                     self._server_host = parsed_resource.hostname
                     self._server_port = port
         self._server_reexec = server_reexec
+        if server_activation_scheduler is not None and not callable(
+            server_activation_scheduler
+        ):
+            raise SelfUpdateError("Managed activation callback is invalid")
+        self._server_activation_scheduler = server_activation_scheduler
         self._restart_components = _normalize_restart_components(restart_components)
         if active_revision_provider is not None and not callable(active_revision_provider):
             raise SelfUpdateError("Active runtime revision provider is invalid")
         self._active_revision_provider = active_revision_provider
         if type(retain_activation_baseline) is not bool:
             raise SelfUpdateError("Provisional baseline retention flag is invalid")
+        if self._server_activation_scheduler is not None and not retain_activation_baseline:
+            raise SelfUpdateError(
+                "Managed activation requires retained independent recovery baseline"
+            )
         # An independent A7 actuator must own confirmation/clearance.
         # Never discard the only local rollback wheel in a provisional window.
         self._retain_activation_baseline = retain_activation_baseline
@@ -710,8 +720,36 @@ class SelfUpdateManager:
             return False
         return all(name in names for name in SELF_TEST_PROFILES)
 
+    def _restart_preflight(self) -> tuple[bool, bool | None, str | None]:
+        """Controleer vóór installatie of de gekozen herstart echt beheerd is.
+
+        Zonder beheerde scheduler blijft de bestaande lokale reexec-route
+        onveranderd. Met een A7-opt-in volstaat de callback echter niet:
+        de reeds aanwezige cron/systemd-server moet werkelijk beheerd,
+        ingeschakeld en actief zijn. Dit is alleen een read-only controle,
+        nooit het bewijs van A7-herstel of een originele client-ACK.
+        """
+        if self._server_activation_scheduler is None:
+            return (
+                self._server_reexec is not None or self._server_port is not None,
+                None,
+                None,
+            )
+        from .self_update_activation import (
+            ManagedServerActivationError,
+            managed_server_activation_status,
+        )
+
+        try:
+            observed = managed_server_activation_status(self.config_dir)
+        except (ManagedServerActivationError, OSError, ValueError):
+            # Een onbereikbare/ambigue manager mag geen update starten.
+            return False, False, None
+        ready = observed.ready is True
+        return ready, ready, observed.backend.value
+
     def _restart_ready(self) -> bool:
-        return self._server_reexec is not None or self._server_port is not None
+        return self._restart_preflight()[0]
 
     def _latest_job_public(self) -> dict[str, Any] | None:
         with self._lock:
@@ -819,6 +857,11 @@ class SelfUpdateManager:
         except SelfUpdateError:
             project_ready = False
         pending_restarts = restart_pending_count(self.config_dir)
+        (
+            restart_ready,
+            managed_server_supervisor_ready,
+            managed_server_supervisor_backend,
+        ) = self._restart_preflight()
         source_ready = (
             last_commit is None
             or source_baseline_aligned is True
@@ -836,7 +879,7 @@ class SelfUpdateManager:
                 and source_ready
                 and activation_ready
                 and self._required_profiles_available()
-                and self._restart_ready()
+                and restart_ready
                 and pending_restarts == 0
                 and not recovery_pending
             ),
@@ -851,6 +894,9 @@ class SelfUpdateManager:
             ),
             "restart_pending": pending_restarts > 0,
             "pending_restart_count": pending_restarts,
+            # Supervisor-preflight is geen zelfstandige A7-toelating.
+            "managed_server_supervisor_ready": managed_server_supervisor_ready,
+            "managed_server_supervisor_backend": managed_server_supervisor_backend,
             "install_recovery_pending": recovery_pending,
             "provisional_activation_pending": provisional_pending,
             "provisional_baseline_wheel_present": provisional_baseline_wheel_present,
@@ -1176,7 +1222,7 @@ class SelfUpdateManager:
                         job.finished_at = _utc_now()
                     self._persist_job(job)
 
-            self._package_installer.clear_transaction()
+            self._package_installer.clear_transaction(job_id=job_id)
         except (
             PackageInstallError,
             SelfUpdateError,
@@ -1196,6 +1242,27 @@ class SelfUpdateManager:
         }
 
     def _schedule_server_restart(self) -> None:
+        if self._server_activation_scheduler is not None:
+            # A7 is the only future authority allowed to clear/disarm.
+            # The old HTTP-startup marker MUST survive this handoff,
+            # including a failed/unauthorized HTTP request or no reconnect.
+            def managed_handoff() -> None:
+                time.sleep(self._restart_delay_seconds)
+                try:
+                    if restart_marker_commit(self.config_dir, "server") is not None:
+                        self._server_activation_scheduler()
+                except (OSError, RuntimeError, SelfUpdateError):
+                    # Retain the durable marker and baseline. Existing A7
+                    # timeout/recovery, never this thread, decides the result.
+                    return
+
+            threading.Thread(
+                target=managed_handoff,
+                name="runner-mcp-managed-activation",
+                daemon=True,
+            ).start()
+            return
+
         def restart_component() -> object:
             if self._server_reexec is not None:
                 return self._server_reexec()
@@ -1373,6 +1440,15 @@ class SelfUpdateManager:
                         raise SelfUpdateError(
                             "Self-update recovery wheel could not be sealed"
                         )
+                # The manager can change while source sync, lint, tests and
+                # wheel staging run. Recheck the existing managed supervisor
+                # immediately before the FIRST install transaction/write.
+                # This does not grant A7 commit/recovery or live build identity.
+                if not self._restart_ready():
+                    failure_category = "restart_supervisor_unavailable"
+                    raise SelfUpdateError(
+                        "Runner MCP restart supervisor unavailable before installation"
+                    )
                 try:
                     self._package_installer.begin_transaction(
                         job_id=job_id,
@@ -1447,7 +1523,7 @@ class SelfUpdateManager:
                         ) from install_exc
 
                     try:
-                        self._package_installer.clear_transaction()
+                        self._package_installer.clear_transaction(job_id=job_id)
                     except PackageInstallError as exc:
                         failure_category = "install_recovery_required"
                         raise SelfUpdateError(
@@ -1477,7 +1553,7 @@ class SelfUpdateManager:
                     preserve_artifacts = True
                 else:
                     try:
-                        self._package_installer.clear_transaction()
+                        self._package_installer.clear_transaction(job_id=job_id)
                     except PackageInstallError as exc:
                         raise SelfUpdateError(
                             "Self-update install transaction could not be finalized"

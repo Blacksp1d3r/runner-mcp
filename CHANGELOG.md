@@ -1,3 +1,147 @@
+## 0.1.193 — #520 root-context probe without PID1 ptrace (SOURCE ONLY)
+
+- Fix the existing host-root executor's `root_context` rejection: check the current process's namespace against Linux's reserved initial user-namespace inode instead of dereferencing `/proc/1/ns/user`, which may require CAP_SYS_PTRACE under the existing narrowed capability set.
+- Retain explicit EUID=0, root-owned `/`, all original peer/cgroup/socket/helper/ledger/ACK guards and the same root-helper. A new synthetic regression proves no cross-PID procfs lookup is required, and foreign user namespaces are still rejected.
+- Do not widen the existing root-unit capabilities or add any control service. Source-only: original LAB still has the old installed executor, no new client ACK, no ACL or systemd mutation. The recorded one-shot client denial is not to be retried automatically.
+
+---
+
+## 0.1.192 — #866 final primary cron-conflict guard (SOURCE ONLY)
+
+- Reuse the existing managed-cron unmanaged-supervisor detector in the final server preview. A second unmanaged direct 'serve' or legacy ensure-running supervisor now fails closed, not only an external 'cron-run' string.
+- Preserve byte-identical unrelated cron jobs, including harmless text containing 'cron-run'. Targeted positive/negative tests cover both changes.
+- No new supervisor, authority, filesystem/systemd mutation, host update, live ACK or cutover permission. Physical original remains 3/6 until AF227, AF402, A7 and Agent Bus operational gates pass.
+
+---
+
+## 0.1.191 — #866 last-primary server migration preview (SOURCE ONLY)
+
+- Add a separate, fail-closed source preview for the final primary server role after five individually qualified systemd peers. Keep existing peer planner's server exclusion unchanged.
+- Reuse the original runner-mcp.service renderer with exactly one verified ExecStart change to the existing flock-protected cron-run server path; preserve all unrelated cron lines and the immediate one-server cron rollback SHA.
+- Reject an incomplete peer roster, a second manager/cron role, a different port, noncanonical source, foreign managed content or service hardening drift. New tests run without systemd, processes or service writes.
+- The preview always denies activation. Physical M6 remains 3/6; AF227/AF402, A7, Agent Bus lease/ACK, primary control-path/rollback and boot proof remain separate live gates.
+
+---
+
+## 0.1.190 — #866 isolate topology authority from SQL relay (SOURCE ONLY)
+
+- Add a strict owner-private opt-in selecting the existing fixed loopback AIfordable Control API solely for topology heartbeat. No arbitrary endpoint, additional relay/controller, public ingress, extra credential or change to Agent Bus SQL transport.
+- Reject invalid option values before sending the machine credential or touching private attestations; unset/0 remains the existing relay route. Keep no-proxy/no-redirects and external authority unique-primary validation.
+- This source release does not activate :8010 or deploy Runner-MCP on original github-runner. Separate AIfordable #227 API activation, independent #402 authority, exact A7 source qualification, original host rollback and real ACK required before M6 role four.
+
+---
+
+## 0.1.189 — #520 root-runtime phase classification (SOURCE ONLY; NO RETRY)
+
+- After the original authenticated 0.1.188 MCP call returned `unavailable`, independent owner readback confirmed root journal `reason=runtime`, no ledger, no root ACK, and intact Incus baseline ACL. The actual syscall/stage is not yet known.
+- The existing socket-activated root executor now records one bounded, enumerated pre-ledger **phase** alongside `runtime` for its own kernel/runtime errors, including separate process credential, cgroup membership, namespace-map and starttick reads. It never prints exception strings, filesystem paths, credentials or peer data. Explicit security `Denied` conditions, the fixed root helper, grants and replay semantics remain unchanged.
+- Targeted synthetic negative tests prove failures before ledger never call the root helper or send ACK, and source journald never leaks raw exception text. The next live privileged binary update, its rollback, actual root-sandbox validation and original authenticated client ACK require separate qualification. **This commit does not install/activate any server changes and must not trigger a repeated MCP call.** #520 stays OPEN.
+
+---
+
+## 0.1.188 — #520 host-root socketexec (SOURCE ONLY; INSTALLATION NOT APPROVED)
+
+- Replace the in-process `sudo -n` ACL cleanup transport with a fixed AF_UNIX socket request. Never treat root UID overflow inside a user namespace as host-root evidence.
+- Provide an **uninstalled** root-owned, socket-activated systemd executor template, fixed SO_PEERCRED/cgroup guard, immutable helper policy and SHA, crash-safe replay ledger and independent ACK. The existing root-owned Incus ACL helper alone may revoke; no grant/general shell.
+- Negative synthetic tests cover protocol, replay, wrong host, changed source hash, untrusted peer, crash and audit boundaries. **No original-client success, live privilege installation, socket/ACL change, approved grant/revoke or rollback test is claimed.** Issue #520 remains OPEN pending independent owner approval and original-host acceptance.
+
+---
+
+## 0.1.184 — #520 vaste beheerde Incus-ACL-intrekking via bestaande OS-sudo (SOURCE ONLY)
+
+- Nieuwe exact nul-argumenten `incus_qualification_acl_revoke`-tool in de **bestaande** Runner-MCP-server, met gecontroleerde audit. De enige opdracht is een vast `sudo -n`-argv naar de reeds afzonderlijk als root geïnstalleerde first-party intrekhelper. Er is **geen generieke shell, pad-, gebruiker-, ACL-, endpoint- of sudo-parameter**.
+- Zonder veilige root-owned helperbestandsidentiteit, onafhankelijke exact-command OS-toelating of een geldige begrensde `already_restored`/`revoke_only`-uitvoer volgt uitsluitend `privileged_helper_unavailable`. Helper-stdout/stderr, hostmetadata en sudo-details worden niet aan MCP-clients doorgegeven; `normalActivationEnabled=false` blijft altijd.
+- Negatieve tests voor vreemde output, timeout, sudo-denial, afwezige of onveilige helper, directory-symlink en vaste argv. Dit is **alleen een bronmerge**, geen actieve 0.1.184-serverinstallatie, geen sudoers-regel of nieuwe authenticatie. Eerst exacte originele hostproces-/rollback-/privilegebinding en apart live resultaatbewijs voordat #520 wordt afgesloten; RF999 en Q7/A7 ongemoeid.
+
+---
+
+## 0.1.183 — #520 exact ACL-baseline semantisch, niet rijvolgorde (SOURCE ONLY)
+
+- De standalone ACL-herstelhelper beschouwt de drie exact toegestane POSIX-basisregels ook bij gewijzigde uitvoervolgorde als dezelfde veilige ACL. De reeds bestaande strikte parser weigert nog steeds extra named users/groups, een masker, dubbele regels en onverwachte entries bij de eindcontrole.
+- Negatieve en positieve regressies voor permutaties, maskers, extra ACL-records en een onvolledige setfacl-readback. Dit corrigeert een mogelijke valse STOP bij de eerdere operator-metingen; bewijst geen daadwerkelijke wijziging van de ACL tussen die metingen.
+- Alleen broncode en tests. Geen root-helper geïnstalleerd, geen socketrechten gewijzigd, geen Incus-VM-test of A7/Q7-/MCP-service-update. De fysieke installatie- en beheerde aanroepacceptatie van #520 blijft OPEN.
+
+---
+
+## 0.1.182 — #520 root-owned Incus ACL cleanup helper (SOURCE ONLY, LIVE DISABLED)
+
+- Nieuwe zelfstandige, uitsluitend-standaardbibliotheek ACL-herstelhelper met nul aanroepopties; de bestaande MCP-server, Fabric/Agent Bus en Incus-opdrachten krijgen **geen** nieuwe privilege-/grant-/shellroute.
+- Alleen een exact root-owned, checksum-gebonden installatie plus private host-/account-/socketidentiteit kan na aparte operatorvrijgave de tijdelijke ACL verwijderen of het eerder waargenomen resterende ACL-masker herstellen. Andere namen, extra ACL-grants, onveilige socketouders en onbekende procesgeneraties stoppen.
+- Gerichte synthetische ACL- en foutregressies; geen fysieke root-/socket-test, geen installatie, geen serverwijziging, geen A7/Q7 of AIfordable #227-activering. Runner-MCP #520 blijft OPEN tot de onafhankelijke originele installatie/autoriteit/rollback en negatieve toegangscontrole geslaagd zijn.
+
+---
+
+## 0.1.164 — #341 hercontrole van beheerde herstart vlak vóór installatie (SOURCE, LIVE WAIT)
+
+- De bestaande Runner-MCP self-update controleert de reeds gekwalificeerde cron/systemd-user server **opnieuw nadat bron-sync, lint, tests en wheelbouw klaar zijn**, onmiddellijk vóór de eerste installatietransactie. Een tussentijds verloren of onleesbare supervisor leidt tot een begrensde fout `restart_supervisor_unavailable`, zonder transactie, wheelinstallatie of herstartmarker; de reeds bestaande pre-install bronrollback blijft actief.
+- De toelatingscontrole bij opdrachtstart uit 0.1.163, de normale legacy-reexec en de onafhankelijke A7-/same-update ACK-gates blijven ongewijzigd. Dit is een beperkte race-window-reductie, **geen** bewijs dat een supervisor niet ná de hercontrole kan uitvallen.
+- Negatieve regressie voor zowel cron als systemd-user: beheerder actief bij enqueue, valt weg nadat de testen slagen, update stopt vóór de installatietransactie en de bronbaseline keert terug. Volledige CI vereist; geen live uitrol naar de oorspronkelijke 0.1.88-server.
+
+---
+
+## 0.1.163 — #341 beheerder-preflight vóór automatische Runner-MCP-update (SOURCE, LIVE WAIT)
+
+- De **bestaande** `SelfUpdateManager` controleert vóór het enqueuen van een managed update nu of de reeds geïnstalleerde Runner-MCP-server werkelijk één actieve, ingeschakelde cron- of systemd-user-supervisor heeft. Alleen een ingestelde herstartcallback was daarvoor onvoldoende; een niet-beschikbare of dubbele supervisor kan anders pas **na installatie** aan het licht komen.
+- De bestaande `managed_server_activation_status()` van #253/0.1.162 wordt **hergebruikt**: geen nieuwe controller, service, relay of tweede watchdog. Een onbeschikbare/onzekere manager faalt gesloten **zonder job, wheelinstallatie, restart-marker of A6-event**. De huidige niet-beheerde legacy-reexec blijft ongewijzigd.
+- `runtime_status()` meldt `managed_server_supervisor_ready` en `managed_server_supervisor_backend`; beide zijn `null` wanneer er geen managed scheduler is. Deze velden attesteren **geen** onafhankelijk A7-herstel, echt geladen wheel of originele cliënt-ACK.
+- Negatieve/positieve regressies dekken afwezige, uitgeschakelde en actieve cron/systemd-beheerder, geen mutaties bij afwijzing en legacy-compatibiliteit. GitHub CI vereist; originele `AF-HOST-0001` blijft op geteste eigen 0.1.88-generatie, **geen productie-update toegestaan**.
+
+---
+
+## 0.1.162 — #253 managed self-update handoff naar bestaande cron/systemd (SOURCE ONLY)
+
+- Oude PR #438 doelgericht overgezet op nieuwe hoofdbron, met behoud van de bestaande updater: optionele `server_activation_scheduler` mag alléén worden doorgegeven in de modus die de originele herstelwheel/transactie vasthoudt. Zonder expliciet ingestelde callback verandert de actieve restart-route niet.
+- De bestaande owner-managed `runner-mcp.service` wordt alleen als exact, privé en ongewijzigd unitbestand opnieuw gestart; cron accepteert uitsluitend één bestaande actieve managed server en geeft de lopende eigen PID over. De server- en cron-rollen worden niet automatisch gemigreerd.
+- Een succesvolle of mislukte HTTP-aanvraag wist **NOOIT** de herstartmarkering. De eerdere PR-versie deed dat vóór een echte handlerrespons en was onvoldoende voor een geldige oorspronkelijke cliënt-ACK; dat onveilige middlewarepad is doelbewust **niet overgenomen**. Alleen de bestaande onafhankelijke A7-actor/issuer met juiste campagne kan later na een echt resultaat + duurzame ACK de oorspronkelijke rollback vrijgeven.
+- Nieuwe negatieve tests voor ontbrekende/meerdere/inactieve supervisors, onveilige systemd-unit, onleesbare cron, ontbreken van de bewaarde rollbackbaseline en een bewaard restart-marker na de overdracht. **CI/brontest is geen bewezen originele update/rollback**, de actuele `AF-HOST-0001` 0.1.88/4-4 escrows en geladen-wheelidentiteit blijven apart NO-GO.
+- Geen nieuw updateproces, scheduler, watchdog, systemd-unit, secrets, cryptografische sleutels of productieactie.
+
+---
+
+## 0.1.161 — #341 herstelde baseline-wheel vergrendeld aan één inodegeneratie (SOURCE CANDIDATE NA #974)
+
+- De **bestaande** `SelfUpdatePackageInstaller.staged_wheel_sha256()` leest de bewaarde baseline-wheel via `O_NOFOLLOW` en één vaste descriptor. Inode, eigenaar, rechten, linkaantal, grootte en bestandsgeneratie moeten vóór, tijdens en na SHA256 én op de oorspronkelijke bestandsnaam gelijk blijven. De bestaande hersteltransactie en één updater blijven ongewijzigd.
+- Gerichte negatieve tests weigeren metadatawijziging tijdens hashen ondanks identieke wheelbytes en weigeren hashing zonder `O_NOFOLLOW`. De seal is **alleen lokaal herstelmateriaal**, geen geverifieerde actieve Python-wheel, signing- of A7-herstelverklaring.
+- 0.1.159 is via PR #973 gemerged; 0.1.160 is inmiddels via de bestaande PR #974 gemerged. Deze bronkandidaat 0.1.161 blijft voorwaardelijk en mag niet vóór #974 worden gemerged. Geen productie-update/ARM, service-, cron-, backup- of agentwijzigingen.
+
+---
+
+## 0.1.160 — #866 inactieve systemd-peer-unit bij bestaande cronserver (STACKED SOURCE; NIET LIVE)
+
+- Pure renderer hergebruikt de **bestaande** normale systemd-user rollen/vaste commando's, maar verwijdert enkel voor één gekozen nevenrol de Requires=runner-mcp.service afhankelijkheid die anders een tweede server zou opstarten naast cron.
+- De kandidaat heeft bewust geen [Install]/WantedBy en is dus niet geschikt als automatisch geactiveerde volledige supervisor. De normale systemd-installatiemethode en zijn Requires-contract blijven onveranderd.
+- Bron- en Linux systemd-parserregressies voor een exacte niet-startende kandidaat en afwijzing van onbekende, control-path of niet-geconfigureerde rollen. Live bron-/procesattestatie, rol-lock, herstel, systemd manager start/reboot en ACK nog NIET GETEST. Geen cron/host/updates gewijzigd.
+
+---
+
+## 0.1.159 — #866 pure cron-uitsluitingsplan voor één rol (SOURCE CANDIDATE, GEEN LIVE SWITCH)
+
+- In de bestaande cronmodule berekent een nieuwe pure helper één exact gebonden rolverwijdering uit een volledig gevalideerd cronblok. De oorspronkelijke crontab en vijf overige rollen blijven byte-identiek; vreemde taken blijven bestaan. Geen cronwrite, systemd-activatie of extra updater.
+- Positieve herstelbyte- en negatieve verkeerde-poort, ontbrekende/extra rol, dubbele supervisor, CRLF en onbegrensde invoertests. Originele host, launcher, processource, uitval/boot, functionele ACK en echte per-rolrollback blijven uitdrukkelijk NIET GETEST.
+
+---
+
+## 0.1.158 — #669 ZIP en SHA256 van originele wheel aan één inode binden (SOURCE MERGED/CI PASS, LIVE WAIT)
+
+- De al bestaande private originele-wheelcapture las ZIP-leden en volledige wheel-SHA via twee aparte path-opens. Als een wheel ertussen wordt vervangen door een wheel met dezelfde Python-modulebytes maar andere metadata, kon de ontvangstkopie een verkeerde gecombineerde originele SHA/moduleverklaring bewaren.
+- De bestaande helper gebruikt nu een enkele `O_NOFOLLOW`-descriptor, controleert stat/inode/generatie vóór en na beide lezingen, en weigert vervangen/gewijzigde wheelbytes zonder receipt. Eén negatieve swap-injectie bewaart ook de oorspronkelijke create-once-, 0600- en fsync-contracten. Geen nieuwe opslag, signing of updater.
+- Dit is uitsluitend SOURCE/CI-acceptatie. Originele fysiek bewaarde 0.1.88-wheel en 3.614-file A7-runtime-restore niet herhalen; actuele live geladen wheel/source en formele A7 zesrollen/campagne-ACK blijven open.
+
+---
+
+## 0.1.157 — #341 originele hersteltransactie met gedeelde owner-lock en jobgebonden cleanup (BRONKANDIDAAT)
+
+- **Concrete oorzaak:** na de eerder gemergede atomische publicatie met `os.link` kon `clear_transaction()` nog een inmiddels door een andere job gepubliceerde hersteltransactie verwijderen. Een controle op pathname of inode gevolgd door `unlink` is geen atomaire compare-and-delete.
+- **Beperkte correctie:** de **bestaande** owner-private `self-update-install-transaction.json` blijft de enige herstelbron. BEGIN én CLEAR houden nu dezelfde Linux `flock` op een blijvend 0600-bestand naast die bestaande transactie vast. Foutieve eigenaar/permissies/symlink/hardlink, ontbrekende lock of concurrente houder = STOP zonder lockvrije fallback. Crash/procesverlies laat de kernel-lock los; geen tweede updater, scheduler, relay of controller.
+- **Job-identiteit:** CLEAR heeft een verplichte exacte 32-hex job-ID; een oude afsluiter weigert een nieuwe/andere transactie en bewaart de bytes. Drie bestaande `SelfUpdateManager`-afsluiters geven uitsluitend hun oorspronkelijke job-ID door. Nieuwe tests: vreemde job, twee afsluiters/nieuwe generatie, exclusieve BEGIN/CLEAR, alias of vreemde permissies, ontbrekende kernel-lock, ongeldige job-ID en automatische lockvrijgave na procesexit. Bestaande baseline- en herstelcontracten blijven gelden.
+- **Grenzen:** alleen bron/CI, géén automatische inzet op de oorspronkelijke `AF-HOST-0001`, Black/A6/A7, Claude, Qwen of SQL. Originele live wheel #669, A6 off-target journal #942, A7 offline rollback #943 en echte updatecampagne-ACK blijven afzonderlijk open.
+
+## 0.1.155 — #341 hersteltransactie atomair zonder overschrijven (BRONKANDIDAAT)
+
+- Bestaande `SelfUpdatePackageInstaller.begin_transaction` controleerde eerst een afwezige hersteltransactie, maar publiceerde daarna via `os.replace`. Twee concurrerende installateurs konden daardoor een na die controle verschenen originele transactie vervangen en de juiste terugvalbasis verliezen.
+- De bestaande `self-update-install-transaction.json` wordt nu via `os.link(..., follow_symlinks=False)` atomair en zonder overschrijven gepubliceerd, gevolgd door verwijdering van uitsluitend de eigen tijdelijke naam en de bestaande directory-`fsync`. Bij conflict of ontbrekende hardlinkondersteuning weigert de installer; geen onveilig `os.replace`-alternatief.
+- Twee gerichte regressietests houden een door een tweede updater gepubliceerde geldige transactie byte-identiek en weigeren de publicatie bij ontbrekende atomaire ondersteuning. Alle bestaande transactiepaden en rollback-/safetycontracten behouden. Alleen bron en test; geen nieuwe updater, controller, dienst, hostinstallatie, A7-proef, Ed25519-sleutel of Claude/Qwen-wijziging. Volledige CI/merge en fysiek bewijs blijven afzonderlijke poorten.
+
 ## 0.1.154 — #662 kandidaatartifact pas na volledige bestaande demo en systemd-test (BRONKANDIDAAT)
 
 - De reeds bestaande main-release-`release-artifact` job had alleen `needs: validate`. Bij v0.1.152 was het immutable source-artifact al geüpload terwijl de vijfminutendemo later CANCELLED werd; kandidaat ≠ volledige CI-groen. Dezelfde bestaande job krijgt nu `needs: [validate, demo-smoke, disposable-systemd-user]`. Geen nieuwe workflow, runner, uploader, cache, CI-control-plane of artifactopslag.
@@ -127,14 +271,14 @@
 
 ## 0.1.85 (#341/#585 single original owner-private publisher sibling; SOURCE ONLY)
 
-- On physical original `github-runner`/`gha-runner`, the separately held original machine credential already passed exact authenticated SQL issuer GET as `runner:control`, but its active Runner-MCP parent uses a different CLI-selected private config directory and reports `ISSUER_IN_PARENT_CONFIG=MISSING`. No copy or new issuer identity is appropriate.
+- On physical original `AF-HOST-0001`/`<AF-SVC-0001-service-user>`, the separately held original machine credential already passed exact authenticated SQL issuer GET as `runner:control`, but its active Runner-MCP parent uses a different CLI-selected private config directory and reports `ISSUER_IN_PARENT_CONFIG=MISSING`. No copy or new issuer identity is appropriate.
 - The existing optional Fabric qualification loader now admits exactly one original credential file from the default owner-private Runner-MCP directory OR the same owner's separately custodied Runner-Fabric sibling. Fail closed on dual issuers, symlinks, unsafe owner/directory/file permissions, non-machine issuer mode, invalid origin/secret; a custom config root never auto-selects the sibling. If no publisher file is present, the optional publisher remains disabled. Synthetic tests enforce no credential copy and negative cases.
 - **Not deployed.** Active connected original MCP remains 0.1.38 with source/wheel provenance unverified and `self_update_ready=false`; previously installed Fabric issuer environment/tools absent; Fabric #1730 rollback reliability fix source-only. Do not infer completed SQL Black submit/claim/result/digest/ACK or Claude/Qwen dispatch from CI. No server mutation, rotation, second tunnel/relay/controller, login/MFA, or blanket restart.
 
 ## 0.1.84 (#341/#585 privately custodied original Control Center issuer forwarding; SOURCE ONLY)
 
 - The existing Runner-MCP qualification Agent may now load the **already owner-custodied** `af585-control-issuer.env` private file and forward only its exact fixed machine issuer identity, HTTPS origin, and credential to the same pre-existing Fabric Agent process. Reject world-readable files, symlinks, other origins, role substitution, wrong key sets, or invalid credential values. A missing optional file retains previous behavior. Existing untrusted main configuration cannot promote a worker to a publisher.
-- This is **source-only**; the physical `aifordable-lab` managed Fabric launcher is still exact revision `927c15392e1caae74463b1322296d367811e116c`, and the new `build_black_original_issuer_service` does not yet exist in its active slot. Current central Runner-MCP 0.1.38 also remains without qualified upgrade. Physical original one-shot Black SQL command/result/ACK is NOT claimed.
+- This is **source-only**; the physical `AF-VM-0001` managed Fabric launcher is still exact revision `927c15392e1caae74463b1322296d367811e116c`, and the new `build_black_original_issuer_service` does not yet exist in its active slot. Current central Runner-MCP 0.1.38 also remains without qualified upgrade. Physical original one-shot Black SQL command/result/ACK is NOT claimed.
 
 ## 0.1.83 (#341 fixed Black post-ACK payload readback; SOURCE ONLY)
 

@@ -4,6 +4,8 @@ import hashlib
 import hmac
 import os
 import re
+import shlex
+import stat
 import subprocess
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -493,6 +495,887 @@ def render_user_units(
     return units
 
 
+
+def render_inactive_cron_server_peer_unit(
+    *,
+    config_dir: Path,
+    executable: Path,
+    component: str,
+    port: int = 8000,
+) -> tuple[str, str]:
+    """Maak één kandidaat-unit zonder bestaande cronserver mee te starten.
+
+    Dit is uitsluitend een niet-activerende bronrenderer voor #866. De gewone
+    installatie blijft de volledige systemd-grafiek met Requires=server eisen.
+    De kandidaat bevat bewust GEEN [Install]-sectie en kan dus niet als normale
+    automatisch ingeschakelde unit worden behandeld. In tegenstelling tot de
+    gewone systemd-nevenunit voert deze kandidaat dezelfde 'autostart cron-run'
+    uit als cron: de bestaande per-rol-flock blijft na execv overgeërfd.
+    Bij lockbezetting eindigt de service zonder rolwerk of automatisch retry;
+    de fysieke rolstatus, managerwissel en latere rollback blijven apart bewijs.
+    """
+    # Beperk het model tot bekende nevenrollen. De server zelf en de primaire
+    # tunnel behoren aan een afzonderlijke fysieke cutover-/transportpoort.
+    unit_name = f"runner-mcp-{component}.service"
+    if component in ("server", "tunnel") or unit_name not in KNOWN_UNITS:
+        raise AutostartError("unknown or control-path migration component")
+    rendered = render_user_units(
+        config_dir=config_dir, executable=executable, port=port,
+    )
+    ordinary = rendered.get(unit_name)
+    if ordinary is None:
+        raise AutostartError("requested migration component is not configured")
+
+    # _unit() produceert deze vaste combinatie. Weigeren als de normale
+    # renderer ooit verandert; niet stilzwijgend een Requires laten staan.
+    original_dependency = (
+        f"After=network-online.target {SERVER_UNIT}\n"
+        f"Requires={SERVER_UNIT}\n"
+    )
+    install_suffix = "\n[Install]\nWantedBy=default.target\n"
+    if ordinary.count(original_dependency) != 1 or not ordinary.endswith(install_suffix):
+        raise AutostartError("expected original systemd dependency graph is unavailable")
+    # Een gewone systemd-nevenunit omzeilt de flock van 'cron-run'. Gebruik
+    # voor de INACTIEVE migratiekandidaat alleen het oorspronkelijke, vaste
+    # argv-pad. Controleer eerst de volledige ExecStart-vorm; bij bronwijziging
+    # stoppen we in plaats van stilzwijgend onbeschermde rollen te starten.
+    direct_tail = f' {_systemd_quote(component)} {_systemd_quote("run")}\n'
+    exec_lines = [
+        line for line in ordinary.splitlines(keepends=True)
+        if line.startswith("ExecStart=")
+    ]
+    if len(exec_lines) != 1 or not exec_lines[0].endswith(direct_tail):
+        raise AutostartError("original peer launcher is not exact")
+    guarded_exec = (
+        exec_lines[0][:-len(direct_tail)]
+        + f' {_systemd_quote("autostart")} {_systemd_quote("cron-run")}'
+        + f' {_systemd_quote(component)}\n'
+    )
+    candidate = ordinary.replace(
+        original_dependency,
+        "After=network-online.target\nWants=network-online.target\n",
+        1,
+    ).removesuffix(install_suffix).replace(exec_lines[0], guarded_exec, 1)
+    if candidate.count(guarded_exec) != 1:
+        raise AutostartError("shared cron lock launcher is unavailable")
+    if (
+        f"Requires={SERVER_UNIT}" in candidate
+        or f"After=network-online.target {SERVER_UNIT}" in candidate
+        or "[Install]" in candidate
+        or "WantedBy=default.target" in candidate
+    ):
+        raise AutostartError("inactive migration unit still requires control service")
+    return unit_name, candidate
+
+
+
+def render_boot_candidate_cron_peer_unit(
+    *,
+    config_dir: Path,
+    executable: Path,
+    component: str,
+    port: int = 8000,
+) -> tuple[str, str]:
+    """Bereken een herstartbestendige nevenunit, zonder installatie of start.
+
+    Alleen een apart bewezen M3-proces mag na cron-exclusiviteit, functionele
+    ACK en onafhankelijke rollback deze bronbytes ooit activeren. De unit
+    behoudt exact de bestaande cron-run/execv/flock-bescherming en verwijst
+    niet naar de primaire Runner-MCP-server. Het enige verschil met de
+    reeds geteste static-unit is een standaard default.target-installhaak.
+    Dit is uitdrukkelijk GEEN productievergunning of geschreven unitbestand.
+    """
+    name, inactive = render_inactive_cron_server_peer_unit(
+        config_dir=config_dir, executable=executable,
+        component=component, port=port,
+    )
+    # De static renderer is de enige bron voor ExecStart en alle hardening.
+    # Stop bij bronafwijking in plaats van een onbekende unit enablebaar te maken.
+    if (
+        not inactive.endswith("PrivateTmp=true\n")
+        or "\n[Install]\n" in inactive
+        or "WantedBy=default.target" in inactive
+        or f"Requires={SERVER_UNIT}" in inactive
+    ):
+        raise AutostartError("boot candidate is not the exact locked static peer")
+    candidate = inactive + "\n[Install]\nWantedBy=default.target\n"
+    return name, candidate
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerSystemdMigrationPreview:
+    """Herstelbaar bronvoorstel, nooit een vergunning of transactiescript."""
+
+    component: str
+    original_crontab: str
+    candidate_crontab: str
+    rollback_crontab_sha256: str
+    inactive_unit_name: str
+    inactive_unit_contents: str
+    # Exact dezelfde cron-flock-bron, met enkel de enablebare Install-haak.
+    boot_unit_contents: str = ""
+    cutover_authorized: bool = False
+
+
+def plan_single_peer_systemd_migration(
+    *,
+    preflight: AutostartMigrationPlan,
+    original_crontab: str,
+    executable: Path,
+    config_dir: Path,
+    components: tuple[str, ...],
+    component: str,
+    port: int = 8000,
+) -> SinglePeerSystemdMigrationPreview:
+    """Koppel één cronuitsluiting aan één inactieve systemd-nevenunit.
+
+    Deze samenstelling berekent uitsluitend bytes. De oorspronkelijke volledige
+    crontab blijft het exacte rollbackobject. Zowel de bestaande read-only
+    host/UID/manager-preflight als de oude cronrol en de nieuwe unit moeten
+    eenduidig passen. Er is geen systemctl, crontab-write of procesactie.
+    Tijdens de echte omschakeling zijn aparte PID/lock-, boot- en A7-proeven
+    vereist; ook een perfect voorstel geeft nooit activeringsbevoegdheid.
+    """
+    from .cron_autostart import (
+        CronAutostartError,
+        plan_single_role_cron_exclusion,
+    )
+
+    expected = AutostartMigrationPlan(
+        component=component,
+        state="PLAN_ONLY",
+        reason_code="original_host_and_rollback_not_attested",
+        cron_installed=True,
+        systemd_manager_reachable=True,
+        systemd_units_absent=True,
+    )
+    if (
+        type(preflight) is not AutostartMigrationPlan
+        or preflight != expected
+        or type(component) is not str
+        or component in ("server", "tunnel")
+    ):
+        raise AutostartError("single-peer systemd preflight is not qualified")
+    try:
+        cron_plan = plan_single_role_cron_exclusion(
+            original_crontab=original_crontab,
+            executable=executable,
+            config_dir=config_dir,
+            components=components,
+            component=component,
+            port=port,
+        )
+    except CronAutostartError as exc:
+        raise AutostartError("single-peer cron rollback is not qualified") from exc
+
+    unit_name, unit_contents = render_inactive_cron_server_peer_unit(
+        config_dir=config_dir,
+        executable=executable,
+        component=component,
+        port=port,
+    )
+    # Bereken ook de reeds bewezen bootkandidaat; BEIDE blijven uitsluitend
+    # geheugenbytes, zodat een installatie niet bij het plannen ontstaat.
+    boot_name, boot_contents = render_boot_candidate_cron_peer_unit(
+        config_dir=config_dir,
+        executable=executable,
+        component=component,
+        port=port,
+    )
+    if (
+        boot_name != unit_name
+        or boot_contents != unit_contents + "\n[Install]\nWantedBy=default.target\n"
+        or unit_name != f"runner-mcp-{component}.service"
+        or not unit_contents.startswith(MANAGED_MARKER + "\n")
+        or "Requires=" + SERVER_UNIT in unit_contents
+        or "[Install]" in unit_contents
+        or len([line for line in unit_contents.splitlines()
+                if line.startswith("ExecStart=")]) != 1
+        or not any(
+            line.endswith(
+                f' {_systemd_quote("autostart")} {_systemd_quote("cron-run")}'
+                f' {_systemd_quote(component)}'
+            )
+            for line in unit_contents.splitlines()
+            if line.startswith("ExecStart=")
+        )
+        or cron_plan.original_crontab == cron_plan.candidate_crontab
+        or cron_plan.component != component
+    ):
+        raise AutostartError("single-peer systemd candidate is not isolated")
+    # Enkel geheugenbytes: de unit mag zelfs uitgeschakeld NIET op de
+    # bestaande managed systemd-user locatie worden geplaatst. Een beheerd
+    # bestand daar kan de nog actieve cron-reconciler blokkeren.
+    return SinglePeerSystemdMigrationPreview(
+        component=component,
+        original_crontab=cron_plan.original_crontab,
+        candidate_crontab=cron_plan.candidate_crontab,
+        rollback_crontab_sha256=hashlib.sha256(
+            cron_plan.original_crontab.encode("utf-8")
+        ).hexdigest(),
+        inactive_unit_name=unit_name,
+        inactive_unit_contents=unit_contents,
+        boot_unit_contents=boot_contents,
+    )
+
+
+@dataclass(frozen=True, slots=True)
+class FinalServerSystemdMigrationPreview:
+    """Zuiver laatste-primary-rolvoorstel; nooit runtime- of cutoverbewijs."""
+
+    original_crontab: str
+    candidate_crontab: str
+    rollback_crontab_sha256: str
+    server_unit_name: str
+    server_unit_contents: str
+    preexisting_systemd_roles: tuple[str, ...]
+    cutover_authorized: bool = False
+
+
+def plan_final_server_systemd_migration(
+    *,
+    original_crontab: str,
+    executable: Path,
+    config_dir: Path,
+    preexisting_systemd_roles: tuple[str, ...],
+    port: int = 8000,
+) -> FinalServerSystemdMigrationPreview:
+    """Bereken het allerlaatste primary-cutoverobject zonder enige hostactie.
+
+    Vijf eerdere peers moeten afzonderlijk op de echte host bevestigd zijn.
+    Dit broncontract kan die bevestiging NIET leveren. Het weigert een
+    overblijvende tweede cronrol of afwijkende server/poort, behoudt iedere
+    vreemde cronregel en hergebruikt uitsluitend runner-mcp.service.
+    De unit start via dezelfde cron-run-flock als de oude cronserver, zodat
+    beide managers niet tegelijk de primaire serverrol kunnen uitvoeren.
+    Een onafhankelijke control-path-ACK, PID, herstelproef en rollback blijven
+    vóór iedere live transactie verplicht; autorisatie is altijd False.
+    """
+    from .cron_autostart import (
+        CRON_BEGIN,
+        CRON_COMPONENTS,
+        CRON_END,
+        CronAutostartError,
+        _has_unmanaged_runner_mcp_entries,
+        render_cron_block,
+    )
+
+    invalid = "final server primary migration is not qualified"
+    expected_peers = (
+        "topology-heartbeat", "github-watcher", "completion-watcher",
+        "agent-bus-worker", "fabric-agent-qualification",
+    )
+    expected_order = tuple(
+        role for role in CRON_COMPONENTS if role in expected_peers
+    )
+    if (
+        type(preexisting_systemd_roles) is not tuple
+        or preexisting_systemd_roles != expected_order
+        or type(original_crontab) is not str
+        or not original_crontab.endswith("\n")
+        or len(original_crontab) > 131072
+        or "\r" in original_crontab
+        or "\x00" in original_crontab
+        or not isinstance(executable, Path)
+        or not isinstance(config_dir, Path)
+        or type(port) is not int
+        or not 1 <= port <= 65535
+        or not executable.is_absolute()
+        or not config_dir.is_absolute()
+    ):
+        raise AutostartError(invalid)
+
+    lines = original_crontab.splitlines(keepends=True)
+    begin, end = CRON_BEGIN + "\n", CRON_END + "\n"
+    if lines.count(begin) != 1 or lines.count(end) != 1:
+        raise AutostartError(invalid)
+    first, last = lines.index(begin), lines.index(end)
+    if first >= last:
+        raise AutostartError(invalid)
+    try:
+        canonical = render_cron_block(
+            executable=executable, config_dir=config_dir,
+            components=("server",), port=port,
+        )
+    except CronAutostartError as exc:
+        raise AutostartError(invalid) from exc
+    if [line[:-1] for line in lines[first:last + 1]] != canonical:
+        raise AutostartError(invalid)
+
+    # Hergebruik de bestaande cron-conflictdetector, die naast cron-run ook
+    # rechtstreeks 'serve' en vroegere ensure-running-supervisors herkent.
+    # Een willekeurige vreemde tekst met 'cron-run' is geen tweede server.
+    # De kandidaat bewaart iedere niet-beheerde cronregel byte-identiek.
+    # De bestaande detector verwacht regels zonder newline (splitlines),
+    # niet de keepends-variant die we voor byte-exacte rollback bewaren.
+    if _has_unmanaged_runner_mcp_entries(original_crontab.splitlines()):
+        raise AutostartError(invalid)
+    outside = (*lines[:first], *lines[last + 1:])
+    candidate_crontab = "".join(outside)
+
+    # Gebruik de bestaande server-unitrenderer en vervang EXACT het
+    # bestaande serve-argv door het al beproefde lockende cron-run-argv.
+    # Geen nieuwe unitnaam, service-actuator of tweede netwerklistener.
+    try:
+        units = render_user_units(
+            config_dir=config_dir, executable=executable, port=port,
+        )
+        ordinary = units[SERVER_UNIT]
+        resolved_exe = _validate_executable(executable)
+    except (AutostartError, KeyError, OSError) as exc:
+        raise AutostartError(invalid) from exc
+    prefix = (
+        f"ExecStart={_systemd_quote(str(resolved_exe))} --config-dir "
+        f"{_systemd_quote(str(config_dir.expanduser().resolve()))}"
+    )
+    direct = (
+        prefix + ' "serve" "--host" "127.0.0.1" "--port" '
+        + _systemd_quote(str(port)) + "\n"
+    )
+    guarded = (
+        prefix + ' "autostart" "cron-run" "server" "--port" '
+        + _systemd_quote(str(port)) + "\n"
+    )
+    if (
+        ordinary.count(direct) != 1
+        or ordinary.count("ExecStart=") != 1
+        or not ordinary.startswith(MANAGED_MARKER + "\n")
+        or "Requires=" in ordinary
+        or "NoNewPrivileges=true\n" not in ordinary
+        or "PrivateTmp=true\n" not in ordinary
+        or not ordinary.endswith("\n[Install]\nWantedBy=default.target\n")
+    ):
+        raise AutostartError(invalid)
+    server_unit = ordinary.replace(direct, guarded, 1)
+    if server_unit.replace(guarded, direct, 1) != ordinary:
+        raise AutostartError(invalid)
+
+    return FinalServerSystemdMigrationPreview(
+        original_crontab=original_crontab,
+        candidate_crontab=candidate_crontab,
+        rollback_crontab_sha256=hashlib.sha256(
+            original_crontab.encode("utf-8")
+        ).hexdigest(),
+        server_unit_name=SERVER_UNIT,
+        server_unit_contents=server_unit,
+        preexisting_systemd_roles=expected_order,
+    )
+
+
+def _exact_single_role_cron_delta(
+    preview: SinglePeerSystemdMigrationPreview,
+) -> bool:
+    """Controleer de ENIGE toegestane wijziging tussen beide cronbytes.
+
+    Dit controleert de afleiding opnieuw uit het volledige originele blok:
+    slechts één exact herkenbare, geselecteerde cron-run-regel mag verdwijnen.
+    Alle andere regels, zelfs buiten het beheerde blok, zijn byte-identiek.
+    De executable en config-directory van die regel moeten ook identiek zijn
+    aan de ExecStart van de eerder gegenereerde lockende systemd-nevenunit.
+    De validatie verricht geen host-I/O en is géén uitvoeringsbevoegdheid.
+    """
+    from .cron_autostart import CRON_BEGIN, CRON_COMPONENTS, CRON_END
+
+    original = preview.original_crontab
+    candidate = preview.candidate_crontab
+    if (
+        preview.component not in CRON_COMPONENTS
+        or preview.component in ("server", "tunnel")
+        or not original.endswith("\n")
+        or not candidate.endswith("\n")
+        or len(original) > 131072
+        or "\r" in original + candidate
+        or "\x00" in original + candidate
+    ):
+        return False
+    lines = original.splitlines(keepends=True)
+    begin, end = f"{CRON_BEGIN}\n", f"{CRON_END}\n"
+    if lines.count(begin) != 1 or lines.count(end) != 1:
+        return False
+    first, last = lines.index(begin), lines.index(end)
+    if first >= last:
+        return False
+    claims: list[tuple[int, list[str]]] = []
+    for index in range(first + 1, last):
+        line = lines[index]
+        if not line.startswith("* * * * * "):
+            continue
+        try:
+            tokens = shlex.split(line.rstrip("\n"))
+        except ValueError:
+            return False
+        if len(tokens) >= 11 and tokens[8:11] == [
+            "autostart", "cron-run", preview.component,
+        ]:
+            claims.append((index, tokens))
+    if len(claims) != 1:
+        return False
+    index, tokens = claims[0]
+    if (
+        len(tokens) != 13
+        or tokens[:5] != ["*"] * 5
+        or not tokens[5].startswith("/")
+        or tokens[6] != "--config-dir"
+        or not tokens[7].startswith("/")
+        or tokens[11:] != [">/dev/null", "2>&1"]
+        or candidate != "".join((*lines[:index], *lines[index + 1 :]))
+    ):
+        return False
+    expected_exec = (
+        f"ExecStart={_systemd_quote(tokens[5])} --config-dir "
+        f'{_systemd_quote(tokens[7])} "autostart" "cron-run" '
+        f'{_systemd_quote(preview.component)}\n'
+    )
+    return expected_exec in preview.inactive_unit_contents
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerMigrationCheckpoint:
+    """Alleen-lezen oordeel over één M3-fase, NOOIT activeringsbevoegdheid."""
+
+    phase: str
+    consistent: bool
+    reason_code: str
+    next_action_authorized: bool = False
+
+
+def assess_single_peer_migration_checkpoint(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+) -> SinglePeerMigrationCheckpoint:
+    """Wijs een onjuiste stap vóór nieuwe cron-/systemd-mutaties af.
+
+    Het oordeel gebruikt uitsluitend door de aanroeper verkregen observaties.
+    Het voert GEEN crontab, systemctl, lock-/procesinspectie of bestandstoegang
+    uit. Een PASS is alleen interne consistentie, niet een originele host-,
+    wheel-/PID-, monitor-, ACK-custody- of A7-herstelattestatie. Een apart
+    bevoegd operatorproces moet elke fysieke fase opnieuw bewijzen.
+    """
+    def wait(reason: str) -> SinglePeerMigrationCheckpoint:
+        return SinglePeerMigrationCheckpoint(
+            phase=phase if type(phase) is str else "UNKNOWN",
+            consistent=False,
+            reason_code=reason,
+        )
+
+    # Bescherm tegen een willekeurig verzonnen preview, ongeldige types en
+    # unitbron die de verplichte cron-lock of Install-haak niet meer deelt.
+    if (
+        type(preview) is not SinglePeerSystemdMigrationPreview
+        or preview.cutover_authorized is not False
+        or type(preview.component) is not str
+        or preview.component in ("server", "tunnel")
+        or preview.inactive_unit_name != f"runner-mcp-{preview.component}.service"
+        or type(preview.original_crontab) is not str
+        or type(preview.candidate_crontab) is not str
+        or type(preview.inactive_unit_contents) is not str
+        or type(preview.boot_unit_contents) is not str
+        or preview.boot_unit_contents != (
+            preview.inactive_unit_contents + "\n[Install]\nWantedBy=default.target\n"
+        )
+        or not preview.inactive_unit_contents.startswith(MANAGED_MARKER + "\n")
+        or preview.inactive_unit_contents.count("ExecStart=") != 1
+        or f' "autostart" "cron-run" "{preview.component}"'
+        not in preview.inactive_unit_contents
+        or hashlib.sha256(preview.original_crontab.encode("utf-8")).hexdigest()
+        != preview.rollback_crontab_sha256
+        or preview.original_crontab == preview.candidate_crontab
+        or not _exact_single_role_cron_delta(preview)
+    ):
+        return wait("preview_untrusted_or_drifted")
+
+    if (
+        type(observed_crontab) is not str
+        or (observed_unit_contents is not None and type(observed_unit_contents) is not str)
+        or type(unit_enabled) is not bool
+        or type(unit_active) is not bool
+        or type(main_pid) is not int
+        or main_pid < 0
+        or type(role_lock_active) is not bool
+        or type(new_function_ack) is not bool
+    ):
+        return wait("observation_type_unqualified")
+
+    # Alle versies van de preflight én de terugweg moeten hetzelfde volledige
+    # crontabobject behouden: ook vreemde regels, spaties en lege regels.
+    phase_states = {
+        # phase: (cronvorm, unitvorm, enabled, active, positieve PID, lock, ACK)
+        "before_exclusion": ("original", "absent", False, False, False, False, False),
+        "ready_to_stage": ("candidate", "absent", False, False, False, False, False),
+        "staged_inactive": ("candidate", "boot", False, False, False, False, False),
+        "new_worker_ack": ("candidate", "boot", True, True, True, True, True),
+        # Na een crash kan de unit enabled zijn zonder actieve PID, lock of ACK.
+        # Het faseoordeel laat nooit automatisch herstellen of activeren.
+        "peer_failed_idle": ("candidate", "boot", True, False, False, False, False),
+        # Crash/onderbreking ná succesvolle disable maar vóór unlink.
+        # De unit bestaat exact, maar mag geen herstart, PID of lock hebben.
+        "peer_disabled_idle": ("candidate", "boot", False, False, False, False, False),
+        "rollback_ready": ("candidate", "absent", False, False, False, False, False),
+        "rollback_confirmed": ("original", "absent", False, False, False, False, False),
+    }
+    if type(phase) is not str or phase not in phase_states:
+        return wait("unknown_checkpoint_phase")
+    cron_state, unit_state, enabled, active, has_pid, lock, ack = phase_states[phase]
+    expected_cron = (
+        preview.original_crontab if cron_state == "original"
+        else preview.candidate_crontab
+    )
+    if observed_crontab != expected_cron:
+        return wait("full_crontab_drift")
+    expected_unit = preview.boot_unit_contents if unit_state == "boot" else None
+    if observed_unit_contents != expected_unit:
+        return wait("unit_source_drift")
+    if unit_enabled != enabled or unit_active != active:
+        return wait("supervisor_state_drift")
+    if (main_pid > 0) != has_pid or role_lock_active != lock:
+        return wait("worker_or_lock_drift")
+    if new_function_ack != ack:
+        return wait("functional_ack_unqualified")
+    return SinglePeerMigrationCheckpoint(
+        phase=phase,
+        consistent=True,
+        reason_code="checkpoint_consistent_not_authorized",
+    )
+
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerMixedBackendStatus:
+    """Alleen-lezen M3-eigenaarschap; nooit een installer-/reconcilevergunning.
+
+    Consistentie betekent uitsluitend dat de aangeleverde cron-/unitinventaris
+    strookt met een eerder vastgelegd éénrolsbronvoorstel en fasecheckpoint.
+    Het bewijst geen originele host, werkende taak, herstart of A7-herstel.
+    """
+
+    consistent: bool
+    reason_code: str
+    selected_systemd_role: str | None = None
+    remaining_cron_roles: tuple[str, ...] = ()
+    preexisting_systemd_roles: tuple[str, ...] = ()
+    generic_reconcile_authorized: bool = False
+    cutover_authorized: bool = False
+
+
+def assess_single_peer_mixed_backend_status(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[object, ...],
+    preexisting_systemd_roles: tuple[str, ...] = (),
+) -> SinglePeerMixedBackendStatus:
+    """Controleer één systemd-peer naast de overige exact beheerde cronrollen.
+
+    Hergebruik de bestaande volledige cron-/unitbron- en flockcheckpointcheck.
+    Controleer alle vaste rolclaims. Expliciete voorgaande systemd-rollen
+    moeten uniek, actief en afwezig uit de actuele cronbron zijn; hun units
+    vragen afzonderlijke owner-attestatie. Geen host-I/O of activeringsrecht.
+    De algemene install/reconcile/remove-actuatoren blijven expliciet verboden
+    in mixed mode, ook na een intern consistent oordeel.
+    """
+    from .cron_autostart import (
+        CRON_BEGIN,
+        CRON_COMPONENTS,
+        CRON_END,
+        CronAutostartError,
+        CronComponentStatus,
+        render_cron_block,
+    )
+
+    def wait(reason: str) -> SinglePeerMixedBackendStatus:
+        return SinglePeerMixedBackendStatus(consistent=False, reason_code=reason)
+
+    if phase not in (
+        "staged_inactive", "new_worker_ack", "peer_failed_idle",
+        "peer_disabled_idle", "rollback_ready", "rollback_confirmed",
+    ):
+        return wait("mixed_phase_not_observed")
+    checkpoint = assess_single_peer_migration_checkpoint(
+        preview=preview,
+        phase=phase,
+        observed_crontab=observed_crontab,
+        observed_unit_contents=observed_unit_contents,
+        unit_enabled=unit_enabled,
+        unit_active=unit_active,
+        main_pid=main_pid,
+        role_lock_active=role_lock_active,
+        new_function_ack=new_function_ack,
+    )
+    if not checkpoint.consistent:
+        return wait(checkpoint.reason_code)
+
+    if (
+        type(preexisting_systemd_roles) is not tuple
+        or any(type(role) is not str for role in preexisting_systemd_roles)
+    ):
+        return wait("preexisting_systemd_roles_unqualified")
+    if (
+        len(set(preexisting_systemd_roles)) != len(preexisting_systemd_roles)
+        or any(
+            role not in CRON_COMPONENTS
+            or role in ("server", "tunnel", preview.component)
+            for role in preexisting_systemd_roles
+        )
+        or preexisting_systemd_roles != tuple(
+            role for role in CRON_COMPONENTS if role in preexisting_systemd_roles
+        )
+    ):
+        return wait("preexisting_systemd_roles_unqualified")
+
+    # Het originele volledige cronblok is de enige rol-authority in dit
+    # broncontract. Een los meegegeven rollenlijst zou vervalst kunnen zijn.
+    original = preview.original_crontab.splitlines()
+    if original.count(CRON_BEGIN) != 1 or original.count(CRON_END) != 1:
+        return wait("original_managed_block_unqualified")
+    first, last = original.index(CRON_BEGIN), original.index(CRON_END)
+    if first >= last:
+        return wait("original_managed_block_unqualified")
+    # Het renderercontract laat alleen MAILTO="" gevolgd door exacte
+    # cron-run-regels toe. Een extra PATH-/SHELL-/MAILTO-toewijzing of een
+    # verborgen tweede job in het beheerde blok mag niet worden genegeerd,
+    # zelfs niet wanneer bron en kandidaat dezelfde vervalsing bevatten.
+    body = original[first + 1:last]
+    if (
+        len(body) < 3
+        or body[0] != 'MAILTO=""'
+        or any(not line.startswith("* * * * * ") for line in body[1:])
+    ):
+        return wait("original_managed_block_unqualified")
+    roles: list[str] = []
+    executable: str | None = None
+    config_dir: str | None = None
+    port: int | None = None
+    for line in body[1:]:
+        try:
+            tokens = shlex.split(line)
+        except ValueError:
+            return wait("original_cron_role_unqualified")
+        if (
+            len(tokens) not in (13, 15)
+            or tokens[:5] != ["*"] * 5
+            or not tokens[5].startswith("/")
+            or tokens[6] != "--config-dir"
+            or not tokens[7].startswith("/")
+            or tokens[8:10] != ["autostart", "cron-run"]
+            or tokens[10] not in CRON_COMPONENTS
+            or tokens[-2:] != [">/dev/null", "2>&1"]
+        ):
+            return wait("original_cron_role_unqualified")
+        role = tokens[10]
+        port_role = role in ("server", "tunnel")
+        if port_role:
+            if (
+                len(tokens) != 15
+                or tokens[11] != "--port"
+                or not tokens[12].isascii()
+                or not tokens[12].isdecimal()
+                or not 1 <= len(tokens[12]) <= 5
+            ):
+                return wait("original_cron_role_unqualified")
+            # Vaste ASCII-lengte begrenst int-conversie en verbiedt
+            # Unicode/getallen met duizenden cijfers uit onbetrouwbare cronbytes.
+            role_port = int(tokens[12])
+            if not 1 <= role_port <= 65535:
+                return wait("original_cron_role_unqualified")
+            if port is not None and role_port != port:
+                return wait("original_cron_role_unqualified")
+            port = role_port
+        elif len(tokens) != 13:
+            return wait("original_cron_role_unqualified")
+        if executable is None:
+            executable, config_dir = tokens[5], tokens[7]
+        elif tokens[5] != executable or tokens[7] != config_dir:
+            return wait("original_cron_role_unqualified")
+        roles.append(role)
+    if (
+        len(roles) < 2
+        or len(roles) != len(set(roles))
+        or preview.component not in roles
+        or executable is None
+        or config_dir is None
+    ):
+        return wait("original_cron_roles_unqualified")
+
+    if any(role in roles for role in preexisting_systemd_roles):
+        return wait("preexisting_systemd_cron_overlap")
+
+    # Hergebruik de enige bestaande canonieke renderer. Alleen de gekozen
+    # rol verwijderen is onvoldoende bewijs: ook alle vijf cronpeers moeten
+    # exact dezelfde bron, config, vaste flags en geldige poort behouden.
+    # Deze herberekening leest geen bestand of proces en start geen worker.
+    try:
+        rendered = render_cron_block(
+            executable=Path(executable),
+            config_dir=Path(config_dir),
+            components=tuple(roles),
+            port=port if port is not None else 8000,
+        )
+    except CronAutostartError:
+        return wait("original_cron_role_unqualified")
+    if original[first:last + 1] != rendered:
+        return wait("original_cron_role_unqualified")
+
+    # Beide inventarissen zijn volledig: elke vaste rol moet exact één keer
+    # voorkomen. Extra units, dubbele rolclaims of een verdwenen cronpeer
+    # mogen niet worden verdoezeld door alleen positieve regels te filteren.
+    expected = set(CRON_COMPONENTS)
+    if type(cron_rows) is not tuple or type(systemd_rows) is not tuple:
+        return wait("backend_inventory_type_unqualified")
+    if (
+        len(cron_rows) != len(expected)
+        or len(systemd_rows) != len(expected)
+        or any(type(row) is not CronComponentStatus for row in cron_rows)
+        or any(type(row) is not AutostartStatus for row in systemd_rows)
+    ):
+        return wait("backend_inventory_unqualified")
+    # Wijs ongekwalificeerde rolwaarden af vóór de dictionaryconversie.
+    # Een lijst/dict als rolnaam mag geen TypeError veroorzaken; integer 0/1
+    # of tekst mag evenmin als een geldige booleaanse supervisorclaim gelden.
+    if any(
+        type(row.component) is not str
+        or type(row.installed) is not bool
+        or type(row.enabled) is not bool
+        or type(row.active) is not bool
+        for row in (*cron_rows, *systemd_rows)
+    ):
+        return wait("backend_inventory_type_unqualified")
+    cron_by_role = {row.component: row for row in cron_rows}
+    systemd_by_role = {row.component: row for row in systemd_rows}
+    if set(cron_by_role) != expected or set(systemd_by_role) != expected:
+        return wait("backend_role_claims_unqualified")
+
+    restored = phase == "rollback_confirmed"
+    peer_installed = phase in (
+        "staged_inactive", "new_worker_ack", "peer_failed_idle",
+        "peer_disabled_idle",
+    )
+    remaining = tuple(role for role in roles if restored or role != preview.component)
+    for role in CRON_COMPONENTS:
+        cron = cron_by_role[role]
+        systemd = systemd_by_role[role]
+        cron_expected = role in remaining
+        existing_peer = role in preexisting_systemd_roles
+        systemd_expected = existing_peer or (
+            peer_installed and role == preview.component
+        )
+        if (
+            cron.installed is not cron_expected
+            or cron.enabled is not cron_expected
+            or (not cron_expected and cron.active is not False)
+            or systemd.installed is not systemd_expected
+            or (not systemd_expected and (systemd.enabled or systemd.active))
+        ):
+            return wait("mixed_supervisor_claims_conflict")
+        if existing_peer and (
+            systemd.enabled is not True or systemd.active is not True
+        ):
+            return wait("preexisting_systemd_peer_unavailable")
+        if role == preview.component and systemd_expected and (
+            systemd.enabled is not unit_enabled
+            or systemd.active is not unit_active
+        ):
+            return wait("mixed_peer_state_drift")
+
+    return SinglePeerMixedBackendStatus(
+        consistent=True,
+        reason_code="mixed_source_consistent_not_authorized",
+        selected_systemd_role=preview.component if peer_installed else None,
+        remaining_cron_roles=remaining,
+        preexisting_systemd_roles=preexisting_systemd_roles,
+    )
+
+
+
+@dataclass(frozen=True, slots=True)
+class SinglePeerReconcileProposal:
+    """Inerte volgende stap voor één rol, met herstelanker en zonder bevoegdheid."""
+
+    phase: str
+    consistent: bool
+    reason_code: str
+    proposed_step: str
+    rollback_sha256: str | None = None
+    action_authorized: bool = False
+
+
+def propose_single_peer_reconciliation(
+    *,
+    preview: SinglePeerSystemdMigrationPreview,
+    phase: str,
+    observed_crontab: str,
+    observed_unit_contents: str | None,
+    unit_enabled: bool,
+    unit_active: bool,
+    main_pid: int,
+    role_lock_active: bool,
+    new_function_ack: bool,
+    cron_rows: tuple[object, ...],
+    systemd_rows: tuple[object, ...],
+    preexisting_systemd_roles: tuple[str, ...] = (),
+) -> SinglePeerReconcileProposal:
+    """Plan uitsluitend de volgende revalidatiestap zonder de host te wijzigen.
+
+    Dit is geen installer, recovery-actuator of toestemming voor de A7-owner.
+    Een externe geautoriseerde executor moet apart de echte crontabbytes,
+    unit, PID, lock en ACK op dezelfde host attesteren, vóór ELKE wijziging.
+    Herhaal na een stap de exacte fasecontrole en herleid het rollbackobject
+    opnieuw; de generieke all-role reconcile mag nooit worden gebruikt.
+    """
+    check = assess_single_peer_mixed_backend_status(
+        preview=preview,
+        phase=phase,
+        observed_crontab=observed_crontab,
+        observed_unit_contents=observed_unit_contents,
+        unit_enabled=unit_enabled,
+        unit_active=unit_active,
+        main_pid=main_pid,
+        role_lock_active=role_lock_active,
+        new_function_ack=new_function_ack,
+        cron_rows=cron_rows,
+        systemd_rows=systemd_rows,
+        preexisting_systemd_roles=preexisting_systemd_roles,
+    )
+    if not check.consistent:
+        return SinglePeerReconcileProposal(
+            phase=phase if type(phase) is str else "UNKNOWN",
+            consistent=False,
+            reason_code=check.reason_code,
+            proposed_step="STOP_UNQUALIFIED",
+        )
+
+    next_steps = {
+        "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
+        "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
+        "peer_failed_idle": "DISABLE_FAILED_PEER_THEN_RECHECK",
+        "peer_disabled_idle": "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK",
+        "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
+        "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
+    }
+    return SinglePeerReconcileProposal(
+        phase=phase,
+        consistent=True,
+        reason_code="source_plan_only_no_host_authority",
+        proposed_step=next_steps[phase],
+        rollback_sha256=preview.rollback_crontab_sha256,
+    )
+
+
 def _safe_unit_dir(unit_dir: Path) -> Path:
     expanded = unit_dir.expanduser()
     # Installing must not traverse a symlinked parent to another unit tree.
@@ -638,6 +1521,59 @@ def install_user_services(
     return ordered
 
 
+
+def restart_managed_server_unit(
+    *,
+    unit_dir: Path | None = None,
+    runner: Callable[..., subprocess.CompletedProcess[str]] = subprocess.run,
+) -> None:
+    """Handoff ONLY to the already installed, uniquely pinned server unit.
+
+    The A7 supervisor must independently qualify recovery and own the
+    restart marker; this helper never clears a marker or approves rollout.
+    """
+    root = (unit_dir or default_user_unit_dir()).expanduser()
+    if any(parent.is_symlink() for parent in (root, *root.parents)):
+        raise AutostartError("managed server unit directory is unsafe")
+    path = root / SERVER_UNIT
+    if not hasattr(os, "O_NOFOLLOW"):
+        raise AutostartError("managed server unit nofollow support unavailable")
+    try:
+        before = path.lstat()
+        if (
+            not stat.S_ISREG(before.st_mode)
+            or before.st_uid != os.geteuid()
+            or before.st_nlink != 1
+            or before.st_mode & 0o022
+            or not 0 < before.st_size <= 16_384
+        ):
+            raise AutostartError("managed server unit identity unavailable")
+        with os.fdopen(
+            os.open(path, os.O_RDONLY | os.O_NOFOLLOW), "rb",
+        ) as stream:
+            opened = os.fstat(stream.fileno())
+            data = stream.read(16_385)
+            after = os.fstat(stream.fileno())
+        path_after = path.lstat()
+    except OSError as exc:
+        raise AutostartError("managed server unit readback unavailable") from exc
+    def identity(meta: os.stat_result) -> tuple[int, ...]:
+        return (
+            meta.st_dev, meta.st_ino, meta.st_mode, meta.st_uid,
+            meta.st_gid, meta.st_nlink, meta.st_size,
+            meta.st_mtime_ns, meta.st_ctime_ns,
+        )
+    if (
+        identity(before) != identity(opened)
+        or identity(before) != identity(after)
+        or identity(before) != identity(path_after)
+        or len(data) != before.st_size
+        or not data.startswith((MANAGED_MARKER + "\n").encode("utf-8"))
+    ):
+        raise AutostartError("managed server unit changed or foreign")
+    _run_systemctl(["restart", SERVER_UNIT], runner=runner)
+
+
 def user_service_status(
     *,
     unit_dir: Path | None = None,
@@ -727,6 +1663,23 @@ def remove_user_services(
         raise AutostartError("systemd user unit directory is unavailable")
     if not target.exists():
         return []
+    # De brede Python-remover is geen éénrols-M3-hersteller. Net als de
+    # installer moet hij een door cron geclaimde rol als bronconflict zien,
+    # ook wanneer een aanroeper de afgebakende CLI omzeilt.
+    from .cron_autostart import (
+        CronAutostartError,
+        cron_available,
+        has_managed_cron,
+    )
+
+    if cron_available():
+        try:
+            if has_managed_cron():
+                raise AutostartError(
+                    "managed cron exists; refuse blanket systemd removal in mixed mode"
+                )
+        except CronAutostartError as exc:
+            raise AutostartError("managed cron status is unavailable") from exc
     _run_systemctl(["show-environment"], runner=runner)
     # Validate every known target before disabling or removing any unit.
     # An unsafe later peer must not leave a partially removed service set.

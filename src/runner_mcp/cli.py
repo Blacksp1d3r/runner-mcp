@@ -1142,15 +1142,20 @@ def cmd_approval(args: argparse.Namespace) -> int:
     raise ApprovalError("Unknown approval action")
 
 
+def _format_autostart_role_status(item, *, prefix: str = "") -> str:
+    """Toon alleen vaste rolclaims, nooit private bron-, unit- of procespaden."""
+    return (
+        f"{prefix}{item.component}: "
+        f"installed={'yes' if item.installed else 'no'}, "
+        f"enabled={'yes' if item.enabled else 'no'}, "
+        f"active={'yes' if item.active else 'no'}"
+    )
+
+
 def _print_autostart_rows(backend: str, rows) -> None:
     print(f"backend: {backend}")
     for item in rows:
-        print(
-            f"{item.component}: "
-            f"installed={'yes' if item.installed else 'no'}, "
-            f"enabled={'yes' if item.enabled else 'no'}, "
-            f"active={'yes' if item.active else 'no'}"
-        )
+        print(_format_autostart_role_status(item))
 
 
 def _autostart_activation_preflight(
@@ -1351,9 +1356,28 @@ def cmd_autostart(args: argparse.Namespace) -> int:
 
     if args.autostart_action == "status":
         if managed_cron and managed_systemd:
-            raise AutostartError(
-                "multiple managed autostart backends are present; remove one before continuing"
-            )
+            # De algemene reconciler blijft FAIL CLOSED. De operator moet
+            # echter beide bestaande rolclaims kunnen bekijken zonder eerst
+            # de gevaarlijke configuratie te verwijderen of te veranderen.
+            # Dit is een inventaris, geen PID/lock-/bron-/ACK-attestatie.
+            components = configured_autostart_components(config_dir)
+            cron_rows = tuple(cron_status(
+                config_dir=config_dir,
+                components=components,
+                executable=executable,
+            ))
+            systemd_rows = tuple(user_service_status())
+            # Verzamel BEIDE observaties vóór de eerste uitvoer. Een niet
+            # bereikbare systemd-manager mag geen schijnbaar gezonde
+            # gedeeltelijke rolstatus achterlaten.
+            print("backend: mixed-unqualified")
+            print("reason: multiple_managed_backends")
+            for prefix, rows in (("cron/", cron_rows), ("systemd-user/", systemd_rows)):
+                for item in rows:
+                    print(_format_autostart_role_status(item, prefix=prefix))
+            print("reconcile_authorized=no")
+            print("cutover_authorized=no")
+            return 2
         if managed_cron:
             components = configured_autostart_components(config_dir)
             _print_autostart_rows(
@@ -1492,6 +1516,14 @@ def cmd_autostart(args: argparse.Namespace) -> int:
         return 0
 
     if args.autostart_action == "remove":
+        # De brede verwijderactie is géén rolgebonden M3-rollback. In
+        # mixed mode zou zij achtereenvolgens zowel de nog benodigde cron-
+        # als systemd-bron wissen. Weiger vóór zelfs de bevestigingsvraag:
+        # geen partiële destructieve uitvoering of schijnbare toestemming.
+        if managed_cron and managed_systemd:
+            raise AutostartError(
+                "mixed managed cron/systemd state; blanket autostart removal is forbidden"
+            )
         _require_removal_confirmation(
             "REMOVE RUNNER MCP AUTOSTART",
             AutostartError("autostart removal cancelled"),

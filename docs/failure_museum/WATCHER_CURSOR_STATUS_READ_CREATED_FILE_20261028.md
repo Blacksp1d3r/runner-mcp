@@ -16,4 +16,4 @@ PR #876 laatste head `e0f5a7aa22876c20d39aaa44b93331dcfd7eb095`, squash `6762f86
 
 **Voorkoming:** status- en inspectie-operaties mogen geen writer-open en onbedoelde reparatie delen met muterende operaties. Test afwezig en niet-schrijfbaar maar leesbaar opslagpad apart van een echte bootstraphandeling.
 
-**Niet bewezen:** origineel actieve watcher op github-runner heeft bron v0.1.108 niet aangetoond. #616 blijft OPEN: geen quarantainebewuste veilige cursorfastforward, geen terminale immutable poison-bewijzen, geen volledig head/CAS/worker-resultaat+ACK of productieherstel. #615/#617 en Fabric blijven eigenaar van hun bestaande grenzen.
+**Niet bewezen:** origineel actieve watcher op AF-HOST-0001 heeft bron v0.1.108 niet aangetoond. #616 blijft OPEN: geen quarantainebewuste veilige cursorfastforward, geen terminale immutable poison-bewijzen, geen volledig head/CAS/worker-resultaat+ACK of productieherstel. #615/#617 en Fabric blijven eigenaar van hun bestaande grenzen.

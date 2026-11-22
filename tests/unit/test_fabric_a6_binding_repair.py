@@ -1,11 +1,15 @@
+import os
+import stat
 from pathlib import Path
 
 import pytest
 
 from runner_mcp.fabric_a6_binding_repair import (
     FabricA6BindingRepairError,
+    _prepare_fixed_a6_private_roots_under,
     classify_a6_bindings_for_doctor,
     inspect_a6_binding_state,
+    prepare_black_a6_private_roots,
     repair_a6_qualification_binding,
 )
 from runner_mcp.onboarding import load_env_file
@@ -516,3 +520,128 @@ def test_doctor_a6_complete_fixed_values_still_not_physical_recovery_proof(
     assert classify_a6_bindings_for_doctor(observed) == ("pass", "ready_11_of_11")
     # PASS here is confined to structural PRIVATE CONFIG ONLY; no assertion
     # about independent storage, A6 journal append, A7 or client ACK.
+
+
+def _a6_fixed_parent_fixture(tmp_path: Path) -> Path:
+    """Maak alleen een tijdelijke private eigenaar-root voor offline tests."""
+    if os.name != "posix" or not hasattr(os, "geteuid"):
+        pytest.skip("deze owner-private functie vereist Linux")
+    if os.geteuid() == 0:
+        pytest.skip("positieve private-owner-tests mogen niet als root draaien")
+    root = tmp_path / "runner-fabric"
+    root.mkdir(mode=0o700)
+    root.chmod(0o700)
+    return root
+
+
+def test_a6_fixed_pair_prepares_only_two_private_leaves(tmp_path: Path) -> None:
+    root = _a6_fixed_parent_fixture(tmp_path)
+    result = _prepare_fixed_a6_private_roots_under(root)
+    assert result == {
+        "state": "fixed_roots_prepared",
+        "roots_private": True,
+        "physical_independence_verified": False,
+        "off_target_readback_verified": False,
+        "journal_integrity_verified": False,
+        "a6_ready": False,
+        "mutation_authorized": False,
+        "service_restarted": False,
+    }
+    assert {p.name for p in root.iterdir()} == {
+        "a6-update-journal", "a6-evidence",
+    }
+    for name in ("a6-update-journal", "a6-evidence"):
+        info = (root / name).lstat()
+        assert stat.S_ISDIR(info.st_mode)
+        assert info.st_uid == os.geteuid()
+        assert stat.S_IMODE(info.st_mode) == 0o700
+        assert list((root / name).iterdir()) == []
+
+
+def test_a6_fixed_pair_adopts_existing_pair_without_writing(
+    tmp_path: Path,
+) -> None:
+    root = _a6_fixed_parent_fixture(tmp_path)
+    first = _prepare_fixed_a6_private_roots_under(root)
+    before = {p.name: (p.stat().st_ino, p.stat().st_mtime_ns) for p in root.iterdir()}
+    second = _prepare_fixed_a6_private_roots_under(root)
+    after = {p.name: (p.stat().st_ino, p.stat().st_mtime_ns) for p in root.iterdir()}
+    assert first["state"] == "fixed_roots_prepared"
+    assert second["state"] == "already_private"
+    assert before == after
+
+
+def test_a6_fixed_pair_refuses_partial_without_repair(
+    tmp_path: Path,
+) -> None:
+    root = _a6_fixed_parent_fixture(tmp_path)
+    existing = root / "a6-update-journal"
+    existing.mkdir(mode=0o700)
+    before = existing.stat().st_ino
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_root_prepare_incomplete"):
+        _prepare_fixed_a6_private_roots_under(root)
+    assert existing.stat().st_ino == before
+    assert not (root / "a6-evidence").exists()
+
+
+@pytest.mark.parametrize("kind", ["symlink", "broad_mode", "regular_file"])
+def test_a6_fixed_pair_refuses_unsafe_leaf_without_changes(
+    tmp_path: Path, kind: str,
+) -> None:
+    root = _a6_fixed_parent_fixture(tmp_path)
+    leaf = root / "a6-update-journal"
+    if kind == "symlink":
+        leaf.symlink_to(tmp_path, target_is_directory=True)
+    elif kind == "broad_mode":
+        leaf.mkdir(mode=0o700)
+        leaf.chmod(0o755)
+    else:
+        leaf.write_text("do not replace", encoding="utf-8")
+    before = tuple((p.name, p.lstat().st_ino) for p in root.iterdir())
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_root_prepare_denied"):
+        _prepare_fixed_a6_private_roots_under(root)
+    assert tuple((p.name, p.lstat().st_ino) for p in root.iterdir()) == before
+    assert not (root / "a6-evidence").exists()
+
+
+def test_a6_fixed_pair_refuses_redirected_or_missing_parent(
+    tmp_path: Path,
+) -> None:
+    real = _a6_fixed_parent_fixture(tmp_path)
+    alias = tmp_path / "root-alias"
+    alias.symlink_to(real, target_is_directory=True)
+    for root in (alias, tmp_path / "not-created"):
+        with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_root_prepare_denied"):
+            _prepare_fixed_a6_private_roots_under(root)
+    assert list(real.iterdir()) == []
+
+
+def test_a6_fixed_pair_interrupted_second_mkdir_remains_blocked(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    root = _a6_fixed_parent_fixture(tmp_path)
+    original_mkdir = os.mkdir
+
+    def fail_second(name: object, mode: int = 0o777, *, dir_fd: int | None = None) -> None:
+        if name == "a6-evidence":
+            raise OSError("synthetic second mkdir failure")
+        original_mkdir(name, mode, dir_fd=dir_fd)
+
+    with monkeypatch.context() as edits:
+        edits.setattr(os, "mkdir", fail_second)
+        with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_root_prepare_denied"):
+            _prepare_fixed_a6_private_roots_under(root)
+    assert {p.name for p in root.iterdir()} == {"a6-update-journal"}
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_root_prepare_incomplete"):
+        _prepare_fixed_a6_private_roots_under(root)
+    assert {p.name for p in root.iterdir()} == {"a6-update-journal"}
+
+
+def test_a6_fixed_pair_operator_entrypoint_refuses_untrusted_host(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp import fabric_a6_binding_repair as repair
+
+    monkeypatch.setattr(repair.socket, "gethostname", lambda: "not-original-black")
+    with pytest.raises(FabricA6BindingRepairError, match="fabric_a6_root_prepare_denied"):
+        prepare_black_a6_private_roots()

@@ -118,6 +118,7 @@ def make_manager(
     restart_components=None,
     active_revision_provider=None,
     retain_activation_baseline=False,
+    server_activation_scheduler=None,
 ):
     project = tmp_path / "project"
     registry = make_registry(project, repository=repository)
@@ -136,6 +137,7 @@ def make_manager(
         installer_runner=installer_runner,
         resource_url="http://127.0.0.1:8000/mcp",
         server_reexec=lambda: exits.append(75),
+        server_activation_scheduler=server_activation_scheduler,
         restart_delay_seconds=1,
         restart_components=restart_components,
         active_revision_provider=active_revision_provider,
@@ -1899,3 +1901,216 @@ def test_legacy_update_keeps_current_behavior_by_default(tmp_path: Path) -> None
     assert manager._retain_activation_baseline is False
     assert manager.runtime_status()["provisional_activation_pending"] is False
     assert manager.runtime_status()["provisional_baseline_wheel_present"] is None
+
+
+def test_managed_handoff_retains_restart_marker_for_independent_a7_ack(
+    tmp_path: Path,
+) -> None:
+    """Process handoff is not a same-client result or durable ACK."""
+    calls: list[bool] = []
+    manager, _project, exits = make_manager(
+        tmp_path,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: calls.append(True),
+    )
+    commit = "a" * 40
+    _write_restart_marker(manager.config_dir, "server", commit)
+    manager._schedule_server_restart()
+    deadline = time.monotonic() + 2.5
+    while not calls and time.monotonic() < deadline:
+        time.sleep(0.02)
+    assert calls == [True]
+    assert exits == []
+    assert restart_marker_commit(manager.config_dir, "server") == commit
+    assert restart_pending_count(manager.config_dir) >= 1
+
+
+def test_managed_handoff_requires_retained_baseline(
+    tmp_path: Path,
+) -> None:
+    with pytest.raises(SelfUpdateError, match="retained independent recovery"):
+        make_manager(
+            tmp_path,
+            retain_activation_baseline=False,
+            server_activation_scheduler=lambda: None,
+        )
+
+
+
+def test_managed_update_denies_missing_supervisor_before_any_job(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Een ingestelde callback is geen bewijs van een werkende supervisor."""
+    from runner_mcp.self_update_activation import ManagedServerActivationError
+
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: None,
+    )
+
+    def unavailable(_config_dir: Path):
+        raise ManagedServerActivationError("no original managed server")
+
+    monkeypatch.setattr(
+        "runner_mcp.self_update_activation.managed_server_activation_status",
+        unavailable,
+    )
+    observed = manager.runtime_status()
+    assert observed["managed_server_supervisor_ready"] is False
+    assert observed["managed_server_supervisor_backend"] is None
+    assert observed["self_update_ready"] is False
+    with pytest.raises(SelfUpdateError, match="safe loopback restart runtime"):
+        manager.start("a" * 40)
+    assert manager._jobs == {}
+    assert manager._package_installer.pending_transaction() is None
+    assert restart_pending_count(manager.config_dir) == 0
+
+
+@pytest.mark.parametrize(
+    "backend,enabled,active",
+    [
+        ("cron", True, True),
+        ("systemd-user", True, True),
+        ("cron", False, True),
+        ("systemd-user", True, False),
+    ],
+)
+def test_managed_update_preflight_uses_real_supervisor_ready_state(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+    backend: str, enabled: bool, active: bool,
+) -> None:
+    """Een andere rol of alleen een ingeplande callback opent de gate niet."""
+    from runner_mcp.self_update_activation import (
+        ManagedServerActivationStatus,
+        ManagedServerBackend,
+    )
+
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: None,
+    )
+    monkeypatch.setattr(
+        "runner_mcp.self_update_activation.managed_server_activation_status",
+        lambda _config_dir: ManagedServerActivationStatus(
+            backend=ManagedServerBackend(backend),
+            installed=True,
+            enabled=enabled,
+            active=active,
+        ),
+    )
+    observed = manager.runtime_status()
+    expected = enabled and active
+    assert observed["managed_server_supervisor_ready"] is expected
+    assert observed["managed_server_supervisor_backend"] == backend
+    assert manager._restart_ready() is expected
+    if not expected:
+        with pytest.raises(SelfUpdateError, match="safe loopback restart runtime"):
+            manager.start("a" * 40)
+        assert manager._jobs == {}
+
+
+def test_legacy_restart_readiness_does_not_claim_managed_supervisor(
+    tmp_path: Path,
+) -> None:
+    """De bestaande expliciete lokale reexec wordt niet uitgeschakeld."""
+    manager, _project, _exits = make_manager(tmp_path)
+    observed = manager.runtime_status()
+    assert manager._restart_ready() is True
+    assert observed["managed_server_supervisor_ready"] is None
+    assert observed["managed_server_supervisor_backend"] is None
+
+
+@pytest.mark.parametrize("backend", ["cron", "systemd-user"])
+def test_managed_supervisor_loss_after_tests_blocks_before_install(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, backend: str,
+) -> None:
+    """Supervisor loss during long tests must not start an install transaction."""
+    from runner_mcp.self_update_activation import (
+        ManagedServerActivationStatus,
+        ManagedServerBackend,
+    )
+
+    baseline, target = "1" * 40, "2" * 40
+    current = {"commit": baseline}
+    supervisor = {"active": True}
+
+    class StatefulSource(FakeSource):
+        def sync_project_main_tip(self, project: str, commit: str):
+            current["commit"] = commit
+            return super().sync_project_main_tip(project, commit)
+
+        def sync_project_main_commit(self, project: str, commit: str):
+            current["commit"] = commit
+            return super().sync_project_main_commit(project, commit)
+
+    source = StatefulSource()
+    tests = FakeTests()
+    manager, _project, _exits = make_manager(
+        tmp_path,
+        source=source,
+        tests=tests,
+        retain_activation_baseline=True,
+        server_activation_scheduler=lambda: None,
+    )
+    manager._record_installed_commit(baseline)
+    monkeypatch.setattr(
+        "runner_mcp.self_update.clean_head",
+        lambda _root: {"commit": current["commit"], "clean": True},
+    )
+
+    observations: list[bool] = []
+
+    def observe(_config_dir: Path) -> ManagedServerActivationStatus:
+        observations.append(supervisor["active"])
+        return ManagedServerActivationStatus(
+            backend=ManagedServerBackend(backend),
+            installed=True,
+            enabled=True,
+            active=supervisor["active"],
+        )
+
+    monkeypatch.setattr(
+        "runner_mcp.self_update_activation.managed_server_activation_status",
+        observe,
+    )
+    original_wait = manager._wait_for_profile
+
+    def wait_and_lose_supervisor(profile: str) -> None:
+        original_wait(profile)
+        if profile == "unit":
+            supervisor["active"] = False
+
+    monkeypatch.setattr(manager, "_wait_for_profile", wait_and_lose_supervisor)
+    monkeypatch.setattr(
+        manager._package_installer, "build_wheel",
+        lambda **kwargs: tmp_path / f"{kwargs['label']}.whl",
+    )
+    monkeypatch.setattr(
+        manager._package_installer, "staged_wheel_sha256",
+        lambda **kwargs: "a" * 64,
+    )
+    attempted: list[str] = []
+    monkeypatch.setattr(
+        manager._package_installer, "begin_transaction",
+        lambda **kwargs: attempted.append("transaction"),
+    )
+    monkeypatch.setattr(
+        manager._package_installer, "install_wheel",
+        lambda *args, **kwargs: attempted.append("install"),
+    )
+
+    finished = wait_terminal(manager, manager.start(target)["job_id"])
+    assert finished["state"] == "failed"
+    assert finished["error_category"] == "restart_supervisor_unavailable"
+    assert observations == [True, False]
+    assert tests.started == ["lint", "unit"]
+    assert attempted == []
+    assert current["commit"] == baseline
+    assert source.calls == [
+        ("runner-mcp", target),
+        ("runner-mcp", baseline),
+    ]
+    assert manager._package_installer.pending_transaction() is None
+    assert restart_pending_count(manager.config_dir) == 0

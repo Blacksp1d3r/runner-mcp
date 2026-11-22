@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -30,6 +31,41 @@ def _staged(tmp_path: Path) -> tuple[SelfUpdatePackageInstaller, Path]:
     wheel = stage / "baseline.whl"
     wheel.write_bytes(b"independently untrusted but locally sealed wheel")
     return installer, wheel
+
+
+def test_retained_wheel_digest_refuses_metadata_change_during_read(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Ook bij identieke wheelbytes mag een nieuwe inodegeneratie niet slagen."""
+    installer, wheel = _staged(tmp_path)
+    wheel.chmod(0o644)
+    original_file_digest = hashlib.file_digest
+    original_wheel_digest = hashlib.sha256(wheel.read_bytes()).hexdigest()
+
+    def change_mode_after_hash(handle, algorithm):
+        result = original_file_digest(handle, algorithm)
+        # De bytes en mtime blijven gelijk. Alleen de metadata/ctime wijzigen.
+        wheel.chmod(0o600)
+        return result
+
+    monkeypatch.setattr(
+        "runner_mcp.self_update_install.hashlib.file_digest",
+        change_mode_after_hash,
+    )
+    assert installer.staged_wheel_sha256(job_id=JOB, label="baseline") is None
+    # De echte bytes zijn nog intact; de wijziging was enkel in mode/ctime.
+    assert hashlib.sha256(wheel.read_bytes()).hexdigest() == original_wheel_digest
+
+
+def test_retained_wheel_digest_refuses_missing_nofollow(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Zonder OS-bescherming tegen symlinks wordt geen digest uitgegeven."""
+    installer, _wheel = _staged(tmp_path)
+    monkeypatch.delattr(
+        "runner_mcp.self_update_install.os.O_NOFOLLOW", raising=False,
+    )
+    assert installer.staged_wheel_sha256(job_id=JOB, label="baseline") is None
 
 
 def test_new_transaction_pins_staged_wheel_and_detects_same_path_tamper(

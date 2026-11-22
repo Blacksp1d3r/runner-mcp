@@ -26,7 +26,24 @@ done
 systemctl --user show-environment >/dev/null
 mkdir -p "$unit_dir"
 test_crontab_owned=false
+peer_unit=""
+peer_target=""
+peer_old_pid=""
+peer_work=""
 cleanup() {
+  # Ook bij een afgebroken test uitsluitend de zelfgemaakte peer-unit,
+  # oude nep-cronworker en wegwerpbestanden opruimen.
+  if [[ -n "$peer_unit" ]]; then
+    systemctl --user disable --now "$peer_unit" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$peer_old_pid" ]]; then
+    kill "$peer_old_pid" >/dev/null 2>&1 || true
+    wait "$peer_old_pid" >/dev/null 2>&1 || true
+  fi
+  if [[ -n "$peer_target" ]]; then rm -f -- "$peer_target"; fi
+  if [[ -n "$peer_work" && "$peer_work" == "${RUNNER_TEMP:?}"/runner-mcp-866-peer.* ]]; then
+    rm -rf -- "$peer_work"
+  fi
   if [[ "$test_crontab_owned" == true ]]; then crontab -r >/dev/null 2>&1 || true; fi
   systemctl --user disable --now "$unit" >/dev/null 2>&1 || true
   rm -f -- "$target"
@@ -148,5 +165,1337 @@ printf '%s\n' "$cron_line" | crontab -
 [[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
 crontab -r
 test_crontab_owned=false
+
+# Een echte maar VOLLEDIG DISPOSABLE test van een zesrollen-crontab: laat
+# vijf onschuldige rollen en een niet-beheerde externe cronregel ongemoeid
+# terwijl alleen github-watcher naar de BESTAANDE test-eigen systemd-unit gaat.
+# Dit bewijst scheduler/rollback-bytes, niet de productie-executables of ACK.
+original_six_cron="$(cat <<'SIX_CRON'
+17 * * * * /usr/bin/true # test-foreign-job
+# BEGIN RUNNER MCP AUTOSTART v1
+MAILTO=""
+* * * * * /usr/bin/true # testrole:server
+* * * * * /usr/bin/true # testrole:topology-heartbeat
+* * * * * /usr/bin/true # testrole:github-watcher
+* * * * * /usr/bin/true # testrole:completion-watcher
+* * * * * /usr/bin/true # testrole:agent-bus-worker
+* * * * * /usr/bin/true # testrole:fabric-agent-qualification
+# END RUNNER MCP AUTOSTART v1
+SIX_CRON
+)"
+selected_test_role='* * * * * /usr/bin/true # testrole:github-watcher'
+[[ "$(printf '%s\n' "$original_six_cron" | grep -Fxc "$selected_test_role")" == 1 ]]
+candidate_five_cron="$(printf '%s\n' "$original_six_cron" | grep -Fvx "$selected_test_role")"
+[[ "$candidate_five_cron" != "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -c '# testrole:')" == 5 ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -Fxc '# BEGIN RUNNER MCP AUTOSTART v1')" == 1 ]]
+[[ "$(printf '%s\n' "$candidate_five_cron" | grep -Fxc '# END RUNNER MCP AUTOSTART v1')" == 1 ]]
+
+# De echte Linux-crontab blijft het exact bewaarde herstelobject. Geen
+# upload, config, Agent Bus of original-host-pad wordt hier geraakt.
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(systemctl --user is-enabled "$unit" 2>/dev/null || :)" != "enabled" ]]
+
+# Precies één, reeds bestaande disposable systemd-nevenunit starten. De
+# vijf ongeroerde cronrollen blijven exact aanwezig. Unit wordt NIET
+# enabled, zodat de nieuwe dienst geen niet-gekwalificeerde bootclaim krijgt.
+systemctl --user start "$unit"
+[[ "$(systemctl --user is-active "$unit")" == "active" ]]
+migrated_pid="$(systemctl --user show "$unit" --property=MainPID --value)"
+[[ "$migrated_pid" =~ ^[1-9][0-9]*$ ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(systemctl --user is-enabled "$unit" 2>/dev/null || :)" != "enabled" ]]
+
+# Simuleer mislukte functionele toelating: stop EERST alleen de test-unit,
+# controleer werkelijk einde, herstel DAARNA alle originele cronbytes.
+systemctl --user stop "$unit"
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user show "$unit" --property=MainPID --value)" == 0 ]]
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(systemctl --user is-active "$unit" 2>/dev/null || :)" != "active" ]]
+crontab -r
+test_crontab_owned=false
+
+# M3 bronproef op dezelfde disposable host. Deze keer is de unit GEEN
+# algemene sleep-dienst: hij is exact met de echte Runner-MCP-bronrenderer
+# gegenereerd en gebruikt de bestaande cron_autostart.run_cron_component.
+# De tijdelijke neprol mag geen netwerk, credentials of productiecode draaien.
+peer_work="$(mktemp -d "${RUNNER_TEMP:?}/runner-mcp-866-peer.XXXXXX")"
+peer_private="$peer_work/private"
+peer_exe="$peer_work/fake-runner-mcp"
+peer_log="$peer_work/starts.log"
+peer_venv="$peer_work/venv"
+mkdir -m 0700 "$peer_private"
+python3 -m venv "$peer_venv"
+PIP_DISABLE_PIP_VERSION_CHECK=1 "$peer_venv/bin/python" -m pip install -q -e .
+
+# M3 regressie tegen de ECHTE disposable crontab, niet alleen FakeCrontab:
+# een vreemde regel BINNEN managed markers mag nooit bij re-install/remove
+# verloren gaan. De huidige CI-gebruiker is hierboven als cron-vrij bewezen.
+# Dit blok maakt geen service aan en wijzigt alleen deze wegwerp-crontab.
+test_crontab_owned=true
+"$peer_venv/bin/python" - <<'PY_FOREIGN_BLOCK'
+"""Real disposable Linux cron write-denial proof for noncanonical managed jobs."""
+from pathlib import Path
+import subprocess
+
+from runner_mcp.autostart_activation import AutostartActivationPermit
+from runner_mcp.cron_autostart import (
+    CRON_END,
+    CronAutostartError,
+    install_cron_services,
+    read_crontab,
+    remove_cron_services,
+    render_cron_block,
+)
+
+if read_crontab():
+    raise RuntimeError("STOP: disposable crontab was not empty")
+exe = Path("/usr/bin/true")  # harmless even if cron ticks in this disposable CI
+config = Path("/tmp/runner-mcp-866-isolated-test")
+block = "\n".join(render_cron_block(
+    executable=exe, config_dir=config, components=("server",), port=8000,
+)) + "\n"
+original = "17 2 * * * /usr/bin/true # CI foreign owner\n" + block
+tampered = original.replace(
+    CRON_END + "\n",
+    "17 2 * * * /usr/bin/true # foreign INSIDE managed markers\n"
+    + CRON_END + "\n",
+)
+if tampered == original:
+    raise RuntimeError("STOP: fixture not modified")
+subprocess.run(
+    ["crontab", "-"], input=tampered, text=True,
+    capture_output=True, timeout=30, check=True,
+)
+try:
+    if read_crontab() != tampered:
+        raise RuntimeError("STOP: actual disposable cron fixture drifted")
+    for mutation in (
+        lambda: remove_cron_services(),
+        lambda: install_cron_services(
+            executable=exe, config_dir=config, components=("server",),
+            activation_permit=AutostartActivationPermit.clear(),
+        ),
+    ):
+        try:
+            mutation()
+        except CronAutostartError as exc:
+            if "managed cron block is not canonical" not in str(exc):
+                raise RuntimeError("STOP: wrong rejection reason") from exc
+        else:
+            raise RuntimeError("STOP: noncanonical cron mutator was admitted")
+        if read_crontab() != tampered:
+            raise RuntimeError("STOP: a foreign cron byte was changed")
+finally:
+    subprocess.run(
+        ["crontab", "-r"], capture_output=True, timeout=30, check=True,
+    )
+if read_crontab():
+    raise RuntimeError("STOP: disposable cron cleanup incomplete")
+print("M3_DISPOSABLE_ACTUAL_CRONTAB_NONCANONICAL_REMOVE_REINSTALL_DENIED=PASS")
+PY_FOREIGN_BLOCK
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+test_crontab_owned=false
+
+
+# Een test-only binair met dezelfde vaste Runner-MCP argumenten; de lock,
+# fstat-controle, flock en execv zijn WEL de echte geïnstalleerde broncode.
+printf '#!%s\n' "$peer_venv/bin/python" > "$peer_exe"
+cat >> "$peer_exe" <<'FAKE_RUNNER_MCP'
+from __future__ import annotations
+import os
+import sys
+import time
+from pathlib import Path
+from runner_mcp.cron_autostart import run_cron_component
+
+if len(sys.argv) not in (5, 6) or sys.argv[1] != "--config-dir":
+    raise SystemExit(21)
+config = Path(sys.argv[2])
+args = sys.argv[3:]
+
+
+def _started_by_real_cron() -> bool:
+    """Herken uitsluitend de cron-daemonvoorouder van deze disposable CLI.
+
+    De echte hostcron kan bij iedere minuutgrens de exact bron-gerenderde
+    testregel afvuren. Die ongevraagde worker is geen geautoriseerde M3-
+    checkpointgeneratie en mag de test-lock of starts.log niet overnemen.
+    De afzonderlijke opt-in minuutproef laat dat expliciet WEL toe.
+    """
+    parent = os.getppid()
+    for _ in range(12):
+        if parent <= 1:
+            return False
+        try:
+            root = Path("/proc") / str(parent)
+            comm = (root / "comm").read_text(encoding="utf-8").strip()
+            if comm in ("cron", "crond"):
+                return True
+            fields = (root / "stat").read_text(encoding="utf-8").rsplit(") ", 1)[1].split()
+            parent = int(fields[1])
+        except (OSError, IndexError, ValueError):
+            return False
+    return False
+
+
+if args == ["autostart", "cron-run", "github-watcher"]:
+    # Geen echte cron-minuutstart tijdens de gewone bron-/rollbackfixture.
+    # Systemd en expliciete test-aanroepen behouden hetzelfde flock/execv-pad.
+    # Alleen de aparte, bewust aangezette FIFO-minute-probe laat een
+    # werkelijk door cron gestarte worker via de volledige broncode lopen.
+    minute_probe = Path(__file__).resolve().parent / "minute-probe.fifo"
+    if not minute_probe.is_fifo() and _started_by_real_cron():
+        raise SystemExit(0)
+    run_cron_component(
+        config_dir=config,
+        executable=Path(__file__),
+        component="github-watcher",
+    )
+elif args == ["github-watcher", "run"]:
+    # Simulatie van een langlopende watcher, geen netwerk of mailbox.
+    os.umask(0o077)
+    with (Path(__file__).resolve().parent / "starts.log").open("a") as evidence:
+        evidence.write(f"{os.getpid()}\n")
+        evidence.flush()
+        os.fsync(evidence.fileno())
+    # Eenmalige test-only cronherkomstproef: laat de echte cron-daemon
+    # de PID en startseconde via een eigen FIFO melden.
+    probe = Path(__file__).resolve().parent / "minute-probe.fifo"
+    if probe.is_fifo():
+        fd = os.open(probe, os.O_WRONLY | os.O_NONBLOCK | os.O_NOFOLLOW)
+        try:
+            os.write(fd, f"{os.getpid()} {time.time_ns()}\n".encode())
+        finally:
+            os.close(fd)
+    time.sleep(45)
+else:
+    raise SystemExit(22)
+FAKE_RUNNER_MCP
+chmod 0700 "$peer_exe"
+
+# Gerichte 2026-11-16 cronminuutdiagnose; standaard uit na echte SUCCESS.
+# Alleen opt-in op de strikt bewaakte disposable GitHub-runner.
+# Geen extra sleeps, retries, productiegates of permanente CI-minuutkosten.
+if [[ "${RUNNER_MCP_866_MINUTE_PROBE:-false}" == "true" ]]; then
+  [[ "$(crontab -l 2>/dev/null || :)" == "" && ! -e "$peer_log" ]]
+  test_crontab_owned=true
+  "$peer_venv/bin/python" - "$peer_exe" "$peer_private" "$peer_work" <<'PY_MINUTE_OWNER'
+"""Test-only real cron-minute PID, flock and fail-closed M3 pre-exclusion."""
+from __future__ import annotations
+
+import os
+import select
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+from runner_mcp import autostart
+from runner_mcp.cron_autostart import component_active, read_crontab, render_cron_block
+
+exe, private, scratch = map(Path, sys.argv[1:])
+if (os.environ.get("GITHUB_ACTIONS") != "true"
+    or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+    or os.geteuid() == 0
+    or not scratch.resolve().is_relative_to(Path(os.environ["RUNNER_TEMP"]).resolve())
+    or read_crontab() != ""):
+    raise RuntimeError("STOP: minute probe is not disposable and empty")
+if (Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service").exists():
+    raise RuntimeError("STOP: real cron probe cannot coexist with peer unit")
+roles = ("server", "topology-heartbeat", "github-watcher",
+         "completion-watcher", "agent-bus-worker", "fabric-agent-qualification")
+autostart.configured_autostart_components = lambda _: roles
+original = "17 * * * * /usr/bin/true # test-foreign-job\n\n" + "\n".join(
+    render_cron_block(executable=exe, config_dir=private, components=roles, port=8000),
+) + "\n"
+preflight = autostart.AutostartMigrationPlan(
+    component="github-watcher", state="PLAN_ONLY",
+    reason_code="original_host_and_rollback_not_attested", cron_installed=True,
+    systemd_manager_reachable=True, systemd_units_absent=True,
+)
+plan = autostart.plan_single_peer_systemd_migration(
+    preflight=preflight, original_crontab=original, executable=exe,
+    config_dir=private, components=roles, component="github-watcher",
+)
+assert plan.cutover_authorized is False
+fifo = scratch / "minute-probe.fifo"
+os.mkfifo(fifo, 0o600)
+fd = os.open(fifo, os.O_RDWR | os.O_NONBLOCK | os.O_NOFOLLOW)
+scheduled_pid = None
+owned_pid = None
+
+def cron_command(*args: str, input_text: str | None = None) -> None:
+    result = subprocess.run(["crontab", *args], input=input_text,
+                            capture_output=True, text=True, timeout=30, check=False)
+    if result.returncode:
+        raise RuntimeError("STOP: disposable cron operation failed")
+
+try:
+    cron_command("-", input_text=original)
+    if read_crontab() != original:
+        raise RuntimeError("STOP: exact cron source missing")
+    readable, _, _ = select.select([fd], [], [], 76)
+    if not readable:
+        raise RuntimeError("STOP: actual cron-minute worker did not start")
+    payload = os.read(fd, 128).decode("ascii").strip().splitlines()
+    if len(payload) != 1 or len(payload[0].split()) != 2:
+        raise RuntimeError("STOP: ambiguous cron worker evidence")
+    pid_raw, stamp_raw = payload[0].split()
+    if not pid_raw.isdecimal() or not stamp_raw.isdecimal():
+        raise RuntimeError("STOP: cron worker timestamp or PID invalid")
+    scheduled_pid, stamp_ns = int(pid_raw), int(stamp_raw)
+    second = (stamp_ns // 1_000_000_000) % 60
+    if second > 15:
+        raise RuntimeError("STOP: worker did not start near minute boundary")
+    proc = Path("/proc") / str(scheduled_pid)
+    argv = proc.joinpath("cmdline").read_bytes().split(b"\0")
+    if str(exe).encode() not in argv or b"github-watcher" not in argv or b"run" not in argv:
+        raise RuntimeError("STOP: process identity differs from source-bound watcher")
+    parent = scheduled_pid
+    cron_parent = False
+    for _ in range(8):
+        line = Path("/proc", str(parent), "stat").read_text()
+        ppid = int(line.rsplit(")", 1)[-1].strip().split()[1])
+        if ppid <= 1:
+            break
+        comm = Path("/proc", str(ppid), "comm").read_text().strip().lower()
+        if comm in ("cron", "crond"):
+            cron_parent = True
+            break
+        parent = ppid
+    if not cron_parent:
+        raise RuntimeError("STOP: worker does not descend from real cron daemon")
+    owned_pid = scheduled_pid
+    if not component_active(private, "github-watcher"):
+        raise RuntimeError("STOP: scheduled worker did not own role flock")
+    inode = (private / "autostart-github-watcher.lock").stat().st_ino
+    owners = [line.split() for line in Path("/proc/locks").read_text().splitlines()]
+    matching = [fields for fields in owners if
+                len(fields) >= 6
+                and fields[1:4] == ["FLOCK", "ADVISORY", "WRITE"]
+                and fields[4] == str(owned_pid)
+                and fields[5].split(":")[-1] == str(inode)]
+    if len(matching) != 1 or scratch.joinpath("starts.log").read_text().splitlines() != [str(owned_pid)]:
+        raise RuntimeError("STOP: kernel flock and actual worker PID disagree")
+    checkpoint = autostart.assess_single_peer_migration_checkpoint(
+        preview=plan, phase="before_exclusion", observed_crontab=read_crontab(),
+        observed_unit_contents=None, unit_enabled=False, unit_active=False,
+        main_pid=0, role_lock_active=True, new_function_ack=False,
+    )
+    if checkpoint.consistent or checkpoint.reason_code != "worker_or_lock_drift":
+        raise RuntimeError("STOP: live old cron worker did not block migration")
+    double = subprocess.run(
+        [str(exe), "--config-dir", str(private), "autostart", "cron-run", "github-watcher"],
+        capture_output=True, text=True, timeout=10, check=False,
+    )
+    if double.returncode or scratch.joinpath("starts.log").read_text().splitlines() != [str(owned_pid)]:
+        raise RuntimeError("STOP: duplicate runner bypassed flock")
+    print(f"M3_REAL_CRON_MINUTE_OWNER=PASS pid={owned_pid} second={second}", flush=True)
+    print("M3_REAL_CRON_LOCK_WAIT_AND_SECOND_EXEC_DENIED=PASS", flush=True)
+finally:
+    if read_crontab() == original:
+        cron_command("-r")
+    if owned_pid is not None:
+        try:
+            process_fd = os.pidfd_open(owned_pid)
+        except ProcessLookupError:
+            process_fd = None
+        try:
+            os.kill(owned_pid, signal.SIGTERM)
+        except ProcessLookupError:
+            pass
+        if process_fd is not None:
+            try:
+                if not select.select([process_fd], [], [], 12)[0]:
+                    raise RuntimeError("STOP: exact synthetic worker did not stop")
+            finally:
+                os.close(process_fd)
+    os.close(fd)
+    fifo.unlink(missing_ok=True)
+    if component_active(private, "github-watcher"):
+        raise RuntimeError("STOP: cron lock still owned after exact test cleanup")
+    scratch.joinpath("starts.log").unlink(missing_ok=True)
+PY_MINUTE_OWNER
+  [[ "$(crontab -l 2>/dev/null || :)" == "" && ! -e "$peer_log" ]]
+  test_crontab_owned=false
+fi
+
+# Geen bestaande, mogelijk vreemde unit overnemen of verwijderen. De
+# dynamisch gegenereerde service blijft static en uitsluitend test-owned.
+candidate_target="$unit_dir/runner-mcp-github-watcher.service"
+if [[ -e "$candidate_target" || -L "$candidate_target" ]]; then
+  echo "STOP: disposable peer target already belongs to another owner" >&2
+  exit 1
+fi
+peer_unit="runner-mcp-github-watcher.service"
+peer_target="$candidate_target"
+"$peer_venv/bin/python" - "$peer_exe" "$peer_private" "$peer_target" <<'PY_GENERATE'
+from pathlib import Path
+import sys
+from runner_mcp import autostart
+
+executable, config, target = map(Path, sys.argv[1:])
+autostart.configured_autostart_components = lambda _path: (
+    "server", "github-watcher",
+)
+name, candidate = autostart.render_inactive_cron_server_peer_unit(
+    config_dir=config, executable=executable, component="github-watcher",
+)
+assert name == target.name
+assert '"autostart" "cron-run" "github-watcher"' in candidate
+assert "Requires=runner-mcp.service" not in candidate
+assert "[Install]" not in candidate
+assert candidate.count("ExecStart=") == 1
+target.write_text(candidate, encoding="utf-8")
+PY_GENERATE
+# Houd exact de gegenereerde kandidaatbytes uitsluitend op de testhost vast.
+# Na de positieve herstelproef gebruiken we ze voor een tweede negatieve
+# omschakeling, zonder een nieuw unittemplate of productiemanager te maken.
+cp -- "$peer_target" "$peer_work/peer-unit.template"
+systemctl --user daemon-reload
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+
+# Zet nu OOK de zes onschuldige cronregels werkelijk terug: de integratieproef
+# combineert exact crontab-behoud met de werkelijk gegenereerde lockende peer.
+# Geen van deze zes testrollen voert software of netwerkverzoeken uit.
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+
+# Oude cron-wrapper simuleren met dezelfde echte flock/execv-broncode.
+"$peer_exe" --config-dir "$peer_private" autostart cron-run github-watcher &
+peer_old_pid=$!
+for _ in {1..60}; do
+  [[ -f "$peer_log" ]] && break
+  kill -0 "$peer_old_pid"
+  sleep 0.1
+done
+[[ -f "$peer_log" ]]
+[[ "$(grep -c '^' "$peer_log")" == 1 ]]
+"$peer_venv/bin/python" - "$peer_private" <<'PY_LOCKED'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert component_active(Path(sys.argv[1]), "github-watcher")
+PY_LOCKED
+
+# De daadwerkelijke kandidaat kan met bezette oude lock GEEN tweede worker
+# aanmaken. Een status 'inactive' is GEEN geslaagde cutover.
+systemctl --user start "$peer_unit"
+for _ in {1..60}; do
+  [[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]] && break
+  sleep 0.1
+done
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ "$(grep -c '^' "$peer_log")" == 1 ]]
+kill -0 "$peer_old_pid"
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+
+# Na bewezen einde van de oorspronkelijke process/lock-generatie mag de
+# exacte statische test-unit wel één nieuwe rol starten.
+systemctl --user stop "$peer_unit"
+# Exact één cronregel wordt verwijderd; alle andere vijf en de vreemde
+# cronregel blijven bestaan, voordat de oude worker wordt vrijgegeven.
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 5 ]]
+kill "$peer_old_pid"
+wait "$peer_old_pid" >/dev/null 2>&1 || true
+peer_old_pid=""
+"$peer_venv/bin/python" - "$peer_private" <<'PY_UNLOCKED'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert not component_active(Path(sys.argv[1]), "github-watcher")
+PY_UNLOCKED
+systemctl --user start "$peer_unit"
+for _ in {1..60}; do
+  if [[ -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 2 ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+[[ "$(systemctl --user is-active "$peer_unit")" == "active" ]]
+peer_new_pid="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+[[ "$peer_new_pid" =~ ^[1-9][0-9]*$ ]]
+[[ "$peer_new_pid" == "$(tail -n 1 "$peer_log")" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+
+# Stop en controleer het werkelijk vrijgeven van de oude, hergebruikte lock;
+# laat de bestaande originele zes-cronregelsproef en output onaangeroerd.
+systemctl --user stop "$peer_unit"
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+"$peer_venv/bin/python" - "$peer_private" <<'PY_FINAL'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert not component_active(Path(sys.argv[1]), "github-watcher")
+PY_FINAL
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+
+# Bij afwijzing van de functionele canary: eerst de rol stoppen, dan het
+# test-owned unitbestand en de managercache verwijderen, dan exact het oude
+# crontab herstellen. Zo kan een managed-marker de cron-reconciler niet hinderen.
+rm -- "$peer_target"
+systemctl --user daemon-reload
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+crontab -r
+test_crontab_owned=false
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+
+# NEGATIEVE M3-bronproef: na de eenrols-cronuitsluiting faalt de werkelijk
+# gerenderde systemd-kandidaat omdat uitsluitend de TEST-launcher niet meer
+# uitvoerbaar is. We mogen dan geen lopende nieuwe rol of fictieve ACK zien.
+# De rollback verwijdert eerst de test-unit en herstelt daarna de volledige
+# oorspronkelijke crontab, inclusief de vreemde regel. Geen live hostactie.
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+install -m 0600 -- "$peer_work/peer-unit.template" "$peer_target"
+cmp -s "$peer_work/peer-unit.template" "$peer_target"
+systemctl --user daemon-reload
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "static" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 5 ]]
+chmod 000 "$peer_exe"
+systemctl --user start "$peer_unit" >/dev/null 2>&1 || true
+for _ in {1..60}; do
+  if [[ "$(systemctl --user show "$peer_unit" --property=Result --value)" == "exit-code" ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(systemctl --user show "$peer_unit" --property=Result --value)" == "exit-code" ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+systemctl --user stop "$peer_unit"
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+rm -- "$peer_target"
+systemctl --user daemon-reload
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+chmod 0700 "$peer_exe"
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(grep -c '^' "$peer_log")" == 2 ]]
+crontab -r
+test_crontab_owned=false
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+# M3 opstartbestendigheid, ook met precies één overgezette rol:
+# de bronrenderer is DEZELFDE cron-geflockte eenrolsunit, nu alleen met de
+# enablebare installhaak. Op de disposable host wordt na exclusieve
+# cronuitsluiting één service gestart, de user-manager echt herstart, en
+# pas daarna de originele crontab exact hersteld. Geen fysieke hostreboot.
+"$peer_venv/bin/python" - "$peer_exe" "$peer_private" "$peer_target" <<'PY_BOOT'
+from pathlib import Path
+import sys
+from runner_mcp import autostart
+
+executable, config, target = map(Path, sys.argv[1:])
+autostart.configured_autostart_components = lambda _path: (
+    "server", "github-watcher",
+)
+static_name, static = autostart.render_inactive_cron_server_peer_unit(
+    config_dir=config, executable=executable, component="github-watcher",
+)
+boot_name, candidate = autostart.render_boot_candidate_cron_peer_unit(
+    config_dir=config, executable=executable, component="github-watcher",
+)
+assert boot_name == static_name == target.name
+assert candidate == static + "\n[Install]\nWantedBy=default.target\n"
+assert ' "autostart" "cron-run" "github-watcher"' in candidate
+assert "Requires=runner-mcp.service" not in candidate
+target.write_text(candidate, encoding="utf-8")
+PY_BOOT
+systemctl --user daemon-reload
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "disabled" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+test_crontab_owned=true
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+printf '%s\n' "$candidate_five_cron" | crontab -
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 5 ]]
+systemctl --user enable --now "$peer_unit"
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "enabled" ]]
+boot_link="$unit_dir/default.target.wants/$peer_unit"
+[[ -L "$boot_link" ]]
+[[ "$(readlink "$boot_link")" == "$peer_target" ]]
+for _ in {1..60}; do
+  if [[ -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 3 ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(grep -c '^' "$peer_log")" == 3 ]]
+[[ "$(systemctl --user is-active "$peer_unit")" == "active" ]]
+boot_pid_before="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+[[ "$boot_pid_before" == "$(tail -n 1 "$peer_log")" ]]
+manager_before="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+[[ "$manager_before" =~ ^[1-9][0-9]*$ ]]
+# De testhost herstart alleen haar EIGEN user-manager, nooit PID1 of de
+# originele github-runner. De enable-link moet opnieuw een werkende rol starten.
+sudo systemctl restart "user@${uid}.service"
+boot_recovered=false
+for _ in {1..30}; do
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    manager_after="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+    boot_pid_after="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+    if [[ "$manager_after" =~ ^[1-9][0-9]*$ && "$manager_after" != "$manager_before" && "$boot_pid_after" =~ ^[1-9][0-9]*$ && "$boot_pid_after" != "$boot_pid_before" && "$(systemctl --user is-active "$peer_unit")" == "active" && -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 4 ]]; then
+      boot_recovered=true
+      break
+    fi
+  fi
+  sleep 1
+done
+[[ "$boot_recovered" == true ]]
+[[ "$(tail -n 1 "$peer_log")" == "$boot_pid_after" ]]
+[[ -L "$boot_link" && "$(readlink "$boot_link")" == "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "enabled" ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+
+# M3 NEGATIEF: na de BEWEZEN managerherstart gaat juist de enabled
+# testrol stuk. Maak uitsluitend de tijdelijke nep-CLI onuitvoerbaar en
+# dood enkel de exact uit systemd afgeleide test-MainPID. De echte unit
+# probeert dan de bestaande Restart=on-failure-route, maar mag nooit
+# een tweede taakrecord produceren of cron ongemerkt veranderen.
+chmod 000 "$peer_exe"
+kill -KILL "$boot_pid_after"
+boot_restart_failed=false
+for _ in {1..120}; do
+  if [[ "$(systemctl --user show "$peer_unit" --property=Result --value)" == "exit-code" && "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]; then
+    boot_restart_failed=true
+    break
+  fi
+  sleep 0.1
+done
+[[ "$boot_restart_failed" == true ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(grep -c '^' "$peer_log")" == 4 ]]
+[[ "$(crontab -l)" == "$candidate_five_cron" ]]
+[[ -L "$boot_link" && "$(readlink "$boot_link")" == "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == "enabled" ]]
+
+# In omgekeerde richting eerst de enable-link en actieve nieuwe rol
+# verwijderen; pas als de oude cronlock vrij is, de zes regels terugzetten.
+systemctl --user disable --now "$peer_unit"
+# Ook bij een voortdurend mislukte auto-restart mag geen unit herstarten.
+chmod 0700 "$peer_exe"
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ "$(systemctl --user is-enabled "$peer_unit" 2>/dev/null || :)" != "enabled" ]]
+[[ ! -L "$boot_link" ]]
+"$peer_venv/bin/python" - "$peer_private" <<'PY_BOOT_UNLOCKED'
+from pathlib import Path
+import sys
+from runner_mcp.cron_autostart import component_active
+assert not component_active(Path(sys.argv[1]), "github-watcher")
+PY_BOOT_UNLOCKED
+rm -- "$peer_target"
+systemctl --user daemon-reload
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+printf '%s\n' "$original_six_cron" | crontab -
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(grep -c '^' "$peer_log")" == 4 ]]
+
+# Rollback moet ook EEN TWEEDE user-manager-herstart overleven. Na stop,
+# disable, lockvrijgave, delete en exact cronherstel is een later start-
+# signaal van de oude enabled-unit verboden. Alleen op de disposable host.
+rollback_manager_before="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+[[ "$rollback_manager_before" =~ ^[1-9][0-9]*$ ]]
+sudo systemctl restart "user@${uid}.service"
+rollback_manager_recovered=false
+for _ in {1..30}; do
+  if systemctl --user show-environment >/dev/null 2>&1; then
+    rollback_manager_after="$(systemctl show "user@${uid}.service" --property=MainPID --value)"
+    if [[ "$rollback_manager_after" =~ ^[1-9][0-9]*$ && "$rollback_manager_after" != "$rollback_manager_before" ]]; then
+      rollback_manager_recovered=true
+      break
+    fi
+  fi
+  sleep 1
+done
+[[ "$rollback_manager_recovered" == true ]]
+[[ ! -e "$peer_target" && ! -L "$peer_target" && ! -L "$boot_link" ]]
+[[ "$(systemctl --user is-active "$peer_unit" 2>/dev/null || :)" != "active" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit" 2>/dev/null || :)" != "enabled" ]]
+[[ "$(crontab -l)" == "$original_six_cron" ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -c '# testrole:')" == 6 ]]
+[[ "$(printf '%s\n' "$(crontab -l)" | grep -Fxc '17 * * * * /usr/bin/true # test-foreign-job')" == 1 ]]
+[[ "$(grep -c '^' "$peer_log")" == 4 ]]
+crontab -r
+test_crontab_owned=false
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+# M3 brongekoppelde proef: beoordeel voor het eerst de ECHTE door de
+# Runner-MCP-renderers geproduceerde ZES cronregels (niet de eerdere inert
+# gelabelde fixtures), de bootbare unit én ALLE fase-checkpoints tegen de
+# werkelijke disposable crontab/systemd-manager. Ook bij mislukking ruimt de
+# bestaande EXIT-trap uitsluitend zelfgemaakte testassets op.
+# Dit is geen fysieke origineel-hostactuatie en geen echte Fabric-ACK.
+phase_script="$peer_work/phase-checkpoint-disposable.py"
+cat >"$phase_script" <<'PY_PHASE_CHECKPOINT'
+"""Exact source-bound M3 phase checks on this guarded disposable CI user."""
+from __future__ import annotations
+
+import hashlib
+import os
+import stat
+import subprocess
+import sys
+from pathlib import Path
+
+from runner_mcp import autostart
+from runner_mcp.cron_autostart import (
+    component_active,
+    read_crontab,
+    render_cron_block,
+    cron_status,
+)
+
+mode = sys.argv[1]
+scratch, executable, config, unit = map(Path, sys.argv[2:6])
+role = "github-watcher"
+roles = (
+    "server", "topology-heartbeat", "github-watcher",
+    "completion-watcher", "agent-bus-worker",
+    "fabric-agent-qualification",
+)
+autostart.configured_autostart_components = lambda _path: roles
+original_file = scratch / "source-original.cron"
+candidate_file = scratch / "source-candidate.cron"
+boot_file = scratch / "source-boot-unit.txt"
+if mode == "prepare":
+    original = "17 * * * * /usr/bin/true # test-foreign-job\n\n" + "\n".join(
+        render_cron_block(
+            executable=executable, config_dir=config,
+            components=roles, port=8000,
+        )
+    ) + "\n"
+    original_file.write_text(original, encoding="utf-8")
+else:
+    original = original_file.read_text(encoding="utf-8")
+preflight = autostart.AutostartMigrationPlan(
+    component=role, state="PLAN_ONLY",
+    reason_code="original_host_and_rollback_not_attested",
+    cron_installed=True, systemd_manager_reachable=True,
+    systemd_units_absent=True,
+)
+if mode in (
+    "peer_failed_idle", "peer_disabled_idle", "recover_failed_peer",
+    "recover_failed_peer_pause", "recover_disabled_peer",
+    "recover_disabled_peer_pause_unlinked", "rollback_ready",
+    "recover_ready_to_restore", "recover_ready_to_restore_injected_drift",
+):
+    # De test-executable is met opzet stuk. Herstel mag nooit opnieuw
+    # afhankelijk zijn van het kunnen uitvoeren van die kapotte kandidaat.
+    # Gebruik uitsluitend de eerder door de bronrenderer vastgelegde
+    # rollback-, kandidaat- en unitbytes uit deze disposable testfixture.
+    pinned_boot = boot_file.read_text(encoding="utf-8")
+    suffix = "\n[Install]\nWantedBy=default.target\n"
+    assert pinned_boot.endswith(suffix)
+    plan = autostart.SinglePeerSystemdMigrationPreview(
+        component=role, original_crontab=original,
+        candidate_crontab=candidate_file.read_text(encoding="utf-8"),
+        rollback_crontab_sha256=hashlib.sha256(original.encode("utf-8")).hexdigest(),
+        inactive_unit_name=unit.name,
+        inactive_unit_contents=pinned_boot.removesuffix(suffix),
+        boot_unit_contents=pinned_boot,
+    )
+else:
+    plan = autostart.plan_single_peer_systemd_migration(
+        preflight=preflight, original_crontab=original,
+        executable=executable, config_dir=config,
+        components=roles, component=role,
+    )
+assert plan.cutover_authorized is False
+assert plan.inactive_unit_name == unit.name
+if mode == "prepare":
+    assert not unit.exists() and not unit.is_symlink()
+    candidate_file.write_text(plan.candidate_crontab, encoding="utf-8")
+    boot_file.write_text(plan.boot_unit_contents, encoding="utf-8")
+    assert plan.original_crontab.count("autostart cron-run") == 6
+    assert plan.candidate_crontab.count("autostart cron-run") == 5
+    raise SystemExit(0)
+
+assert plan.candidate_crontab == candidate_file.read_text(encoding="utf-8")
+assert plan.boot_unit_contents == boot_file.read_text(encoding="utf-8")
+observed_unit = unit.read_text(encoding="utf-8") if unit.is_file() else None
+if observed_unit is None:
+    enabled = active = False
+    pid = 0
+else:
+    def show(*args: str) -> str:
+        return subprocess.run(
+            ["systemctl", "--user", *args],
+            capture_output=True, text=True, timeout=10, check=False,
+        ).stdout.strip()
+    enabled = show("is-enabled", unit.name) == "enabled"
+    active = show("is-active", unit.name) == "active"
+    raw_pid = show("show", unit.name, "--property=MainPID", "--value")
+    assert raw_pid.isdecimal()
+    pid = int(raw_pid)
+lock_active = component_active(config, role)
+log = executable.parent / "starts.log"
+records = log.read_text(encoding="utf-8").splitlines() if log.exists() else []
+new_ack = False
+if mode == "new_worker_ack":
+    # Synthetic durable job receipt, NOT a real Fabric app ACK.
+    assert len(records) == 5 and pid == int(records[-1])
+    new_ack = True
+# Echte, begrensde herstelacties blijven test-only binnen de bestaande
+# GitHub-hosted disposable CI-gate. Geen nieuw productiemechanisme/CLI.
+if mode in (
+    "recover_failed_peer", "recover_failed_peer_pause",
+    "recover_disabled_peer", "recover_disabled_peer_pause_unlinked",
+):
+    # Ook na een onverwachte onderbreking na disable blijft deze route
+    # test-only en bindt zij opnieuw het vastgepinde unit-/cron-/hostbewijs.
+    resuming_after_disable = mode in (
+        "recover_disabled_peer", "recover_disabled_peer_pause_unlinked",
+    )
+    observed_phase = "peer_disabled_idle" if resuming_after_disable else "peer_failed_idle"
+    expected_step = (
+        "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK" if resuming_after_disable
+        else "DISABLE_FAILED_PEER_THEN_RECHECK"
+    )
+    root = os.environ.get("RUNNER_TEMP")
+    expected_unit = Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service"
+    if (
+        os.environ.get("GITHUB_ACTIONS") != "true"
+        or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+        or os.geteuid() == 0
+        or not root
+        or not scratch.resolve().is_relative_to(Path(root).resolve())
+        or unit != expected_unit
+        or unit.parent.is_symlink()
+        or unit.is_symlink()
+        or not unit.is_file()
+    ):
+        raise RuntimeError("STOP: original-host or unit identity not disposable")
+    identity = unit.stat()
+    if (
+        identity.st_uid != os.getuid()
+        or not stat.S_ISREG(identity.st_mode)
+        or stat.S_IMODE(identity.st_mode) != 0o600
+        or identity.st_nlink != 1
+    ):
+        raise RuntimeError("STOP: unit inode or owner is not qualified")
+    if unit.read_text(encoding="utf-8") != plan.boot_unit_contents:
+        raise RuntimeError("STOP: installed unit source mismatch")
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: foreign or managed cron drift")
+    if enabled == resuming_after_disable or active or pid != 0 or lock_active:
+        raise RuntimeError("STOP: selected worker state is not the pinned recovery phase")
+    if len(records) != 5:
+        raise RuntimeError("STOP: synthetic work receipt count drift")
+    before = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase=observed_phase,
+        observed_crontab=read_crontab(),
+        observed_unit_contents=observed_unit,
+        unit_enabled=enabled, unit_active=active, main_pid=pid,
+        role_lock_active=lock_active, new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not before.consistent
+        or before.proposed_step != expected_step
+        or before.action_authorized
+    ):
+        raise RuntimeError("STOP: mixed-mode failure checkpoint unqualified")
+
+    def required_command(*argv: str, input_text: str | None = None) -> None:
+        completed = subprocess.run(
+            list(argv), input=input_text, text=True,
+            capture_output=True, timeout=30, check=False,
+        )
+        if completed.returncode != 0:
+            raise RuntimeError("STOP: disposable recovery command failed")
+
+    # Testuitvoerder handelt alléén na expliciete test-only identiteit,
+    # geverifieerde volle cronbytes en afwezige PID/lock/ACK. De planner
+    # blijft in het echte product NIET-geautoriseerd.
+    if not resuming_after_disable:
+        required_command("systemctl", "--user", "disable", "--now", unit.name)
+    if show("is-enabled", unit.name) != "disabled":
+        raise RuntimeError("STOP: selected unit remained enabled")
+    if show("is-active", unit.name) == "active":
+        raise RuntimeError("STOP: selected unit remained active")
+    if show("show", unit.name, "--property=MainPID", "--value") != "0":
+        raise RuntimeError("STOP: selected unit MainPID did not reach zero")
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: foreign or managed cron drift")
+    if component_active(config, role):
+        raise RuntimeError("STOP: selected role lock is still occupied")
+    if unit.read_text(encoding="utf-8") != plan.boot_unit_contents:
+        raise RuntimeError("STOP: installed unit source mismatch")
+    if unit.stat().st_ino != identity.st_ino:
+        raise RuntimeError("STOP: unit inode changed before unlink")
+    if mode == "recover_failed_peer_pause":
+        # Simuleer procesverlies precies na de geïsoleerde disable: unit en
+        # vijfrollen-cron blijven bestaan. Herstart in aparte Python-aanroep.
+        print("M3_DISPOSABLE_INTERRUPTED_AFTER_DISABLE_CHECKPOINT=PASS")
+        raise SystemExit(0)
+    unit.unlink()
+    required_command("systemctl", "--user", "daemon-reload")
+    if unit.exists() or unit.is_symlink():
+        raise RuntimeError("STOP: selected unit was not removed")
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: foreign or managed cron drift")
+    if show("is-active", unit.name) == "active":
+        raise RuntimeError("STOP: selected unit remained active")
+    if component_active(config, role):
+        raise RuntimeError("STOP: selected role lock is still occupied")
+    ready = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_ready",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None, unit_enabled=False,
+        unit_active=False, main_pid=0, role_lock_active=False,
+        new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not ready.consistent
+        or ready.proposed_step != "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK"
+        or ready.action_authorized
+    ):
+        raise RuntimeError("STOP: one-role cron restore is unqualified")
+    if mode == "recover_disabled_peer_pause_unlinked":
+        # Een ECHTE andere procesaanroep neemt het herstel later over
+        # nadat de eigen test-unit verwijderd is, maar vóór crontab -.
+        print("M3_DISPOSABLE_INTERRUPTED_AFTER_UNIT_REMOVAL=PASS")
+        raise SystemExit(0)
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: cron changed after rollback-ready inspection")
+    required_command("crontab", "-", input_text=plan.original_crontab)
+    if read_crontab() != plan.original_crontab:
+        raise RuntimeError("STOP: full original cron bytes not restored")
+    if component_active(config, role):
+        raise RuntimeError("STOP: selected role lock is still occupied")
+    complete = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_confirmed",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None, unit_enabled=False,
+        unit_active=False, main_pid=0, role_lock_active=False,
+        new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if not complete.consistent or complete.proposed_step != "NO_ACTION_ALREADY_RESTORED":
+        raise RuntimeError("STOP: rollback checkpoint not confirmed")
+    if complete.action_authorized:
+        raise RuntimeError("STOP: unplanned activation authority")
+    if plan.original_crontab.count("autostart cron-run") != 6:
+        raise RuntimeError("STOP: original cron role count changed")
+    if read_crontab().count("17 * * * * /usr/bin/true # test-foreign-job") != 1:
+        raise RuntimeError("STOP: unrelated cron entry changed")
+    if len(records) != 5:
+        raise RuntimeError("STOP: synthetic work receipt count drift")
+    print("M3_DISPOSABLE_BOUNDED_SINGLE_ROLE_EXECUTOR_EXACT_ROLLBACK=PASS")
+    raise SystemExit(0)
+
+# Test-only herstel na een TWEEDE mogelijke onderbreking: unit is al
+# verwijderd, de vijfrollen-cron bestaat nog en de eerste herstelactuator
+# heeft géén crontab - geschreven. Geen productie-CLI of automatische
+# overschrijving bij een onverwachte vreemde cronmutatie.
+if mode in ("recover_ready_to_restore", "recover_ready_to_restore_injected_drift"):
+    root = os.environ.get("RUNNER_TEMP")
+    expected_unit = Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service"
+    if (
+        os.environ.get("GITHUB_ACTIONS") != "true"
+        or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+        or os.geteuid() == 0
+        or not root
+        or not scratch.resolve().is_relative_to(Path(root).resolve())
+        or unit != expected_unit
+        or unit.parent.is_symlink()
+        or unit.exists()
+        or unit.is_symlink()
+        or observed_unit is not None
+        or enabled or active or pid != 0
+        or lock_active or new_ack
+        or len(records) != 5
+        or read_crontab() != plan.candidate_crontab
+    ):
+        raise RuntimeError("STOP: disposable rollback-ready state is unqualified")
+    advice = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_ready",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not advice.consistent
+        or advice.proposed_step != "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK"
+        or advice.action_authorized
+        or advice.rollback_sha256 != plan.rollback_crontab_sha256
+    ):
+        raise RuntimeError("STOP: rollback-ready readback and exact source disagree")
+
+    if mode == "recover_ready_to_restore_injected_drift":
+        # Bewuste CI-interleaving NADAT de planner de originele bron zag:
+        # een andere actor wijzigt één niet-beheerde cronregel. De laatste
+        # readback moet dit afwijzen vóór de oude crontab wordt geschreven.
+        drift = (scratch / "source-candidate-foreign-drift.cron").read_text(
+            encoding="utf-8",
+        )
+        if drift == plan.candidate_crontab or "deliberately-drifted-foreign-job" not in drift:
+            raise RuntimeError("STOP: synthetic third-party cron drift is not pinned")
+        changed = subprocess.run(
+            ["crontab", "-"], input=drift, text=True,
+            capture_output=True, timeout=30, check=False,
+        )
+        if changed.returncode != 0:
+            raise RuntimeError("STOP: synthetic third-party cron edit failed")
+
+    # Deze tweede readback sluit de EXPLICIET geteste pauze af. Het is
+    # géén atomair compare-and-swap: concurrente echte writers tussen
+    # readback en crontab - blijven een fysieke M3 STOP-voorwaarde.
+    if read_crontab() != plan.candidate_crontab:
+        raise RuntimeError("STOP: stale rollback-ready snapshot, preserve foreign edit")
+    if unit.exists() or unit.is_symlink() or component_active(config, role):
+        raise RuntimeError("STOP: selected peer returned before cron restore")
+    restored = subprocess.run(
+        ["crontab", "-"], input=plan.original_crontab,
+        text=True, capture_output=True, timeout=30, check=False,
+    )
+    if restored.returncode != 0 or read_crontab() != plan.original_crontab:
+        raise RuntimeError("STOP: restarted exact full crontab restore failed")
+    complete = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase="rollback_confirmed",
+        observed_crontab=read_crontab(),
+        observed_unit_contents=None,
+        unit_enabled=False, unit_active=False, main_pid=0,
+        role_lock_active=False, new_function_ack=False,
+        cron_rows=tuple(cron_status(
+            config_dir=config, components=roles, executable=executable,
+        )),
+        systemd_rows=tuple(autostart.user_service_status(unit_dir=unit.parent)),
+    )
+    if (
+        not complete.consistent
+        or complete.proposed_step != "NO_ACTION_ALREADY_RESTORED"
+        or complete.action_authorized
+        or len(records) != 5
+    ):
+        raise RuntimeError("STOP: resumed rollback was not independently confirmed")
+    print("M3_DISPOSABLE_UNLINKED_UNIT_RESTARTED_EXACT_CRON_ROLLBACK=PASS")
+    raise SystemExit(0)
+
+result = autostart.assess_single_peer_migration_checkpoint(
+    preview=plan, phase=mode, observed_crontab=read_crontab(),
+    observed_unit_contents=observed_unit,
+    unit_enabled=enabled, unit_active=active, main_pid=pid,
+    role_lock_active=lock_active, new_function_ack=new_ack,
+)
+assert result.consistent is True, result.reason_code
+assert result.next_action_authorized is False
+
+# Dezelfde ECHTE disposable crontab- en systemd-status zijn invoer van het
+# nieuwe rolgebonden herstelvoorstel. De functie mag niets uitvoeren.
+if mode in ("staged_inactive", "new_worker_ack", "peer_failed_idle",
+            "peer_disabled_idle", "rollback_ready", "rollback_confirmed"):
+    cron_rows = tuple(cron_status(
+        config_dir=config, components=roles, executable=executable,
+    ))
+    systemd_rows = tuple(autostart.user_service_status(unit_dir=unit.parent))
+    advice = autostart.propose_single_peer_reconciliation(
+        preview=plan, phase=mode, observed_crontab=read_crontab(),
+        observed_unit_contents=observed_unit, unit_enabled=enabled,
+        unit_active=active, main_pid=pid, role_lock_active=lock_active,
+        new_function_ack=new_ack,
+        cron_rows=cron_rows, systemd_rows=systemd_rows,
+    )
+    expected_step = {
+        "staged_inactive": "REMOVE_EXACT_INACTIVE_PEER_THEN_RECHECK",
+        "new_worker_ack": "KEEP_PEER_NO_GENERIC_RECONCILE",
+        "peer_failed_idle": "DISABLE_FAILED_PEER_THEN_RECHECK",
+        "peer_disabled_idle": "REMOVE_EXACT_DISABLED_PEER_THEN_RECHECK",
+        "rollback_ready": "RESTORE_EXACT_ORIGINAL_CRONTAB_THEN_RECHECK",
+        "rollback_confirmed": "NO_ACTION_ALREADY_RESTORED",
+    }[mode]
+    assert advice.consistent is True, advice.reason_code
+    assert advice.proposed_step == expected_step
+    assert advice.action_authorized is False
+    assert advice.rollback_sha256 == plan.rollback_crontab_sha256
+    if mode == "new_worker_ack":
+        # Een actief unitproces zonder actueel functioneel ACK is geen PASS.
+        rejected = autostart.propose_single_peer_reconciliation(
+            preview=plan, phase=mode, observed_crontab=read_crontab(),
+            observed_unit_contents=observed_unit, unit_enabled=enabled,
+            unit_active=active, main_pid=pid, role_lock_active=lock_active,
+            new_function_ack=False,
+            cron_rows=cron_rows, systemd_rows=systemd_rows,
+        )
+        assert rejected.consistent is False
+        assert rejected.proposed_step == "STOP_UNQUALIFIED"
+PY_PHASE_CHECKPOINT
+
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+"$peer_venv/bin/python" "$phase_script" prepare "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+crontab "$peer_work/source-original.cron"
+test_crontab_owned=true
+"$peer_venv/bin/python" "$phase_script" before_exclusion "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+crontab "$peer_work/source-candidate.cron"
+"$peer_venv/bin/python" "$phase_script" ready_to_stage "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+
+# Stage alleen exact de berekende testunit NA de brongecontroleerde
+# cronuitsluiting. De vijf overige echte test-cronregels blijven aanwezig.
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+install -m 0600 -- "$peer_work/source-boot-unit.txt" "$peer_target"
+systemctl --user daemon-reload
+"$peer_venv/bin/python" "$phase_script" staged_inactive "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Naast zuivere unit-tests ook de echte, niet-muterende operator-CLI
+# beoordelen met de nu aanwezige vijf cronrollen en precies één echte
+# bron-gerenderde user-unit. De test injecteert uitsluitend het exacte
+# test-executablepad voor deze disposable venv; de CLI neemt zelf zijn
+# werkelijke crontab en systemd-user-inventaris waar.
+"$peer_venv/bin/python" - "$peer_private" "$peer_exe" "$peer_target" <<'PY_MIXED_STATUS_CLI'
+"""Echte mixed-backend CLI-inventaris: read-only, nonzero en geen rollback."""
+from __future__ import annotations
+
+import contextlib
+import io
+import os
+import subprocess
+import sys
+from pathlib import Path
+
+from runner_mcp import cli
+from runner_mcp.cron_autostart import cron_status as real_cron_status, read_crontab
+
+config, executable, unit = map(Path, sys.argv[1:])
+root = os.environ.get("RUNNER_TEMP")
+expected = Path.home() / ".config/systemd/user/runner-mcp-github-watcher.service"
+if (
+    os.environ.get("GITHUB_ACTIONS") != "true"
+    or os.environ.get("RUNNER_ENVIRONMENT") != "github-hosted"
+    or os.geteuid() == 0
+    or not root
+    or not config.resolve().is_relative_to(Path(root).resolve())
+    or unit != expected
+    or unit.is_symlink()
+    or not unit.is_file()
+):
+    raise RuntimeError("STOP: mixed CLI probe is not disposable or unit-bound")
+cron_before = read_crontab()
+unit_before = unit.read_bytes()
+systemd_before = subprocess.run(
+    ["systemctl", "--user", "is-enabled", unit.name],
+    capture_output=True, text=True, check=False, timeout=10,
+)
+roles = (
+    "server", "topology-heartbeat", "github-watcher",
+    "completion-watcher", "agent-bus-worker", "fabric-agent-qualification",
+)
+# The fixture executable differs from the venv-installed CLI wrapper.
+# Keep the real parser and actual cron inspection, but bind its expected
+# executable to the already checked synthetic candidate.
+cli.configured_autostart_components = lambda _config: roles
+cli.cron_status = lambda **kwargs: real_cron_status(
+    config_dir=kwargs["config_dir"],
+    components=kwargs["components"],
+    executable=executable,
+    port=kwargs.get("port"),
+)
+output, errors = io.StringIO(), io.StringIO()
+with contextlib.redirect_stdout(output), contextlib.redirect_stderr(errors):
+    result = cli.main([
+        "--config-dir", str(config), "autostart", "status",
+    ])
+lines = output.getvalue().splitlines()
+if (
+    result != 2
+    or errors.getvalue()
+    or not lines
+    or lines[0] != "backend: mixed-unqualified"
+    or "reason: multiple_managed_backends" not in lines
+    or "cron/server: installed=yes, enabled=yes, active=no" not in lines
+    or "cron/github-watcher: installed=no, enabled=no, active=no" not in lines
+    or "systemd-user/github-watcher: installed=yes, enabled=no, active=no" not in lines
+    or lines[-2:] != ["reconcile_authorized=no", "cutover_authorized=no"]
+    or str(config) in output.getvalue()
+):
+    raise RuntimeError("STOP: mixed CLI disclosed or qualified unsafe backend state")
+systemd_after = subprocess.run(
+    ["systemctl", "--user", "is-enabled", unit.name],
+    capture_output=True, text=True, check=False, timeout=10,
+)
+if (
+    read_crontab() != cron_before
+    or unit.read_bytes() != unit_before
+    or (systemd_after.returncode, systemd_after.stdout)
+       != (systemd_before.returncode, systemd_before.stdout)
+):
+    raise RuntimeError("STOP: read-only mixed CLI changed cron or systemd")
+print("M3_DISPOSABLE_REAL_MIXED_STATUS_CLI_NO_MUTATION=PASS")
+PY_MIXED_STATUS_CLI
+systemctl --user enable --now "$peer_unit"
+for _ in {1..80}; do
+  if [[ -f "$peer_log" && "$(grep -c '^' "$peer_log")" == 5 ]]; then break; fi
+  sleep 0.1
+done
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
+"$peer_venv/bin/python" "$phase_script" new_worker_ack "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Een gezonde peer mag NOOIT door de test-herstelactuator worden gestopt.
+if "$peer_venv/bin/python" "$phase_script" recover_failed_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: healthy peer was incorrectly eligible for rollback" >&2
+  exit 1
+fi
+[[ "$(systemctl --user is-active "$peer_unit")" == "active" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
+
+# Foutinjectie ALLEEN op eigen disposable nep-worker: het reeds gemeten
+# MainPID is precies de laatste geregistreerde teststart. Na exec-failure
+# blijft de unit enabled, maar de worker kan geen werkrecord/ACK toevoegen.
+# De nieuwe herstelplanner moet nu stop/disable voorstellen, nooit activeren.
+test_failed_old_pid="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+[[ "$test_failed_old_pid" =~ ^[1-9][0-9]*$ ]]
+[[ "$test_failed_old_pid" == "$(tail -n 1 "$peer_log")" ]]
+chmod 000 -- "$peer_exe"
+kill -KILL "$test_failed_old_pid"
+failed_peer_observed=false
+for _ in {1..120}; do
+  test_failed_pid="$(systemctl --user show "$peer_unit" --property=MainPID --value)"
+  test_failed_result="$(systemctl --user show "$peer_unit" --property=Result --value)"
+  if [[ "$test_failed_result" == exit-code && "$test_failed_pid" == 0 ]]; then
+    failed_peer_observed=true
+    break
+  fi
+  sleep 0.1
+done
+[[ "$failed_peer_observed" == true ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
+"$peer_venv/bin/python" "$phase_script" peer_failed_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Wijzig op de disposable CI-host één vreemde cronregel: de rolgebonden
+# herstelactuator MOET vóór iedere mutatie stoppen en niets verwijderen.
+sed 's/# test-foreign-job/# deliberately-drifted-foreign-job/' \
+  "$peer_work/source-candidate.cron" >"$peer_work/source-candidate-foreign-drift.cron"
+crontab "$peer_work/source-candidate-foreign-drift.cron"
+if "$peer_venv/bin/python" "$phase_script" recover_failed_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: foreign-cron drift was incorrectly accepted" >&2
+  exit 1
+fi
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate-foreign-drift.cron")" ]]
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == enabled ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+crontab "$peer_work/source-candidate.cron"
+"$peer_venv/bin/python" "$phase_script" peer_failed_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Simuleer een abrupte onderbreking na succesvolle disable, maar vóór het
+# verwijderen van de unit. Start een volledig NIEUW herstelproces met
+# opnieuw ingelezen crontab, unitbytes, PID, lock en user-managerstatus.
+"$peer_venv/bin/python" "$phase_script" recover_failed_peer_pause "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
+[[ "$(systemctl --user show "$peer_unit" --property=MainPID --value)" == 0 ]]
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+"$peer_venv/bin/python" "$phase_script" peer_disabled_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Negatieve eigendomstest op het UITSLUITEND eigen disposable unitbestand:
+# een symlinkwissel tijdens de onderbreking mag niet worden gevolgd of verwijderd.
+mv -- "$peer_target" "$peer_work/pinned-disabled-unit.tmp"
+ln -s -- "$peer_work/pinned-disabled-unit.tmp" "$peer_target"
+if "$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: resumed recovery followed a swapped symlink" >&2
+  exit 1
+fi
+[[ -L "$peer_target" && -f "$peer_work/pinned-disabled-unit.tmp" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+# Tijdens opzettelijke symlinkvervanging is systemctl is-enabled geen
+# stabiele bron voor de oorspronkelijke unit; toets pas na exact herstel.
+rm -- "$peer_target"
+mv -- "$peer_work/pinned-disabled-unit.tmp" "$peer_target"
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+cmp -s -- "$peer_work/source-boot-unit.txt" "$peer_target"
+[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
+"$peer_venv/bin/python" "$phase_script" peer_disabled_idle "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+# Een vreemde cronwijziging TIJDENS de onderbreking verbiedt ook het hervatten.
+# Geen unlink of cronwrite bij de geweigerde nieuwe procesgeneratie.
+crontab "$peer_work/source-candidate-foreign-drift.cron"
+if "$peer_venv/bin/python" "$phase_script" recover_disabled_peer "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: disabled-peer resume accepted foreign cron drift" >&2
+  exit 1
+fi
+[[ -f "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(systemctl --user is-enabled "$peer_unit")" == disabled ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate-foreign-drift.cron")" ]]
+crontab "$peer_work/source-candidate.cron"
+# Simuleer een nieuwe procescrash NA unit-unlink maar VÓÓR herstel van
+# alle cronrollen. Herneem in een onafhankelijk derde proces, waarbij
+# vreemde cronwijzigingen tussen planner en laatste pre-write readback
+# absoluut NIET met de oudere rollbackbytes mogen worden overschreven.
+"$peer_venv/bin/python" "$phase_script" recover_disabled_peer_pause_unlinked "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate.cron")" ]]
+"$peer_venv/bin/python" "$phase_script" rollback_ready "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+if "$peer_venv/bin/python" "$phase_script" recover_ready_to_restore_injected_drift "$peer_work" "$peer_exe" "$peer_private" "$peer_target" >/dev/null 2>&1; then
+  echo "STOP: stale rollback-ready readback overwrote a later foreign cron edit" >&2
+  exit 1
+fi
+[[ ! -e "$peer_target" && ! -L "$peer_target" ]]
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-candidate-foreign-drift.cron")" ]]
+crontab "$peer_work/source-candidate.cron"
+"$peer_venv/bin/python" "$phase_script" recover_ready_to_restore "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+chmod 0700 -- "$peer_exe"
+"$peer_venv/bin/python" "$phase_script" rollback_confirmed "$peer_work" "$peer_exe" "$peer_private" "$peer_target"
+[[ "$(crontab -l)" == "$(cat "$peer_work/source-original.cron")" ]]
+[[ "$(grep -c '^' "$peer_log")" == 5 ]]
+crontab -r
+test_crontab_owned=false
+[[ "$(crontab -l 2>/dev/null || :)" == "" ]]
+echo "M2_DISPOSABLE_SOURCE_RENDERED_SIX_ROLE_PHASE_CHECKPOINT_ROUNDTRIP=PASS"
+echo "M3_DISPOSABLE_ROLE_RECONCILE_PROPOSALS_SOURCE_READBACK=PASS"
+echo "M3_DISPOSABLE_FAILED_PEER_RECOVERY_PROPOSAL_AND_EXACT_CRON_ROLLBACK=PASS"
+echo "M3_DISPOSABLE_BOUNDED_EXECUTOR_FOREIGN_CRON_DRIFT_DENIED=PASS"
+echo "M3_DISPOSABLE_INTERRUPTED_DISABLE_RESUME_AND_EXACT_CRON_ROLLBACK=PASS"
+echo "M3_DISPOSABLE_RESUME_WITH_FOREIGN_CRON_DRIFT_DENIED=PASS"
+echo "M3_DISPOSABLE_DISABLED_PEER_SYMLINK_DRIFT_DENIED=PASS"
+echo "M3_DISPOSABLE_INTERRUPTED_AFTER_UNIT_REMOVAL_AND_RESUMED=PASS"
+echo "M3_DISPOSABLE_ROLLBACK_READY_INTERLEAVED_FOREIGN_CRON_EDIT_DENIED=PASS"
+echo "M3_DISPOSABLE_MIXED_CLI_DUAL_STATUS_AND_READONLY=PASS"
+
+echo "M2_DISPOSABLE_BOOT_PEER_CRASH_RESTART_FAIL_AND_PERSISTENT_CRON_ROLLBACK=PASS"
+echo "M2_DISPOSABLE_BOOTABLE_LOCKED_PEER_USER_MANAGER_RESTART_AND_ROLLBACK=PASS"
+echo "M2_DISPOSABLE_FAILED_EXEC_START_EXACT_CRON_ROLLBACK=PASS"
+echo "M2_DISPOSABLE_SIX_ROLE_RENDERED_PEER_EXCLUSIVE_SWITCH_AND_ROLLBACK=PASS"
+echo "M2_DISPOSABLE_REAL_RENDERED_PEER_AND_SHARED_CRON_LOCK=PASS"
+echo "M2_DISPOSABLE_ONE_OF_SIX_CRON_TO_SYSTEMD_AND_FULL_ROLLBACK=PASS"
 echo "M2_DISPOSABLE_CRON_TO_SYSTEMD_TO_CRON_ROUNDTRIP=PASS"
 echo "M2_DISPOSABLE_ACTUAL_SYSTEMD_RESTART_AND_UNIT_ROLLBACK=PASS"

@@ -1,3 +1,13 @@
+## 2026-11-22 — IIT / Infrastructure Inventory & Topology: nieuw eigenaarsbesluit binnen bestaand Facts-programma
+
+**CANONIEKE DETAILROADMAP:** [IIT_INFRASTRUCTURE_INVENTORY_TOPOLOGY.md](IIT_INFRASTRUCTURE_INVENTORY_TOPOLOGY.md). **Hoofdeigenaar: Runner-MCP [#950](https://github.com/Blacksp1d3r/runner-mcp/issues/950); eerste actieve end-to-end pilot: Runner-Fabric [#2084](https://github.com/Blacksp1d3r/Runner-Fabric/issues/2084) onder bestaande Facts-programma [#2062](https://github.com/Blacksp1d3r/Runner-Fabric/issues/2062).** Geen tweede project/framework/registry/agent of grote parallellisatie.
+
+**Besluit:** eigen private Git met JSON-declaratieprojecties, beperkte periodieke snapshots en betekenisvolle wijzigingen; bestaande AIfordable-declaratieve asset-autoriteit en Fabric topology-v1 blijven gerespecteerd. Runner-MCP verzamelt OS-native read-only facts; Linux via systemd (oneshot/timers), Windows via native API's/Windows planning; Sysmon Event ID 3 later uitsluitend na afzonderlijke expliciete toestemming. Bestaande uitgaande Agent Bus, F10 latest-facts cache en facts-readinterface hergebruiken. Geen NetBox/osquery/nieuwe centrale DB, geen per-heartbeat Git-commit, geen nieuwe inkomende poorten of dubbele updater. Ontwerp voor 1.000 hosts/100+ chats, bouw **eerst één echte host→ingest/cache→AI-read-pilot** en meet tijdswinst. Declaratief/OBSERVED/VERIFIED/STALE/UNKNOWN strikt onderscheiden; installed ≠ loaded ≠ desired.
+
+**Eigenaarstoestemming:** geen software-installatie/upgrade, service-activering of serverwijziging op eigen of testhosts zonder voorafgaande expliciete goedkeuring. Geen automatische periodieke software-updates; latere updates alleen operatorgestuurd met impact-/capaciteits-/datacontrole en gecontroleerde opruiming via bestaande Fleet Update Plane. Dit is uitsluitend een roadmapbronwijziging, geen live activering. Bij twijfel de nieuwe detailroadmap en bestaande harde AGENTS.md-regels volgen.
+
+---
+
 ## 2026-11-22 — #866 M6: EERST volledige functionele acceptatie; periodieke uitgaande status later
 
 **Prioriteitsbesluit eigenaar:** na de zesrollen-systemd-migratie volgt geen nieuw monitoringproject of extra beheerinfrastructuur. Eerst aantoonbare end-to-end werking van de bestaande Runner-MCP / Fabric Agent Bus / AIfordable-keten. Daarna pas periodieke statusrapportering voor eigen en klantservers. **Geen onnodige back-ups. Geen software-installatie of upgrade zonder aparte voorafgaande toestemming, ook niet op testhosts. Geen ongecontroleerde herstart of productieaanpassing.**

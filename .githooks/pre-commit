@@ -4,4 +4,4 @@
 set -eu
 cd "$(git rev-parse --show-toplevel)"
 python3 tools/doc_memory/doc_memory.py precommit
-python3 scripts/check_kop_header.py --staged --advisory
+python3 tools/kop/check_kop_header.py --staged --advisory

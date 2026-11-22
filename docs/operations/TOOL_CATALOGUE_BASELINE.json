@@ -1,7 +1,7 @@
 {
   "schemaVersion": "runner-mcp/tool-catalogue-baseline/v1",
   "sourceFile": "src/runner_mcp/server.py",
-  "minimumToolCount": 108,
+  "minimumToolCount": 109,
   "tools": [
     "apply_migrations",
     "approval_status",
@@ -44,6 +44,7 @@
     "fabric_disposable_target_qualify",
     "fabric_external_target_inspect",
     "fabric_external_target_preflight",
+    "fabric_get_facts",
     "fabric_get_work_unit",
     "fabric_host_inspect",
     "fabric_local_bundle_stage",

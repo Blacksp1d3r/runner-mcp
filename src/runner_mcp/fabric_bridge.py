@@ -36,6 +36,7 @@ _FABRIC_TOOLS = frozenset(
         "external_target_preflight",
         "external_target_inspect",
         "operational_snapshot",
+        "get_facts",
         "synthetic_probe_status",
         "a6_update_qualification_prepare",
         "a6_update_qualification_finalize",
@@ -58,6 +59,16 @@ _FABRIC_TOOLS = frozenset(
 # server. A6, probe, CI guest and work-unit tools are capability-gated and
 # MUST NOT become required merely because this bridge allows their names.
 _FABRIC_REQUIRED_TOOLS = frozenset({"host_inspect", "operational_snapshot"})
+
+# An old Fabric peer without opt-in get_facts must remain compatible.
+_FLEET_FIELDS = frozenset({"runtime.version", "service.mode"})
+_FLEET_STATES = frozenset({
+    "unknown", "observed_unbound", "observed",
+    "corroborated", "stale", "conflict",
+})
+_FLEET_ASSET = re.compile(r"^AF-(?:HOST|VM|CTR)-[0-9]{4}$")
+_FLEET_SERVICE = re.compile(r"^AF-SVC-[0-9]{4}$")
+_FLEET_SAFE = re.compile(r"^[A-Za-z0-9][A-Za-z0-9._:+-]{0,127}$")
 
 _ID_RE = re.compile(r"^[a-z][a-z0-9._:-]{0,127}$")
 _REVISION_RE = re.compile(r"^[0-9a-f]{40}$")
@@ -370,6 +381,16 @@ class FabricBridgeClient:
                 "Runner Fabric operational snapshot failed"
             ) from exc
         return _validate_operational_snapshot(result)
+
+    def get_facts(self, field: str = "runtime.version") -> dict[str, Any]:
+        """Read only one prebound F10 field through the existing Fabric MCP."""
+        if field not in _FLEET_FIELDS:
+            raise FabricBridgeError("fleet facts field is not allowlisted")
+        try:
+            result = self._client()._call_tool("get_facts", {"field": field})
+        except BridgeExecutionAdapterError as exc:
+            raise FabricBridgeError("fleet facts unavailable") from exc
+        return _validate_fleet_fact(result, field=field)
 
     def synthetic_probe_status(self) -> dict[str, Any]:
         """Return bounded read-only latest synthetic-probe status."""
@@ -1438,6 +1459,64 @@ def _reference(value: object, field: str) -> str:
         raise FabricBridgeError(f"{field} is invalid")
     return value
 
+
+
+def _validate_fleet_fact(value: object, *, field: str) -> dict[str, Any]:
+    """Keep only the canonical bounded F10 shape; never trust peer free text."""
+    if (
+        field not in _FLEET_FIELDS or not isinstance(value, dict)
+        or value.get("field") != field
+        or value.get("state") not in _FLEET_STATES
+        or not isinstance(value.get("asset_id"), str)
+        or _FLEET_ASSET.fullmatch(value["asset_id"]) is None
+        or not isinstance(value.get("service_id"), str)
+        or _FLEET_SERVICE.fullmatch(value["service_id"]) is None
+    ):
+        raise FabricBridgeError("invalid fleet fact")
+    if value["state"] == "unknown":
+        _exact_keys(
+            value, {"state", "asset_id", "service_id", "field"}, "fleet fact"
+        )
+        return value
+    _exact_keys(
+        value,
+        {
+            "state", "asset_id", "service_id", "field", "value", "source_id",
+            "observed_at", "expires_at", "boot_id", "generation",
+            "authority_revision", "source_host_verified", "witness_evidence_ref",
+        },
+        "fleet fact",
+    )
+    if (
+        type(value["value"]) not in (str, int, float, bool, type(None))
+        or type(value["source_host_verified"]) is not bool
+    ):
+        raise FabricBridgeError("invalid fleet fact")
+    if type(value["value"]) is str and (
+        len(value["value"]) > 128
+        or _FLEET_SAFE.fullmatch(value["value"]) is None
+    ):
+        raise FabricBridgeError("invalid fleet fact")
+    for name in ("source_id", "boot_id", "generation", "authority_revision"):
+        token = value[name]
+        if not isinstance(token, str) or _FLEET_SAFE.fullmatch(token) is None:
+            raise FabricBridgeError("invalid fleet fact")
+    witness = value["witness_evidence_ref"]
+    if witness is not None and (
+        not isinstance(witness, str) or _FLEET_SAFE.fullmatch(witness) is None
+    ):
+        raise FabricBridgeError("invalid fleet fact")
+    for name in ("observed_at", "expires_at"):
+        timestamp = value[name]
+        if not isinstance(timestamp, str) or len(timestamp) > 40:
+            raise FabricBridgeError("invalid fleet fact")
+        try:
+            parsed = datetime.fromisoformat(timestamp)
+        except ValueError:
+            raise FabricBridgeError("invalid fleet fact") from None
+        if parsed.tzinfo is None or parsed.utcoffset() is None:
+            raise FabricBridgeError("invalid fleet fact")
+    return value
 
 
 def _validate_operational_snapshot(value: object) -> dict[str, Any]:

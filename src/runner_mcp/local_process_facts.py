@@ -10,9 +10,9 @@ from __future__ import annotations
 
 import os
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Callable
 
 _BOOT_ID = re.compile(r"^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$")
 
@@ -50,7 +50,7 @@ def read_current_linux_process(
         if type(pid) is not int or pid < 1:
             raise ValueError("invalid PID")
         if not isinstance(proc, Path):
-            raise ValueError("invalid proc root")
+            raise TypeError("invalid proc root")
         boot = (proc / "sys/kernel/random/boot_id").read_text(encoding="ascii").strip()
         if not _BOOT_ID.fullmatch(boot):
             raise ValueError("invalid boot identifier")
@@ -67,5 +67,5 @@ def read_current_linux_process(
         if start_ticks < 1:
             raise ValueError("invalid process start ticks")
         return LinuxProcessFacts(boot_id=boot, process_id=pid, start_ticks=start_ticks)
-    except (OSError, UnicodeError, ValueError, OverflowError) as exc:
+    except (OSError, UnicodeError, ValueError, OverflowError, TypeError) as exc:
         raise LocalProcessFactsUnavailable("current process identity unavailable") from exc

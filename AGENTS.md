@@ -1,5 +1,10 @@
 # AGENTS.md — Runner MCP
 
+## Actueel eigenaarsbesluit — toestemming eigen software (23 november 2026)
+
+Voor **alle chats en agents**: vraag vooraf alleen aparte toestemming bij het **installeren of upgraden van software van derden**, ook op testservers. Onze **eigen** software, CI, PR-merges, release-updates en bestaande eigen testinfrastructuur mogen autonoom worden afgewerkt zodra de bestaande originele hostidentiteit/owner/actieve PID-bron/poort, passende capability, herstel/rollback, veiligheidsgrenzen en onafhankelijke readback bewezen zijn. Herhaal geen algemene JA-vraag voor elke eigen installatie of serveractie. **Niet** gebruiken als bypass voor de harde §1–§2 veiligheidsgrenzen, productie- of klantdata-autoriteit, externe vereiste approvals of onvoldoende topologybewijs: dan STOP mutatie en voer alleen gerichte read-onlydiagnose uit. Geen nieuwe relay/updater/tunnel/controller/login. Nieuwste eigenaarsbesluit vervangt oudere generieke toestemmingseisen binnen deze precieze reikwijdte. Centrale afspraak: [AIfordable #609](https://github.com/Blacksp1d3r/AIfordable/issues/609#issuecomment-7106782994).
+
+
 > Compacte versie (eigenaarsbesluit 2026-11-15). De volledige vorige tekst staat byte-identiek in
 > `docs/agents/AGENTS_FULL_2026-11-15.md` (SHA-256 bewaakt door `tools/doc_memory`). Die tekst
 > blijft geldig voor details. Bij twijfel of schijnbare tegenstrijdigheid geldt de **strengere**

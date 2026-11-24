@@ -307,3 +307,13 @@ def test_required_policy_must_remain_literal_and_active(tmp_path: Path) -> None:
     path.write_text("Na iedere taak stoppen.", encoding="utf-8")
     (root / "AGENTS.archive-2026-11.md").write_text(policy, encoding="utf-8")
     assert dm.main(args) == 1
+
+
+def test_split_keeps_undated_owner_rule_even_with_archive_pattern(tmp_path: Path) -> None:
+    root, cfg = _repo(tmp_path)
+    path = root / "handover" / "CURRENT_STATE.md"
+    rule = "\n## Eigenaarsregel — blijvend\n\nBlijf doorwerken.\n"
+    path.write_text(SAMPLE + rule, encoding="utf-8")
+    assert _split(root, cfg, "--archive-undated", "Eigenaarsregel") == 0
+    assert rule.strip() in path.read_text(encoding="utf-8")
+    assert not list((root / "handover").glob("CURRENT_STATE.archive-undated.md"))

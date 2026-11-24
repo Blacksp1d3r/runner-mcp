@@ -675,7 +675,7 @@ def test_registered_self_listener_different_pid_or_no_systemd_skips_tcp(
     for state in ("unknown", "unsupported"):
         monkeypatch.setattr(
             manager, "observe_registered_self_process",
-            lambda *_args: RegisteredSelfProcessObservation(
+            lambda *_args, state=state: RegisteredSelfProcessObservation(
                 project="demo", service="web", status=state
             ),
         )

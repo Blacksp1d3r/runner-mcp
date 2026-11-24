@@ -25,6 +25,22 @@ class ServiceState:
     sub_state: str
 
 
+@dataclass(frozen=True, slots=True)
+class RegisteredServiceObservation:
+    """Unverified unit presence from an already-allowlisted registry binding.
+
+    Not a canonical asset fact, a service-PID witness, or loaded-code evidence.
+    A caller cannot infer a listener or host identity from this observation.
+    """
+
+    project: str
+    service: str
+    status: str  # observed | unknown | unsupported
+    present: bool | None
+    active: bool | None
+    source: str = "registered-service-backend"
+
+
 class ServiceBackend(Protocol):
     def status(self, unit: str) -> ServiceState: ...
 
@@ -216,6 +232,52 @@ class ServiceManager:
             "sub_state": state.sub_state,
             "health": health,
         }
+
+    def observe_registered_service(
+        self, project: str, alias: str
+    ) -> RegisteredServiceObservation:
+        """Read only one configured unit via the existing bounded backend.
+
+        No health URL, arbitrary systemd unit, service action, process lookup,
+        host scan or caller-controlled asset ID is involved. The result is
+        deliberately NOT a canonical F10 fact or process/listener attestation.
+        """
+        service = self._service(project, alias)
+
+        def result(
+            status: str, present: bool | None = None, active: bool | None = None
+        ) -> RegisteredServiceObservation:
+            return RegisteredServiceObservation(
+                project=project, service=alias, status=status,
+                present=present, active=active,
+            )
+
+        try:
+            backend = self._backend()
+        except ServiceManagerError:
+            # Default backend is absent on non-Linux/no-systemd systems.
+            return result("unsupported" if self.backend is None else "unknown")
+        try:
+            state = backend.status(service.unit)
+        except ServiceManagerError:
+            return result("unknown")
+        if not isinstance(state, ServiceState):
+            return result("unknown")
+        if state.load_state == "not-found":
+            # Contradictory systemd evidence is not an absence proof.
+            if state.active_state != "inactive":
+                return result("unknown")
+            return result("observed", present=False)
+        if state.load_state != "loaded":
+            return result("unknown")
+        if state.active_state == "active":
+            return result("observed", present=True, active=True)
+        if state.active_state in {"inactive", "failed"}:
+            return result("observed", present=True, active=False)
+        if state.active_state in {"activating", "deactivating", "reloading"}:
+            return result("observed", present=True)
+        return result("unknown")
+
 
     @staticmethod
     def _action_allowed(service: ServiceConfig, action: str) -> bool:

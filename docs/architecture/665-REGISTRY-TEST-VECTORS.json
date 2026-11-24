@@ -1,0 +1,93 @@
+{
+  "schemaVersion": "com.aifordable.runner-mcp/registry-test-vectors/v1",
+  "description": "Synthetic contract fixtures only; IDs are not allocated production identities, no customer information.",
+  "namespace": "com.aifordable.runner-mcp",
+  "registry": [
+    {
+      "tool_id": "RMCP-000001",
+      "name": "synthetic_read",
+      "contract_revision": 1,
+      "input_schema_sha256": "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      "output_schema_sha256": "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+      "permission_class": "read",
+      "status": "active"
+    },
+    {
+      "tool_id": "RMCP-000002",
+      "name": "synthetic_write",
+      "contract_revision": 1,
+      "input_schema_sha256": "cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+      "output_schema_sha256": "dddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddddd",
+      "permission_class": "write",
+      "status": "retired"
+    }
+  ],
+  "cases": [
+    {
+      "id": "REG-001",
+      "mutation": "none",
+      "expected": "ACCEPT_REGISTRY"
+    },
+    {
+      "id": "REG-002",
+      "mutation": "duplicate_active_id_foreign_name",
+      "expected": "REJECT_DUPLICATE_ID"
+    },
+    {
+      "id": "REG-003",
+      "mutation": "reuse_retired_id",
+      "expected": "REJECT_RETIRED_REUSE"
+    },
+    {
+      "id": "REG-004",
+      "mutation": "change_schema_without_revision",
+      "expected": "REJECT_IMMUTABLE_CONTRACT"
+    },
+    {
+      "id": "REG-005",
+      "mutation": "same_active_name_different_id",
+      "expected": "REJECT_AMBIGUOUS_NAME"
+    },
+    {
+      "id": "REG-006",
+      "mutation": "foreign_namespace",
+      "expected": "REJECT_NAMESPACE"
+    },
+    {
+      "id": "REG-007",
+      "mutation": "unknown_id",
+      "expected": "UNKNOWN_TOOL"
+    },
+    {
+      "id": "REG-008",
+      "mutation": "known_id_denied_by_host_policy",
+      "expected": "TOOL_DISABLED"
+    },
+    {
+      "id": "REG-009",
+      "mutation": "same_semver_different_build_hash",
+      "expected": "VERSION_MISMATCH"
+    },
+    {
+      "id": "REG-010",
+      "mutation": "advertised_alias_not_in_registry",
+      "expected": "SCHEMA_MISMATCH"
+    },
+    {
+      "id": "REG-011",
+      "mutation": "missing_attested_build",
+      "expected": "STALE_INVENTORY"
+    },
+    {
+      "id": "REG-012",
+      "mutation": "cross_tenant_same_incident",
+      "expected": "SEPARATE_INCIDENT_KEYS"
+    }
+  ],
+  "notes": [
+    "These are declarative fixtures, not passing executable tests.",
+    "Do not derive assigned IDs from alphabetical name ordering.",
+    "Dispatcher authorization must be separate from identifier validation.",
+    "Real schema hashes must use canonical JSON not placeholder repeated characters."
+  ]
+}

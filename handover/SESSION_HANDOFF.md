@@ -1,3 +1,10 @@
+## 2026-11-24 — IIT #952 0.1.198 registered-service observation MERGED SOURCE ONLY
+
+- [Runner-MCP #1070](https://github.com/Blacksp1d3r/runner-mcp/pull/1070) merged at `c160b74b9cdfb53e1ecaf42b8425d02013966042`. Reuses the existing allowlisted `ServiceManager` and status backend for one internal `RegisteredServiceObservation`, not a new tool or systemd scanner. Present/active with UNKNOWN/UNSUPPORTED preserved; network health probe and service mutations are not called.
+- Final PR-head `c2dd1664baddb3a52a04491f70d5f418b88f98b1`, all three official GitHub CI groups COMPLETED/SUCCESS. Post-main push CI check separately if not yet completed. Previous source 0.1.197 netns PR #1068 remains merged. **Original physical Runner-MCP still 0.1.196**, recovery preserved; 0.1.198 is NOT INSTALLED OR LIVE.
+- Continue #952 only for the same registered service with owner-bound MainPID/startticks then namespace-aware actual listener, fail closed on missing information. Never attribute own-process netns to an unrelated systemd unit and never claim loaded wheel provenance from installed files. #669 handles loaded identity; #866/M6 handles SQL/heartbeat/ACK; Fabric #2084 is sole real F10 cache two-reader E2E owner. Zero host changes by this session.
+- [#952 canonical evidence](https://github.com/Blacksp1d3r/runner-mcp/issues/952#issuecomment-7123314412). Status: `IIT_0198_SOURCE_MERGED=PASS`; `IIT_0198_ORIGINAL_HOST=NOT_INSTALLED`; `IIT_REAL_F10_2_READER_E2E=NOT_TESTED`.
+
 ## 2026-11-23 — IIT #952 PR #1068 MERGED (0.1.197 SOURCE ONLY); oorspronkelijke vierrollenrelease niet herhalen
 
 - **Huidige main:** `2458b945c933f37a74beeb67f53d6a5e144c5a01`, package 0.1.197. Alleen eigen Linux /proc netwerknamespace-inode-label toegevoegd aan bestaande `read_current_linux_process` zonder vrije pad-/netwerk-/hostinspectie; UNKNOWN bij ontbrekend kernelbewijs, fail-closed bij PID-wissel, bestaande generation stabiel. Exact-head officiële PR/CI **ALL SUCCESS**, 17 synthetische modulefixtures lokaal PASS. Postmain push-validatie afzonderlijk verifiëren, niet aannemen.

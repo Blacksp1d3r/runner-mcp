@@ -11,9 +11,9 @@ from runner_mcp.operational_safety import (
     RetentionPolicy,
 )
 from runner_mcp.service_manager import (
+    RegisteredServiceObservation,
     ServiceManager,
     ServiceManagerError,
-    RegisteredServiceObservation,
     ServiceState,
     SystemdUserBackend,
 )

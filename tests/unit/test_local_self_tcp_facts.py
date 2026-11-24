@@ -9,7 +9,6 @@ import pytest
 
 from runner_mcp.local_self_tcp_facts import read_current_self_tcp_listeners
 
-
 _HEADER = "sl local_address rem_address st tx_queue rx_queue tr tm->when retrnsmt uid timeout inode\n"
 
 

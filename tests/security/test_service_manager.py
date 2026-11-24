@@ -14,6 +14,7 @@ from runner_mcp.operational_safety import (
     RetentionPolicy,
 )
 from runner_mcp.service_manager import (
+    RegisteredSelfListenerObservation,
     RegisteredSelfProcessObservation,
     RegisteredServiceObservation,
     ServiceManager,
@@ -625,3 +626,123 @@ def test_systemd_mainpid_invalid_is_not_exposed(
     monkeypatch.setattr(subprocess, "run", fixed_show)
     state = SystemdUserBackend(executable=executable).status("registered.service")
     assert state.main_pid is None
+
+
+def test_registered_self_listener_positive_rechecks_same_owner(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path, stopped=True),
+        backend=FakeBackend(),
+    )
+    self_fact = RegisteredSelfProcessObservation(
+        project="demo", service="web", status="observed",
+        generation="fixture-boot:123:456", network_namespace_inode=1840
+    )
+    calls = []
+
+    def own_process(*args):
+        calls.append("process")
+        return self_fact
+
+    def kernel_listeners():
+        calls.append("tcp")
+        return (("tcp4", 8080),)
+
+    monkeypatch.setattr(manager, "observe_registered_self_process", own_process)
+    monkeypatch.setattr("runner_mcp.service_manager.read_current_self_tcp_listeners", kernel_listeners)
+    obs = manager.observe_registered_self_listeners("demo", "web")
+    assert obs == RegisteredSelfListenerObservation(
+        project="demo", service="web", status="observed",
+        generation=self_fact.generation, network_namespace_inode=1840,
+        listeners=(("tcp4", 8080),),
+    )
+    assert calls == ["process", "tcp", "process"]
+
+
+def test_registered_self_listener_different_pid_or_no_systemd_skips_tcp(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=FakeBackend(),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.read_current_self_tcp_listeners",
+        lambda: pytest.fail("foreign or unsupported process must not read /proc/self/net"),
+    )
+    for state in ("unknown", "unsupported"):
+        monkeypatch.setattr(
+            manager, "observe_registered_self_process",
+            lambda *_args, state=state: RegisteredSelfProcessObservation(
+                project="demo", service="web", status=state
+            ),
+        )
+        assert manager.observe_registered_self_listeners("demo", "web").status == state
+
+
+@pytest.mark.parametrize("listener_result", [None, ()])
+def test_registered_self_listener_missing_or_empty_kernel_evidence_is_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, listener_result
+) -> None:
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=FakeBackend(),
+    )
+    monkeypatch.setattr(
+        manager, "observe_registered_self_process",
+        lambda *_args: RegisteredSelfProcessObservation(
+            "demo", "web", "observed", "boot:10:20", 1840,
+        ),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.read_current_self_tcp_listeners",
+        lambda: listener_result,
+    )
+    obs = manager.observe_registered_self_listeners("demo", "web")
+    assert obs.status == "unknown" and obs.listeners == ()
+
+
+@pytest.mark.parametrize("difference", ["generation", "namespace", "status"])
+def test_registered_self_listener_generation_race_is_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, difference: str
+) -> None:
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=FakeBackend(),
+    )
+    calls = 0
+
+    def changing(*_args):
+        nonlocal calls
+        calls += 1
+        return RegisteredSelfProcessObservation(
+            "demo", "web",
+            "unknown" if calls == 2 and difference == "status" else "observed",
+            "boot:10:21" if calls == 2 and difference == "generation" else "boot:10:20",
+            1841 if calls == 2 and difference == "namespace" else 1840,
+        )
+
+    monkeypatch.setattr(manager, "observe_registered_self_process", changing)
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.read_current_self_tcp_listeners",
+        lambda: (("tcp6", 8080),),
+    )
+    obs = manager.observe_registered_self_listeners("demo", "web")
+    assert obs.status == "unknown" and obs.listeners == ()
+
+
+def test_registered_self_listener_unregistered_service_never_reads_socket(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=FakeBackend(),
+    )
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.read_current_self_tcp_listeners",
+        lambda: pytest.fail("unregistered alias cannot read netns"),
+    )
+    with pytest.raises(ServiceManagerError, match="Unknown or disabled service"):
+        manager.observe_registered_self_listeners("demo", "missing")

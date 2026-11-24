@@ -1,3 +1,10 @@
+## 2026-11-24 — IIT #952 0.1.199 self-process-to-registered-unit SOURCE MERGED; original host unchanged
+
+- [Runner-MCP PR #1072](https://github.com/Blacksp1d3r/runner-mcp/pull/1072) merged to main SHA `243794d1533d49ac6c798e38ba0361622929dd06`, package source 0.1.199. Source-only change reuses existing ProjectRegistry alias→SystemdUserBackend.status with MainPID and own Linux procfs boot/PID/startticks/netns, before/after systemd+proc readbacks. No arbitrary PID or socket scan; internal observation only, not a new MCP tool or canonical fact. Concurrent process/namespace change or foreign unit MainPID => UNKNOWN; no systemd/other OS => UNSUPPORTED.
+- Exact PR-head `1b5bc89a6e70516eff839669df7bb22afc2520ef` official 3/3 workflows all SUCCESS (Ruff, pytest, release gate, systemd, demo, artifact, clean Ubuntu and attribution). Check postmain acceptance separately; no fake green if still in progress. [Issue #952 receipt](https://github.com/Blacksp1d3r/runner-mcp/issues/952#issuecomment-7123623220).
+- **Original live host remains earlier independent 0.1.196 four-role readback**; 0.1.199 NOT INSTALLED. Do not rerun 0.1.196 release cutover or change original Fabric/M6/SQL. Next IIT: existing allowed fixed listener/process inode evidence *on genuine source host*, otherwise UNKNOWN; never attribute configured health port or other process to self by inference. Source signing/loaded wheel #669; actual host fact→Agent Bus→F10 two-reader E2E #2084 and M6 #866 owners.
+- Status: `IIT_0199_SOURCE_MERGED=PASS`, `IIT_ORIGINAL_0199_DEPLOY=NOT_PERFORMED`, `IIT_LISTENER_OWNER=NOT_ATTESTED`, `IIT_F10_2_AI_E2E=NOT_TESTED`.
+
 ## 2026-11-24 — IIT #952 0.1.198 registered-service observation MERGED SOURCE ONLY
 
 - [Runner-MCP #1070](https://github.com/Blacksp1d3r/runner-mcp/pull/1070) merged at `c160b74b9cdfb53e1ecaf42b8425d02013966042`. Reuses the existing allowlisted `ServiceManager` and status backend for one internal `RegisteredServiceObservation`, not a new tool or systemd scanner. Present/active with UNKNOWN/UNSUPPORTED preserved; network health probe and service mutations are not called.

@@ -88,3 +88,12 @@ def test_proc_tables_cannot_be_unbounded(tmp_path: Path) -> None:
     proc = _fixture(tmp_path)
     (proc / "self/net/tcp").write_text("X" * (512 * 1024 + 1), encoding="ascii")
     assert read_current_self_tcp_listeners(proc=proc) is None
+
+
+def test_live_proc_self_fd_scan_handles_its_own_directory_fd() -> None:
+    """Linux-only read-only regression for a transient scandir descriptor."""
+    if not Path("/proc/self/fd").is_dir():
+        pytest.skip("Linux procfs unavailable")
+    from runner_mcp.local_self_tcp_facts import _own_socket_inodes
+
+    assert _own_socket_inodes(Path("/proc")) is not None

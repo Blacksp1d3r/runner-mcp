@@ -13,6 +13,7 @@ from runner_mcp.operational_safety import (
 from runner_mcp.service_manager import (
     ServiceManager,
     ServiceManagerError,
+    RegisteredServiceObservation,
     ServiceState,
     SystemdUserBackend,
 )
@@ -285,3 +286,118 @@ def test_systemd_backend_rejects_unknown_action_before_execution(
         backend.action("demo.service", "reload-or-something")
 
     assert called is False
+
+
+@pytest.mark.parametrize(
+    ("load", "active", "status", "present", "running"),
+    [
+        ("loaded", "active", "observed", True, True),
+        ("loaded", "inactive", "observed", True, False),
+        ("loaded", "failed", "observed", True, False),
+        ("loaded", "activating", "observed", True, None),
+        ("not-found", "inactive", "observed", False, None),
+        ("not-found", "active", "unknown", None, None),
+        ("masked", "inactive", "unknown", None, None),
+        ("loaded", "unexpected", "unknown", None, None),
+    ],
+)
+def test_registered_service_presence_maps_only_known_systemd_states(
+    tmp_path: Path, load: str, active: str, status: str,
+    present: bool | None, running: bool | None,
+) -> None:
+    backend = FakeBackend()
+    backend.state = ServiceState(load, active, "unused-private-substate")
+
+    class NoHealth:
+        def check(self, _service):
+            pytest.fail("presence observation must not perform an HTTP health check")
+
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path, stopped=True),
+        backend=backend,
+        health_checker=NoHealth(),
+    )
+    result = manager.observe_registered_service("demo", "web")
+    assert result == RegisteredServiceObservation(
+        project="demo", service="web", status=status,
+        present=present, active=running,
+    )
+    assert backend.status_units == ["private-web.service"]
+    assert backend.actions == []
+    assert "private-web.service" not in repr(result)
+    assert "unused-private" not in repr(result)
+
+
+def test_registered_service_presence_rejects_undeclared_alias_before_read(
+    tmp_path: Path,
+) -> None:
+    backend = FakeBackend()
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    with pytest.raises(ServiceManagerError, match="Unknown or disabled service"):
+        manager.observe_registered_service("demo", "undeclared")
+    assert backend.status_units == []
+    assert backend.actions == []
+
+
+def test_registered_service_presence_returns_unknown_when_backend_fails(
+    tmp_path: Path,
+) -> None:
+    class DeniedBackend(FakeBackend):
+        def status(self, _unit):
+            raise ServiceManagerError("private backend failure")
+
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=DeniedBackend(),
+    )
+    observation = manager.observe_registered_service("demo", "web")
+    assert observation.status == "unknown"
+    assert observation.present is None and observation.active is None
+    assert "private backend failure" not in repr(observation)
+
+
+def test_registered_service_presence_without_linux_backend_is_unsupported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.host_platform import HostPlatform
+
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.detect_host_platform",
+        lambda: HostPlatform.UNSUPPORTED,
+    )
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=None,
+    )
+    observation = manager.observe_registered_service("demo", "web")
+    assert observation.status == "unsupported"
+    assert observation.present is None and observation.active is None
+    assert manager.backend is None
+
+
+def test_registered_service_presence_missing_systemctl_is_unsupported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    from runner_mcp.host_platform import HostPlatform
+
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.detect_host_platform",
+        lambda: HostPlatform.LINUX,
+    )
+
+    def no_systemctl():
+        raise ServiceManagerError("systemctl missing")
+
+    monkeypatch.setattr("runner_mcp.service_manager._detect_systemctl", no_systemctl)
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=None,
+    )
+    observation = manager.observe_registered_service("demo", "web")
+    assert observation.status == "unsupported"
+    assert observation.present is None and observation.active is None
+    assert manager.backend is None

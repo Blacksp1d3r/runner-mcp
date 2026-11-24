@@ -1,3 +1,11 @@
+## 2026-11-24 — IIT 0.1.199 source-main CI CANCELLED; causal attribution still unknown
+
+Independent follow-up for *this existing Failure Museum topic*, not a second museum or CI controller. Source PR #1072 `1b5bc89a...` passed all three exact-head PR CI groups and source merged `243794d1533d49ac6c798e38ba0361622929dd06`. But **post-main validation** Actions run [45338160758](https://github.com/Blacksp1d3r/runner-mcp/actions/runs/45338160758) ended **CANCELLED**; job `Disposable real systemd user lifecycle` ID 138255615314 ended CANCELLED while Ruff/pytest + clean demo passed, release artifact was SKIPPED. Exact docs-main merge SHA `72c41f8...` independently passed attribution and validation; those successes are NOT substitute evidence for cancelled source-main SHA.
+
+The systemd job began near 06:09 UTC and the source run concluded near 06:14 UTC; existing systemd CI has `timeout-minutes: 5`, which is consistent with but does **not prove** a timeout. A bounded in-progress Actions job-log request returned HTTP 404 BlobNotFound from log backing storage, so the exact cancellation cause is **UNVERIFIED**. Do not assert docs-push cancellation, code defect, or timeout without additional actual source evidence. No rerun/bypass, CI workflow change, or new runner was performed; this is an evidence correction. [Canonical IIT #952 reconciliation](https://github.com/Blacksp1d3r/runner-mcp/issues/952#issuecomment-7136087099).
+
+Later IIT v0.1.200 source PR #1074 exact-head three workflows passed; its independent source-main acceptance is separate and must be checked before saying success. Its operator deliberately postponed next docs-main merge until previous source-main CI terminal, to avoid concurrent main commits obscuring evidence.
+
 ## 2026-11-07 — aanvullend gevonden: de artifactjob liep vóór de einddemo (0.1.154 bronkandidaat)
 
 - V0.1.152 main `42351052147` had exact kandidaatartifact al geüpload ondanks overall CANCELLED tijdens demo. Dat onthult naast het in-progress-cancelprobleem een afzonderlijke volgordeafhankelijkheid: de bestaande `release-artifact` vroeg alleen `validate`, niet de reeds bestaande `demo-smoke` en `disposable-systemd-user`.

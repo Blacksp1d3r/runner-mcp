@@ -11,6 +11,7 @@ from typing import Protocol
 
 from .config import ProjectRegistry, ServiceConfig
 from .host_platform import HostPlatform, detect_host_platform
+from .local_process_facts import LocalProcessFactsUnavailable, read_current_linux_process
 from .operational_safety import ActionClass, OperatorSafetyGuard
 
 
@@ -23,6 +24,7 @@ class ServiceState:
     load_state: str
     active_state: str
     sub_state: str
+    main_pid: int | None = None
 
 
 @dataclass(frozen=True, slots=True)
@@ -39,6 +41,22 @@ class RegisteredServiceObservation:
     present: bool | None
     active: bool | None
     source: str = "registered-service-backend"
+
+
+@dataclass(frozen=True, slots=True)
+class RegisteredSelfProcessObservation:
+    """Local-only same-process generation for a registered user systemd unit.
+
+    This is not an asset authority, loaded wheel attestation, or socket proof.
+    """
+
+    project: str
+    service: str
+    status: str  # observed | unknown | unsupported
+    generation: str | None = None
+    network_namespace_inode: int | None = None
+    scope: str = "this_running_process_only"
+    source: str = "linux:registered-systemd-self"
 
 
 class ServiceBackend(Protocol):
@@ -105,6 +123,7 @@ class SystemdUserBackend:
                 "--property=LoadState",
                 "--property=ActiveState",
                 "--property=SubState",
+                "--property=MainPID",
                 "--no-page",
             ]
         )
@@ -118,10 +137,17 @@ class SystemdUserBackend:
         if any(key not in values for key in required):
             raise ServiceManagerError("Service manager returned incomplete status")
 
+        raw_pid = values.get("MainPID", "")
+        main_pid = (
+            int(raw_pid)
+            if raw_pid.isascii() and raw_pid.isdecimal() and len(raw_pid) <= 12
+            else 0
+        )
         return ServiceState(
             load_state=values["LoadState"],
             active_state=values["ActiveState"],
             sub_state=values["SubState"],
+            main_pid=main_pid if main_pid > 1 else None,
         )
 
     def action(self, unit: str, action: str) -> None:
@@ -277,6 +303,65 @@ class ServiceManager:
         if state.active_state in {"activating", "deactivating", "reloading"}:
             return result("observed", present=True)
         return result("unknown")
+
+
+    def observe_registered_self_process(
+        self, project: str, alias: str
+    ) -> RegisteredSelfProcessObservation:
+        """Bind one allowlisted unit to ONLY the process serving this call.
+
+        Systemd's MainPID must equal our own pid both before and after the
+        kernel snapshot. No arbitrary PID selector, /proc traversal, socket
+        scan, network probe or service action is authorized here. An observed
+        generation is neither externally witnessed nor a loaded build digest.
+        """
+        service = self._service(project, alias)
+
+        def wait(status: str) -> RegisteredSelfProcessObservation:
+            return RegisteredSelfProcessObservation(
+                project=project, service=alias, status=status,
+            )
+
+        if detect_host_platform() is not HostPlatform.LINUX:
+            return wait("unsupported")
+        try:
+            backend = self._backend()
+        except ServiceManagerError:
+            return wait("unsupported" if self.backend is None else "unknown")
+        try:
+            pid = os.getpid()
+            before = backend.status(service.unit)
+            if (
+                not isinstance(before, ServiceState)
+                or before.load_state != "loaded"
+                or before.active_state != "active"
+                or type(before.main_pid) is not int
+                or before.main_pid != pid
+            ):
+                return wait("unknown")
+            first = read_current_linux_process()
+            after = backend.status(service.unit)
+            second = read_current_linux_process()
+            if (
+                not isinstance(after, ServiceState)
+                or after.load_state != "loaded"
+                or after.active_state != "active"
+                or after.main_pid != pid
+                or first.process_id != pid
+                or second.process_id != pid
+                or first.generation != second.generation
+                or first.network_namespace_inode != second.network_namespace_inode
+            ):
+                return wait("unknown")
+            return RegisteredSelfProcessObservation(
+                project=project,
+                service=alias,
+                status="observed",
+                generation=first.generation,
+                network_namespace_inode=first.network_namespace_inode,
+            )
+        except (ServiceManagerError, LocalProcessFactsUnavailable, OSError, ValueError):
+            return wait("unknown")
 
 
     @staticmethod

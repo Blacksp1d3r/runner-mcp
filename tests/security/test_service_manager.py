@@ -1,3 +1,4 @@
+import os
 import subprocess
 from pathlib import Path
 
@@ -5,12 +6,15 @@ import pytest
 from pydantic import ValidationError
 
 from runner_mcp.config import ProjectConfig, ProjectRegistry, ServiceConfig
+from runner_mcp.host_platform import HostPlatform
+from runner_mcp.local_process_facts import LinuxProcessFacts, LocalProcessFactsUnavailable
 from runner_mcp.operational_safety import (
     OperatorSafetyGuard,
     OperatorStopActive,
     RetentionPolicy,
 )
 from runner_mcp.service_manager import (
+    RegisteredSelfProcessObservation,
     RegisteredServiceObservation,
     ServiceManager,
     ServiceManagerError,
@@ -401,3 +405,223 @@ def test_registered_service_presence_missing_systemctl_is_unsupported(
     assert observation.status == "unsupported"
     assert observation.present is None and observation.active is None
     assert manager.backend is None
+
+
+def test_registered_self_process_only_when_systemd_mainpid_is_current_process(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = FakeBackend()
+    backend.state = ServiceState("loaded", "active", "running", os.getpid())
+    read_count = 0
+
+    def read_fake() -> LinuxProcessFacts:
+        nonlocal read_count
+        read_count += 1
+        return LinuxProcessFacts(
+            boot_id="12345678-1234-1234-1234-123456789abc",
+            process_id=os.getpid(),
+            start_ticks=98444,
+            network_namespace_inode=4026531840,
+        )
+
+    monkeypatch.setattr("runner_mcp.service_manager.read_current_linux_process", read_fake)
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path, stopped=True),
+        backend=backend,
+        health_checker=FakeHealth(),
+    )
+    observation = manager.observe_registered_self_process("demo", "web")
+    assert observation == RegisteredSelfProcessObservation(
+        project="demo", service="web", status="observed",
+        generation=f"12345678-1234-1234-1234-123456789abc:{os.getpid()}:98444",
+        network_namespace_inode=4026531840,
+    )
+    assert backend.status_units == ["private-web.service", "private-web.service"]
+    assert backend.actions == []
+    assert read_count == 2
+    assert "private-web.service" not in repr(observation)
+
+
+def test_registered_self_process_other_service_pid_never_reads_proc(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = FakeBackend()
+    backend.state = ServiceState("loaded", "active", "running", os.getpid() + 100)
+
+    def deny_proc():
+        pytest.fail("must not read another unit's process")
+
+    monkeypatch.setattr("runner_mcp.service_manager.read_current_linux_process", deny_proc)
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    assert manager.observe_registered_self_process("demo", "web").status == "unknown"
+    assert backend.status_units == ["private-web.service"]
+    assert backend.actions == []
+
+
+@pytest.mark.parametrize("mainpid", [None, 0, True, "123", -1])
+def test_registered_self_process_invalid_mainpid_is_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, mainpid,
+) -> None:
+    backend = FakeBackend()
+    backend.state = ServiceState("loaded", "active", "running", mainpid)
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.read_current_linux_process",
+        lambda: pytest.fail("untrusted systemd pid must not reach proc"),
+    )
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    assert manager.observe_registered_self_process("demo", "web").status == "unknown"
+
+
+def test_registered_self_process_fails_on_systemd_mainpid_transition(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    class ChangingBackend(FakeBackend):
+        def status(self, unit):
+            result = super().status(unit)
+            if len(self.status_units) == 2:
+                return ServiceState("loaded", "active", "running", os.getpid() + 1)
+            return result
+
+    backend = ChangingBackend()
+    backend.state = ServiceState("loaded", "active", "running", os.getpid())
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.read_current_linux_process",
+        lambda: LinuxProcessFacts(
+            "12345678-1234-1234-1234-123456789abc", os.getpid(), 88
+        ),
+    )
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    obs = manager.observe_registered_self_process("demo", "web")
+    assert obs.status == "unknown"
+    assert obs.generation is None
+    assert len(backend.status_units) == 2
+
+
+@pytest.mark.parametrize("race", ["startticks", "network_namespace"])
+def test_registered_self_process_pid_or_namespace_race_is_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, race: str,
+) -> None:
+    backend = FakeBackend()
+    backend.state = ServiceState("loaded", "active", "running", os.getpid())
+    calls = 0
+
+    def racing_reader() -> LinuxProcessFacts:
+        nonlocal calls
+        calls += 1
+        return LinuxProcessFacts(
+            "12345678-1234-1234-1234-123456789abc",
+            os.getpid(),
+            88 + (calls == 2 and race == "startticks"),
+            network_namespace_inode=1840 + (calls == 2 and race == "network_namespace"),
+        )
+
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.read_current_linux_process", racing_reader
+    )
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    obs = manager.observe_registered_self_process("demo", "web")
+    assert obs.status == "unknown"
+    assert obs.generation is None
+
+
+def test_registered_self_process_missing_kernel_evidence_is_unknown(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    backend = FakeBackend()
+    backend.state = ServiceState("loaded", "active", "running", os.getpid())
+
+    def denied():
+        raise LocalProcessFactsUnavailable("private kernel error")
+
+    monkeypatch.setattr("runner_mcp.service_manager.read_current_linux_process", denied)
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    obs = manager.observe_registered_self_process("demo", "web")
+    assert obs.status == "unknown"
+    assert "private kernel error" not in repr(obs)
+
+
+def test_registered_self_process_missing_systemd_is_unsupported(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.detect_host_platform", lambda: HostPlatform.LINUX
+    )
+
+    def unavailable():
+        raise ServiceManagerError("no systemd")
+
+    monkeypatch.setattr("runner_mcp.service_manager._detect_systemctl", unavailable)
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=None,
+    )
+    assert manager.observe_registered_self_process("demo", "web").status == "unsupported"
+
+
+def test_registered_self_process_nonlinux_does_not_access_backend(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.setattr(
+        "runner_mcp.service_manager.detect_host_platform", lambda: HostPlatform.WINDOWS
+    )
+    backend = FakeBackend()
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    assert manager.observe_registered_self_process("demo", "web").status == "unsupported"
+    assert backend.status_units == []
+
+
+def test_registered_self_process_unknown_alias_fails_before_systemd(
+    tmp_path: Path,
+) -> None:
+    backend = FakeBackend()
+    manager = ServiceManager(
+        registry=registry_with_service(tmp_path / "project"),
+        safety=guard(tmp_path), backend=backend,
+    )
+    with pytest.raises(ServiceManagerError, match="Unknown or disabled service"):
+        manager.observe_registered_self_process("demo", "foreign")
+    assert backend.status_units == []
+
+
+@pytest.mark.parametrize("pid_token", ["abc", "true", "-1", "999999999999999999", "0"])
+def test_systemd_mainpid_invalid_is_not_exposed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, pid_token: str,
+) -> None:
+    executable = tmp_path / "systemctl"
+    executable.write_text("fixture\n", encoding="utf-8")
+    executable.chmod(0o755)
+
+    def fixed_show(arguments, **kwargs):
+        assert "--property=MainPID" in arguments
+        assert kwargs["shell"] is False
+        return subprocess.CompletedProcess(
+            arguments, 0,
+            stdout=(
+                "LoadState=loaded\nActiveState=active\n"
+                "SubState=running\nMainPID=" + pid_token + "\n"
+            ),
+            stderr="private hidden content",
+        )
+
+    monkeypatch.setattr(subprocess, "run", fixed_show)
+    state = SystemdUserBackend(executable=executable).status("registered.service")
+    assert state.main_pid is None

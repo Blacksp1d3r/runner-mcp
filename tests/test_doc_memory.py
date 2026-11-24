@@ -307,4 +307,3 @@ def test_required_policy_must_remain_literal_and_active(tmp_path: Path) -> None:
     path.write_text("Na iedere taak stoppen.", encoding="utf-8")
     (root / "AGENTS.archive-2026-11.md").write_text(policy, encoding="utf-8")
     assert dm.main(args) == 1
-

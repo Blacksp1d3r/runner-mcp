@@ -12,6 +12,7 @@ from typing import Protocol
 from .config import ProjectRegistry, ServiceConfig
 from .host_platform import HostPlatform, detect_host_platform
 from .local_process_facts import LocalProcessFactsUnavailable, read_current_linux_process
+from .local_self_tcp_facts import read_current_self_tcp_listeners
 from .operational_safety import ActionClass, OperatorSafetyGuard
 
 
@@ -57,6 +58,24 @@ class RegisteredSelfProcessObservation:
     network_namespace_inode: int | None = None
     scope: str = "this_running_process_only"
     source: str = "linux:registered-systemd-self"
+
+
+@dataclass(frozen=True, slots=True)
+class RegisteredSelfListenerObservation:
+    """Kernel-observed listeners of ONLY this service's own Python process.
+
+    Local and unverified: never claims an externally witnessed host, endpoint,
+    container port publish, child process, signed build or F10 asset identity.
+    """
+
+    project: str
+    service: str
+    status: str  # observed | unknown | unsupported
+    generation: str | None = None
+    network_namespace_inode: int | None = None
+    listeners: tuple[tuple[str, int], ...] = ()
+    scope: str = "this_running_process_only"
+    source: str = "linux:registered-systemd-self-tcp"
 
 
 class ServiceBackend(Protocol):
@@ -362,6 +381,50 @@ class ServiceManager:
             )
         except (ServiceManagerError, LocalProcessFactsUnavailable, OSError, ValueError):
             return wait("unknown")
+
+
+    def observe_registered_self_listeners(
+        self, project: str, alias: str
+    ) -> RegisteredSelfListenerObservation:
+        """Positive-only TCP inode evidence for a registered *self* process.
+
+        Uses the existing registered-self-process guard on both sides of a
+        bounded /proc/self/fd + /proc/self/net/tcp{,6} snapshot. No arbitrary
+        PID, port, path, host, URL, socket probing or service mutations.
+        """
+        first = self.observe_registered_self_process(project, alias)
+
+        def unknown(status: str) -> RegisteredSelfListenerObservation:
+            return RegisteredSelfListenerObservation(
+                project=project, service=alias, status=status,
+            )
+
+        if first.status != "observed" or first.generation is None:
+            return unknown(first.status if first.status == "unsupported" else "unknown")
+        if first.network_namespace_inode is None:
+            return unknown("unknown")
+        try:
+            listeners = read_current_self_tcp_listeners()
+        except (OSError, ValueError, TypeError):
+            return unknown("unknown")
+        if not listeners:
+            # Empty or inaccessible does not establish an absent listener.
+            return unknown("unknown")
+        second = self.observe_registered_self_process(project, alias)
+        if (
+            second.status != "observed"
+            or first.generation != second.generation
+            or first.network_namespace_inode != second.network_namespace_inode
+        ):
+            return unknown("unknown")
+        return RegisteredSelfListenerObservation(
+            project=project,
+            service=alias,
+            status="observed",
+            generation=first.generation,
+            network_namespace_inode=first.network_namespace_inode,
+            listeners=listeners,
+        )
 
 
     @staticmethod

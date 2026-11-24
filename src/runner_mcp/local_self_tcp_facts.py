@@ -22,23 +22,27 @@ _MAX_INODE = (1 << 64) - 1
 
 def _own_socket_inodes(proc: Path) -> frozenset[int] | None:
     try:
-        entries = list((proc / "self/fd").iterdir())
-        if len(entries) > _MAX_FDS:
-            return None
         found: set[int] = set()
-        for entry in entries:
-            if not entry.name.isascii() or not entry.name.isdecimal():
-                return None
-            label = os.readlink(entry)
-            if not label.startswith("socket:"):
-                continue
-            match = _SOCKET.fullmatch(label)
-            if match is None:
-                return None
-            inode = int(match.group(1))
-            if inode > _MAX_INODE:
-                return None
-            found.add(inode)
+        # Keep scandir's own transient FD alive during link inspection:
+        # Path.iterdir() may close it before a second-pass readlink.
+        with os.scandir(proc / "self/fd") as entries:
+            count = 0
+            for entry in entries:
+                count += 1
+                if count > _MAX_FDS:
+                    return None
+                if not entry.name.isascii() or not entry.name.isdecimal():
+                    return None
+                label = os.readlink(entry.path)
+                if not label.startswith("socket:"):
+                    continue
+                match = _SOCKET.fullmatch(label)
+                if match is None:
+                    return None
+                inode = int(match.group(1))
+                if inode > _MAX_INODE:
+                    return None
+                found.add(inode)
         return frozenset(found)
     except (OSError, TypeError, ValueError, OverflowError):
         return None

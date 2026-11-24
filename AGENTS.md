@@ -1,5 +1,18 @@
 # AGENTS.md — Runner MCP
 
+## Doorlopende autonome werkmodus — eigenaarsbesluit 2026-11-24
+
+<!-- DOC_MEMORY_KEEP_ACTIVE:BEGIN -->
+- Lees de actuele AGENTS, roadmap, afhankelijkheden, handover en claims; hervat de eerste uitvoerbare taak binnen de toegewezen scope. Hergebruik geldig bewijs; herhaal geen afgerond werk.
+- Blijf binnen de beschikbare uitvoeringsbeurt actief doorwerken: uitvoeren, testen, fouten gericht herstellen, valideren, reguliere PR/merge en het volgende uitvoerbare werk oppakken. Een statusmelding, geslaagde test, commit, PR, merge of lopende CI is GEEN eindpunt of reden om opnieuw toestemming te vragen.
+- Bij een lokale blokkering of CI-wachttijd: registreer het concrete probleem, werk aan een veilige onafhankelijke taak binnen dezelfde scope en keer terug zodra de afhankelijkheid opgelost is. Geen dubbele claims, tight polling of nieuwe nevenprojecten.
+- ChatGPT: T0 bij de eerste materiële toolcall; benut de beschikbare beurt voor nuttig werk tot minstens minuut 18 indien het platform dit toestaat en uitvoerbaar werk bestaat. Na minuut 18 geen nieuwe grote taak/branch/PR/lane; rond minuut 20 veilig landen. Een kortere platformlimiet heeft voorrang; beloof geen achtergrondwerk.
+- Eindig alleen bij voltooiing, geen onafhankelijk uitvoerbaar werk, werkelijk noodzakelijke menselijke tussenkomst, expliciete stop van de eigenaar of een echte sessie-/toollimiet. Lever bij onderbreking de exacte blocker, actuele toestand en eerstvolgende concrete actie; bij noodzakelijke operatoruitvoering een direct bruikbaar, toegestaan commando.
+- Dit is een uitvoeringsplicht binnen de bestaande bevoegdheden, geen nieuwe toestemming. Behoud alle geldende veiligheids-, productie-, software-installatie-, test-, CI-, eigenaarschap- en rollbackregels. Vraag alleen toestemming wanneer een geldende regel dit werkelijk vereist.
+- Permanente eigenaarsbesluiten, actieve bevoegdheden, stopvoorwaarden, autonome werkregels en huidige prioriteiten blijven letterlijk in de actieve bootstrap-documentatie. Archivering en tokenbudget mogen deze niet naar alleen-lezen naslag verplaatsen of afzwakken. Historisch bewijs mag verliesvrij worden gearchiveerd.
+<!-- DOC_MEMORY_KEEP_ACTIVE:END -->
+
+
 ## Actueel eigenaarsbesluit — toestemming eigen software (23 november 2026)
 
 Voor **alle chats en agents**: vraag vooraf alleen aparte toestemming bij het **installeren of upgraden van software van derden**, ook op testservers. Onze **eigen** software, CI, PR-merges, release-updates en bestaande eigen testinfrastructuur mogen autonoom worden afgewerkt zodra de bestaande originele hostidentiteit/owner/actieve PID-bron/poort, passende capability, herstel/rollback, veiligheidsgrenzen en onafhankelijke readback bewezen zijn. Herhaal geen algemene JA-vraag voor elke eigen installatie of serveractie. **Niet** gebruiken als bypass voor de harde §1–§2 veiligheidsgrenzen, productie- of klantdata-autoriteit, externe vereiste approvals of onvoldoende topologybewijs: dan STOP mutatie en voer alleen gerichte read-onlydiagnose uit. Geen nieuwe relay/updater/tunnel/controller/login. Nieuwste eigenaarsbesluit vervangt oudere generieke toestemmingseisen binnen deze precieze reikwijdte. Centrale afspraak: [AIfordable #609](https://github.com/Blacksp1d3r/AIfordable/issues/609#issuecomment-7106782994).

@@ -264,3 +264,56 @@ def test_install_hook_targets_markdown_only(tmp_path: Path, monkeypatch) -> None
     assert dm.main(["--root", str(root), "install-hook"]) == 0
     hook = (root / ".git" / "hooks" / "pre-commit").read_text()
     assert "grep -q '\\.md$'" in hook and "precommit" in hook
+
+def test_split_keeps_dated_owner_rules_and_marked_sections(tmp_path: Path) -> None:
+    root, cfg = _repo(tmp_path)
+    path = root / "handover" / "CURRENT_STATE.md"
+    permanent = (
+        "\n## 2026-10-01 — Eigenaarsbesluit\n\nAltijd verder werken.\n"
+        "\n## 2026-10-02 — Werkbeleid\n\n"
+        "<!-- DOC_MEMORY_KEEP_ACTIVE:BEGIN -->\n"
+        "Vaste instructie.\n<!-- DOC_MEMORY_KEEP_ACTIVE:END -->\n"
+    )
+    path.write_text(SAMPLE + permanent, encoding="utf-8")
+    assert _split(root, cfg) == 0
+    assert permanent.strip() in path.read_text(encoding="utf-8")
+    assert not (root / "handover" / "CURRENT_STATE.archive-2026-10.md").read_text(
+        encoding="utf-8"
+    ).count("Vaste instructie.")
+
+
+def test_split_refuses_agents_even_when_explicitly_requested(tmp_path: Path) -> None:
+    root, cfg = _repo(tmp_path)
+    path = root / "AGENTS.md"
+    path.write_text(SAMPLE, encoding="utf-8")
+    assert dm.main(
+        ["--root", str(root), "--config", str(cfg), "split", "AGENTS.md",
+         "--keep-since", "2026-11-10"]
+    ) == 1
+    assert path.read_text(encoding="utf-8") == SAMPLE
+    assert not list(root.glob("AGENTS.archive-*.md"))
+
+
+def test_required_policy_must_remain_literal_and_active(tmp_path: Path) -> None:
+    root, cfg = _repo(tmp_path, target=10**9)
+    path = root / "AGENTS.md"
+    policy = "Altijd de volgende uitvoerbare taak oppakken."
+    config = json.loads(cfg.read_text(encoding="utf-8"))
+    config["required_active_policy"] = {"AGENTS.md": policy}
+    cfg.write_text(json.dumps(config), encoding="utf-8")
+    path.write_text(policy, encoding="utf-8")
+    args = ["--root", str(root), "--config", str(cfg), "check"]
+    assert dm.main(args) == 0
+    path.write_text("Na iedere taak stoppen.", encoding="utf-8")
+    (root / "AGENTS.archive-2026-11.md").write_text(policy, encoding="utf-8")
+    assert dm.main(args) == 1
+
+
+def test_split_keeps_undated_owner_rule_even_with_archive_pattern(tmp_path: Path) -> None:
+    root, cfg = _repo(tmp_path)
+    path = root / "handover" / "CURRENT_STATE.md"
+    rule = "\n## Eigenaarsregel — blijvend\n\nBlijf doorwerken.\n"
+    path.write_text(SAMPLE + rule, encoding="utf-8")
+    assert _split(root, cfg, "--archive-undated", "Eigenaarsregel") == 0
+    assert rule.strip() in path.read_text(encoding="utf-8")
+    assert not list((root / "handover").glob("CURRENT_STATE.archive-undated.md"))

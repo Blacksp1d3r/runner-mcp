@@ -360,6 +360,30 @@ def check_frozen(root: Path, config: dict) -> list[str]:
     return errors
 
 
+def check_active_policy(root: Path, config: dict) -> list[str]:
+    """Vaste operationele regels moeten letterlijk in het actieve bestand staan."""
+    errors: list[str] = []
+    for rel, required in config.get("required_active_policy", {}).items():
+        path = root / rel
+        if not path.is_file() or required not in read_text(path):
+            errors.append(f"{rel}: verplichte actieve operationele instructies ontbreken of wijken af")
+    return errors
+
+
+def keep_active_section(section: Section) -> bool:
+    """Bescherm expliciet gemarkeerde en als eigenaarsregel herkenbare secties."""
+    return (
+        "DOC_MEMORY_KEEP_ACTIVE:" in section.text
+        or re.search(
+            r"eigenaars(?:besluit|regel|instructie)|owner decision|owner rule|"
+            r"autonome werkmodus|autonomous work|guardrails|non-negotiable",
+            section.heading,
+            re.IGNORECASE,
+        )
+        is not None
+    )
+
+
 def command_check(args: argparse.Namespace) -> int:
     """CI-controle. Exitcode 1 alleen bij afgedwongen grenzen of archiefschade."""
     root = Path(args.root).resolve()
@@ -367,6 +391,7 @@ def command_check(args: argparse.Namespace) -> int:
     warnings, errors = check_budgets(root, config, args.base)
     errors += check_archives(root, config)
     errors += check_frozen(root, config)
+    errors += check_active_policy(root, config)
     infra_warnings, infra_errors = scan_infra(root, config)
     warnings += infra_warnings
     errors += infra_errors
@@ -463,6 +488,9 @@ def command_split(args: argparse.Namespace) -> int:
     root = Path(args.root).resolve()
     rel = args.file
     source_path = root / rel
+    if source_path.name.casefold() == "agents.md":
+        print("FOUT: AGENTS.md is actieve instructie; automatisch archiveren is niet toegestaan.")
+        return 1
     original = read_text(source_path)
     base, removed_generated, removed_offset = strip_generated(original)
     sections = parse_sections(base)
@@ -481,7 +509,7 @@ def command_split(args: argparse.Namespace) -> int:
     moved: dict[str, list[Section]] = {}
     entries = []
     for section in sections:
-        is_old = section.index > 0 and (
+        is_old = section.index > 0 and not keep_active_section(section) and (
             (section.date is not None and section.date < args.keep_since)
             or (
                 section.date is None
@@ -756,6 +784,7 @@ def command_precommit(args: argparse.Namespace) -> int:
     warnings, errors = check_budgets(root, config, None)
     errors += check_archives(root, config)
     errors += check_frozen(root, config)
+    errors += check_active_policy(root, config)
     allow = [re.compile(p) for p in config.get("infra_allow_patterns", [])]
     for rel in md:
         added = (

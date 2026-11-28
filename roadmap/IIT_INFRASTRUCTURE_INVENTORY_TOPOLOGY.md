@@ -161,6 +161,24 @@ Dit inventarisregister is input voor bestaande Fleet Update Plane (Fabric #924, 
 
 **S5 — Drift, serviceimpact en schaal:** eenvoudige observed-vs-declared-vs-verified diff via bestaand Fabric, filterbare MCP-reads; daarna synthetische 10/100/1000-host lastproeven en pas dan verdere schaaluitbouw. Later F17 operatorbeeld en vraaggestuurde updates via bestaand werk.
 
+### Actuele uitvoering — 2026-11-28
+
+Dit checkpoint actualiseert de bestaande afwerkvolgorde, zonder een tweede inventaris of writer te introduceren. De oorspronkelijke acceptatiecriteria blijven gelden.
+
+| Stap | Bewezen | Nog open / bestaande eigenaar |
+| --- | --- | --- |
+| S0 | Canonieke declaratie en private Git-projectie gereconcilieerd; echte eenmalige publicatie en onafhankelijke terugleescontrole geslaagd. | Alleen opnieuw publiceren bij een betekenisvolle wijziging. [#950](https://github.com/Blacksp1d3r/runner-mcp/issues/950) en [AF #428](https://github.com/Blacksp1d3r/AIfordable/issues/428). |
+| S1 | Bestaande begrensde Linux-reader en bronkwalificatie beschikbaar. | Actieve doelgeneratie per fact onafhankelijk kwalificeren; [#952](https://github.com/Blacksp1d3r/runner-mcp/issues/952). |
+| S2 | MCP-leesinterface beschikbaar. | Actuele read retourneert UNKNOWN / fabric_facts_unavailable. Geen twee-readeracceptatie; [Fabric #2084](https://github.com/Blacksp1d3r/Runner-Fabric/issues/2084) houdt de bestaande owner-composition en end-to-end slice. |
+| S3 | Echte declaratieprojectie, idempotente validatie, één gewone Git-push en onafhankelijke readback geslaagd via bestaande eigenaarroute. | Automatische bestaande owner-route, duurzaam request/candidate checkpoint, herstel bij onzekere push en echte requester-ACK. Hergebruik [F19 #181](https://github.com/Blacksp1d3r/Runner-Fabric/issues/181), [F18 #243](https://github.com/Blacksp1d3r/Runner-Fabric/issues/243), [F36 #1042](https://github.com/Blacksp1d3r/Runner-Fabric/issues/1042) en [Agent Bus #365](https://github.com/Blacksp1d3r/Runner-Fabric/issues/365). |
+| S4/S5 | Geen volledige operationele acceptatie geclaimd. | Pas na bewezen S2/S3 uitbreiden via bestaande adapters en schaalproeven. |
+
+**S3 actuele grens:** de geslaagde declaratiepublicatie is geen automatische publisher, geen real-time facts-cache en geen bewijs van snapshotpublicatie na een echte hostwijziging. De fysieke archiefkwalificatie is beperkt tot de geteste scope en geeft geen verwijderbevoegdheid. De huidige declaratiebron blijft de enige writer; private Git blijft de projectie. De bestaande F19-transport-, F18-journal- en Agent Bus-outbox reviewvoorstellen zijn afzonderlijk lokaal gekwalificeerd, niet gemerged of operationeel geactiveerd. Hun code-eigenaars houden hun eigen integratie; IIT houdt de gezamenlijke publicatieacceptatie. Geen algemene seriële wachtrij: onafhankelijk werk loopt parallel; alleen echte conflicterende schrijfacties uitsluiten.
+
+**Volgende acceptatie:** één bestaande owner-local uitvoering vanuit duurzaam toegelaten bronbewijs; geen wijziging betekent nul Git-writes; bij betekenisvolle wijziging één normale push, exact onafhankelijk teruglezen en duurzaam oorspronkelijk requester-ACK. Een afgebroken/ambigue push wordt met het reeds duurzaam vastgelegde kandidaatcommit gereconcilieerd, nooit blind herhaald. Een tweede AI leest de bestaande F10-cache zonder nieuwe hostscan. Pas daarna S3/S2 als operationeel voltooid markeren.
+
+De laatste echte publicatie is vastgelegd in [#950](https://github.com/Blacksp1d3r/runner-mcp/issues/950#issuecomment-7238162225). De private operationele details blijven in de bestaande eigenaarroute, niet in deze publieke roadmap. Dit checkpoint autoriseert geen installatie, servicewijziging, credentialwijziging of nieuwe infrastructuur.
+
 ## 11. Minimale acceptatie / STOP-criteria
 
 - Eén echte host/service levert een geldig, privacyveilig fact met identiteits-, versiegeneratie-, tijd-/TTL- en bronlabel aan de bestaande centrale projectie.
